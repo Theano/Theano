@@ -126,6 +126,18 @@ class AddDestroyHandler(gof.Optimizer):
         super(AddDestroyHandler, self).add_requirements(env)
         env.extend(gof.DestroyHandler())
 
+class PrintCurrentEnv(gof.Optimizer):
+    """This optimizer is for debugging.
+
+    Toss it into the optimization pipeline to see the state of things at any given point.
+    """
+    def __init__(self, header):
+        self.header =header
+    def apply(self, env):
+        import theano.printing
+        print "PrintCurrentEnv:", self.header
+        theano.printing.debugprint(env.outputs)
+
 optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(), 
         0, 'fast_run', 'fast_compile')
@@ -133,10 +145,19 @@ optdb.register('canonicalize', gof.EquilibriumDB(),         # rearranges elemwis
         1, 'fast_run', 'fast_compile')
 optdb.register('merge1.2', gof.MergeOptimizer(skip_const_merge=False),
         1.2, 'fast_run', 'fast_compile')
+optdb.register('Print1.21', PrintCurrentEnv('Post-canonicalize'),
+        1.21,)# 'fast_run', 'fast_compile')
+
 optdb.register('stabilize', gof.EquilibriumDB(),            # replace unstable subgraphs
         1.5, 'fast_run')          
+optdb.register('Print1.51', PrintCurrentEnv('Post-stabilize'),
+        1.51,) #'fast_run', 'fast_compile')
 optdb.register('specialize', gof.EquilibriumDB(),           # misc special cases for speed
         2, 'fast_run')
+optdb.register('Print2.01', PrintCurrentEnv('Post-specialize'),
+        2.01, )#'fast_run', 'fast_compile')
+optdb.register('specialize_device', gof.EquilibriumDB(),           # misc special cases for speed that are dependent on the device.
+        48.6, 'fast_run')#must be after gpu stuff at 48.5
 optdb.register('merge2', gof.MergeOptimizer(),              # especially constant merge
         49, 'fast_run')
 optdb.register('add_destroy_handler', AddDestroyHandler(), 

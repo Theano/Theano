@@ -14,7 +14,6 @@ from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
 from theano.tests import unittest_tools as utt
-import scalar as scal
 
 from theano import function, compile
 from nose.plugins.skip import SkipTest
@@ -467,6 +466,22 @@ class test_canonize(unittest.TestCase):
                 topo=f.maker.env.toposort()
                 assert len(topo)==0
                 assert(out_dtype==out.dtype)
+                
+            #test x / abs(x) -> sign(x)
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                                                           (dx/abs(dx),[dx],[0.5-dxv],'float64'),
+                                                           (fx/abs(fx),[fx],[0.5-fxv],'float32'),
+                                                           (dx/abs(dx),[dx],[0.0*dxv],'float64'),
+                                                           (fx/abs(fx),[fx],[0.0*fxv],'float32'),
+                                                           (dv/abs(dv),[dv],[0.5-dvv],'float64'),
+                                                           (fv/abs(fv),[fv],[0.5-fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.all(numpy.isfinite(out))
+                assert numpy.allclose(out,numpy.sign(val_inputs[0]))
+                assert(out_dtype==out.dtype)
         finally:
             mode._optimizer = old_optimizer
 
@@ -599,34 +614,34 @@ class test_fusion(unittest.TestCase):
         izv = theano._asarray(my_init(shp,num=70),dtype='int32')
         fwx=fw+fx
         cases = [
-            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
-            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),
+            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#0
+            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),#1
             (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
             (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
-            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
-            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
             (((fw+fx)+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+(fx+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+(fx+fy)+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
-            (fw+(fx+(fy+fz)),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#10
-            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw+(fx+(fy+fz)),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#10
             (fw*fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv*fxv*fyv*fzv,'float32'),
             (fw+fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv*fyv*fzv,'float32'),
             (fx+fy*fz*fx,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv*fxv,'float32'),
-            (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),#15
-            (fx*fy*fz*fw+fx+fy+fz+fw,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),2,fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv,'float32'),#expect 2 as their is limit to the fusion on the gpu.
+            (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),
+            (fx*fy*fz*fw+fx+fy+fz+fw,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv,'float32'),#15
             #test with constant
             ((fw+fx)+(fy+fz)+2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
-            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
             (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             #mix float32 and float64
             (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),1,dwv+fxv+fyv+fzv+2,'float64'),
             (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),1,fwv+dwv+fyv+fzv+2,'float64'),
-            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),1,fwv+fxv+dwv+fzv+2,'float64'),#25
-            (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),1,fwv+fxv+fyv+dwv+2,'float64'),
+            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),1,fwv+fxv+dwv+fzv+2,'float64'),
+            (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),1,fwv+fxv+fyv+dwv+2,'float64'),#25
             #test when their is other op then elemwise.
             #the good output for the next test.
 #            (Pdb) p f.maker.env.toposort()
@@ -642,33 +657,33 @@ class test_fusion(unittest.TestCase):
             #test other elemwise op
             (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
             (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
-            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),#30
-            (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+numpy.absolute(izv),'int32'),
+            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),
+            (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+numpy.absolute(izv),'int32'),#30
             (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
             (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
             (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
-            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow #35
-            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),
+            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow
+            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),#35
             (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.true_div(fy,2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
-            (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),#40
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div
-            (fx-(fy/2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
+            (fx-theano.tensor.true_div(fy,2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
+            (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
+            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div#40
+            (fx-(fy/2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
-            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),#45
-            (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),
-            (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),#TODO: bugged on the gpu
-            (fx-(fy==fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),#TODO: bugged
-            (fx-(fy!=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
-            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),#50
-            (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),
+            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
+            (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),#45
+            (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
+            (fx-T.eq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),
+            (fx-T.neq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
+            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
+            (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),#50
             (fx-fy+sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
             (fx-fy+sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
             (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(fzv*fzv),'float32'),
-            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),#55
-            (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),
+            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
+            (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),#55
             (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(-fzv),'float32'),
 #            (fx-fy+theano.tensor.iround(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),#TODO: trouble with the output type. To my understanding, numpy and c round fct return the same type as the input. Why we don't do this?
 
@@ -714,10 +729,9 @@ class test_fusion(unittest.TestCase):
                 fail1.append(id)
             topo=f.maker.env.toposort()
             if gpu:
-                import theano_cuda_ndarray as tcn
-
-                topo_ = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
-                gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
+                import theano.sandbox.cuda as cuda
+                topo_ = [x for x in topo if not isinstance(x.op,cuda.basic_ops.GpuFromHost) and not isinstance(x.op,cuda.basic_ops.HostFromGpu)]
+                gpu_ = [x for x in topo if isinstance(x.op,cuda.basic_ops.GpuFromHost)]
                 if not len(gpu_)==len(sym_inputs):
                     fail2.append((id,gpu_,sym_inputs))
             else: topo_=topo
@@ -727,9 +741,6 @@ class test_fusion(unittest.TestCase):
             if not out_dtype==out.dtype:
                 fail4.append((id,out_dtype,out.dtype))
 
-#            cases[id]=None #to remove g, that link to out that link to the ndarray!
-            #g.owner.inputs[0] is out... make owner a weakref?
-            
         failed=len(fail1+fail2+fail3+fail4)
         print "Executed",len(cases),"cases", "failed", failed
         if failed>0:
@@ -751,8 +762,9 @@ class test_fusion(unittest.TestCase):
         mode=compile.mode.predefined_modes['FAST_COMPILE']
         mode=compile.mode.predefined_modes['FAST_RUN']
         mode=compile.mode.predefined_modes['DEBUG_MODE']
-        import theano.sandbox.cuda as tcn
-        self.do(mode, tcn.shared_constructor, shp, gpu=True)
+        mode = theano.compile.mode.get_mode(mode).including('gpu')
+        import theano.sandbox.cuda as cuda
+        self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
     def speed_fusion(self, shared_fn = shared, gpu = False, s=None):
         """
@@ -788,8 +800,8 @@ class test_fusion(unittest.TestCase):
         print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
 
     def speed_fusion_gpu(self):
-        import theano_cuda_ndarray as tcn
-        self.speed_fusion(shared_fn=tcn.shared_constructor, gpu=True, s=slice(0,15))
+        import theano.sandbox.cuda as cuda
+        self.speed_fusion(shared_fn=tcn.float32_shared_constructor, gpu=True, s=slice(0,15))
         
     def speed_log_exp(self):
         s=slice(31,36)
@@ -1260,6 +1272,7 @@ def test_local_pow_specialize():
     v = T.vector()
     val = numpy.arange(10,dtype=theano.config.floatX)
     val_no0 = numpy.arange(1,10,dtype=theano.config.floatX)
+
     f = function([v], v**0, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert nodes == [Shape_i(0), T.alloc]
@@ -1301,33 +1314,44 @@ def test_local_pow_specialize():
 #    assert nodes == [T.sqrt,T.inv]#Why this don't work?
     assert numpy.allclose(f(val_no0),val_no0**(-.5))
 
-    if config.experimental.pow:
-        print "Test experimental.pow=True"
-        f = function([v], v**(15), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes)==1
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert numpy.allclose(f(val),val**15)
-        
-        f = function([v], v**(-15), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes)==2
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
-        assert numpy.allclose(f(val_no0),val_no0**(-15))
-        
-        f = function([v], v**(16), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes) == 1
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert numpy.allclose(f(val),val**16)
-        
-        f = function([v], v**(-16), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes) == 2
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
-        assert numpy.allclose(f(val_no0),val_no0**(-16))
+def test_local_pow_specialize_device():
+
+    # test that on cpu we use more agressive optimization
+
+    mode = theano.config.mode
+    if mode == 'FAST_COMPILE':
+       mode = 'FAST_RUN'
+    mode = compile.mode.get_mode(mode)
+    mode = mode.excluding('fusion').excluding('gpu')
+
+    v = T.vector()
+    val = numpy.arange(10,dtype=theano.config.floatX)
+    val_no0 = numpy.arange(1,10,dtype=theano.config.floatX)
+    f = function([v], v**(15), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==1
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert numpy.allclose(f(val),val**15)
+    
+    f = function([v], v**(-15), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==2
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+    assert numpy.allclose(f(val_no0),val_no0**(-15))
+    
+    f = function([v], v**(16), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes) == 1
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert numpy.allclose(f(val),val**16)
+    
+    f = function([v], v**(-16), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes) == 2
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+    assert numpy.allclose(f(val_no0),val_no0**(-16))
     
 class T_Rebroadcast(unittest.TestCase):
 

@@ -416,7 +416,7 @@ def test_gemm_canonicalize():
 
     can = []
     _gemm_canonicalize(X + Y + u, 1.0, can, 0)
-    assert can == [(1.0, X), (1.0, Y), u]
+    assert can == [(1.0, X), (1.0, Y), u], can
 
     can = []
     _gemm_canonicalize(a*X + Y - b*Z*c, 1.0, can, 0)

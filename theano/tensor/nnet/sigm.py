@@ -8,7 +8,7 @@ from theano import gof
 from theano import scalar
 from theano import printing
 from theano.tensor import basic as tensor
-from theano.printing import pprint
+from theano.printing import pprint, debugprint
 from theano.tensor import elemwise
 from theano.tensor import opt
 from theano.compile import optdb
@@ -95,10 +95,17 @@ softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
+def _skip_mul_1(r):
+    if r.owner and r.owner.op == tensor.mul:
+        not_is_1 = [i for i in r.owner.inputs if not _is_1(i) ]
+        if len(not_is_1)==1:
+            return not_is_1[0]
+
 logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
-    allow_multiple_clients = True)
+    allow_multiple_clients = True,
+    skip_identities_fn=_skip_mul_1)
 
 def _is_1(expr):
     """rtype bool. True iff expr is a constant close to 1
@@ -115,7 +122,8 @@ log1msigm_to_softplus = gof.PatternSub(
             dict(pattern='y', constraint = _is_1),
             (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
-    allow_multiple_clients = True)
+    allow_multiple_clients = True,
+    skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p, 
@@ -329,3 +337,48 @@ register_local_1msigmoid = False
               
 if register_local_1msigmoid:
     opt.register_canonicalize(local_1msigmoid)
+
+if 0:
+    # This code is if'd out because it is not complete,
+    # and it isn't obviously a good idea anyway.
+    # The motivation here was to identify the last exp() node
+    # in the SciPy2010 article, which was not optimized away at the time of publication,
+    # so the example is actually not numerically stable, even though it should be.
+    @opt.register_stabilize
+    @gof.local_optimizer([tensor.mul])
+    def local_sigm_gest(node):
+        print "CANONICALIZE"
+        print sigm_canonicalize(node)
+
+    def sigm_canonicalize(node):
+        add = tensor.add
+        mul = tensor.mul
+        div = tensor.true_div
+
+        if node.op == tensor.add:
+            rval = []
+            for i in node.inputs:
+                rval += sigm_canonicalize(i)
+            return rval
+        if node.op == tensor.mul:
+            rval = sigm_canonicalize(node.inputs[0])
+            for i in node.inputs[1:]:
+                old_rval = rval
+                rval = []
+                for t1 in sigm_canonicalize(i):
+                    for t0 in old_rval:
+                        assert t1.owner.op == div
+                        assert t0.owner.op == div
+                        t0top, t0bot = t0.owner.inputs
+                        t1top, t1bot = t1.owner.inputs
+                        rval.append(div(mul(*(t0top+t1top)), mul(*(t0bot+t1bot))))
+
+                        if len(rval) > 100:
+                            # This loop can be exponentially long.
+                            # aborting
+                            return []
+        elif len(node.outputs)>1:
+            return []
+        else:
+            return [node.outputs[0]]
+

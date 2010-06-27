@@ -7,11 +7,12 @@ from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
-from theano.printing import pprint, FunctionPrinter
+from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import any
 import theano.scalar
 import basic as T
+
 
 from theano.tensor.tsor_apply import Apply
 
@@ -27,6 +28,74 @@ def info(*msg): _logger.info(' '.join(str(m) for m in msg))
 def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
 def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
+
+try:
+    import scipy.linalg.blas
+    _have_fblas = True
+    _blas_gemv_fns = {
+            numpy.dtype('float32'):scipy.linalg.blas.fblas.sgemv,
+            numpy.dtype('float64'):scipy.linalg.blas.fblas.dgemv,
+            numpy.dtype('complex64'):scipy.linalg.blas.fblas.cgemv,
+            numpy.dtype('complex128'):scipy.linalg.blas.fblas.zgemv,
+            }
+except ImportError, e:
+    _have_fblas = False
+    warning('Failed to import scipy.linalg.blas.fblas. Falling back on slower implementations (%s)' % str(e))
+
+class Gemv(Op):
+    """
+    expression is beta * y + alpha * A x
+
+    A is matrix
+    x, y are vectors
+    alpha, beta are scalars
+
+    """
+    def __init__(self, inplace):
+        self.inplace=inplace
+        if inplace:
+            self.destroy_map={0:[0]}
+    def __eq__(self, other):
+        return type(self)==type(other) and self.inplace == other.inplace
+    def __str__(self):
+        if self.inplace:
+            return 'Gemv{inplace}'
+        else:
+            return 'Gemv{no_inplace}'
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace)
+    def make_node(self, y, alpha, A, x, beta):
+        y = T.as_tensor_variable(y)
+        x = T.as_tensor_variable(x)
+        A = T.as_tensor_variable(A)
+        alpha = T.as_tensor_variable(alpha)
+        beta = T.as_tensor_variable(beta)
+        if y.dtype != A.dtype or y.dtype != x.dtype:
+            raise TypeError('Gemv requires matching dtypes', (y.dtype, A.dtype, x.dtype))
+        if A.ndim != 2: raise TypeError('gemv requires matrix for A', A.type)
+        if x.ndim != 1: raise TypeError('gemv requires vector for x', x.type)
+        if y.ndim != 1: raise TypeError('gemv requires vector for y', y.type)
+        if y.broadcastable[0] != A.broadcastable[0]:
+            raise TypeError('broadcastable mismatch between y and A', (y.type, A.type))
+        # The following is not grounds for error
+        # because as long as sizes are 1 at time of perform() there is no problem
+        #if x.broadcastable[0] != A.broadcastable[1]:
+            #raise TypeError('broadcastable mismatch between x and A', (x.type, A.type))
+        return Apply(self, [y, alpha, A, x, beta], [y.type()])
+    def perform(self, node, inputs, out_storage):
+        y, alpha, A, x, beta = inputs
+        if _have_fblas:
+            if not self.inplace:
+                y = y.copy()
+            gemv = _blas_gemv_fns[y.dtype]
+            out_storage[0][0] = gemv(alpha, A, x, beta, y, overwrite_y=self.inplace)
+        else:
+            out_storage[0][0] = numpy.asarray(
+                    beta * y + alpha * numpy.dot(A, x)
+                    , dtype=y.dtype)
+
+gemv_no_inplace = Gemv(inplace=False)
+gemv_inplace = Gemv(inplace=True)
 
 def default_blas_ldflags():
     try:
@@ -520,6 +589,9 @@ class Gemm(GemmRelated):
         """
 
     def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub): #DEBUG
+        if node.inputs[0].type.dtype.startswith('complex'):
+            raise utils.MethodNotDefined('%s.c_code' \
+                    % self.__class__.__name__)
         if not config.blas.ldflags:
             return super(Gemm, self).c_code(node, name, (_z, _a, _x, _y, _b), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
@@ -571,6 +643,10 @@ def _is_real_matrix(res):
             and res.type.ndim == 2 \
             and res.type.broadcastable[0] == False \
             and res.type.broadcastable[1] == False #cope with tuple vs. list
+def _is_real_vector(res):
+    return res.type.dtype in ('float32', 'float64') \
+            and res.type.ndim == 1 \
+            and res.type.broadcastable[0] == False 
 
 def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
     #print 'BETA L + ALPHA M', beta, L, alpha, M, recurse_flip
@@ -579,9 +655,41 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
     # we've already checked the client counts, now just make the type check.
     ####if res_is_a(M, _dot22, 1):
     if M.owner and M.owner.op == _dot22:
+        if M.broadcastable == L.broadcastable:
+            Ml, Mr = M.owner.inputs
+            rval = [gemm_no_inplace(L, alpha, Ml, Mr, beta)]
+            #print 'GEMM 0', rval, beta, L, alpha, M
+            return rval
+
+    if M.owner and M.owner.op == T.dot\
+            and L.broadcastable==(False,) \
+            and M.broadcastable==(False,):
         Ml, Mr = M.owner.inputs
-        rval = [gemm_no_inplace(L, alpha, Ml, Mr, beta)]
-        #print 'GEMM 0', rval, beta, L, alpha, M
+        rval = None
+        if Ml.ndim == 1:
+            if Mr.ndim == 1:
+                #TODO: insert a BLAS ddot Op
+                pass
+            if Mr.ndim == 2:
+                #print "RETURNING GEMV (case 2)"
+                if Mr.dtype == Ml.dtype: 
+                    rval = [gemv_no_inplace(L, alpha, Mr.T, Ml, beta)]
+                    assert L.type == rval[0].type, (L.type, rval[0].type)
+                else:
+                    # TODO
+                    pass
+        if Ml.ndim == 2:
+            if Mr.ndim == 1:
+                #print "RETURNING GEMV (case 3)"
+                if Mr.dtype == Ml.dtype:
+                    rval = [gemv_no_inplace(L, alpha, Ml, Mr, beta)]
+                    assert L.type == rval[0].type, (L.type, rval[0].type)
+                else:
+                    # TODO
+                    pass
+            if Mr.ndim == 2:
+                # should have already got this case with a _dot22
+                pass
         return rval
 
     # this is False'd out because of inadequate testing.  
@@ -616,7 +724,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
 
 
 def _gemm_canonicalize(r, scale, rval, maxclients):
-    # Tries to interpret node as a sum of scalars * matrices
+    # Tries to interpret node as a sum of scalars * (vectors or matrices)
     def scaled(thing):
         if scale == 1:
             return thing
@@ -629,7 +737,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
     except:
         return None
 
-    if (tuple(r.type.broadcastable) != (False, False) or
+    if ((r.type.ndim not in (1, 2)) or
             r.type.dtype not in ('float32', 'float64', 'complex64', 'complex128')):
         rval.append(scaled(r))
         return rval
@@ -651,6 +759,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
 
     elif r.owner and r.owner.op == T.mul:
         scalars = []
+        vectors = []
         matrices = []
         for i in r.owner.inputs:
             if numpy.all(i.type.broadcastable):
@@ -660,6 +769,8 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
                     scalars.append(i.dimshuffle())
                 else:
                     scalars.append(i)
+            elif _is_real_vector(i):
+                vectors.append(i)
             elif _is_real_matrix(i):
                 matrices.append(i)
             else:
@@ -667,6 +778,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
                 rval.append((scale,r))
                 return rval
         if len(matrices)==1:
+            assert len(vectors)==0
             m = matrices[0]
             if len(scalars) == 0:
                 _gemm_canonicalize(m, scale, rval, 1)
@@ -674,7 +786,16 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
                 _gemm_canonicalize(m, scaled(scalars[0]), rval, 1)
             else:
                 _gemm_canonicalize(m, T.mul(scaled(scalars[0]), *scalars[1:]), rval, 1)
-        else: #there are many matrices... lets not open this up
+        elif len(vectors)==1:
+            assert len(matrices)==0
+            v = vectors[0]
+            if len(scalars) == 0:
+                _gemm_canonicalize(v, scale, rval, 1)
+            elif len(scalars) == 1:
+                _gemm_canonicalize(v, scaled(scalars[0]), rval, 1)
+            else:
+                _gemm_canonicalize(v, T.mul(scaled(scalars[0]), *scalars[1:]), rval, 1)
+        else: #lets not open this up
             rval.append((scale,r))
     else:
         rval.append((scale,r))
@@ -735,8 +856,8 @@ def _gemm_from_factored_list(lst):
             #print 'TRYING', (s_i, M_i, s_j, M_j)
 
             gemm_of_sM_list = _beta_L_plus_alpha_M(s_i, M_i, s_j, M_j)
+            #print 'GOT IT', gemm_of_sM_list
             if gemm_of_sM_list:
-                #print 'GOT IT', gemm_of_sM_list
                 def item_to_var(t):
                     try: s,M = t
                     except: return t
@@ -749,9 +870,11 @@ def _gemm_from_factored_list(lst):
                         for k, input in enumerate(lst) if k not in (i,j)]
                 add_inputs.extend(gemm_of_sM_list)
                 if len(add_inputs) > 1:
-                    return [T.add(*add_inputs)]
+                    rval = [T.add(*add_inputs)]
                 else:
-                    return add_inputs
+                    rval = add_inputs
+                #print "RETURNING GEMM THIGN", rval
+                return rval
 
 def _gemm_from_node2(node):
     """
@@ -762,9 +885,13 @@ def _gemm_from_node2(node):
     """
     lst = []
     _gemm_canonicalize(node.outputs[0], 1.0, lst, 0)
+    #print "GEMM CANON", lst
     if len(lst) > 1:
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
+        #print "RVAL", rval
+        if rval:
+            assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
         return rval
 
 class GemmOptimizer(Optimizer):
@@ -783,7 +910,6 @@ class GemmOptimizer(Optimizer):
             did_something = False
             nodelist.reverse()
             for node in nodelist:
-                #new_outputs = _gemm_from_node(node)
                 try:
                     new_outputs = _gemm_from_node2(node)
                 except InconsistencyError, e:
@@ -805,13 +931,13 @@ class Dot22(GemmRelated):
     This is a specialization of the more general Dot()
     """
     def make_node(self, x, y):
-        if not _is_real_matrix(x):
+        if x.type.ndim != 2 or x.type.dtype not in ('float32', 'float64'):
             raise TypeError(x)
-        if not _is_real_matrix(x):
+        if y.type.ndim != 2 or y.type.dtype not in ('float32', 'float64'):
             raise TypeError(y)
         if y.type.dtype != x.type.dtype:
             raise TypeError('dtype mismatch to Dot22')
-        bz = [False, False]
+        bz = (x.type.broadcastable[0], y.type.broadcastable[1])
         outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y], outputs)
 
@@ -855,6 +981,9 @@ class Dot22(GemmRelated):
                 double b = 0.0;
         """
     def c_code(self, node, name, (_x, _y), (_zout, ), sub): #DEBUG
+        if node.inputs[0].type.dtype.startswith('complex'):
+            raise utils.MethodNotDefined('%s.c_code' \
+                    % self.__class__.__name__)
         if len(self.c_libraries())<=0:
             return super(Dot22, self).c_code(node, name, (_x, _y), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
@@ -870,19 +999,35 @@ _dot22 = Dot22()
 
 @local_optimizer([T.dot])
 def local_dot_to_dot22(node):
-    if node.op == T.dot:
-        x,y = node.inputs
-        if _is_real_matrix(x) and _is_real_matrix(y) and y.type.dtype == x.type.dtype:
+    if node.op != T.dot:
+        return
+
+    x,y = node.inputs
+    if y.type.dtype != x.type.dtype:
+        # TODO: upcast one so the types match
+        info('Not optimizing dot with inputs', x, y, x.type, y.type)
+        return
+    if y.type.dtype.startswith('float'):
+        if _is_real_matrix(x) and _is_real_matrix(y):
             return [_dot22(*node.inputs)]
-        else:
-            info('Not optimizing dot with inputs', x, y, x.type, y.type)
-    else:
-        return False
+        if 0:
+            if _is_real_matrix(x) and _is_real_vector(y):
+                return [_dot22(x, y.dimshuffle(0,'x')).dimshuffle(0)]
+            if _is_real_vector(x) and _is_real_matrix(y):
+                return [_dot22(x.dimshuffle('x',0), y).dimshuffle(1)]
+            if _is_real_vector(x) and _is_real_vector(x):
+                return [_dot22(x.dimshuffle('x',0), y.dimshuffle(0,'x')).dimshuffle()]
+
+    info('Not optimizing dot with inputs', x, y, x.type, y.type)
 
 @local_optimizer([gemm_no_inplace])
 def local_inplace_gemm(node):
     if node.op == gemm_no_inplace:
         return [gemm_inplace(*node.inputs)]
+@local_optimizer([gemv_no_inplace])
+def local_inplace_gemv(node):
+    if node.op == gemv_no_inplace:
+        return [gemv_inplace(*node.inputs)]
 
 #################################
 #
@@ -906,7 +1051,7 @@ blas_optdb.register('local_dot_to_gemm', GemmOptimizer(), 10, 'fast_run')
 # Try to make gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
 optdb.register('InplaceBlasOpt', 
-        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+        EquilibriumOptimizer([local_inplace_gemm, local_inplace_gemv], failure_callback=EquilibriumOptimizer.warn_inplace,
             max_use_ratio=5), 
         70.0, 'fast_run', 'inplace')
 
@@ -1047,4 +1192,11 @@ blas_optdb.register('local_dot22_to_dot22scalar',
         EquilibriumOptimizer([local_dot22_to_dot22scalar ], max_use_ratio=5),
         11, 'fast_run')
 
+
+from opt import register_specialize, register_canonicalize
+#@register_specialize
+@local_optimizer([])
+def local_print_as_we_go_along(node):
+    if node.op in (T.sub, T.add):
+        debugprint(node)
 

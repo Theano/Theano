@@ -150,38 +150,35 @@ def execs_timeit_2vector(exprs, fname=None):
     assert len(colors)>=len(times)
     fig = pylab.figure()
     for idx,(time,expr) in enumerate(zip(times,str_expr)):
+
+        ###
+        ###
+        ###
+        # Creating each subplot
+        ###
+        ###
+        ###
+        ###
         pylab.subplot(220+idx+1)
         pylab.subplots_adjust(wspace=0.25, hspace=0.25)
         #legend=[]
         #plot = fig.add_subplot(1,len(exprs),idx)
         speedup = [t[0].min()/t[1].min() for t in time]
+
         pylab.semilogx(nb_calls, speedup, linewidth=1.0, linestyle = '--', color='r')
         speedup = [t[0].min()/t[2].min() for t in time]
         pylab.semilogx(nb_calls, speedup, linewidth=1.0, color = 'b')
         pylab.grid(True)
         if (idx == 2) or (idx == 3):
-            pylab.xlabel('Dimension of vectors a and b')
+            pylab.xlabel('Dimension of vectors a and b', fontsize = 15)
         if (idx == 0) or (idx == 2):
-            pylab.ylabel('Speed up vs NumPy')
+            pylab.ylabel('Speed up vs NumPy', fontsize = 15)
         pylab.axhline(y=1, linewidth=1.0, color='black')
         pylab.xlim(1e3,1e7)
         pylab.xticks([1e3,1e5,1e7],['1e3','1e5','1e7'])
         pylab.title(expr)
-        #for time,expr,color in zip(times,str_expr,colors):
-        #    speedup = [t[0].min()/t[1].min() for t in time]
-        #    plot.semilogx(nb_calls, speedup, linewidth=1.0, linestyle='--', color=color)
-        #    speedup = [t[0].min()/t[2].min() for t in time]
-        #    plot.semilogx(nb_calls, speedup, linewidth=1.0, color=color)
-            #legend += ["Numexpr "+expr,"Theano "+expr]
-        
-        
-    #pylab.title('Speed up Numexpr and Theano vs NumPy')
-    #pylab.grid(True)
-    #pylab.xlabel('Nb element')
-    #pylab.ylabel('Speed up vs NumPy')
 
-    #pylab.legend(legend,loc='upper left')
-#    fig.legend(legend,loc='upper left')
+
 
     if fname:
         fig.savefig(fname)

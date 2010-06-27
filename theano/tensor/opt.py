@@ -144,6 +144,11 @@ def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
+def register_specialize_device(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
+    return lopt
+
 def register_stabilize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
@@ -189,6 +194,11 @@ def local_dimshuffle_lift(node):
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
+@register_canonicalize
+@gof.local_optimizer([])
+def local_dimshuffle_no_inplace_at_canonicalize(node):
+    if isinstance(node.op, T.DimShuffle) and node.op.inplace:
+        return [T.DimShuffle(node.op.input_broadcastable, node.op.new_order, inplace=False)(node.inputs[0])]
 
 
 #####################################
@@ -1603,18 +1613,20 @@ def local_sum_mul_by_scalar(node):
 @register_canonicalize
 @gof.local_optimizer([])
 def local_sum_div_dimshuffle(node):
-    '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis=l) / b,
+    '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
     if dimension l of the DimShuffle is 'x'.'''
     # TODO: extend it to product, and quotient of products
 
     if isinstance(node.op, T.Sum):
         axis = node.op.axis
+        if axis is None:
+            axis = range(node.inputs[0].ndim)
         #print 'axis =', axis
         thing_summed = node.inputs[0]
         dimshuffled = None
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
-            if isinstance(numerator.owner.op, T.DimShuffle):
+            if numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
                 new_order = numerator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility
@@ -1630,7 +1642,7 @@ def local_sum_div_dimshuffle(node):
                 #else:
                 #    print 'incompatible dims:', axis, new_order
 
-            if isinstance(denominator.owner.op, T.DimShuffle):
+            if denominator.owner and isinstance(denominator.owner.op, T.DimShuffle):
                 new_order = denominator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility
@@ -1827,9 +1839,31 @@ def local_pow_specialize(node):
                 rval = [T.inv(xsym)]
             if N.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
+            if rval:
+                rval[0] = T.cast(rval[0], odtype)
+                assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
+                return rval
+    else:
+        return False
+register_specialize(local_pow_specialize)
 
-            # Optimize all integral powers in [-RANGE, RANGE]
-            if config.experimental.pow and rval is None and abs(y)==int(abs(y)) and abs(y) <= 512:# 512 is too small for the cpu and too big for some gpu!
+@register_specialize_device
+@gof.local_optimizer([T.pow])
+def local_pow_specialize_device(node):
+    """
+    This optimization is not the same on all device. We do it only on cpu here.
+    """
+    if node.op == T.pow:
+        #the idea here is that we have pow(x, y)
+        odtype = node.outputs[0].dtype
+        xsym = node.inputs[0]
+        ysym = node.inputs[1]
+        y = local_mul_canonizer.get_constant(ysym)
+        if (y is not None) \
+                and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
+            rval = None
+            # 512 is too small for the cpu and too big for some gpu!
+            if abs(y)==int(abs(y)) and abs(y) <= 512:
                 pow2 = [xsym]
                 pow2_scal = [theano.scalar.Scalar(xsym.dtype)()]
                 y_to_do = abs(y)
@@ -1859,14 +1893,7 @@ def local_pow_specialize(node):
                 rval[0] = T.cast(rval[0], odtype)
                 assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
                 return rval
-    else:
-        return False
-register_specialize(local_pow_specialize)
-theano.configparser.AddConfigVar('experimental.pow',
-        "Transform a pow to a constant integer to a graph of mul. Fast on cpu, but more work needed for gpu.",
-        theano.configparser.BoolParam(False),
-        )
-
+   
 @gof.local_optimizer([T.mul])
 def local_mul_specialize(node):
     """Remove special-case constants from mul arguments
@@ -1965,20 +1992,28 @@ register_specialize(local_add_specialize)
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
 def check_for_x_over_absX(numerators, denominators):
+    """Convert x/abs(x) into sign(x). """
     # TODO: this function should dig/search through dimshuffles
     # This won't catch a dimshuffled absolute value
     for den in list(denominators):
         if den.owner and den.owner.op == T.abs_ and den.owner.inputs[0] in numerators:
-            denominators.remove(den)
-            numerators.remove(den.owner.inputs[0])
-            numerators.append(T.sgn(den.owner.inputs[0]))
+            if den.owner.inputs[0].type.dtype.startswith('complex'):
+                #TODO: Make an Op that projects a complex number to have unit length
+                #      but projects 0 to 0.  That would be a weird Op, but consistent with the 
+                #      special case below.  I heard there's some convention in Matlab that is 
+                #      similar to this... but not sure.
+                pass
+            else:
+                denominators.remove(den)
+                numerators.remove(den.owner.inputs[0])
+                numerators.append(T.sgn(den.owner.inputs[0]))
     return numerators, denominators
 local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'teststest')
 
 @register_stabilize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
-    # log(1+exp(x)) -> log1p(x)
+    # log(1+x) -> log1p(x)
     if node.op == T.log:
         log_arg, = node.inputs
         if log_arg.owner and log_arg.owner.op == T.add:
@@ -2207,7 +2242,7 @@ def local_elemwise_fusion_op(OP):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fusion two consecutif elemwise op of the same shape.
+        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
 
         For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
         The number of dimension is validated at call time by theano itself.
@@ -2240,7 +2275,7 @@ def local_elemwise_fusion_op(OP):
         for i in node.inputs:
             do_fusion = False
             catch = False
-            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)<=1:
+            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)==1:
                 #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
                 do_fusion=True
                 try:
@@ -2296,7 +2331,7 @@ def local_elemwise_fusion_op(OP):
 
         # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
         # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
-        if True:
+        if OP != T.Elemwise:
             argument_limit = 240  # 16 bytes are used for block and thread coords etc.
             #TODO: read in from architecture to make this 4 or 8
             int_size = 8

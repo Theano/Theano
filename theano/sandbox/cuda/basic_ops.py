@@ -1715,14 +1715,21 @@ class GpuSubtensor(tensor.Subtensor):
         cdata = tuple(map(convert, self.idx_list))
         if len(cdata) == 1:
             cdata = cdata[0]
+        out[0] = x.__getitem__(cdata)
 
-        # some numpy installations don't expose the __index__() methods for
-        # numpy.int8/16/32/64. Casting to python's int instead
-        start = int(cdata.start) if cdata.start!=None else None
-        stop = int(cdata.stop) if cdata.stop!=None else None
-        step = int(cdata.step) if cdata.step!=None else None
-        newslice = slice(start,stop,step)
-        out[0] = x.__getitem__(newslice)
+        if 0: 
+            # JSB: commenting this out because it breaks code and does not look right
+            #      Dumi could you try to run the examples in the DeepLearningBenchmarks
+            #      for example?  This logic doesn't seem right -- we just 
+            #      cast cdata to a tuple, so it doesn't have a .start field.
+            
+            # some numpy installations don't expose the __index__() methods for
+            # numpy.int8/16/32/64. Casting to python's int instead
+            start = int(cdata.start) if cdata.start!=None else None
+            stop = int(cdata.stop) if cdata.stop!=None else None
+            step = int(cdata.step) if cdata.step!=None else None
+            newslice = slice(start,stop,step)
+            out[0] = x.__getitem__(newslice)
 
 class GpuIncSubtensor(tensor.IncSubtensor):
     def make_node(self, x, y, *inputs):

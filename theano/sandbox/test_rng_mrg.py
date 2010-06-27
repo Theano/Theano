@@ -11,6 +11,7 @@ if cuda_available:
 
 import unittest
 from theano.tests import unittest_tools as utt
+from nose.plugins.skip import SkipTest
 
 #TODO: test gpu
 # Done in test_consistency_GPU_{serial,parallel}
@@ -22,7 +23,6 @@ from theano.tests import unittest_tools as utt
 #TODO: make tests work when no flags gived. Now need: THEANO_FLAGS=device=gpu0,floatX=float32
 # Partly done, in test_consistency_GPU_{serial,parallel}
 
-#TODO: bug fix test_normal0, in normal() fct, n_samples currently need to be numpy.prod(size) not self.n_streams(size)
 
 mode = config.mode
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
@@ -287,6 +287,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
     for i in xrange(steps):
         t0 = time.time()
         ival = f(*inputs)
+        assert ival.shape==sample_size
         dt += time.time() - t0
         ival = numpy.asarray(ival)
         if i == 0:
@@ -324,7 +325,7 @@ def test_uniform():
         sample_size = (10,100)
         steps = 50
     else:
-        sample_size = (500,100)
+        sample_size = (500,50)
         steps = int(1e3)
     
     x = tensor.matrix()
@@ -381,9 +382,9 @@ def test_binomial():
 
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,50)
-        steps = 70
+        steps = 50
     else:
-        sample_size = (500,100)
+        sample_size = (500,50)
         steps = int(1e3)
     
     x = tensor.matrix()
@@ -430,9 +431,9 @@ def test_normal0():
 
     steps = 50
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
-        sample_size = (99,100)
+        sample_size = (99,30)
     else:
-        sample_size = (999,100)
+        sample_size = (999,50)
 
     print ''
     print 'ON CPU:'
@@ -464,8 +465,8 @@ def test_normal0():
         print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
         print '----'
         sys.stdout.flush()
-        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
-
+        basictest(f, steps, sample_size_odd, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
+        
 
     print ''
     print 'ON CPU w NUMPY:'
@@ -476,7 +477,7 @@ def test_normal0():
 
     basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
 
-def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
+def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_rtol=0.04):
 
     dt = 0.0
     avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
@@ -484,6 +485,7 @@ def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
     for i in xrange(steps):
         t0 = time.time()
         ival = f()
+        assert ival.shape==sample_size
         dt += time.time() - t0
         #ival = numpy.asarray(ival)
         avg_pvals += ival
@@ -518,7 +520,7 @@ def test_multinomial():
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
     
-    basic_multinomialtest(f, steps, pvals, prefix='mrg ')
+    basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
 
@@ -535,4 +537,4 @@ def test_multinomial():
 
         theano.printing.debugprint(f)
         sys.stdout.flush()
-        basic_multinomialtest(f, steps, pvals, prefix='gpu mrg ')
+        basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')

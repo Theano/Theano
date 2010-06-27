@@ -341,6 +341,8 @@ class Value(Variable):
         if value is not None:
             raise ValueError("Value instances cannot have an owner.")
     owner = property(lambda self: None, __set_owner)
+    value = property(lambda self: self.data, 
+            doc='read-only data access method')
 
     # index is not defined, because the `owner` attribute must necessarily be None
 
