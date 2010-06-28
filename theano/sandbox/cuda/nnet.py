@@ -303,7 +303,7 @@ class GpuSoftmax (Op):
         return shape
     def c_code_cache_version(self):
         #return ()
-        return (1,) + inline_softmax.code_version
+        return (2,) + inline_softmax.code_version
     def c_code(self, node, nodename, (x,), (z,), sub):
         fail = sub['fail']
         return """
@@ -330,7 +330,7 @@ class GpuSoftmax (Op):
             kSoftmax_%(nodename)s
                 <<<
                 // todo: cap these at the card limits, implement loops in kernel
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024),
                     CudaNdarray_HOST_DIMS(%(x)s)[1],
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
@@ -362,11 +362,14 @@ class GpuSoftmax (Op):
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
-                    "buf[threadIdx.x] = x[blockIdx.x * sx0 + threadIdx.x * sx1]",
-                    "buf2[threadIdx.x] = buf[threadIdx.x]",
-                    "__syncthreads()",
-                    inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
-                    "sm[blockIdx.x * N + threadIdx.x] = buf[threadIdx.x]"
+                    "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                      "buf[threadIdx.x] = x[blockIDX * sx0 + threadIdx.x * sx1]",
+                      "buf2[threadIdx.x] = buf[threadIdx.x]",
+                      "__syncthreads()",
+                      inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
+                      "sm[blockIDX * N + threadIdx.x] = buf[threadIdx.x]",
+                      "__syncthreads()",
+                    "}",
                     ])
 
 
@@ -386,7 +389,7 @@ class GpuSoftmaxWithBias (Op):
         return  [shape[0]]
     def c_code_cache_version(self):
         #return ()
-        return (1,) + inline_softmax.code_version
+        return (2,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, (x,b), (z,), sub):
         fail = sub['fail']
@@ -425,7 +428,7 @@ class GpuSoftmaxWithBias (Op):
             kSoftmaxWithBias_%(nodename)s
                 <<<
                 // todo: cap these at the card limits, implement loops in kernel
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024),
                     CudaNdarray_HOST_DIMS(%(x)s)[1],
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
@@ -461,10 +464,14 @@ class GpuSoftmaxWithBias (Op):
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
-                    "buf[threadIdx.x] = x[blockIdx.x * sx0 + threadIdx.x * sx1]",
-                    "buf[threadIdx.x] += b[threadIdx.x * sb0]",
-                    "buf2[threadIdx.x] = buf[threadIdx.x]",
-                    "__syncthreads()",
-                    inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
-                    "sm[blockIdx.x * N + threadIdx.x] = buf[threadIdx.x]"
+                    "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                       "buf[threadIdx.x] = x[blockIDX * sx0 + threadIdx.x * sx1]",
+                       "buf[threadIdx.x] += b[threadIdx.x * sb0]",
+                       "buf2[threadIdx.x] = buf[threadIdx.x]",
+                       "__syncthreads()",
+                       inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
+                       "sm[blockIDX * N + threadIdx.x] = buf[threadIdx.x]",
+                       "__syncthreads()",
+                    "}",
                     ])
+#for (int i = blockIdx.x; i < N; i += gridDim.x)

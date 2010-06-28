@@ -17,6 +17,10 @@ else:
 def test_GpuCrossentropySoftmax1HotWithBiasDx():
     """
     This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias and GpuCrossentropySoftmax1HotWithBiasDx
+
+
+    We check that we loop when their is too much threads
+    TODO: check that we loop when their is too much block(>32*1024)
     """
 
     n_in = 1000
@@ -61,3 +65,53 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     assert numpy.allclose(out[1],gout[1])
     assert numpy.allclose(out[2],gout[2],atol=2e-6)
 
+
+def test_softmax_with_bias():
+    """
+    This is basic test for GpuSoftmaxWithBias
+
+    We check that we loop when their is too much block
+    TODO: check that we loop when their is too much thread.(THIS IS NOT IMPLEMENTED)
+    """
+    x = T.fmatrix('x')
+
+    #we need to test n>32*1024 to check that we make the block loop.
+    n,m=2<<15,5
+
+    data = numpy.arange(n*m, dtype='float32').reshape(n,m)
+
+    z = T.nnet.softmax_with_bias(x, T.zeros_like(x[0,:]))
+
+    f = theano.function([x],z, mode=mode_without_gpu)
+    f_gpu = theano.function([x],z, mode=mode_with_gpu)
+    assert f.maker.env.toposort()[-1].op==T.nnet.softmax_with_bias
+    assert isinstance(f_gpu.maker.env.toposort()[-2].op,cuda.nnet.GpuSoftmaxWithBias)
+    
+    out=f(data)
+    gout=f_gpu(data)
+    assert numpy.allclose(out,gout),numpy.absolute(out-gout)
+
+def test_softmax():
+    """
+    This is basic test for GpuSoftmax
+
+    We check that we loop when their is too much block
+    TODO: check that we loop when their is too much thread.(THIS IS NOT IMPLEMENTED)
+    """
+    x = T.fmatrix('x')
+
+    #we need to test n>32*1024 to check that we make the block loop.
+    n,m=2<<15,5
+
+    data = numpy.arange(n*m, dtype='float32').reshape(n,m)
+
+    z = T.nnet.softmax(x)
+
+    f = theano.function([x],z, mode=mode_without_gpu)
+    f_gpu = theano.function([x],z, mode=mode_with_gpu)
+    assert f.maker.env.toposort()[-1].op==T.nnet.softmax
+    assert isinstance(f_gpu.maker.env.toposort()[-2].op,cuda.nnet.GpuSoftmax)
+    
+    out=f(data)
+    gout=f_gpu(data)
+    assert numpy.allclose(out,gout),numpy.absolute(out-gout)
