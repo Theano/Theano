@@ -10,6 +10,7 @@
 // Alloc and Free
 /////////////////////////
 
+
 /**
  *
  * In the test program I'm using, the _outstanding_mallocs decreases with every call.
@@ -145,7 +146,7 @@ decl_k_elemwise_unary_rowmajor(k_elemwise_unary_rowmajor_exp, unary_exp<float>)
 static void
 CudaNdarray_dealloc(CudaNdarray* self)
 {
-    //std::cerr << "CudaNdarray dealloc " << self << " " << self->devdata << '\n';
+    if (0) std::cerr << "CudaNdarray dealloc " << self << " " << self->devdata << '\n';
     if(self->ob_refcnt>1)
       printf("WARNING:CudaNdarray_dealloc called when their is still active reference to it.\n");
     CudaNdarray_uninit(self);
@@ -407,7 +408,7 @@ PyObject * CudaNdarray_DeepCopy(CudaNdarray * self, PyObject * memo)
     else
     {
         PyObject * rval = CudaNdarray_Copy(self);
-        //std::cerr << "DeepCopy created " << rval << " devdata " << ((CudaNdarray*)rval)->devdata << "\n";
+        if (0) std::cerr << "DeepCopy created " << rval << " devdata " << ((CudaNdarray*)rval)->devdata << "\n";
         if (NULL == rval)
         {
             Py_DECREF(selfkey);
@@ -1869,10 +1870,10 @@ initcuda_ndarray(void)
     PyModule_AddObject(m, "CudaNdarray", (PyObject *)&CudaNdarrayType);
 
     //    cublasInit();
-    if (0&&CUBLAS_STATUS_SUCCESS != cublasGetError())
-    {
-        std::cerr << "WARNING: initcuda_ndarray: error initializing device\n";
-    }
+    //if (0&&CUBLAS_STATUS_SUCCESS != cublasGetError())
+    //{
+        //std::cerr << "WARNING: initcuda_ndarray: error initializing device\n";
+    //}
     if (0) //TODO: is this necessary?
     {
         int deviceId = 0; // TODO: what number goes here?
@@ -2004,7 +2005,6 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self)
     {
         if (CudaNdarray_HOST_DIMS(self)[i] == 1)
             continue;
-        //std::cerr << i << " "<< str << "BBBB\n";
         if (CudaNdarray_HOST_STRIDES(self)[i] != size)
         {
             c_contiguous = false;
