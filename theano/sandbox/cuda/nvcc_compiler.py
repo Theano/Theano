@@ -1,6 +1,6 @@
 import sys, os, subprocess, logging
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
-    get_lib_extension)
+    get_lib_extension, local_bitwidth)
 from theano import config
 import distutils
 import commands
@@ -116,11 +116,16 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd = [nvcc_path, '-shared', '-g'] + preargs1
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
-    cmd.extend(['-Xcompiler', ','.join(preargs2)])
+    if local_bitwidth() == 64:
+        cmd.append('-m64')
+        cmd.extend(['-Xcompiler', ','.join(preargs2 +[ '-m64'])])
+    else:
+        cmd.append('-m32')
+        cmd.extend(['-Xcompiler', ','.join(preargs2 +[ '-m32'])])
     if os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
         if sys.platform != 'darwin':
-            # No 64 bit CUDA libraries available on the mac, yet..
+            # the 64bit CUDA libs are in the same files as are named by the function above
             cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib64')])])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
@@ -132,6 +137,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
+    #print >> sys.stderr, 'COMPILING W CMD', cmd
     debug('Running cmd', ' '.join(cmd))
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
