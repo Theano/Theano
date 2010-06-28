@@ -14,6 +14,8 @@ AddConfigVar('cmodule.mac_framework_link',
 
 def local_bitwidth():
     """Return 32 for 32bit arch, 64 for 64bit arch"""
+    # Note - it seems from an informal survey of machines at scipy2010
+    # that platform.architecture is also a reliable way to get the bitwidth
     return len('%x' % sys.maxint) * 4
 
 _logger=logging.getLogger("theano.gof.cmodule")
@@ -721,6 +723,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cmd.append(cppfilename)
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
+    #print >> sys.stderr, 'COMPILING W CMD', cmd
     debug('Running cmd', ' '.join(cmd))
 
     p = subprocess.Popen(cmd)
