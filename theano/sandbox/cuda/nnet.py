@@ -188,7 +188,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
         #return ()
     def c_code(self, node, nodename, (dnll, sm, y_idx), (dx,), sub):
         fail = sub['fail']
@@ -229,7 +229,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
             kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s
                 <<<
                     CudaNdarray_HOST_DIMS(%(dx)s)[0],
-                    CudaNdarray_HOST_DIMS(%(dx)s)[1]
+                    std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(dx)s)[0],
                         CudaNdarray_HOST_DIMS(%(dx)s)[1], 
