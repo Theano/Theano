@@ -12,6 +12,9 @@ AddConfigVar('cmodule.mac_framework_link',
         "If set to true, breaks certain mac installations with the infamous Bus Error",
         BoolParam(False))
 
+def local_bitwidth():
+    """Return 32 for 32bit arch, 64 for 64bit arch"""
+    return len('%x' % sys.maxint) * 4
 
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARN)
