@@ -52,6 +52,10 @@ Community
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
+* Register and post to `theano-announce`_ if you want to be keep informed on important change on theano(low volume).
+
+* Register and post to `theano-buildbot`_ if you want to receive our daily buildbot email.
+
 * We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__ 
 
 * Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
@@ -77,6 +81,8 @@ Community
 
 .. _theano-dev: http://groups.google.com/group/theano-dev
 .. _theano-users: http://groups.google.com/group/theano-users
+.. _theano-announce: http://groups.google.com/group/theano-announce
+.. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
