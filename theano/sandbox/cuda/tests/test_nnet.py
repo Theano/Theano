@@ -23,8 +23,9 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     batch_size = 4097
     n_out = 1250
 
-    n_in = 4098
-    n_out = 4099
+    if theano.config.mode!="DEBUG_MODE":
+        n_in = 4098
+        n_out = 4099
 
     x = T.fmatrix('x')
     y = T.lvector('y')
@@ -53,8 +54,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     assert any([isinstance(node.op,cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias) for node in classify_gpu.maker.env.toposort()])
     assert any([isinstance(node.op,cuda.nnet.GpuCrossentropySoftmax1HotWithBiasDx) for node in classify_gpu.maker.env.toposort()])
 
-    assert numpy.allclose(classify(xx,yy,b_values,W_values)[0],classify_gpu(xx,yy,b_values,W_values)[0])
-    assert numpy.allclose(classify(xx,yy,b_values,W_values)[1],classify_gpu(xx,yy,b_values,W_values)[1])
-    assert numpy.allclose(classify(xx,yy,b_values,W_values)[2],classify_gpu(xx,yy,b_values,W_values)[2],atol=2e-6)
+    out=classify(xx,yy,b_values,W_values)
+    gout=classify_gpu(xx,yy,b_values,W_values)
 
+    assert numpy.allclose(out[0],gout[0])
+    assert numpy.allclose(out[1],gout[1])
+    assert numpy.allclose(out[2],gout[2],atol=2e-6)
 
