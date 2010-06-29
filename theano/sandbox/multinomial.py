@@ -112,8 +112,8 @@ class GpuMultinomial(Multinomial):
         return Apply(self, [pvals, unis], [pvals.type()])
 
     def c_code_cache_version(self):
-        return ()
-        #return (super(GpuMultinomial,self).c_code_cache_version(),1)
+        #return ()
+        return (super(GpuMultinomial,self).c_code_cache_version(),1)
 
     def c_support_code_apply(self, node, nodename):
         return """
