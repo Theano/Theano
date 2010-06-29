@@ -383,9 +383,11 @@ def test_binomial():
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,50)
         steps = 50
+        rtol=0.02
     else:
         sample_size = (500,50)
         steps = int(1e3)
+        rtol=0.01
     
     x = tensor.matrix()
     v = tensor.vector()
@@ -401,7 +403,7 @@ def test_binomial():
             out = f(*input)
             print 'random?[:10]\n', out[0,0:10]
             print 'random?[-1,-10:]\n', out[-1,-10:]
-            basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input, allow_01=True, target_avg = mean)
+            basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input, allow_01=True, target_avg = mean, mean_rtol=rtol)
 
             if mode!='FAST_COMPILE' and cuda_available:
                 print ''
@@ -416,7 +418,7 @@ def test_binomial():
                 out = numpy.asarray(f(*input))
                 print 'random?[:10]\n', out[0,0:10]
                 print 'random?[-1,-10:]\n', out[-1,-10:]
-                basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, target_avg = mean)
+                basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, target_avg = mean, mean_rtol=rtol)
 
             print ''
             print 'ON CPU w NUMPY with size=(%s) and mean(%d):'%(str(size),mean)
@@ -425,15 +427,17 @@ def test_binomial():
             uu = RR.binomial(size=size, p=mean)
             ff = theano.function(var_input, uu, mode=mode)
             # It's not our problem if numpy generates 0 or 1
-            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input, target_avg = mean)
+            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input, target_avg = mean, mean_rtol=rtol)
 
 def test_normal0():
 
     steps = 50
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (99,30)
+        rtol=.02
     else:
         sample_size = (999,50)
+        rtol=.01
 
     print ''
     print 'ON CPU:'
@@ -443,7 +447,7 @@ def test_normal0():
     f = theano.function([], n, mode=mode)
     theano.printing.debugprint(f)
     print 'random?[:10]\n', f()[0,0:10]
-    basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True)
+    basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, mean_rtol=rtol)
 
     sys.stdout.flush()
 
@@ -465,7 +469,7 @@ def test_normal0():
         print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
         print '----'
         sys.stdout.flush()
-        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
+        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, mean_rtol=rtol)
         
 
     print ''
@@ -475,7 +479,7 @@ def test_normal0():
     nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
     ff = theano.function([], nn)
 
-    basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
+    basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True, mean_rtol=rtol)
 
 def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_rtol=0.04):
 
