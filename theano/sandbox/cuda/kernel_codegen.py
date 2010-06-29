@@ -62,7 +62,7 @@ def inline_reduce(N, buf, pos, count, manner_fn):
 
     return """
     {
-        // This function trashes buf[1..N], leaving the max in buf[0].
+        // This function trashes buf[1..N], leaving the reduction result in buf[0].
 
         if (%(pos)s < warpSize)
         {
