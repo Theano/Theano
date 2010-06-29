@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as N
+import theano
 from theano import Op, Apply, tensor as T, Module, Method, Mode, compile
 from theano.gof import OpSub, TopoOptimizer
 
@@ -214,12 +215,18 @@ def test_example_rnn():
             print i, node
 
     niter=1500
+    if theano.config.mode=='DEBUG_MODE':
+        niter=30
+
     for i in xrange(niter):
         if i % 100 == 0:
             print i, rnn.minimizer.step_cost(x, y), rnn.minimizer.stepsize
         else:
             rnn.minimizer.step_cost(x, y)
-    assert rnn.minimizer.step_cost(x,y) < -20 #it starts around -.28
+    if theano.config.mode=='DEBUG_MODE':
+        assert rnn.minimizer.step_cost(x,y) < -.9 #it starts around -.28
+    else:
+        assert rnn.minimizer.step_cost(x,y) < -20 #it starts around -.28
 
 def test_WEIRD_STUFF():
     n_vis = 3
