@@ -7,6 +7,7 @@ import numpy
 from theano.tests import unittest_tools as utt
 from theano.tensor.tests import test_basic as TT
 from theano import printing
+from nose.plugins.skip import SkipTest
 
 from theano.tensor.nnet import *
 from numpy.testing import dec
@@ -929,14 +930,16 @@ class Test_softmax_opt():
     def test_grad(self):
         c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
-        
-        # test that function contains softmax and no div.
+
+        # test that function contains softmax and softmaxgrad
         w = T.matrix()
         g = theano.function([c,w],T.grad((p_y*w).sum(), c))
         g_ops = [n.op for n in g.maker.env.toposort()]
         print '--- g ='
         printing.debugprint(g)
         print '==='
+
+        raise SkipTest('Optimization not enabled for the moment')
         assert len(g_ops) == 2
         assert softmax in g_ops
         assert softmax_grad in g_ops
@@ -954,6 +957,7 @@ class Test_softmax_opt():
         # test that function contains softmax and no div.
         g = theano.function([c],T.grad(p_y.sum(), c))
         printing.debugprint(g)
+        raise SkipTest('Optimization not enabled for the moment')
 
     def test_1d_basic(self):
         # this should be a softmax, but of a one-row matrix
@@ -967,6 +971,7 @@ class Test_softmax_opt():
         # test that function contains softmax and no div.
         g = theano.function([c], T.grad(p_y.sum(), c))
         printing.debugprint(g)
+        raise SkipTest('Optimization not enabled for the moment')
 
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing etc.
 
