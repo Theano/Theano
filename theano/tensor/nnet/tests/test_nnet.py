@@ -909,13 +909,15 @@ class Test_softmax_opt():
     def setUp(self):
         utt.seed_rng()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.mode=theano.compile.mode.get_default_mode()
+        self.mode=self.mode.including('canonicalize')
 
     def test_basic(self):
         c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
 
         # test that function contains softmax and no div.
-        f = theano.function([c],p_y)
+        f = theano.function([c],p_y, mode=self.mode)
         f_ops = [n.op for n in f.maker.env.toposort()]
         print '--- f ='
         printing.debugprint(f)
