@@ -6,6 +6,9 @@
 
 #include "cuda_ndarray.cuh"
 
+//If true, when their is a gpu malloc or free error, we print the size of allocated memory on the device.
+#define COMPUTE_GPU_MEM_USED false
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
@@ -18,17 +21,40 @@
  *
  */
 int _outstanding_mallocs[] = {0,0};
+#if COMPUTE_GPU_MEM_USED
+int _allocated_size = 0;
+const int TABLE_SIZE = 10000;
+struct table_struct{
+  void* ptr;
+  int size;
+};
+table_struct _alloc_size_table[TABLE_SIZE];
+#endif
 void * device_malloc(size_t size)
 {
     void * rval=NULL;
     cudaError_t err = cudaMalloc(&rval, size);
     if (cudaSuccess != err)
     {
+#if COMPUTE_GPU_MEM_USED
+        fprintf(stderr, "Error allocating %li bytes of device memory (%s). %d already allocated\n", (long)size, cudaGetErrorString(err),_allocated_size);
+#else
         fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+#endif
         PyErr_Format(PyExc_MemoryError, "error allocating %li bytes of device memory (%s)", (long)size, cudaGetErrorString(err));
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
+#if COMPUTE_GPU_MEM_USED
+    for(int i=0;i<TABLE_SIZE;i++){
+      if(NULL==_alloc_size_table[i].ptr){
+	_alloc_size_table[i].ptr=rval;
+	_alloc_size_table[i].size=size;
+	break;
+      }
+    }
+    _allocated_size += size;
+#endif
     return rval;
 }
 int device_free(void *ptr)
@@ -36,11 +62,28 @@ int device_free(void *ptr)
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
+#if COMPUTE_GPU_MEM_USED
+        fprintf(stderr, "Error freeing device pointer %p (%s).%d byte already allocated\n", ptr, cudaGetErrorString(err), _allocated_size);
+#else
         fprintf(stderr, "Error freeing device pointer %p (%s).\n", ptr, cudaGetErrorString(err));
+#endif
         PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p (%s)", ptr, cudaGetErrorString(err));
         return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
+#if COMPUTE_GPU_MEM_USED
+    int i=0;
+    for(;i<TABLE_SIZE;i++)
+      if(_alloc_size_table[i].ptr==ptr){
+	_allocated_size -= _alloc_size_table[i].size;
+	_alloc_size_table[i].ptr=0;
+	_alloc_size_table[i].size=0;
+	
+	break;
+      }
+    if(i==TABLE_SIZE)
+      printf("Unallocated unknow size!\n");
+#endif
     return 0;
 }
 static PyObject *
@@ -1868,7 +1911,12 @@ initcuda_ndarray(void)
 
     Py_INCREF(&CudaNdarrayType);
     PyModule_AddObject(m, "CudaNdarray", (PyObject *)&CudaNdarrayType);
-
+#if COMPUTE_GPU_MEM_USED
+    for(int i=0;i<TABLE_SIZE;i++){
+      _alloc_size_table[i].ptr=NULL;
+      _alloc_size_table[i].size=0;
+    }
+#endif
     //    cublasInit();
     //if (0&&CUBLAS_STATUS_SUCCESS != cublasGetError())
     //{
