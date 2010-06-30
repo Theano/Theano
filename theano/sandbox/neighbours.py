@@ -18,7 +18,7 @@ class Images2Neibs(Op):
     def make_node(self, ten4, neib_shape):
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
-        return Apply(self, [ten4, neib_shape], [ten4.type()])
+        return Apply(self, [ten4, neib_shape], [T.matrix(dtype=ten4.type.dtype)])
 
     def grad(self, (pvals, unis), (gz,)):
         return [None, None]
@@ -164,7 +164,8 @@ class GpuImages2Neibs(Images2Neibs):
         #    raise TypeError('unis must be cudandarray', neib_shape)
         #print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
 
-        return Apply(self, [ten4, neib_shape], [ten4.type()])
+        return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,False),
+                                                                dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
         return ()
