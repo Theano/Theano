@@ -3,8 +3,11 @@ import numexpr as ne
 import timeit
 import theano
 import theano.tensor as T
-import pylab
-import matplotlib.pyplot  as pyplot
+try:
+    import pylab
+    import matplotlib.pyplot  as pyplot
+except ImportError:
+    pass
 
 def timeit_2vector_theano(init, nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b**2 + 2*a*b"):
     t3 = timeit.Timer("tf(av,bv)",
@@ -23,7 +26,13 @@ tf= theano.function([a,b],%(expr)s)
 )
     ret=t3.repeat(nb_repeat,nb_call)
     return np.asarray(ret)
+
+
 def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b**2 + 2*a*b", do_unalign=False, do_amd=True):
+    """Returns a dictionary whose keys are implementations ('numpy', 'numexpr', 'theano', etc.)
+    and whose values are numpy arrays of times taken to evalute the given problem.
+    """
+    rval = dict() 
     print
     print "timeit_2vector(nb_element=%(nb_element)s,nb_repeat=%(nb_repeat)s,nb_call=%(nb_call)s, expr=%(expr)s, do_unalign=%(do_unalign)s)"%locals()
 
@@ -32,60 +41,74 @@ def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b
     else:
         init = "import numpy as np; a = np.arange(%(nb_element)s);b = np.arange(%(nb_element)s)"%locals()
     t1 = timeit.Timer("%(expr)s"%locals(),"from numpy import exp; %(init)s"%locals())
-    ret1=t1.repeat(nb_repeat,nb_call)
-    ret1=np.asarray(ret1)
-    print "NumPy time",ret1, ret1.min()
+    numpy_times = np.asarray(t1.repeat(nb_repeat,nb_call))
+    print "NumPy time: each time=",numpy_times, "min_time=", numpy_times.min()
+    rval['numpy'] = numpy_times
+
     t2 = timeit.Timer("""ne.evaluate("%(expr)s")"""%locals(),
                       "import numexpr as ne; %(init)s"%locals())
-    ret2=t2.repeat(nb_repeat,nb_call)
-    ret2=np.asarray(ret2)
-    print "Numexpr time",ret2, ret2.min()
+    numexpr_times=np.asarray(t2.repeat(nb_repeat,nb_call))
+    rval['numexpr'] = numexpr_times
+    print "Numexpr time: each time=",numexpr_times,'min_time=', numexpr_times.min()
 
     theano.config.lib.amdlibm = False
-    ret3 = timeit_2vector_theano(init, nb_element,nb_repeat,nb_call,expr)
-    print "Theano time",ret3, ret3.min()
+    theano_times = timeit_2vector_theano(init, nb_element,nb_repeat,nb_call,expr)
+    print "Theano time: each time=",theano_times, 'min_time=',theano_times.min()
+    rval['theano'] = theano_times
 
     if do_amd:
         theano.config.lib.amdlibm = True
-        ret4 = timeit_2vector_theano(init, nb_element,nb_repeat,nb_call,expr)
-        print "Theano time(with amdlibm)",ret3, ret3.min()
+        theanoamd_times = timeit_2vector_theano(init, nb_element,nb_repeat,nb_call,expr)
+        print "Theano+amdlibm time",theanoamd_times, theanoamd_times.min()
+        rval['theano_amd'] = theanoamd_times
 
-    print "Numexpr vs NumPy",ret1.min()/ret2.min()
-    print "Theano vs NumPy",ret1.min()/ret3.min()
-    print "Theano vs Numexpr",ret2.min()/ret3.min()
+    print "time(NumPy) /  time(numexpr) = ",numpy_times.min()/numexpr_times.min()
+    print "time(NumPy) / time(Theano)",numpy_times.min()/theano_times.min()
+    print "time(numexpr) / time(Theano)",numexpr_times.min()/theano_times.min()
     if do_amd:
-        print "Theano(amdlibm) vs NumPy",ret1.min()/ret4.min()
-        print "Theano(amdlibm) vs Numexpr",ret2.min()/ret4.min()
-        return ret1,ret2,ret3,ret4
-
-    return ret1,ret2,ret3
+        print "time(NumPy) / time(Theano+amdlibm)",numpy_times.min()/theanoamd_times.min()
+        print "time(numexpr) / time(Theano+amdlibm)",numexpr_times.min()/theanoamd_times.min()
+    return rval
 
 def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_amd=True):
-    time=[]
     #exp = [(1,100000),(1e1,100000),(1e2,100000),(1e3,100000), (5e3,50000),
     exp = [(1e3,100000),(5e3,50000), \
            (1e4,10000),(5e4,5000),(1e5,2000),(1e6,200),(1e7,10)
            ]
+    exp = [(1e3,100000),(5e3,50000)]
+    runtimes=[]
 
     for nb_e, nb_c in exp:
-        time.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_amd=do_amd))
+        runtimes.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_amd=do_amd))
     if do_unalign:
-        time_unalign=[]
+        runtimes_unalign=[]
         for nb_e, nb_c in exp:
-            time_unalign.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_unalign=True, do_amd=do_amd))
+            runtimes_unalign.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_unalign=True, do_amd=do_amd))
 
-    print time
-    num_speedup = np.asarray([t[0].min()/t[1].min() for t in time],"float32")
-    print "Numexpr vs NumPy",num_speedup,num_speedup.min(),num_speedup.max()
-    theano_speedup = np.asarray([t[0].min()/t[2].min() for t in time],"float32")
-    print "Theano vs NumPy",theano_speedup,theano_speedup.min(),theano_speedup.max()
-    theano_num_speedup = np.asarray([t[1].min()/t[2].min() for t in time],"float32")
-    print "Theano vs Numexpr",theano_num_speedup,theano_num_speedup.min(),theano_num_speedup.max()
+    print 'Runtimes list = ', runtimes
+    numexpr_speedup = np.asarray([t['numpy'].min()/t['numexpr'].min() for t in runtimes],"float32")
+    print "time(NumPy) / time(numexpr)",
+    print numexpr_speedup, numexpr_speedup.min(), numexpr_speedup.max()
+
+    theano_speedup = np.asarray([t['numpy'].min()/t['theano'].min() for t in runtimes],"float32")
+    print "time(NumPy) / time(Theano)",
+    print theano_speedup, theano_speedup.min(), theano_speedup.max()
+
+    theano_numexpr_speedup = np.asarray([t['numexpr'].min()/t['theano'].min() for t in runtimes],"float32")
+    print "time(numexpr) / time(Theano)",
+    print theano_numexpr_speedup, theano_numexpr_speedup.min(), theano_numexpr_speedup.max()
+
     if do_amd:
-        theano_speedup2 = np.asarray([t[0].min()/t[3].min() for t in time],"float32")
-        print "Theano vs NumPy",theano_speedup,theano_speedup.min(),theano_speedup.max()
-        theano_num_speedup2 = np.asarray([t[1].min()/t[3].min() for t in time],"float32")
-        print "Theano vs Numexpr",theano_num_speedup,theano_num_speedup.min(),theano_num_speedup.max()
+        theano_speedup2 = np.asarray([t['numpy'].min()/t['theano_amd'].min() for t in runtimes],"float32")
+        print "time(NumPy) / time(theano+amdlibm)",
+        print theano_speedup,theano_speedup.min(),theano_speedup.max()
+
+        theano_numexpr_speedup2 = np.asarray([t['numexpr'].min()/t['theano_amd'].min() for t in runtimes],"float32")
+        print "time(numexpr) / time(theano+amdlibm)",
+        print theano_numexpr_speedup, theano_numexpr_speedup.min(), theano_numexpr_speedup.max()
+
+    if 'pylab' not in globals():
+        return
 
     nb_calls=[e[0] for e in exp]
     for cmp in range(1,len(time[0])):
@@ -128,8 +151,8 @@ def execs_timeit_2vector(exprs, fname=None):
     exp = [(1e3,100000),(5e3,50000), \
            (1e4,10000),(5e4,5000),(1e5,2000),(1e6,200),(1e7,10)
            ]
-#TO TEST UNCOMMENT THIS LINE
-    #exp = [(1,1000),(1e1,1000),(1e2,1000),]
+    ### TO TEST UNCOMMENT THIS LINE
+    # exp = [(1,1000),(1e1,1000),(1e2,1000),]
     times=[]
     str_expr=[]
     for g_exprs in exprs:
@@ -143,6 +166,8 @@ def execs_timeit_2vector(exprs, fname=None):
             for nb_e, nb_c in exp:
                 time.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_amd=False))
             times.append(time)
+    if 'pylab' not in globals():
+        return
 
     nb_calls=[e[0] for e in exp]
     legends=[]
