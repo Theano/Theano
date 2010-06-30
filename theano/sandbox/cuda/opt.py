@@ -278,12 +278,18 @@ def local_gpu_reshape(node):
         if host_input.owner and isinstance(host_input.owner.op, tensor.Reshape):
             rshp = host_input.owner.op
             x, shp = host_input.owner.inputs
-            return [GpuReshape(rshp.ndim)(gpu_from_host(x), shp)]
+            gpu_reshape = GpuReshape(rshp.ndim)(gpu_from_host(x), shp)
+            if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
+                gpu_reshape = theano.tensor.patternbroadcast(gpu_reshape,node.outputs[0].broadcastable)
+            return [gpu_reshape]
     if isinstance(node.op, tensor.Reshape):
         x, shp = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(GpuReshape(node.op.ndim)(gpu_x, shp))]
+            gpu_reshape = GpuReshape(node.op.ndim)(gpu_x, shp)
+            if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
+                gpu_reshape = theano.tensor.patternbroadcast(gpu_reshape,node.outputs[0].broadcastable)
+            return [host_from_gpu(gpu_reshape)]
     return False
 
 @register_opt()
