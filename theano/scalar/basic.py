@@ -1710,8 +1710,6 @@ class Composite(ScalarOp):
                                       [subd[output] for output in node.outputs],
                                       dict(fail = "%(fail)s",
                                            id = "%%(id)s_%i" % j))
-            if any([isinstance(x.op,Mod) for x in env.toposort()]):
-                s = s.replace('% ','%% ')
             _c_code += s
             _c_code += "\n"
         _c_code += "}\n"
