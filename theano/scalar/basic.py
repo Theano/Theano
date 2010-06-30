@@ -953,7 +953,11 @@ class Mod(BinaryScalarOp):
     def impl(self, x, y):
         return x % y
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
+
+    def c_support_code(self):
+        #We use a macro as python use % as a special string caractere.
+        return "#define THEANO_MACRO_MOD(x,y) (x % y)"
 
     def c_code(self, node, name, (x, y), (z, ), sub):
         """
@@ -962,10 +966,10 @@ class Mod(BinaryScalarOp):
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
         if t in int_types or t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64']:
-            x_mod_y = "(%(x)s %% %(y)s)"%locals()
-            x_mod_ymm = "(-%(x)s %% -%(y)s)"%locals()
-            x_mod_ypm = "(%(x)s %% -%(y)s)"%locals()
-            x_mod_ymp = "(-%(x)s %% %(y)s)"%locals()
+            x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)"%locals()
+            x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)"%locals()
+            x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)"%locals()
+            x_mod_ymp = "THEANO_MACRO_MOD(-%(x)s, %(y)s)"%locals()
         elif t in float_types or t in ['float32','float64']:
             x_mod_y = "fmod(%(x)s,%(y)s)"%locals()
             x_mod_ymm = "fmod(-%(x)s,-%(y)s)"%locals()
@@ -1773,6 +1777,15 @@ class Composite(ScalarOp):
     def c_code_cache_version(self):
         return (1,)+tuple([x.op.c_code_cache_version() for x in self.env.toposort()])
     
+    def c_support_code(self):
+        str = ""
+        for node in self.env.toposort():
+            try:
+                str += node.op.c_support_code()+"\n"
+            except gof.utils.MethodNotDefined:
+                pass
+        return str
+
     def __eq__(self, other):
         if self is other: return True
         if not isinstance(other, self.__class__): return False
