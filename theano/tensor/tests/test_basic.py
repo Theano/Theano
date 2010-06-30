@@ -2676,6 +2676,21 @@ def test_mod():
                 ):
         assert fn(a,b) == a%b, (a,)
 
+def test_mod_compile():
+    """
+    This test generate an Elemwise of Composite as: 
+        Elemwise{Composite{Composite{Composite{Composite{mod,EQ},Switch},mul},add}}
+
+    The c_code generated is not compiling as of 30 June 2010. I fix the compilation in the same commit.
+    """
+
+    x = tensor.vector()
+    y = tensor.vector()
+    shape = x.shape
+    out = tensor.switch(tensor.eq(3%x.shape[0],0),y,y[:-1])
+
+    f = theano.function([x,y],out)
+
 if __name__ == '__main__':
     if 1:
         unittest.main()

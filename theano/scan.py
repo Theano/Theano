@@ -68,10 +68,6 @@ def hash_listsDictsTuples(x):
     return hash_value
 
 
-## TODO
-###################################
-## Implement specific function calls : map, reduce, generate
-
 def map(fn, sequences, non_sequences = [],
         truncate_gradient = -1, go_backwards = False,
         mode = None, name = None):
@@ -83,15 +79,15 @@ def map(fn, sequences, non_sequences = [],
     :param sequences: list of arrays over which map should 
                       iterate (see scan for more info)
 
-    :param non_sequences: list of other arguments of `fn` over which 
+    :param non_sequences: list of other arguments of `fn` over which
                           map shouldn't iterate (see scan for more info)
 
     :param truncate_gradient: see scan for more info
 
-    :param go_backwards: if map should also inverse the order in the arrays
-                         see scan for more info
+    :param go_backwards: set to true if you want map to start at the end of the
+                         provided arrays in ``sequences`` going towards 0 (back in time)
 
-    :param mode: see scan 
+    :param mode: see scan
 
     :param name: see scan
     """
@@ -108,15 +104,17 @@ def reduce(fn, sequences, outputs_info, non_sequences = [], go_backwards = False
                sequences ( see scan `fn` for more info)
 
     :param outputs_info: information about outputs (mainly the initial state
-                        of each )
+                        of each, but other options are available ), see scan for more 
+                        info
+
     :param sequences: list of arrays over which reduce should 
                       iterate (see scan for more info)
 
     :param non_sequences: list of other arguments of `fn` over which 
                           reduce shouldn't iterate (see scan for more info)
 
-    :param go_backwards: if reduce should also inverse the order in the arrays
-                         see scan for more info
+    :param go_backwards: set to true if you want map to start at the end of the
+                         provided arrays in ``sequences`` going towards 0 (back in time)
 
     :param mode: see scan 
     :param name: see scan
@@ -241,8 +239,8 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
         If you are using shared variables over which you do not want to iterate, 
         you do not need to provide them as arguments to ``fn``, though you can if you 
-        wish so. The function should return the outputs after each step plus the updates for
-        any of the shared variables. You can either return only outputs or only
+        wish so. The function should return the outputs after each step plus the updates 
+        for any of the shared variables. You can either return only outputs or only
         updates. If you have both outputs and updates the function should return
         them as a tuple : (outputs, updates) or (updates, outputs).
 
@@ -281,9 +279,10 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
           list of ints (only negative .. since you can not use future values of outputs),
           with the same meaning as for ``sequences`` (see above).
         * ``inplace`` -- theano variable pointing to one of the input sequences; this
-          flag tells scan that the output should be computed in the memory spaced occupied
+          flag tells scan that the output should be computed in the memory space occupied
           by that input sequence. Note that scan will only do this if allowed by the
-          rest of your computational graph and if you are not using past taps of the input.
+          rest of your computational graph and if you are not using past taps of the 
+          input.
         * ``return_steps`` how many steps to return from your output. If not given, or 
           0 scan will return all steps, otherwise it will return the last ``return_steps``.
           Note that if you set this to something else then 0, scan will try to be smart
@@ -298,8 +297,8 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
         notation, when ``t = 0``, we would need values for ``y[-1]``, ``y[-2]``
         and ``y[-4]``. These values are provided by the initial state of ``y``,
         which should have same number  of dimension as ``y``, where the first
-        dimension should be large enough to cover all past values, which in this
-        case is 4.  If ``init_y`` is the variable containing the initial state
+        dimension should be large enough to cover all the required past values, which in 
+        this case is 4.  If ``init_y`` is the variable containing the initial state
         of ``y``, then ``init_y[0]`` corresponds to ``y[-4]``, ``init_y[1]``
         corresponds to ``y[-3]``, ``init_y[2]`` corresponds to ``y[-2]``,
         ``init_y[3]`` corresponds to ``y[-1]``. The default behaviour of scan is
@@ -313,13 +312,13 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
           of -1
         * if you wrap an output in a dictionary but you do not provide any initial state,
           it assumes that you are not using any form of taps
-        * if you provide a ``None`` scan assumes that you will not use any taps for this 
-          output (this would be the case for map )
+        * if you provide a ``None`` instead of a variable or a dictionary scan assumes 
+          that you will not use any taps for this output (this would be the case for map)
 
-        If you did not provide any information for your outputs, scan will assume by default
-        that you are not using any taps for any of the outputs. If you provide information for
-        just a subset of outputs, scan will not know to which outputs these information 
-        corresponds and will raise an error.
+        If you did not provide any information for your outputs, scan will assume by 
+        default that you are not using any taps for any of the outputs. If you provide 
+        information for just a subset of outputs, scan will not know to which outputs 
+        these correspond and will raise an error.
 
     :param non_sequences:
         Parameters over which scan should not iterate.  These parameters are
@@ -332,18 +331,20 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
         the input sequences. If the value is 0, the outputs will have 0 rows. If the 
         value is negative, scan will run backwards (or if the flag go_backwards is 
         already set to true it will run forward in time). If n_steps is not provided, 
-        or evaluetes to None, inf or nan, scan will figure out the maximal amount of steps it can 
-        take and do that. 
+        or evaluetes to None, inf or nan, scan will figure out the maximal amount of 
+        steps it can run given the input sequences and do that.
 
     :param truncate_gradient:
         Number of steps to use in truncated BPTT.  If you compute gradients
         through a scan op, they are computed using backpropagation through time.
         By providing a different value then -1, you choose to use truncated BPTT
         instead of classical BPTT, where you only do ``truncate_gradient``
-        number of steps. (NOT YET IMPLEMENTED)
+        number of steps.
 
     :param go_backwards:
-        Flag indicating if you should go backwards through the sequences
+        Flag indicating if you should go backwards through the sequences ( if you 
+        think as the sequences being indexed by time, this would mean go backwards 
+        in time)
 
     :param name:
         The name of the theano function compiled by the Scan op. It will show in the 

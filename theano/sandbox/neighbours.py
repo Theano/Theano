@@ -3,11 +3,12 @@ from theano import Op, Apply
 import theano.tensor as T
 from theano.tensor.opt import register_specialize
 from theano.gof import local_optimizer
-
 from theano.sandbox.cuda import cuda_available
+
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
+    from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 class Images2Neibs(Op):
     def __eq__(self, other):
@@ -17,7 +18,7 @@ class Images2Neibs(Op):
     def make_node(self, ten4, neib_shape):
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
-        return Apply(self, [ten4, neib_shape], [T.matrix()])
+        return Apply(self, [ten4, neib_shape], [ten4.type()])
 
     def grad(self, (pvals, unis), (gz,)):
         return [None, None]
@@ -163,7 +164,7 @@ class GpuImages2Neibs(Images2Neibs):
         #    raise TypeError('unis must be cudandarray', neib_shape)
         #print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
 
-        return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,)*2)()])
+        return Apply(self, [ten4, neib_shape], [ten4.type()])
 
     def c_code_cache_version(self):
         return ()
@@ -360,6 +361,7 @@ gpu_images2neibs = GpuImages2Neibs()
 def use_gpu_images2neibs(node):
     if node.op == images2neibs:
         return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(node.inputs[0]),node.inputs[1]]))]
-if theano.config.device.startswith('gpu'):
-    register_specialize(use_gpu_images2neibs)
+
+if cuda_available:
+    register_gpu_opt()(use_gpu_images2neibs)
     
