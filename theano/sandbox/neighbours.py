@@ -188,17 +188,24 @@ class GpuImages2Neibs(Images2Neibs):
         )
         {
         
-            int n = 32*blockIdx.x + threadIdx.x;
-            if (n < nb_batch)
-                for (int s = 0; s < nb_stack; s++)          // loop over stacks
-                    for (int a = 0; a < grid_c; a++)        // loop over height/c
-                        for (int b = 0; b < grid_d; b++)    // loop over width/d
-                        {
+            for(int tblock = blockIdx.x;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x){
+                const int b = tblock%%grid_d;
+                int left = tblock/grid_d;
+                const int a = left%%grid_c;
+                left = left/grid_c;
+                const int s = left%%nb_stack;
+                left = left/nb_stack;
+                const int n = left;
+
+                if(n>nb_batch)continue;
+                if(s>nb_stack)continue;
+                if(a>grid_c)continue;
+                if(b>grid_d)continue;
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
                             for (int i = 0; i < c; i++)     // loop over c
                             {
                                 int ten4_2 = i + a * c;
-                                for (int j = 0; j < d; j++)  // loop over d
+                                for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
                                 {
                                     int ten4_3 = j + b * d;
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
@@ -210,7 +217,7 @@ class GpuImages2Neibs(Images2Neibs):
                                     global_out[z_idx] = global_ten4[ten4_idx];
                                 }
                             }
-                        }
+            }
         }
 
         """ % locals()
@@ -321,7 +328,7 @@ class GpuImages2Neibs(Images2Neibs):
             else
                 nb_block = (int)((float)nb_batch/32. + 1.); 
                 
-            dim3 n_blocks(nb_block,1,1);
+            dim3 n_blocks(std::min(32*1024,CudaNdarray_HOST_DIMS(%(z)s)[0]),1,1);
             dim3 n_threads(32,1,1);
             int n_shared = 0;
 
