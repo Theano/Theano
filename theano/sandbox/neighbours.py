@@ -18,7 +18,7 @@ class Images2Neibs(Op):
     def make_node(self, ten4, neib_shape):
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
-        return Apply(self, [ten4, neib_shape], [T.matrix()])
+        return Apply(self, [ten4, neib_shape], [ten4.type()])
 
     def grad(self, (pvals, unis), (gz,)):
         return [None, None]
