@@ -68,10 +68,6 @@ def hash_listsDictsTuples(x):
     return hash_value
 
 
-## TODO
-###################################
-## Implement specific function calls : map, reduce, generate
-
 def map(fn, sequences, non_sequences = [],
         truncate_gradient = -1, go_backwards = False,
         mode = None, name = None):
@@ -83,15 +79,15 @@ def map(fn, sequences, non_sequences = [],
     :param sequences: list of arrays over which map should 
                       iterate (see scan for more info)
 
-    :param non_sequences: list of other arguments of `fn` over which 
+    :param non_sequences: list of other arguments of `fn` over which
                           map shouldn't iterate (see scan for more info)
 
     :param truncate_gradient: see scan for more info
 
-    :param go_backwards: if map should also inverse the order in the arrays
-                         see scan for more info
+    :param go_backwards: set to true if you want map to start at the end of the
+                         provided arrays in ``sequences`` going towards 0 (back in time)
 
-    :param mode: see scan 
+    :param mode: see scan
 
     :param name: see scan
     """
@@ -108,15 +104,17 @@ def reduce(fn, sequences, outputs_info, non_sequences = [], go_backwards = False
                sequences ( see scan `fn` for more info)
 
     :param outputs_info: information about outputs (mainly the initial state
-                        of each )
+                        of each, but other options are available ), see scan for more 
+                        info
+
     :param sequences: list of arrays over which reduce should 
                       iterate (see scan for more info)
 
     :param non_sequences: list of other arguments of `fn` over which 
                           reduce shouldn't iterate (see scan for more info)
 
-    :param go_backwards: if reduce should also inverse the order in the arrays
-                         see scan for more info
+    :param go_backwards: set to true if you want map to start at the end of the
+                         provided arrays in ``sequences`` going towards 0 (back in time)
 
     :param mode: see scan 
     :param name: see scan
