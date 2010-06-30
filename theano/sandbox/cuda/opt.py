@@ -280,6 +280,8 @@ def local_gpu_reshape(node):
             x, shp = host_input.owner.inputs
             gpu_reshape = GpuReshape(rshp.ndim)(gpu_from_host(x), shp)
             if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
+                #this can happen as we always return False for all broadcast dim in GpuReshape but not for Reshape
+                #Event if we did the same think, with the constant optimization that could happen.
                 gpu_reshape = theano.tensor.patternbroadcast(gpu_reshape,node.outputs[0].broadcastable)
             return [gpu_reshape]
     if isinstance(node.op, tensor.Reshape):
@@ -288,6 +290,8 @@ def local_gpu_reshape(node):
             gpu_x, = x.owner.inputs
             gpu_reshape = GpuReshape(node.op.ndim)(gpu_x, shp)
             if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
+                #this can happen as we always return False for all broadcast dim in GpuReshape but not for Reshape
+                #Event if we did the same think, with the constant optimization that could happen.
                 gpu_reshape = theano.tensor.patternbroadcast(gpu_reshape,node.outputs[0].broadcastable)
             return [host_from_gpu(gpu_reshape)]
     return False
