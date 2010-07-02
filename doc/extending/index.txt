@@ -23,6 +23,7 @@ a C implementation.
 
 .. toctree::
 
+    fibby
     pipeline
     theano_vs_c
     graphstructures
