@@ -94,14 +94,16 @@ As a point of reference, a loop that calls ``numpy.exp(x.value)`` also takes abo
 
 .. code-block:: text
 
-    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu python thing.py 
+    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python thing.py 
     Looping 100 times took 7.17374897003 seconds
     Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753 1.62323285]
 
-    bergstra@tikuanyin:~/tmp$ THEANO_FLAGS=mode=FAST_RUN,device=gpu0 python thing.py 
+    bergstra@tikuanyin:~/tmp$ THEANO_FLAGS=mode=FAST_RUN,device=gpu0,floatX=float32 python thing.py 
     Using gpu device 0: GeForce GTX 285
     Looping 100 times took 0.418929815292 seconds
     Result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
+
+Note that for now GPU operations in Theano require floatX to be float32 (see below also).
 
 Returning a handle to device-allocated data
 -------------------------------------------
