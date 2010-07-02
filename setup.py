@@ -5,36 +5,17 @@
 #   * Add back in installation requirements
 #   * Add download_url
 
-import sys
-print >> sys.stderr, "setuptools is not currently supported. See installation instructions here:"
-print >> sys.stderr, "http://deeplearning.net/software/theano/install.html"
-sys.exit(-1)
 
-from ez_setup import use_setuptools
-use_setuptools()
+from distutils.core import setup
 
-from setuptools import setup, find_packages
-
-setup(name="Theano",
-      version="0.1",
-      description="Optimizing compiler for mathematical expressions",
-      long_description="""Theano is a Python library that allows you to define, optimize, and efficiently evaluate mathematical expressions involving multi-dimensional arrays.""",
-      author="LISA laboratory, University of Montreal",
-      author_email="theano-dev@googlegroups.com",
-      packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-      package_data={'':['*.cu','*.cuh']},
-      url="http://pylearn.org/theano",
-      keywords="machine learning ai gradient compiler math science",
-
-      test_suite = "nose.collector",
-
-#      install_requires = ["numpy>=1.2", "scipy"],
-
-      extras_require = {
-        'doc':      ["sphinx>=0.5.1", "pygments"],
-        'test':     ["nose"],
-#        'sparse':   ["scipy>=0.7"]
-      },
-      license = "BSD",
-)
-
+setup(name='Theano',
+            version='hg',
+            description='Optimizing compiler for mathematical expressions',
+            author='LISA laboratory, University of Montreal',
+            author_email='theano-dev@googlegroups.com',
+            url='http://www.deeplearning.net/software/theano',
+            packages=['theano', 'theano.tensor', 'theano.gof',
+                      'theano.compile', 'theano.misc', 'theano.scalar',
+                      'theano.sparse', 
+                      'theano.tensor.nnet', 'theano.tensor.signal'],
+           )
