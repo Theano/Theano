@@ -136,6 +136,19 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd.extend(['-l%s'%l for l in libs])
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
+    
+    if sys.platform == 'darwin':
+        done = False
+        while not done:
+            try:
+                indexof = cmd.index('-framework')
+                newarg = '-Xcompiler', ','.join(cmd[indexof:(indexof + 2)])
+                cmd.pop(indexof) # Remove -framework
+                cmd.pop(indexof) # Remove argument to -framework
+                cmd.extend(newarg)
+            except ValueError, e:
+                done = True
+    
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
     #print >> sys.stderr, 'COMPILING W CMD', cmd
     debug('Running cmd', ' '.join(cmd))
