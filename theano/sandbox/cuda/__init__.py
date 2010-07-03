@@ -91,6 +91,8 @@ except Exception, e:
 
 if cuda_available:
     cuda_available=device_available()
+    if not cuda_available:
+        warning('CUDA is installed, but GPU device is not available')
 
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
