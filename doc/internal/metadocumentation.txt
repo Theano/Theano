@@ -96,29 +96,21 @@ For more details:
      --help: this help
 
 
-How documentation is auto-built on push
+How documentation is built on deeplearning.net
 ---------------------------------------
 
-When you push to the main repository, the following file is run::
+The server that hosts the theano documentation runs a cron job roughly every
+2 hours that fetches a fresh Theano install (clone, not just pull) and
+executes the docgen.py script. It then over-writes the previous docs with the
+newly generated ones. 
 
-   projects@pylearn.org:~/repos/theano/.hg/refresh-epydoc.sh
+Note that the server will most definitely use a different version of sphinx
+than yours so formatting could be slightly off, or even wrong. If you're
+getting unxpected results and/or the auto-build of the documentation seems
+broken, please contact theano-dev@ (or Dumitru, or Fred directly).
 
-It calls ``epydoc`` and ``sphinx`` on the code.
-Output is written to location ``TARGET_DIR=/home/projects/www/theano``.
-Note that this location is *removed* at each invocation, and a fresh version
-is copied in.
-
-Static files should be kept in
-``STATIC_DIR=/home/projects/www/theano_static``. For example, the
-tar.gz'ed releases are in ``STATIC_DIR``. After ``TARGET_DIR`` is
-recreated, the contents of ``STATIC_DIR`` are copied into ``TARGET_DIR``.
-
-*It would be nice to explain this stuff in a little more depth:*
-
- * Who calls refresh-epydoc.sh ?
- * What exactly does it do?
- * Can we get links about mercurial hooks?
- * What happens if two people push at the same time? Does documentation get clobbered?
+In the future, we might go back to the system of auto-refresh on push (though
+that might increase the load of the server quite significantly).
 
 pylint
 ---------------------------------------
