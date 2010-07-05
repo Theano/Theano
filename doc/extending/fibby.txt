@@ -26,7 +26,9 @@ clarity.  For example, when you write C code that assumes memory is contiguous,
 you should check the strides and alignment.
 
 
-.. class:: Fibby(theano.Op)
+.. code-block:: python
+
+  class Fibby(theano.Op):
 
     """
     An arbitrarily generalized Fibbonacci sequence
@@ -34,18 +36,22 @@ you should check the strides and alignment.
 
     def __eq__(self, other): 
       return type(self) == type(other)
+
     def __hash__(self):
       return hash(type(self))
+
     def make_node(self, x):
       x_ = tensor.as_tensor_variable(x)
       return theano.Apply(self, 
         inputs=[x_],
         outputs=[x_.type()])
+
     def perform(self, node, inputs, output_storage):
       x, = inputs
       y = output_storage[0][0] = x.copy()
       for i in range(2,len(x)):
         y[i] = y[i-1] * y[i-2] + x[i]
+
     def c_code(self, node, name, inames, onames, sub):
       x, = inames
       y, = onames
