@@ -2008,7 +2008,7 @@ def check_for_x_over_absX(numerators, denominators):
                 numerators.remove(den.owner.inputs[0])
                 numerators.append(T.sgn(den.owner.inputs[0]))
     return numerators, denominators
-local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'teststest')
+local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'X_over_absX')
 
 @register_stabilize
 @gof.local_optimizer([T.log])
