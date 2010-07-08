@@ -4015,6 +4015,10 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
            debug mode, which can be very slow if it has to verify a lot
            of intermediate computations.
 
+    :note: This op does not support multiple outputs. In tests/test_scan.py there is 
+           an experimental verify_grad that covers that case as well by using random 
+           projections .. 
+
     """
     pt = [numpy.array(p) for p in pt]
 

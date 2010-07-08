@@ -6,7 +6,29 @@ import numpy
 import random
 import numpy.random
 from theano.tests  import unittest_tools as utt
+'''
+  Questions and notes about scan that should be answered :
 
+   * Even though it does not make it publically known in 
+   the documentation, scan allows you to set both a return_steps 
+   flag and a store_steps flag ( the first one is a soft condition telling 
+   you how many steps to return, the second one determines how much memory to 
+   allocate). There is an optimization as well, that transforms return_steps to 
+   store_steps. Questions : 
+      - what happens if both flags are set ? 
+       answer: whatever return_steps says is ignored, and store_steps is used
+      - the optimization works only with return_steps = -1; can it be made to work
+        with other values ? 
+       answer: 6 Jul 2010 RP :it is a bit harry to figure out from the subtensors what 
+       exactly you need 
+
+   * Scan seems to do copies of every input variable. Is that needed? 
+   answer : probably not, but it doesn't hurt also ( what we copy is theano variables, 
+     which just cary information about the type / dimension of the data)
+
+
+   * There is some of scan functionality that is not well documented
+'''
 
 
 class multiple_outputs_numeric_grad:
@@ -103,7 +125,7 @@ class multiple_outputs_numeric_grad:
 # use it with the normal verify_grad rather than the 
 # copy-and-pasted one above.
 # Also - add a reference to this technique in the 
-# verify_grad method so that other ops with multiple outputs can be tested.
+# verify_grad method so that other ops with multiple outputs can be tested. DONE - rp
 def scan_project_sum(*args, **kwargs):
     rng = theano.tensor.shared_randomstreams.RandomStreams(123)
     scan_outputs, updates = theano.scan(*args, **kwargs)
@@ -940,6 +962,18 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose([ny1,ny1], nz1)
         assert numpy.allclose([ny2,ny2], nz2)
         assert not numpy.allclose(ny1,ny2)
+
+
+    def test_grad_of_shared(self):
+        x1 = theano.shared(3.)
+        x1.name = 'x1'
+        x2 = theano.tensor.vector('x2')
+        y, updates = theano.scan(lambda v: v*x1, sequences = x2)
+        m = theano.tensor.grad(y.sum(), x1)
+        
+        f = theano.function([x2], m)
+        print f([2,3])
+        assert numpy.allclose(f([2,3]) , 5)
 
 if __name__ == '__main__':
     unittest.main()
