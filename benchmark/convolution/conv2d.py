@@ -31,11 +31,11 @@ out = theano.shared(numpy.ones((2,2,2), dtype=dtype))
 T = timeit.Timer("f()", 
                  setup+"f = theano.function([], theano.tensor.signal.conv.conv2d(img, ker))")
 time_without_shape = T.repeat(repeat=3, number=nb_call)
-print min(time_without_shape), 'without shape'
+print min(time_without_shape), 'theano without shape'
 
 T = timeit.Timer("f()", setup+"""f = theano.function([], [], 
 updates={out:theano.tensor.signal.conv.conv2d(img,
     ker,image_shape=img_shape,filter_shape=ker_shape)})""")
 time_with_shape = T.repeat(repeat=3, number=nb_call)
 
-print min(time_with_shape), 'with shape'
+print min(time_with_shape), 'theano with shape'
