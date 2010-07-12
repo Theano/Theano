@@ -61,9 +61,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     out=classify(xx,yy,b_values,W_values)
     gout=classify_gpu(xx,yy,b_values,W_values)
 
+    assert len(out)==len(gout)==3
     assert numpy.allclose(out[0],gout[0])
-    assert numpy.allclose(out[1],gout[1])
-    assert numpy.allclose(out[2],gout[2],atol=2e-6)
+    assert numpy.allclose(out[2],gout[2],atol=3e-6),numpy.absolute(gout-out).max()
+    assert numpy.allclose(out[1],gout[1]),[(id,out[1][id],gout[1][id],val) for id,val in enumerate(out[1]-gout[1]) if val!=0]
 
 
 def test_softmax_with_bias():
