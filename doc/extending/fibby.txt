@@ -155,7 +155,7 @@ definitely not make a change that would have an impact on ``__eq__``,
 or ``c_code``.
 
 
-.. _op_contract:
+.. _op_contract_fibby:
 
 Writing an Optimization
 =======================

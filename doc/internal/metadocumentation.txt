@@ -97,7 +97,7 @@ For more details:
 
 
 How documentation is built on deeplearning.net
----------------------------------------
+----------------------------------------------
 
 The server that hosts the theano documentation runs a cron job roughly every
 2 hours that fetches a fresh Theano install (clone, not just pull) and

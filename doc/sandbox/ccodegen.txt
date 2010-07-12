@@ -123,6 +123,7 @@ Example ResultBase
 The following ResultBase represents a double (we only care about the C part).
 
 .. code-block::
+
     class Double(ResultBase):
       <snip>
       def c_declare(self):
