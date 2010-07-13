@@ -23,7 +23,7 @@ img = numpy.ones(img_shape, dtype=dtype)
 ker = numpy.ones(ker_shape, dtype=dtype)
 
 def f():
-    convolve2d(img, ker)
+    convolve2d(img, ker, mode="valid")
 """)
 time = T.repeat(repeat=3, number=nb_call)
 print min(time), "scipy"
