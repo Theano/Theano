@@ -1622,7 +1622,6 @@ class t_dot(unittest.TestCase):
                 return numpy.asarray([[1.3]], dtype=r.dtype)
             raise ValueError()
 
-        failures = []
         for dtype0 in ('float32', 'float64', 'complex64', 'complex128'):
             for dtype1 in ('float32', 'float64', 'complex64', 'complex128'):
                 for bc0 in ((True,), (False,), (True, True), (True, False), (False, True),
@@ -1636,21 +1635,12 @@ class t_dot(unittest.TestCase):
                         t = TensorType(dtype=dtype0, broadcastable=z.broadcastable)()
 
                         rval =  z * 3 + 2*t
-                        if rval.type.dtype.startswith('complex'):
-                            # there is a problem with complex numbers right now
-                            # Elemwise code doesn't compile when both precisions of complex
-                            # numbers are used in the same file because the operators
-                            # aren't declared properly.
-                            failures.append((dtype0, dtype1, bc0, bc1))
-                            continue
                         f = function([x,y,t], rval)
                         xval = val_for(x)
                         yval = val_for(y)
                         tval = val_for(t)
 
                         f(xval, yval, tval) #debugmode checks result
-        if failures:
-            raise KnownFailureTest('Problem with complex numbers')
 
 
 class T_tensorfromscalar(unittest.TestCase):
