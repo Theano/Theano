@@ -31,7 +31,8 @@ AddConfigVar('optimizer',
 
 AddConfigVar('home',
         "User home directory",
-        StrParam(os.getenv("HOME")))
+        StrParam(os.getenv("HOME", os.path.expanduser('~'))))
+#This expanduser works on windows (see discussion on theano-users, July 13 2010)
 
 AddConfigVar('nocleanup',
         "suppress the deletion of code files that did not compile cleanly",
