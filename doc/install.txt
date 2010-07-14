@@ -21,6 +21,7 @@ to be installed:
         not well-tested.
 
     python >= 2.5 (2.4 should be supported as well)
+        Including the development package(python-dev or python-devel on most OS)
 
     `numpy <http://numpy.scipy.org/>`_ >= 1.3.0
         Earlier versions have memory leaks.
