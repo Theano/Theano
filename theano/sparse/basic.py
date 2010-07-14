@@ -166,9 +166,10 @@ class SparseType(gof.Type):
             return value
         if strict:
             raise TypeError("%s is not sparse" % value)
+        #The input format could be converted here
         sp = self.format_cls[self.format](value)
         if str(sp.dtype) != self.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype,str(sp.dtype)))
         if sp.format != self.format:
             raise NotImplementedError()
         return sp
