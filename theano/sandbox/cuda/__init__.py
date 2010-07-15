@@ -109,7 +109,7 @@ if cuda_available:
 
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
-            GpuDimShuffle, GpuSum, GpuReshape, 
+            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous, 
             GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape, GpuAlloc,
             GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
                            , scalar, vector, matrix, row, col, tensor3, tensor4)

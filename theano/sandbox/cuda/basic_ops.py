@@ -1894,6 +1894,43 @@ class GpuAlloc(Op):
 
 gpu_alloc = GpuAlloc()
 
+class GpuContiguous(Op):
+    def make_node(self, input):
+        input = as_cuda_ndarray_variable(input)
+        return Apply(self, [input], [input.type()])
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def c_code(self, node, name, (input,), (z,), sub):
+        fail = sub['fail']
+        str = """
+        {
+            if (CudaNdarray_is_c_contiguous(%(input)s)){
+                Py_XDECREF(%(z)s);
+                %(z)s = %(input)s;
+                Py_INCREF(%(z)s);
+
+            } else if ((NULL == %(z)s)"""%locals()
+        for i in range(len(node.inputs[0].type.broadcastable)):
+            str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])"%locals()
+        str += """)
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = (CudaNdarray*)CudaNdarray_Copy(%(input)s);
+                if (!%(z)s)
+                {
+                    %(fail)s;
+                }
+            }else if(CudaNdarray_CopyFromCudaNdarray(%(z)s,%(input)s)){
+                %(fail)s;
+            }
+        }
+        """%locals()
+        return str
+
+gpu_contiguous = GpuContiguous()
+
 # Those are predifined CudaNdarrayType as done in tensor.basic
 # Usefull mostly for test as the gpu op are inserted automatically...
 
