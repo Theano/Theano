@@ -35,7 +35,7 @@ def is_valid_compiledir(path):
 
 AddConfigVar('base_compiledir',
         "arch-independent cache directory for compiled modules",
-        StrParam(os.path.join(config.home, '.theano')))
+        StrParam(os.path.join(config.home, '.theano'), allow_override=False))
 
 AddConfigVar('compiledir',
         "arch-dependent cache directory for compiled modules",
@@ -43,5 +43,5 @@ AddConfigVar('compiledir',
             os.path.join(
                 os.path.expanduser(config.base_compiledir),
                 default_compiledirname()),
-            is_valid=is_valid_compiledir
-            ))
+            is_valid=is_valid_compiledir,
+            allow_override=False))
