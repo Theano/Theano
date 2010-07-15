@@ -164,10 +164,10 @@ def AddConfigVar(name, doc, configparam, root=config):
 
 class ConfigParam(object):
     def __init__(self, default, filter=None,  allow_override=True):
-        "
+        """
         If allow_override is False, we can't change the value after the import of Theano.
         So the value should be the same during all the execution
-        "
+        """
         self.default = default
         self.filter=filter
         self.allow_override = allow_override
