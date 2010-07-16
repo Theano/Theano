@@ -786,7 +786,7 @@ class NavigatorOptimizer(Optimizer):
         if replacements is False or replacements is None:
             return False
         if not isinstance(replacements, (tuple, list)):
-            raise TypeError('Optimizer %s gave wrong type of replacement' % lopt)
+            raise TypeError('Optimizer %s gave wrong type of replacement. Expected list or tuple.' % lopt)
         if len(node.outputs) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements' % lopt)
         # If an output would be replaced by itself, no need to perform
