@@ -6,7 +6,7 @@
 
 #include "cuda_ndarray.cuh"
 
-//If true, when their is a gpu malloc or free error, we print the size of allocated memory on the device.
+//If true, when there is a gpu malloc or free error, we print the size of allocated memory on the device.
 #define COMPUTE_GPU_MEM_USED false
 
 /////////////////////////
