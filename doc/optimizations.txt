@@ -5,9 +5,9 @@ Optimizations
 ==============
 
 Theano applies many kinds of graph optimizations, with different objectives:
-* simplifying and standardizing the form of the expression graph (e.g.  :term:`merge`, :term:`add canonicalization` ), 
-* reducing the maximum memory footprint (e.g. :term:`inplace_elemwise`),
-* increasing execution speed (e.g. :term:`constant folding`).
+ * simplifying and standardizing the form of the expression graph (e.g.  :term:`merge`, :term:`add canonicalization` ), 
+ * reducing the maximum memory footprint (e.g. :term:`inplace_elemwise`),
+ * increasing execution speed (e.g. :term:`constant folding`).
 
 The optimizations are listed in roughly chronological order.  The table below
 gives a quick summary of the optimizations included in the default modes. 

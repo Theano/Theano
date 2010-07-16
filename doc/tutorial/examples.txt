@@ -212,8 +212,7 @@ Using shared variables
 It is also possible to make a function with an internal state. For
 example, let's say we want to make an accumulator: at the beginning,
 the state is initialized to zero. Then, on each function call, the state
-is incremented by the function's argument. We'll also make it so that
-the increment has a default value of 1.
+is incremented by the function's argument.
 
 First let's define the ``accumulator`` function. It adds its argument to the
 internal state, and returns the old state value.
@@ -306,7 +305,7 @@ Using Random Numbers
 Because in Theano you first express everything symbolically and
 afterwards compile this expression to get functions, 
 using pseudo-random numbers is not as straightforward as it is in 
-numpy, though also not to complicated. 
+numpy, though also not too complicated. 
 
 The way to think about putting randomness into Theano's computations is 
 to put random variables in your graph. Theano will allocate a numpy 

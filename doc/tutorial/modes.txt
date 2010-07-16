@@ -50,7 +50,7 @@ expressions or new optimizations) to run your code using the DebugMode
 do several self-checks and assertations that can help to diagnose 
 possible programming errors that can lead to incorect output. Note that 
 ``DEBUG_MODE`` is much slower then ``FAST_RUN`` or ``FAST_COMPILE`` so 
-use it only during development (not when you lunch 1000 process on a 
+use it only during development (not when you launch 1000 process on a 
 cluster!).
 
 
