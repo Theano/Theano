@@ -355,6 +355,11 @@ def get_constant_value(v):
             shape, val = v.owner.inputs
             # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
+        if isinstance(v.owner.op, Elemwise) and isinstance(v.owner.op.scalar_op, scal.Cast):
+            const = get_constant_value(v.owner.inputs[0])
+            ret = [[None]]
+            v.owner.op.perform(v.owner, [const], ret)
+            return ret[0][0]
     raise TypeError(v)
 
 
