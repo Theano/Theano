@@ -139,6 +139,10 @@ the correct size for the output. This is essentially simulating the line
 The first line reduces the reference count of the data that y originally
 pointed to. The second line allocates the new data and makes y point to it.
 
+In C code for a theano op, numpy arrays are represented as ``PyArrayObject`` C
+structs. This is part of the numpy/scipy C API documented at 
+http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html
+
 TODO: NEEDS MORE EXPLANATION.
 
 There are some important restrictions to remember when implementing an Op.
