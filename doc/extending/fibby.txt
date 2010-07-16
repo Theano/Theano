@@ -125,6 +125,20 @@ The variables ``%(x)s`` and ``%(y)s`` are set up by the TensorType to be ``PyArr
 TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``,
 ``type_num_%(x)s`` is the corresponding NumPy type number.
 
+In the first two lines of the C function, we make y point to a new array with
+the correct size for the output. This is essentially simulating the line
+``y = x.copy()``.
+
+
+.. code-block:: python
+
+    Py_XDECREF(%(y)s);
+    %(y)s = (PyArrayObject*)PyArray_FromArray(
+        %(x)s, 0, NPY_ENSURECOPY);
+
+The first line reduces the reference count of the data that y originally
+pointed to. The second line allocates the new data and makes y point to it.
+
 TODO: NEEDS MORE EXPLANATION.
 
 There are some important restrictions to remember when implementing an Op.
