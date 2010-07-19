@@ -484,8 +484,53 @@ class test_canonize(unittest.TestCase):
                 assert numpy.all(numpy.isfinite(out))
                 assert numpy.allclose(out,numpy.sign(val_inputs[0]))
                 assert(out_dtype==out.dtype)
+                assert len(f.maker.env.toposort())==1
+
+            #test (2*x) / (3*abs(x)) -> sign(x)
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                    ((2*dx)/(3*abs(dx)),[dx],[0.5-dxv],'float64'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv],'float32'),
+                    ((2*dx)/(3*abs(dx)),[dx],[0.0*dxv],'float64'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.0*fxv],'float32'),
+                    ((2*dv)/(3*abs(dv)),[dv],[0.5-dvv],'float64'),
+                    ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                topo = f.maker.env.toposort()
+                out = f(*val_inputs)
+                assert numpy.all(numpy.isfinite(out))
+                assert numpy.allclose(out,numpy.sign(val_inputs[0])*2/3)
+                assert(out_dtype==out.dtype)
         finally:
             mode._optimizer = old_optimizer
+
+    def test_abs_mul_div(self):
+        """
+        test that if we have 
+        4 * x / abs(2*x) it get simplifier during canonicalisation.
+        """
+
+        x=T.dscalar()
+        a=T.abs_(x)
+        mode = theano.compile.mode.get_default_mode().excluding("local_elemwise_fusion")
+
+        f=theano.function([x],[(4*x)/abs(2*x)], mode = mode)
+        print f.maker.env.toposort()
+        print
+        f(.1)
+        f(0)
+        f(-1)
+        assert len(f.maker.env.toposort())==2
+
+        f=theano.function([x],[(4*x)/abs(2/x)], mode = mode)
+        print f.maker.env.toposort()
+        print
+        f(.1)
+        f(0)
+        f(-1)
+        assert len(f.maker.env.toposort())==2
+        assert f.maker.env.toposort()[0].op==T.abs_
 
 
     def test_multiple_case_that_fail(self):
@@ -552,6 +597,30 @@ class test_canonize(unittest.TestCase):
         """ test those case take from the comment in Canonizer
         """
         raise SkipTest("Not implemented")
+
+def test_local_merge_abs():
+    x,y,z = T.matrices('xyz')
+    x_val = numpy.random.rand(5,5)
+    y_val = numpy.random.rand(5,5)
+    z_val = numpy.random.rand(5,5)
+    mode = theano.config.mode
+    if mode == "FAST_COMPILE":
+        mode = "FAST_RUN"
+    mode = theano.compile.mode.get_mode(mode).excluding("local_elemwise_fusion")
+
+    f = theano.function([x,y,z],(abs(y*z*-2)), mode=mode)
+    f(x_val,y_val,z_val)
+    theano.printing.debugprint(f)
+    assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
+    assert len(f.maker.env.toposort())==2
+
+    f = theano.function([x,y,z],abs(x/y), mode=mode)
+    f(x_val,y_val,z_val)
+    theano.printing.debugprint(f)
+    assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
+    assert len(f.maker.env.toposort())==2
+
+
 
 def test_mixeddiv():
     """Test that int division is preserved"""
