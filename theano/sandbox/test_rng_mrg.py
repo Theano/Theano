@@ -433,53 +433,55 @@ def test_normal0():
 
     steps = 50
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
-        sample_size = (99,30)
+        sample_size = (25,30)
         rtol=.02
     else:
         sample_size = (999,50)
         rtol=.01
-
-    print ''
-    print 'ON CPU:'
-
-    R = MRG_RandomStreams(234, use_cuda=False)
-    n = R.normal(size=sample_size, avg=-5.0, std=2.0)
-    f = theano.function([], n, mode=mode)
-    theano.printing.debugprint(f)
-    print 'random?[:10]\n', f()[0,0:10]
-    basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, mean_rtol=rtol)
-
-    sys.stdout.flush()
-
-    # now with odd number of samples
-    sample_size = (sample_size[0],sample_size[1]-1)
-
-    if mode!='FAST_COMPILE' and cuda_available:
+    sample_size_odd = (sample_size[0],sample_size[1]-1)
+    x = tensor.matrix()
+    for size,const_size,var_input,input in [(sample_size,sample_size,[],[]), (x.shape,sample_size,[x],[numpy.zeros(sample_size)]),
+                                 (sample_size_odd,sample_size_odd,[],[]),#test odd value
+                                 (x.shape,sample_size_odd,[x],[numpy.zeros(sample_size_odd)]),#test odd value
+                                 ]:
         print ''
-        print 'ON GPU:'
-        R = MRG_RandomStreams(234, use_cuda=True)
-        n = R.normal(size=sample_size, avg=-5.0, std=2.0, dtype='float32')
-        assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-        f = theano.function([], theano.Out(
-            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-            borrow=True), mode=mode_with_gpu)
+        print 'ON CPU:'
 
+        R = MRG_RandomStreams(234, use_cuda=False)
+        n = R.normal(size=size, avg=-5.0, std=2.0)
+        f = theano.function(var_input, n, mode=mode)
         theano.printing.debugprint(f)
+        print 'random?[:10]\n', f(*input)[0,0:10]
+        basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+
         sys.stdout.flush()
-        print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
-        print '----'
-        sys.stdout.flush()
-        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, mean_rtol=rtol)
-        
 
-    print ''
-    print 'ON CPU w NUMPY:'
-    RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+        if mode!='FAST_COMPILE' and cuda_available:
+            print ''
+            print 'ON GPU:'
+            R = MRG_RandomStreams(234, use_cuda=True)
+            n = R.normal(size=size, avg=-5.0, std=2.0, dtype='float32')
+            assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+            f = theano.function(var_input, theano.Out(
+                theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+                borrow=True), mode=mode_with_gpu)
 
-    nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
-    ff = theano.function([], nn)
+            theano.printing.debugprint(f)
+            sys.stdout.flush()
+            print 'random?[:10]\n', numpy.asarray(f(*input))[0,0:10]
+            print '----'
+            sys.stdout.flush()
+            basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
 
-    basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True, mean_rtol=rtol)
+
+        print ''
+        print 'ON CPU w NUMPY:'
+        RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+
+        nn = RR.normal(size=size, avg=-5.0, std=2.0)
+        ff = theano.function(var_input, nn)
+
+        basictest(ff, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_rtol=0.04):
 

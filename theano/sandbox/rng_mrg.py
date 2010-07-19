@@ -10,7 +10,7 @@ import numpy
 
 from theano import Op, Apply, shared, config, Variable
 from theano.tensor import raw_random, TensorType, as_tensor_variable, get_vector_length, cast, opt
-from theano.tensor import zeros_like, sqrt, log, sin, cos, join
+from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
@@ -612,7 +612,7 @@ class MRG_RandomStreams(object):
 
     def n_streams(self, size):
         # TODO: a smart way of choosing the number of streams
-        if isinstance(size, (tuple, list)):
+        if isinstance(size, (tuple, list)) and all([isinstance(i,int) for i in size]):
             r = 1
             for s in size:
                 r *= s
@@ -639,13 +639,12 @@ class MRG_RandomStreams(object):
         ndim may be a plain integer to supplement the missing
         information.
         
-        :param: size: Can be a list of integer or a Theano variable like the shape of some tensor.
-                      The number of dimensions must be computable at compile time.
+        :param: size: Can be a list of integer or Theano variable(ex: the shape of other Theano Variable)
                       TODO: can size be None?
         """
         if isinstance(size, tuple):
-            assert all([isinstance(i,int) for i in size]), "size must be a tuple of int or a Theano variable"
-        else: assert isinstance(size, Variable), "size must be a tuple of int or a Theano variable"
+            assert all([isinstance(i,int) or isinstance(i,Variable) for i in size]), "size must be a tuple of int or a Theano variable"
+        else: assert isinstance(size, Variable) and size.ndim==1, "size must be a tuple of int or a Theano variable"
 
         if nstreams is None:
             nstreams = self.n_streams(size)
@@ -706,24 +705,33 @@ class MRG_RandomStreams(object):
             raise NotImplementedError("MRG_RandomStreams.multinomial only implemented with n == 1 and pvals.ndim = 2")
 
     def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
+        """
+        :param: size: Can be a list of integer or Theano variable(ex: the shape of other Theano Variable)
+        """
         # We need an even number of ]0,1[ samples. Then we split them
         # in two halves. First half becomes our U1's for Box-Muller,
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 
-        assert isinstance(size, tuple), "size must be a tuple"
-        assert all([isinstance(i,int) for i in size])
-        n_samples = numpy.prod(size)
         evened = False
+        constant = False
+        if isinstance(size, tuple) and all([isinstance(i,int) for i in size]):
+            constant = True          
+            n_samples = numpy.prod(size)
            
-        if n_samples % 2 == 1:
-            n_samples += 1
-            evened = True
-
+            if n_samples % 2 == 1:
+                n_samples += 1
+                evened = True
+        else:
+            n_samples = prod(size)+(prod(size)%2)#if even, don't change, if odd, +1
         flattened = self.uniform(size=(n_samples,), dtype=dtype)
 
-        U1 = flattened[:n_samples/2]
-        U2 = flattened[n_samples/2:]
+        if constant:
+            U1 = flattened[:n_samples/2]
+            U2 = flattened[n_samples/2:]
+        else:
+            U1 = flattened[:prod(flattened.shape)/2]
+            U2 = flattened[prod(flattened.shape)/2:]
 
         #normal_samples = zeros_like(flattened)
         sqrt_ln_U1 = sqrt(-2.0*log(U1))
@@ -740,8 +748,10 @@ class MRG_RandomStreams(object):
         final_samples = None
         if evened:
             final_samples = normal_samples[:-1]
-        else:
+        elif constant:
             final_samples = normal_samples
+        else:
+            final_samples = normal_samples[:prod(size)]
 
         final_samples = avg + std * final_samples
 
