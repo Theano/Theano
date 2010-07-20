@@ -54,7 +54,8 @@ class InputToGpuOptimizer(Optimizer):
                 try:
                     new_input = host_from_gpu(gpu_from_host(input))
 
-                    env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
+                    if new_input.type==input.type:
+                        env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
                 except Exception, e:
                     #as we currently only support float32, this can fail. 
                     #Using try except make that we won't need 
