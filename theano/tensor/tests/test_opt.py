@@ -529,7 +529,7 @@ class test_canonize(unittest.TestCase):
         if not isinstance(mode,theano.compile.debugmode.DebugMode):
             assert numpy.isfinite(f(0))
 
-        assert len(f.maker.env.toposort())==3
+        assert len(f.maker.env.toposort())==2
         assert f.maker.env.toposort()[0].op==T.sgn
 
         f=theano.function([x],[(4*x)/abs(x/2)], mode = mode)
