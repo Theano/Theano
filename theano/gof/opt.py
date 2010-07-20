@@ -963,9 +963,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             lopt_change = self.process_node(env, node, lopt)
                             if lopt_change:
                                 process_count[lopt] += 1
-                            else:
-                                process_count[lopt] += 0
-                            changed |= lopt_change
+                                changed = True
+                                if node not in env.nodes:
+                                    break# go to next node
             finally:
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
