@@ -513,24 +513,37 @@ class test_canonize(unittest.TestCase):
 
         x=T.dscalar()
         a=T.abs_(x)
-        mode = theano.compile.mode.get_default_mode().excluding("local_elemwise_fusion")
+        
+        if theano.config.mode=='FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN').excluding("local_elemwise_fusion")
+        else:
+            mode = theano.compile.mode.get_default_mode().excluding("local_elemwise_fusion")
 
         f=theano.function([x],[(4*x)/abs(2*x)], mode = mode)
         print f.maker.env.toposort()
         print
         f(.1)
-        f(0)
         f(-1)
-        assert len(f.maker.env.toposort())==2
+        #some stabilization optimization make the output be finite instead of nan
+        #debug_mode will raise an error when he see nan
+        if not isinstance(mode,theano.compile.debugmode.DebugMode):
+            assert numpy.isfinite(f(0))
 
-        f=theano.function([x],[(4*x)/abs(2/x)], mode = mode)
+        assert len(f.maker.env.toposort())==3
+        assert f.maker.env.toposort()[0].op==T.sgn
+
+        f=theano.function([x],[(4*x)/abs(x/2)], mode = mode)
         print f.maker.env.toposort()
         print
         f(.1)
-        f(0)
         f(-1)
+        #some stabilization optimization make the output be finite instead of nan
+        #debug_mode will raise an error when he see nan
+        if not isinstance(mode,theano.compile.debugmode.DebugMode):
+            assert numpy.isfinite(f(0))
+
         assert len(f.maker.env.toposort())==2
-        assert f.maker.env.toposort()[0].op==T.abs_
+        assert f.maker.env.toposort()[0].op==T.sgn
 
 
     def test_multiple_case_that_fail(self):
