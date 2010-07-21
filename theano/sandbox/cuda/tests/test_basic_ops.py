@@ -214,7 +214,6 @@ def test_elemwise_bad_broadcast():
     y = cuda.fmatrix('y')
 
     f = theano.function([x, y], x * y)
-    import unittest
     try:
         f(rand_cuda_ndarray((10, 3)), rand_cuda_ndarray((10, 1)))
     except TypeError:
