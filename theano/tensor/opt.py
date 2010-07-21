@@ -2321,7 +2321,6 @@ def local_elemwise_fusion_op(OP):
                             s_input.append(s_inputs[inputs.index(ii)])
                         else:
                             s_input.append(scalar.Scalar(ii.dtype).make_variable())
-                    #s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
                     s_op=i.owner.op.scalar_op(*s_input)
                     i.owner.op.scalar_op.c_code(s_op.owner,"test_presence_of_c_code",
                                                 ["x" for x in i.owner.inputs],
