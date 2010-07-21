@@ -217,7 +217,7 @@ def test_elemwise_bad_broadcast():
     import unittest
     try:
         f(rand_cuda_ndarray((10, 3)), rand_cuda_ndarray((10, 1)))
-    except ValueError:
+    except TypeError:
         pass
     else:
         raise Exception("Theano should have raised an error")
