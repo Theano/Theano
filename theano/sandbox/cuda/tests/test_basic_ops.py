@@ -27,6 +27,9 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
+def rand_cuda_ndarray(shape):
+    return cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+
 def tes_use():
     tcn.use()
 
@@ -205,6 +208,19 @@ def test_elemwise0():
     print 'AFTER ADD', a.value
 
     assert numpy.all(a0 + 1.0 == a.value)
+
+def test_elemwise_bad_broadcast():
+    x = cuda.fmatrix('x')
+    y = cuda.fmatrix('y')
+
+    f = theano.function([x, y], x * y)
+    import unittest
+    try:
+        f(rand_cuda_ndarray((10, 3)), rand_cuda_ndarray((10, 1)))
+    except ValueError:
+        pass
+    else:
+        raise Exception("Theano should have raised an error")
 
 def test_elemwise1():
     """ Several kinds of elemwise expressions with no broadcasting, non power-of-two shape """
