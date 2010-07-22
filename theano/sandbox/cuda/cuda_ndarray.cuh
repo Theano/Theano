@@ -65,12 +65,14 @@ struct CudaNdarray
     /* Type-specific fields go here. */
     //GpuTensorType::VoidTensor * vt;
     int nd; //the number of dimensions of the tensor
+	// Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
     int * host_structure; //dim0, dim1, ... stride0, stride1, ...
     int data_allocated; //the number of bytes allocated for devdata
 
+
     //device pointers (allocated by cudaMalloc)
     int dev_structure_fresh;
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
+    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...  (advised not to use; may not be synchronized)
     real* devdata; //pointer to data element [0,..,0].
 };
 
