@@ -54,7 +54,8 @@ class InputToGpuOptimizer(Optimizer):
                 try:
                     new_input = host_from_gpu(gpu_from_host(input))
 
-                    env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
+                    if new_input.type==input.type:
+                        env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
                 except Exception, e:
                     #as we currently only support float32, this can fail. 
                     #Using try except make that we won't need 
@@ -136,10 +137,7 @@ def local_gpu_dimshuffle_0(node):
             # move the add to a GpuAdd
             new_op = GpuDimShuffle(node.op.input_broadcastable, 
                     node.op.new_order)
-            if node.op.inplace:
-                return [host_from_gpu(new_op(gpu_from_host(input)))]
-            else:
-                return [host_from_gpu(new_op(gpu_from_host(tensor.tensor_copy(input))))]
+            return [host_from_gpu(new_op(gpu_from_host(input)))]
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, tensor.DimShuffle):

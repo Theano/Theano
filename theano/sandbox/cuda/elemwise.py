@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 10, verbose)
+    cache_version = ('debug', 11, verbose)
 
     def __init__(self, scalar_op, sync=True):
         """ 
@@ -834,7 +834,14 @@ nd_collapse_[i]=0;
         """ %locals()
 
         #check that all inputs have valid dimensions
-        for iname in inputs:
+        for id,iname in enumerate(inputs):
+            broadcasts = ', '.join(map(str,map(int,node.inputs[id].broadcastable)))
+            nd = node.inputs[id].ndim
+            print >> sio, """
+        int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};
+""" %locals()
+        #check that all inputs have valid dimensions
+        for id,iname in enumerate(inputs):
             print >> sio, """
         //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
         if (%(nd)s != %(iname)s->nd)
@@ -845,7 +852,7 @@ nd_collapse_[i]=0;
         for (int i = 0; i< %(nd)s; ++i)
         {
             dims[i] = (dims[i] == 1) ? CudaNdarray_HOST_DIMS(%(iname)s)[i] : dims[i];
-            if ((CudaNdarray_HOST_DIMS(%(iname)s)[i] != 1) && (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
+            if ((!(broadcasts_%(iname)s[i] && CudaNdarray_HOST_DIMS(%(iname)s)[i] == 1))&& (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
                 PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",

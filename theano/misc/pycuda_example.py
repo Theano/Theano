@@ -153,7 +153,7 @@ class PycudaElemwiseKernel(Op):
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         i = inputs + z
         sp = splay(i[0].mem_size)
-        self.pycuda_fct(*i, grid=sp[0], block=sp[1])
+        self.pycuda_fct(*i)#, grid=sp[0], block=sp[1])
 
 pycuda_optimizer = EquilibriumDB()
 gpu_seqopt.register("pycuda_optimizer", pycuda_optimizer, 1.5, "fast_run")

@@ -1303,7 +1303,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                             print >> infolog, 'trailing event in optimization', i, ':', j
                             print >> infolog, '   ', str(li[j])
                         elif li[j] != l0[j]:
-                            print 'non-equal optimization events', i, ':', j
+                            print >>infolog, 'non-equal optimization events', i, ':', j
                             print >>infolog, '   ', str(l0[j])
                             print >>infolog, '   ', str(li[j])
                             #print >> infolog, "* ", j,
