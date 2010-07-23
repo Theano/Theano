@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 11, verbose)
+    cache_version = ('debug', 12, verbose)
 
     def __init__(self, scalar_op, sync=True):
         """ 
@@ -855,7 +855,7 @@ nd_collapse_[i]=0;
             if ((!(broadcasts_%(iname)s[i] && CudaNdarray_HOST_DIMS(%(iname)s)[i] == 1))&& (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
-                PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",
+                PyErr_Format(PyExc_ValueError, "GpuElemwise. Input dimension mis-match.[%%i] == %%i, where output has size %%i",
                     i,
                     CudaNdarray_HOST_DIMS(%(iname)s)[i],
                     dims[i]

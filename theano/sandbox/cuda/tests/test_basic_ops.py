@@ -213,10 +213,15 @@ def test_elemwise_bad_broadcast():
     x = cuda.fmatrix('x')
     y = cuda.fmatrix('y')
 
-    f = theano.function([x, y], x * y)
+    f = theano.function([x, y], x * y, mode=mode_with_gpu)
+    print f.maker.env.toposort()
+    assert len(f.maker.env.toposort())==2
+    assert isinstance(f.maker.env.toposort()[0].op, cuda.GpuElemwise)
+    assert f.maker.env.toposort()[1].op==cuda.host_from_gpu
+
     try:
         f(rand_cuda_ndarray((10, 3)), rand_cuda_ndarray((10, 1)))
-    except TypeError:
+    except ValueError:
         pass
     else:
         raise Exception("Theano should have raised an error")
