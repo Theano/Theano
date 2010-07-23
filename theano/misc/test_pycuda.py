@@ -1,5 +1,11 @@
 import numpy
 
+try:
+    import pycuda
+except ImportError:
+    from nose.plugins.skip import SkipTest
+    raise SkipTest("Pycuda not installed. Skip test of theano op with pycuda code.")
+
 import theano
 import theano.tensor as T
 from theano.misc.pycuda_example import PycudaElemwiseSourceModule, PycudaElemwiseKernel
