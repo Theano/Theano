@@ -72,7 +72,8 @@ struct CudaNdarray
 
     //device pointers (allocated by cudaMalloc)
     int dev_structure_fresh;
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...  (advised not to use; may not be synchronized)
+	//dev_structure should be accessed via macros, otherwise may not be synchronized
+    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...  
     real* devdata; //pointer to data element [0,..,0].
 };
 
