@@ -40,6 +40,10 @@ class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
 class CudaNdarrayConstant(Constant, _operators):
     def signature(self):
         return CudaNdarrayConstantSignature((self.type, numpy.asarray(self.data)))
+    def __str__(self):
+        if self.name is not None:
+            return self.name
+        return "CudaNdarray{"+str(numpy.asarray(self.data))+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
 class CudaNdarraySharedVariable(SharedVariable, _operators):
