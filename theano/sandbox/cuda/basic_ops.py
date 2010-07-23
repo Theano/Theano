@@ -1895,12 +1895,18 @@ class GpuAlloc(Op):
 gpu_alloc = GpuAlloc()
 
 class GpuContiguous(Op):
+    view_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, input):
         input = as_cuda_ndarray_variable(input)
         return Apply(self, [input], [input.type()])
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def c_code(self, node, name, (input,), (z,), sub):
         fail = sub['fail']
@@ -1928,6 +1934,9 @@ class GpuContiguous(Op):
         }
         """%locals()
         return str
+
+    def c_code_cache_version(self):
+        return (1,)
 
 gpu_contiguous = GpuContiguous()
 
