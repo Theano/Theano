@@ -840,13 +840,13 @@ class test_fusion(unittest.TestCase):
         mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
         self.do(mode, shared, shp)
 
-    def gpu_fusion(self):
+    def test_gpu_fusion(self):
         shp=(5,5)
         #we need the optimisation enabled, debug do this.
-        mode=compile.mode.predefined_modes['FAST_COMPILE']
-        mode=compile.mode.predefined_modes['FAST_RUN']
-        mode=compile.mode.predefined_modes['DEBUG_MODE']
-        mode = theano.compile.mode.get_mode(mode).including('gpu')
+        if theano.config.mode == "FAST_COMPILE":
+            mode = theano.compile.mode.get_mode("FAST_RUN").including('local_elemwise_fusion','canonicalize','gpu')
+        else:
+            mode = theano.compile.mode.get_default_mode().including('local_elemwise_fusion','canonicalize','gpu')
         import theano.sandbox.cuda as cuda
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
