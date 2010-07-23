@@ -142,6 +142,9 @@ class mrg_uniform_base(Op):
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.output_type) ^ hash(self.inplace)
+    def __str__(self):
+        return self.__class__.__name__+"{%s,%s}"%(self.output_type,
+                                                  "inplace" if self.inplace else "no_inplace")
 
     def make_node(self, rstate, size):
         # error checking slightly redundant here, since

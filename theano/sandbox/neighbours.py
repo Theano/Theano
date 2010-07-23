@@ -15,6 +15,8 @@ class Images2Neibs(Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, ten4, neib_shape):
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
@@ -24,8 +26,7 @@ class Images2Neibs(Op):
         return [None, None]
 
     def c_code_cache_version(self):
-        return ()
-        #return (1,)
+        return (2,)
                 
     def c_code(self, node, name, (ten4, neib_shape), (z,), sub):
 
@@ -168,8 +169,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return ()
-        #return (1,)
+        return (2,)
 
     def c_support_code_apply(self, node, nodename):
         return """

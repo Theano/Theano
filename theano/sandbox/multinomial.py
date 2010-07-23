@@ -14,6 +14,8 @@ class Multinomial(Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, pvals, unis):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
