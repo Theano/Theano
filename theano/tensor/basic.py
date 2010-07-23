@@ -326,7 +326,7 @@ def _allclose(a, b):
 def get_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
-    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
+    If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
     this function digs through them.
 
     If `v` is not some view of constant data, then raise a TypeError.
@@ -355,6 +355,8 @@ def get_constant_value(v):
             shape, val = v.owner.inputs
             # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
+        #Don't act as the constant_folding optimization here as this fct is used too early in the optimization phase.
+        #This would mess with the stabilization optimization.
         if isinstance(v.owner.op, Elemwise) and isinstance(v.owner.op.scalar_op, scal.Cast):
             const = get_constant_value(v.owner.inputs[0])
             ret = [[None]]
