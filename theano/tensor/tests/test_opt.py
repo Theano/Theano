@@ -1505,6 +1505,32 @@ def test_local_useless_neq():
     assert len(topo2)==3
     assert isinstance(topo2[-1].op,T.Alloc)
 
+def test_constant_get_stabilized():
+    """
+    Currently Theano enable the constant_folding optimization before stabilization optimization.
+    This cause some stabilization optimization not being implemented and thus cause inf value to appear
+    when it should not.
+
+    .. note: we can't simply move the constant_folding optimization to specialize as this break other optimization!
+    We will need to partially duplicate some canonicalize optimzation to specialize to fix this issue.
+    """
+    x2 = T.scalar()
+    y2 = T.log(1+T.exp(x2))
+    f2 = theano.function([x2],y2)
+    assert len(f2.maker.env.toposort())==1
+    assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
+    assert f2(800)==800
+
+    x = T.as_tensor_variable(800)
+    y = T.log(1+T.exp(x))
+    f = theano.function([],y)
+    assert len(f.maker.env.toposort())==0
+    assert numpy.isinf(f())
+    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
+
+    #When this error is fixed, the following line should be ok.
+    assert f()==800,f()
+
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
