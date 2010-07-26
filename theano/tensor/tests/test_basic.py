@@ -2688,6 +2688,25 @@ def test_mod_compile():
 
     f = theano.function([x,y],out)
 
+def test_unalign():
+    a = numpy.empty(1e6, dtype="b1,f8")['f1']
+    b = numpy.empty(1e6, dtype="b1,f8")['f1']
+    assert not a.flags.aligned
+    assert not b.flags.aligned
+    a[:] = numpy.random.rand(len(a))
+    b[:] = numpy.random.rand(len(b))
+    out_numpy = 2*a + 3*b
+
+    av,bv = tensor.vectors('ab')
+    f = theano.function([av,bv],2*av+3*bv)
+    f.maker.env.toposort()
+    try:
+        out_theano = f(a,b)
+    except ValueError:
+        pass
+    else:
+        raise Exception("Expected an error from Theano!")
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
