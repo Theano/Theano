@@ -2702,7 +2702,7 @@ def test_unalign():
     f.maker.env.toposort()
     try:
         out_theano = f(a,b)
-    except ValueError:
+    except NotImplementedError:
         pass
     else:
         raise Exception("Expected an error from Theano!")

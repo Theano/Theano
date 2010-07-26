@@ -607,7 +607,7 @@ class TensorType(Type):
             %(fail)s
         }
         if (!PyArray_ISALIGNED(py_%(name)s)) {
-            PyErr_SetString(PyExc_ValueError, "expected an aligned array");
+            PyErr_SetString(PyExc_NotImplementedError, "expected an aligned array");
             %(fail)s
         }
         type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
@@ -658,7 +658,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (3,) + scalar_version
+            return (4,) + scalar_version
         else:
             return ()
 
