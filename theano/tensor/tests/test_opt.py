@@ -848,6 +848,9 @@ class test_fusion(unittest.TestCase):
         else:
             mode = theano.compile.mode.get_default_mode().including('local_elemwise_fusion','canonicalize','gpu')
         import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
     def speed_fusion(self, shared_fn = shared, gpu = False, s=None):
