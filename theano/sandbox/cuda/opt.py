@@ -383,6 +383,16 @@ def local_gpu_rebroadcast(node):
             gpu_x = x.owner.inputs[0]
             return [host_from_gpu(node.op(gpu_x))]
 
+@register_opt()
+@local_optimizer([])
+def local_print_op(node):
+    if isinstance(node.op, tensor.printing.Print):
+        x, = node.inputs
+        if x.owner and x.owner.op == host_from_gpu:
+            gpu_x, = x.owner.inputs
+            return [host_from_gpu(node.op(gpu_x))]
+    return False
+
 def cast(x, dtype):
     stype = scal.Scalar(dtype)
     cast_op = theano.tensor.Elemwise(scal.Identity(scal.specific_out(stype)))
