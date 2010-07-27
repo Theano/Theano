@@ -6,6 +6,7 @@ from type import Type
 import sys, traceback
 from copy import copy
 from theano.gof.python25 import all
+import numpy
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
@@ -157,6 +158,12 @@ class Container(object):
             if value is None:
                 self.storage[0] = None
                 return
+            if self.type.__class__.__name__ == "CudaNdarrayType" and isinstance(value,numpy.ndarray):
+                #The filter method of CudaNdarray alloc a new memory region on the gpu.
+                #The ref count will be decremented after that.
+                #That cause 2 region allocated at the same time!
+                #We decrement the memory reference conter now to try to lower the memory usage.
+                self.storage[0] = None
             if self.strict:
                 self.storage[0] = self.type.filter(value, strict = True)
             else:
