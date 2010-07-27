@@ -107,7 +107,7 @@ class Print(Op):
         return type(self)==type(other) and self.message==other.message and self.attrs==other.attrs
 
     def __hash__(self):
-        return hash(self.message) ^ hash(self.attrs)
+        return hash(self.message) ^ hash(str(self.attrs))
 
 
 class PrinterState(gof.utils.scratchpad):
