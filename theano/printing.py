@@ -109,6 +109,8 @@ class Print(Op):
     def __hash__(self):
         return hash(self.message) ^ hash(str(self.attrs))
 
+    def c_code_cache_version(self):
+        return (1,)
 
 class PrinterState(gof.utils.scratchpad):
     
