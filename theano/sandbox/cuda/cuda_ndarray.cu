@@ -1429,12 +1429,65 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 // See http://docs.python.org/dev/py3k/c-api/object.html#PyObject_SetItem
 // Doesn't handle broadcasting, e.g. a[:] = 5
 // Can only be assigned from a CudaNdarray on the right side
+// Or a ndarray when the left side part is c contiguous.
 static int
 CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
 {
+    if(CudaNdarray_Check(o)  && PyArray_Check(v)){
+        // We try to copy directly into this CudaNdarray from the ndarray
+        CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
+	int typenum = PyArray_TYPE(v);
+	
+	if(!rval){
+            // CudaNdarray_Subscript failed and set the error msg.
+	    Py_XDECREF(rval);
+	    return -1;
+	}
+	if (typenum != REAL_TYPENUM){
+	    PyErr_SetString(PyExc_TypeError, "CudaNdarray.__setitem__: can only copy from float32 arrays");
+	    Py_XDECREF(rval);
+	    return -1;
+	}
+	if(! CudaNdarray_is_c_contiguous(rval)){
+            PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray.__setitem__: When the new value is an ndarray the part where we copy it to must be c contiguous.");
+	    Py_XDECREF(rval);
+	    return -1;
+	}
+	if(rval->nd != ((PyArrayObject*)v)->nd){
+            PyErr_Format(PyExc_NotImplementedError, "CudaNdarray.__setitem__: need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.",
+			    rval->nd,((PyArrayObject*)v)->nd);
+	    Py_XDECREF(rval);
+	    return -1;
+	}
+	for(int i=0 ; i<rval->nd ; i++){
+	  if(CudaNdarray_HOST_DIMS(rval)[i] != ((PyArrayObject*)v)->dimensions[i]){
+	    PyErr_Format(PyExc_ValueError, "CudaNdarray.__setitem__: need same dimensions for dim %d, destination=%d, source=%d",i,
+			    CudaNdarray_HOST_DIMS(rval)[i],
+			    ((PyArrayObject*)v)->dimensions[i]);
+	    Py_XDECREF(rval);
+	    return -1;
+	  }
+	}
+	PyArrayObject * py_v = (PyArrayObject*)PyArray_ContiguousFromAny((PyObject*)v, typenum,
+						      rval->nd, rval->nd);
+	cublasSetVector(PyArray_SIZE(py_v),
+			sizeof(real), 
+			PyArray_DATA(py_v), 1,
+			rval->devdata, 1);
+	CNDA_THREAD_SYNC;
+	Py_XDECREF(py_v);
+	Py_XDECREF(rval);
+	if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
+	  PyErr_SetString(PyExc_RuntimeError, "CudaNdarray.__setitem__: error copying ndarray data to device memory");
+	  return -1;
+	}
+	  return 0;
+    }
+
+
     if(!CudaNdarray_Check(o) || !CudaNdarray_Check(v))
     {
-        PyErr_SetString(PyExc_TypeError, "both left and right of setitem must be CudaNdarrays");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray.__setitem__: left must be a CudaNdarrays and right must be a CudaNdarrays or ndarray");
         return -1;
     }
 
@@ -1458,7 +1511,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
 
     if (cnda_copy_structure_to_device(rval))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_setitem: syncing structure to device failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray.__setitem__: syncing structure to device failed");
         Py_DECREF(rval);
         return -1;
     }

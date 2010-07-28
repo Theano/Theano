@@ -387,6 +387,24 @@ def test_gemm_vector_vector():
 
 # ---------------------------------------------------------------------
 
+def test_setitem_matrixscalar0():
+    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray(8, dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    # set an element to 8
+    _a[1,1] = _b    
+    a[1,1] = b
+    assert numpy.allclose(a,numpy.asarray(_a))
+
+    #test direct transfert from numpy
+    _a[1,1] = theano._asarray(888, dtype='float32')
+    a[1,1] = theano._asarray(888, dtype='float32')
+    assert numpy.allclose(a,numpy.asarray(_a))
+    
+
 def test_setitem_matrixvector1():
     a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
@@ -396,8 +414,22 @@ def test_setitem_matrixvector1():
 
     # set second column to 8,9
     _a[:,1] = _b
+    a[:,1] = b
+    assert numpy.allclose(a,numpy.asarray(_a))
+    
+    #test direct transfert from numpy
+    try:
+        _a[:,1] =  b*100
+        a[:,1] =  b*100
+	raise Exception("CudaNdarray.__setitem__ should have returned an error")
+        assert numpy.allclose(a,numpy.asarray(_a))
+    except NotImplementedError, e:
+        pass
 
-    assert numpy.all(numpy.asarray(_a[:,1]) == b)
+    row = theano._asarray([777,888,999], dtype='float32')
+    _a[1,:] = row
+    a[1,:] = row
+    assert numpy.allclose(a,numpy.asarray(_a))
 
 def test_setitem_matrix_tensor3():
     a = numpy.arange(27)
@@ -411,7 +443,25 @@ def test_setitem_matrix_tensor3():
     # set middle row through cube to 7,8,9
     _a[:,1,1] = _b
 
-    assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
+    a[:,1,1] = b
+    assert numpy.allclose(a,numpy.asarray(_a))
+
+    #test direct transfert from numpy
+    try:
+        _a[:,1,1] = b*100
+        a[:,1,1] = b*100
+	raise Exception("CudaNdarray.__setitem__ should have returned an error")  
+        assert numpy.allclose(a,numpy.asarray(_a))
+    except NotImplementedError:
+        pass
+
+    row = theano._asarray([777,888,999], dtype='float32')
+    _a[1,1,:] = row
+    a[1,1,:] = row
+    assert numpy.allclose(a,numpy.asarray(_a))
+
+def test_setitem_from_numpy_error():
+    pass
 
 def test_setitem_matrix_bad_shape():
     a = numpy.arange(27)
@@ -423,10 +473,62 @@ def test_setitem_matrix_bad_shape():
     _b = cuda_ndarray.CudaNdarray(b)
 
     try:
-        # attempt to assign the ndarray b with setitem                                                                                                                                              
-        _a[:,:,1] = _b
+        # attempt to assign the ndarray b with setitem
+        _a[:,1,1] = _b
         assert False
     except ValueError, e:
+        #print e
+        assert True
+
+    #test direct transfert from numpy
+    try:
+        # attempt to assign the ndarray b with setitem
+        _a[1,1,:] = b
+        assert False
+    except ValueError, e:
+        #print e
+        assert True
+
+def test_setitem_matrix_bad_ndim():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    try:
+        # attempt to assign the ndarray b with setitem
+        _a[:,:,1] = _b
+        assert False
+    except NotImplementedError, e:
+        #print e
+        assert True
+
+    #test direct transfert from numpy
+    try:
+        # attempt to assign the ndarray b with setitem
+        _a[1,:,:] = b
+        assert False
+    except NotImplementedError, e:
+        #print e
+        assert True
+
+def test_setitem_matrix_bad_type():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8], dtype='float64')
+
+    #test direct transfert from numpy
+    try:
+        # attempt to assign the ndarray b with setitem
+        _a[1,:,:] = b
+        assert False
+    except TypeError, e:
         #print e
         assert True
 
@@ -446,7 +548,14 @@ def test_setitem_assign_to_slice():
     # (this corresponds to middle row of matrix _c)
     _c[:,1] = _b
 
-    assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
+    a[:,:,1][:,1] = b
+    assert numpy.allclose(a,numpy.asarray(_a))
+
+    #test direct transfert from numpy
+    _d = _a[1,:,:]
+    _d[1,:] = b*10
+    a[1,:,:][1,:] = b*10
+    assert numpy.allclose(a,numpy.asarray(_a))
 
 def test_setitem_broadcast():
     #test scalar to vector without stride
@@ -485,6 +594,52 @@ def test_setitem_broadcast():
     a[:,:,1] = b.reshape((1,3))
     assert numpy.allclose(numpy.asarray(_a),a)
 
+#This is not supported for now.
+def test_setitem_broadcast_numpy():
+    #test scalar to vector without stride
+    a = numpy.arange(3)
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray(9, dtype='float32')
+    try:
+        _a[:] = b.reshape((1,))
+        a[:] = b.reshape((1,))
+	assert False
+        assert numpy.allclose(numpy.asarray(_a),a)
+    except ValueError:
+	    pass
+    #test vector to matrice without stride
+    a = numpy.arange(9)
+    a.resize((3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    try:
+        b = theano._asarray([7,8,9], dtype='float32')
+        _a[:,:] = b.reshape((1,3))
+        a[:,:] = b.reshape((1,3))
+	assert False
+	assert numpy.allclose(numpy.asarray(_a),a)
+    except ValueError:
+	    pass
+
+    #test vector to matrice with stride
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    try:
+        b = theano._asarray([[7,8,9],[10,11,12]], dtype='float32')
+        b = b[0]
+        _a[1,:,:] = b.reshape((1,3))
+        a[1,:,:] = b.reshape((1,3))
+	assert False
+	assert numpy.allclose(numpy.asarray(_a),a)
+    except ValueError:
+	    pass
+
 # this also fails for the moment
 def test_setitem_rightvalue_ndarray_fails():
     """
@@ -500,9 +655,18 @@ def test_setitem_rightvalue_ndarray_fails():
 
     try:
         # attempt to assign the ndarray b with setitem
+        _a[:,:,1] = _b
+        assert False
+    except NotImplementedError, e:
+        #print e
+        assert True
+
+    #test direct transfert from numpy
+    try:
+        # attempt to assign the ndarray b with setitem
         _a[:,:,1] = b
         assert False
-    except TypeError, e:
+    except NotImplementedError, e:
         #print e
         assert True
 
