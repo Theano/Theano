@@ -961,11 +961,49 @@ class CrossentropyCategorical1Hot(gof.Op):
 
     def grad(self, (coding, one_of_n), (g_y,)):
         return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n), None]
+
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
+
+@opt.register_stabilize
+@opt.register_specialize
+@gof.optimizer
+def crossentropy_to_crossentropy_with_softmax_with_bias(env):
+    """
+    This is a stabilization optimization
+    
+    ..note: not a local optimization because we are replacing outputs from several nodes at once
+    """
+
+    def search_make_one_sub():
+        for node in env.toposort():
+            if node.op == crossentropy_categorical_1hot:
+                nll, = node.outputs
+                sm, one_of_n = node.inputs
+                if sm.owner and sm.owner.op == softmax_with_bias:
+                    x, b = sm.owner.inputs
+                    new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
+                            one_of_n)
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                            reason="crossentropy_to_crossentropy_with_softmax")
+                    return True
+
+        return False
+
+    while search_make_one_sub():
+        pass
+    return
 
 @gof.optimizer
 def crossentropy_to_crossentropy_with_softmax(env):
-    #not a local optimization because we are replacing outputs from several nodes at once
+    """
+    This is a stabilization optimization that is more general then crossentropy_to_crossentropy_with_softmax_with_bias
+
+    It must be executed after local_softmax_with_bias optimization in specialize
+    
+    : todo: This is a stabilization optimization! How to make this more cleanly?
+
+    ..note: not a local optimization because we are replacing outputs from several nodes at once
+    """
 
     def search_make_one_sub():
         for node in env.toposort():
@@ -992,8 +1030,9 @@ def crossentropy_to_crossentropy_with_softmax(env):
     while search_make_one_sub():
         pass
     return
-optdb.register('XentThing', crossentropy_to_crossentropy_with_softmax, 60.00,
-        'fast_run', 'inplace', 'xent')
+
+optdb.register('crossentropy_to_crossentropy_with_softmax', crossentropy_to_crossentropy_with_softmax, 2.01,
+        'fast_run', 'xent')
 
 @gof.local_optimizer([softmax_grad])
 def local_crossentropy_to_crossentropy_with_softmax_grad(node):

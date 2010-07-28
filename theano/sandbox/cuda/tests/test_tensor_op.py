@@ -39,3 +39,23 @@ def test_shape_i():
     if theano.config.mode!='FAST_COMPILE':
         assert len(topo)==1
         assert isinstance(topo[0].op,T.opt.Shape_i)
+
+
+def test_softmax_optimizations():
+    from theano.tensor.nnet.nnet import softmax, crossentropy_categorical_1hot, crossentropy_softmax_argmax_1hot_with_bias
+    x = tensor.fmatrix('x')
+    one_of_n = tensor.lvector('one_of_n')
+    op = crossentropy_categorical_1hot
+    
+    xe = op(x, one_of_n)
+    
+    env = theano.gof.Env(
+        [x, one_of_n],
+        [op(softmax(x), one_of_n)])
+    assert env.outputs[0].owner.op == op
+    
+    mode_with_gpu.optimizer.optimize(env)
+
+    assert str(env.outputs[0].owner.op) == 'OutputGuard'
+    assert env.outputs[0].owner.inputs[0].owner.op == cuda.host_from_gpu
+    assert env.outputs[0].owner.inputs[0].owner.inputs[0].owner.op == cuda.nnet.gpu_crossentropy_softmax_argmax_1hot_with_bias
