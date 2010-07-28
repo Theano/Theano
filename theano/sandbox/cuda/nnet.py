@@ -172,6 +172,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
         #return ()
         return (2,)
 
+gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     nin=3
@@ -288,6 +289,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
         }
         """ % locals()
 
+gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 class GpuSoftmax (Op):
     """Writeme"""
@@ -372,6 +374,7 @@ class GpuSoftmax (Op):
                     "}",
                     ])
 
+gpu_softmax = GpuSoftmax()
 
 class GpuSoftmaxWithBias (Op):
     """Writeme"""
@@ -474,4 +477,5 @@ class GpuSoftmaxWithBias (Op):
                        "__syncthreads()",
                     "}",
                     ])
-#for (int i = blockIdx.x; i < N; i += gridDim.x)
+
+gpu_softmax_with_bias = GpuSoftmaxWithBias()
