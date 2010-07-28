@@ -95,7 +95,9 @@ class FromFunctionOptimizer(Optimizer):
 
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
-    return FromFunctionOptimizer(f)
+    rval = FromFunctionOptimizer(f)
+    rval.__name__ = f.__name__
+    return rval
 
 
 
