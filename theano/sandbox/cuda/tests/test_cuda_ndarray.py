@@ -426,7 +426,7 @@ def test_setitem_matrix_bad_shape():
         # attempt to assign the ndarray b with setitem                                                                                                                                              
         _a[:,:,1] = _b
         assert False
-    except TypeError, e:
+    except ValueError, e:
         #print e
         assert True
 

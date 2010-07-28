@@ -2137,7 +2137,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     }
     if (self->nd != other->nd)
     {
-        PyErr_Format(PyExc_TypeError, "need same number of dims. destination nd=%d, source nd=%d", self->nd, other->nd);
+        PyErr_Format(PyExc_NotImplementedError, "need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.", self->nd, other->nd);
         return -1;
     }
     //standard elemwise dim checks (also compute total size)
@@ -2148,7 +2148,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
         if ((CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i]) 
 	    && (1!=CudaNdarray_HOST_DIMS(other)[i] || !unbroadcast) )
         {
-	  PyErr_Format(PyExc_TypeError, "need same dimensions for dim %d, destination=%d, source=%d",
+	  PyErr_Format(PyExc_ValueError, "need same dimensions for dim %d, destination=%d, source=%d",
 		       i, CudaNdarray_HOST_DIMS(self)[i], CudaNdarray_HOST_DIMS(other)[i]);
             return -1;
         }
