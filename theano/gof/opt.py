@@ -903,14 +903,30 @@ class OpKeyOptimizer(NavigatorOptimizer):
 
 from utils import D
 
+class ChangeTracker:
+    def __init__(self):
+        self.changed = False
+        
+    def on_import(self, env, node):
+        self.changed = True
+        
+    def on_change_input(self, env, node, i, r, new_r):
+        self.changed = True
+
+    def reset(self):
+        self.changed = False
+    
+    def on_attach(self, env):
+        env.change_tracker = self
+        
 class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
-                 local_optimizers,
+                 optimizers,
                  failure_callback = None,
                  max_depth = None,
                  max_use_ratio = None):
         """
-        :param local_optimizers:  list or set of local optimizations to apply until
+        :param optimizers:  list or set of local or global optimizations to apply until
             equilibrium.
 
         :param max_use_ratio: each optimizer can be applied at most (size of graph * this number)
@@ -923,11 +939,21 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             None,
             ignore_newtrees = True,
             failure_callback = failure_callback)
+        self.local_optimizers = []
+        self.global_optimizers = []
 
-        self.local_optimizers = local_optimizers
+        for opt in optimizers:
+            if isinstance(opt, LocalOptimizer):
+                self.local_optimizers.append(opt)
+            else:
+                self.global_optimizers.append(opt)
         self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, 'max_use_ratio has to be a number'
+
+    def add_requirements(self, env):
+        super(EquilibriumOptimizer, self).add_requirements(env)
+        env.extend(ChangeTracker())
 
     def apply(self, env, start_from = None):
         if start_from is None:
@@ -938,6 +964,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         while changed and not max_use_abort:
             changed = False
+
+            #apply global optimizer
+            env.change_tracker.reset()
+            for gopt in self.global_optimizers:
+                gopt.apply(env)
+            if env.change_tracker.changed:
+                changed = True
+                
+            #apply local optimizer
             for node in start_from:
                 assert node in env.outputs
 

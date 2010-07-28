@@ -144,9 +144,7 @@ class EquilibriumDB(DB):
 
     .. note::
         
-        It seems like this might be supposed to contain LocalOptimizer instances rather than
-        optimizer instances, because whatever is selected by the query is passed to
-        EquilibriumOptimizer and EquilibriumOptimizer requires LocalOptimizer instances.
+        We can put LocalOptimizer and Optimizer as EquilibriumOptimizer suppor both.
 
     """
 
