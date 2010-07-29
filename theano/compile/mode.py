@@ -2,11 +2,21 @@
 """
 import os, logging
 
-import numpy
+import numpy, theano
 from theano import gof
-from theano.configparser import config
+from theano.configparser import config, AddConfigVar, StrParam
 
 _logger = logging.getLogger('theano.compile.mode')
+
+AddConfigVar('optimizer_excluding',
+        "When using the default mode, we will remove optimizer with that tag",
+        StrParam(""))
+AddConfigVar('optimizer_including',
+        "When using the default mode, we will add optimizer with that tag",
+        StrParam(""))
+AddConfigVar('optimizer_requiring',
+        "When using the default mode, we will require optimizer with that tag",
+        StrParam(""))
 
 def check_equal(x, y):
     """
@@ -254,10 +264,10 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'SANITY_CHECK': SANITY_CHECK}
 
 instanciated_default_mode=None
-def get_mode(string):
-    if string is None:
+def get_mode(orig_string):
+    if orig_string is None:
         string = config.mode
-
+    else: string = orig_string
     if not isinstance(string, str): return string #it is hopefully already a mode...
 
     global instanciated_default_mode
@@ -272,11 +282,21 @@ def get_mode(string):
         #must tell python to print the summary at the end.
         if string == 'ProfileMode':
             prof_mode_instance_to_print.append(instanciated_default_mode)
-        return instanciated_default_mode
+        ret = instanciated_default_mode
 
-    if not predefined_modes.has_key(string):
+    elif not predefined_modes.has_key(string):
         raise Exception("No predefined mode exist for string: %s"%string)
-    return predefined_modes[string]
+    else: ret = predefined_modes[string]
+
+    if orig_string is None:
+        if theano.config.optimizer_excluding:
+            ret = ret.excluding(theano.config.optimizer_excluding)
+        if theano.config.optimizer_including:
+            ret = ret.including(theano.config.optimizer_including)
+        if theano.config.optimizer_requiring:
+            ret = ret.requiring(theano.config.optimizer_requiring)
+        instanciated_default_mode = ret
+    return ret
 
 def get_default_mode():
     return get_mode(None)
