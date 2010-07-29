@@ -157,4 +157,26 @@ Config Attributes
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
 
+.. attribute:: optimizer_excluding
 
+    Default: ""
+
+    A list of optimizer tags that we don't want included in the default Mode.
+    If multiple tags, separate them by ':'.
+    Ex: to remove the elemwise inplace optimizer(slow for big graph)
+        use the flags: optimizer_excluding:inplace_opt
+	inplace_opt is the name of that optimization.
+
+.. attribute:: optimizer_including
+
+    Default: ""
+
+    A list of optimizer tags that we want included in the default Mode.
+    If multiple tags, separate them by ':'.
+
+.. attribute:: optimizer_requiring
+
+    Default: ""
+
+    A list of optimizer tags that we require for optimizer in the default Mode.
+    If multiple tags, separate them by ':'.

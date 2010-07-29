@@ -9,13 +9,13 @@ from theano.configparser import config, AddConfigVar, StrParam
 _logger = logging.getLogger('theano.compile.mode')
 
 AddConfigVar('optimizer_excluding',
-        "When using the default mode, we will remove optimizer with that tag",
+        "When using the default mode, we will remove optimizer with that tag. Separate many tags with ':'.",
         StrParam(""))
 AddConfigVar('optimizer_including',
-        "When using the default mode, we will add optimizer with that tag",
+        "When using the default mode, we will add optimizer with that tag. Separate many tags with ':'.",
         StrParam(""))
 AddConfigVar('optimizer_requiring',
-        "When using the default mode, we will require optimizer with that tag",
+        "When using the default mode, we will require optimizer with that tag. Separate many tags with ':'.",
         StrParam(""))
 
 def check_equal(x, y):
@@ -278,11 +278,7 @@ def get_mode(orig_string):
         from profilemode import ProfileMode,prof_mode_instance_to_print
         from debugmode import DebugMode
             
-        instanciated_default_mode = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
-        #must tell python to print the summary at the end.
-        if string == 'ProfileMode':
-            prof_mode_instance_to_print.append(instanciated_default_mode)
-        ret = instanciated_default_mode
+        ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
 
     elif not predefined_modes.has_key(string):
         raise Exception("No predefined mode exist for string: %s"%string)
@@ -290,12 +286,17 @@ def get_mode(orig_string):
 
     if orig_string is None:
         if theano.config.optimizer_excluding:
-            ret = ret.excluding(theano.config.optimizer_excluding)
+            ret = ret.excluding(*theano.config.optimizer_excluding.split(':'))
         if theano.config.optimizer_including:
-            ret = ret.including(theano.config.optimizer_including)
+            ret = ret.including(*theano.config.optimizer_including.split(':'))
         if theano.config.optimizer_requiring:
-            ret = ret.requiring(theano.config.optimizer_requiring)
+            ret = ret.requiring(*theano.config.optimizer_requiring.split(':'))
         instanciated_default_mode = ret
+
+    #must tell python to print the summary at the end.
+    if string == 'ProfileMode':
+        prof_mode_instance_to_print.append(ret)
+
     return ret
 
 def get_default_mode():
