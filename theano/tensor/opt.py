@@ -113,7 +113,10 @@ def insert_inplace_optimizer(env):
             continue
         baseline = op.inplace_pattern
         candidate_outputs = [i for i in xrange(len(node.outputs)) if i not in baseline]
-        candidate_inputs = [i for i in xrange(len(node.inputs)) if i not in baseline.values()]
+        #Constant and input that are already destroyed can't be used. Remove here as faster.
+        candidate_inputs = [i for i in xrange(len(node.inputs)) if i not in baseline.values() \
+                                and not isinstance(node.inputs[i],Constant)\
+                                and not env.destroyers(node.inputs[i])]
         for candidate_output in candidate_outputs:
             for candidate_input in candidate_inputs:
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
