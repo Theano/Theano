@@ -467,7 +467,11 @@ class Function(object):
             if arg is None:
                 s.storage[0] = arg
             else:
-                s.storage[0] = s.type.filter(arg, strict=s.strict)
+                try:
+                    s.storage[0] = s.type.filter(arg, strict=s.strict)
+                except Exception, e:
+                    e.args = tuple(list(e.args)+["Bad input argument at index %d"%(list(args).index(arg))])
+                    raise
             s.provided += 1
             i+=1
 
