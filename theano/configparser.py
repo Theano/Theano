@@ -26,7 +26,7 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # In that case, definitions in files on the right (here, ~/.theanorc) have
 # precedence over those in files on the left.
 def config_files_from_theanorc():
-    rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(':')]
+    rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(os.pathsep)]
     return rval
 theano_cfg = ConfigParser.SafeConfigParser()
 theano_cfg.read(config_files_from_theanorc())
