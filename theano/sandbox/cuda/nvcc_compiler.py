@@ -1,7 +1,6 @@
 import sys, os, subprocess, logging
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension, local_bitwidth)
-from theano import config
 import distutils
 import commands
 
@@ -67,7 +66,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     if preargs is None:
         preargs= []
     else: preargs = list(preargs)
-    preargs.append('-fPIC')
+    if sys.platform!='win32':
+        preargs.append('-fPIC')
     no_opt = False
     cuda_root = config.cuda.root
     include_dirs = std_include_dirs() + include_dirs + [os.path.split(__file__)[0]]
@@ -116,12 +116,18 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd = [nvcc_path, '-shared', '-g'] + preargs1
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
-    if local_bitwidth() == 64:
-        cmd.append('-m64')
-        cmd.extend(['-Xcompiler', ','.join(preargs2 +[ '-m64'])])
-    else:
-        cmd.append('-m32')
-        cmd.extend(['-Xcompiler', ','.join(preargs2 +[ '-m32'])])
+   
+    if sys.platform!='win32':
+        if local_bitwidth() == 64:
+            cmd.append('-m64')
+            preargs2.append('-m64')
+        else:
+            cmd.append('-m32')
+            preargs2.append('-m32')
+            
+    if len(preargs2)>0:
+        cmd.extend(['-Xcompiler', ','.join(preargs2)])
+
     if os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
         if sys.platform != 'darwin':

@@ -7,7 +7,7 @@
 #include "cuda_ndarray.cuh"
 
 //If true, when there is a gpu malloc or free error, we print the size of allocated memory on the device.
-#define COMPUTE_GPU_MEM_USED false
+#define COMPUTE_GPU_MEM_USED 0
 
 /////////////////////////
 // Alloc and Free
@@ -420,7 +420,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
 PyObject * CudaNdarray_Copy(CudaNdarray * self)
 {
     PyObject * rval = CudaNdarray_new_null();
-    if ((!rval) or (-1 == self->nd))
+    if ((!rval) || (-1 == self->nd))
     {
         return rval;
     }
@@ -1871,7 +1871,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 
     CudaNdarray * cnda = (CudaNdarray*)py_data;
 
-    if (strict or CudaNdarray_Check(py_data))
+    if (strict || CudaNdarray_Check(py_data))
     {
         //TODO: support non-strict "casting" from a vt to the broadcastable/type/size that we need.
         if (!CudaNdarray_Check(py_data)) 
@@ -1890,7 +1890,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         }
         for (int i = 0; i < cnda->nd; ++i)
         {
-            if ((CudaNdarray_HOST_DIMS(cnda)[i] > 1) and PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
+            if ((CudaNdarray_HOST_DIMS(cnda)[i] > 1) && PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
                 PyErr_Format(PyExc_TypeError, "Non-unit size in broadcastable vt dimension %i", i);
                 Py_DECREF(py_data);
@@ -1913,7 +1913,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         }
         for (int i = 0; i < data->nd; ++i)
         {
-            if ((data->dimensions[i] > 1) and PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
+            if ((data->dimensions[i] > 1) && PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
                 PyErr_Format(PyExc_TypeError, "Non-unit size in broadcastable dimension %i", i);
                 Py_DECREF(data);
@@ -2114,7 +2114,7 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self)
 {
     bool c_contiguous = true;
     int size = 1;
-    for (int i = self->nd-1; (i >= 0) and c_contiguous; --i)
+    for (int i = self->nd-1; (i >= 0) && c_contiguous; --i)
     {
         if (CudaNdarray_HOST_DIMS(self)[i] == 1)
             continue;
@@ -2763,7 +2763,7 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
         }
         else
         {
-            if ((dims_taken[pattern[i]]) or (pattern[i]>= self->nd))
+            if ((dims_taken[pattern[i]]) || (pattern[i]>= self->nd))
             {
                 PyErr_SetString(PyExc_ValueError, "invalid pattern for Cudandarray_dimshuffle");
                 free(newdims);
