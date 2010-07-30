@@ -80,7 +80,7 @@ class Print(Op):
     view_map={0:[0]}
     def __init__(self,message="", attrs=("__str__",)):
         self.message=message
-        self.attrs=attrs
+        self.attrs=tuple(attrs) # attrs should be a hashable iterable
 
     def make_node(self,xin):
         xout = xin.type.make_variable()
@@ -97,8 +97,6 @@ class Print(Op):
             else:
               pmsg = temp
             print self.message, attr,'=', pmsg
-            #backport
-            #print self.message, attr,'=', temp() if callable(temp) else temp
 
     def grad(self,input,output_gradients):
         return output_gradients
@@ -107,7 +105,7 @@ class Print(Op):
         return type(self)==type(other) and self.message==other.message and self.attrs==other.attrs
 
     def __hash__(self):
-        return hash(self.message) ^ hash(str(self.attrs))
+        return hash(self.message) ^ hash(self.attrs)
 
     def c_code_cache_version(self):
         return (1,)
