@@ -53,7 +53,7 @@ Community
     with would have such an active maintenance - this is as good as it
     gets :-)" 
 
-    -- Jan Antolik (Aug 2, 2010)
+    (theano-users, Aug 2, 2010)
 
 
 * Register and post to `theano-users`_ if you want to talk to all Theano users.
