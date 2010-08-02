@@ -119,6 +119,10 @@ def insert_inplace_optimizer(env):
                                 and not env.destroyers(node.inputs[i])]
         for candidate_output in candidate_outputs:
             for candidate_input in candidate_inputs:
+                #remove inputs that don't have the same dtype as the output.
+                if node.inputs[candidate_input].type!=node.outputs[candidate_output].type:
+                    continue
+
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
                 try:
                     new = Elemwise(
