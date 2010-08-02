@@ -1613,7 +1613,17 @@ def local_sum_mul_by_scalar(node):
         if thing_summed.owner and thing_summed.owner.op == T.neg:
             return [T.neg(node.op(thing_summed.owner.inputs[0]))]
 
+@register_specialize
+@gof.local_optimizer([])
+def local_elemwise_sub_zeros(node):
+    """
+    Elemwise{sub}(X,X) -> zeros_like(X)
+    """
+    if isinstance(node.op, T.Elemwise) and node.op.scalar_op.nin==2 and node.op.scalar_op == scalar.sub and node.inputs[0]==node.inputs[1]:
+        return [T.zeros_like(node.inputs[0])]
+
 @register_canonicalize
+@register_specialize
 @gof.local_optimizer([])
 def local_sum_div_dimshuffle(node):
     '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
