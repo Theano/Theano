@@ -1531,6 +1531,48 @@ def test_constant_get_stabilized():
     #When this error is fixed, the following line should be ok.
     assert f()==800,f()
 
+class T_local_sum_canonicalize(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.get_default_mode().including('canonicalize')
+
+    def test_local_sum_all_to_none(self):
+        a = T.tensor3()
+        input=numpy.arange(3*3*3).reshape(3,3,3)
+        f = theano.function([a],a.sum())
+        assert len(f.maker.env.nodes)==1
+        assert numpy.allclose(f(input),input.sum())
+
+        f = theano.function([a],a.sum([0,1,2]))
+        assert len(f.maker.env.nodes)==1
+        assert numpy.allclose(f(input),input.sum())
+
+
+        f = theano.function([a],a.sum(0).sum(0).sum(0))
+        assert len(f.maker.env.nodes)==1
+        assert numpy.allclose(f(input),input.sum())
+
+    def test_local_sum_sum(self):
+        a=T.tensor3()
+        input=numpy.arange(3*3*3).reshape(3,3,3)
+        dims=[(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]
+
+        for d,dd in dims:
+            f = theano.function([a],a.sum(d).sum(dd))
+            assert numpy.allclose(f(input),input.sum(d).sum(dd))
+            assert len(f.maker.env.nodes)==1
+        for d,dd in dims:
+            f = theano.function([a],a.sum(d).sum(dd).sum(0))
+            assert numpy.allclose(f(input),input.sum(d).sum(dd).sum(0))
+            assert len(f.maker.env.nodes)==1
+        for d in [0,1,2]:
+            f = theano.function([a],a.sum(d).sum(None))
+            assert numpy.allclose(f(input),input.sum(d).sum())
+            assert len(f.maker.env.nodes)==1
+        for d in [0,1,2]:
+            f = theano.function([a],a.sum(None).sum())
+            assert numpy.allclose(f(input),input.sum())
+            assert len(f.maker.env.nodes)==1
+            
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')

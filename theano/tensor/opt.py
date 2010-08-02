@@ -1709,19 +1709,19 @@ def local_sum_sum(node):
                     # do it all at once
                     return [T.Sum(None)(summed.owner.inputs[0])]
 
+                if theano.config.warn.sum_sum_bug:
+                    print "WARNING: Theano version between version 9923a40c7b7a and the w august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. To disable this warning, set the theano flags warn.sum_sum_bug to False."
+                newaxis=list(tuple(summed.owner.op.axis))
                 # figure out which dimensions of the original input are preserved
-                alldims = range(summed.owner.inputs[0].type.ndim)
-                
-                # trim out the dimensions that were removed by the first sum
-                alldims = [d for i,d in enumerate(alldims) if i in summed.owner.op.axis]
-
-                # trim out the dimensions removed by second sum
-                alldims = [d for i,d in enumerate(alldims) if i in node.op.axis]
-
-                # figure out an axis argument that combines the effect of both
-                newaxis = [i for i in xrange(summed.owner.inputs[0].type.ndim)
-                        if i not in alldims]
-
+                for i in node.op.axis:
+                    new_i = i
+                    for ii in summed.owner.op.axis:
+                        if i>=ii:
+                            new_i+=1
+                    assert new_i not in newaxis
+                    newaxis.append(new_i)
+                        
+                assert len(newaxis)==len(list(summed.owner.op.axis)+list(node.op.axis))
                 combined_sum = T.Sum(newaxis)
                 return [combined_sum(summed.owner.inputs[0])]
 

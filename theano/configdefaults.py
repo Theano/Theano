@@ -87,3 +87,7 @@ AddConfigVar('warn.argmax_pushdown_bug',
 AddConfigVar('warn.gpusum_01_011_0111_bug',
              "Warn if we are in a case where old version of Theano had a silent bug with GpuSum pattern 01,011 and 0111 when the first dimensions was bigger then 4096. Was fixed 31 may 2010",
              BoolParam(True))
+
+AddConfigVar('warn.sum_sum_bug',
+             "Warn if we are in a case where Theano version between version 9923a40c7b7a and the 2 august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. Was fixed 2 August 2010",
+             BoolParam(True))
