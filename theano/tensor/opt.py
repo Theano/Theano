@@ -1644,6 +1644,10 @@ def local_sum_div_dimshuffle(node):
     if dimension l of the DimShuffle is 'x'.'''
     # TODO: extend it to product, and quotient of products
 
+    # It does not make much sense now to extend it to the case where the
+    # dimshuffle is in the numerator, since elemwise inversion of the
+    # denominator would still be needed before the summation.
+
     if isinstance(node.op, T.Sum):
         axis = node.op.axis
         if axis is None:
@@ -1653,25 +1657,9 @@ def local_sum_div_dimshuffle(node):
         dimshuffled = None
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
-            #This if have bad logic. See its test in tensor/tests/test_opt.py:T_local_sum_dimshuffle
-            #that fail when we enable this if.
-            if False and numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
-                new_order = numerator.owner.op.new_order
-                #print 'new_order =', new_order
-                # check compatibility
-                compatible_dims = True
-                for ax in axis:
-                    if len(new_order) <= ax or new_order[ax] != 'x':
-                        compatible_dims = False
-                        break
-                if compatible_dims:
-                    #print 'getting num out'
-                    new_num = numerator.owner.inputs[0]
-                    return [T.true_div(new_num, node.op(denominator))]
-                #else:
-                #    print 'incompatible dims:', axis, new_order
 
             if denominator.owner and isinstance(denominator.owner.op, T.DimShuffle):
+                thing_dimshuffled = denominator.owner.inputs[0]
                 new_order = denominator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility
@@ -1683,9 +1671,24 @@ def local_sum_div_dimshuffle(node):
                     if len(new_order) <= ax or new_order[ax] != 'x':
                         compatible_dims = False
                         break
+
                 if compatible_dims:
                     #print 'getting denom out'
-                    new_denom = denominator.owner.inputs[0]
+                    # Keep needed dimensions for new dimshuffle
+                    new_new_order = list(ax for i,ax in enumerate(new_order) if i not in axis or ax != 'x')
+                    #print 'new_new_order =', new_new_order
+                    # Remove useless rebroadcast axes
+                    while new_new_order[0] == 'x':
+                        del new_new_order[0]
+                    #print 'new_new_order =', new_new_order
+
+                    if all(i == e for i, e in enumerate(new_new_order)):
+                        new_denom = thing_dimshuffled
+                    else:
+                        new_denom = T.DimShuffle(
+                                    thing_dimshuffled.type.broadcastable,
+                                    new_new_order
+                                    )(thing_dimshuffled)
                     return [T.true_div(node.op(numerator), new_denom)]
                 #else:
                 #    print 'incompatible dims:', axis, new_order

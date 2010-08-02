@@ -1578,44 +1578,36 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
     def test_local_sum_div_dimshuffle(self):
-        a = T.matrix()
-        b = T.vector()
-        c = T.tensor3()
+        a = T.matrix('a')
+        b = T.vector('b')
+        c = T.tensor3('c')
 
         sums = [
             sum(a / b, axis=0),
-            sum(b / a, axis=0),
             sum(a / b.dimshuffle(0,'x'), axis=1),
-            sum(b.dimshuffle(0,'x') / a, axis=1),
             sum(c / a, axis=0),
-            sum(a / c, axis=0),
+            sum(c / a.dimshuffle(1, 0), axis=0),
             sum(c / a.dimshuffle(0,'x',1), axis=1),
-            sum(a.dimshuffle(0,'x',1) / c, axis=1),
+            sum(c / a.dimshuffle(1,'x',0), axis=1),
             sum(c / a.dimshuffle(0, 1, 'x'), axis=2),
-            sum(a.dimshuffle(0, 1, 'x') / c, axis=2),
+            sum(c / a.dimshuffle(1, 0, 'x'), axis=2),
             sum(c / b, axis=0),
-            sum(b / c, axis=0),
             sum(c / b, axis=1),
-            sum(b / c, axis=1),
             sum(c / b, axis=(0,1)),
-            sum(b / c, axis=(0,1)),
             sum(c / b.dimshuffle(0,'x'), axis=0),
-            sum(b.dimshuffle(0,'x') / c, axis=0),
             sum(c / b.dimshuffle(0,'x'), axis=2),
-            sum(b.dimshuffle(0,'x') / c, axis=2),
             sum(c / b.dimshuffle(0,'x'), axis=(0,2)),
-            sum(b.dimshuffle(0,'x') / c, axis=(0,2)),
             sum(c / b.dimshuffle(0,'x','x'), axis=1),
-            sum(b.dimshuffle(0,'x','x') / c, axis=1),
             sum(c / b.dimshuffle(0,'x','x'), axis=2),
-            sum(b.dimshuffle(0,'x','x') / c, axis=2),
             sum(c / b.dimshuffle(0,'x','x'), axis=(1,2)),
-            sum(b.dimshuffle(0,'x','x') / c, axis=(1,2)),
             sum(sum(c, axis=0) / b, axis=0),
-            sum(b / sum(c, axis=0), axis=0),
             sum(sum(c, axis=1) / b, axis=0),
-            sum(b / sum(c, axis=1), axis=0),
             ]
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a_val = rng.randn(2,2)
+        b_val = rng.randn(2)
+        c_val = rng.randn(2,2,2)
 
         for i,s in enumerate(sums):
             print i
@@ -1623,11 +1615,8 @@ class T_local_sum_dimshuffle(unittest.TestCase):
             theano.printing.debugprint(f)
             g = f.maker.env.toposort()
             #print 'g =', g
-            f([[1,1],[1,1]],[1,1],[[[1,1],[1,1]],[[1,1],[1,1]]])
-            num, denum = s.owner.inputs[0].owner.inputs
-            if denum.owner and isinstance(denum.owner.op, T.DimShuffle):
-                assert g[-1].op == T.true_div
-                
+            assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
+
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
