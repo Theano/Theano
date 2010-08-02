@@ -4,3 +4,24 @@
 with would have such an active maintenance - this is as good as it
 gets :-)" 
 -- Jan Antolik, [theano-users] strange behaviour, Mon, Aug 2, 2010 at 1:36 PM
+
+-------------------------
+
+"Theano rocks incredibly. It's like the holy grail of linear algebra
+computations."
+
+-- visionlessvisionary on reddit
+
+http://www.reddit.com/r/MachineLearning/comments/banhb/deep_learning_tutorial_learn_to_build_complex/c0lsvik
+
+-------------------------
+
+I am completely new to theano and after running the deep-learning
+tutorial and see the examples actually work on my GTX 275 I must say I
+am 100% sold on the theano approach; this is an amazing project that
+deserves broad recognition among the scientific python community.
+
+-- Olivier Grisel
+
+
+-------------------------
