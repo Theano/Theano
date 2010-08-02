@@ -49,6 +49,13 @@ Theano was featured at `SciPy 2010 <http://www.iro.umontreal.ca/~lisa/publicatio
 Community
 =========
 
+    "Thank YOU for correcting it so quickly. I wish all packages I worked
+    with would have such an active maintenance - this is as good as it
+    gets :-)" 
+
+    -- Jan Antolik (Aug 2, 2010)
+
+
 * Register and post to `theano-users`_ if you want to talk to all Theano users.
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
