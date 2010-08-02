@@ -1538,7 +1538,7 @@ class T_local_sum(unittest.TestCase):
     def test_local_sum_all_to_none(self):
         a = T.tensor3()
         input=numpy.arange(3*3*3).reshape(3,3,3)
-        f = theano.function([a],a.sum()),mode=self.mode)
+        f = theano.function([a],a.sum(),mode=self.mode)
         assert len(f.maker.env.nodes)==1
         assert numpy.allclose(f(input),input.sum())
 
@@ -1631,6 +1631,33 @@ class T_local_sum_dimshuffle(unittest.TestCase):
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
+
+def test_make_vector_upcast():
+    b = T.bscalar()
+    i = T.iscalar()
+    d = T.dscalar()
+    
+    opt.MakeVector(dtype="int8")(b,b)
+    opt.MakeVector(dtype="int32")(i,b)
+    opt.MakeVector(dtype="int32")(b,i)
+    opt.MakeVector(dtype="float64")(b,i)
+    opt.MakeVector(dtype="float64")(b,d)
+    opt.MakeVector(dtype="float64")(d,i)
+
+    #should fail
+    for (dtype,inputs) in [("int8",(b,i)),
+                           ("int8",(i,b)),
+                           ("int8",(b,d)),
+                           ("int8",(i,i)),
+                           ("int32",(d,i)),
+                           ("int32",(i,d)),
+                           ("float32",(i,d)),
+                           ]:
+        try:
+            opt.MakeVector(dtype=dtype)(*inputs)
+            raise Exception("Theano should have raised an error")
+        except AssertionError:
+            pass
 
 if __name__ == '__main__':
 #    unittest.main()

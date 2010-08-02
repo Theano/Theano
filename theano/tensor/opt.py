@@ -230,8 +230,14 @@ class MakeVector(T.Op):
             dtype=theano.scalar.upcast(self.dtype,*[i.dtype for i in inputs])
             #upcast the input to the determined dtype, but don't upcast downcast anything
             assert dtype==self.dtype, "Upcast the input of MakeVector to dtype gived in init without precissino loss only."
+            if not all(self.dtype == T.cast(i,dtype=dtype).dtype for a in inputs):
+                raise TypeError("MakeVector.make_node expected inputs upcastable to %s. got %s"%(
+                        self.dtype,
+                        str([i.dtype for i in inputs])
+                        ))
             inputs=[T.cast(i,dtype=dtype) for i in inputs]
-        assert all(a.type == inputs[0].type for a in inputs)
+        assert all(self.dtype == a.dtype for a in inputs)
+        assert all(a.ndim==0 for a in inputs)
 
         if inputs:
             dtype = inputs[0].type.dtype
