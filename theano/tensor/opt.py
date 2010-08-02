@@ -1629,7 +1629,9 @@ def local_sum_div_dimshuffle(node):
         dimshuffled = None
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
-            if numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
+            #This if have bad logic. See its test in tensor/tests/test_opt.py:T_local_sum_dimshuffle
+            #that fail when we enable this if.
+            if False and numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
                 new_order = numerator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility

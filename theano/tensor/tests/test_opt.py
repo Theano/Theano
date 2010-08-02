@@ -1581,8 +1581,11 @@ class T_local_sum_dimshuffle(unittest.TestCase):
             theano.printing.debugprint(f)
             g = f.maker.env.toposort()
             #print 'g =', g
-            assert g[-1].op == T.true_div
-
+            f([[1,1],[1,1]],[1,1],[[[1,1],[1,1]],[[1,1],[1,1]]])
+            num, denum = s.owner.inputs[0].owner.inputs
+            if denum.owner and isinstance(denum.owner.op, T.DimShuffle):
+                assert g[-1].op == T.true_div
+                
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
