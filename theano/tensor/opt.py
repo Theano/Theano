@@ -227,8 +227,12 @@ class MakeVector(T.Op):
     def make_node(self, *inputs):
         inputs = map(T.as_tensor_variable, inputs)
         if not all(a.type == inputs[0].type for a in inputs):
-            raise TypeError('This MakeVector instance requires inputs of same type %s' %
-                    inputs[0].type)
+            dtype=theano.scalar.upcast(self.dtype,*[i.dtype for i in inputs])
+            #upcast the input to the determined dtype, but don't upcast downcast anything
+            assert dtype==self.dtype, "Upcast the input of MakeVector to dtype gived in init without precissino loss only."
+            inputs=[T.cast(i,dtype=dtype) for i in inputs]
+        assert all(a.type == inputs[0].type for a in inputs)
+
         if inputs:
             dtype = inputs[0].type.dtype
         else:
