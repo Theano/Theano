@@ -1678,7 +1678,7 @@ def local_sum_div_dimshuffle(node):
                     new_new_order = list(ax for i,ax in enumerate(new_order) if i not in axis or ax != 'x')
                     #print 'new_new_order =', new_new_order
                     # Remove useless rebroadcast axes
-                    while new_new_order[0] == 'x':
+                    while len(new_new_order)>0 and new_new_order[0] == 'x':
                         del new_new_order[0]
                     #print 'new_new_order =', new_new_order
 
