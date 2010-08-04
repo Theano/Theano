@@ -10,6 +10,8 @@ def filter_output(fd_in):
                 s+=line
             if toks[0].startswith("ImportError"):
                 s+=line
+            if toks[0] in ["KnownFailureTest:", "Exception:", "Failure:", "AssertionError", "AssertionError:"]:
+                s+=line
     return s
         
 if __name__ == "__main__":
