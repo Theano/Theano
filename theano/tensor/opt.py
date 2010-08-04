@@ -1752,7 +1752,7 @@ def local_sum_sum(node):
                             new_i+=1
                     assert new_i not in newaxis
                     newaxis.append(new_i)
-                        
+
                 assert len(newaxis)==len(list(summed.owner.op.axis)+list(node.op.axis))
 
                 #The old bugged logic. We keep it their to generate a warning when we generated bad code.
@@ -1761,9 +1761,9 @@ def local_sum_sum(node):
                 alldims = [d for i,d in enumerate(alldims) if i in node.op.axis]
                 newaxis_old = [i for i in xrange(summed.owner.inputs[0].type.ndim)
                                if i not in alldims]
-                
+
                 if theano.config.warn.sum_sum_bug and newaxis!=newaxis_old and len(newaxis)==len(newaxis_old):
-                    print "WARNING: YOUR CURRENT CODE IS FINE. Theano version between version 9923a40c7b7a and the 2 august 2010(fixation date), generated an error in that case. This happen when their is 2 consecutive sum in the graph and the intermediate sum is not used elsewhere in the code. Some safe guard removed some bad code, but not in all case. You are in one such case. To disable this warning, set the theano flags warn.sum_sum_bug to False."
+                    _logger.warn("WARNING: YOUR CURRENT CODE IS FINE. Theano version between version 9923a40c7b7a and the 2 august 2010(fixation date), generated an error in that case. This happen when their is 2 consecutive sum in the graph and the intermediate sum is not used elsewhere in the code. Some safe guard removed some bad code, but not in all case. You are in one such case. To disable this warning, set the theano flags warn.sum_sum_bug to False.")
 
                 combined_sum = T.Sum(newaxis)
                 return [combined_sum(summed.owner.inputs[0])]
