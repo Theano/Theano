@@ -226,7 +226,7 @@ class MakeVector(T.Op):
         return hash(type(self)) ^ hash(self.dtype)
     def make_node(self, *inputs):
         inputs = map(T.as_tensor_variable, inputs)
-        if not all(a.type == inputs[0].type for a in inputs):
+        if not all(a.type == inputs[0].type for a in inputs) or inputs[0].dtype != self.dtype:
             dtype=theano.scalar.upcast(self.dtype,*[i.dtype for i in inputs])
             #upcast the input to the determined dtype, but don't upcast downcast anything
             assert dtype==self.dtype, "Upcast the input of MakeVector to dtype gived in init without precissino loss only."

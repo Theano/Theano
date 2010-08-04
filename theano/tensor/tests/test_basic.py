@@ -7,7 +7,7 @@ from theano.tensor import inplace
 
 import unittest
 from copy import copy
-from theano import compile
+from theano import compile, config
 from theano import gradient
 from theano import gof
 from theano.gof.python25 import any, all
@@ -1033,7 +1033,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_stack_scalar_make_vector(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
-        not Join.'''
+        not Join. Test that the floatX dtype stay floatX, not down casted to int64'''
         a = tensor.scalar('a')
         b = tensor.scalar('b')
         s = stack(a, b, a, b)
@@ -1042,8 +1042,9 @@ class T_Join_and_Split(unittest.TestCase):
         print val
         self.failUnless(numpy.all(val == [1,2,1,2]))
         e = f.maker.env.toposort()
-        assert len([n for n in e if n.op == opt.make_vector]) > 0
+        assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
         assert len([n for n in e if isinstance(n, Join)]) == 0
+        assert f.maker.env.outputs[0].dtype == config.floatX
 
     def test_join_vector(self):
         a = as_tensor_variable(numpy.array([1, 2, 3]))

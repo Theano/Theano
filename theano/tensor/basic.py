@@ -2941,7 +2941,7 @@ def stack(*tensors):
                   isinstance(t.type, TensorType) and\
                   t.ndim==0 and t.type==tensors[0].type\
                   for t in tensors]):
-        return theano.tensor.opt.make_vector(*tensors)
+        return theano.tensor.opt.MakeVector(scal.upcast(*[i.dtype for i in tensors]))(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
