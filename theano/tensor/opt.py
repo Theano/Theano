@@ -1658,6 +1658,21 @@ def local_sum_div_dimshuffle(node):
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
 
+            ## Old, bugged logic, reproduced here only to warn users
+            if config.warn.sum_div_dimshuffle_bug:
+                if numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
+                    new_order = numerator.owner.op.new_order
+                    compatible_dims = True
+                    for ax in axis:
+                        if len(new_order) <= ax or new_order[ax] != 'x':
+                            compatible_dims = False
+                            break
+                    if compatible_dims:
+                        _logger.warn('WARNING: Your current code is fine, but Theano versions between '+\
+                                'rev. 3bd9b789f5e8 (2010-06-16) and cfc6322e5ad4 (2010-08-03) would '+\
+                                'have given an incorrect result. '+\
+                                'To disable this warning, set the Theano flag warn.sum_div_dimshuffle_bug to False.')
+
             if denominator.owner and isinstance(denominator.owner.op, T.DimShuffle):
                 thing_dimshuffled = denominator.owner.inputs[0]
                 new_order = denominator.owner.op.new_order
@@ -1685,6 +1700,12 @@ def local_sum_div_dimshuffle(node):
                     if all(i == e for i, e in enumerate(new_new_order)):
                         new_denom = thing_dimshuffled
                     else:
+                        if config.warn.sum_div_dimshuffle_bug:
+                            _logger.warn('WARNING: Your current code is fine, but Theano versions between '+\
+                                    'rev. 3bd9b789f5e8 (2010-06-16) and cfc6322e5ad4 (2010-08-03) would '+\
+                                    'have given an incorrect result. '+\
+                                    'To disable this warning, set the Theano flag warn.sum_div_dimshuffle_bug to False.')
+
                         new_denom = T.DimShuffle(
                                     thing_dimshuffled.type.broadcastable,
                                     new_new_order

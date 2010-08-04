@@ -91,3 +91,7 @@ AddConfigVar('warn.gpusum_01_011_0111_bug',
 AddConfigVar('warn.sum_sum_bug',
              "Warn if we are in a case where Theano version between version 9923a40c7b7a and the 2 august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. Was fixed 2 August 2010",
              BoolParam(True))
+
+AddConfigVar('warn.sum_div_dimshuffle_bug',
+             "Warn if previous versions of Theano (between rev. 3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03) would have given incorrect result. This bug was triggered by sum of division of dimshuffled tensors.",
+             BoolParam(True))
