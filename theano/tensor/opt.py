@@ -217,7 +217,7 @@ class MakeVector(T.Op):
 
     This is a simple version of stack() that introduces far less cruft into the graph.
     
-    Should work with 0 inputs.
+    Should work with 0 inputs. The constant_folding optimization will remove it.
     """
     def __init__(self, dtype='int64'):
         self.dtype = dtype
