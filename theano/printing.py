@@ -76,6 +76,8 @@ class Print(Op):
     @type attrs: list of Strings
     @param attrs: list of input node attributes or member functions to print. Functions are
     identified through callable(), executed and their return value printed.
+
+    :note: WARNING. This can disable some optimization(speed and stabilization)!
     """
     view_map={0:[0]}
     def __init__(self,message="", attrs=("__str__",)):
