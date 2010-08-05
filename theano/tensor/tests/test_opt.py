@@ -1637,17 +1637,19 @@ class T_local_sum_dimshuffle(unittest.TestCase):
     # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
 
-def test_make_vector_upcast():
+def test_make_vector():
     b = T.bscalar()
     i = T.iscalar()
     d = T.dscalar()
     
-    opt.MakeVector(dtype="int8")(b,b)
-    opt.MakeVector(dtype="int32")(i,b)
-    opt.MakeVector(dtype="int32")(b,i)
-    opt.MakeVector(dtype="float64")(b,i)
-    opt.MakeVector(dtype="float64")(b,d)
-    opt.MakeVector(dtype="float64")(d,i)
+    assert opt.MakeVector(dtype="int8")(b,b).dtype=="int8"
+    assert opt.MakeVector(dtype="int32")(i,b).dtype=="int32"
+    assert opt.MakeVector(dtype="int32")(b,i).dtype=="int32"
+    assert opt.MakeVector(dtype="float64")(b,i).dtype=="float64"
+    assert opt.MakeVector(dtype="float64")(b,d).dtype=="float64"
+    assert opt.MakeVector(dtype="float64")(d,i).dtype=="float64"
+    assert opt.MakeVector(dtype="float64")().dtype=="float64"
+    assert opt.MakeVector(dtype="int64")().dtype=="int64"
 
     #should fail
     for (dtype,inputs) in [("int8",(b,i)),
