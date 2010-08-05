@@ -125,12 +125,18 @@ def insert_inplace_optimizer(env):
 
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
                 try:
-                    new = Elemwise(
-                        op.scalar_op.__class__(
+                    if hasattr(op.scalar_op,"make_new_inplace"):
+                        new_scal = op.scalar_op.make_new_inplace(
                             scalar.transfer_type(
                                 *[inplace_pattern.get(i, None) \
-                                        for i in xrange(len(node.outputs))])),
-                        inplace_pattern).make_node(*node.inputs)
+                                      for i in xrange(len(node.outputs))]))
+                    else:
+                        new_scal = op.scalar_op.__class__(
+                            scalar.transfer_type(
+                                *[inplace_pattern.get(i, None) \
+                                      for i in xrange(len(node.outputs))]))
+                    new = Elemwise(new_scal,inplace_pattern).make_node(*node.inputs)
+                                   
                     env.replace_all_validate(zip(node.outputs, new.outputs),
                             reason="insert_inplace_optimizer")
                 except (ValueError, TypeError, InconsistencyError), e:

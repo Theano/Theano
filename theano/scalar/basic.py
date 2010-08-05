@@ -1669,7 +1669,21 @@ class Composite(ScalarOp):
             return "%s{%s}" % (self.__class__.__name__, ", ".join(
                 "%s=%s" % (k, v) for k, v in self.__dict__.items()
                 if k not in ["env","_c_code", "_cmodule_key", "_impls",
-                             "_hashval"] ))
+                             "_hashval", "inputs_type"] ))
+
+    def make_new_inplace(self, output_types_preference = None, name = None):
+        """
+        This op.__init__ fct don't have the same parameter as other scalar op.
+        This break the insert_inplace_optimizer optimization. 
+        This fct allow fix patch this.
+        """
+        out = self.__class__(self.inputs,self.outputs)
+        if name:
+            out.name = name
+        else:
+            name = out.name
+        super(Composite,out).__init__(output_types_preference, name)
+        return out
 
     def __init__(self, inputs, outputs):
         self.inputs=copy(inputs)

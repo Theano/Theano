@@ -886,6 +886,20 @@ class test_fusion(unittest.TestCase):
         print d
         print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
 
+    def test_fusion_inplace(self):
+        mode=cp(compile.mode.get_default_mode())
+        #we need the optimisation enabled and the canonicalize.
+        #the canonicalize is needed to merge multiplication/addition by constant.
+        mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize','inplace')
+
+
+        x, y, z = dmatrices('xyz')
+        f=theano.function([x,y,z],dot(x,y)+x+y+z,mode=mode)
+        topo = f.maker.env.toposort()
+        assert len(topo) == 2
+        assert f.maker.env.toposort()[-1].op.inplace_pattern
+        f(numpy.random.random((5,5)),numpy.random.random((5,5)),numpy.random.random((5,5)))
+
     def speed_fusion_gpu(self):
         import theano.sandbox.cuda as cuda
         self.speed_fusion(shared_fn=tcn.float32_shared_constructor, gpu=True, s=slice(0,15))
