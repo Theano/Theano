@@ -60,7 +60,7 @@ class GpuFromHost(Op):
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
-        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable)()])
+        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable, dtype=x.dtype)()])
     def perform(self, node, (x,), (z,)):
         z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
     def grad(self, inputs, (gz,)):
