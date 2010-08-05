@@ -36,9 +36,9 @@ class ProfileMode(Mode):
         compile_time = 0 #time passed in theano.function()
         fct_call_time = {}#time passed inside theano fct call including op time.
         fct_call = {}
-
+        message=""
         self.__setstate__((linker, optimizer, apply_time, op_cimpl,
-                           compile_time, fct_call_time, fct_call))
+                           compile_time, fct_call_time, fct_call, message))
 
     def function_maker(self, i,o,m, *args, **kwargs):
         """Return an instance of `Profiler_Maker` which init the count"""
@@ -51,10 +51,10 @@ class ProfileMode(Mode):
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.apply_time,
-                self.op_cimpl, self.compile_time, self.fct_call_time, self.fct_call)
+                self.op_cimpl, self.compile_time, self.fct_call_time, self.fct_call, self.message)
 
     def __setstate__(self, (linker, optimizer, apply_time, op_cimpl,
-                            compile_time, fct_call_time, fct_call)):
+                            compile_time, fct_call_time, fct_call, message)):
         
         self.apply_time = apply_time
         self.op_cimpl = op_cimpl
@@ -63,6 +63,7 @@ class ProfileMode(Mode):
         self.fct_call = fct_call
         self.call_time = 0
         self.fn_time = 0
+        self.message = ""
 
         def profile_thunk(i, node, th):
             if hasattr(th, 'cthunk'):
@@ -114,9 +115,10 @@ class ProfileMode(Mode):
         fct_call = self.fct_call
         apply_time = self.apply_time
         op_cimpl = self.op_cimpl
-
+        message = self.message
+        
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl,
+                            apply_time, op_cimpl, message,
                             n_apply_to_print, n_ops_to_print)
 
 
@@ -151,15 +153,16 @@ class ProfileMode(Mode):
         fct_call = diff_dict(self.fct_call,other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
         op_cimpl = self.op_cimpl and other.op_cimpl
+        message = self.message
 
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl,
+                            apply_time, op_cimpl, message,
                             n_apply_to_print=n_apply_to_print,
                             n_ops_to_print=n_ops_to_print, print_apply=False)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
-                       apply_time, op_cimpl,
+                       apply_time, op_cimpl, message,
                        n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
         """
         do the actual printing of print_summary and print_diff_summary.
@@ -172,7 +175,7 @@ class ProfileMode(Mode):
         local_time = sum(apply_time.values())
 
         print ''
-        print 'ProfileMode.%s()'%(fct_name)
+        print 'ProfileMode.%s(%s)'%(fct_name,message)
         print '---------------------------'
         print ''
         
