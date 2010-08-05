@@ -2703,10 +2703,12 @@ def test_unalign():
     f.maker.env.toposort()
     try:
         out_theano = f(a,b)
+        assert not a.flags.aligned
+        assert not b.flags.aligned
+        assert numpy.allclose(out_numpy,out_theano)
+        raise Exception("Expected an error from Theano!")
     except NotImplementedError:
         pass
-    else:
-        raise Exception("Expected an error from Theano!")
 
 if __name__ == '__main__':
     if 1:
