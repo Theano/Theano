@@ -2744,6 +2744,14 @@ def unbroadcast(x, *axes):
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
+def patternbroadcast(x, broadcastable):
+    """
+    Make the input impossible to broadcast in the specified axes.
+    
+    We apply the opt here to don't pollute the graph especially during the gpu optimization
+    """
+    rval = Rebroadcast(*[(i,broadcastable[i]) for i in range(len(broadcastable))])(x)
+    return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
 class Join(Op):
     """

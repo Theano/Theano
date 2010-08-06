@@ -497,7 +497,9 @@ def local_gpu_conv(node):
         if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
             img, kern = host_input.owner.inputs
-            return [gpu_conv(gpu_from_host(img), gpu_from_host(kern))]
+            #in some case the ConvOp broadcast the last 2 dimensions differently then the gpu ConvOp
+            return [tensor.patternbroadcast(gpu_conv(gpu_from_host(img), gpu_from_host(kern)),
+                                            node.outputs[0].broadcastable)]
 
     if isinstance(node.op, conv.ConvOp):
         #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
@@ -506,7 +508,10 @@ def local_gpu_conv(node):
         kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
         if img_on_gpu or kern_on_gpu:
             gpu_conv = GpuConvOp_from_ConvOp(node.op)
-            return [host_from_gpu(gpu_conv(gpu_from_host(img), gpu_from_host(kern)))]
+            #in some case the ConvOp broadcast the last 2 dimensions differently then the gpu ConvOp
+            return [tensor.patternbroadcast(host_from_gpu(gpu_conv(gpu_from_host(img),
+                                                                   gpu_from_host(kern))),
+                                            node.outputs[0].broadcastable)]
 
 import theano.tensor.signal.downsample as downsample
 @register_opt()
