@@ -121,7 +121,8 @@ def local_gpu_elemwise_1(node):
         if host_i.owner and isinstance(host_i.owner.op, tensor.Elemwise) and len(host_i.clients)==1:
             elemwise_node = host_i.owner
             new_op = GpuElemwise(elemwise_node.op.scalar_op, elemwise_node.op.inplace_pattern)
-            return [new_op(*(gpu_from_host(i) for i in elemwise_node.inputs))]
+            if all([i.dtype=='float32' for i in elemwise_node.inputs]):
+                return [new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])]
     return False
 
 @register_opt()
