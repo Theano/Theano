@@ -975,6 +975,34 @@ class T_Scan(unittest.TestCase):
         print f([2,3])
         assert numpy.allclose(f([2,3]) , 5)
 
+    def test_computing_gradient(self):
+        x1 = theano.tensor.scalar()
+        x2 = theano.shared(numpy.array([1,2,3,4,5]))
+        K = x2*x1
+
+        out,updates = theano.scan(lambda i,v: theano.tensor.grad(K[i], v), 
+                sequences = theano.tensor.arange(K.shape[0]), non_sequences=x1)
+        f = theano.function([x1], out)
+
+        print f(3.)
+        assert numpy.all( f(3.) != 0. )
+
+    '''
+    def test_shared_updates(self):
+        X = theano.shared( numpy.array( [[1,2,3],[4,5,6]])) 
+
+        out,updates = theano.scan( lambda :{X: X+1}, outputs_info = [], non_sequences= [], 
+                sequences = [], n_steps = 10)
+
+        f = theano.function([],[], updates = updates)
+
+        f()
+
+        print X.value
+    '''
+
+
+
 if __name__ == '__main__':
     unittest.main()
 
