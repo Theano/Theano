@@ -583,7 +583,7 @@ conv_rows( float* img, float* kern, float* out,
  * we store kern_len row of the image and the full kernel in the shared memory
  * each thread compute only one value for the output
  * thread block size=out_wid, block_len
- * grid block size=intceil(out_len/block_len),batch_id
+ * grid block size=intceil(out_len/block_len),nb_batch*nb_kern
  * dynamic shared memory: (kern_len+block_len-1)*img_wid+kern_len*kern_wid
  * Diff with conv_patch: don't store the full image in the shared memory. 
  *    I.E. work for bigger image then conv_patch<split=true,...>.
@@ -650,7 +650,7 @@ conv_rows_stack( float* img, float* kern, float* out,
  * we store block_len row of the image(at a time) and one or all kernel row in the shared memory
  * each thread compute only one value for the output
  * thread block size=out_wid, block_len
- * grid block size=intceil(out_len/block_len),batch_id
+ * grid block size=intceil(out_len/block_len),nb_batch*nb_kern
  * dynamic shared memory: block_len * img_wid+(preload_full_kern?kern_len:1)*kern_wid
  * Diff with conv_patch: don't store the full image and kernel in the shared memory. 
  *    I.E. work for bigger image then conv_patch<split=true,...>.
