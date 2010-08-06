@@ -735,6 +735,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
             #gcc put its messages to stderr, so we add ours now
             print >> sys.stderr, '%05i\t%s'%(i+1, l)
         print '==============================='
+        print >> sys.stderr, "command line:",' '.join(cmd)
         raise Exception('g++ return status', status)
 
     #touch the __init__ file
