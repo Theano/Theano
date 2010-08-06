@@ -700,14 +700,16 @@ conv_rows_stack2( float* img, float* kern, float* out,
       __syncthreads();
 
       for (int row=0; row < kern_len; row++) {//loop over row
-	int _idx1=img_stride_batch*batch_id+img_stride_stack*stack;//selection the good image from the batch and stack
-	_idx1+=(blockIdx.x*nb_rows)*img_stride_row;//select the good top row for the block of threads
-	_idx1+=(row+nb_rows-1)*img_stride_row;//the current last row
-
 	__syncthreads();
-	load_to_shared(d_img+((row+nb_rows-1)%nb_rows)*img_wid,
-		       img+_idx1, thread_id, nb_thread_id, img_wid, 1,
-		       img_stride_col, img_stride_row, false, c_contiguous);//we use d_img as a circular buffer.
+	if((blockIdx.x*nb_rows+row+nb_rows-1)<img_len){
+	  int _idx1=img_stride_batch*batch_id+img_stride_stack*stack;//selection the good image from the batch and stack
+	  _idx1+=(blockIdx.x*nb_rows)*img_stride_row;//select the good top row for the block of threads
+	  _idx1+=(row+nb_rows-1)*img_stride_row;//the current last row
+	  load_to_shared(d_img+((row+nb_rows-1)%nb_rows)*img_wid,
+			 img+_idx1, thread_id, nb_thread_id, img_wid, 1,
+			 img_stride_col, img_stride_row, false, c_contiguous);//we use d_img as a circular buffer.
+	}
+
 	if(!preload_full_kern){
 	  int _idx3=kern_stride_nkern*kern_id+kern_stride_stack*stack;//selection the good kern from the batch and stack
 	  _idx3+=(kern_len-row-1)*kern_stride_row;//the current last row flipped
