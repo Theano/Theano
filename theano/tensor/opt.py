@@ -1789,6 +1789,37 @@ def local_cut_useless_reduce(node):
         if summed.type == node.outputs[0].type:
             return [summed]
 
+@register_specialize
+@gof.local_optimizer([])
+def local_sum_alloc(node):
+    """ sum(alloc(constant,shapes...)) => constant*prod(shapes)"""
+    if isinstance(node.op, T.Sum):
+        summed, = node.inputs
+        if summed.owner and isinstance(summed.owner.op, T.Alloc):
+            input = summed.owner.inputs[0]
+            shapes = summed.owner.inputs[1:]
+            #import pdb;pdb.set_trace()
+            if node.op.axis is None or node.op.axis == tuple(range(input.ndim)):
+                try:
+                    val = get_constant_value(input)
+                    assert val.size == 1
+                    val = val.reshape(1)[0]*T.mul(*shapes)
+                    return [T.cast(val, dtype=node.outputs[0].dtype)]
+                except TypeError, e:
+                    pass
+            else:
+                try:
+                    val = get_constant_value(input)
+                    assert val.size == 1
+                    val = val.reshape(1)[0]
+                    to_prod = [shapes[i] for i in range(len(shapes)) if i in node.op.axis]
+                    if to_prod:
+                        val *= T.mul(*to_prod)
+                    return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
+                                    *[shapes[i] for i in range(len(shapes)) if i not in node.op.axis])]
+                except TypeError, e:
+                    pass
+
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
     if node.op == T.mul and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == -1.0):

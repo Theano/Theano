@@ -1622,7 +1622,42 @@ class T_local_sum(unittest.TestCase):
             f = theano.function([a],a.sum(None).sum(),mode=self.mode)
             assert numpy.allclose(f(input),input.sum())
             assert len(f.maker.env.nodes)==1
-            
+
+    def test_local_sum_alloc(self):
+        a=T.dtensor3()
+        input=numpy.asarray(numpy.arange(2*3*4).reshape(2,3,4),dtype='float64')
+        mode = self.mode.including('specialize').excluding('fusion')
+
+        for t_like,n_like,nb_nodes in [(zeros_like,numpy.zeros_like,(0,3,3,2)),
+                                       (ones_like,numpy.ones_like,(5,5,5,6))]:
+
+            f = theano.function([a],t_like(a).sum(None),mode=mode)
+            assert numpy.allclose(f(input),n_like(input).sum())
+            assert len(f.maker.env.nodes)==nb_nodes[0]
+
+            f = theano.function([a],t_like(a).sum([0,1,2]),mode=mode)
+            assert numpy.allclose(f(input),n_like(input).sum())
+            assert len(f.maker.env.nodes)==nb_nodes[0]
+
+            for d in range(3):
+                f = theano.function([a],t_like(a).sum(d),mode=mode)
+                assert numpy.allclose(f(input),n_like(input).sum(d))
+                assert len(f.maker.env.nodes)==nb_nodes[1]
+                assert f.maker.env.toposort()[-1].op==T.alloc
+
+            for i in range(3):
+                f = theano.function([a],t_like(a).sum(i),mode=mode)
+                assert numpy.allclose(f(input),n_like(input).sum(i))
+                assert len(f.maker.env.nodes)==nb_nodes[2]
+                assert f.maker.env.toposort()[-1].op==T.alloc
+
+            for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
+                f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
+                print f.maker.env.toposort()
+                assert numpy.allclose(f(input),n_like(input).sum(d).sum(dd))
+                assert len(f.maker.env.nodes)==nb_nodes[3]
+                assert f.maker.env.toposort()[-1].op==T.alloc
+
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
