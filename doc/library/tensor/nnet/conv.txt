@@ -4,6 +4,15 @@
 :mod:`conv` -- Ops for convolutional neural nets
 ==========================================================
 
+.. note::
+
+    Two similar implementation exists for conv2d:
+    **theano.tensor.signal.conv.conv2d** and
+    **theano.tensor.nnet.conv.conv2d**. The foremer implements a traditional
+    2D convolution, while the latter implements the convolutional layers
+    present in convolutional neural networks (where filters are 3D and pool
+    over several input channels).
+
 .. module:: conv
    :platform: Unix, Windows
    :synopsis: ops for signal processing
