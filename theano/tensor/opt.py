@@ -642,29 +642,33 @@ def local_subtensor_make_vector(node):
                     _logger.error('failed to index with "%s"' % str(idx))
                     raise
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Elemwise])
-def local_useless_eq(node):
-    """eq(x,x) -> 1
-    """
-    if isinstance(node.op, T.Elemwise) and node.op.scalar_op == theano.scalar.eq and len(node.inputs)==2:
-        if node.inputs[0]==node.inputs[1]:
-            #it is the same var in the graph. That will always be true
-            return [T.fill(node.inputs[0], T.constant(1.0, dtype=node.outputs[0].type.dtype))]
-
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Elemwise])
-def local_useless_neq(node):
-    """neq(x,x) -> 0
-    """
-    if isinstance(node.op, T.Elemwise) and node.op.scalar_op == theano.scalar.neq and len(node.inputs)==2:
-        if node.inputs[0]==node.inputs[1]:
-            #it is the same var in the graph. That will always be true
-            return [T.fill(node.inputs[0], T.constant(0.0, dtype=node.outputs[0].type.dtype))]
-
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_elemwise(node):
+    """
+eq(x,x) -> 1
+neq(x,x) -> 0
+mul(x) -> x
+add(x) -> x
+
+    """
+    if isinstance(node.op, T.Elemwise):
+        if node.op.scalar_op == theano.scalar.eq and len(node.inputs)==2:
+            if node.inputs[0]==node.inputs[1]:
+            #it is the same var in the graph. That will always be true
+                return [T.fill(node.inputs[0], T.constant(1.0, dtype=node.outputs[0].type.dtype))]
+        if node.op.scalar_op == theano.scalar.neq and len(node.inputs)==2:
+            if node.inputs[0]==node.inputs[1]:
+            #it is the same var in the graph. That will always be false
+                return [T.fill(node.inputs[0], T.constant(0.0, dtype=node.outputs[0].type.dtype))]
+        if node.op.scalar_op == theano.scalar.mul and len(node.inputs)==1:
+            return [node.inputs[0]]
+        if node.op.scalar_op == theano.scalar.add and len(node.inputs)==1:
+            return [node.inputs[0]]
+
 
 @register_specialize
 @gof.local_optimizer([T.Elemwise])

@@ -1480,44 +1480,80 @@ class T_Rebroadcast(unittest.TestCase):
         assert len(rebroadcast_nodes) == 1
         assert rebroadcast_nodes[0].op.axis == {0: True}
 
-def test_local_useless_eq():
-    mode = theano.compile.get_default_mode().including('canonicalize')
-    x=T.dmatrix()
-    y=T.dmatrix()
-    f=theano.function([x,y],T.eq(x,y), mode=mode)
-    vx=numpy.random.rand(5,4)
-    vy=numpy.random.rand(5,4)
-    f(vx,vy)
-    topo = f.maker.env.toposort()
-    assert len(topo)==1
-    assert isinstance(topo[0].op,T.Elemwise)
-    assert isinstance(topo[0].op.scalar_op,theano.scalar.EQ)
-    f2=theano.function([x],T.eq(x,x), mode=mode)
-    assert numpy.all(f2(vx)==numpy.ones((5,4)))
-    topo2 = f2.maker.env.toposort()
-    print topo2
-    #Shape_i{1}(<TensorType(float64, matrix)>), Shape_i{0}(<TensorType(float64, matrix)>), Alloc([[1]], Shape_i{0}.0, Shape_i{1}.0
-    assert len(topo2)==3
-    assert isinstance(topo2[-1].op,T.Alloc)
+class T_useless_elemwise(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.get_default_mode().including('canonicalize')
 
-def test_local_useless_neq():
-    mode = theano.compile.get_default_mode().including('canonicalize')
-    x=T.dmatrix()
-    y=T.dmatrix()
-    f=theano.function([x,y],T.neq(x,y), mode=mode)
-    vx=numpy.random.rand(5,4)
-    vy=numpy.random.rand(5,4)
-    f(vx,vy)
-    topo = f.maker.env.toposort()
-    assert len(topo)==1
-    assert isinstance(topo[0].op,T.Elemwise)
-    assert isinstance(topo[0].op.scalar_op,theano.scalar.NEQ)
-    f2=theano.function([x],T.neq(x,x), mode=mode)
-    assert numpy.all(f2(vx)==numpy.zeros((5,4)))
-    topo2 = f2.maker.env.toposort()
-    print topo2
-    assert len(topo2)==3
-    assert isinstance(topo2[-1].op,T.Alloc)
+    def test_eq(self):
+        x=T.dmatrix()
+        y=T.dmatrix()
+        f=theano.function([x,y],T.eq(x,y), mode=self.mode)
+        vx=numpy.random.rand(5,4)
+        vy=numpy.random.rand(5,4)
+        f(vx,vy)
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,T.Elemwise)
+        assert isinstance(topo[0].op.scalar_op,theano.scalar.EQ)
+        f2=theano.function([x],T.eq(x,x), mode=self.mode)
+        assert numpy.all(f2(vx)==numpy.ones((5,4)))
+        topo2 = f2.maker.env.toposort()
+        print topo2
+        #Shape_i{1}(<TensorType(float64, matrix)>), Shape_i{0}(<TensorType(float64, matrix)>), Alloc([[1]], Shape_i{0}.0, Shape_i{1}.0
+        assert len(topo2)==3
+        assert isinstance(topo2[-1].op,T.Alloc)
+
+    def test_neq(self):
+        x=T.dmatrix()
+        y=T.dmatrix()
+        f=theano.function([x,y],T.neq(x,y), mode=self.mode)
+        vx=numpy.random.rand(5,4)
+        vy=numpy.random.rand(5,4)
+        f(vx,vy)
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,T.Elemwise)
+        assert isinstance(topo[0].op.scalar_op,theano.scalar.NEQ)
+        f2=theano.function([x],T.neq(x,x), mode=self.mode)
+        assert numpy.all(f2(vx)==numpy.zeros((5,4)))
+        topo2 = f2.maker.env.toposort()
+        print topo2
+        assert len(topo2)==3
+        assert isinstance(topo2[-1].op,T.Alloc)
+
+    def test_mul(self):
+        x=T.dmatrix()
+        y=T.dmatrix()
+        f=theano.function([x],T.mul(x), mode=self.mode)
+        vx=numpy.random.rand(5,4)
+        vy=numpy.random.rand(5,4)
+        f(vx)
+        topo = f.maker.env.toposort()
+        assert len(topo)==0
+        f2=theano.function([x,y],T.mul(x,y), mode=self.mode)
+        assert numpy.all(f2(vx,vy)==vx*vy)
+        topo2 = f2.maker.env.toposort()
+        print topo2
+        assert len(topo2)==1
+        assert isinstance(topo2[0].op,T.Elemwise)
+        assert isinstance(topo2[0].op.scalar_op,theano.scalar.Mul)
+
+    def test_add(self):
+        x=T.dmatrix()
+        y=T.dmatrix()
+        f=theano.function([x],T.add(x), mode=self.mode)
+        vx=numpy.random.rand(5,4)
+        vy=numpy.random.rand(5,4)
+        f(vx)
+        topo = f.maker.env.toposort()
+        assert len(topo)==0
+        f2=theano.function([x,y],T.add(x,y), mode=self.mode)
+        assert numpy.all(f2(vx,vy)==vx+vy)
+        topo2 = f2.maker.env.toposort()
+        print topo2
+        assert len(topo2)==1
+        assert isinstance(topo2[0].op,T.Elemwise)
+        assert isinstance(topo2[0].op.scalar_op,theano.scalar.Add)
 
 def test_constant_get_stabilized():
     """
