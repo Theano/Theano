@@ -363,11 +363,11 @@ at point ``x`` is approximated as:
 
 Here is the prototype for the verify_grad function.
 
->>> def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
+>>> def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
 
 ``verify_grad`` raises an Exception if the difference between the analytic gradient and
 numerical gradient (computed through the Finite Difference Method) exceeds
-the given tolerance.
+both the given absolute and relative tolerances.
 
 The parameters are as follows:
 
@@ -383,7 +383,9 @@ The parameters are as follows:
 
 * eps: stepsize used in the Finite Difference Method
 
-* tol: relative tolerance used as threshold for gradient comparison
+* abs_tol: absolute tolerance used as threshold for gradient comparison
+
+* rel_tol: relative tolerance used as threshold for gradient comparison
 
 Here is an example showing how to use verify_grad:
 
