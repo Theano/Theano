@@ -363,7 +363,7 @@ at point ``x`` is approximated as:
 
 Here is the prototype for the verify_grad function.
 
->>> def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
+>>> def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
 
 ``verify_grad`` raises an Exception if the difference between the analytic gradient and
 numerical gradient (computed through the Finite Difference Method) exceeds
@@ -371,9 +371,11 @@ both the given absolute and relative tolerances.
 
 The parameters are as follows:
 
-* op: something that behaves like an Op instance with a single output
-  (can be for instance a python function that combines multiple ops, or that
-  calls an op with some of the inputs being fixed to specific values).
+* ``fun``: a Python function that takes Theano variables as inputs,
+  and returns a Theano variable.
+  For instance, an Op instance with a single output is such a function.
+  It can also be a Python function that calls an op with some of its
+  inputs being fixed to specific values, or that combine multiple ops.
 
 * pt: the list of numpy.ndarrays to use as inputs to the op
 
@@ -387,13 +389,27 @@ The parameters are as follows:
 
 * rel_tol: relative tolerance used as threshold for gradient comparison
 
-Here is an example showing how to use verify_grad:
+In the general case, you can define ``fun`` as you want, as long as it
+takes as inputs Theano symbolic variables and returns a sinble Theano
+symbolic variable:
+
+>>> def test_verify_exprgrad():
+>>>     def fun(x,y,z):
+>>>         return (x + tensor.cos(y)) / (4 * z)**2
+>>>     x_val = numpy.asarray([[1], [1.1], [1.2]])
+>>>     y_val = numpy.asarray([0.1, 0.2])
+>>>     z_val = numpy.asarray(2)
+>>>     rng = numpy.random.RandomState(42)
+>>>     tensor.verify_grad(fun, [x_val, y_val, z_val], rng=rng)
+
+Here is an example showing how to use ``verify_grad`` on an Op instance:
 
 >>> def test_flatten_outdimNone():
 >>>    # Testing gradient w.r.t. all inputs of an op (in this example the op
 >>>    # being used is Flatten(), which takes a single input).
 >>>    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
->>>    tensor.verify_grad(tensor.Flatten(), [a_val])
+>>>    rng = numpy.random.RandomState(42)
+>>>    tensor.verify_grad(tensor.Flatten(), [a_val], rng=rng)
 
 Here is another example, showing how to verify the gradient w.r.t. a subset of
 an Op's inputs. This is useful in particular when the gradient w.r.t. some of
@@ -410,7 +426,8 @@ which would cause verify_grad to crash.
 >>>        return op(x, b, y_idx=numpy.asarray([0, 2]))[0]
 >>>    x_val = numpy.asarray([[-1, 0, 1], [3, 2, 1]], dtype='float64')
 >>>    b_val = numpy.asarray([1, 2, 3], dtype='float64')
->>>    tensor.verify_grad(op_with_fixed_y_idx, [x_val, b_val])
+>>>    rng = numpy.random.RandomState(42)
+>>>    tensor.verify_grad(op_with_fixed_y_idx, [x_val, b_val], rng=rng)
 
 .. note::
 

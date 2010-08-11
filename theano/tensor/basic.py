@@ -4032,21 +4032,24 @@ class numeric_grad:
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=None,
+def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=None,
         mode=None, cast_to_output_type=False):
-    """ Test an Op's gradient by side effect.  Return None on success, raise error on failure.
+    """ Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example: 
-    >>> verify_grad(theano.tensor.tanh, (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),))
+    >>> verify_grad(theano.tensor.tanh,
+                    (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
+                    rng=numpy.random)
 
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) exceeds
     the given tolerance.
 
-    :param op: something that behaves like an Op instance with a single output
-               (can be a python function combining multiple ops, but see note below)
-    :param pt: the list of numpy.ndarrays to use as inputs to the op. These arrays must be
-    either float32 or float64 arrays.
+    :param fun: a Python function that takes Theano variables as inputs,
+        and returns a Theano variable. For instance, an Op instance with
+        a single output.
+    :param pt: the list of numpy.ndarrays to use as input values.
+        These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
     :param rng: random number generator from which to draw random samples
     :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
@@ -4060,8 +4063,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=Non
 
     :note: This op does not support multiple outputs. In tests/test_scan.py there is 
            an experimental verify_grad that covers that case as well by using random 
-           projections .. 
-
+           projections.
     """
     pt = [numpy.array(p) for p in pt]
 
@@ -4089,11 +4091,11 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=Non
 
         tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
 
-        #op can be either a function or an actual Op instance
-        o_output = op(*tensor_pt)
+        #fun can be either a function or an actual Op instance
+        o_output = fun(*tensor_pt)
 
         if isinstance(o_output,list) > 1:
-            raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
+            raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
             # differentiable... so I leave this as TODO for now -JB.
