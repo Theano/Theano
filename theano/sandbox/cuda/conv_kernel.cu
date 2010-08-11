@@ -395,7 +395,12 @@ conv_patch_stack( float* img, float* kern, float* out,
 	    else idx_kern=d_kern;
 	    const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
 	    
-	    convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+	    //if needed as on Fermi as reading out of bound index from shared memory generate an error.
+	    //Not needed on generation before as they worked anyway. Removing the if generate the good code
+	    //as we store the result of only the good thread.
+	    //This was with nvcc 3.0 on an GTX470 card.
+	    if(out_row<out_len)
+	      convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);//idx_in,idx_in fail, idx_kern, idx_kern, wrong answer!
 	  }
 	  __syncthreads(); // ensure calculations have completed before any thread starts changing the shared memory
 	}
