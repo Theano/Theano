@@ -1079,7 +1079,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, rel_tol=1.0e-3)
 
     def test_join_matrix1_using_vertical_stack(self):
         a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
@@ -1101,7 +1101,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, rel_tol=1.0e-3)
 
     def test_join_matrixV(self):
         """variable join axis"""

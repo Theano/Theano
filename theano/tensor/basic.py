@@ -3891,17 +3891,13 @@ class numeric_grad:
             'float32': 3e-3,
             numpy.dtype('float64'):1e-7,
             numpy.dtype('float32'):3e-3}
-    type_tol = {'float64': 1e-4,
-            numpy.dtype('float64'):1e-4,
-            'float32': 1e-1,
-            numpy.dtype('float32'):1e-1}
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
-        
+
         This function computes the gradient by a one-sided finite differences of a
         fixed step size (eps).
-        
+
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
 
@@ -3970,22 +3966,24 @@ class numeric_grad:
             self.gf = self.gf[0]
 
     @staticmethod
-    def abs_rel_err(a,b,tol=None):
-        """Return a small number when a and b are close, relative to how big they are.
+    def abs_rel_err(a,b):
+        """Return absolute and relative error between a and b.
 
-        Formula used: a - b / (abs(a) + abs(b) + tol)
+        The relative error is a small number when a and b are close, relative to how big they are.
 
-        `tol` defaults to relatively generous value that is suitable for catching completely
-        wrong gradients. (`self.type_tol`
+        Formulas used:
+            abs_err = abs(a - b)
+            rel_err = abs_err / (abs(a) + abs(b))
 
+        The tuple (abs_err, rel_err) is returned
         """
-        if tol is None:
-            tol = __builtin__.max(numeric_grad.type_tol[a.dtype], numeric_grad.type_tol[b.dtype])
-        return abs(a-b) / (abs(a)+abs(b)+tol)
+        abs_err = abs(a-b)
+        rel_err = abs_err / (abs(a) + abs(b))
+        return (abs_err, rel_err)
 
     def abs_rel_errors(self, g_pt):
-        """Return the abs rel error of gradient estimate `g_pt`
-        
+        """Return the abs and rel error of gradient estimate `g_pt`
+
         `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
         is raised.
 
@@ -4003,16 +4001,39 @@ class numeric_grad:
             errs.append(numeric_grad.abs_rel_err(a,b))
         return errs
 
-    def max_err(self, g_pt):
-        """Return the biggest relative error between g_pt and self.gf"""
-        errs = [numpy.max(e) for e in self.abs_rel_errors(g_pt)]
-        if numpy.all(numpy.isfinite(errs)):
-            return numpy.max(errs), numpy.argmax(errs)
-        else:
-            return float('inf'), 0
+    def max_err(self, g_pt, abs_tol, rel_tol):
+        """Find the biggest error between g_pt and self.gf.
+
+        What is measured is the violation of relative and absolute errors,
+        wrt the provided tolerances (abs_tol, rel_tol).
+        A value > 1 means both tolerances are exceeded.
+
+        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over g_pt,
+        as well as abs_err and rel_err at this point.
+        """
+        pos = []
+        errs = []
+        abs_errs = []
+        rel_errs = []
+
+        abs_rel_errs = self.abs_rel_errors(g_pt)
+        for abs_err, rel_err in abs_rel_errs:
+            scaled_err = numpy.minimum(abs_err/abs_tol, rel_err/rel_tol)
+            max_i = scaled_err.argmax()
+
+            pos.append(max_i)
+            errs.append(scaled_err.flatten()[max_i])
+            abs_errs.append(abs_err.flatten()[max_i])
+            rel_errs.append(rel_err.flatten()[max_i])
+
+        # max over the arrays in g_pt
+        max_arg = numpy.argmax(errs)
+        max_pos = pos[max_arg]
+        return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast_to_output_type=False):
+def verify_grad(op, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=None,
+        mode=None, cast_to_output_type=False):
     """ Test an Op's gradient by side effect.  Return None on success, raise error on failure.
 
     Example: 
@@ -4029,7 +4050,8 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
     :param n_tests: number of times to run the test
     :param rng: random number generator from which to draw random samples
     :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
-    :param tol: relative tolerance used as threshold for gradient comparison
+    :param abs_tol: absolute tolerance used as threshold for gradient comparison
+    :param rel_tol: relative tolerance used as threshold for gradient comparison
 
     :note: WARNING to unit-test writers: if `op` is a function that builds a graph,
            try to make it a SMALL graph.  Often verify grad is run in
@@ -4047,8 +4069,10 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
             float32=1e-2,
             float64=1e-4)
 
-    if tol is None:
-        tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+    if abs_tol is None:
+        abs_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+    if rel_tol is None:
+        rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
         raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
@@ -4110,21 +4134,31 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
 
-        max_err, max_err_pos = num_grad.max_err(analytic_grad)
-        if  max_err > tol:
-            raise verify_grad.E_grad(tol, num_grad, analytic_grad)
+        max_arg, max_err_pos, max_abs_err, max_rel_err =\
+                num_grad.max_err(analytic_grad, abs_tol, rel_tol)
+
+        if max_abs_err > abs_tol and max_rel_err > rel_tol:
+            raise verify_grad.E_grad(max_arg, max_err_pos,
+                    max_abs_err, max_rel_err, abs_tol, rel_tol)
+
 
 class GradientError(Exception):
     """This error is raised when a gradient is calculated, but incorrect."""
-    def __init__(self, tol, num_grad, analytic_grad):
-        self.num_grad = num_grad
-        self.analytic_grad = analytic_grad
-        self.tol = tol
+    def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
+        self.arg = arg
+        self.err_pos = err_pos
+        self.abs_err = abs_err
+        self.rel_err = rel_err
+        self.abs_tol = abs_tol
+        self.rel_tol = rel_tol
+
     def __str__(self):
-        max_errs = [numpy.max(e) for e in self.num_grad.abs_rel_errors(self.analytic_grad)]
-        return "GradientError: numeric gradient and analytic gradient differ than %f (%s)" %(
-                self.tol, max_errs)
-    def abs_rel_errors(self):
-        return self.num_grad.abs_rel_errors(self.analytic_grad)
+        return """GradientError: numeric gradient and analytic gradient exceed tolerance:
+        At position %i of argument %i,
+            abs. error = %f,  abs. tolerance = %f
+            rel. error = %f,  rel. tolerance = %f
+        """ %(self.err_pos, self.arg,
+              self.abs_err, self.abs_tol,
+              self.rel_err, self.rel_tol)
 
 verify_grad.E_grad = GradientError
