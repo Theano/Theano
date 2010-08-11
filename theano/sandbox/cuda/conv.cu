@@ -220,16 +220,26 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
-            if (verbose>1) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, nb_split=%i preload_full_kernel=%i\n",
-				threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, nb_split, preload_full_kernel);
+            if (verbose>1) 
+	      printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
+		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
+		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i\n",
+		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
+		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
+		     nb_split, preload_full_kernel);
             if (verbose) printf("INFO: used 'conv_patch_stack' version with nb_split=%i and preload_full_kernel=%i\n",
 				nb_split,preload_full_kernel);
             work_complete = true;
         }
         else
         {
-            if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, nb_split=%i preload_full_kernel=%i\n",
-				threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, nb_split, preload_full_kernel);
+            if (verbose) 
+	      printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
+		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
+		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i\n",
+		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
+		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
+		     nb_split, preload_full_kernel);
             if (verbose) printf("INFO: impl 'conv_patch_stack' failed (%s), trying next implementation\n",
                                 cudaGetErrorString(sts));
         }                         
@@ -485,8 +495,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
 	CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-	if (verbose) printf("INFO: using 'conv_patch_stack_reduce' version nb_split=%d, preload_full_kern=%d\n",
-			    nb_split,full_kern);
+	if (verbose) printf("INFO: using 'conv_patch_stack_reduce' version kern_flipped=%i ccontig=%i nb_split=%d, preload_full_kern=%d\n",
+			    kern_flipped,ccontig,nb_split,full_kern);
 	if (verbose>1) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n",
 			      threads.x, threads.y, threads.z, grid.x, grid.y,
 			      shared_size, threads.x * threads.y * threads.z);
