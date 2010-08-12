@@ -547,7 +547,7 @@ class ModuleCache(object):
                         _rmtree(os.path.join(self.dirname, filename))
 
     def _on_atexit(self):
-        self.refresh()
+        #self.refresh()#refresh is called by clear_old(), this can be long for big directory
         self.clear_old()
         self.clear_unversioned()
 
