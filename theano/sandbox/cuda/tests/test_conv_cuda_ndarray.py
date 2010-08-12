@@ -2,9 +2,6 @@ import sys, time
 import numpy
 import theano
 
-from nose.plugins.skip import SkipTest
-raise SkipTest('SKIP TO PREVENT THE BUILDBOT FROM CRASHING. THERE IS A DIFFICULT BUG TO FIX WITH MEMORY LEAK AND/OR WHEN Cuda_Ndarray alloc fail!')
-
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
@@ -110,6 +107,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
             rval = False
         if rval:
             rval = numpy.allclose(cpuval, gpuval, rtol = rtol)
+            assert numpy.all(numpy.isfinite(gpuval))
     except NotImplementedError, e:
         print >> sys.stdout, '_params_allgood Failed allclose', e
         rval = False
@@ -179,7 +177,7 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
             nb_tests+=1
     if nb_failed>0:
         print "nb_failed",nb_failed,"on",nb_tests, "failed_version",failed_version, "failed_id",failed_id
-        assert nb_failed==0
+        assert nb_failed==0, nb_failed
     else:
         print 'Executed',nb_tests,'different shapes'
 
