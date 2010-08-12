@@ -85,7 +85,7 @@ Running unit tests with standard out ::
 
 Running unit tests contained in a specific .py file ::
 
-    $ nosetests <filename>.py
+    nosetests <filename>.py
 
 Running a specific unit test ::
 
