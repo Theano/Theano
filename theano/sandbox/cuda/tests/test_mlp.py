@@ -15,7 +15,9 @@ import numpy
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-raise SkipTest('SKIP TO PREVENT THE BUILDBOT FROM CRASHING. THERE IS A DIFFICULT BUG TO FIX WITH MEMORY LEAK AND/OR WHEN Cuda_Ndarray alloc fail!')
+if theano.config.mode not in ['FAST_RUN','Mode','ProfileMode']:
+    raise SkipTest('Skip test_mlp when not in normal optimization mode as otherwise it is too slow!')
+
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -34,7 +36,10 @@ def my_zeros(*shape):
     return theano._asarray(numpy.zeros(*shape),dtype='float32')
 
 def get_mode(use_gpu):
-    ret = theano.compile.get_default_mode()
+    if theano.config.mode != 'FAST_COMPILE':
+        ret = theano.compile.get_default_mode()
+    else:
+        ret = theano.compile.mode.get_mode('FAST_RUN')
     if isinstance(ret, theano.compile.ProfileMode):
         ret = theano.compile.ProfileMode()
     if use_gpu:
@@ -82,7 +87,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_train=100):
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
-
+    
     if 0:
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
@@ -111,7 +116,11 @@ def test_run_nnet():
             #print "gpu:", rval_gpu
             print "max abs diff:", numpy.max(numpy.absolute(rval_gpu-rval_cpu))
             print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
-            assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
+            rtol = 1e-4
+            if n_in*n_hid>=2048*4096:
+                rtol = 5e-4
+            if not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6):
+                assert numpy.allclose(rval_cpu, rval_gpu,rtol=rtol,atol=1e-6)
 
 def test_run_nnet_med():
     numpy.random.seed(23456)
