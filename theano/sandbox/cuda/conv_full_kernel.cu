@@ -282,13 +282,17 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
 			 thread_id, nb_thread_id, kern_wid,kern_len,
 			 kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
 	  __syncthreads();
-
-	  for (int row=0; row < kern_len; row++) {//loop over row
-	    const float* idx_kern=&d_kern[row*kern_wid];
-	    const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
-	    
-	    convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
-	  }
+	  //The if is needed as on Fermi as reading out of bound index from shared memory generate an error.
+	  //Not needed on generation before as they worked anyway. Removing the if generate the good code
+	  //as we store the result of only the good thread.
+	  //This was with nvcc 3.0 on an GTX470 card.
+	  if(out_row<out_len)
+	    for (int row=0; row < kern_len; row++) {//loop over row
+	      const float* idx_kern=&d_kern[row*kern_wid];
+	      const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
+	      
+	      convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
+	    }
 	  if(out_row<out_len)
 	    out[batch_id*out_wid*out_len*nkern+//the good batch
 		out_wid*out_len*kern_id+//the output image
