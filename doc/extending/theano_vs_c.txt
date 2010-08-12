@@ -22,6 +22,7 @@ Module          class
 For example:
 
 .. code-block:: c
+
    int d = 0;
 
    int main(int a) {

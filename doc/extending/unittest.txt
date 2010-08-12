@@ -39,15 +39,25 @@ A unittest is a subclass of ``unittest.TestCase``, with member
 functions with names that start with the string ``test``.  For
 example:
 
->>> class MyTestCase(unittest.TestCase):
->>>    def test0(self):
->>>        pass                        # test passes cleanly
->>>    def test1(self):
->>>        self.failUnless(2+2 == 5)   # raises an exception, causes test to fail
->>>    def test2(self):
->>>        assert 2+2 == 5             # causes error in test (basically a failure, but counted separately)
->>>    def test2(self):
->>>        assert 2+2 == 4             # this test has the same name as a previous one, so this is the one that runs.
+.. code-block:: python
+
+    class MyTestCase(unittest.TestCase):
+        def test0(self):
+            pass
+            # test passes cleanly
+
+        def test1(self):
+            self.failUnless(2+2 == 5)
+            # raises an exception, causes test to fail
+
+        def test2(self):
+            assert 2+2 == 5
+            # causes error in test (basically a failure, but counted separately)
+
+        def test2(self):
+            assert 2+2 == 4
+            # this test has the same name as a previous one,
+            # so this is the one that runs.
 
 
 How to Run Unit Tests ?
@@ -64,22 +74,22 @@ matching a specific criteria and executes them. By default, it will
 find & execute tests case in test*.py files whose method name starts
 with 'test'.
 
-Running all unit tests
+Running all unit tests ::
 
->>> cd Theano/theano
->>> nosetests
+    cd Theano/theano
+    nosetests
 
-Running unit tests with standard out
+Running unit tests with standard out ::
 
->>> nosetests -s
+    nosetests -s
 
-Running unit tests contained in a specific .py file
+Running unit tests contained in a specific .py file ::
 
->>> nosetests <filename>.py
+    $ nosetests <filename>.py
 
-Running a specific unit test
+Running a specific unit test ::
 
->>> nosetests <filename>.py:<classname>.<method_name>
+    nosetests <filename>.py:<classname>.<method_name>
 
 Using unittest module
 ~~~~~~~~~~~~~~~~~~~~~
@@ -92,22 +102,28 @@ built-in unittest module uses metaclasses to know about all the
 them all, printing '.' for passed tests, and a stack trace for
 exceptions. The standard footer code in theano's test files is:
 
->>> if __name__ == '__main__':
->>>    unittest.main()
+.. code-block:: python
+
+    if __name__ == '__main__':
+        unittest.main()
 
 You can also choose to run a subset of the full test suite.
 
 To run all the tests in one or more ``TestCase`` subclasses:
 
->>>    suite = unittest.TestLoader()
->>>    suite = suite.loadTestsFromTestCase(MyTestCase0)
->>>    suite = suite.loadTestsFromTestCase(MyTestCase1)
->>>    ...
->>>    unittest.TextTestRunner(verbosity=2).run(suite)
+.. code-block:: python
+
+    suite = unittest.TestLoader()
+    suite = suite.loadTestsFromTestCase(MyTestCase0)
+    suite = suite.loadTestsFromTestCase(MyTestCase1)
+    ...
+    unittest.TextTestRunner(verbosity=2).run(suite)
 
 To run just a single ``MyTestCase`` member test function called ``test0``:
 
->>>   MyTestCase('test0').debug()
+.. code-block:: python
+
+    MyTestCase('test0').debug()
 
 
 Folder Layout
@@ -121,12 +137,12 @@ Files containing unittests should be prefixed with the word "test".
 
 Optimally every python module should have a unittest file associated
 with it, as shown below. Unittests testing functionality of module
-<module>.py should therefore be stored in tests/test_<module>.py
+<module>.py should therefore be stored in tests/test_<module>.py::
 
->>> Theano/theano/tensor/basic.py
->>> Theano/theano/tensor/elemwise.py
->>> Theano/theano/tensor/tests/test_basic.py
->>> Theano/theano/tensor/tests/test_elemwise.py
+    Theano/theano/tensor/basic.py
+    Theano/theano/tensor/elemwise.py
+    Theano/theano/tensor/tests/test_basic.py
+    Theano/theano/tensor/tests/test_elemwise.py
 
 
 How to Write a Unittest
@@ -154,12 +170,17 @@ need to be added.
 
 Example:
 
->>> import unittest
->>> class TestTensorDot(unittest.TestCase):
->>>     def test_validity(self):
->>>         # do stuff
->>>     def test_invalid_dims(self):
->>>         # do more stuff
+.. code-block:: python
+
+    import unittest
+    class TestTensorDot(unittest.TestCase):
+        def test_validity(self):
+            # do stuff
+            ...
+        def test_invalid_dims(self):
+            # do more stuff
+            ...
+
 
 Test cases can define a special setUp method, which will get called
 before each test method is executed. This is a good place to put
@@ -167,11 +188,13 @@ functionality which is shared amongst all test methods in the test
 case (i.e initializing data, parameters, seeding random number
 generators -- more on this later)
 
->>> class TestTensorDot(unittest.TestCase):
->>>     def setUp(self):
->>>         # data which will be used in various test methods
->>>         self.avals = numpy.array([[1,5,3],[2,4,1]])
->>>         self.bvals = numpy.array([[2,3,1,8],[4,2,1,1],[1,4,8,5]])
+.. code-block:: python
+
+    class TestTensorDot(unittest.TestCase):
+        def setUp(self):
+            # data which will be used in various test methods
+            self.avals = numpy.array([[1,5,3],[2,4,1]])
+            self.bvals = numpy.array([[2,3,1,8],[4,2,1,1],[1,4,8,5]])
 
 Similarly, test cases can define a tearDown method, which will be
 implicitely called at the end of each test method.
@@ -186,21 +209,25 @@ implementation.
 
 Example:
 
->>> class TestTensorDot(unittest.TestCase):
->>>     def setUp(self):
->>>         ...
->>>
->>>     def test_validity(self):
->>>         a = T.dmatrix('a')
->>>         b = T.dmatrix('b')
->>>         c = T.dot(a,b)
->>>         f = theano.function([a,b],[c])
->>>         cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
->>>         self.failUnless(numpy.all(cmp))
+.. code-block:: python
+
+    class TestTensorDot(unittest.TestCase):
+        def setUp(self):
+            ...
+
+        def test_validity(self):
+            a = T.dmatrix('a')
+            b = T.dmatrix('b')
+            c = T.dot(a,b)
+            f = theano.function([a,b],[c])
+            cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
+            self.failUnless(numpy.all(cmp))
 
 Avoid hard-coding variables, as in the following case:
 
->>>         self.failUnless(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
+.. code-block:: python
+
+    self.failUnless(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
 
 This makes the test case less manageable and forces the user to update
 the variables each time the input is changed or possibly when the
@@ -209,7 +236,7 @@ constrains the test case to specific input/output data pairs. The
 section on random values covers why this might not be such a good
 idea.
 
-Here is a list of useful functions, as defined by TestCase: 
+Here is a list of useful functions, as defined by TestCase:
 
 * checking the state of boolean variables: assert, failUnless,
   assertTrue, failIf, assertFalse
@@ -233,17 +260,19 @@ as they can go unnoticed for a long time and a hard to detect
 
 Example:
 
->>> class TestTensorDot(unittest.TestCase):
->>>     ...
->>>     def test_3D_dot_fail(self):
->>>         def func():
->>>             a = T.TensorType('float64', (False,False,False)) # create 3d tensor
->>>             b = T.dmatrix()
->>>             c = T.dot(a,b) # we expect this to fail
->>>         # above should fail as dot operates on 2D tensors only
->>>         self.failUnlessRaises(TypeError, func)
+.. code-block:: python
 
-Useful functions, as defined by TestCase: 
+    class TestTensorDot(unittest.TestCase):
+        ...
+        def test_3D_dot_fail(self):
+            def func():
+                a = T.TensorType('float64', (False,False,False)) # create 3d tensor
+                b = T.dmatrix()
+                c = T.dot(a,b) # we expect this to fail
+            # above should fail as dot operates on 2D tensors only
+            self.failUnlessRaises(TypeError, func)
+
+Useful functions, as defined by TestCase:
 
 * assertRaises, failUnlessRaises
 
@@ -256,9 +285,11 @@ given to specify which linker and optimizer to use.
 
 Example:
 
->>> f = T.function([a,b],[c],mode='FAST_RUN')
->>> m = theano.Module()
->>> minstance = m.make(mode='DEBUG_MODE')
+.. code-block:: python
+
+    f = T.function([a,b],[c],mode='FAST_RUN')
+    m = theano.Module()
+    minstance = m.make(mode='DEBUG_MODE')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.
@@ -287,16 +318,18 @@ generator be seeded at the be beginning of each unit test. This will
 ensure that unittest behaviour is consistent from one execution to
 another (i.e always pass or always fail).
 
-Instead of using numpy.random.seed to do this, we encourage users to
+Instead of using ``numpy.random.seed`` to do this, we encourage users to
 do the following:
 
->>> from theano.tests import unittest_tools
->>>
->>> class TestTensorDot(unittest.TestCase):
->>>     def setUp(self):
->>>         unittest_tools.seed_rng()
->>>         # OR ... call with an explicit seed 
->>>         unittest_tools.seed_rng(234234) #use only if really necessary!
+.. code-block:: python
+
+    from theano.tests import unittest_tools
+
+    class TestTensorDot(unittest.TestCase):
+        def setUp(self):
+            unittest_tools.seed_rng()
+            # OR ... call with an explicit seed 
+            unittest_tools.seed_rng(234234) #use only if really necessary!
 
 The behaviour of seed_rng is as follows:
 
@@ -321,9 +354,11 @@ machine) can simply set ``config.unittest.rseed`` to 'random' (see
 
 Similarly, to provide a seed to numpy.random.RandomState, simply use:
 
->>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
->>> # OR providing an explicit seed
->>> rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231)) #again not recommended
+.. code-block:: python
+
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    # OR providing an explicit seed
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231)) #again not recommended
 
 Note that the ability to change the seed from one nosetest to another,
 is incompatible with the method of hard-coding the baseline variables
@@ -377,57 +412,67 @@ The parameters are as follows:
   It can also be a Python function that calls an op with some of its
   inputs being fixed to specific values, or that combine multiple ops.
 
-* pt: the list of numpy.ndarrays to use as inputs to the op
+* ``pt``: the list of numpy.ndarrays to use as input values
 
-* n_tests: number of times to run the test
+* ``n_tests``: number of times to run the test
 
-* rng: random number generator from which to draw random samples
+* ``rng``: random number generator from which to draw random samples
 
-* eps: stepsize used in the Finite Difference Method
+* ``eps``: stepsize used in the Finite Difference Method
 
-* abs_tol: absolute tolerance used as threshold for gradient comparison
+* ``abs_tol``: absolute tolerance used as threshold for gradient comparison
 
-* rel_tol: relative tolerance used as threshold for gradient comparison
+* ``rel_tol``: relative tolerance used as threshold for gradient comparison
 
 In the general case, you can define ``fun`` as you want, as long as it
 takes as inputs Theano symbolic variables and returns a sinble Theano
 symbolic variable:
 
->>> def test_verify_exprgrad():
->>>     def fun(x,y,z):
->>>         return (x + tensor.cos(y)) / (4 * z)**2
->>>     x_val = numpy.asarray([[1], [1.1], [1.2]])
->>>     y_val = numpy.asarray([0.1, 0.2])
->>>     z_val = numpy.asarray(2)
->>>     rng = numpy.random.RandomState(42)
->>>     tensor.verify_grad(fun, [x_val, y_val, z_val], rng=rng)
+.. code-block:: python
+
+    def test_verify_exprgrad():
+        def fun(x,y,z):
+            return (x + tensor.cos(y)) / (4 * z)**2
+
+        x_val = numpy.asarray([[1], [1.1], [1.2]])
+        y_val = numpy.asarray([0.1, 0.2])
+        z_val = numpy.asarray(2)
+        rng = numpy.random.RandomState(42)
+
+        tensor.verify_grad(fun, [x_val, y_val, z_val], rng=rng)
 
 Here is an example showing how to use ``verify_grad`` on an Op instance:
 
->>> def test_flatten_outdimNone():
->>>    # Testing gradient w.r.t. all inputs of an op (in this example the op
->>>    # being used is Flatten(), which takes a single input).
->>>    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
->>>    rng = numpy.random.RandomState(42)
->>>    tensor.verify_grad(tensor.Flatten(), [a_val], rng=rng)
+.. code-block:: python
+
+    def test_flatten_outdimNone():
+        # Testing gradient w.r.t. all inputs of an op (in this example the op
+        # being used is Flatten(), which takes a single input).
+        a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+        rng = numpy.random.RandomState(42)
+        tensor.verify_grad(tensor.Flatten(), [a_val], rng=rng)
 
 Here is another example, showing how to verify the gradient w.r.t. a subset of
 an Op's inputs. This is useful in particular when the gradient w.r.t. some of
 the inputs cannot be computed by finite difference (e.g. for discrete inputs),
-which would cause verify_grad to crash.
+which would cause ``verify_grad`` to crash.
 
->>> def test_crossentropy_softmax_grad():
->>>    op = tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
->>>    def op_with_fixed_y_idx(x, b):
->>>        # Input `y_idx` of this Op takes integer values, so we fix them
->>>        # to some constant array.
->>>        # Although this op has multiple outputs, we can return only one.
->>>        # Here, we return the first output only.
->>>        return op(x, b, y_idx=numpy.asarray([0, 2]))[0]
->>>    x_val = numpy.asarray([[-1, 0, 1], [3, 2, 1]], dtype='float64')
->>>    b_val = numpy.asarray([1, 2, 3], dtype='float64')
->>>    rng = numpy.random.RandomState(42)
->>>    tensor.verify_grad(op_with_fixed_y_idx, [x_val, b_val], rng=rng)
+.. code-block:: python
+
+    def test_crossentropy_softmax_grad():
+        op = tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
+        def op_with_fixed_y_idx(x, b):
+            # Input `y_idx` of this Op takes integer values, so we fix them
+            # to some constant array.
+            # Although this op has multiple outputs, we can return only one.
+            # Here, we return the first output only.
+            return op(x, b, y_idx=numpy.asarray([0, 2]))[0]
+
+        x_val = numpy.asarray([[-1, 0, 1], [3, 2, 1]], dtype='float64')
+        b_val = numpy.asarray([1, 2, 3], dtype='float64')
+        rng = numpy.random.RandomState(42)
+
+        tensor.verify_grad(op_with_fixed_y_idx, [x_val, b_val], rng=rng)
 
 .. note::
 
@@ -449,17 +494,19 @@ this is common, two helper functions exists to make your lives easier:
 Here is an example of ``makeTester`` generating testcases for the Dot
 product op:
 
->>> DotTester = makeTester(name = 'DotTester',
->>>                        op = dot,
->>>                        expected = lambda x, y: numpy.dot(x, y),
->>>                        checks = {},
->>>                        good = dict(correct1 = (rand(5, 7), rand(7, 5)),
->>>                                    correct2 = (rand(5, 7), rand(7, 9)),
->>>                                    correct3 = (rand(5, 7), rand(7))),
->>>                        bad_build = dict(),
->>>                        bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
->>>                                           bad2 = (rand(5, 7), rand(8,3))),
->>>                        grad = dict())
+.. code-block:: python
+
+    DotTester = makeTester(name = 'DotTester',
+                           op = dot,
+                           expected = lambda x, y: numpy.dot(x, y),
+                           checks = {},
+                           good = dict(correct1 = (rand(5, 7), rand(7, 5)),
+                                       correct2 = (rand(5, 7), rand(7, 9)),
+                                       correct3 = (rand(5, 7), rand(7))),
+                           bad_build = dict(),
+                           bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
+                                              bad2 = (rand(5, 7), rand(8,3))),
+                           grad = dict())
 
 In the above example, we provide a name and a reference to the op we
 want to test. We then provide in the ``expected`` field, a function
