@@ -1,8 +1,8 @@
-import os, sys, stat
+import os, stat
 from theano.compile import optdb
 from theano import config
 
-import logging, copy
+import logging
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
