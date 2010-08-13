@@ -27,6 +27,9 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # precedence over those in files on the left.
 def config_files_from_theanorc():
     rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(os.pathsep)]
+    if  os.getenv('THEANORC') is None and sys.platform=="win32":
+        #To don't need to change the filename and make it open easily
+        rval.append(os.path.expanduser('~/.theanorc.txt'))
     return rval
 theano_cfg = ConfigParser.SafeConfigParser()
 theano_cfg.read(config_files_from_theanorc())

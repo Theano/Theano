@@ -283,15 +283,14 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   (installation folder of theano)
 
   In the USERPROFILE directory 
-  you should create a configuration file .theanorc with the following
+  you should create a configuration file .theanorc.
+  .theanorc.txt is also accepted on Windows if the environment 
+  variable THEANORC is not set. The file should have the following
   two lines:
     .. code-block:: bash
 
       [blas]
       ldflags =
-
-  (Create a text file in Windows Explorer and rename it from the DOS
-  box: "ren xyz.txt .theanorc".)
 
   Space or non ascii caracter are not always supported. If that is your case,
   Set the environment variable 'THEANO_FLAGS' to the value 'blas.ldflags='
