@@ -49,7 +49,7 @@ def set_cuda_disabled():
                 'working properly')
 
 #cuda_ndarray compile and import
-cuda_path = os.path.split(__file__)[0]
+cuda_path = os.path.abspath(os.path.split(__file__)[0])
 date = os.stat(os.path.join(cuda_path,'cuda_ndarray.cu'))[stat.ST_MTIME]
 date = max(date,os.stat(os.path.join(cuda_path,'cuda_ndarray.cuh'))[stat.ST_MTIME])
 date = max(date,os.stat(os.path.join(cuda_path,'conv_full_kernel.cu'))[stat.ST_MTIME])

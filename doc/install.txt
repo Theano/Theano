@@ -292,12 +292,17 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
       [blas]
       ldflags =
 
-  Space or non ascii caracter are not always supported. If that is your case,
-  Set the environment variable 'THEANO_FLAGS' to the value 'blas.ldflags='
-
   This is enough to run Theano! It will use NumPy for dot products
   which, however, is pretty fast (see below).
+  
+  To test that theano read correctly the .theanorc or .theanorc.txt file,
+  in python run:
+  .. code-block:: bash
+      import theano
+      print theano.config.blas.ldflags
 
+  That should print the same content as what is in your config file.
+  
 - (Optional) If you want a faster and/or multithreaded BLAS library, you can
   compile GotoBLAS2. I did not try to compile ATLAS because I read that
   it is slower than Goto and very difficult to compile (especially for
@@ -342,22 +347,49 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
 
   Those are indication for 32 bits version of python, the one that come with pythonxy is 32 bits.
 
-  Install cuda driver(32 bits on 32 bits Windows, idem for 64 bits).
-  Install cuda toolkit 32 bits(even if you computer is 64 bits, must match the python installation version)
-  Install cuda sdk 32 bits
-  Test some pre-compiled example of the sdk
-  Download Visual Studio 2008 Express(free, VS2010 not supported by nvcc 3.1, VS2005, not available for download, but supported by nvcc, the non free version should work too)
-  Follow the instruction in the GettingStartedWindows.pdf file from cuda web site to compile cuda code with VS2008. If that don't work, you won't be able to compile gpu code with theano.
+  Space or non ascii caracter are not always supported in path. Python support 
+  them, so your configuration file path can contain them. 
+  nvcc(at least version 3.1) don't support them well. If your USERPROFILE 
+  directory contain those caractere, you must add in your configuration file:
+    .. code-block:: bash
+      [global]
+      base_compiledir=PATH_TO_A_DIRECTORY_WITHOUT_THOSE_CARACTERE
 
-  Put into you PATH environment variable the directory where cl.exe is. In my case it is: C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin
+  You also need to add in the configuration file those line:
+    .. code-block:: bash
+      [cuda]
+      nvccflags=-LC:\Python26\libs
 
-  Make sure the theano folder is in your PYTHONPATH environment variable.
+  Then
+  
+  1) Install cuda driver(32 bits on 32 bits Windows, idem for 64 bits).
+  
+  2) Install cuda toolkit 32 bits(even if you computer is 64 bits, 
+     must match the python installation version)
+  
+  3) Install cuda sdk 32 bits
+  
+  4) Test some pre-compiled example of the sdk
 
-  Then in theano do: import theano.sandbox.cuda
+  5) Download Visual Studio 2008 Express(free, VS2010 not supported by nvcc 3.1,
+     VS2005, not available for download, but supported by nvcc, the non free version should work too)
 
-  That will print some error if their is an error to compile the first cuda file.
+  6) Follow the instruction in the GettingStartedWindows.pdf file from cuda web 
+     site to compile cuda code with VS2008. If that don't work, you won't be 
+     able to compile gpu code with theano.
 
-  Then run the theano cuda test file. In Windows command line (cmd.exe), run the program nosetests inside the theano repository. nosetests is installed by pythonxy.
+  7) Put into you PATH environment variable the directory where cl.exe is. 
+     In my case it is: C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin
+
+  8) Make sure the theano folder is in your PYTHONPATH environment variable.
+
+  9) Then in theano do: import theano.sandbox.cuda
+
+     That will print some error if their is an error to compile the first cuda file.
+
+  10) Then run the theano cuda test file. In Windows command line (cmd.exe), 
+      run the program nosetests inside the theano repository. 
+      nosetests is installed by pythonxy.
 
 Windows V2(smaller install, but longer instruction)
 ---------------------------------------------------

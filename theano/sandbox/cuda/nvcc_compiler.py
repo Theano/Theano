@@ -13,6 +13,9 @@ AddConfigVar('nvcc.compiler_bindir',
         "if defined, nvcc compiler driver will seek g++ and gcc in this directory",
         StrParam(""))
 
+AddConfigVar('cuda.nvccflags',
+        "Extra compiler flags for nvcc",
+        StrParam(""))
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
@@ -62,7 +65,18 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     :param preargs: a list of extra compiler arguments
 
     :returns: dynamically-imported python module of the compiled code.
+    
+    :note 1: On Windows 7 with nvcc 3.1 we need to compile in the real directory
+             Otherwise nvcc never finish.
     """
+    
+    if sys.platform=="win32":
+        #remove some compilation args that cl.exe don't understand
+        #cl.exe is the compiler used by nvcc on Windows
+        for a in ["-Wno-write-strings","-Wno-unused-label",
+                  "-Wno-unused-variable", "-fno-math-errno"]:
+            if a in preargs:
+                preargs.remove(a)
     if preargs is None:
         preargs= []
     else: preargs = list(preargs)
@@ -70,8 +84,17 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
         preargs.append('-fPIC')
     no_opt = False
     cuda_root = config.cuda.root
-    include_dirs = std_include_dirs() + include_dirs + [os.path.split(__file__)[0]]
-    libs = std_libs() + ['cudart'] + libs
+
+    #The include dirs gived by the user should have precedence over
+    #the standards ones.
+    include_dirs = include_dirs + std_include_dirs()
+    if os.path.abspath(os.path.split(__file__)[0]) not in include_dirs:
+        include_dirs.append(os.path.abspath(os.path.split(__file__)[0]))
+    
+    libs = std_libs() + libs
+    if 'cudart' not in libs:
+        libs.append('cudart')
+
     lib_dirs = std_lib_dirs() + lib_dirs
     if cuda_root:
         lib_dirs.append(os.path.join(cuda_root, 'lib'))
@@ -133,11 +156,13 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
         if sys.platform != 'darwin':
             # the 64bit CUDA libs are in the same files as are named by the function above
             cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib64')])])
+    nvccflags = [flag for flag in config.cuda.nvccflags.split(' ') if flag]
+    cmd.extend(nvccflags)
     cmd.extend('-I%s'%idir for idir in include_dirs)
-    cmd.extend(['-o',lib_filename]) 
-    cmd.append(cppfilename)
+    cmd.extend(['-o',lib_filename])
+    cmd.append(os.path.split(cppfilename)[-1])
     if module_name != 'cuda_ndarray':
-        cmd.append(os.path.join(os.path.split(cppfilename)[0],'..','cuda_ndarray','cuda_ndarray.so'))
+        cmd.append(os.path.join(os.path.split(cppfilename)[0],'..','cuda_ndarray','cuda_ndarray.'+get_lib_extension()))
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
     if sys.platform == 'darwin':
@@ -156,12 +181,16 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
                 done = True
     
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
-    #print >> sys.stderr, 'COMPILING W CMD', cmd
     debug('Running cmd', ' '.join(cmd))
+    orig_dir = os.getcwd()
+    try:
+        os.chdir(location)
 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    nvcc_stdout, nvcc_stderr = p.communicate()[:2]
-
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        nvcc_stdout, nvcc_stderr = p.communicate()[:2]
+    finally:
+        os.chdir(orig_dir)
+        
     if nvcc_stdout:
         # this doesn't happen to my knowledge
         print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
