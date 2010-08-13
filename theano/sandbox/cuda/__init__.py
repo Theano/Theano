@@ -97,8 +97,10 @@ if cuda_available:
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
     import cuda_ndarray.cuda_ndarray
-    if os.path.join(config.compiledir,'cuda_ndarray','cuda_ndarray.so')!=cuda_ndarray.cuda_ndarray.__file__:
-        _logger.warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
+    from theano.gof.cmodule import get_lib_extension
+    if os.path.join(config.compiledir,'cuda_ndarray','cuda_ndarray.'+get_lib_extension())!=cuda_ndarray.cuda_ndarray.__file__:
+        
+        warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
 
     from theano.sandbox.cuda.type import CudaNdarrayType
     from theano.sandbox.cuda.var import (CudaNdarrayVariable,
