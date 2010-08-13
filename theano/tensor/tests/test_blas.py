@@ -541,6 +541,7 @@ def test_inplace0():
     if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
         print pp(f.maker.env.outputs[0])
         raise Failure('gemm_inplace in graph')
+    assert _dot22 in [n.op for n in f.maker.env.nodes]
 
     f = inplace_func([X,Y,Z,a,b, R, S, c],
             [Z * (c*Z + a * T.dot(X,Y) + b * T.dot(R,S).T)], mode='FAST_RUN')
