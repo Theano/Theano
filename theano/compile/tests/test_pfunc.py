@@ -178,17 +178,6 @@ class Test_pfunc(unittest.TestCase):
         assign()
         self.failUnless(x.value == 3)
 
-        # Same but using a mutable constant to show how it can be used to
-        # modify the update value after the function is created.
-        x.value = 0
-        y = numpy.ones((), dtype='int64')
-        assign_mutable = pfunc([], [], updates = {x: y})
-        assign_mutable()
-        self.failUnless(x.value == 1)
-        y.fill(4)
-        assign_mutable()
-        self.failUnless(x.value == 4)
-
         # Basic increment function.
         x.value = 0
         inc = pfunc([], [], updates = {x: x + 1})
