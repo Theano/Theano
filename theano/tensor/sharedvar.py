@@ -27,7 +27,7 @@ def tensor_constructor(value, name=None, strict=False, broadcastable=None):
     if broadcastable is None:
         broadcastable = (False,)*len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
-    return TensorSharedVariable(type=type, value=value, name=name, strict=strict)
+    return TensorSharedVariable(type=type, value=numpy.array(value,copy=True), name=name, strict=strict)
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
 # dont do purely scalar-scalar operations 
@@ -56,7 +56,7 @@ def scalar_constructor(value, name=None, strict=False):
         # Do not pass the dtype to asarray because we want this to fail if
         # strict is True and the types do not match.
         rval = ScalarSharedVariable(type=tensor_type,
-                value=numpy.asarray(value),
+                value=numpy.array(value, copy=True),
                 name=name, strict=strict)
         return rval
     except:
