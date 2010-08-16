@@ -8,6 +8,12 @@ from theano import tensor
 from theano.compile.sharedvalue import *
 from theano.compile.pfunc import *
 
+
+def data_of(s):
+    """Return the raw value of a shared variable"""
+    return s.container.storage[0]
+
+
 class Test_pfunc(unittest.TestCase):
 
     def test_doc(self):
@@ -135,8 +141,10 @@ class Test_pfunc(unittest.TestCase):
     def test_shared_mutable(self):
         bval = numpy.arange(5)
         b = shared(bval)
-        assert b.value is bval
         b_out = b * 2
+
+        assert b.value is not bval # shared vars copy args.
+        bval = data_of(b)          # so we do this to get at the underlying data
 
         # by default, shared are not mutable unless doing an explicit update
         f = pfunc([], [b_out], mode='FAST_RUN')
@@ -152,6 +160,7 @@ class Test_pfunc(unittest.TestCase):
         # do not depend on updates being in-place though!
         bval = numpy.arange(5)
         b.value = bval
+        bval = data_of(b)
         f = pfunc([], [b_out], updates=[(b, b_out+3)], mode='FAST_RUN')
         assert ( f() == numpy.arange(5)*2 ).all()
         assert (b.value == ((numpy.arange(5)*2)+3)).all() # because of the update
@@ -478,10 +487,6 @@ class Test_pfunc(unittest.TestCase):
 
 
 
-
-def data_of(s):
-    """Return the raw value of a shared variable"""
-    return s.container.storage[0]
 
 class Test_aliasing_rules(unittest.TestCase):
     """
