@@ -474,10 +474,56 @@ class Test_pfunc(unittest.TestCase):
         assert f() == 21
         assert f() == 34
 
-    def aliasing_test(self):
 
-        A = shared(numpy.zeros((2,2)))
-        B = shared(numpy.zeros((2,2)))
+
+
+
+
+def data_of(s):
+    """Return the raw value of a shared variable"""
+    return s.container.storage[0]
+
+class Test_aliasing_rules(unittest.TestCase):
+    """
+    1. Theano manages its own memory space, which typically does not overlap with the memory of
+    normal python variables that the user uses.
+
+    2. shared variables are allocated in this memory space, as are the temporaries used for
+    Function evalution.
+
+    3. Physically, this managed memory space may be spread across the host, on a GPU device(s),
+    or even on a remote machine.
+
+    4. Theano assumes that shared variables are never aliased to one another, and tries to make
+    it impossible to accidentally alias them.
+
+    5. Theano's managed data is constant while Theano Functions are not running and theano
+    library code is not running.
+
+    6. The default behaviour of Function is to return user-space values for outputs, but this
+    can be overridden (borrow=True) for better performance, in which case the returned value
+    may be aliased to managed memory, and potentially invalidated by the next Theano Function
+    call or call to theano library code.
+    """
+
+    def shared(self, x):
+        return tensor.shared(x)
+
+    def test_shared_constructor_copies(self):
+        # shared constructor makes copy
+        # (rule #2)
+        orig_a = numpy.zeros((2,2))
+        A = self.shared(orig_a)
+        assert not numpy.may_share_memory(orig_a, data_of(A))
+
+        # rule #2 reading back from theano-managed memory
+        assert not numpy.may_share_memory(A.value, data_of(A))
+        
+
+    def test_potential_output_aliasing_induced_by_updates(self):
+
+        A = self.shared(numpy.zeros((2,2)))
+        B = self.shared(numpy.zeros((2,2)))
         C = numpy.zeros((2,2))
         D = tensor.dmatrix()
         DD = D + 5
@@ -485,41 +531,141 @@ class Test_pfunc(unittest.TestCase):
         f = pfunc([D], [], updates=[ (A,D), (B,D) ])
         f(C)
 
-        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
         f = pfunc([D], [], updates=[ (A,D[:]), (B,D) ])
         f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
         f = pfunc([D], [], updates=[ (A,D+5), (B,D[:]) ])
         f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
 
         f = pfunc([D], [], updates=[ (A,D+5), (B,D) ])
         f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
 
         f = pfunc([D], DD, updates=[ (A,DD[:1]), (B,DD) ])
         R=f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
-        assert not numpy.may_share_memory(R,B.value)
-        assert not numpy.may_share_memory(R,A.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
+        assert not numpy.may_share_memory(R,data_of(B))
+        assert not numpy.may_share_memory(R,data_of(A))
 
         f = pfunc([D], DD, updates=[ (A,DD[:1]), (B,DD[:1]*2) ])
         R=f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
-        assert not numpy.may_share_memory(R,B.value)
-        assert not numpy.may_share_memory(R,A.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
+        assert not numpy.may_share_memory(R,data_of(B))
+        assert not numpy.may_share_memory(R,data_of(A))
 
         f = pfunc([D], DD*4, updates=[ (A,DD[:1]*3), (B,DD[:1]*2) ])
         R=f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
-        assert not numpy.may_share_memory(R,B.value)
-        assert not numpy.may_share_memory(R,A.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
+        assert not numpy.may_share_memory(R,data_of(B))
+        assert not numpy.may_share_memory(R,data_of(A))
 
         f = pfunc([D], DD*4, updates=[ (A,DD[:1]*3), (B,DD[:1]*3) ])
         R=f(C)
-        assert not numpy.may_share_memory(A.value,B.value)
-        assert not numpy.may_share_memory(R,B.value)
-        assert not numpy.may_share_memory(R,A.value)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
+        assert not numpy.may_share_memory(R,data_of(B))
+        assert not numpy.may_share_memory(R,data_of(A))
+
+    def test_no_aliasing_0(self):
+        # B is a shared variable, A is updated with B's contents
+        # we need A to be copied to avoid aliasing
+        A = self.shared(numpy.zeros((2,2))+.5)
+        B = self.shared(numpy.zeros((2,2))-.5)
+        f = pfunc([], [], updates=[(A,B)])
+        f()
+        assert not numpy.may_share_memory(data_of(A), data_of(B))
+
+    def test_no_aliasing_1(self):
+        # B is a shared variable, A is updated with B's contents
+        # since B is being updated as well, we don't need to copy anything to avoid aliasing
+        # shared variables.
+        A = self.shared(numpy.zeros((2,2))+.5)
+        B = self.shared(numpy.zeros((2,2))-.5)
+        C = tensor.dmatrix()
+        f = pfunc([C], [], updates=[ (A,B), (B,C) ])
+        z = numpy.zeros((2,2))
+        f(z)
+        assert not numpy.may_share_memory(data_of(A),data_of(B))
+        assert not numpy.may_share_memory(z,data_of(B)) # Theano tries to maintain its own memory space.
+        assert numpy.all(data_of(B) == z)
+
+    def test_no_aliasing_2(self):
+        # B and A take one another's values
+        # no copying is necessary since each one is updated.
+        orig_a = numpy.zeros((2,2))+.5
+        orig_b = numpy.zeros((2,2))-.5
+        A = self.shared(orig_a)
+        B = self.shared(orig_b)
+        C = tensor.dmatrix()
+
+        z = numpy.zeros((2,2))
+
+        data_of_a = data_of(A)
+        data_of_b = data_of(B)
+
+        f = pfunc([C], [], updates=[(A,B),(B,A)])
+        f(z)
+        # correctness
+        assert numpy.all(data_of(A) == -.5)
+        assert numpy.all(data_of(B) == +.5)
+
+        # shared vars may not be aliased
+        assert not numpy.may_share_memory(data_of(A), data_of(B))
+
+        # theano should have been smart enough to not make copies
+        assert numpy.may_share_memory(data_of(A), data_of_b)
+        assert numpy.may_share_memory(data_of(B), data_of_a)
+
+    def test_no_aliasing_2b(self):
+        # B and A take one another's values
+        # no copying is necessary since each one is updated.
+        # The twist one `test_no_aliasing_2` is that each shared var is updated with a view of
+        # the other one.
+
+        orig_a = numpy.zeros((2,2))+.5
+        orig_b = numpy.zeros((2,2))-.5
+        A = self.shared(orig_a)
+        B = self.shared(orig_b)
+        C = tensor.dmatrix()
+
+        z = numpy.zeros((2,2))
+
+        data_of_a = data_of(A)
+        data_of_b = data_of(B)
+
+        f = pfunc([C], [], updates=[(A,B[:,::-1]),(B,A.T)])
+        theano.printing.debugprint(f)
+        f(z)
+        # correctness (doesn't actually test the view...)
+        assert numpy.all(data_of(A) == -.5)
+        assert numpy.all(data_of(B) == +.5)
+
+        # shared vars may not be aliased
+        assert not numpy.may_share_memory(data_of(A), data_of(B))
+
+        # theano should have been smart enough to not make copies
+        assert numpy.all(data_of(A) < 5)
+        data_of_b += 10
+        assert numpy.all(data_of(A) > 5)
+        data_of_b -= 10
+
+        assert numpy.all(data_of(B) < 5)
+        data_of_a += 10
+        print data_of(B)
+        assert numpy.all(data_of(B) > 5)
+        data_of_a -= 10
+
+        # N.B. may_share_memory is what we mean, but does it work?
+        assert numpy.may_share_memory(data_of(A), data_of_b)
+        assert numpy.may_share_memory(data_of(B), data_of_a)
+
+        # N.B. This pattern could form a memory leak - each shared variable always points to a
+        # view, and that view gets further and further from the (e.g. data_of_a) with each
+        # call.  The memory leak is in the increasing number of view objects forming a chain to
+        # the underlying data.
+
+
 
 if __name__ == '__main__':
     theano.config.mode = 'FAST_COMPILE'
