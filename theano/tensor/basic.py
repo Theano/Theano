@@ -1920,10 +1920,12 @@ class Mean(elemwise.CAReduce):
 def mean(input, axis = None, op = False):
     """Compute the mean value along the given axis of a tensor `input`
 
-    :param axis: compute the mean along this axis of the tensor.  None means all axes (like
-    numpy).
+    :param axis: compute the mean along this axis of the tensor.
+                 None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
     
+    :note: for gpu, if you manually cast the input to float32 before calling 
+           mean, everything will be done on the gpu.
     """
     if op:
       return Mean(axis)(input)
