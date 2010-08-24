@@ -31,7 +31,7 @@ def config_files_from_theanorc():
         #To don't need to change the filename and make it open easily
         rval.append(os.path.expanduser('~/.theanorc.txt'))
     return rval
-theano_cfg = ConfigParser.SafeConfigParser()
+theano_cfg = ConfigParser.SafeConfigParser({'USER':os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
 theano_cfg.read(config_files_from_theanorc())
 
 def parse_env_flags(flags, name , default_value=None):
