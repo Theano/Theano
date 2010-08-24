@@ -665,7 +665,7 @@ class TensorType(Type):
 # Easy constructors
 
 def tensor(*args, **kwargs):
-    name = kwargs.get('name',None)
+    name = kwargs.pop('name',None)
     return TensorType(*args, **kwargs).make_variable(name=name)
 
 def _multi(*fns):
