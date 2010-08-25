@@ -2840,17 +2840,16 @@ class Join(Op):
             as_tensor_variable_args = [unbroadcast(x, *range(x.type.ndim)) for x in as_tensor_variable_args]
 
         inputs = [as_tensor_variable(axis)] + as_tensor_variable_args
-        if inputs[0].type not in int_types: 
+        if inputs[0].type not in int_types:
             raise TypeError('Axis could not be cast to an integer type', axis, inputs[0].type, int_types)
 
         outputs = [output_maker(bcastable)]
 
         node = Apply(self, inputs, outputs)
         if any(not x.type.broadcastable[0] for x in orig):
-          node.tag.shape_zero = None
+            node.tag.shape_zero = None
         else:
-          node.tag.shape_zero = len(orig)
-        #backport node.tag.shape_zero = None if any(not x.type.broadcastable[0] for x in orig) else len(orig)
+            node.tag.shape_zero = len(orig)
         return node
 
     def perform(self, node, axis_and_tensors, (out, )):
