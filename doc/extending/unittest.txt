@@ -416,7 +416,8 @@ The parameters are as follows:
 
 * ``n_tests``: number of times to run the test
 
-* ``rng``: random number generator from which to draw random samples
+* ``rng``: random number generator used to generate a random vector u,
+  we check the gradient of dot(u,fn) at pt
 
 * ``eps``: stepsize used in the Finite Difference Method
 

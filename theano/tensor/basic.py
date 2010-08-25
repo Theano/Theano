@@ -4055,7 +4055,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     :param pt: the list of numpy.ndarrays to use as input values.
         These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
-    :param rng: random number generator from which to draw random samples
+    :param rng: random number generator used to sample u, we test gradient of dot(u,fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
     :param abs_tol: absolute tolerance used as threshold for gradient comparison
     :param rel_tol: relative tolerance used as threshold for gradient comparison
