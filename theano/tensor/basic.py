@@ -2568,6 +2568,9 @@ class IncSubtensor(Op):
                 x.__setitem__(cdata, y)
         out[0] = x
 
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
     def grad(self, inputs, (g_output,)):
         x, y = inputs[:2]
         idx_list = inputs[2:]
