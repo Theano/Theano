@@ -1086,6 +1086,25 @@ def apply_rebroadcast_opt(rval):
           changed = True
     return rval
 
+
+#############
+# Join opts #
+#############
+@gof.local_optimizer([T.Join])
+def local_join_1(node):
+    """Join(i, x) => x
+
+    Remove Join() when only one element is joined.
+    """
+    if not isinstance(node.op, T.Join):
+        return
+    axis = node.inputs[0]
+    tensors = node.inputs[1:]
+    if len(tensors) == 1:
+        return [tensors[0]]
+
+
+
 ##################
 # Reshape opts   #
 ##################
