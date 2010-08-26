@@ -227,6 +227,10 @@ class PureType(object):
         except (TypeError, ValueError):
             return False
     
+    def value_validity_msg(self, a):
+        """Optional: return a message explaining the output of is_valid_value"""
+        return "none"
+
     def make_variable(self, name = None):
         """Return a new `Variable` instance of Type `self`.
 

@@ -330,13 +330,14 @@ class StochasticOrder(DebugModeError):
 
 class InvalidValueError(DebugModeError):
     """Exception: some Op an output value that is inconsistent with the Type of that output"""
-    def __init__(self, r, v, client_node=None, hint='none'):
+    def __init__(self, r, v, client_node=None, hint='none', specific_hint='none'):
         #super(InvalidValueError, self).__init__()
         DebugModeError.__init__(self)#to be compatible with python2.4
         self.r = r
         self.v = v
         self.client_node = client_node
         self.hint=hint
+        self.specific_hint=specific_hint
 
     def __str__(self):
         r, v = self.r, self.v
@@ -358,6 +359,7 @@ class InvalidValueError(DebugModeError):
             pass
         client_node = self.client_node
         hint = self.hint
+        specific_hint = self.specific_hint
         return """InvalidValueError
         type(variable) = %(type_r)s
         variable       = %(r)s
@@ -370,6 +372,7 @@ class InvalidValueError(DebugModeError):
         isfinite       = %(v_isfinite)s
         client_node    = %(client_node)s
         hint           = %(hint)s
+        specific_hint   = %(specific_hint)s
         """ % locals()
 
 ########################
@@ -1070,7 +1073,7 @@ class _Linker(gof.link.LocalLinker):
                         # check output values for type-correctness
                         for r in node.outputs:
                             if not r.type.is_valid_value(storage_map[r][0]):
-                                raise InvalidValueError(r, storage_map[r][0], hint='perform output')
+                                raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
                             #if r in r_vals:
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,

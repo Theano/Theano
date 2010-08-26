@@ -19,7 +19,6 @@ from theano import gradient
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
-
 from theano import compile, printing
 from theano.printing import pprint, Print
 
@@ -429,6 +428,14 @@ class TensorType(Type):
         if self.filter_checks_isfinite and (not numpy.all(numpy.isfinite(data))):
             raise ValueError("non-finite elements not allowed")
         return data
+
+    def value_validity_msg(self, a):
+        try:
+            self.filter(a, True)
+        except Exception, e:
+            return str(e)
+        return "value is valid"
+        
 
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that corresponds to
@@ -4046,7 +4053,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
                     rng=numpy.random)
 
     Raises an Exception if the difference between the analytic gradient and
-    numerical gradient (computed through the Finite Difference Method) exceeds
+    numerical gradient (computed through the Finite Difference Method) of a random
+    projection of the fun's output to a scalar exceeds
     the given tolerance.
 
     :param fun: a Python function that takes Theano variables as inputs,
@@ -4055,7 +4063,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     :param pt: the list of numpy.ndarrays to use as input values.
         These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient of dot(u,fun) at pt
+    :param rng: random number generator used to sample u, we test gradient of sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
     :param abs_tol: absolute tolerance used as threshold for gradient comparison
     :param rel_tol: relative tolerance used as threshold for gradient comparison
@@ -4096,7 +4104,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
 
         #fun can be either a function or an actual Op instance
-        o_output = fun(*tensor_pt)
+        o_output = fun(*tensor_pt)    
 
         if isinstance(o_output,list) > 1:
             raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
@@ -4122,7 +4130,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         t_r = as_tensor_variable(random_projection)
 
         #random projection of o onto t_r
-        cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
+        cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum. 
         cost_fn = function(tensor_pt, cost)
 
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)

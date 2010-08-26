@@ -401,7 +401,8 @@ Here is the prototype for the verify_grad function.
 >>> def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
 
 ``verify_grad`` raises an Exception if the difference between the analytic gradient and
-numerical gradient (computed through the Finite Difference Method) exceeds
+numerical gradient (computed through the Finite Difference Method) of a random
+projection of the fun's output to a scalar  exceeds
 both the given absolute and relative tolerances.
 
 The parameters are as follows:
@@ -417,7 +418,7 @@ The parameters are as follows:
 * ``n_tests``: number of times to run the test
 
 * ``rng``: random number generator used to generate a random vector u,
-  we check the gradient of dot(u,fn) at pt
+  we check the gradient of sum(u*fn) at pt
 
 * ``eps``: stepsize used in the Finite Difference Method
 

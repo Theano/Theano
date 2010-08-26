@@ -45,6 +45,7 @@ you should check the strides and alignment.
       return theano.Apply(self, 
         inputs=[x_],
         outputs=[x_.type()])
+      # using x_.type() is dangerous, it copies x's broadcasting behaviour
 
     def perform(self, node, inputs, output_storage):
       x, = inputs
