@@ -4106,7 +4106,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         #fun can be either a function or an actual Op instance
         o_output = fun(*tensor_pt)    
 
-        if isinstance(o_output,list) > 1:
+        if isinstance(o_output,list):
             raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
