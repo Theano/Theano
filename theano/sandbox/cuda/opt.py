@@ -259,7 +259,11 @@ def local_gpu_sum(node):
                     if hasattr(new_gsum, 'c_code_reduce_%s'%pattern):
                         reshaped_x = x.reshape(tensor.stack(*new_in_shp))
                         sum_reshaped_x = host_from_gpu(new_gsum(gpu_from_host(reshaped_x)))
-                        unreshaped_sum = sum_reshaped_x.reshape(tensor.stack(*shape_of[node.outputs[0]]))
+
+                        if sum_reshaped_x.ndim != node.outputs[0].ndim:
+                            unreshaped_sum = sum_reshaped_x.reshape(tensor.stack(*shape_of[node.outputs[0]]))
+                        else:
+                            unreshaped_sum = sum_reshaped_x
                         if unreshaped_sum.type == node.outputs[0].type:
                             return [unreshaped_sum]
                         else:
