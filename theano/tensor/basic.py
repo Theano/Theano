@@ -10,7 +10,7 @@ import traceback #for overriding Op.__call__
 import numpy, theano
 #from copy import copy as python_copy
 
-from theano import gof
+from theano import gof, shared
 from theano.gof import Variable, Op, utils, Type, Constant,  Value
 from theano.tensor.tsor_apply import Apply
 
@@ -4099,49 +4099,49 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
             f = compile.function(inputs, output, accept_inplace=True, mode=mode)
         return f
 
-    for test_num in xrange(n_tests):
+    tensor_pt = [TensorType(as_tensor_variable(p).dtype, as_tensor_variable(p).broadcastable)(name='input %i'%i) for i,p in enumerate(pt)]
 
-        tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
+    #fun can be either a function or an actual Op instance
+    o_output = fun(*tensor_pt)
 
-        #fun can be either a function or an actual Op instance
-        o_output = fun(*tensor_pt)    
+    if isinstance(o_output,list):
+        raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
+        # we could make loop over outputs making random projections R for each,
+        # but this doesn't handle the case where not all the outputs are
+        # differentiable... so I leave this as TODO for now -JB.
 
-        if isinstance(o_output,list):
-            raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
-            # we could make loop over outputs making random projections R for each,
-            # but this doesn't handle the case where not all the outputs are
-            # differentiable... so I leave this as TODO for now -JB.
+    o_fn = function(tensor_pt, o_output)
+    o_fn_out = o_fn(*[p.copy() for p in pt])
 
-        o_fn = function(tensor_pt, o_output)
-        o_fn_out = o_fn(*[p.copy() for p in pt])
-        if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
+    if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
             raise TypeError('It seems like you are trying to use verify_grad '
                     'on an op or a function which outputs a list: there should'
                     ' be a single (array-like) output instead')
 
-        # random_projection should not have elements too small,
-        # otherwise too much precision is lost in numerical gradient
-        random_projection = rng.rand(*o_fn_out.shape) + 0.5
-
+    # random_projection should not have elements too small,
+    # otherwise too much precision is lost in numerical gradient
+    def random_projection():
+        plain =  rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type:
-            random_projection = numpy.array(random_projection,
-                                            dtype=o_output.dtype)
+            return numpy.array(plain,o_output.dtype)
+        return plain
 
-        t_r = as_tensor_variable(random_projection)
+    t_r = shared(random_projection())
 
-        #random projection of o onto t_r
-        cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum. 
-        cost_fn = function(tensor_pt, cost)
+    #random projection of o onto t_r
+    cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum. 
+    cost_fn = function(tensor_pt, cost)
 
+    #todo-- determine if this is actually needed
+    g_cost = as_tensor_variable(1.0,name='g_cost')
+    if cast_to_output_type:
+        g_cost = cast(g_cost, o_output.dtype)
+
+    symbolic_grad = grad(cost, tensor_pt, g_cost)
+    grad_fn = function(tensor_pt, symbolic_grad)
+
+    for test_num in xrange(n_tests):
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
-
-        g_cost = as_tensor_variable(1.0,name='g_cost')
-        if cast_to_output_type:
-            g_cost = cast(g_cost, o_output.dtype)
-
-        symbolic_grad = grad(cost, tensor_pt, g_cost)
-
-        grad_fn = function(tensor_pt, symbolic_grad)
 
         analytic_grad = grad_fn(*[p.copy() for p in pt])
 
@@ -4154,6 +4154,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         if max_abs_err > abs_tol and max_rel_err > rel_tol:
             raise verify_grad.E_grad(max_arg, max_err_pos,
                     max_abs_err, max_rel_err, abs_tol, rel_tol)
+
+        #get new random projection for next test
+        if test_num < n_tests - 1:
+            t_r.value = random_projection()
 
 
 class GradientError(Exception):
