@@ -3712,6 +3712,11 @@ pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'], -1, 
 #########################
 class TensorDotGrad(Op):
     def __init__(self, axes):
+        if isinstance(axes,list):
+            for i,a in enumerate(axes):
+                if isinstance(a,list):
+                    axes[i]=tuple(a)
+            axes=tuple(axes)
         self.axes = axes;
 
     def __eq__(self, other):
@@ -3759,6 +3764,11 @@ class TensorDot(Op):
     """
 
     def __init__(self, axes):
+        if isinstance(axes,list):
+            for i,a in enumerate(axes):
+                if isinstance(a,list):
+                    axes[i]=tuple(a)
+            axes=tuple(axes)
         self.axes = axes;
 
     def __eq__(self, other):
