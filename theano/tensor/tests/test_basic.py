@@ -2444,6 +2444,20 @@ class test_tensordot(unittest.TestCase):
                                   f6(bval,aval)))
         utt.verify_grad(TensorDot(axes), [bval,aval])
 
+    def test_list(self):
+        # test matrix-matrix
+        amat = dmatrix()
+        bmat = dmatrix()
+        axes = [[1,],[0,]]
+        c = tensordot(axes)(amat, bmat)
+        f3 = inplace_func([amat,bmat],c)
+        aval = numpy.random.rand(4,7);
+        bval = numpy.random.rand(7,9);
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f3(aval,bval)))
+        utt.verify_grad(TensorDot(axes), [aval,bval])
+
+
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
 

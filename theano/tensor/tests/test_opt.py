@@ -1015,15 +1015,15 @@ def test_log1p():
     # the first three ops are Shape_i, Shape_i, and Dimshuffle
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [inplace.log1p_inplace, alloc]
+            == [T.log1p, alloc]
     f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [inplace.log1p_inplace, alloc]
+            == [T.log1p, alloc]
     f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [inplace.log1p_inplace, alloc]
+            == [T.log1p, alloc]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
         

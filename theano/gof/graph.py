@@ -364,6 +364,12 @@ class Constant(Value):
         if self.name is not None:
             return self.name
         return str(self.data) #+ "::" + str(self.type)
+    def clone(self):
+        """
+        We clone this object, but we don't clone the data to lower memory requirement
+        We suppose that the data will never change.
+        """
+        return self.__class__(self.type, self.data, self.name)
 
 
 
