@@ -190,24 +190,9 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
 
         update_val = store_into.filter_update(update_val) # typically this might be a cast()
         if update_val.type != store_into.type:
-            #the number of clients don't seam to be defined
-            def get_first_node(node, dtype):
-                if node is None: 
-                    return None
-                if any([getattr(o.type, 'dtype', 'nodtype') != dtype for o in node.outputs]):
-                    for i in node.inputs:
-                        n = get_first_node(i.owner, dtype)
-                        if n is not None:
-                            return n
-                    return node#no parent generated a different type
-                else:
-                    return None
-
-            raise TypeError('an update must have the same type as the original shared variable(dest, dest.type, update_val, update_val.type)', 
-                    (store_into, store_into.type,
-                        update_val, update_val.type),
-                            'Hint: FWIW, this is the closest node that generated an incompatible dtype:',
-                            get_first_node(update_val.owner, store_into.dtype))
+            err_msg  = 'an update must have the same type as the original shared variable(dest, dest.type, update_val, update_val.type)'
+            err_arg = (store_into, store_into.type, update_val, update_val.type)
+            raise TypeError(err_msg, err_arg )
         update_d[store_into] = update_val
         update_expr.append((store_into, update_val))
 
