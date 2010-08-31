@@ -987,6 +987,8 @@ class T_Scan(unittest.TestCase):
         print f(3.)
         assert numpy.all( f(3.) != 0. )
 
+
+
     '''
     def test_shared_updates(self):
         X = theano.shared( numpy.array( [[1,2,3],[4,5,6]])) 
@@ -1001,6 +1003,35 @@ class T_Scan(unittest.TestCase):
         print X.value
     '''
 
+    def test_scan_output_padding(self):
+        """ 
+        Scan outputs are usually lists, whose entries correspond to the intermediate result.
+        When n_steps=1, some extra machinery is required in order to mimic this interface. Scan
+        thus calls tensor.shape_padleft on the inner function outputs.
+
+        However, this is not the proper behavior for:
+        * shared variables : these should not be padded in any way
+        * when return_steps is explicitely set to 1. Output should NOT be a list, but a tensor
+          corresponding to the result of the last iteration.
+
+        This unit test addresses the bug fix of changeset 4256.
+        """
+        a = theano.tensor.vector()
+        init_a = theano.tensor.vector()
+        b = theano.shared(numpy.random.rand(5,4))
+
+        def inner_func(a):
+            return a+1, {b:2*b}
+
+        out, updates = theano.scan(inner_func, 
+                outputs_info = [{'initial': init_a, 'return_steps': 1}],
+                n_steps=1)
+        assert out.type.ndim == a.type.ndim
+        assert updates[b].type.ndim == b.type.ndim
+        
+        out, updates = theano.scan(inner_func, outputs_info=[init_a], n_steps=1)
+        assert out.type.ndim == a.type.ndim+1
+        assert updates[b].type.ndim == b.type.ndim
 
 
 if __name__ == '__main__':
