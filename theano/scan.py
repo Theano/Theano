@@ -862,7 +862,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     else:
         # If we do not actually need scan
         for pos, inner_out in enumerate(inner_fn_outs):
-            if isinstance(inner_out.type, tensor.TensorType):
+            if isinstance(inner_out.type, tensor.TensorType) and store_steps[pos] != 1:
                 inner_fn_outs[pos] = tensor.unbroadcast( tensor.shape_padleft(inner_out),0)
         values = inner_fn_outs
 
