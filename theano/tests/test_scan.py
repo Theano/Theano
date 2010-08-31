@@ -1014,7 +1014,7 @@ class T_Scan(unittest.TestCase):
         * when return_steps is explicitely set to 1. Output should NOT be a list, but a tensor
           corresponding to the result of the last iteration.
 
-        This unit test addresses the bug fix of changeset 4256.
+        This unit test addresses the bug fix of changeset ba7157e95cb1.
         """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
