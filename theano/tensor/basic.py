@@ -2417,7 +2417,7 @@ def incsubtensor(x, y, idx_list, inplace=False):
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
-def set_subtensor(x, y):
+def set_subtensor(x, y, inplace=False):
     """Return x with the given subtensor overwritten by y.
 
     Example: To replicate the numpy expression "r[10:] = 5", type
@@ -2429,9 +2429,9 @@ def set_subtensor(x, y):
 
     :see: theano.tensor.basic.setsubtensor
     """
-    return inc_subtensor(x, y, set_instead_of_inc=True)
+    return inc_subtensor(x, y, inplace, set_instead_of_inc=True)
 
-def inc_subtensor(x, y, set_instead_of_inc=False):
+def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False):
     """Return x with the given subtensor incremented by y.
 
     :param x: the symbolic result of a Subtensor operation.
