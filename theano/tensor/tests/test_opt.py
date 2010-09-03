@@ -1569,6 +1569,7 @@ def test_constant_get_stabilized():
     f2 = theano.function([x2],y2)
     assert len(f2.maker.env.toposort())==1
     assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
+    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
     assert f2(800)==800
 
     x = T.as_tensor_variable(800)
@@ -1576,7 +1577,6 @@ def test_constant_get_stabilized():
     f = theano.function([],y)
     assert len(f.maker.env.toposort())==0
     assert numpy.isinf(f())
-    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
 
     #When this error is fixed, the following line should be ok.
     assert f()==800,f()
