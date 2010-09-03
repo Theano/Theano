@@ -8,7 +8,7 @@ except ImportError:
 
 import theano
 import theano.tensor as T
-from theano.misc.pycuda_example import PycudaElemwiseSourceModule, PycudaElemwiseKernel
+from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp
 from theano.sandbox.cuda import GpuContiguous
 import theano.misc.pycuda_example
 
@@ -21,7 +21,7 @@ def test_pycuda_elemwise_source_module():
     print f2.maker.env.toposort()
 
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
-    assert any([ isinstance(node.op, PycudaElemwiseSourceModule) for node in f2.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
     
     val1 = numpy.random.rand(5,5)
     val2 = numpy.random.rand(5,5)
@@ -40,7 +40,7 @@ def test_pycuda_elemwise_kernel():
     print f2.maker.env.toposort()
 
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
-    assert any([ isinstance(node.op, PycudaElemwiseKernel) for node in f2.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseKernelOp) for node in f2.maker.env.toposort()])
     
     val1 = numpy.random.rand(5,5)
     val2 = numpy.random.rand(5,5)
@@ -57,7 +57,7 @@ def test_pycuda_elemwise_kernel():
 
     f4 = theano.function([x3,y3,z3],x3*y3+z3, mode=theano.compile.mode.get_default_mode().including("local_pycuda_gpu_elemwise_kernel"))
     print f4.maker.env.toposort()
-    assert any([ isinstance(node.op, PycudaElemwiseKernel) for node in f4.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseKernelOp) for node in f4.maker.env.toposort()])
 
     val1 = numpy.random.rand(2,2,2)
     print val1

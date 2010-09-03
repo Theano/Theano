@@ -1,16 +1,17 @@
 """
-This file show how we can use Pycuda compiled fct in a Theano Op. Do no use them in production code. See the TODO.
+This file show how we can use Pycuda compiled fct in a Theano Op. Do no use those op in production code. See the TODO.
 
 You can use them as a guide to use your pycuda code into a Theano op.
 
-The PycudaElemwiseSourceModule op use pycuda code generated with pycuda.compiler.SourceModule
+The PycudaElemwiseSourceModuleOp is a Theano op use pycuda code generated with pycuda.compiler.SourceModule
 
-The PycudaElemwiseKernel op use pycuda code generated with pycuda.elementwise.ElementwiseKernel
+The PycudaElemwiseKernelOp op use pycuda code generated with pycuda.elementwise.ElementwiseKernel. It must be wrapper by TheanoElementwiseKernel.
 
 Their is a test in test_pycuda.py. 
 
-This don't work with broadcast and non-contiguous memory as pycuda don't support that, but we make sure we don't introduce problem.
-
+This don't work with broadcast and non-contiguous memory as pycuda don't support that, but we make sure we don't introduce problem. 
+  If the memory is non-contiguous, we create a new copy that is contiguous.
+  If their is broadcasted dimensions, we raise an error.
 """
 
 import numpy
@@ -25,10 +26,51 @@ from theano.sandbox.cuda.opt import gpu_seqopt
 from pycuda.elementwise import ElementwiseKernel
 from pycuda.compiler import SourceModule
 from pycuda.gpuarray import splay
+from pycuda.tools import VectorArg
 
 import pycuda.autoinit
 
-class PycudaElemwiseSourceModule(Op):
+def theano_parse_c_arg(c_arg):
+    c_arg = c_arg.replace('npy_float32','float')
+    c_arg = c_arg.replace('npy_float64','double')
+    c_arg = c_arg.replace('npy_int32','int')
+    c_arg = c_arg.replace('npy_int8','char')
+    c_arg = c_arg.replace('npy_ucs4','unsigned int')
+    c_arg = c_arg.replace('npy_uint32','unsigned int')
+    c_arg = c_arg.replace('npy_uint16','unsigned short')
+    c_arg = c_arg.replace('npy_uint8','unsigned char')
+    return pycuda.tools.parse_c_arg(c_arg)
+
+class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
+    def __init__(self, arguments, operation,
+                 name="kernel", keep=False, options=[], **kwargs):
+        if isinstance(arguments, str):
+            arguments = [theano_parse_c_arg(arg) for arg in arguments.split(",")]
+            pycuda.elementwise.ElementwiseKernel.__init__(self, arguments, operation, name, keep, options, **kwargs)
+            
+    def __call__(self, *args):
+        vectors = []
+
+        invocation_args = []
+        for arg, arg_descr in zip(args, self.arguments):
+            if isinstance(arg_descr, VectorArg):
+                vectors.append(arg)
+                invocation_args.append(arg.gpudata)
+            else:
+                invocation_args.append(arg)
+
+        repr_vec = vectors[0]
+        invocation_args.append(repr_vec.mem_size)
+        if hasattr(repr_vec,"_block") and hasattr(repr_vec,"_grid"):
+            self.func.set_block_shape(*repr_vec._block)
+            self.func.prepared_call(repr_vec._grid, *invocation_args)
+        else:
+            _grid, _block = pycuda.gpuarray.splay(repr_vec.mem_size)
+            self.func.set_block_shape(*_block)
+            self.func.prepared_call(_grid, *invocation_args)
+
+
+class PycudaElemwiseSourceModuleOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -42,9 +84,9 @@ class PycudaElemwiseSourceModule(Op):
             if self.inplace_pattern:
                 items = self.inplace_pattern.items()
                 items.sort()
-                return "PycudaElemwiseSourceModule{%s}%s" % (self.scalar_op, str(items))
+                return self.__class__.__name__+"{%s}%s" % (self.scalar_op, str(items))
             else:
-                return "PycudaElemwiseSourceModule{%s}" % (self.scalar_op)
+                return self.__class__.__name__+"{%s}" % (self.scalar_op)
         else:
             return self.name
 
@@ -56,7 +98,8 @@ class PycudaElemwiseSourceModule(Op):
             if i.type.ndim != inputs[0].type.ndim:
                 raise TypeError('different ranks among inputs')
 
-        assert not any([any(i.type.broadcastable) for i in inputs])
+        if any([any(i.type.broadcastable) for i in inputs]):
+            raise Exception("pycuda don't support broadcasted dimensions")
         assert len(inputs)==2#TODO remove
 
         otype = CudaNdarrayType(broadcastable=[False]*_inputs[0].type.ndim)
@@ -89,7 +132,7 @@ class PycudaElemwiseSourceModule(Op):
         self.pycuda_fct(inputs[0],inputs[1],z[0], block=(inputs[0].shape[0],inputs[0].shape[1],1))
 
 
-class PycudaElemwiseKernel(Op):
+class PycudaElemwiseKernelOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -103,9 +146,9 @@ class PycudaElemwiseKernel(Op):
             if self.inplace_pattern:
                 items = self.inplace_pattern.items()
                 items.sort()
-                return "PycudaElemwiseKernel{%s}%s" % (self.scalar_op, str(items))
+                return self.__class__.__name__+"{%s}%s" % (self.scalar_op, str(items))
             else:
-                return "PycudaElemwiseKernel{%s}" % (self.scalar_op)
+                return self.__class__.__name__+"{%s}" % (self.scalar_op)
         else:
             return self.name
 
@@ -117,7 +160,8 @@ class PycudaElemwiseKernel(Op):
             if i.type.ndim != inputs[0].type.ndim:
                 raise TypeError('different ranks among inputs')
 
-        assert not any([any(i.type.broadcastable) for i in inputs])
+        if any([any(i.type.broadcastable) for i in inputs]):
+            raise Exception("pycuda don't support broadcasted dimensions")
         assert len(inputs)==2#TODO remove
 
 # output is broadcastable only along dimensions where all inputs are broadcastable
@@ -139,7 +183,7 @@ class PycudaElemwiseKernel(Op):
         out_name = ["o"+str(id) for id in range(self.nout)]
         c_code = self.scalar_op.c_code(out_node, "some_name", tuple([n+"[i]"for n in in_name]), tuple(n+"[i]"for n in out_name), {})
         
-        self.pycuda_fct = ElementwiseKernel(
+        self.pycuda_fct = TheanoElementwiseKernel(
             ", ".join([var.type.dtype_specs()[1]+" *"+name for var,name in zip(inputs,in_name) + zip(out_node.outputs,out_name)]),
             c_code,
             "pycuda_elemwise_kernel_%s"%str(self.scalar_op),
@@ -152,8 +196,7 @@ class PycudaElemwiseKernel(Op):
         if z[0] is None or z[0].shape!=inputs[0].shape:
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         i = inputs + z
-        sp = splay(i[0].mem_size)
-        self.pycuda_fct(*i)#, grid=sp[0], block=sp[1])
+        self.pycuda_fct(*i)
 
 pycuda_optimizer = EquilibriumDB()
 gpu_seqopt.register("pycuda_optimizer", pycuda_optimizer, 1.5, "fast_run")
@@ -161,11 +204,11 @@ gpu_seqopt.register("pycuda_optimizer", pycuda_optimizer, 1.5, "fast_run")
 @local_optimizer([])
 def local_pycuda_gpu_elemwise(node):
     """
-       GpuElemwise -> PycudaElemwiseSourceModule
+       GpuElemwise -> PycudaElemwiseSourceModuleOp
     """
     if isinstance(node.op, GpuElemwise):
         if not any([ any(i.type.broadcastable) for i in node.inputs]) and all([i.ndim<=2 for i in node.inputs]):
-            new_op = PycudaElemwiseSourceModule(node.op.scalar_op, node.op.inplace_pattern)(*node.inputs)
+            new_op = PycudaElemwiseSourceModuleOp(node.op.scalar_op, node.op.inplace_pattern)(*node.inputs)
             return [new_op]
 
 pycuda_optimizer.register("local_pycuda_gpu_elemwise", local_pycuda_gpu_elemwise)
@@ -173,11 +216,11 @@ pycuda_optimizer.register("local_pycuda_gpu_elemwise", local_pycuda_gpu_elemwise
 @local_optimizer([])
 def local_pycuda_gpu_elemwise_kernel(node):
     """
-       GpuElemwise -> PycudaElemwiseKernel
+       GpuElemwise -> PycudaElemwiseKernelOp
     """
     if isinstance(node.op, GpuElemwise):
         if not any([ any(i.type.broadcastable) for i in node.inputs]):
-            new_op = PycudaElemwiseKernel(node.op.scalar_op, node.op.inplace_pattern)(*node.inputs)
+            new_op = PycudaElemwiseKernelOp(node.op.scalar_op, node.op.inplace_pattern)(*node.inputs)
             return [new_op]
 
 pycuda_optimizer.register("local_pycuda_gpu_elemwise_kernel", local_pycuda_gpu_elemwise_kernel, 1.5)
