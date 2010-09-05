@@ -296,7 +296,8 @@ class GpuConv(Op):
             and self.logical_kern_hw == other.logical_kern_hw \
             and self.logical_kern_align_top == other.logical_kern_align_top \
             and self.version == other.version \
-            and self.verbose == other.verbose
+            and self.verbose == other.verbose \
+            and self.kshp == other.kshp
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and hash(-2)==-2 in python! 
@@ -307,7 +308,8 @@ class GpuConv(Op):
             ^ hash(self.logical_kern_hw) \
             ^ hash(self.logical_kern_align_top) \
             ^ self.version \
-            ^ self.verbose
+            ^ self.verbose \
+            ^ self.kshp
     
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
@@ -336,7 +338,7 @@ class GpuConv(Op):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,6)
+        return (0,7)
 
     def c_support_code_apply(self, node, nodename):
         return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\
