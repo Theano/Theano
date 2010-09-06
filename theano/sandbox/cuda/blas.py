@@ -309,7 +309,7 @@ class GpuConv(Op):
             ^ hash(self.logical_kern_align_top) \
             ^ self.version \
             ^ self.verbose \
-            ^ self.kshp
+            ^ hash(self.kshp)
     
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
