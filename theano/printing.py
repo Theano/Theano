@@ -333,14 +333,14 @@ class PPrinter:
 use_ascii = True
 
 if use_ascii:
-    special = dict(middle_dot = "\dot",
-                   big_sigma = "\Sigma")
+    special = dict(middle_dot = "\\dot",
+                   big_sigma = "\\Sigma")
 
-    greek = dict(alpha    = "\alpha",
-                 beta     = "\beta",
-                 gamma    = "\gamma",
-                 delta    = "\delta",
-                 epsilon  = "\epsilon")
+    greek = dict(alpha    = "\\alpha",
+                 beta     = "\\beta",
+                 gamma    = "\\gamma",
+                 delta    = "\\delta",
+                 epsilon  = "\\epsilon")
 else:
 
     special = dict(middle_dot = u"\u00B7",

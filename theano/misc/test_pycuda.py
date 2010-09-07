@@ -6,22 +6,36 @@ except ImportError:
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed. Skip test of theano op with pycuda code.")
 
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available == False:
+    from nose.plugins.skip import SkipTest
+    raise SkipTest('Optional package cuda disabled')
+
 import theano
 import theano.tensor as T
-from theano.misc.pycuda_example import PycudaElemwiseSourceModule, PycudaElemwiseKernel
+from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp
 from theano.sandbox.cuda import GpuContiguous
 import theano.misc.pycuda_example
+
+import theano.sandbox.cuda as cuda_ndarray
+
+if theano.config.mode=='FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 def test_pycuda_elemwise_source_module():
     x=T.fmatrix('x')
     y=T.fmatrix('y')
-    f=theano.function([x,y],x*y)
+    f=theano.function([x,y],x*y, mode=mode_with_gpu)
     print f.maker.env.toposort()
-    f2 = theano.function([x,y],x*y, mode=theano.compile.mode.get_default_mode().including("local_pycuda_gpu_elemwise"))
+    f2 = theano.function([x,y],x*y, mode=mode_with_gpu.including("local_pycuda_gpu_elemwise"))
     print f2.maker.env.toposort()
 
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
-    assert any([ isinstance(node.op, PycudaElemwiseSourceModule) for node in f2.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
     
     val1 = numpy.random.rand(5,5)
     val2 = numpy.random.rand(5,5)
@@ -34,13 +48,13 @@ def test_pycuda_elemwise_source_module():
 def test_pycuda_elemwise_kernel():
     x=T.fmatrix('x')
     y=T.fmatrix('y')
-    f=theano.function([x,y],x+y)
+    f=theano.function([x,y],x+y, mode=mode_with_gpu)
     print f.maker.env.toposort()
-    f2 = theano.function([x,y],x+y, mode=theano.compile.mode.get_default_mode().including("local_pycuda_gpu_elemwise_kernel"))
+    f2 = theano.function([x,y],x+y, mode=mode_with_gpu.including("local_pycuda_gpu_elemwise_kernel"))
     print f2.maker.env.toposort()
 
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
-    assert any([ isinstance(node.op, PycudaElemwiseKernel) for node in f2.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseKernelOp) for node in f2.maker.env.toposort()])
     
     val1 = numpy.random.rand(5,5)
     val2 = numpy.random.rand(5,5)
@@ -55,9 +69,9 @@ def test_pycuda_elemwise_kernel():
     y3=T.ftensor3('y')
     z3=T.ftensor3('y')
 
-    f4 = theano.function([x3,y3,z3],x3*y3+z3, mode=theano.compile.mode.get_default_mode().including("local_pycuda_gpu_elemwise_kernel"))
+    f4 = theano.function([x3,y3,z3],x3*y3+z3, mode=mode_with_gpu.including("local_pycuda_gpu_elemwise_kernel"))
     print f4.maker.env.toposort()
-    assert any([ isinstance(node.op, PycudaElemwiseKernel) for node in f4.maker.env.toposort()])
+    assert any([ isinstance(node.op, PycudaElemwiseKernelOp) for node in f4.maker.env.toposort()])
 
     val1 = numpy.random.rand(2,2,2)
     print val1
