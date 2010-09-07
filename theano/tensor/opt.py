@@ -553,7 +553,8 @@ class ShapeFeature(object):
         # an element of o_shapes is either None or a tuple
         #   elements of the tuple can be either strings, or ints
 
-        assert len(o_shapes) == len(node.outputs)
+        if len(o_shapes) != len(node.outputs):
+            raise Exception('len(o_shapes) = '+str(len(o_shapes))+' != len(node.outputs) = '+str(len(node.outputs)))
 
         for r, s in zip(node.outputs, o_shapes):
             self.set_shape(r, s)

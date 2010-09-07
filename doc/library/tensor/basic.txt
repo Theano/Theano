@@ -466,6 +466,9 @@ TensorVariable
 
         See :func:`dimshuffle`.
 
+        (The above link just points back to this paragraph. Maybe whoever
+        wrote that meant to refer to theano.tensor.DimShuffle)
+
         
 
 

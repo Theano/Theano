@@ -62,7 +62,8 @@ There are less methods to define for an Op than for a Type:
       we will be able to have the shape without its computation.
       must return a tuple with one tuple with the shape of each output.
       Example of matrix-matrix product input_shapes will have as input
-      (node, ((x0,x1), (y0,y1))) and should return ((x0, y1)).
+      (node, ((x0,x1), (y0,y1))) and should return [(x0, y1)]. Both the
+      inputs and the return value may be theano variables.
 
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
