@@ -2962,6 +2962,8 @@ def stack(*tensors):
     """Insert the arguments as slices into a tensor of 1 rank greater.
     EXAMPLE
     """
+    if len(tensors)==0:
+        raise Exception('theano.tensor.stack(*tensors) must have at least one parameter')
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
     if numpy.all([isinstance(t, Variable) and\
