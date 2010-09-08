@@ -267,6 +267,18 @@ class GpuConv(Op):
             version=-1,
             verbose=0,
             kshp=None):
+        """
+        :param version: each version of c_code implement many kernel for the 
+                        convolution. By default we try to guess the best one. 
+                        You can force one version with this parameter. This 
+                        parameter is used by the tests.
+        :param verbose: for value of 1,2 and 3. Print more information during
+                        the execution of the convolution. Mostly used for 
+                        optimization or debugging.
+        :param kshp:    The size of the kernel. If provided, can genera 
+                        faster code. If the GpuConv op is automatically inserted,
+                        we take its value automatically from the Conv op.
+        """
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
