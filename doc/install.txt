@@ -242,7 +242,15 @@ Mac
 
 - Likewise, you need to
   ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH`` if this is not
-  the case already (so that we link to the correct libraries).
+  the case already (so that we link to the correct libraries). You may also
+  need to add
+
+    .. code-block:: bash
+
+      [gcc]
+      cxxflags = -L/opt/local/lib
+
+  to ``~/.theanorc``.
 
 - An obscure ``Bus error`` can sometimes be caused when linking
   Theano-generated object files against the ``framework`` library in Leopard.
