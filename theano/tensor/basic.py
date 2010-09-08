@@ -2960,7 +2960,8 @@ def shape_padright(t, n_ones=1):
 @constructor
 def stack(*tensors):
     """Insert the arguments as slices into a tensor of 1 rank greater.
-    EXAMPLE
+
+    The size in dimension 0 of the result will be equal to the number of tensors passed.
     """
     if len(tensors)==0:
         raise Exception('theano.tensor.stack(*tensors) must have at least one parameter')

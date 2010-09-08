@@ -622,6 +622,36 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
               except for the main diagonal, whose values are equal to one. The output
               will have same dtype as `x`.
 
+.. function:: stack(*tensors)
+
+    Return a Tensor representing for the arguments all stacked up into a single Tensor.
+    (of 1 rank greater).
+
+    :param tensors: one or more tensors of the same rank
+    :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
+
+    >>> x0 = T.scalar()
+    >>> x1 = T.scalar()
+    >>> x2 = T.scalar()
+    >>> x = T.stack(x0, x1, x2)
+    >>> # x.ndim == 1, is a vector of length 3.
+
+.. function:: concatenate(tensor_list, axis=0)
+
+    :type tensor_list: a list or tuple of Tensors that all have the same shape in the axes
+                        *not* specified by the `axis` argument.
+    :param tensor_list: one or more Tensors to be concatenated together into one.
+    :type axis: literal or symbolic integer
+    :param axis: Tensors will be joined along this axis, so they may have different
+        ``shape[axis]``
+
+    >>> x0 = T.fmatrix()
+    >>> x1 = T.ftensor3()
+    >>> x2 = T.fvector()
+    >>> x = T.concatenate([x0, x1[0], T.shape_padright(x2)], axis=1)
+    >>> # x.ndim == 2
+
+
 Reductions 
 ==========
 
