@@ -1660,6 +1660,14 @@ def tanh(a):
     """hyperbolic tangent of a"""
 
 @_scal_elemwise
+def erf(a):
+    """error function"""
+
+@_scal_elemwise
+def erfc(a):
+    """complementary error function"""
+
+@_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 

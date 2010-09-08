@@ -21,6 +21,13 @@ from theano.tests import unittest_tools as utt
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+except ImportError:
+    pass
+
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
 
@@ -88,8 +95,14 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                         % (self.op, testname)
                     exc_value.args = exc_value.args + (err_msg, )
                     raise type, exc_value, traceback
-
-                expecteds = self.expected(*inputs)
+                if isinstance(self.expected,dict) and testname in self.expected:
+                    expecteds = self.expected[testname]
+                    #with numpy version, when we print a number and read it back, we don't get exactly the same result
+                    #So we accept rounding error in that case.
+                    eps = 5e-9
+                else:
+                    expecteds = self.expected(*inputs)
+                    eps = 1e-10
 
                 try:
                     variables = f(*inputs)
@@ -104,7 +117,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                     expecteds = (expecteds, )
                 for i, (variable, expected) in enumerate(zip(variables, expecteds)):
                     if variable.dtype != expected.dtype or variable.shape != expected.shape or \
-                            numpy.any(numpy.abs(variable - expected) > 1e-10):
+                            numpy.any(numpy.abs(variable - expected) > eps):
+                        import pdb;pdb.set_trace()
                         self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
                                   % (self.op, testname, i, inputs, expected, variable))
 
@@ -190,7 +204,8 @@ def makeBroadcastTester(op, expected, checks = {}, **kwargs):
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
             _expected = expected
-            expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
+            if not isinstance(_expected,dict):
+                expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
             def inplace_check(inputs, outputs):
                 # this used to be inputs[0] is output[0]
                 # I changed it so that it was easier to satisfy by the DebugMode
@@ -612,6 +627,54 @@ TanhInplaceTester = makeBroadcastTester(op = inplace.tanh_inplace,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
+#inplace ops when the input is integer and the output is float* 
+# don't have a well defined behavior. We don't test that case.
+_good_broadcast_unary_normal_no_int = _good_broadcast_unary_normal.copy()
+del _good_broadcast_unary_normal_no_int['integers']
+
+if imported_scipy_special:
+    expected = scipy.special.erf
+else:
+    integers = numpy.asarray([[-1., 0.99532227, -0.99532227],
+                              [-0.99532227, 1., 0.84270079]])
+    corner_case = numpy.asarray([-0.99959305, -0.99532227, -0.96610515, -0.84270079, -0.52049988, -0.52924362,
+                               -0.51166826,  0.,          0.51166826,  0.52049988,  0.79690821,  0.84270079,
+                               0.96610515,  0.99532227, 0.99959305])
+    normal = numpy.array([[-1.        ,  0.99991358,  0.70314729],
+                          [ 0.9977147 , -0.99999884,  0.33409098]])
+    expected = dict(integers=integers,corner_case=corner_case,normal = normal)
+ErfTester = makeBroadcastTester(op = erf,
+                                expected = expected,
+                                good = _good_broadcast_unary_normal,
+                                grad = _grad_broadcast_unary_normal)
+ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
+                                       expected = expected,
+                                       good = _good_broadcast_unary_normal_no_int,
+                                       grad = _grad_broadcast_unary_normal,
+                                       inplace = True)
+
+if imported_scipy_special:
+    expected = scipy.special.erfc
+else:
+    integers = numpy.array([[  2.00000000e+00,   4.67773498e-03,   1.99532227e+00],
+                            [  1.99532227e+00,   1.53745979e-12,   1.57299207e-01]])
+    corner_case = numpy.array([  1.99959305e+00,   1.99532227e+00,   1.96610515e+00,
+                                 1.84270079e+00,   1.52049988e+00,   1.52924362e+00,
+                                 1.51166826e+00,   1.00000000e+00,   4.88331739e-01,
+                                 4.79500122e-01,   2.03091788e-01,   1.57299207e-01,
+                                 3.38948535e-02,   4.67773498e-03,   4.06952017e-04])
+    normal = numpy.array([[  2.00000000e+00,   8.64228449e-05,   2.96852710e-01],
+                          [  2.28530326e-03,   1.99999884e+00,   6.65909025e-01]])
+    expected = dict(integers=integers,corner_case=corner_case,normal = normal)
+ErfcTester = makeBroadcastTester(op = erfc,
+                                 expected = expected,
+                                 good = _good_broadcast_unary_normal,
+                                 grad = _grad_broadcast_unary_normal)
+ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
+                                        expected = expected,
+                                        good = _good_broadcast_unary_normal_no_int,
+                                        grad = _grad_broadcast_unary_normal,
+                                        inplace = True)
 
 
 DotTester = makeTester(name = 'DotTester',

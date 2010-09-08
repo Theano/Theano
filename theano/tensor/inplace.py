@@ -165,6 +165,14 @@ def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def erf_inplace(a):
+    """error function"""
+
+@_scal_inplace
+def erfc_inplace(a):
+    """complementary error function"""
+
+@_scal_inplace
 def second_inplace(a):
     """Fill `a` with `b`"""
 
