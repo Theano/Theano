@@ -3886,7 +3886,9 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
-    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant,
+    gmap = gradient.grad_sources_inputs(
+            [(cost, g_cost)],
+            list(inputs) + list(consider_constant),
             warn_type=warn_type)
 
     # Note that it is important to use `zeros_like` when there is no gradient,
