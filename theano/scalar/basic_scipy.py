@@ -34,7 +34,7 @@ erf = Erf(upgrade_to_float, name= 'erf')
 class Erfc(UnaryScalarOp):
     def impl(self, x):
         if imported_scipy_special:
-            return scipy.special.erf(x)
+            return scipy.special.erfc(x)
         else:
             super(Erfc,self).impl(x)
     def grad(self, (x, ), (gz, )):
