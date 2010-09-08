@@ -1095,10 +1095,13 @@ class _Linker(gof.link.LocalLinker):
 
                     if thunk_c:
 
-                        for r in node.inputs:
-                            # TODO:  we only need to overwrite the non-destroyed inputs
-                            # print >> sys.stderr, i, "DEBUGMODE replacing input", r
-                            storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+                        clobber = True
+                        if thunk_py:
+                            for r in node.inputs:
+                                # TODO:  we only need to overwrite the non-destroyed inputs
+                                # print >> sys.stderr, i, "DEBUGMODE replacing input", r
+                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+                            clobber = False
 
                         debug(i, "DEBUGMODE running thunk_c")
                         try:
@@ -1118,7 +1121,7 @@ class _Linker(gof.link.LocalLinker):
                                     self.maker.mode.require_matching_strides, node.op)
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                clobber_dr_vals=False, perform='c')
+                                clobber_dr_vals=clobber, perform='c')
 
                         _check_viewmap(node, storage_map)
 
