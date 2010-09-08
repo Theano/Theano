@@ -1581,6 +1581,33 @@ def test_constant_get_stabilized():
     #When this error is fixed, the following line should be ok.
     assert f()==800,f()
 
+def test_local_one_plus_erf():
+    mode = theano.config.mode
+    if mode == 'FAST_COMPILE':
+       mode = 'FAST_RUN'
+    mode = compile.mode.get_mode(mode)
+    mode = mode.excluding('fusion').excluding('gpu')
+
+    val = numpy.asarray([0,1,2,3,30])
+
+    x = T.vector()
+    f = theano.function([x],1+T.erf(x), mode=mode)
+    print f.maker.env.toposort()
+    assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace]
+    f(val)
+    f = theano.function([x],T.erf(x)+1, mode=mode)
+    print f.maker.env.toposort()
+    assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace]
+    f(val)
+    f = theano.function([x],T.erf(x)+2, mode=mode)
+    topo = f.maker.env.toposort()
+    print topo
+    assert len(topo)==2
+    assert topo[0].op==T.erf
+    assert isinstance(topo[1].op,T.Elemwise)
+    assert isinstance(topo[1].op.scalar_op,scal.Add)
+    f(val)
+
 class T_local_sum(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')

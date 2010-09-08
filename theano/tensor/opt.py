@@ -2458,6 +2458,24 @@ local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y
         (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))
 register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 
+def _is_1(expr):
+    """rtype bool. True iff expr is a constant close to 1
+    """
+    try:
+        v = get_constant_value(expr)
+        return numpy.allclose(v, 1)
+    except TypeError:
+        return False
+
+local_one_plus_erf = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_1),
+                                     (T.erf, 'x')),
+                                    (T.erfc, (T.neg, 'x')),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_one_plus_erf, name='local_one_plus_erf')
+register_stabilize(local_one_plus_erf, name='local_one_plus_erf')
+register_specialize(local_one_plus_erf, name='local_one_plus_erf')
+
 # ###############
 # # Loop fusion #
 # ###############
