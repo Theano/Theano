@@ -1318,6 +1318,7 @@ class Neg(UnaryScalarOp):
 neg = Neg(same_out, name = 'neg')
 
 class Inv(UnaryScalarOp):
+    """ multiplicative inverse. Also called reciprocal"""
     def impl(self, x):
         return 1.0 / x
     def grad(self, (x, ), (gz, )):
