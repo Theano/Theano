@@ -2,7 +2,6 @@
 #as scipy is not always available, we put threat them separatly
 
 from theano.scalar.basic import UnaryScalarOp,exp,sqrt,upgrade_to_float,complex_types,float_types
-#import theano.tensor.elemwise as elemwise
 import numpy
 
 imported_scipy_special = False
