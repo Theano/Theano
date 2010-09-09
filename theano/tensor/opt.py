@@ -2467,6 +2467,16 @@ def _is_1(expr):
     except TypeError:
         return False
 
+def _is_minus1(expr):
+    """rtype bool. True iff expr is a constant close to -1
+    """
+    try:
+        v = get_constant_value(expr)
+        return numpy.allclose(v, -1)
+    except TypeError:
+        return False
+
+#1+erf(x)=>erfc(-x)
 local_one_plus_erf = gof.PatternSub((T.add, 
                                      dict(pattern='y', constraint = _is_1),
                                      (T.erf, 'x')),
@@ -2475,6 +2485,71 @@ local_one_plus_erf = gof.PatternSub((T.add,
 register_canonicalize(local_one_plus_erf, name='local_one_plus_erf')
 register_stabilize(local_one_plus_erf, name='local_one_plus_erf')
 register_specialize(local_one_plus_erf, name='local_one_plus_erf')
+
+#1-erf(x)=>erfc(x)
+local_one_minus_erf = gof.PatternSub((T.sub, 
+                                     dict(pattern='y', constraint = _is_1),
+                                     (T.erf, 'x')),
+                                    (T.erfc, 'x'),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_one_minus_erf, name='local_one_minus_erf')
+register_stabilize(local_one_minus_erf, name='local_one_minus_erf')
+register_specialize(local_one_minus_erf, name='local_one_minus_erf')
+
+#1+(-erf(x))=>erfc(x)
+#This is a different graph then the previous as the canonicalize don't work completly
+local_one_plus_neg_erf = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_1),
+                                     (T.neg,(T.erf, 'x'))),
+                                    (T.erfc, 'x'),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
+register_stabilize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
+register_specialize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
+
+#(-1)+erf(x) => -erfc(x)
+#don't need erf(x)+(-1) as the canonicalize will put the -1 as the first argument.
+local_erf_minus_one = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_minus1),
+                                     (T.erf, 'x')),
+                                    (T.neg,(T.erfc, 'x')),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_erf_minus_one, name='local_erf_minus_one')
+register_stabilize(local_erf_minus_one, name='local_erf_minus_one')
+register_specialize(local_erf_minus_one, name='local_erf_minus_one')
+
+#1-erfc(x) => erf(x)
+local_one_minus_erfc = gof.PatternSub((T.sub, 
+                                     dict(pattern='y', constraint = _is_1),
+                                     (T.erfc, 'x')),
+                                    (T.erf, 'x'),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_one_minus_erfc, name='local_one_minus_erfc')
+register_stabilize(local_one_minus_erfc, name='local_one_minus_erfc')
+register_specialize(local_one_minus_erfc, name='local_one_minus_erfc')
+
+#1+(-erfc(x)) => erf(x)
+#This is a different graph then the previous as the canonicalize don't work completly
+local_one_add_neg_erfc = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_1),
+                                     (T.neg,(T.erfc, 'x'))),
+                                    (T.erf, 'x'),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
+register_stabilize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
+register_specialize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
+
+#(-1)+erfc(-x)=>erf(x)
+local_erf_neg_minus_one = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_minus1),
+                                     (T.erfc, (T.neg,'x'))),
+                                    (T.erf, 'x'),
+                                    allow_multiple_clients = True,)
+register_canonicalize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
+register_stabilize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
+register_specialize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
+
+#-erfc(x)+1=>erf(x)
 
 # ###############
 # # Loop fusion #

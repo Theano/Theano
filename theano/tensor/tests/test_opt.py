@@ -1581,32 +1581,137 @@ def test_constant_get_stabilized():
     #When this error is fixed, the following line should be ok.
     assert f()==800,f()
 
-def test_local_one_plus_erf():
-    mode = theano.config.mode
-    if mode == 'FAST_COMPILE':
-       mode = 'FAST_RUN'
-    mode = compile.mode.get_mode(mode)
-    mode = mode.excluding('fusion').excluding('gpu')
+class T_local_erf(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
 
-    val = numpy.asarray([0,1,2,3,30])
+    def test_local_one_plus_erf(self):
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        x = T.vector()
 
-    x = T.vector()
-    f = theano.function([x],1+T.erf(x), mode=mode)
-    print f.maker.env.toposort()
-    assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace]
-    f(val)
-    f = theano.function([x],T.erf(x)+1, mode=mode)
-    print f.maker.env.toposort()
-    assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace]
-    f(val)
-    f = theano.function([x],T.erf(x)+2, mode=mode)
-    topo = f.maker.env.toposort()
-    print topo
-    assert len(topo)==2
-    assert topo[0].op==T.erf
-    assert isinstance(topo[1].op,T.Elemwise)
-    assert isinstance(topo[1].op.scalar_op,scal.Add)
-    f(val)
+        f = theano.function([x],1+T.erf(x), mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace], f.maker.env.toposort()
+        f(val)
+
+        f = theano.function([x],T.erf(x)+1, mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace], f.maker.env.toposort()
+        f(val)
+
+        f = theano.function([x],T.erf(x)+2, mode=self.mode)
+        topo = f.maker.env.toposort()
+        print topo
+        assert len(topo)==2
+        assert topo[0].op==T.erf
+        assert isinstance(topo[1].op,T.Elemwise)
+        assert isinstance(topo[1].op.scalar_op,scal.Add)
+        f(val)
+
+    def test_local_one_minus_erf(self):
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        x = T.vector()
+
+        f = theano.function([x],1-T.erf(x), mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],1+(-T.erf(x)), mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],(-T.erf(x))+1, mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],2-T.erf(x), mode=self.mode)
+        topo = f.maker.env.toposort()
+        print topo
+        assert len(topo)==2, f.maker.env.toposort()
+        assert topo[0].op==T.erf, f.maker.env.toposort()
+        assert isinstance(topo[1].op,T.Elemwise), f.maker.env.toposort()
+        assert isinstance(topo[1].op.scalar_op,scal.Add) or isinstance(topo[1].op.scalar_op,scal.Sub), f.maker.env.toposort()
+        print f(val)
+
+    def test_local_erf_minus_one(self):
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        x = T.vector()
+
+        f = theano.function([x],T.erf(x)-1, mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        print f(val)
+
+        f = theano.function([x],T.erf(x)+(-1), mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        print f(val)
+
+        f = theano.function([x],-1+T.erf(x), mode=self.mode)
+        print f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        print f(val)
+
+        f = theano.function([x],T.erf(x)-2, mode=self.mode)
+        topo = f.maker.env.toposort()
+        print topo
+        assert len(topo)==2
+        assert topo[0].op==T.erf
+        assert isinstance(topo[1].op,T.Elemwise)
+        assert isinstance(topo[1].op.scalar_op,scal.Add) or isinstance(topo[1].op.scalar_op,scal.Sub)
+        print f(val)
+
+class T_local_erfc(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
+
+    def test_local_one_minus_erfc(self):
+        """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
+        """
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        x = T.vector()
+
+        f = theano.function([x],1-T.erfc(x), mode=self.mode)
+        theano.printing.debugprint(f)
+        assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],(-T.erfc(x))+1, mode=self.mode)
+        theano.printing.debugprint(f)
+        assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],2-T.erfc(x), mode=self.mode)
+        topo = f.maker.env.toposort()
+        theano.printing.debugprint(f)
+        assert len(topo)==2, f.maker.env.toposort()
+        assert topo[0].op==T.erfc, f.maker.env.toposort()
+        assert isinstance(topo[1].op,T.Elemwise), f.maker.env.toposort()
+        assert isinstance(topo[1].op.scalar_op,scal.Sub), f.maker.env.toposort()
+        print f(val)
+
+    def test_local_erf_neg_minus_one(self):
+        """ test opt: (-1)+erfc(-x)=>erf(x)"""
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        x = T.vector()
+
+        f = theano.function([x],-1+T.erfc(-x), mode=self.mode)
+        theano.printing.debugprint(f)
+        assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],T.erfc(-x)-1, mode=self.mode)
+        theano.printing.debugprint(f)
+        assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
+        print f(val)
+
+        f = theano.function([x],T.erfc(-x)+(-1), mode=self.mode)
+        theano.printing.debugprint(f)
+        assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
+        print f(val)
 
 class T_local_sum(unittest.TestCase):
     def setUp(self):
