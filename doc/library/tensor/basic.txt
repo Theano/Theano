@@ -969,7 +969,7 @@ Mathematical
 
 .. function:: inv(a)
 
-    Returns a variable representing the inverse of a, ie 1.0/a.
+    Returns a variable representing the inverse of a, ie 1.0/a. Also called reciprocal.
 
 .. function:: log(a), log2(a), log10(a)
 
@@ -1010,6 +1010,10 @@ Mathematical
 .. function:: cosh(a), sinh(a), tanh(a)
 
     Returns a variable representing the hyperbolic trigonometric functions of a (hyperbolic cosine, sine and tangent).
+
+.. function:: erf(a), erfc(a)
+
+    Returns a variable representing the error function or the complementary error function.
 
 
 .. _libdoc_tensor_broadcastable:
