@@ -118,7 +118,7 @@ def test_run_nnet():
             print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
             rtol = 1e-4
             if n_in*n_hid>=2048*4096:
-                rtol = 5e-4
+                rtol = 7e-4
             if not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6):
                 assert numpy.allclose(rval_cpu, rval_gpu,rtol=rtol,atol=1e-6)
 
