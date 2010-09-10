@@ -350,7 +350,7 @@ class GpuConv(Op):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,7)
+        return (0,8)
 
     def c_support_code_apply(self, node, nodename):
         return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\
