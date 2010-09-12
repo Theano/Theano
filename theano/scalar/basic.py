@@ -9,6 +9,10 @@ from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
+builtin_complex = complex
+builtin_int = int
+builtin_float = float
+
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)
     for dtype in dtypes:
@@ -31,7 +35,7 @@ def as_scalar(x, name = None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 def constant(x):
-    if isinstance(x, float):
+    if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
@@ -39,7 +43,7 @@ def constant(x):
             x_ = None
         assert x_ is not None
         return ScalarConstant(Scalar(str(x_.dtype)), x)
-    if isinstance(x, int):
+    if isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
@@ -47,7 +51,8 @@ def constant(x):
             x_ = None
         assert x_ is not None
         return ScalarConstant(Scalar(str(x_.dtype)), x)
-    if isinstance(x, complex):
+    if isinstance(x, builtin_complex):
+        #TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
     raise TypeError(x)
     #return ScalarConstant(float64, float(x))
