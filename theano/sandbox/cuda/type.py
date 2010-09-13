@@ -281,7 +281,7 @@ class CudaNdarrayType(Type):
 # happy with the situation.
 import copy_reg
 def CudaNdarray_unpickler(npa):
-    return cuda_ndarray.CudaNdarray(npa)
+    return cuda.CudaNdarray(npa)
 copy_reg.constructor(CudaNdarray_unpickler)
 
 def CudaNdarray_pickler(cnda):
