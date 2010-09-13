@@ -1098,7 +1098,14 @@ class _Linker(gof.link.LocalLinker):
                         clobber = True
                         if thunk_py:
                             for r in node.inputs:
-                                # TODO:  we only need to overwrite the non-destroyed inputs
+                                # if thunk_py ran, and we still got this far, 
+                                # it means that the destroy_map of the Op (and view_map) are
+                                # accurate
+                                # so we can assume that inputs not marked as destroyed have in
+                                # fact not been destroyed.
+                                # Therefore... we only need to overwrite inputs that *have*
+                                # been marked as destroyed.
+                                # TODO:  only overwrite the destroyed inputs
                                 # print >> sys.stderr, i, "DEBUGMODE replacing input", r
                                 storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
                             clobber = False
