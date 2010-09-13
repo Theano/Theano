@@ -2560,7 +2560,34 @@ register_canonicalize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 register_stabilize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 register_specialize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 
-#-erfc(x)+1=>erf(x)
+#Stability optimization
+#log(erfc(x)) => when x>threashold, -x**2-log(x)-.5*log(pi)+log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
+#for float64: threshold=26.641747557 was choosed with: [(i,numpy.log(scipy.special.erfc(numpy.asarray([i],dtype='float64')))) for i in numpy.arange(26.641747557,26.6417475571,.00000000001)]
+#for float32: threshold=10.0541949, [(i,numpy.log(scipy.special.erfc(numpy.asarray([i],dtype='float32')))) for i in numpy.arange(10.0541948,10.0541951,.0000001)]
+
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([T.log])
+def local_log_erfc(node):
+    if node.op!=T.log:
+        return False
+    if not node.inputs[0].owner or node.inputs[0].owner.op != T.erfc:
+        return False
+
+    if hasattr(node.tag, 'local_log_erfc_applied'):
+        #We use that flag to don't apply the optimization recursively
+        return False
+    node.tag.local_log_erfc_applied=True
+
+    x = node.inputs[0].owner.inputs[0]
+    stab_value = -x**2-T.log(x)-.5*T.log(numpy.pi)+T.log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
+    
+    if node.outputs[0].dtype=='float32':
+        threshold = 10.0541949
+    elif node.outputs[0].dtype=='float64':
+        threshold = 26.641747557
+
+    return [T.switch(x<threshold,node.outputs[0],stab_value)]
 
 # ###############
 # # Loop fusion #
