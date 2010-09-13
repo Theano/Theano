@@ -34,7 +34,7 @@ class Param(object):
         self.implicit = implicit
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
-        no_default_updates=False, accept_inplace=False, name=None):
+        no_default_updates=False, accept_inplace=False, name=None, rebuild_strict = True):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -145,7 +145,8 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         if a not in clone_d:
             for i in a.inputs:
                 clone_v_get_shared_updates(i)
-            clone_d[a] = a.clone_with_new_inputs([clone_d[i] for i in a.inputs])
+            clone_d[a] = a.clone_with_new_inputs([clone_d[i] for i in a.inputs],
+                                                 strict = rebuild_strict)
             for old_o, new_o in zip(a.outputs, clone_d[a].outputs):
                 clone_d.setdefault(old_o, new_o)
         return clone_d[a]

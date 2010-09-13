@@ -11,7 +11,8 @@ from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
 def function(inputs, outputs=None, mode=None, updates=[], givens=[],
-        no_default_updates=False, accept_inplace=False, name=None):
+             no_default_updates=False, accept_inplace=False, name=None, 
+             rebuild_strict = True):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -45,6 +46,15 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     :returns: a callable object that will compute the outputs (given the inputs)
     and update the implicit function arguments according to the `updates`.
 
+    :param rebuild_strict: Allow givens to change the type of the inputs of the ops. This 
+                           allow to change cpu variables with gpu variables. This could
+                           also serve to change vector to matrix to create a minibatch version
+                           of the function in some case(not tested) and to make the function
+                           work with sparse type(not tested) or complex type(not tested).
+                           WARNING: not all ops can be rebuild with inputs of other type!
+                           In that case an error will be probably raised(not tested).
+                           STRONGLY suggested: test the generated graph in DebugMode!
+
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
     another expression is undefined.  Replacements specified with givens are different from
@@ -72,4 +82,5 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
                 updates=updates, 
                 givens=givens,
                 no_default_updates=no_default_updates,
-                accept_inplace=accept_inplace,name=name)
+                accept_inplace=accept_inplace,name=name,
+                rebuild_strict=rebuild_strict)
