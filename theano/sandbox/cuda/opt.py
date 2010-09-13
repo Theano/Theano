@@ -343,7 +343,7 @@ def local_gpu_incsubtensor(node):
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
             return [GpuIncSubtensor(incsubt.idx_list, inplace=incsubt.inplace,
-                                    set_instead_of_inc=incsubt.op.set_instead_of_inc)(
+                                    set_instead_of_inc=incsubt.set_instead_of_inc)(
                 gpu_from_host(x),
                 gpu_from_host(y),
                 *coords)]
