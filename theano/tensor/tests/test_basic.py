@@ -2784,14 +2784,19 @@ def test_unalign():
     av,bv = tensor.vectors('ab')
     f = theano.function([av,bv],2*av+3*bv)
     f.maker.env.toposort()
+    #FAST_COMPILE use the python code that support unaligned data
+    #The DebugMode make a copy of the inputs, so they will be aligned.
+    should_raise = theano.config.mode not in ["FAST_COMPILE","DebugMode", "DEBUG_MODE"]
     try:
         out_theano = f(a,b)
         assert not a.flags.aligned
         assert not b.flags.aligned
         assert numpy.allclose(out_numpy,out_theano)
-        raise Exception("Expected an error from Theano!")
+        if should_raise:
+            raise Exception("Expected an error from Theano!")
     except NotImplementedError:
-        pass
+        if not should_raise:
+            raise Exception("Theano raised an exception when none was expected")
 
 if __name__ == '__main__':
     if 1:
