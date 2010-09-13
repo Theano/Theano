@@ -1109,8 +1109,15 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-                                if env.destroyers(r):
-                                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+                                #TODO: The following was tried on revision 6c613932a63c,
+                                # and made lots of tests fail, some complaining about
+                                # AttributeError: 'Env' object has no attribute 'destroyers'
+                                # some giving plain wrong numerical results.
+                                #if env.destroyers(r):
+                                #    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                             clobber = False
 
