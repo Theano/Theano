@@ -1433,12 +1433,14 @@ def test_local_pow_specialize_device():
     f = function([v], v**(15), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes)==1
+    assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==6
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert numpy.allclose(f(val),val**15)
     
     f = function([v], v**(-15), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes)==2
+    assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==6
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0),val_no0**(-15))
@@ -1446,12 +1448,14 @@ def test_local_pow_specialize_device():
     f = function([v], v**(16), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes) == 1
+    assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==4
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert numpy.allclose(f(val),val**16)
     
     f = function([v], v**(-16), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes) == 2
+    assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==4
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0),val_no0**(-16))
