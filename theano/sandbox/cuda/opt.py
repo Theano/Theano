@@ -390,6 +390,10 @@ def local_gpu_rebroadcast(node):
             gpu_x = x.owner.inputs[0]
             return [host_from_gpu(node.op(gpu_x))]
 
+
+def gpu_print_wrapper(op, cnda):
+    op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
+
 @register_opt()
 @local_optimizer([])
 def local_print_op(node):
@@ -397,7 +401,9 @@ def local_print_op(node):
         x, = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(node.op(gpu_x))]
+            new_op = node.op.__class__(global_fn=gpu_print_wrapper)
+            new_op.old_op = node.op
+            return [host_from_gpu(new_op(gpu_x))]
     return False
 
 def cast(x, dtype):
