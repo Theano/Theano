@@ -46,14 +46,13 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     :returns: a callable object that will compute the outputs (given the inputs)
     and update the implicit function arguments according to the `updates`.
 
-    :param rebuild_strict: Allow givens to change the type of the inputs of the ops. This 
-                           allow to change cpu variables with gpu variables. This could
-                           also serve to change vector to matrix to create a minibatch version
-                           of the function in some case(not tested) and to make the function
-                           work with sparse type(not tested) or complex type(not tested).
-                           WARNING: not all ops can be rebuild with inputs of other type!
-                           In that case an error will be probably raised(not tested).
-                           STRONGLY suggested: test the generated graph in DebugMode!
+    :param rebuild_strict: True (Default) is the safer and better tested setting, in which case
+    `givens` must substitute new variables with the same Type as the variables they replace.
+    False is a you-better-know-what-you-are-doing setting, that permits `givens` to replace
+    variables with new variables of any Type.  The consequence of changing a Type is that all
+    results depending on that variable may have a different Type too (the graph is rebuilt from
+    inputs to outputs).  If one of the new types does not make sense for one of the Ops in the
+    graph, an Exception will be raised.
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
