@@ -1105,9 +1105,9 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-                                # TODO:  only overwrite the destroyed inputs
-                                # print >> sys.stderr, i, "DEBUGMODE replacing input", r
-                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+                                if env.destroyers(r):
+                                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
                             clobber = False
 
                         debug(i, "DEBUGMODE running thunk_c")
