@@ -2050,6 +2050,15 @@ def local_pow_specialize_device(node):
         xsym = node.inputs[0]
         ysym = node.inputs[1]
         y = local_mul_canonizer.get_constant(ysym)
+
+        #the next line is needed to fix a strange case that I don't know how to make a separate test.
+        #That happen in the test_opt.py:test_log_erfc test.
+        #y is a ndarray with dtype int8 and value 2,4 or 6. This make the abs(y) <= 512 fail!
+        #taking the value outside ndarray solve the problem.
+        #it could be that in that case, numpy make the comparaison into the wrong type(do in int8 that overflow.)
+        if isinstance(y,numpy.ndarray):
+            assert y.size==1
+            y = y[0]
         if (y is not None) \
                 and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
             rval = None
