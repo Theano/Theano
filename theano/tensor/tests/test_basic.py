@@ -2773,8 +2773,8 @@ def test_mod_compile():
     f = theano.function([x,y],out)
 
 def test_unalign():
-    a = numpy.empty(1e6, dtype="b1,f8")['f1']
-    b = numpy.empty(1e6, dtype="b1,f8")['f1']
+    a = numpy.empty(1e4, dtype="b1,f8")['f1']
+    b = numpy.empty(1e4, dtype="b1,f8")['f1']
     assert not a.flags.aligned
     assert not b.flags.aligned
     a[:] = numpy.random.rand(len(a))
