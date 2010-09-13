@@ -716,6 +716,37 @@ def test_gpualloc_output_to_gpu():
     assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
 
+def test_inc_subtensor():
+    shared = cuda.shared_constructor
+    #shared = tensor.shared
+    x,y = T.fmatrices('x','y')
+    xval = numpy.asarray([[1,2,3], [4,5,6], [7,8,9]],
+                      dtype='float32')
+    yval = numpy.asarray([[10,10,10], [10,10,10], [10,10,10]],
+                      dtype='float32')
+    expr = T.inc_subtensor(x[:,1:3], y[:,1:3])
+    f=theano.function([x,y], expr, mode=mode_with_gpu)
+    print f.maker.env.toposort()
+    assert sum([isinstance(node.op,cuda.GpuSubtensor) for node in f.maker.env.toposort() ])==1
+    assert sum([isinstance(node.op,cuda.GpuIncSubtensor) and node.op.set_instead_of_inc==False for node in f.maker.env.toposort() ])==1
+    assert numpy.allclose(f(xval,yval),[[1.,12.,13.], [4.,15.,16.], [7.,18.,19.]])
+
+
+def test_set_subtensor():
+    shared = cuda.shared_constructor
+    #shared = tensor.shared
+    x,y = T.fmatrices('x','y')
+    xval = numpy.asarray([[1,2,3], [4,5,6], [7,8,9]],
+                      dtype='float32')
+    yval = numpy.asarray([[10,10,10], [10,10,10], [10,10,10]],
+                      dtype='float32')
+    expr = T.set_subtensor(x[:,1:3], y[:,1:3])
+    f=theano.function([x,y], expr, mode=mode_with_gpu)
+    print f.maker.env.toposort()
+    assert sum([isinstance(node.op,cuda.GpuSubtensor) for node in f.maker.env.toposort() ])==1
+    assert sum([isinstance(node.op,cuda.GpuIncSubtensor) and node.op.set_instead_of_inc==True for node in f.maker.env.toposort() ])==1
+    print f(xval,yval)
+
 if __name__ == '__main__':
     test_gpujoin_twomatrices_joincolumns()
     test_gpujoin_assert_cndas()
