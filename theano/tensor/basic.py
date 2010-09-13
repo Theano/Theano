@@ -488,7 +488,11 @@ class TensorType(Type):
         else:
             return False
     @staticmethod
-    def values_eq_approx(a, b):
+    def values_eq_approx(a, b, allow_remove_inf = False):
+        """
+        :param allow_remove_inf: If True, when their is an inf in a,
+                                 we allow any value in b in that position.
+        """
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
                 return False
@@ -516,7 +520,9 @@ class TensorType(Type):
                 # for now we use a home-made recipe, that should probably be
                 # revisited in the future.
                 a_missing = numpy.isnan(a)
-                if not a_missing.any():
+                a_inf = numpy.isinf(a)
+
+                if not (a_missing.any() or (allow_remove_inf and a_inf.any())):
                     # There are no missing values in a, thus this is not the
                     # reason why numpy.allclose(a, b) returned False.
                     _info('numpy allclose failed for abs_err %f and rel_err %f' %(
@@ -531,6 +537,9 @@ class TensorType(Type):
                         (atol + rtol * numpy.absolute(b)))
                 # Find places where both a and b have missing values.
                 both_missing = a_missing * numpy.isnan(b)
+                if allow_remove_inf:
+                    both_missing += a_inf
+                
                 # Combine all information.
                 return (cmp_elemwise + both_missing).all()
 
