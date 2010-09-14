@@ -1671,7 +1671,8 @@ class T_local_erf(unittest.TestCase):
 class T_local_erfc(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
-
+        self.mode_fusion = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('gpu')
+        
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """
@@ -1716,6 +1717,59 @@ class T_local_erfc(unittest.TestCase):
         theano.printing.debugprint(f)
         assert [n.op for n in f.maker.env.toposort()]==[T.erf], f.maker.env.toposort()
         print f(val)
+
+    def test_local_log_erfc(self):
+        val = [-30,-27,-26,-11,-10,-3,-2,-1,0,1,2,3,10,11,26,27,28,30]
+        if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
+            #python mode don't like the inv(0)
+            val.remove(0)
+        val = numpy.asarray(val)
+        x = T.vector()
+
+        #their is some nan that will happear in the graph for the log of the negatives values
+        mode = copy.copy(self.mode)
+        mode.check_isfinite = False
+        mode.allow_remove_inf = True
+        mode_fusion = copy.copy(self.mode_fusion)
+        mode_fusion.check_isfinite = False
+        mode_fusion.allow_remove_inf = True
+
+        f = theano.function([x],T.log(T.erfc(x)), mode=mode)
+        #theano.printing.debugprint(f)
+        assert len(f.maker.env.nodes)==22, len(f.maker.env.nodes)
+        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        assert all(numpy.isfinite(f(val)))
+
+        f = theano.function([x],T.log(T.erfc(-x)), mode=mode)
+        #theano.printing.debugprint(f)
+        assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
+        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        assert all(numpy.isfinite(f(-val)))
+
+        f = theano.function([x],T.log(T.erfc(x)), mode=mode_fusion)
+        assert len(f.maker.env.nodes)==1, len(f.maker.env.nodes)
+        assert len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)==4,len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)
+        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            raise KnownFailureTest("the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.")
+        assert all(numpy.isfinite(f(val)))
+
+    def speed_local_log_erfc(self):
+
+        val = numpy.random.rand(1e6)
+        x = T.vector()
+        mode=theano.compile.mode.get_mode("FAST_RUN")
+        f1 = theano.function([x],T.log(T.erfc(x)), mode=mode.excluding("local_log_erfc"))
+        f2 = theano.function([x],T.log(T.erfc(x)), mode=mode)
+        print f1.maker.env.toposort()
+        print f2.maker.env.toposort()
+        t0=time.time()
+        f1(val)
+        t1=time.time()
+        f2(val)
+        t2=time.time()
+        print t1-t0,t2-t1
+
 
 class T_local_sum(unittest.TestCase):
     def setUp(self):
