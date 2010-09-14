@@ -665,10 +665,18 @@ class Elemwise(Op):
 
         defines = ""
         undefs = ""
-        dmap = dict([(node.outputs[o], [node.inputs[i]]) for o, i in self.inplace_pattern.items()])
 
+        # The destroy map is a map of output indices to input indices
+        # that overwrite them.  We just convert them to the actual
+        # Variables.
+        dmap = dict([(node.outputs[o], [node.inputs[i]])
+                     for o, i in self.inplace_pattern.iteritems()])
+
+        # dtypes of the inputs
         idtypes = [input.type.dtype_specs()[1] for input in inputs]
 
+        # These are the outputs that we will need to allocate
+        # (output, name, name of the c type), transposed
         real = zip(*[(r, s, r.type.dtype_specs()[1])
                      for r, s in zip(node.outputs, onames) if r not in dmap])
         if real:
@@ -676,6 +684,9 @@ class Elemwise(Op):
         else:
             real_outputs, real_onames, real_odtypes = [], [], []
 
+        # Outputs that are aliased with an input (inplace)
+        # (output, name), transposed (c type name not needed since we don't
+        # need to allocate.
         aliased = zip(*[(r, s)
                         for (r, s) in zip(node.outputs, onames) if r in dmap])
         if aliased:
@@ -683,25 +694,49 @@ class Elemwise(Op):
         else:
             aliased_outputs, aliased_onames = [], []
 
-        orders = [[x and 'x' or i for i, x in enumerate(input.type.broadcastable)] for input in inputs]
+        # for each input:
+        # same as range(ndim), but with 'x' at all broadcastable positions
+        orders = [[x and 'x' or i
+                   for i, x in enumerate(input.type.broadcastable)]
+                  for input in inputs]
+
+        # number of nested loops we will need (all inputs have same
+        # dimensionality)
         nnested = len(orders[0])
         sub = dict(sub)
         for i, (input, iname) in enumerate(zip(inputs, inames)):
+            # the c generators will substitute the input names for
+            # references to loop variables lv0, lv1, ...
             sub['lv%i' % i] = iname
+
         decl = cgen.make_declare(orders, idtypes, sub)
         checks = cgen.make_checks(orders, idtypes, sub)
 
         alloc = ""
+        # We loop over the "real" outputs, i.e., those that are not
+        # inplace (must be allocated) and we declare/allocate/check
+        # them
         for output, oname, odtype in zip(real_outputs, real_onames, real_odtypes):
-            i += 1
+            i += 1 # before this loop, i = number of inputs
             sub['lv%i' % i] = oname
             sub['olv'] = oname
-            alloc += cgen.make_declare([range(nnested)], [odtype], dict(sub, lv0 = oname))
+            alloc += cgen.make_declare([range(nnested)], [odtype],
+                                       dict(sub, lv0 = oname))
             alloc += cgen.make_alloc(orders, odtype, sub)
-            alloc += cgen.make_checks([range(nnested)], [odtype], dict(sub, lv0 = oname))
+            alloc += cgen.make_checks([range(nnested)], [odtype],
+                                      dict(sub, lv0 = oname))
+        olv_index = i # index of the last output
 
+        # We loop over the "aliased" outputs, i.e., those that are
+        # inplace (overwrite the contents of one of the inputs) and
+        # make the output pointers point to theur corresponding input
+        # pointers.
         for output, oname in zip(aliased_outputs, aliased_onames):
-            iname = inames[inputs.index(dmap[output][0])]
+            olv_index = inputs.index(dmap[output][0])
+            iname = inames[olv_index]
+            # We make the output point to the corresponding input and
+            # decrease the reference of whatever the output contained
+            # prior to this
             alloc += """
             if (%(oname)s) {
                 Py_XDECREF(%(oname)s);
@@ -709,17 +744,30 @@ class Elemwise(Op):
             %(oname)s = %(iname)s;
             Py_XINCREF(%(oname)s);
             """ % locals()
+            # We alias the scalar variables
             defines += "#define %(oname)s_i %(iname)s_i" % locals()
             undefs += "#undef %(oname)s_i" % locals()
 
-        task_code = self.scalar_op.c_code(Apply(self.scalar_op,
-                                                [Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                                                [Scalar(dtype = output.type.dtype)() for output in node.outputs]),
-                                          name + '_scalar_',
-                                          ["%s_i" % s for s in _inames],
-                                          ["%s_i" % s for s in onames],
-                                          sub)
-        task_decl = "".join(["%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals() for name, dtype in zip(inames + list(real_onames), idtypes + list(real_odtypes))])
+        # Note: here, olv_index is either the index of the last output
+        # which is allocated, OR, if there are any aliased outputs,
+        # the index of the last of these aliased outputs.
+
+        # We declare the scalar variables used in the inner loop to do
+        # the element-wise computation. Aliased scalar variables need
+        # not be declared, as they are #defined in defines
+        task_decl = "".join(["%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals()
+                             for name, dtype in zip(inames + list(real_onames),
+                                                    idtypes + list(real_odtypes))])
+
+        # We generate the C code of the inner loop using the scalar op
+        task_code = self.scalar_op.c_code(
+                Apply(self.scalar_op,
+                      [Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                      [Scalar(dtype = output.type.dtype)() for output in node.outputs]),
+                name + '_scalar_',
+                ["%s_i" % s for s in _inames],
+                ["%s_i" % s for s in onames],
+                sub)
         code = """
         {
             %(defines)s
@@ -728,22 +776,28 @@ class Elemwise(Op):
             %(undefs)s
         }
         """ % locals()
-        if nnested:
-            all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
-        else:
-            all_code = [code]
-        loop = cgen.make_loop(orders + [range(nnested)] * len(real_onames), idtypes + list(real_odtypes), all_code, sub)
+
+        loop = cgen.make_reordered_loop(
+                init_loop_orders = orders + [range(nnested)] * len(real_onames),
+                olv_index = olv_index,
+                dtypes = idtypes + list(real_odtypes),
+                inner_task = code,
+                sub = sub)
         return decl, checks, alloc, loop
 
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
 
+    def c_headers(self):
+        return ['<vector>', '<algorithm>']
+
     def c_support_code(self):
-        return self.scalar_op.c_support_code()
+        support_code = self.scalar_op.c_support_code()
+        return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [4] # the version corresponding to the c code in this Op
+        version = [5] # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -928,7 +982,7 @@ class CAReduce(Op):
         alloc += cgen.make_declare([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
         alloc += cgen.make_alloc([order1], odtype, sub)
         alloc += cgen.make_checks([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
-        
+
         if hasattr(self.scalar_op,'identity'):
             identity = self.scalar_op.identity
         elif self.scalar_op == scalar.maximum:
@@ -989,8 +1043,12 @@ for(int i=0;i<%(iname)s->nd;i++){
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
 
+    def c_headers(self):
+        # Sometimes, Elemwise's c_code is returned, so we need its headers
+        return ['<vector>', '<algorithm>']
+
     def c_code_cache_version_apply(self, node):
-        version = [3] # the version corresponding to the c code in this Op
+        version = [4] # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
