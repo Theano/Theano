@@ -492,6 +492,7 @@ class TensorType(Type):
         """
         :param allow_remove_inf: If True, when their is an inf in a,
                                  we allow any value in b in that position.
+                                 Event -inf
         """
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
@@ -537,11 +538,22 @@ class TensorType(Type):
                         (atol + rtol * numpy.absolute(b)))
                 # Find places where both a and b have missing values.
                 both_missing = a_missing * numpy.isnan(b)
+
+                # Find places where both a and b have inf of the same sign.
+                both_inf = a_inf * numpy.isinf(b)
+                #check the sign of the inf:
+                for idx,v in enumerate(both_inf):
+                    if v:
+                        both_inf[idx] = a[idx]==b[idx]
+                        #cmp_elemwise is True when we have inf and -inf.
+                        #So we need to override it.
+                        cmp_elemwise[idx]=a[idx]==b[idx]
+
                 if allow_remove_inf:
-                    both_missing += a_inf
+                    both_inf += a_inf
                 
                 # Combine all information.
-                return (cmp_elemwise + both_missing).all()
+                return (cmp_elemwise + both_missing + both_inf).all()
 
         return False
 
