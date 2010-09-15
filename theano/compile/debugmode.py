@@ -408,10 +408,19 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
         # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
+
+        r_name = getattr(r, 'name', '')
+        # normally if the name isn't set, it'll be None, so
+        # r_name == None here
+        if r_name is None:
+            r_name = ''
+
         if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]%s' % (prefix, a.op, id(r), type_str)
+            print >> file, '%s%s [@%i]%s \'%s\'' % (prefix, a.op, id(r), \
+                                            type_str, r_name)
         else:
-            print >> file, '%s%s.%i [@%i]%s' % (prefix, a.op, a.outputs.index(r), id(r), type_str)
+            print >> file, '%s%s.%i [@%i]%s \'%s\'' % (prefix, a.op, \
+                  a.outputs.index(r), id(r), type_str, r_name)
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
