@@ -295,6 +295,7 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   .theanorc.txt is also accepted on Windows if the environment 
   variable THEANORC is not set. The file should have the following
   two lines:
+
     .. code-block:: bash
 
       [blas]
@@ -305,6 +306,7 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   
   To test that theano read correctly the .theanorc or .theanorc.txt file,
   in python run:
+
   .. code-block:: bash
       import theano
       print theano.config.blas.ldflags
@@ -359,11 +361,13 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   them, so your configuration file path can contain them. 
   nvcc(at least version 3.1) don't support them well. If your USERPROFILE 
   directory contain those caractere, you must add in your configuration file:
+
     .. code-block:: bash
       [global]
       base_compiledir=PATH_TO_A_DIRECTORY_WITHOUT_THOSE_CARACTERE
 
   You also need to add in the configuration file those line:
+
     .. code-block:: bash
       [cuda]
       nvccflags=-LC:\Python26\libs

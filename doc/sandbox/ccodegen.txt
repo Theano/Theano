@@ -68,7 +68,7 @@ Failure
 
 Besides cleanup code, all code has access to the %(fail)s template. For three code blocks, the generated C code will pretty much look like this:
 
-.. code-block::
+.. code-block:: CPP
     int failure = 0;
     {
       <code1>
@@ -91,7 +91,7 @@ And %(fail)s in the nth code block will take the value "{failure = n; goto label
 
 When compiling an Op, we want to sync the outputs so we can get the results from Python. In case of failure, we will not necessarily want to sync. Because of that, typical code will look like this:
 
-.. code-block::
+.. code-block:: CPP
     int failure = 0;
     <declare input>
     <declare output>
@@ -122,7 +122,7 @@ Example ResultBase
 
 The following ResultBase represents a double (we only care about the C part).
 
-.. code-block::
+.. code-block:: CPP
 
     class Double(ResultBase):
       <snip>
@@ -143,7 +143,7 @@ Example Op
 
 The following ResultBase represents addition of two nonnegative doubles (we only care about the C part).
 
-.. code-block::
+.. code-block:: python
     class Add(Op):
       <snip>
       def c_var_names(self):
@@ -162,7 +162,7 @@ Generating a C function
 
 For the example Op, the generated C function will typically look like this:
 
-.. code-block::
+.. code-block:: python
     void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
       PyObject* py_x = PyList_GET_ITEM(storage_x, 0); Py_XINCREF(py_x); // automatic
       PyObject* py_y = PyList_GET_ITEM(storage_y, 0); Py_XINCREF(py_y); // automatic
@@ -214,7 +214,7 @@ To accelerate processing a tad, a struct can be generated instead of a function.
 
 Here is a sketch of the struct equivalent of the previous function:
 
-.. code-block::
+.. code-block:: CPP
     struct add {
       PyObject* storage_x;
       PyObject* storage_y;
