@@ -1,7 +1,7 @@
 #definition theano.scalar op that have their python implementation taked from scipy
 #as scipy is not always available, we put threat them separatly
 
-from theano.scalar.basic import UnaryScalarOp,exp,sqrt,upgrade_to_float,complex_types,float_types
+from theano.scalar.basic import UnaryScalarOp,exp,sqrt,upgrade_to_float,complex_types,float_types,upcast
 import numpy
 
 imported_scipy_special = False
@@ -21,7 +21,8 @@ class Erf(UnaryScalarOp):
         if x.type in complex_types:
             raise NotImplementedError()
         elif x.type in float_types:
-            return gz * 2. / numpy.sqrt(numpy.pi) * exp(-x*x),
+            cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),dtype=upcast(x.type.dtype,gz.type.dtype))
+            return gz * cst * exp(-x*x),
         else:
             return None,
     def c_code(self, node, name, (x, ), (z, ), sub):
@@ -40,7 +41,8 @@ class Erfc(UnaryScalarOp):
         if x.type in complex_types:
             raise NotImplementedError()
         elif x.type in float_types:
-            return - gz * 2. / numpy.sqrt(numpy.pi) * exp(-x*x),
+            cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),dtype=upcast(x.type.dtype,gz.type.dtype))
+            return - gz * cst * exp(-x*x),
         else:
             return None,
     def c_code(self, node, name, (x, ), (z, ), sub):
