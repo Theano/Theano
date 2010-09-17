@@ -488,7 +488,7 @@ class TensorType(Type):
         else:
             return False
     @staticmethod
-    def values_eq_approx(a, b, allow_remove_inf = True, allow_remove_nan = False):
+    def values_eq_approx(a, b, allow_remove_inf = False, allow_remove_nan = False):
         """
         :param allow_remove_inf: If True, when their is an inf in a,
                                  we allow any value in b in that position.
