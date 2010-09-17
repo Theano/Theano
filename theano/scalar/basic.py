@@ -35,6 +35,10 @@ def as_scalar(x, name = None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 def constant(x):
+    # pass through numpy scalars, since they are already typed on purpose typically.
+    if hasattr(x,'dtype'):
+        assert x.ndim==0
+        return ScalarConstant(Scalar(str(x.dtype)), x)
     if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
