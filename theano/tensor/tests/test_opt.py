@@ -1585,6 +1585,58 @@ def test_constant_get_stabilized():
     #When this error is fixed, the following line should be ok.
     assert f()==800,f()
 
+class T_local_switch_sink(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
+
+        # condition values
+        self.condm = numpy.asarray([[0.1,0,1,-1],[0.,0.,0.,0.],[1,1,1,1]])
+        self.condv = numpy.asarray([0.1,0,1,-1])
+        self.conds = [0.1,0,1,-1]
+
+        # x values
+        self.xm = numpy.ones((3,4))
+        self.xv = numpy.ones((4,))
+        self.xs = 1.
+
+        # expected results
+        self.resm = [numpy.asarray([[1,0,1,0],[0,0,0,0],[1,1,1,1]])]*3 + [numpy.asarray([[1,0,1,0],[1,0,1,0],[1,0,1,0]])] + \
+                    2*[numpy.asarray([[1,0,1,0]])] + [[numpy.ones((3,4)),numpy.zeros((3,4)),numpy.ones((3,4)),numpy.zeros((3,4))]] + \
+                    [[numpy.ones((4,)),numpy.zeros((4,)),numpy.ones((4,)),numpy.zeros((4,))]] + \
+                    [[numpy.asarray(1.0),numpy.asarray(0.0),numpy.asarray(1.0),numpy.asarray(0.0)]]
+
+    def test_local_mul_switch_sink(self):
+        c = T.dscalar()
+        idx = 0
+        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
+            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+                y = T.mul(T.switch(condition[0]>0,1.*x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
+                f = theano.function([condition[0],x[0],c],[y])
+                if type(condition[1]) is list:
+                    for i in range(len(condition[1])):
+                        res= f(condition[1][i],x[1],-1)
+                        assert (res == numpy.asarray(self.resm[idx][i])).sum() == self.resm[idx][i].size
+                else:
+                    res = f(condition[1],x[1],-1)
+                    assert (res == numpy.asarray(self.resm[idx])).sum() == self.resm[idx].size
+                idx += 1
+
+    def test_local_div_switch_sink(self):
+        c = T.dscalar()
+        idx = 0
+        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
+            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+                y = T.true_div(T.switch(condition[0]>0,1.*x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
+                f = theano.function([condition[0],x[0],c],[y])
+                if type(condition[1]) is list:
+                    for i in range(len(condition[1])):
+                        res= f(condition[1][i],x[1],-1)
+                        assert (res == numpy.asarray(self.resm[idx][i])).sum() == self.resm[idx][i].size
+                else:
+                    res = f(condition[1],x[1],-1)
+                    assert (res == numpy.asarray(self.resm[idx])).sum() == self.resm[idx].size
+                idx += 1
+
 class T_local_erf(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
