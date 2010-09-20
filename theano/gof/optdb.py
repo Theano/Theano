@@ -108,30 +108,39 @@ class DB(object):
 
 class Query(object):
 
-    def __init__(self, include, require = None, exclude = None, subquery = None):
+    def __init__(self, include, require = None, exclude = None, subquery = None, position_cutoff = None):
+        """
+        :type position_cutoff: float
+        :param position_cutoff: Used by SequenceDB to keep only optimizer that
+                                are positioned before the cut_off point.
+        """
         self.include = set(include)
         self.require = require or set()
         self.exclude = exclude or set()
         self.subquery = subquery or {}
+        self.position_cutoff = position_cutoff
 
     #add all opt with this tag
     def including(self, *tags):
         return Query(self.include.union(tags),
                      self.require,
                      self.exclude,
-                     self.subquery)
+                     self.subquery,
+                     self.position_cutoff)
     #remove all opt with this tag
     def excluding(self, *tags):
         return Query(self.include,
                      self.require,
                      self.exclude.union(tags),
-                     self.subquery)
+                     self.subquery,
+                     self.position_cutoff)
     #keep only opt with this tag.
     def requiring(self, *tags):
         return Query(self.include,
                      self.require.union(tags),
                      self.exclude,
-                     self.subquery)
+                     self.subquery,
+                     self.position_cutoff)
 
 
 
@@ -184,8 +193,15 @@ class SequenceDB(DB):
         :type position_cutoff: float or int
         :param position_cutoff: only optimizations with position less than the cutoff are returned.
         """
-        position_cutoff = kwtags.pop('position_cutoff', config.optdb.position_cutoff)
         opts = super(SequenceDB, self).query(*tags, **kwtags)
+
+        position_cutoff = kwtags.pop('position_cutoff', config.optdb.position_cutoff)
+        if len(tags)>=1 and isinstance(tags[0],Query):
+#the call to super should have raise an error with a good message
+            assert len(tags)==1
+            if getattr(tags[0],'position_cutoff', None):
+              position_cutoff = tags[0].position_cutoff
+
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         opts.sort(key = lambda obj: self.__position__[obj.name])
         return opt.SeqOptimizer(opts, failure_callback = self.failure_callback)

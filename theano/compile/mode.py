@@ -72,13 +72,16 @@ def register_linker(name, linker):
 OPT_FAST_RUN = gof.Query(include = ['fast_run'])
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
 OPT_FAST_COMPILE = gof.Query(include = ['fast_compile'])
+OPT_STABILIZE = gof.Query(include = ['fast_run'])
+OPT_STABILIZE.position_cutoff = 1.5000001
 
 predefined_optimizers = {
     None    : lambda env: None,
     'merge' : gof.MergeOptimizer(),
     'fast_run' : OPT_FAST_RUN,
     'fast_run_stable' : OPT_FAST_RUN_STABLE,
-    'fast_compile' : OPT_FAST_COMPILE
+    'fast_compile' : OPT_FAST_COMPILE,
+    'stabilize': OPT_STABILIZE
     }
 
 def register_optimizer(name, opt):
@@ -258,10 +261,13 @@ FAST_RUN = Mode('c|py', 'fast_run')
 FAST_RUN_NOGC = Mode("c|py_nogc", 'fast_run')
 SANITY_CHECK = [Mode('c|py', None),
                 Mode('c|py', 'fast_run')]
+STABILIZE = Mode("c|py", OPT_STABILIZE)
+
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
                     'FAST_RUN_NOGC':FAST_RUN_NOGC,
-                    'SANITY_CHECK': SANITY_CHECK}
+                    'SANITY_CHECK': SANITY_CHECK,
+                    'STABILIZE': STABILIZE}
 
 instanciated_default_mode=None
 def get_mode(orig_string):
