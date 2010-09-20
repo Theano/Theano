@@ -1587,8 +1587,6 @@ def test_constant_get_stabilized():
 
 class T_local_switch_sink(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
-
         # condition values
         self.condm = numpy.asarray([[0.1,0,1,-1],[0.,0.,0.,0.],[1,1,1,1]])
         self.condv = numpy.asarray([0.1,0,1,-1])
@@ -1611,7 +1609,7 @@ class T_local_switch_sink(unittest.TestCase):
         for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
             for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
                 y = T.mul(T.switch(condition[0]>0,1.*x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
-                f = theano.function([condition[0],x[0],c],[y])
+                f = theano.function([condition[0],x[0],c],[y], mode='FAST_RUN')
                 if type(condition[1]) is list:
                     for i in range(len(condition[1])):
                         res= f(condition[1][i],x[1],-1)
@@ -1627,7 +1625,7 @@ class T_local_switch_sink(unittest.TestCase):
         for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
             for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
                 y = T.true_div(T.switch(condition[0]>0,1.*x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
-                f = theano.function([condition[0],x[0],c],[y])
+                f = theano.function([condition[0],x[0],c],[y], mode='FAST_RUN')
                 if type(condition[1]) is list:
                     for i in range(len(condition[1])):
                         res= f(condition[1][i],x[1],-1)
