@@ -1737,17 +1737,20 @@ class T_local_erfc(unittest.TestCase):
         f = theano.function([x],T.log(T.erfc(x)), mode=mode)
         #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==22, len(f.maker.env.nodes)
+        assert f.maker.env.outputs[0].dtype==theano.config.floatX
         assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         assert all(numpy.isfinite(f(val)))
 
         f = theano.function([x],T.log(T.erfc(-x)), mode=mode)
         #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
+        assert f.maker.env.outputs[0].dtype==theano.config.floatX
         assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         assert all(numpy.isfinite(f(-val)))
 
         f = theano.function([x],T.log(T.erfc(x)), mode=mode_fusion)
         assert len(f.maker.env.nodes)==1, len(f.maker.env.nodes)
+        assert f.maker.env.outputs[0].dtype==theano.config.floatX
         assert len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)==4,len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)
         assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
