@@ -1670,14 +1670,15 @@ class T_local_erf(unittest.TestCase):
 
 class T_local_erfc(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
         self.mode_fusion = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('gpu')
+        self.mode = self.mode_fusion.excluding('fusion')
+        self.mode._optimizer.position_cutoff = 1.50001
         
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """
         val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
-        x = T.vector()
+        x = T.vector('x')
 
         f = theano.function([x],1-T.erfc(x), mode=self.mode)
         theano.printing.debugprint(f)
@@ -1701,7 +1702,7 @@ class T_local_erfc(unittest.TestCase):
     def test_local_erf_neg_minus_one(self):
         """ test opt: (-1)+erfc(-x)=>erf(x)"""
         val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
-        x = T.vector()
+        x = T.vector('x')
 
         f = theano.function([x],-1+T.erfc(-x), mode=self.mode)
         theano.printing.debugprint(f)
@@ -1724,7 +1725,7 @@ class T_local_erfc(unittest.TestCase):
             #python mode don't like the inv(0)
             val.remove(0)
         val = numpy.asarray(val)
-        x = T.vector()
+        x = T.vector('x')
 
         #their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
@@ -1767,8 +1768,8 @@ class T_local_erfc(unittest.TestCase):
             # The orig value in float32 -30.0, the stab value -20.1 the orig value in float64 -18.1.
             val.remove(10)
         val = numpy.asarray(val)
-        x = T.vector()
-        y = T.vector()
+        x = T.vector('x')
+        y = T.vector('y')
 
         #their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
@@ -1780,25 +1781,22 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x],T.grad(T.log(T.erfc(x)),x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.env.nodes)==22, len(f.maker.env.nodes)
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
         assert all(numpy.isfinite(f(val)))
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
 
         #test with a different mul constant
         f = theano.function([x],T.mul(T.exp(T.neg(T.sqr(x))),-10.12837917)/T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.env.nodes)==22, len(f.maker.env.nodes)
+        assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         assert all(numpy.isfinite(f(val)))
 
         #test that we work without the mul
         f = theano.function([x],T.exp(T.neg(T.sqr(x)))/T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.env.nodes)==21, len(f.maker.env.nodes)
+        assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         assert all(numpy.isfinite(f(val)))
 
         #test that we don't work if x!=y
@@ -1806,21 +1804,19 @@ class T_local_erfc(unittest.TestCase):
         #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==5, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         f(val,val-3)
 
         #test that we work without the sqr and neg
         f = theano.function([x],T.exp(T.mul(-1,x,x))/T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.env.nodes)==21, len(f.maker.env.nodes)
+        assert len(f.maker.env.nodes)==22, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
         assert all(numpy.isfinite(f(val)))
 
         f = theano.function([x],T.grad(T.log(T.erfc(x)),x), mode=mode_fusion)
         assert len(f.maker.env.nodes)==1, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             #Showing this test error is a duplicate of the one in test_local_log_erfc. We hide it.

@@ -2633,7 +2633,7 @@ def local_grad_log_erfc_neg(node):
 
     if not exp.owner.inputs[0].owner:
         return False
-    #import pdb;pdb.set_trace()
+
     if exp.owner.inputs[0].owner.op == T.neg:
         neg = exp.owner.inputs[0]
         if not neg.owner.inputs[0].owner or neg.owner.inputs[0].owner.op != T.sqr:
@@ -2641,26 +2641,50 @@ def local_grad_log_erfc_neg(node):
         sqr = neg.owner.inputs[0]
         x = sqr.owner.inputs[0]
     elif exp.owner.inputs[0].owner.op == T.mul:
-        #in many case the neg are replaced by mul.
+        #in many case the neg are replaced by mul in the graph.
         #This also allow to stabilize log(erfc(cst*x))
         mul_neg = exp.owner.inputs[0]
+
+        #in case that multiple mul are not fused together, we do it here.
+        def check_input(inputs):
+            new_inputs=[]
+            for i in inputs:
+                if i.owner and i.owner.op == T.mul:
+                    new_inputs.extend(check_input(i.owner.inputs))
+                else:
+                    new_inputs.append(i)
+            return new_inputs
+        mul_inputs = check_input(mul_neg.owner.inputs)
+        
+        #put the constant first
+        for i in range(len(mul_inputs)):
+            if isinstance(i, Constant):
+                if i==0:
+                    break
+                else:
+                    tmp=mul_inputs[0]
+                    mul_inputs[0]=mul_inputs[i]
+                    mul_inputs[i]=tmp
+                    break
+        mul_neg = T.mul(*mul_inputs)
+        
         try:
             cst = get_constant_value(mul_neg.owner.inputs[0])
         except TypeError:
             return False
-        if cst>=0:
+        if cst!=-1:
             return False#todo implement that case
         if len(mul_neg.owner.inputs) == 2:
             if not mul_neg.owner.inputs[1].owner or mul_neg.owner.inputs[1].owner.op != T.sqr:
                 return False
             sqr = mul_neg.owner.inputs[1]
             x = sqr.owner.inputs[0]
-        #elif len(mul_neg.owner.inputs) == 3:
-        #    if mul_neg.owner.inputs[1] is mul_neg.owner.inputs[2]:
-        #        return False
-        #    x = mul_neg.owner.inputs[1]
-        #    import pdb;pdb.set_trace()
-        #    return False
+        elif len(mul_neg.owner.inputs) == 3:
+            if mul_neg.owner.inputs[1] is not mul_neg.owner.inputs[2]:
+                return False
+            x = mul_neg.owner.inputs[1]
+        else:
+            return False
 
     else:
         return False
