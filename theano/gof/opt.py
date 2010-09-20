@@ -556,7 +556,7 @@ class PatternSub(LocalOptimizer):
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False,
-            skip_identities_fn=None):
+            skip_identities_fn = None, name = None):
         """
         Creates a PatternSub that replaces occurrences of
         in_pattern by occurrences of out_pattern.
@@ -575,7 +575,7 @@ class PatternSub(LocalOptimizer):
         self.__doc__ = self.__class__.__doc__ + "\n\nThis instance does: " + str(self) + "\n"
         self.allow_multiple_clients = allow_multiple_clients
         self.skip_identities_fn = skip_identities_fn
-
+        self.name = name
 
     def skip_identities(self, expr):
         if self.skip_identities_fn:
@@ -672,6 +672,8 @@ class PatternSub(LocalOptimizer):
             return False
 
     def __str__(self):
+        if getattr(self,'name',None):
+            return self.name
         def pattern_to_str(pattern):
             if isinstance(pattern, (list, tuple)):
                 return "%s(%s)" % (str(pattern[0]), ", ".join([pattern_to_str(p) for p in pattern[1:]]))
