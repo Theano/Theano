@@ -2058,7 +2058,10 @@ def local_pow_specialize_device(node):
         #it could be that in that case, numpy make the comparaison into the wrong type(do in int8 that overflow.)
         if isinstance(y,numpy.ndarray):
             assert y.size==1
-            y = y[0]
+            try:
+                y = y[0]
+            except IndexError:
+                pass
         if (y is not None) \
                 and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
             rval = None
