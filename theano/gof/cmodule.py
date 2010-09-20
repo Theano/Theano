@@ -16,7 +16,11 @@ def local_bitwidth():
     """Return 32 for 32bit arch, 64 for 64bit arch"""
     # Note - it seems from an informal survey of machines at scipy2010
     # that platform.architecture is also a reliable way to get the bitwidth
-    return len('%x' % sys.maxint) * 4
+    try:
+        maxint = sys.maxint
+    except AttributeError: # python 3 compatibility
+        maxint = sys.maxsize
+    return len('%x' % maxint) * 4
 
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARN)
@@ -678,12 +682,10 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         if python_inc.count('Python.framework')>0 and config.cmodule.mac_framework_link:
             preargs.extend(['-framework','Python'])
 
-        # patch from Benjamin Schrauwen
-        # April 14, 2009
-        if distutils.sysconfig.get_config_var('CFLAGS').rfind('x86_64') < 0: 
-            # If on mac, and not a 64-bit version of python, switch to 32 bit compilation
-            preargs.extend(['-m32'])
-
+        # Figure out whether the current Python executable is 32 or 64 bit and compile accordingly
+        n_bits = local_bitwidth()
+        preargs.extend(['-m{0}'.format(n_bits)])
+        debug("OS X: compiling for {0} bit architecture".format(n_bits))
 
     # sometimes, the linker cannot find -lpython so we need to tell it 
     # explicitly where it is located
