@@ -1765,6 +1765,7 @@ class T_local_erfc(unittest.TestCase):
             val.remove(10)
         val = numpy.asarray(val)
         x = T.vector()
+        y = T.vector()
 
         #their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
@@ -1791,7 +1792,23 @@ class T_local_erfc(unittest.TestCase):
 
         #test that we work without the mul
         f = theano.function([x],T.exp(T.neg(T.sqr(x)))/T.erfc(x), mode=mode)
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
+        assert len(f.maker.env.nodes)==21, len(f.maker.env.nodes)
+        assert f.maker.env.outputs[0].dtype==theano.config.floatX
+        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        assert all(numpy.isfinite(f(val)))
+
+        #test that we don't work if x!=y
+        f = theano.function([x,y],T.exp(T.neg(T.sqr(x)))/T.erfc(y), mode=mode)
+        #theano.printing.debugprint(f)
+        assert len(f.maker.env.nodes)==5, len(f.maker.env.nodes)
+        assert f.maker.env.outputs[0].dtype==theano.config.floatX
+        assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])
+        f(val,val-3)
+
+        #test that we work without the sqr and neg
+        f = theano.function([x],T.exp(T.mul(-1,x,x))/T.erfc(x), mode=mode)
+        #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==21, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
         assert not any([hasattr(n.op,'scalar_op') and n.op.scalar_op==scal.pow for n in f.maker.env.nodes])

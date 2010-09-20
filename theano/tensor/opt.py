@@ -2611,6 +2611,7 @@ def local_grad_log_erfc_neg(node):
     if not node.inputs[1].owner or node.inputs[1].owner.op != T.erfc:
         return False
     erfc = node.inputs[1]
+    erfc_x = erfc.owner.inputs[0]
     if not node.inputs[0].owner:
         return False
 
@@ -2640,6 +2641,9 @@ def local_grad_log_erfc_neg(node):
 
     if hasattr(node.tag, 'local_grad_log_erfc_neg'):
         #We use that flag to don't apply the optimization recursively
+        return False
+
+    if erfc_x is not x: 
         return False
 
     #we move the cst outside the div.
