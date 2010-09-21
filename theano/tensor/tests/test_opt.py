@@ -1637,7 +1637,8 @@ class T_local_switch_sink(unittest.TestCase):
 
 class T_local_erf(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('fusion').excluding('gpu')
+        self.mode = theano.compile.mode.get_default_mode().including('canonicalize','fast_run').excluding('gpu','fusion')
+        self.mode._optimizer.position_cutoff = 1.50001
 
     def test_local_one_plus_erf(self):
         val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
@@ -1645,12 +1646,12 @@ class T_local_erf(unittest.TestCase):
 
         f = theano.function([x],1+T.erf(x), mode=self.mode)
         print f.maker.env.toposort()
-        assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace], f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.mul,T.erfc], f.maker.env.toposort()
         f(val)
 
         f = theano.function([x],T.erf(x)+1, mode=self.mode)
         print f.maker.env.toposort()
-        assert [n.op for n in f.maker.env.toposort()]==[T.neg,inplace.erfc_inplace], f.maker.env.toposort()
+        assert [n.op for n in f.maker.env.toposort()]==[T.mul,T.erfc], f.maker.env.toposort()
         f(val)
 
         f = theano.function([x],T.erf(x)+2, mode=self.mode)
@@ -1696,17 +1697,17 @@ class T_local_erf(unittest.TestCase):
 
         f = theano.function([x],T.erf(x)-1, mode=self.mode)
         print f.maker.env.toposort()
-        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,T.mul]
         print f(val)
 
         f = theano.function([x],T.erf(x)+(-1), mode=self.mode)
         print f.maker.env.toposort()
-        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,T.mul]
         print f(val)
 
         f = theano.function([x],-1+T.erf(x), mode=self.mode)
         print f.maker.env.toposort()
-        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,inplace.neg_inplace]
+        assert [n.op for n in f.maker.env.toposort()]==[T.erfc,T.mul]
         print f(val)
 
         f = theano.function([x],T.erf(x)-2, mode=self.mode)

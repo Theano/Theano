@@ -2576,6 +2576,16 @@ register_canonicalize(local_one_minus_erf, name='local_one_minus_erf')
 register_stabilize(local_one_minus_erf, name='local_one_minus_erf')
 register_specialize(local_one_minus_erf, name='local_one_minus_erf')
 
+local_one_minus_erf2 = gof.PatternSub((T.add,
+                                      1,
+                                      (T.mul,-1,(T.erf, 'x'))),
+                                     (T.erfc, 'x'),
+                                     allow_multiple_clients = True,
+                                     name='local_one_minus_erf2')
+register_canonicalize(local_one_minus_erf2)
+register_stabilize(local_one_minus_erf2)
+register_specialize(local_one_minus_erf2)
+
 #1+(-erf(x))=>erfc(x)
 #This is a different graph then the previous as the canonicalize don't work completly
 local_one_plus_neg_erf = gof.PatternSub((T.add, 
