@@ -626,7 +626,11 @@ def _find_bad_optimizations0(order, reasons, r_vals):
                 r_val = r_vals[r]
                 assert r.type == new_r.type
                 
-                if not r.type.values_eq_approx(r_val, new_r_val):
+                if hasattr(new_r,'values_eq_approx'):
+                    check = new_r.values_eq_approx(r_val, new_r_val)
+                else:
+                    check = r.type.values_eq_approx(r_val, new_r_val)
+                if not check:
                     raise BadOptimization(old_r=r,
                             new_r=new_r, 
                             old_r_val=r_val, 

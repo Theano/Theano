@@ -2353,7 +2353,10 @@ def local_log_add(node):
             if len(pre_exp) == len(zi):
                 # all arguments to add are exp(<something>)
                 max_pre = T.maximum(*pre_exp)
-                return [max_pre + T.log1p(T.exp(T.add(*[p - max_pre for p in pre_exp])))]
+
+                ret = max_pre + T.log1p(T.exp(T.add(*[p - max_pre for p in pre_exp])))
+                ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
+                return [ret]
 
 def add_calculate(num, denum, aslist = False, out_type=None):
     #TODO: make sure that this function and mul_calculate are similar
@@ -2698,7 +2701,9 @@ def local_log_erfc(node):
     elif node.outputs[0].dtype=='float64':
         threshold = 26.641747557
 
-    return [T.switch(x<threshold,node.outputs[0],stab_value)]
+    ret = T.switch(x<threshold,node.outputs[0],stab_value)
+    ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
+    return [ret]
 
 
 #Stability optimization of the grad of log(erfc(x))
@@ -2838,7 +2843,7 @@ def local_grad_log_erfc_neg(node):
     elif x.dtype=='float64':
         threshold = 26.641747557
     ret = T.switch(x<threshold,true_div_no_mul,stab_value)*y
-    #ret.values_eq_approx = ret.type.values_eq_approx_remove_inf_nan
+    ret.values_eq_approx = ret.type.values_eq_approx_remove_nan
 
     return [ret]
     """

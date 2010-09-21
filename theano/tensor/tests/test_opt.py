@@ -1049,15 +1049,24 @@ def test_log_add():
         m = 'FAST_RUN'
     m = compile.mode.get_mode(m)
     m = m.excluding('fusion')
+    m = copy.copy(m)
+    #No need to put them back as we have a new object
+    m.check_isfinite=False
+
     # check some basic cases
     x = dvector()
     y = dvector()
     f = function([x,y], T.log(T.exp(x) + T.exp(y)), mode=m)
 
     theano.printing.debugprint( f)
+
     print f([10000], [10000])  # causes overflow if handled incorrectly
+    assert numpy.isfinite(f([10000], [10000]))
     assert numpy.allclose(f([10000], [10000]), 10000+numpy.log1p(1))
 
+    #test that it give the same result when it don't overflow
+    print f([10], [10])  # don't causes overflow
+    assert numpy.allclose(f([10], [10]), 10+numpy.log1p(1))
 
     # test that it also works with more than two args, (this currently fails)
     x = dvector()
@@ -1068,7 +1077,7 @@ def test_log_add():
     try:
         print f([10000], [10000])  # causes overflow if handled incorrectly
         assert numpy.allclose(f([10000], [10000]), 20000)
-    except:
+    except AssertionError:
         raise KnownFailureTest
 
     #TODO: test that the optimization works in the presence of broadcasting.
@@ -1781,10 +1790,8 @@ class T_local_erfc(unittest.TestCase):
         #their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
         mode.check_isfinite = False
-        mode.allow_remove_inf = True
         mode_fusion = copy.copy(self.mode_fusion)
         mode_fusion.check_isfinite = False
-        mode_fusion.allow_remove_inf = True
 
         f = theano.function([x],T.log(T.erfc(x)), mode=mode)
         #theano.printing.debugprint(f)
@@ -1823,10 +1830,8 @@ class T_local_erfc(unittest.TestCase):
         #their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
         mode.check_isfinite = False
-        mode.allow_remove_inf = True
         mode_fusion = copy.copy(self.mode_fusion)
         mode_fusion.check_isfinite = False
-        mode_fusion.allow_remove_inf = True
 
         f = theano.function([x],T.grad(T.log(T.erfc(x)),x), mode=mode)
         #theano.printing.debugprint(f)
