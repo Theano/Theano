@@ -2608,6 +2608,26 @@ register_canonicalize(local_one_minus_erfc, name='local_one_minus_erfc')
 register_stabilize(local_one_minus_erfc, name='local_one_minus_erfc')
 register_specialize(local_one_minus_erfc, name='local_one_minus_erfc')
 
+local_one_minus_erfc2 = gof.PatternSub((T.add,
+                                        1,
+                                        (T.neg, (T.erfc, 'x'))),
+                                       (T.erf, 'x'),
+                                       allow_multiple_clients = True,
+                                       name='local_one_minus_erfc2')
+register_canonicalize(local_one_minus_erfc2) 
+register_stabilize(local_one_minus_erfc2)
+register_specialize(local_one_minus_erfc2)
+
+local_one_minus_erfc3 = gof.PatternSub((T.add,
+                                        1,
+                                        (T.mul, -1, (T.erfc, 'x'))),
+                                       (T.erf, 'x'),
+                                       allow_multiple_clients = True,
+                                       name='local_one_minus_erfc3')
+register_canonicalize(local_one_minus_erfc3) 
+register_stabilize(local_one_minus_erfc3)
+register_specialize(local_one_minus_erfc3)
+
 #1+(-erfc(x)) => erf(x)
 #This is a different graph then the previous as the canonicalize don't work completly
 local_one_add_neg_erfc = gof.PatternSub((T.add, 
@@ -2628,6 +2648,18 @@ local_erf_neg_minus_one = gof.PatternSub((T.add,
 register_canonicalize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 register_stabilize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 register_specialize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
+
+#(-1)+erfc(-1*x)=>erf(x)
+local_erf_neg_minus_one2 = gof.PatternSub((T.add, 
+                                     dict(pattern='y', constraint = _is_minus1),
+                                     (T.erfc, (T.mul,-1,'x'))),
+                                    (T.erf, 'x'),
+                                    allow_multiple_clients = True,
+                                          name = 'local_erf_neg_minus_one2')
+register_canonicalize(local_erf_neg_minus_one2)
+register_stabilize(local_erf_neg_minus_one2)
+register_specialize(local_erf_neg_minus_one2)
+
 
 #Stability optimization
 #log(erfc(x)) => when x>threashold, -x**2-log(x)-.5*log(pi)+log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
