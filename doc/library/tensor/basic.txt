@@ -877,7 +877,8 @@ Condition
 .. function:: switch(cond, ift, iff)
 
     Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
-     based on the condition cond.
+     based on the condition cond. This is the theano equivalent of numpy.where.
+
       :Parameter:  *cond* - symbolic Tensor (or compatible)
       :Parameter:  *ift* - symbolic Tensor (or compatible)
       :Parameter:  *iff* - symbolic Tensor (or compatible)
