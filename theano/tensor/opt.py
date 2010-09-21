@@ -1196,10 +1196,12 @@ def local_mul_switch_sink(node):
             if isinstance(switch.inputs[1],Constant) and get_constant_value(switch.inputs[1]) == 0.:
                 listmul = node.inputs[:idx] + node.inputs[idx+1:]
                 fct = [T.switch(switch.inputs[0],0,T.mul(*(listmul + [switch.inputs[2]])))]
+                fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
                 return fct
             if isinstance(switch.inputs[2],Constant) and get_constant_value(switch.inputs[2]) == 0.:
                 listmul = node.inputs[:idx] + node.inputs[idx+1:]
                 fct = [T.switch(switch.inputs[0],T.mul(*(listmul + [switch.inputs[1]])),0)]
+                fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
                 return fct
     return False
 
@@ -1223,9 +1225,11 @@ def local_div_switch_sink(node):
         switch = node.inputs[0].owner
         if isinstance(switch.inputs[1],Constant) and get_constant_value(switch.inputs[1]) == 0.:
             fct = [T.switch(switch.inputs[0],0,op(switch.inputs[2],node.inputs[1]))]
+            fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
             return fct
         if isinstance(switch.inputs[2],Constant) and get_constant_value(switch.inputs[2]) == 0.:
             fct = [T.switch(switch.inputs[0],op(switch.inputs[1],node.inputs[1]),0)]
+            fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
             return fct
     return False
 
