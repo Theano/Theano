@@ -158,6 +158,23 @@ def get_impact(root, view_o):
     add_impact(root, view_o, impact)
     return impact
 
+def fast_inplace_check(inputs):
+    """ Return the variables in inputs that are posible candidate for as inputs of inplace operation
+
+    :type inputs: list
+    :param inputs: inputs Variable that you want to use as inplace destination
+    """
+    env = inputs[0].env
+    protected_inputs = [f.protected for f in env._features if isinstance(f,theano.compile.function_module.Supervisor)]
+    protected_inputs = sum(protected_inputs,[])#flatten the list
+    protected_inputs.extend(env.outputs)
+
+    inputs = [i for i in inputs if 
+              not isinstance(i,gof.Constant)
+              and not env.destroyers(i)
+              and i not in protected_inputs]
+    return inputs
+
 class DestroyHandlerHelper2(toolbox.Bookkeeper):
     """
     The DestroyHandlerHelper2 class detects when a graph is impossible to evaluate because of
