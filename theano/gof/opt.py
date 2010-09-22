@@ -558,13 +558,17 @@ class PatternSub(LocalOptimizer):
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False,
-            skip_identities_fn = None, name = None):
+            skip_identities_fn = None, name = None, pdb = False):
         """
         Creates a PatternSub that replaces occurrences of
         in_pattern by occurrences of out_pattern.
 
-        If allow_multiple_clients is False, the pattern matching will
-        fail if one of the subpatterns has more than one client.
+        :param in_pattern: the input pattern that we want to replace
+        :param out_pattern: the replacement pattern
+        :param allow_multiple_clients: if False, the pattern matching will fail
+                                       if one of the subpatterns has more than 
+                                       one client.
+        :param pdb: if True, we invoke pdb when the first node in the pattern match.
         """
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
@@ -579,6 +583,7 @@ class PatternSub(LocalOptimizer):
         self.skip_identities_fn = skip_identities_fn
         if name:
             self.__name__ = name
+        self.pdb = pdb
 
     def skip_identities(self, expr):
         if self.skip_identities_fn:
@@ -606,7 +611,8 @@ class PatternSub(LocalOptimizer):
         """
         if node.op != self.op:
             return False
-        def match(pattern, expr, u, allow_multiple_clients = False):
+
+        def match(pattern, expr, u, allow_multiple_clients = False, pdb = False):
             def retry_with_equiv():
                 expr_equiv = self.skip_identities(expr)
                 if expr_equiv is None:
@@ -652,6 +658,8 @@ class PatternSub(LocalOptimizer):
                 return u
             else:
                 return retry_with_equiv()
+            if pdb:
+                import pdb;pdb.set_trace()
             return u
 
         def build(pattern, u):
@@ -664,8 +672,7 @@ class PatternSub(LocalOptimizer):
                 return pattern
             else:
                 return pattern.clone()
-
-        u = match(self.in_pattern, node.out, unify.Unification(), True)
+        u = match(self.in_pattern, node.out, unify.Unification(), True, self.pdb)
         if u:
             p = self.out_pattern
             new = build(p, u)
