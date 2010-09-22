@@ -5,6 +5,7 @@ if sys.version_info[:2] >= (2,5):
 
 # otherwise it's implemented in python25.py
 
+import theano
 import toolbox
 import graph
 from theano.gof import deque
@@ -170,7 +171,7 @@ def fast_inplace_check(inputs):
     protected_inputs.extend(env.outputs)
 
     inputs = [i for i in inputs if 
-              not isinstance(i,gof.Constant)
+              not isinstance(i,graph.Constant)
               and not env.destroyers(i)
               and i not in protected_inputs]
     return inputs
