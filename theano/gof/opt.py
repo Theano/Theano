@@ -4,14 +4,16 @@ amount of useful generic optimization tools.
 """
 
 
-import sys, logging, time
+import copy, logging, sys, time
+
+import numpy
+
 import graph
 from env import InconsistencyError
 import utils
 import unify
 import toolbox
 import op
-from copy import copy
 from theano.gof.python25 import any, all
 from theano.configparser import AddConfigVar, BoolParam, config
 import theano
@@ -642,7 +644,7 @@ class PatternSub(LocalOptimizer):
                 else:
                     u = u.merge(expr, v)
             elif isinstance(pattern, (int, float)) and isinstance(expr, graph.Constant):
-                if all(theano.tensor.constant(pattern).value==expr.value):
+                if numpy.all(theano.tensor.constant(pattern).value==expr.value):
                     return u
                 else:
                     return retry_with_equiv()
