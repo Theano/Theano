@@ -149,6 +149,7 @@ def test_downsample():
             (1, 1, 10, 11),
             (1, 2, 2, 2),
             (3,5,4,4),
+            (25, 1, 7, 7),#test odd number this already found a bug.
             (1, 1, 12, 12),
             (1, 1, 2, 14),
             (1, 1, 12, 14),
@@ -163,7 +164,7 @@ def test_downsample():
             (30, 2, 24, 24),
             (30, 6, 24, 24),
             (10, 10, 10, 11)]:
-        for ds in (1,1), (2, 2):
+        for ds in (2, 2), (1,1):
             if ds[0] > shp[2]: continue
             if ds[1] > shp[3]: continue
             for ignore_border in (True, False):
@@ -172,10 +173,19 @@ def test_downsample():
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_with_gpu)
-                worked = False
-                for i, node in enumerate(f.maker.env.toposort()):
-                    print i, node
-                    if isinstance(node.op, tcn.blas.GpuDownsampleFactorMax):
-                        f()  # let debugmode do the testing
-                        worked = True
-                assert worked
+                assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMax) for node in
+                            f.maker.env.toposort()])
+                f()
+                
+                g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)),a), mode=mode_with_gpu)
+                print g.maker.env.toposort()
+                assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
+                            for node in g.maker.env.toposort()])
+
+                g()
+
+                #We already check that the gpu version return the same value as the gpu version
+                #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
+
+
+
