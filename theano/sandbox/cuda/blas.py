@@ -571,7 +571,7 @@ class GpuDownsampleFactorMaxGrad(Op):
         return Apply(self, [x, z, gz], [x.type()])
     def c_code_cache_version(self):
         #return ()
-        return (2,)
+        return (3,)
 
     def c_code(self, node, nodename, (x, z, gz), (gx,), sub):
         fail = sub['fail']
@@ -686,7 +686,7 @@ class GpuDownsampleFactorMaxGrad(Op):
 
             for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
             {
-                if (x_col >= ds1 * D3)
+                if (%(ignore_border)s && x_col >= ds1 * D3)
                 {
                     // This happens only if x_col was ignored (via ignore_border)
                     // TODO: if ignore_border is False, this is impossible and we don't even
@@ -709,7 +709,7 @@ class GpuDownsampleFactorMaxGrad(Op):
                 {
                     // this is effectively:
                     // gx[image_row][image_col][x_row][x_col]
-                    //   = (my_z ==  
+                    //   = (my_z == x[image_row][image_col][x_row][x_col]) ? my_gz : 0.0f;
                     gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
                        = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
                 }
