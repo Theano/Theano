@@ -467,9 +467,9 @@ class OpSub(LocalOptimizer):
             return False
         repl = self.op2.make_node(*node.inputs)
         if self.transfer_tags:
-            repl.tag = copy(node.tag)
+            repl.tag = copy.copy(node.tag)
             for output, new_output in zip(node.outputs, repl.outputs):
-                new_output.tag = copy(output.tag)
+                new_output.tag = copy.copy(output.tag)
         return repl.outputs
 
     def __str__(self):
