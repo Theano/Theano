@@ -2471,8 +2471,8 @@ class test_tensordot(unittest.TestCase):
         f2 = inplace_func([avec,bmat],c)
         aval = self.rand(5);
         bval = self.rand(8,5);
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f2(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f2(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test matrix-matrix
@@ -2482,8 +2482,8 @@ class test_tensordot(unittest.TestCase):
         f3 = inplace_func([amat,bmat],c)
         aval = self.rand(4,7);
         bval = self.rand(7,9);
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f3(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-matrix, sum over one dim of matrix
@@ -2493,8 +2493,8 @@ class test_tensordot(unittest.TestCase):
         f4 = inplace_func([atens,bmat],c)
         aval = self.rand(1,2,3,4);
         bval = self.rand(2,3);
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f4(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f4(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-ndarray
@@ -2505,15 +2505,15 @@ class test_tensordot(unittest.TestCase):
         f5 = inplace_func([atens,btens],c)
         aval = self.rand(4,3,5,2);
         bval = self.rand(3,4,2);
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f5(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f5(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
         
         axes = (axes[1],axes[0])
         c = tensordot(axes)(btens, atens)
         f6 = inplace_func([btens,atens],c)
-        self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
-                                  f6(bval,aval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(bval,aval,axes),
+                                       f6(bval,aval)))
         utt.verify_grad(TensorDot(axes), [bval,aval])
 
     def test_raise_error(self):
@@ -2554,8 +2554,8 @@ class test_tensordot(unittest.TestCase):
         f3 = inplace_func([amat,bmat],c)
         aval = self.rand(4,7);
         bval = self.rand(7,9);
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f3(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_scalar(self):
@@ -2567,8 +2567,8 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(5,3)
         c = tensordot(axes)(amat, bmat)
         f3 = inplace_func([amat,bmat],c)
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f3(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test tensor-tensor
@@ -2579,8 +2579,8 @@ class test_tensordot(unittest.TestCase):
         bval = self.rand(4,5,3)
         c = tensordot(axes)(amat, bmat)
         f3 = inplace_func([amat,bmat],c)
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f3(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_scalar0(self):
@@ -2592,8 +2592,8 @@ class test_tensordot(unittest.TestCase):
         bval = self.rand(5,4)
         c = tensordot(axes)(amat, bmat)
         f3 = inplace_func([amat,bmat],c)
-        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                  f3(aval,bval)))
+        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                       f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_tensordot_grad(self):
@@ -2610,8 +2610,8 @@ class test_tensordot(unittest.TestCase):
         f2 = inplace_func([amat,bmat,gzmat],tensordot_grad(((1,),(0,)))(amat, bmat, gzmat))
         o1=f1(aval,bval,gzval)
         o2=f2(aval,bval,gzval)
-        self.failUnless(numpy.all(o1[0]==o2[0]))
-        self.failUnless(numpy.all(o1[1]==o2[1]))
+        self.failUnless(numpy.allclose(o1[0],o2[0]))
+        self.failUnless(numpy.allclose(o1[1],o2[1]))
 
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
