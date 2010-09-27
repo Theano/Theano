@@ -1178,8 +1178,10 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                     debug("done with node")
 
-                    if True: 
-                        gc.collect()
+                if False:
+                    #This could be usefull to help finding refcount problem.
+                    #But it is very slow and it is not sure it will help.
+                    gc.collect()
 
                 _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
 
