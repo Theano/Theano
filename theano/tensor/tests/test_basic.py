@@ -2583,6 +2583,19 @@ class test_tensordot(unittest.TestCase):
                                   f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
+    def test_scalar0(self):
+        # test tensor-tensor
+        amat = matrix()
+        bmat = matrix()
+        axes = 0
+        aval = self.rand(4,5)
+        bval = self.rand(5,4)
+        c = tensordot(axes)(amat, bmat)
+        f3 = inplace_func([amat,bmat],c)
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f3(aval,bval)))
+        utt.verify_grad(TensorDot(axes), [aval,bval])
+
     def test_tensordot_grad(self):
         #We test it manually as we recreate the op in the make_node
         
