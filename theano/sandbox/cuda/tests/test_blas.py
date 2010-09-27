@@ -164,7 +164,7 @@ def test_downsample():
             (30, 2, 24, 24),
             (30, 6, 24, 24),
             (10, 10, 10, 11)]:
-        for ds in (2, 2), (1,1):
+        for ds in (2, 2), (3,2), (1,1):
             if ds[0] > shp[2]: continue
             if ds[1] > shp[3]: continue
             for ignore_border in (True, False):
