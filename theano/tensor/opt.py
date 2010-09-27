@@ -599,6 +599,7 @@ class ShapeOptimizer(Optimizer):
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(), -1, 'fast_run', 'fast_compile')
 
 @register_specialize
+@register_stabilize
 @register_canonicalize
 @gof.local_optimizer([T.fill])
 def local_fill_to_alloc(node):
@@ -2320,9 +2321,11 @@ def local_abs_merge(node):
         return [T.abs_(T.true_div(node.inputs[0].owner.inputs[0],node.inputs[1].owner.inputs[0]))]
 
 @register_stabilize
+@register_specialize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
     # log(1+x) -> log1p(x)
+    #if isinstance(node.op, T.log.__class__):# and node.op.scalar_op == T.log.scalar_op:
     if node.op == T.log:
         log_arg, = node.inputs
         if log_arg.owner and log_arg.owner.op == T.add:
@@ -2339,6 +2342,7 @@ def local_log1p(node):
 
 #TODO: in canonicalize, change log10 and log2 -> log
 @register_stabilize
+@register_specialize
 @gof.local_optimizer([T.log])
 def local_log_add(node):
     # log(exp(x)+exp(y))
