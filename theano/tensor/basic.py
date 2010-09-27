@@ -3785,8 +3785,10 @@ class TensorDotGrad(Op):
         assert isinstance(x, Variable)
         assert isinstance(y, Variable)
         assert isinstance(gz, Variable)
-        gx = x.type()
-        gy = y.type()
+        gx = tensor(dtype=scal.upcast(gz.dtype, y.dtype),
+                    broadcastable = x.broadcastable)
+        gy = tensor(dtype=scal.upcast(x.dtype, gz.dtype),
+                    broadcastable = y.broadcastable)
         op = self
         if isinstance(self.axes,int):
             axes = [range(x.ndim-self.axes,x.ndim),range(self.axes)]
@@ -3805,14 +3807,12 @@ class TensorDotGrad(Op):
         newshapex = numpy.zeros(x.ndim)
         newshapex[[newpos for newpos in idx]] = [i for i in range(x.ndim)]
         gx[0] = numpy.transpose(_gx, newshapex)
-        assert str(gx[0].dtype) == 'float64'
 
         _gy = numpy.tensordot(x, gz, [sum_over_x, range(x.ndim-len(self.axes[0]))])
         idy = numpy.hstack((self.axes[1], sum_over_y))
         newshapey = numpy.zeros(y.ndim)
         newshapey[[newpos for newpos in idy]] = [i for i in range(y.ndim)]
         gy[0] = numpy.transpose(_gy, newshapey)
-        assert str(gy[0].dtype) == 'float64'
 
 tensordot_grad = TensorDotGrad
 
@@ -3859,13 +3859,13 @@ class TensorDot(Op):
                     axesdim, x.type.ndim, y.type.ndim)
        
         outdim = x.type.ndim + y.type.ndim - 2*axesdim
-        output = tensor(dtype=x.dtype, broadcastable=[False]*outdim);
+        output = tensor(dtype=scal.upcast(x.dtype, y.dtype),
+                        broadcastable=[False]*outdim);
         return Apply(op, inputs=[x,y], outputs=[output,])
 
     def perform(self, node, (x, y), (z,)):
         try:
             z[0] = numpy.asarray(numpy.tensordot(x, y, self.axes))
-            assert str(z[0].dtype) == 'float64'
         except ValueError, e:
             # The error raised by numpy has no shape information, we mean to add that
             e.args = e.args + (x.shape, y.shape, self.axes)
