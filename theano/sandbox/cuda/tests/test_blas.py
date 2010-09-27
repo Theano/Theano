@@ -20,8 +20,10 @@ import theano.compile.mode
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
@@ -173,16 +175,17 @@ def test_downsample():
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_with_gpu)
+                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMax) for node in
                             f.maker.env.toposort()])
-                f()
+                assert numpy.allclose(f(),f2())
                 
                 g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)),a), mode=mode_with_gpu)
+                g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)),a), mode=mode_without_gpu)
                 print g.maker.env.toposort()
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.env.toposort()])
-
-                g()
+                assert numpy.allclose(g(),g2())
 
                 #We already check that the gpu version return the same value as the gpu version
                 #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
