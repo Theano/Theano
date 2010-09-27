@@ -570,7 +570,9 @@ class GpuDownsampleFactorMaxGrad(Op):
     def make_node(self, x, z, gz):
         return Apply(self, [x, z, gz], [x.type()])
     def c_code_cache_version(self):
-        return (1,)
+        #return ()
+        return (2,)
+
     def c_code(self, node, nodename, (x, z, gz), (gx,), sub):
         fail = sub['fail']
         ds0, ds1 = self.ds
@@ -601,7 +603,9 @@ class GpuDownsampleFactorMaxGrad(Op):
         }
         {
             //TODO: supporting more output columns than threads
-            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0], CudaNdarray_HOST_DIMS(%(z)s)[2]);
+            // make sure we cover every x row when ignore border isset and there's a border present to be ignored                                            
+            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);                                                       
+            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0)); 
             dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(%(z)s)[0],
@@ -644,9 +648,14 @@ class GpuDownsampleFactorMaxGrad(Op):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        # This code is not sensitive to the ignore_border flag.
-        # It runs for every position in the output z, and then computes the gradient for the
-        # input pixels that were downsampled to that z-position.
+        # This code considers every position in the output z, andthen computes the gradient for the
+        # input pixels that were downsampled to that z-position. It does so by running along every
+        # z row (sometimes plus one, to make sure every gx row gets totally filled), and by
+        # running along every x col. This code is not sensitive to the ignore_border flag along
+        # the row dimension (since it runs for every position in the output z), but it is sensitive
+        # along the col dimension.
+        ignore_border = int(self.ignore_border) 
+        
         return """
         template<int ds0, int ds1> // ds0 is the downsampling factor in rows, ds1 in columns
         __global__ void kDownsampleMaxGrad_%(nodename)s(
@@ -656,11 +665,20 @@ class GpuDownsampleFactorMaxGrad(Op):
            const float * gz, int gzS0, int gzS1, int gzS2, int gzS3, 
            float *gx)
         {
+            //  D0: number of image rows
+            //  D1: number of image cols
+            //  D2: number of z rows
+            //  D3: number of z cols
+            // xD2: number of x rows
+            // xD3: number of x cols
+            // various .S. variables are strides
+                
             float cur_max, cur_x, my_z, my_gz;
-            int i0 = blockIdx.x;
-            int i1 = 0;
-            int i2 = blockIdx.y;       // row wrt z and/or gz
-            int x_col = threadIdx.x;
+            int i0 = blockIdx.x;       // image row
+            int i1 = 0;                // image col
+            int i2 = blockIdx.y;       // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2 (as needed to cover all x rows) 
+            int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
+            int z_col = x_col/ds1;     // z_col corresponding to this x_col
 
 
             //TODO: raise occupancy.  Use threadIdx.y to run several iterations of this i1 loop
@@ -680,12 +698,18 @@ class GpuDownsampleFactorMaxGrad(Op):
                 }
                 else
                 {
-                    my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + (x_col/ds1)*gzS3];
-                    my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + (x_col/ds1)* zS3];
+                    // this is effectively:
+                    // my_gz = gz[image_row][image_col][z_row][z_col]
+                    // my_z  = z[image_row][image_col][z_row][z_col]
+                    my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + z_col*gzS3];
+                    my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
                 }
 
                 for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
                 {
+                    // this is effectively:
+                    // gx[image_row][image_col][x_row][x_col]
+                    //   = (my_z ==  
                     gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
                        = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
                 }

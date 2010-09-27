@@ -144,12 +144,12 @@ def test_downsample():
     for shp in [
             (1, 1, 1, 12),
             (1, 1, 2, 2), 
-            #(1, 1, 1, 1), #### Commented out because it makes FP-exception that I don't understand
+            (1, 1, 1, 1),
             (1,1,4,4),
             (1, 1, 10, 11),
             (1, 2, 2, 2),
             (3,5,4,4),
-            (25, 1, 7, 7),#test odd number this already found a bug.
+            (25, 1, 7, 7),
             (1, 1, 12, 12),
             (1, 1, 2, 14),
             (1, 1, 12, 14),
