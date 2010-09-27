@@ -3766,6 +3766,13 @@ class TensorDotGrad(Op):
                 if isinstance(a,list):
                     axes[i]=tuple(a)
             axes=tuple(axes)
+        if isinstance(axes, tuple):
+            if len(axes)!=2:
+                raise ValueError("We need the list/tuple of axes to be of length 2")
+            if len(axes[0])!=len(axes[1]):
+                raise ValueError("We need that the axes 2 sub list of axes are of the same size")
+            assert len(axes[0])==len(axes[1])
+
         self.axes = axes;
 
     def __eq__(self, other):
@@ -3818,7 +3825,14 @@ class TensorDot(Op):
                 if isinstance(a,list):
                     axes[i]=tuple(a)
             axes=tuple(axes)
-        self.axes = axes;
+        if isinstance(axes, tuple):
+            if len(axes)!=2:
+                raise ValueError("We need the list/tuple of axes to be of length 2")
+            if len(axes[0])!=len(axes[1]):
+                raise ValueError("We need that the axes 2 sub list of axes are of the same size")
+            assert len(axes[0])==len(axes[1])
+            
+        self.axes = axes
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axes == other.axes
