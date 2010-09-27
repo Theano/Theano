@@ -62,9 +62,9 @@ DebugMode is used as follows:
 
     f = theano.function([x], 10*x, mode='DEBUG_MODE')
 
-    f(5) 
-    f(0) 
-    f(7) 
+    f([5]) 
+    f([0]) 
+    f([7]) 
 
 
 If any problem is detected, DebugMode will raise an exception according to
