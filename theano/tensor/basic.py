@@ -1402,6 +1402,8 @@ class MaxAndArgmax(Op):
             axis = x.type.ndim - 1
         if isinstance(axis,int):
             axis = [axis]
+        elif isinstance(axis,(tuple,list)):
+            assert len(axis)==1,"MaxAndArgmax don't support multiple axis. the max fct support it."
         #we make the axis all positive to make the infer_shape work with negative axis
         if x.type.ndim>0:
             for id,a in enumerate(axis):
