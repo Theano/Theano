@@ -3787,7 +3787,11 @@ class TensorDotGrad(Op):
         assert isinstance(gz, Variable)
         gx = x.type()
         gy = y.type()
-        return Apply(self, [x,y,gz], [gx, gy])
+        op = self
+        if isinstance(self.axes,int):
+            axes = [range(x.ndim-self.axes,x.ndim),range(self.axes)]
+            op = TensorDotGrad(axes)
+        return Apply(op, [x,y,gz], [gx, gy])
 
     def perform(self, node, (x, y, gz), (gx,gy)):
 
@@ -3841,8 +3845,13 @@ class TensorDot(Op):
         return hashtype(self) ^ hash(self.axes) ^ 89234
 
     def make_node(self, x, y):
+        op = self
+        if isinstance(self.axes,int):
+            axes = [range(x.ndim-self.axes,x.ndim),range(self.axes)]
+            op = TensorDot(axes)
 
-        axesdim = numpy.size(self.axes)/2
+        axesdim = numpy.size(op.axes)/2
+
         x, y = map(as_tensor_variable, [x, y])
 
         if axesdim > x.type.ndim or axesdim > y.type.ndim:
@@ -3851,7 +3860,7 @@ class TensorDot(Op):
        
         outdim = x.type.ndim + y.type.ndim - 2*axesdim
         output = tensor(dtype=x.dtype, broadcastable=[False]*outdim);
-        return Apply(self, inputs=[x,y], outputs=[output,])
+        return Apply(op, inputs=[x,y], outputs=[output,])
 
     def perform(self, node, (x, y), (z,)):
         try:
