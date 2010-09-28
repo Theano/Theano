@@ -1224,11 +1224,11 @@ def local_div_switch_sink(node):
     op = node.op
     if node.inputs[0].owner and node.inputs[0].owner.op == T.switch:
         switch = node.inputs[0].owner
-        if isinstance(switch.inputs[1],Constant) and get_constant_value(switch.inputs[1]) == 0.:
+        if get_constant_value(switch.inputs[1]) == 0.:
             fct = [T.switch(switch.inputs[0],0,op(switch.inputs[2],node.inputs[1]))]
             fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
             return fct
-        if isinstance(switch.inputs[2],Constant) and get_constant_value(switch.inputs[2]) == 0.:
+        if get_constant_value(switch.inputs[2]) == 0.:
             fct = [T.switch(switch.inputs[0],op(switch.inputs[1],node.inputs[1]),0)]
             fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
             return fct
