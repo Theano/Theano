@@ -3017,6 +3017,19 @@ def local_elemwise_fusion_op(OP):
                 return False
 
     #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
+            
+        #we fuse as many that we can at the same time to make debug mode faster
+        #debug mode will be faster as it won't test all intermediate step.
+        while True:
+            ret = local_fuse(n)
+            if ret is not False and ret is not None:
+                #print n,ret
+                #import pdb;pdb.set_trace()
+                assert len(ret)==len(n.outputs)
+                assert len(ret)==1
+                n = ret[0].owner
+            else: break
+                
         return n.outputs
     return local_fuse
 
@@ -3036,6 +3049,7 @@ class FusionOptimizer(Optimizer):
         did_something = True
         while did_something:
             nodelist = list(env.toposort())
+            nodelist.reverse()
             did_something = False
             for node in nodelist:
                 new_outputs = self.optimizer(node)
@@ -3048,7 +3062,6 @@ class FusionOptimizer(Optimizer):
                         did_something = True
                         break
                     except InconsistencyError, e:
-                        #TODO: retry other applications of gemm (see comment in _gemm_from_node
                         pass
 
 
