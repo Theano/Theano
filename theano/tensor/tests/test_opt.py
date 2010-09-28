@@ -1812,7 +1812,7 @@ class T_local_erfc(unittest.TestCase):
         f = theano.function([x],T.log(T.erfc(x)), mode=mode_fusion)
         assert len(f.maker.env.nodes)==1, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
-        assert len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)==4,len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)
+        assert len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)==2,len(f.maker.env.toposort()[0].env.toposort()[0].op.scalar_op.env.nodes)
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest("the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.")
