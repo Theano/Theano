@@ -463,6 +463,10 @@ def _optcheck_env(input_specs, output_specs, accept_inplace = False):
 
     # We need to protect all immutable inputs from inplace operations.
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
+
+    # If named nodes are replaced, keep the name
+    env.extend(gof.toolbox.PreserveNames())
+
     return env, map(SymbolicOutput, updates), equivalence_tracker
 
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_vals=True,
