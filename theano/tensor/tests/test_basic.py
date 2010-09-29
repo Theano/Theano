@@ -1,25 +1,24 @@
-import traceback, StringIO
 import operator
+import StringIO
+import sys
+import unittest
+
+import numpy
+from numpy.testing import dec
 
 from theano.tensor import *
 from theano.tensor import basic as tensor # for hidden symbols
 from theano.tensor import inplace
 
-import unittest
 from copy import copy
 from theano import compile, config
-from theano import gradient
 from theano import gof
 from theano.gof.python25 import any, all
-from theano import gof
 
-from theano.tensor.elemwise import DimShuffle
 from theano.compile.mode import get_default_mode
 from theano import function
 from theano.tests import unittest_tools as utt
 
-from numpy.testing import dec
-from numpy.testing.noseclasses import KnownFailureTest
 
 imported_scipy_special = False
 mode_no_scipy = get_default_mode()
