@@ -1471,11 +1471,8 @@ def max(x, axis=None):
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     :note2: see MaxAndArgmax note for a difference between numpy and theano when axis==None
     """
-    if isinstance(axis,int) or axis is None or (isinstance(axis,(list,tuple)) and all([isinstance(i,int) for i in axis])):
-      if axis is None:
-        axis = len(x.type.broadcastable)-1
-      return CAReduce(scal.maximum,axis)(x)
-    #TODO: do CAReduce need axis to be constant?
+    if isinstance(axis,(list,tuple)) and len(axis)>1:
+       return CAReduce(scal.maximum,axis)(x)
     try:
       const = get_constant_value(axis)
       return CAReduce(scal.maximum,list(const))(x)

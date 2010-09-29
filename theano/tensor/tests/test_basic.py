@@ -856,6 +856,11 @@ class T_max_and_argmax(unittest.TestCase):
         assert len(topo)==1
         assert isinstance(topo[0].op,CAReduce)
 
+        f = function([n],max_and_argmax(n,0))
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,MaxAndArgmax)
+
     def test_grad(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
@@ -1016,7 +1021,7 @@ class T_max(unittest.TestCase):
         assert isinstance(topo[0].op,CAReduce)
         f(data)
 
-    def _test_grad(self):
+    def test_grad(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
         
@@ -1047,6 +1052,12 @@ class T_max(unittest.TestCase):
 
         utt.verify_grad(lambda v: max(v.flatten()), [data])
         check_grad_max(data,eval_outputs(grad(max_and_argmax(n.flatten())[0],n)))
+
+    @dec.knownfailureif(True,
+                        "We don't implement the gradient of max with multiple axis as the same time")
+    def test_grad_list(self):
+        utt.verify_grad(lambda v: max(v,axis=[0,1]), [data])
+        #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
 
 class T_subtensor(unittest.TestCase):
     def setUp(self):
