@@ -106,8 +106,17 @@ class SharedVariable(Variable):
         cp.tag = copy.copy(self.tag)
         return cp
 
-    value = property(get_value, set_value, 
-            doc="shortcut for self.get_value() and self.set_value() which COPIES data")
+    def get_borrowed_value(self):
+        return self.get_value(borrow=True)
+    def set_borrowed_value(self, new_value):
+        return self.set_value(new_value, borrow=True)
+
+    #TODO: USE A CONFIG VARIABLE TO set these get/set methods to the non-borrowing versions
+    #      Semantically things are clearer when using non-borrow versions.  That should be the
+    #      default.  The default support transparently (if slowly) when the 'raw' value is in a
+    #      different memory space (e.g. GPU or other machine).
+    value = property(get_borrowed_value, set_borrowed_value, 
+            doc="shortcut for self.get_borrowed_value() and self.set_borrowed_value() which COPIES data")
 
 
     def filter_update(self, update):
