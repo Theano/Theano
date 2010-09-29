@@ -64,11 +64,37 @@ class SharedVariable(Variable):
                     readonly=False,
                     strict=strict)
 
-    def __set(self,new_value):
-        self.container.value = new_value
+    def get_value(self, borrow=False):
+        """Get the non-symbolic value associated with this SharedVariable.
 
-    def __get(self):
-        return self.container.value
+        :param borrow: 
+            True to return the internal value directly, potentially creating problems related
+            to aliased memory.
+
+        If the return value is mutable, and you have used borrow=True to get at the internal
+        value, then you should be careful about changing it.  If you modify it, call
+        set_value(rval, borrow=True) to tell Theano that you modified it.  (Theano may have
+        cached computations based on the old value.)
+        
+        """
+        if borrow:
+            return self.container.value
+        else:
+            return copy.deepcopy(self.container.value)
+
+    def set_value(self,new_value, borrow=False):
+        """Set the non-symbolic value associated with this SharedVariable.
+
+        :param borrow: 
+            True to use the new_value directly, potentially creating problems
+            related to aliased memory.
+        
+        Changes to this value will be visible to all functions using this SharedVariable.
+        """
+        if borrow:
+            self.container.value = new_value
+        else:
+            self.container.value = copy.deepcopy(new_value)
 
     def clone(self):
         cp = self.__class__(
@@ -80,16 +106,9 @@ class SharedVariable(Variable):
         cp.tag = copy.copy(self.tag)
         return cp
 
-    value = property(__get, __set)
-    #value = self.container.value #GD- would've thought mapping one property to another would work
+    value = property(get_value, set_value, 
+            doc="shortcut for self.get_value() and self.set_value() which COPIES data")
 
-    """Read/write the non-symbolic value associated with this SharedVariable.
-    
-    If the SharedVariable is shared, changes to this value will be visible to all functions using
-    this SharedVariable.  If this SharedVariable is not shared, a change will not be visible to
-    functions that were created before the change.
-
-    """
 
     def filter_update(self, update):
         """When this shared variable is updated by a pfunc, the update value will be run through this function.

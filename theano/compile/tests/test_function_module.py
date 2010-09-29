@@ -285,7 +285,7 @@ class T_function(unittest.TestCase):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
         o = N.ones((3,3))
-        assert o is f(o) #borrow does not imply copy. 
+        assert o is not f(o) #function no longer permits aliasing outputs to inputs
 
         f = function([a], Out(a*4, borrow=False))
         o = N.ones((3,3))

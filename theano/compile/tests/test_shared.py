@@ -107,8 +107,8 @@ class Test_SharedVariable(unittest.TestCase):
 
         # check that an assignment of a perfect value results in no copying
         uval = theano._asarray([5,6,7,8], dtype='float64')
-        u.value = uval
-        assert u.value is uval
+        u.set_value(uval, borrow=True)
+        assert u.get_value(borrow=True) is uval
 
     def test_scalar_strict(self):
         def f(var, val): var.value = val
