@@ -212,9 +212,18 @@ def register_canonicalize(lopt, *tags, **kwargs):
     compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
+def register_stabilize(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
 def register_specialize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
+
+def register_uncanonicalize(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
 def register_specialize_device(lopt, *tags, **kwargs):
@@ -222,10 +231,6 @@ def register_specialize_device(lopt, *tags, **kwargs):
     compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
-def register_stabilize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
 
 ######################
 # DimShuffle lifters #

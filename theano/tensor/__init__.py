@@ -4,6 +4,7 @@ __docformat__ = "restructuredtext en"
 from basic import *
 
 import opt
+import opt_uncanonicalize
 import blas
 import xlogx
 

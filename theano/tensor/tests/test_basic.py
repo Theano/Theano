@@ -846,6 +846,16 @@ class T_max_and_argmax(unittest.TestCase):
         v = eval_outputs(max_and_argmax(n,2)[0].shape)
         assert tuple(v)==(2,3)
 
+    def test_optimization(self):
+        #If we use only the max output, we should replace this op with a faster one.
+        data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
+        n = matrix()
+
+        f = function([n],max_and_argmax(n,0)[0])
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,CAReduce)
+
     def test_grad(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
@@ -995,6 +1005,16 @@ class T_max(unittest.TestCase):
         self.failUnless(v == (2,))
         v = eval_outputs(max(n,[0,1,2]).shape)
         self.failUnless(v.size == 0)
+
+    def test_optimization(self):
+        data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
+        n = matrix()
+
+        f = function([n],max(n,0))
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,CAReduce)
+        f(data)
 
     def _test_grad(self):
         data = numpy.random.rand(2,3)
