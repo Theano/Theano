@@ -27,23 +27,12 @@ from basic import get_constant_value
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
 
-@register_uncanonicalize
-@gof.local_optimizer([T._shape])
-def local_max_and_argmax_specialize(node):
-    if node.op == T._max_and_argmax:
-        if len(node.outputs[1].clients)==0:
-            import pdb;pdb.set_trace()
-            try:
-                axis=get_constant_value(node.inputs[1])
-            except ValueError:
-                return False
-
-            return [CAReduce(scal.maximum,axis)(node.inputs[0]), T.as_tensor_variable(0)]
-
-    return False
-
 class MaxAndArgmaxOptimizer(Optimizer):
-    """Graph optimizer for Fusion of elemwise operations"""
+    """Replace MaxAndArgmax by CAReduce when the argmax is not used
+
+       This is faster as MaxAndArgmax don't have c code and execute it 
+       in two pass.
+    """
 
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
@@ -72,4 +61,17 @@ class MaxAndArgmaxOptimizer(Optimizer):
                             pass
 
 register_uncanonicalize(MaxAndArgmaxOptimizer(),name='MaxAndArgmaxOptimizer')
+
+@register_uncanonicalize
+@gof.local_optimizer([T._shape])
+def local_max_to_min(node):
+    if node.op == T.neg and node.inputs[0].owner:
+        max = node.inputs[0]
+        if max.owner and isinstance(max.owner.op, CAReduce) and max.owner.op.scalar_op==scal.maximum:
+            neg = max.owner.inputs[0]
+            if neg.owner and neg.owner.op == T.neg:
+                return [CAReduce(scal.minimum,max.owner.op.axis)(neg.owner.inputs[0])]
+
+    return False
+
 
