@@ -888,9 +888,22 @@ class CAReduce(Op):
         axis = self.axis
         if axis is None:
             axis = range(len(input.type.broadcastable))
+        if any([a<0 for a in axis]):
+            axis2=[]
+            for a in self.axis:
+                if a<0:
+                    axis2.append(a+input.type.ndim)
+                else:
+                    axis2.append(a)
+            assert len(axis)==len(axis2)
+            axis = tuple(axis2)
+            op = self.__class__(self.scalar_op, axis)
+        else: 
+            op = self
         output = TensorType(dtype = self._output_dtype(input.type.dtype),
                              broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
-        return Apply(self, [input], [output])
+
+        return Apply(op, [input], [output])
 
     def __getstate__(self):
         d = copy(self.__dict__)

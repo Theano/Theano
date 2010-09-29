@@ -159,8 +159,11 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
                            ((5, 6), (1, )),
+                           ((5, 6), (-1, )),
+                           ((5, 6), (-2, )),
                            ((5, 6), ()),
                            ((2, 3, 4, 5), (0, 1, 3)),
+                           ((2, 3, 4, 5), (-2, -3)),
                            ((5, 0), (0, )),
                            ((5, 0), (1, )),
                            ((), ())]:
@@ -171,6 +174,15 @@ class test_CAReduce(unittest.TestCase):
             xv = numpy.asarray(numpy.random.rand(*xsh))
             zv = xv
             numpy_raised = False
+            if len(tosum)>1 and any([a<0 for a in tosum]):
+                #In that case, we need to use the good order of axis in the reduction.
+                axis2 = []
+                for a in tosum:
+                    if a<0: axis2.append(a+len(xsh))
+                    else: axis2.append(a)
+                assert len(axis2)==len(tosum)
+                tosum = tuple(axis2)
+
             if scalar_op == add:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.add.reduce(zv, axis)
