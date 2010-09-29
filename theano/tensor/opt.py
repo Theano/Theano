@@ -6,6 +6,14 @@
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
+import operator
+import itertools
+import sys
+
+import numpy
+import numpy as N #guys... please don't do this in the library :(
+
+import theano
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
@@ -14,12 +22,6 @@ from theano.configparser import config
 from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
-import inplace as I
-import numpy, theano
-import numpy as N #guys... please don't do this in the library :(
-import operator
-import itertools
-import sys, os
 from theano import compile  #to register the optimizer built by this file
 
 from theano.gof.python25 import any, all
