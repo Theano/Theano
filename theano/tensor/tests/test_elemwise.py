@@ -195,6 +195,12 @@ class test_CAReduce(unittest.TestCase):
                         zv = numpy.maximum.reduce(zv, axis)
                 except ValueError:
                     numpy_raised=True
+            elif scalar_op == minimum:
+                try:
+                    for axis in reversed(sorted(tosum)):
+                        zv = numpy.minimum.reduce(zv, axis)
+                except ValueError:
+                    numpy_raised=True
             elif scalar_op == or_:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.any(zv, axis)
@@ -203,7 +209,7 @@ class test_CAReduce(unittest.TestCase):
                     zv = numpy.all(zv, axis)
             else:
                 raise Exception("Test for CAReduce with scalar_op %s not implemented"%str(scalar_op))
-            if scalar_op == maximum and numpy_raised:
+            if scalar_op in [maximum,minimum] and numpy_raised:
                 try:
                     f(xv)
                 except ValueError:
@@ -221,13 +227,14 @@ class test_CAReduce(unittest.TestCase):
                 e = CAReduce(scalar_op, axis = tosum)(x)
                 if tosum is None: tosum = range(len(xsh))
                 f = copy(linker).accept(Env([x], [e.shape])).make_function()
-                if not(scalar_op == maximum and ((xsh==() or numpy.prod(xsh)==0))):
+                if not(scalar_op in [maximum,minimum] and ((xsh==() or numpy.prod(xsh)==0))):
                     assert all(f(xv)== zv.shape)
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker(), add)
         self.with_linker(gof.PerformLinker(), mul)
         self.with_linker(gof.PerformLinker(), maximum)
+        self.with_linker(gof.PerformLinker(), minimum)
         #need other dtype then real
         #self.with_linker(gof.PerformLinker(), or_)
         #self.with_linker(gof.PerformLinker(), and_)
@@ -236,6 +243,7 @@ class test_CAReduce(unittest.TestCase):
         self.with_linker(gof.CLinker(), add)
         self.with_linker(gof.CLinker(), mul)
         self.with_linker(gof.CLinker(), maximum)
+        self.with_linker(gof.CLinker(), minimum)
 
         #need other dtype then real        
         #no c_code for or_, and_

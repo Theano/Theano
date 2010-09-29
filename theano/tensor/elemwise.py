@@ -998,11 +998,19 @@ class CAReduce(Op):
 
         if hasattr(self.scalar_op,'identity'):
             identity = self.scalar_op.identity
-        elif self.scalar_op == scalar.maximum:
-            if input.type.dtype in ["float32","float64"]:
-                identity = "-__builtin_inf()"
-            else:
-                identity = "NPY_MIN_"+str(input.type.dtype).upper()
+        elif self.scalar_op in [scalar.maximum, scalar.minimum]:
+            if self.scalar_op == scalar.maximum:
+                if input.type.dtype in ["float32","float64"]:
+                    identity = "-__builtin_inf()"
+                    scal_name = 'maximum'
+                else:
+                    identity = "NPY_MIN_"+str(input.type.dtype).upper()
+                    scal_name = 'minimum'
+            if self.scalar_op == scalar.minimum:
+                if input.type.dtype in ["float32","float64"]:
+                    identity = "__builtin_inf()"
+                else:
+                    identity = "NPY_MAX_"+str(input.type.dtype).upper()
             fail = sub["fail"]
             pattern=[0]*len(node.inputs[0].broadcastable)
             axis = self.axis
@@ -1014,7 +1022,7 @@ class CAReduce(Op):
             alloc += """
 for(int i=0;i<%(iname)s->nd;i++){
   if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
-    PyErr_Format(PyExc_ValueError, "Input of CAReduce{maximum} has zero-size on axis %%d",i);
+    PyErr_Format(PyExc_ValueError, "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);
     %(fail)s;
   }
 }
