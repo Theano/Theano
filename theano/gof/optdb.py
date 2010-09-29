@@ -161,7 +161,7 @@ class EquilibriumDB(DB):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         return opt.EquilibriumOptimizer(opts, 
                 max_depth=5,
-                max_use_ratio=10,
+                max_use_ratio=11,#upgraded to 11 to don't generated useless output in test.
                 failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
 
