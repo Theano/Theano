@@ -169,6 +169,8 @@ optdb.register('specialize', gof.EquilibriumDB(),           # misc special cases
         2, 'fast_run')
 optdb.register('Print2.01', PrintCurrentEnv('Post-specialize'),
         2.01, )#'fast_run', 'fast_compile')
+optdb.register('uncanonicalize', gof.EquilibriumDB(),# misc special cases for speed that break canonicalization
+        3, 'fast_run')
 optdb.register('specialize_device', gof.EquilibriumDB(),           # misc special cases for speed that are dependent on the device.
         48.6, 'fast_run')#must be after gpu stuff at 48.5
 optdb.register('merge2', gof.MergeOptimizer(),              # especially constant merge
