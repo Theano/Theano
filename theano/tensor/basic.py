@@ -497,19 +497,13 @@ class TensorType(Type):
                                  we allow any value in b in that position.
                                  Event +-inf
         """
-        if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
+        if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
             if a.shape != b.shape:
                 return False
             if a.dtype != b.dtype:
                 return False
             if 'int' in str(a.dtype):
                 return numpy.all(a==b)
-            #elif a.shape == (): #for comparing scalars, use broadcasting.
-                ## Note: according to James B, there was a reason for the
-                ## following two lines, that may seem weird at first glance.
-                ## If someone can figure out what it is, please say it here!
-                #ones = numpy.ones(2)
-                #return _allclose(ones * a, ones*b) ### dtype handling is wrong here
             else:
                 cmp = _allclose(a, b)
                 if cmp:
