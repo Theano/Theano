@@ -65,6 +65,11 @@ register_uncanonicalize(MaxAndArgmaxOptimizer(),name='MaxAndArgmaxOptimizer')
 @register_uncanonicalize
 @gof.local_optimizer([T._shape])
 def local_max_to_min(node):
+    """
+    change -(max(-x)) to min
+
+    This is tested in tensor/tests/test_basic.py:test_min_max
+    """
     if node.op == T.neg and node.inputs[0].owner:
         max = node.inputs[0]
         if max.owner and isinstance(max.owner.op, CAReduce) and max.owner.op.scalar_op==scal.maximum:
