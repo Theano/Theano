@@ -100,29 +100,34 @@ class BadCLinkerOutput(DebugModeError):
         sio = StringIO()
         print >> sio, "BadCLinkerOutput"
         print >> sio, "  variable:", self.r
+        print >> sio, "  Type    :", self.r.type
         print >> sio, "  val_py  :", self.val_py
         print >> sio, "  val_c   :", self.val_c
         print >> sio, "  op      :", self.offending_op()
         try:
             ssio = StringIO()
-            print >> ssio, "  PyValue shape, dtype, strides, min, max:", 
+            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:", 
             print >> ssio, self.val_py.shape,
             print >> ssio, self.val_py.dtype,
-            print >> ssio, self.val_py.strides
+            print >> ssio, self.val_py.strides,
             print >> ssio, self.val_py.min(),
             print >> ssio, self.val_py.max(),
+            print >> ssio, numpy.isinf(self.val_py).sum(),
+            print >> ssio, numpy.isnan(self.val_py).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except:
             pass
         try:
             ssio = StringIO()
-            print >> ssio, "  CValue shape, dtype, strides, min, max:", 
+            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:", 
             print >> ssio, self.val_c.shape,
             print >> ssio, self.val_c.dtype,
             print >> ssio, self.val_c.strides,
             print >> ssio, self.val_c.min(),
             print >> ssio, self.val_c.max(),
+            print >> ssio, numpy.isinf(self.val_c).sum(),
+            print >> ssio, numpy.isnan(self.val_c).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except:
@@ -131,10 +136,11 @@ class BadCLinkerOutput(DebugModeError):
             ov=numpy.asarray(self.val_c)
             nv=numpy.asarray(self.val_py)
             ssio = StringIO()
-            print >> ssio, "  Max Abs Diff: ", numpy.max(numpy.absolute(nv-ov))
-            print >> ssio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(nv-ov))
-            print >> ssio, "  Median Abs Diff: ", numpy.median(numpy.absolute(nv-ov))
-            print >> ssio, "  Std Abs Diff: ", numpy.std(numpy.absolute(nv-ov))
+            absdiff = numpy.absolute(nv-ov)
+            print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
+            print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
+            print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
+            print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
             reldiff = numpy.absolute(nv-ov) / (numpy.absolute(nv)+numpy.absolute(ov))
             print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
             print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
@@ -1166,6 +1172,8 @@ class _Linker(gof.link.LocalLinker):
                                 # compares the version from thunk_py (in r_vals)
                                 # to the version produced by thunk_c (in storage_map)
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                    import pdb; pdb.set_trace()
+                                    r.type.values_eq_approx(r_vals[r], storage_map[r][0])
                                     raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
