@@ -1000,13 +1000,13 @@ class CAReduce(Op):
             identity = self.scalar_op.identity
         elif self.scalar_op in [scalar.maximum, scalar.minimum]:
             if self.scalar_op == scalar.maximum:
+                scal_name = 'maximum'
                 if input.type.dtype in ["float32","float64"]:
                     identity = "-__builtin_inf()"
-                    scal_name = 'maximum'
                 else:
                     identity = "NPY_MIN_"+str(input.type.dtype).upper()
-                    scal_name = 'minimum'
             if self.scalar_op == scalar.minimum:
+                scal_name = 'minimum'
                 if input.type.dtype in ["float32","float64"]:
                     identity = "__builtin_inf()"
                 else:
