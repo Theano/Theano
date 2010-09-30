@@ -2,10 +2,11 @@ import unittest
 
 import numpy
 
-from theano import function,config
+from theano import function, config
+from theano import scalar
 import theano.tensor as tensor
 #from theano.tensor import matrix,max_and_argmax,MaaxAndArgmax,neg
-from theano.tensor.elemwise import CAReduce
+from theano.tensor.elemwise import CAReduce, Elemwise
 from theano.tests import unittest_tools as utt
 
 
@@ -44,7 +45,8 @@ class T_min_max(unittest.TestCase):
         f = function([n],tensor.max(-n,0))
         topo = f.maker.env.toposort()
         assert len(topo)==2
-        assert topo[0].op==tensor.neg
+        assert isinstance(topo[0].op, Elemwise)
+        assert isinstance(topo[0].op.scalar_op, scalar.Neg)
         assert isinstance(topo[1].op,CAReduce)
         f(data)
 
@@ -52,7 +54,8 @@ class T_min_max(unittest.TestCase):
         topo = f.maker.env.toposort()
         assert len(topo)==2
         assert isinstance(topo[0].op,CAReduce)
-        assert topo[1].op==tensor.neg
+        assert isinstance(topo[1].op, Elemwise)
+        assert isinstance(topo[1].op.scalar_op, scalar.Neg)
         f(data)
 
         f = function([n],-tensor.max(-n,0))
@@ -76,13 +79,15 @@ class T_min_max(unittest.TestCase):
         topo = f.maker.env.toposort()
         assert len(topo)==2
         assert isinstance(topo[0].op,CAReduce)#max
-        assert topo[1].op==tensor.neg
+        assert isinstance(topo[1].op, Elemwise)
+        assert isinstance(topo[1].op.scalar_op, scalar.Neg)
         f(data)
 
         f = function([n],-tensor.min(n,0))
         topo = f.maker.env.toposort()
         assert len(topo)==2
-        assert topo[0].op==tensor.neg
+        assert isinstance(topo[0].op, Elemwise)
+        assert isinstance(topo[0].op.scalar_op, scalar.Neg)
         assert isinstance(topo[1].op,CAReduce)#max
         f(data)
 
