@@ -804,7 +804,8 @@ def test_argmax_pushdown():
     assert len(env.toposort()) == 4 # an output_guard is second
     assert isinstance(env.toposort()[0].op, tensor.Elemwise)
     assert isinstance(env.toposort()[1].op, Softmax)
-    assert isinstance(env.toposort()[2].op, tensor.MaxAndArgmax)
+    assert isinstance(env.toposort()[2].op, tensor.CAReduce)
+    assert isinstance(env.toposort()[2].op.scalar_op, theano.scalar.Maximum)
     assert str(env.toposort()[3].op) == 'OutputGuard'
 
 
@@ -845,7 +846,8 @@ def test_argmax_pushdown_bias():
     #    print node.op
     assert len(env.toposort()) == 3
     assert isinstance(env.toposort()[0].op, SoftmaxWithBias)
-    assert isinstance(env.toposort()[1].op, tensor.MaxAndArgmax)
+    assert isinstance(env.toposort()[1].op, tensor.CAReduce)
+    assert isinstance(env.toposort()[1].op.scalar_op, theano.scalar.Maximum)
     assert str(env.toposort()[2].op) == 'OutputGuard'
 
 def test_asymptotic_32():
