@@ -4154,6 +4154,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
            an experimental verify_grad that covers that case as well by using random 
            projections.
     """
+    assert isinstance(pt, (list,tuple))
     pt = [numpy.array(p) for p in pt]
 
     _type_tol = dict( # relativ error tolerances for different types
