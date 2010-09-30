@@ -1172,8 +1172,8 @@ class _Linker(gof.link.LocalLinker):
                                 # compares the version from thunk_py (in r_vals)
                                 # to the version produced by thunk_c (in storage_map)
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                    import pdb; pdb.set_trace()
-                                    r.type.values_eq_approx(r_vals[r], storage_map[r][0])
+                                    #import pdb; pdb.set_trace()
+                                    #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
                                     raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
