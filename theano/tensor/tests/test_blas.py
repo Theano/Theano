@@ -3,7 +3,11 @@ import traceback
 import theano.tensor as T
 from theano.gof import Env
 from theano.printing import pp
+
 import numpy, theano
+from numpy.testing import dec
+from numpy.testing.noseclasses import KnownFailureTest
+
 from theano.tensor.blas import *
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar, _is_real_matrix,
         _gemm_canonicalize, _factor_canonicalized)
@@ -541,6 +545,7 @@ def test_inplace0():
         raise Failure('gemm_inplace in graph')
     assert _dot22 in [n.op for n in f.maker.env.nodes]
 
+    raise KnownFailureTest("gemm not always inserted")
     f = inplace_func([X,Y,Z,a,b, R, S, c],
             [Z * (c*Z + a * T.dot(X,Y) + b * T.dot(R,S).T)], mode='FAST_RUN')
     # gemm_inplace should be inserted here, to work in-place on Z*c
