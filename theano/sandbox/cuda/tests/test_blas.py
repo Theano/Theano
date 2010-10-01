@@ -180,9 +180,8 @@ def test_downsample():
                             f.maker.env.toposort()])
                 assert numpy.allclose(f(),f2())
                 
-                g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)),a), mode=mode_with_gpu)
-                g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)),a), mode=mode_without_gpu)
-                print g.maker.env.toposort()
+                g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_with_gpu)
+                g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.env.toposort()])
                 assert numpy.allclose(g(),g2())
