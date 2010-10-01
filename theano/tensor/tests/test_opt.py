@@ -377,7 +377,7 @@ class test_canonize(unittest.TestCase):
                 print "ID TOPO", id, topo, sym_inputs
                 for r,t in f.maker.env.shape_feature.shape_of.items():
                     print '  ', r, t
-                if topo:
+                if topo and not(len(topo)==1 and topo[0].op==theano.compile.function_module.deep_copy_op):
                     for node in topo[:-1]:
                         assert isinstance(node.op, Shape_i)
                     assert isinstance(topo[-1].op, TT.Alloc)
@@ -466,7 +466,8 @@ class test_canonize(unittest.TestCase):
                 out = f(*val_inputs)
                 assert numpy.allclose(out,val_inputs[0])
                 topo=f.maker.env.toposort()
-                assert len(topo)==0
+                assert len(topo)==1
+                topo[0].op==theano.compile.function_module.deep_copy_op
                 assert(out_dtype==out.dtype)
                 
             #test x / abs(x) -> sign(x)
