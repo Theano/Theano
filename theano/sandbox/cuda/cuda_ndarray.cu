@@ -9,6 +9,9 @@
 //If true, when there is a gpu malloc or free error, we print the size of allocated memory on the device.
 #define COMPUTE_GPU_MEM_USED 0
 
+//If true, we fill with NAN allocated device memory.
+#define ALLOC_MEMSET 0
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
@@ -55,7 +58,13 @@ void * device_malloc(size_t size)
     }
     _allocated_size += size;
 #endif
-    return rval;
+    //fprintf(stderr, "allocated %li bytes of device memory (%s). %d already allocated, ptr: %p\n", (long)size, cudaGetErrorString(err),_allocated_size,rval);
+
+    if(ALLOC_MEMSET){
+      //We init them to nan to make sure we catch more debug case.
+      cudaMemset(rval, 0xFF, size);
+      //printf("MEMSET\n");
+    }    return rval;
 }
 int device_free(void *ptr)
 {
