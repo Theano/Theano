@@ -142,9 +142,8 @@ if 0:
                 assert (ret==r).all()
 
 def test_downsample():
-
-    for shp in [
-            (1, 1, 1, 12),
+    import random
+    shps = [ (1, 1, 1, 12),
             (1, 1, 2, 2), 
             (1, 1, 1, 1),
             (1,1,4,4),
@@ -165,7 +164,10 @@ def test_downsample():
             (30, 6, 12, 12),
             (30, 2, 24, 24),
             (30, 6, 24, 24),
-            (10, 10, 10, 11)]:
+            (10, 10, 10, 11)]
+    random.shuffle(shps)
+
+    for shp in shps:
         for ds in (2, 2), (3,2), (1,1):
             if ds[0] > shp[2]: continue
             if ds[1] > shp[3]: continue
