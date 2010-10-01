@@ -1,8 +1,12 @@
 ## PENDING REWRITE OF tensor_opt.py
 
-
+import copy
 import time
+import unittest
+
 import numpy
+from nose.plugins.skip import SkipTest
+from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 from theano import gof
@@ -16,11 +20,7 @@ from theano import pprint, shared
 from theano.tests import unittest_tools as utt
 
 from theano import function, compile
-from nose.plugins.skip import SkipTest
-from numpy.testing.noseclasses import KnownFailureTest
 
-import unittest, copy
-from copy import copy as cp
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -835,7 +835,7 @@ class test_fusion(unittest.TestCase):
     
     def test_elemwise_fusion(self):
         shp=(5,5)
-        mode=cp(compile.mode.get_default_mode())
+        mode=copy.copy(compile.mode.get_default_mode())
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
@@ -866,13 +866,13 @@ class test_fusion(unittest.TestCase):
 #        linker=gof.CLinker
 #        linker=gof.OpWiseCLinker
         
-        mode1=cp(compile.get_default_mode())
+        mode1=copy.copy(compile.get_default_mode())
         mode1._optimizer=mode1._optimizer.including('local_elemwise_fusion')
         #TODO:clinker is much faster... but use to much memory
         #Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
         #More plausible cause: we keep a link to the output data?
         #Follow up. Clinker do the same... second cause?
-        mode2=cp(compile.get_default_mode())
+        mode2=copy.copy(compile.get_default_mode())
         mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
         print "test with linker", str(mode1.linker)
         times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
@@ -888,7 +888,7 @@ class test_fusion(unittest.TestCase):
         print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
 
     def test_fusion_inplace(self):
-        mode=cp(compile.mode.get_default_mode())
+        mode=copy.copy(compile.mode.get_default_mode())
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize','inplace')
@@ -909,7 +909,7 @@ class test_fusion(unittest.TestCase):
         s=slice(31,36)
 #        linker=gof.CLinker
         linker=gof.OpWiseCLinker
-        mode=compile.Mode(linker(), cp(compile.mode.OPT_FAST_RUN))
+        mode=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
         mode=compile.ProfileMode()
         print "time", self.do(mode, shared, shp=(1000,1000),gpu=False, assert_len_topo=False,slice=s, nb_repeat=100)
 
