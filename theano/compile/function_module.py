@@ -167,11 +167,34 @@ class DeepCopyOp(theano.gof.Op):
     def __init__(self):
         pass
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, x):
         return theano.gof.Apply(self, [x], [x.type()])
 
     def perform( self, node, args, outs):
         outs[0][0] = copy.deepcopy(args[0])
+
+    def c_code_cache_version(self):
+        return (1)
+
+    def c_code(self, node, name, inames, onames, sub):
+        iname = inames[0]
+        oname = onames[0]
+        fail = sub['fail']
+        return """
+        Py_XDECREF(%(oname)s);
+
+        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
+
+        if (!%(oname)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
+            %(fail)s;
+        }
+ 
+        """%locals()
 
 deep_copy_op = DeepCopyOp()
 
