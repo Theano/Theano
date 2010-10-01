@@ -1585,9 +1585,9 @@ def test_constant_get_stabilized():
     x2 = T.scalar()
     y2 = T.log(1+T.exp(x2))
     f2 = theano.function([x2],y2)
+    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
     assert len(f2.maker.env.toposort())==1
     assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
-    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
     assert f2(800)==800
 
     x = T.as_tensor_variable(800)
