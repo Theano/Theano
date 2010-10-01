@@ -64,7 +64,8 @@ void * device_malloc(size_t size)
       //We init them to nan to make sure we catch more debug case.
       cudaMemset(rval, 0xFF, size);
       //printf("MEMSET\n");
-    }    return rval;
+    }
+    return rval;
 }
 int device_free(void *ptr)
 {
