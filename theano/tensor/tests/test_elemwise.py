@@ -164,8 +164,11 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 6), ()),
                            ((2, 3, 4, 5), (0, 1, 3)),
                            ((2, 3, 4, 5), (-2, -3)),
+                           ((5, 0), None),
                            ((5, 0), (0, )),
                            ((5, 0), (1, )),
+                           ((5, 0), ()),
+                           ((), None),
                            ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             e = CAReduce(scalar_op, axis = tosum)(x)
