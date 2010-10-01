@@ -1259,7 +1259,8 @@ class test_assert(unittest.TestCase):
         assert f(1)==1
         assert f(5)==5
         topo=f.maker.env.toposort()
-        assert len(topo)==0
+        assert len(topo)==1
+        assert topo[0].op==theano.compile.function_module.deep_copy_op
 
     def test2(self):
         #remove assert condition that are always true
@@ -1274,8 +1275,9 @@ class test_assert(unittest.TestCase):
         assert f(1,1)==1
         assert f(5,1)==5
         topo=f.maker.env.toposort()
-        assert len(topo)==1
+        assert len(topo)==2
         assert len(topo[0].inputs)==2
+        assert topo[1].op==theano.compile.function_module.deep_copy_op
 
     def test3(self):
         #don't remove assert condition that are always false
@@ -1289,8 +1291,9 @@ class test_assert(unittest.TestCase):
         f = theano.function([x,y],theano.tensor.opt.assert_(x,y,0),mode=mode)
         self.failUnlessRaises(AssertionError, f, 1,0)
         topo=f.maker.env.toposort()
-        assert len(topo)==1
+        assert len(topo)==2
         assert len(topo[0].inputs)==3
+        assert topo[1].op==theano.compile.function_module.deep_copy_op
 
 def test_local_mul_specialize():
 
@@ -1309,7 +1312,7 @@ def test_local_mul_specialize():
     f = function([v,m], v*1, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
-    assert nodes == []
+    nodes == [theano.compile.function_module.deep_copy_op]
 
     f = function([v,m], v*0, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
@@ -1392,7 +1395,7 @@ def test_local_pow_specialize():
 
     f = function([v], v**1, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
-    assert nodes == []
+    nodes == [theano.compile.function_module.deep_copy_op]
     assert numpy.allclose(f(val),val**1)
 
     f = function([v], v**(-1), mode=mode)
@@ -1542,7 +1545,8 @@ class T_useless_elemwise(unittest.TestCase):
         vy=numpy.random.rand(5,4)
         f(vx)
         topo = f.maker.env.toposort()
-        assert len(topo)==0
+        assert len(topo)==1
+        assert topo[0].op==theano.compile.function_module.deep_copy_op
         f2=theano.function([x,y],T.mul(x,y), mode=self.mode)
         assert numpy.all(f2(vx,vy)==vx*vy)
         topo2 = f2.maker.env.toposort()
@@ -1559,7 +1563,8 @@ class T_useless_elemwise(unittest.TestCase):
         vy=numpy.random.rand(5,4)
         f(vx)
         topo = f.maker.env.toposort()
-        assert len(topo)==0
+        assert len(topo)==1
+        assert topo[0].op==theano.compile.function_module.deep_copy_op
         f2=theano.function([x,y],T.add(x,y), mode=self.mode)
         assert numpy.all(f2(vx,vy)==vx+vy)
         topo2 = f2.maker.env.toposort()
