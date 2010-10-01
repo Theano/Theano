@@ -50,7 +50,6 @@ class t_gemm(TestCase):
             new_z = f(z,a,x,y,b)
             z_after = self._gemm(z_orig, a, x, y, b)
 
-            self.failUnless(z is new_z)
             #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
             #_approx_eq.debug = 1
             self.failUnless(_approx_eq(z_after, z))
@@ -203,11 +202,11 @@ class t_gemm(TestCase):
             #f(z, a, x, y, b)
             f = inplace_func([], gemm_inplace(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f()
-            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
 
             #tz.value *= 0 # clear z's value
             y_T = ty.value.T
@@ -215,9 +214,8 @@ class t_gemm(TestCase):
             tx.value = y_T
 
             f()
-            assert numpy.all(tz.value == z) # should be aliased still
             # test that the transposed version of multiplication gives same answer
-            self.failUnless(_approx_eq(z_after, z.T))
+            self.failUnless(_approx_eq(z_after, tz.value.T))
 
         t(C,A,B)
         t(C.T, A, B)
