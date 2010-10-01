@@ -1,8 +1,9 @@
-import unittest
+import sys
+
 import numpy
+
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
-import os, sys
 
 AddConfigVar('unittests.rseed',
         "Seed to use for randomized unit tests. Special value 'random' means using a seed of None.",

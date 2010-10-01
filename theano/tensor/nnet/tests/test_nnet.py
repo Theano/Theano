@@ -1,15 +1,25 @@
-
 import unittest
-import theano
-from theano import tensor as T
-from theano import gof
+
 import numpy
-from theano.tests import unittest_tools as utt
-from theano.tensor.tests import test_basic as TT
-from theano import printing
 from nose.plugins.skip import SkipTest
 
-from theano.tensor.nnet import *
+import theano
+from theano import tensor as T
+from theano import tensor
+from theano import gof
+from theano.tests import unittest_tools as utt
+from theano import printing, pprint
+from theano.tensor.nnet import (categorical_crossentropy,
+                                crossentropy_categorical_1hot, 
+                                crossentropy_softmax_1hot, 
+                                crossentropy_softmax_1hot_with_bias, 
+                                crossentropy_softmax_1hot_with_bias_dx,
+                                crossentropy_softmax_argmax_1hot_with_bias,
+                                sigmoid, softplus, 
+                                Softmax, softmax, SoftmaxWithBias, softmax_grad, 
+                                softmax_with_bias, 
+                                Prepend_scalar_constant_to_each_row, 
+                                Prepend_scalar_to_each_row)
 
 class T_sigmoid(unittest.TestCase):
     def setUp(self):
@@ -786,7 +796,7 @@ def test_argmax_pushdown():
     #for node in env.toposort():
         #print node.op
     assert len(env.toposort()) == 2 # an output_guard is second
-    assert env.toposort()[0].op == tensor._max_and_argmax
+    assert env.toposort()[0].op == tensor.basic._max_and_argmax
     assert str(env.toposort()[1].op) == 'OutputGuard'
     x = tensor.dmatrix()
     #test that the max_and_argmax is not pushed down if the max is used
