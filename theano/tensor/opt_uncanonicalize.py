@@ -40,7 +40,7 @@ class MaxAndArgmaxOptimizer(Optimizer):
     def apply(self, env):
         did_something = True
         while did_something:
-            nodelist = list(env.nodes)
+            nodelist = env.toposort()
             did_something = False
             for node in nodelist:
                 if node.op == T._max_and_argmax:
@@ -69,6 +69,9 @@ def local_max_to_min(node):
     change -(max(-x)) to min
 
     This is tested in tensor/tests/test_basic.py:test_min_max
+
+    :note: we don't need an opt that will do the reverse as by default 
+           the interface put only MaxAndArgmax into the graph.
     """
     if node.op == T.neg and node.inputs[0].owner:
         max = node.inputs[0]
