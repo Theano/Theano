@@ -1,7 +1,6 @@
-import sys, time
-from theano.compile.sharedvalue import shared
 from theano.compile.pfunc import pfunc
 from theano import tensor
+from theano.tests import unittest_tools
 
 import numpy
 
@@ -165,7 +164,8 @@ def test_downsample():
             (30, 2, 24, 24),
             (30, 6, 24, 24),
             (10, 10, 10, 11)]
-    random.shuffle(shps)
+
+    numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
 
     for shp in shps:
         for ds in (2, 2), (3,2), (1,1):
