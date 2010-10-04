@@ -739,7 +739,6 @@ _approx_eq.debug = 0
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
     a=numpy.asarray([-numpy.inf,-1,0,1,numpy.inf,numpy.nan])
-    import pdb;pdb.set_trace()
     assert TensorType.values_eq_approx(a,a)
 
     #test inf, -inf don't equal themself
