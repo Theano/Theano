@@ -117,6 +117,9 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
 
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
+                if any([i.dtype=='float32' for i in inputs]):
+                    eps=8e-6#1e-6
+                else: eps = 1e-10
                 for i, (variable, expected) in enumerate(zip(variables, expecteds)):
                     if variable.dtype != expected.dtype or variable.shape != expected.shape or \
                             numpy.any(numpy.abs(variable - expected) > eps):
@@ -402,13 +405,13 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
 
 #Those are corner case when rounding. Their is many rounding algo.
 #c round() fct and numpy round are not the same!
-corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
+corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
 #we remove 0 here as the grad is not always computable numerically.
 corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
 _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
-_good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
+_good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     integers = (randint_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
