@@ -736,6 +736,30 @@ _approx_eq.debug = 0
 #     val = fn(*args_in)
 #     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
+def test_tensor_values_eq_approx():
+    #test, inf, -inf and nan equal themself
+    a=numpy.asarray([-numpy.inf,-1,0,1,numpy.inf,numpy.nan])
+    import pdb;pdb.set_trace()
+    assert TensorType.values_eq_approx(a,a)
+
+    #test inf, -inf don't equal themself
+    b=numpy.asarray([numpy.inf,-1,0,1,numpy.inf,numpy.nan])
+    assert not TensorType.values_eq_approx(a,b)
+    b=numpy.asarray([-numpy.inf,-1,0,1,-numpy.inf,numpy.nan])
+    assert not TensorType.values_eq_approx(a,b)
+
+    #test allow_remove_inf
+    b=numpy.asarray([numpy.inf,-1,0,1,5,numpy.nan])
+    assert TensorType.values_eq_approx(a,b,allow_remove_inf=True)
+    b=numpy.asarray([numpy.inf,-1,0,1,5,6])
+    assert not TensorType.values_eq_approx(a,b,allow_remove_inf=True)
+
+    #test allow_remove_nan
+    b=numpy.asarray([numpy.inf,-1,0,1,5,numpy.nan])
+    assert not TensorType.values_eq_approx(a,b,allow_remove_nan=False)
+    b=numpy.asarray([-numpy.inf,-1,0,1,numpy.inf,6])
+    assert not TensorType.values_eq_approx(a,b,allow_remove_nan=False)
+
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
         s = shape(numpy.ones((5, 3)))

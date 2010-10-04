@@ -539,12 +539,13 @@ class TensorType(Type):
                 # Find places where both a and b have inf of the same sign.
                 both_inf = a_inf * numpy.isinf(b)
 
-                #cmp_elemwise is True when we have inf and -inf.
+                #cmp_elemwise is weird when we have inf and -inf.
+                #set it to False
                 cmp_elemwise = numpy.where(both_inf&cmp_elemwise,
                                            a==b,cmp_elemwise)
                 
                 #check the sign of the inf
-                both_inf = numpy.where(both_inf,cmp_elemwise,both_inf)
+                both_inf = numpy.where(both_inf,a==b,both_inf)
 
                 if allow_remove_inf:
                     both_inf += a_inf
