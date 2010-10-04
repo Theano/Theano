@@ -1295,7 +1295,14 @@ def round_half_away_from_zero_(a):
         return numpy.floor(a + 0.5)
     else:
         return numpy.ceil(a - 0.5)
-round_half_away_from_zero_vec = numpy.vectorize(round_half_away_from_zero_)
+
+round_half_away_from_zero_vec64 = numpy.vectorize(round_half_away_from_zero_)
+round_half_away_from_zero_vec32 = numpy.vectorize(round_half_away_from_zero_,otypes=['float32'])
+
+def round_half_away_from_zero_vec(a):
+    if a.dtype == numpy.float32:
+        return round_half_away_from_zero_vec32(a)
+    return round_half_away_from_zero_vec64(a)
 
 class RoundHalfAwayFromZero(UnaryScalarOp):
     """
