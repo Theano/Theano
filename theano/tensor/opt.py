@@ -2705,7 +2705,6 @@ register_specialize(local_erf_neg_minus_one2)
 #log(erfc(x)) => when x>threashold, -x**2-log(x)-.5*log(pi)+log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
 #for float64: threshold=26.641747557 was choosed with: [(i,numpy.log(scipy.special.erfc(numpy.asarray([i],dtype='float64')))) for i in numpy.arange(26.641747557,26.6417475571,.00000000001)]
 #for float32: threshold=10.0541949, [(i,numpy.log(scipy.special.erfc(numpy.asarray([i],dtype='float32')))) for i in numpy.arange(10.0541948,10.0541951,.0000001)]
-
 @register_stabilize
 @register_specialize
 @gof.local_optimizer([T.log])
@@ -2870,7 +2869,7 @@ def local_grad_log_erfc_neg(node):
     elif x.dtype=='float64':
         threshold = 26.641747557
     ret = T.switch(x<threshold,true_div_no_mul,stab_value)*y
-    ret.values_eq_approx = ret.type.values_eq_approx_remove_nan
+    ret.values_eq_approx = ret.type.values_eq_approx_remove_inf_nan
 
     return [ret]
     """
