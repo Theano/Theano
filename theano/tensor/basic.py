@@ -1390,6 +1390,11 @@ class MaxAndArgmax(Op):
     nout=2 # max val, max idx
     E_axis = 'invalid axis'
     
+    def __eq__(self,other):
+        return type(self)==type(other)
+    def __hash__(self):
+        return hash(type(self))
+
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
         if axis is None:
