@@ -297,6 +297,10 @@ careful though, not to allow the expressions introduced by a givens
 substitution to be co-dependent, the order of substitution is not defined, so
 the substitutions have to work in any order.
 
+In practice, a good way of thinking about the ``givens`` is as a mechanism
+that allows you to replace any part of your formula with a different
+expression that evaluates to a tensor of same shape and dtype. ``givens`` 
+
 .. _using_random_numbers:
 
 Using Random Numbers
