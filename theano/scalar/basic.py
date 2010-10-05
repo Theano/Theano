@@ -1300,7 +1300,7 @@ round_half_away_from_zero_vec64 = numpy.vectorize(round_half_away_from_zero_)
 round_half_away_from_zero_vec32 = numpy.vectorize(round_half_away_from_zero_,otypes=['float32'])
 
 def round_half_away_from_zero_vec(a):
-    if a.dtype == numpy.float32:
+    if getattr(a, 'dtype',None) == numpy.float32:
         return round_half_away_from_zero_vec32(a)
     return round_half_away_from_zero_vec64(a)
 
