@@ -58,11 +58,11 @@ def safe_make_node(op, *inputs):
     else:
         return node.owner
 
-def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}, mode = None):
+def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}, mode = None, grad_rtol=None):
     if grad is True:
         grad = good
 
-    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode = op, expected, checks, good, bad_build, bad_runtime, grad, mode
+    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol
 
     class Checker(unittest.TestCase):
 
@@ -177,7 +177,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    utt.verify_grad(self.op, inputs, mode=self.mode)
+                    utt.verify_grad(self.op, inputs, mode=self.mode, rel_tol=_grad_rtol)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
@@ -318,7 +318,11 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          bad_runtime = _bad_runtime_broadcast_binary_normal,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
-
+div_grad_rtol=None
+if config.floatX=='float32':
+    #We raise the relative tolerence for the grad as their is error in float32
+    #This is probably caused by our way of computing the gradient error.
+    div_grad_rtol=0.025
 DivTester = makeBroadcastTester(op = true_div,
                                   expected = lambda x, y: x / y,
                                   good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
@@ -336,7 +340,9 @@ DivTester = makeBroadcastTester(op = true_div,
                                   grad = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                               scalar = (rand(2, 3), rand(1, 1)),
                                               row = (rand(2, 3), rand(1, 3)),
-                                              column = (rand(2, 3), rand(2, 1))))
+                                              column = (rand(2, 3), rand(2, 1))),
+                                  grad_rtol=div_grad_rtol,
+                                )
 DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
@@ -350,6 +356,7 @@ DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                                      scalar = (rand(2, 3), rand(1, 1)),
                                                      row = (rand(2, 3), rand(1, 3)),
                                                      column = (rand(2, 3), rand(2, 1))),
+                                         grad_rtol=div_grad_rtol,
                                          inplace = True)
 
 ModTester = makeBroadcastTester(op = mod,
@@ -586,18 +593,25 @@ CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
+tan_grad_rtol = None
+if config.floatX=='float32':
+#We raise the relative tolerence for the grad as their is error in float32
+#This is probably caused by our way of computing the gradient error.
+    tan_grad_rtol = 0.047
 TanTester = makeBroadcastTester(op = tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                   grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
-                                              shifted = (rand_ranged(3.15, 6.28, (2, 3)),)))
+                                              shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
+                                  grad_rtol=tan_grad_rtol)
 TanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
                                          expected = numpy.tan,
                                          good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                          grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
+                                         grad_rtol=tan_grad_rtol,
                                          inplace = True)
 
 
@@ -3287,7 +3301,7 @@ def test_unalign():
         assert numpy.allclose(out_numpy,out_theano)
         if should_raise:
             raise Exception("Expected an error from Theano!")
-    except NotImplementedError:
+    except NotImplementedError, e:
         if not should_raise:
             raise Exception("Theano raised an exception when none was expected")
 
