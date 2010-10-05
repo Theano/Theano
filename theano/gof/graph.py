@@ -331,7 +331,10 @@ class Value(Variable):
         return "<" + str(self.data) + ">" #+ "::" + str(self.type)
     def clone(self):
         """WRITEME"""
-        return self.__class__(self.type, copy(self.data), self.name)
+        #return copy(self)
+        cp = self.__class__(self.type, copy(self.data), self.name)
+        cp.tag = copy(self.tag)
+        return cp
     def __set_owner(self, value):
         """WRITEME
 
@@ -369,7 +372,9 @@ class Constant(Value):
         We clone this object, but we don't clone the data to lower memory requirement
         We suppose that the data will never change.
         """
-        return self.__class__(self.type, self.data, self.name)
+        cp = self.__class__(self.type, self.data, self.name)
+        cp.tag = copy(self.tag)
+        return cp
 
 
 
