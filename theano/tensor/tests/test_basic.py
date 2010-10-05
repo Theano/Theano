@@ -189,7 +189,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
     return Checker
 
 
-rand = lambda *shape: 2 * numpy.random.rand(*shape) - 1
+rand = lambda *shape: 2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1
 randint = lambda *shape: numpy.random.random_integers(-5, 5, shape)
 
 def randint_nonzero(*shape):
@@ -197,7 +197,7 @@ def randint_nonzero(*shape):
     return r + (r == 0) * 5
 
 def rand_ranged(min, max, shape):
-    return numpy.random.rand(*shape) * (max - min) + min
+    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype=config.floatX)
 
 def randint_ranged(min, max, shape):
     return numpy.random.random_integers(min, max, shape)
@@ -407,7 +407,7 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
 #c round() fct and numpy round are not the same!
 corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
 #we remove 0 here as the grad is not always computable numerically.
-corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
+corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
 _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
@@ -415,7 +415,7 @@ _good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (
                                     integers = (randint_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
-_grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
+_grad_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     corner_case = (corner_case_grad,))
 
 
@@ -1964,7 +1964,7 @@ class test_matinv(unittest.TestCase):
         a, b = matrices('ab')
         ab = a*b
         # Here, as_tensor_variable actually uses the data allocated by numpy.
-        diff = ab - as_tensor_variable(numpy.ones((dim,dim)))
+        diff = ab - as_tensor_variable(numpy.ones((dim,dim), dtype=config.floatX))
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
@@ -1977,6 +1977,9 @@ class test_matinv(unittest.TestCase):
         # use the function
         x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
         w = numpy.random.rand(dim,dim)
+        x = numpy.asarray(x, dtype=config.floatX)
+        w = numpy.asarray(w, dtype=config.floatX)
+
         for i in xrange(100):
             ssd, gw = fn(x,w)
             #print ssd, x*w, x, w
@@ -1994,11 +1997,15 @@ class test_matinv(unittest.TestCase):
         # hand-coded numpy implementation for verification
         x = numpy.random.rand(3,3)+0.1
         w = numpy.random.rand(3,3)
-        myssd0 = numpy.sum((x*w - numpy.ones((3,3)))**2.0)
+        x = numpy.asarray(x, dtype=config.floatX)
+        w = numpy.asarray(w, dtype=config.floatX)
+        ones = numpy.ones((3,3), dtype=config.floatX)
+
+        myssd0 = numpy.sum((x*w - ones)**2.0)
         # we want at least a test that is not too fast. So we make one here.
         for i in xrange(100):
-            gw = 2*(x*w - numpy.ones((3,3)))*x  # derivative of dMSE/dw
-            myssd = numpy.sum((x*w - numpy.ones((3,3)))**2)
+            gw = 2*(x*w - ones)*x  # derivative of dMSE/dw
+            myssd = numpy.sum((x*w - ones)**2)
             w -= 0.4 * gw
         self.failUnlessAlmostEqual(ssd0, myssd0)
         self.failUnlessAlmostEqual(ssd, myssd)
