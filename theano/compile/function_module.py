@@ -189,10 +189,24 @@ class DeepCopyOp(theano.gof.Op):
         iname = inames[0]
         oname = onames[0]
         fail = sub['fail']
-        return """
+        if isinstance(node.inputs[0].type, theano.tensor.TensorType):
+            return """
         Py_XDECREF(%(oname)s);
 
         %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
+
+        if (!%(oname)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
+            %(fail)s;
+        }
+ 
+        """%locals()
+        elif isinstance(node.inputs[0].type, theano.sandbox.cuda.CudaNdarrayType):
+            return """
+        Py_XDECREF(%(oname)s);
+
+        %(oname)s = (CudaNdarray*)CudaNdarray_Copy(%(iname)s);
 
         if (!%(oname)s)
         {
