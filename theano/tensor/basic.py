@@ -1761,7 +1761,7 @@ class Eye(gof.Op):
         return gof.Apply(self, [n,m,k], [TensorType(dtype = self.dtype, broadcastable = (False,False))()])
 
     def perform(self, node, (n,m,k), (out,)):
-        out[0] = numpy.eye(n,m,k)
+        out[0] = numpy.eye(n,m,k,dtype=self.dtype)
 
     def grad(self, (n,m,k),(gout,)):
         return [None, None, None]
