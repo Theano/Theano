@@ -120,7 +120,7 @@ if cuda_available:
     import cuda_ndarray
 
 
-def use(device):
+def use(device, force=False):
     global cuda_enabled
     if device == 'gpu':
         pass
@@ -149,6 +149,10 @@ def use(device):
         except RuntimeError, e:
             _logger.error("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
             cuda_enabled = False
+            if force:
+                e.args+=("You asked to force this device and it failed. No fallback to the cpu or other gpu device.",)
+                raise
+
     elif use.device_number != device:
         _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
@@ -169,6 +173,16 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
-if cuda_available and config.device.startswith('gpu'):
+if cuda_available and config.force_device.startswith('gpu'):
+    use(config.force_device, True)
+elif cuda_available and config.device.startswith('gpu'):
     use(config.device)
 
+
+if config.force_device.startswith('gpu'):
+        try:
+            #in case the device if just gpu, we check that the driver init it correctly.
+            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
+        except (Exception, NameError), e:#NameError when no gpu present as cuda_ndarray is not loaded.
+            e.args+=("ERROR: GPU did not work and we told to don't use the cpu. ",)
+            raise

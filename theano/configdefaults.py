@@ -15,6 +15,11 @@ AddConfigVar('device',
         EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
         )
 
+AddConfigVar('force_device',
+        "Have precedence over device if not equal cpu.",
+        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
+        )
+
 AddConfigVar('mode',
         "Default compilation mode",
         EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
