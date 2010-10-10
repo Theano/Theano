@@ -644,3 +644,23 @@ def local_gpualloc(node):
             new_node = host_from_gpu(gpu_alloc(*node.inputs))
             return [new_node]
             
+@register_opt()
+@local_optimizer([])
+def local_gpu_huge_add_or_mul(node):
+    """
+    The gpu code generator for elemwise fusion knows when there are too many inputs, but add
+    doesn't.  So there's this workaround.
+
+    The CUDA c compiler limits the number of arguments to 256 bytes' worth or something.
+    """
+    if isinstance(node.op, GpuElemwise) and node.op.scalar_op in (scal.add, scal.mul):
+        if len(node.inputs)>10: 
+            # TODO: look up how arguments are passed to the GpuElemwise function
+            #   and figure out how many arguments can fit in 256 bytes.
+            #   this will depend on the number of dimensions in each argument.
+            #   The current heuristic to chop at 10 prevents crashing in the
+            #   pylearn/algorithms/tests/test_mcRBM feature extractor.
+            return [node.op(
+                    node.op(*node.inputs[:10]),
+                    node.op(*node.inputs[10:]))]
+
