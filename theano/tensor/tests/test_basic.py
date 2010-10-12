@@ -1254,10 +1254,15 @@ class T_min_max(unittest.TestCase):
         utt.verify_grad(lambda v: min(v.flatten()), [data])
         check_grad_min(data,eval_outputs(grad(min(n.flatten()),n)))
 
-    @dec.knownfailureif(True,
-                        "We don't implement the gradient of max with multiple axis as the same time")
-    def test_grad_list(self):
-        for fct in [max,min]:
+    def _grad_list(self):
+        """
+        Test the gradient when we have multiple axis at the same time.
+
+        This not implemented, so we disable the test. See ticket: http://trac-hg.assembla.com/theano/ticket/511
+        """
+        data = numpy.random.rand(2,3)
+        n = as_tensor_variable(data)
+        for fct in [max_and_argmax,max,min]:
             utt.verify_grad(lambda v: fct(v,axis=[0,1]), [data])
         #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
 
