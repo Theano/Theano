@@ -160,9 +160,9 @@ Once you have completed these steps, you should run the theano test suite like t
     cd Theano
     nosetests #execute all the tests
 
-All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the ``theano-users@googlegroups.com``
-mailing list.
+All tests should pass except the test marked as KnownFailureTest. If some test 
+fails on your machine, you are encouraged to tell us what went wrong on the 
+``theano-users@googlegroups.com`` mailing list.
 
 Updating
 -------------
