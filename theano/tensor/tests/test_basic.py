@@ -123,8 +123,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                 for i, (variable, expected) in enumerate(zip(variables, expecteds)):
                     if variable.dtype != expected.dtype or variable.shape != expected.shape or \
                             numpy.any(numpy.abs(variable - expected) > eps):
-                        self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
-                                  % (self.op, testname, i, inputs, expected, variable))
+                        self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s. numpy.allclose return %s %s"
+                                  % (self.op, testname, i, inputs, expected, variable, numpy.allclose(variable,expected,atol=eps), numpy.allclose(variable,expected)))
 
                 for description, check in self.checks.items():
                     if not check(inputs, variables):
