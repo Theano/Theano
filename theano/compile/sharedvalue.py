@@ -1,4 +1,4 @@
-"""Provide a simple user friendly API """
+"""Provide a simple user friendly API to Theano-managed memory"""
 __docformat__ = 'restructuredtext en'
 
 import traceback
@@ -13,6 +13,15 @@ def info(*msg): _logger.info(' '.join(str(m) for m in msg))
 def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
 def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
+
+from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+from theano import config
+
+AddConfigVar('shared.value_borrows',
+        ("False: shared variables 'value' property is guaranteed to not" 
+            " alias theano-managed memory. True: no guarantee, but faster." 
+            " For more control consider using shared.get_value() instead."),
+        BoolParam(True))
 
 class SharedVariable(Variable):
     """
@@ -106,17 +115,19 @@ class SharedVariable(Variable):
         cp.tag = copy.copy(self.tag)
         return cp
 
-    def get_borrowed_value(self):
-        return self.get_value(borrow=True)
-    def set_borrowed_value(self, new_value):
-        return self.set_value(new_value, borrow=True)
+    def _value_get(self):
+        return self.get_value(borrow=config.shared.value_borrows)
+    def _value_set(self, new_value):
+        return self.set_value(new_value, borrow=config.shared.value_borrows)
 
     #TODO: USE A CONFIG VARIABLE TO set these get/set methods to the non-borrowing versions
     #      Semantically things are clearer when using non-borrow versions.  That should be the
     #      default.  The default support transparently (if slowly) when the 'raw' value is in a
     #      different memory space (e.g. GPU or other machine).
-    value = property(get_borrowed_value, set_borrowed_value, 
-            doc="shortcut for self.get_borrowed_value() and self.set_borrowed_value() which COPIES data")
+    value = property(_value_get, _value_set, 
+            doc=("shortcut for self.get_value() and self.set_value()." 
+                "The `borrow` argument to these methods is read from "
+                "`theano.config.shared.value_borrows`"))
 
 
     def filter_update(self, update):

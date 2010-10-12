@@ -511,7 +511,7 @@ class Test_aliasing_rules(unittest.TestCase):
         assert not numpy.may_share_memory(orig_a, data_of(A))
 
         # rule #2 reading back from theano-managed memory
-        assert not numpy.may_share_memory(A.value, data_of(A))
+        assert not numpy.may_share_memory(A.get_value(borrow=False), data_of(A))
         
 
     def test_potential_output_aliasing_induced_by_updates(self):
