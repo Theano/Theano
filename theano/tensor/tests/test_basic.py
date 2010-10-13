@@ -930,17 +930,18 @@ class T_max_and_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: max_and_argmax(v.flatten())[1], [data])
         check_grad_max(data,eval_outputs(grad(max_and_argmax(n.flatten())[0],n)))
 
-class T_argmin(unittest.TestCase):
+class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
     def test0(self):
-        n = as_tensor_variable(5.0)
-        i = eval_outputs(argmin(n))
-        self.failUnless(i == 0)
-        v = eval_outputs(argmin(n).shape)
-        assert len(v)==0
+        for fct in [argmin,argmax]:
+            n = as_tensor_variable(5.0)
+            i = eval_outputs(fct(n))
+            self.failUnless(i == 0)
+            v = eval_outputs(fct(n).shape)
+            assert len(v)==0
 
     def test1(self):
         n = as_tensor_variable([1,2,3,2,-6])
@@ -949,117 +950,137 @@ class T_argmin(unittest.TestCase):
         v = eval_outputs(argmin(n).shape)
         assert len(v)==0
 
+        n = as_tensor_variable([1,2,3,2,-6])
+        i = eval_outputs(argmax(n))
+        self.failUnless(i == 2)
+        v = eval_outputs(argmax(n).shape)
+        assert len(v)==0
+
     def test2(self):
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
-        i = eval_outputs(argmin(n))
-        self.failUnless(numpy.all(i == numpy.argmin(data,-1)))
-        v = eval_outputs(argmin(n).shape)
-        assert v==(2)
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            data = numpy.random.rand(2,3)
+            n = as_tensor_variable(data)
+            i = eval_outputs(fct(n))
+            self.failUnless(numpy.all(i == nfct(data,-1)))
+            v = eval_outputs(fct(n).shape)
+            assert v==(2)
 
     def test2b(self):
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
-        i = eval_outputs(argmin(n,0))
-        self.failUnless(numpy.all(i == numpy.argmin(data,0)))
-        v = eval_outputs(argmin(n,0).shape)
-        assert v==(3)
-        v = eval_outputs(argmin(n,1).shape)
-        assert v==(2)
-        #currently not supported
-        #v = eval_outputs(argmin(n,[0,1]).shape)
-        #assert v.size==0
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            data = numpy.random.rand(2,3)
+            n = as_tensor_variable(data)
+            i = eval_outputs(fct(n,0))
+            self.failUnless(numpy.all(i == nfct(data,0)))
+            v = eval_outputs(fct(n,0).shape)
+            assert v==(3)
+            v = eval_outputs(fct(n,1).shape)
+            assert v==(2)
+            #currently not supported
+            #v = eval_outputs(fct(n,[0,1]).shape)
+            #assert v.size==0
 
     def test2_invalid(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
-        # Silence expected error messages
-        _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
-        _logger.setLevel(logging.CRITICAL)
-        try:
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2,3))
+            # Silence expected error messages
+            _logger = logging.getLogger('theano.gof.opt')
+            oldlevel = _logger.getEffectiveLevel()
+            _logger.setLevel(logging.CRITICAL)
             try:
-                eval_outputs(argmin(n,3))
-                assert False
-            except ValueError, e:
-                pass
-        finally:
-            _logger.setLevel(oldlevel)
-    def test2_invalid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
-        old_stderr = sys.stderr
-        sys.stderr = StringIO.StringIO()
-        try:
-            try:
-                eval_outputs(argmin(n,-3))
-                assert False
-            except ValueError, e:
-                pass
-        finally:
-            sys.stderr = old_stderr
-    def test2_valid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
-        i = eval_outputs(argmin(n,-1))
-        self.failUnless(i.shape == (2,))
-        self.failUnless(numpy.all(i == numpy.argmin(n.value,-1)))
-        i = eval_outputs(argmin(n,-2))
-        self.failUnless(i.shape == (3,))
-        self.failUnless(numpy.all(i == numpy.argmin(n.value,-2)))
+                try:
+                    eval_outputs(fct(n,3))
+                    assert False
+                except ValueError, e:
+                    pass
+            finally:
+                _logger.setLevel(oldlevel)
 
-        v = eval_outputs(argmin(n,-1).shape)
-        assert v==(2)
-        v = eval_outputs(argmin(n,-2).shape)
-        assert v==(3)
+    def test2_invalid_neg(self):
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2,3))
+            old_stderr = sys.stderr
+            sys.stderr = StringIO.StringIO()
+            try:
+                try:
+                    eval_outputs(fct(n,-3))
+                    assert False
+                except ValueError, e:
+                    pass
+            finally:
+                sys.stderr = old_stderr
+
+    def test2_valid_neg(self):
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2,3))
+            i = eval_outputs(fct(n,-1))
+            self.failUnless(i.shape == (2,))
+            self.failUnless(numpy.all(i == nfct(n.value,-1)))
+            i = eval_outputs(fct(n,-2))
+            self.failUnless(i.shape == (3,))
+            self.failUnless(numpy.all(i == nfct(n.value,-2)))
+
+            v = eval_outputs(fct(n,-1).shape)
+            assert v==(2)
+            v = eval_outputs(fct(n,-2).shape)
+            assert v==(3)
 
     def test3(self):
-        n = as_tensor_variable(numpy.random.rand(2,3,4))
-        i = eval_outputs(argmin(n,0))
-        self.failUnless(i.shape == (3,4))
-        self.failUnless(numpy.all(i == numpy.argmin(n.value,0)))
-        i = eval_outputs(argmin(n,1))
-        self.failUnless(i.shape == (2,4))
-        self.failUnless(numpy.all(i == numpy.argmin(n.value,1)))
-        i = eval_outputs(argmin(n,2))
-        self.failUnless(i.shape == (2,3))
-        self.failUnless(numpy.all(i == numpy.argmin(n.value,2)))
+        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2,3,4))
+            i = eval_outputs(fct(n,0))
+            self.failUnless(i.shape == (3,4))
+            self.failUnless(numpy.all(i == nfct(n.value,0)))
+            i = eval_outputs(fct(n,1))
+            self.failUnless(i.shape == (2,4))
+            self.failUnless(numpy.all(i == nfct(n.value,1)))
+            i = eval_outputs(fct(n,2))
+            self.failUnless(i.shape == (2,3))
+            self.failUnless(numpy.all(i == nfct(n.value,2)))
 
-        v = eval_outputs(argmin(n,0).shape)
-        assert tuple(v)==(3,4)
-        v = eval_outputs(argmin(n,1).shape)
-        assert tuple(v)==(2,4)
-        v = eval_outputs(argmin(n,2).shape)
-        assert tuple(v)==(2,3)
+            v = eval_outputs(fct(n,0).shape)
+            assert tuple(v)==(3,4)
+            v = eval_outputs(fct(n,1).shape)
+            assert tuple(v)==(2,4)
+            v = eval_outputs(fct(n,2).shape)
+            assert tuple(v)==(2,3)
 
-    def test_grad(self):
+    def test_grad_argmin(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
         
-        def check_grad_min(data, min_grad_data, axis=None):
-            #This work only for axis in [0,None]
-            assert axis in [0,None]
-            z = numpy.zeros_like(data)
-            z = z.flatten()
-            argmin=numpy.argmin(data,axis=axis)
-            if argmin.ndim==0:
-                z[numpy.argmin(data,axis=axis)]+=1
-            else:
-                for id,v in enumerate(argmin):
-                    z[v*numpy.prod(data.shape[data.ndim-1:axis:-1])+id]+=1
-            
-            z = z.reshape(data.shape)
-            assert numpy.all(min_grad_data == z)
-
-        #test grad of min
-        #axis is the last one
+        #test grad of argmin
         utt.verify_grad(lambda v: argmin(v), [data])
 
         utt.verify_grad(lambda v: argmin(v,axis=[0]), [data])
-        #check_grad_min(data,eval_outputs(grad(argmin(n,axis=0),n)),axis=0)
 
         utt.verify_grad(lambda v: argmin(v,axis=[1]), [data])
-        #check_grad_min(data,eval_outputs(grad(argmin(n,axis=1),n)),axis=1)
 
         utt.verify_grad(lambda v: argmin(v.flatten()), [data])
-        #check_grad_min(data,eval_outputs(grad(argmin(n.flatten()),n)))
+
+        try:
+            grad(argmin(n),n)
+            raise Exception('Expected an error')
+        except TypeError:
+            pass
+
+    def test_grad_argmax(self):
+        data = numpy.random.rand(2,3)
+        n = as_tensor_variable(data)
+        
+        #test grad of argmax
+        utt.verify_grad(lambda v: argmax(v), [data])
+
+        utt.verify_grad(lambda v: argmax(v,axis=[0]), [data])
+
+        utt.verify_grad(lambda v: argmax(v,axis=[1]), [data])
+
+        utt.verify_grad(lambda v: argmax(v.flatten()), [data])
+
+        try:
+            grad(argmax(n),n)
+            raise Exception('Expected an error')
+        except TypeError:
+            pass
 
 class T_min_max(unittest.TestCase):
     def setUp(self):
