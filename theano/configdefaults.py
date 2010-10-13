@@ -16,8 +16,8 @@ AddConfigVar('device',
         )
 
 AddConfigVar('force_device',
-        "Have precedence over device if not equal cpu.",
-        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
+        "Raise an error if we can't use the specified device",
+        BoolParam(False)
         )
 
 AddConfigVar('mode',
@@ -79,6 +79,10 @@ AddConfigVar('gpuelemwise.sync',
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
              IntParam(5))
+
+AddConfigVar('experimental.mrg',
+             "Another random number generator that work on the gpu",
+             BoolParam(False))
 
 
 ###

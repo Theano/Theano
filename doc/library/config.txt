@@ -105,9 +105,11 @@ Config Attributes
 
 .. attribute:: force_device
 
-    String value: either 'cpu', gpu, 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+    Bool value: either True or False
 
-    As the attribute 'device' except that if we can't use the gpu, we raise an error.
+    Default False
+
+    If True, we raise an error if we can't use the specified device. If False, we fall back to the cpu.
     Have precedence over the device flag.
 
 .. attribute:: floatX

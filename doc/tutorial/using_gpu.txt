@@ -46,7 +46,7 @@ You can also set the device option in the .theanorc file's ``[global]`` section.
 * You can choose one specific gpu by giving device the one of those values: gpu0, gpu1, gpu2, or gpu3.  
     * If you have more than 4 devices you are very lucky but you'll have to modify theano's *configdefaults.py* file and define more gpu devices to choose from.
 * Using the 'device=gpu*' theano flag make theano fall back to the cpu if their is a problem with the gpu. 
-  You can use the flag 'force_device=gpu*' to have theano raise an error when we can't use the gpu.
+  You can use the flag 'force_device=True' to have theano raise an error when we can't use the gpu.
 
 .. note::
     There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using

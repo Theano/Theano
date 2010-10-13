@@ -91,8 +91,6 @@ except Exception, e:
 
 if cuda_available:
     cuda_available=device_available()
-    if not cuda_available:
-        warning('CUDA is installed, but GPU device is not available')
 
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
@@ -122,6 +120,12 @@ if cuda_available:
 
 def use(device, force=False):
     global cuda_enabled
+    if force and not cuda_available and device.startswith('gpu'):
+        raise Exception("You force to use a gpu device but cuda is not installed or their is no usable gpu device")
+    if not cuda_available:
+        warning('CUDA is installed, but GPU device is not available')
+        return 
+
     if device == 'gpu':
         pass
     elif device.startswith('gpu'):
@@ -159,6 +163,15 @@ def use(device, force=False):
                    'fast_run',
                    'inplace')
 
+    if force:
+        try:
+            #in case the device if just gpu, we check that the driver init it correctly.
+            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
+        except (Exception, NameError), e:#NameError when no gpu present as cuda_ndarray is not loaded.
+            e.args+=("ERROR: GPU did not work and we told to don't use the cpu. ",)
+            raise
+
+
 use.device_number = None
 
 def handle_shared_float32(tf):
@@ -173,16 +186,5 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
-if cuda_available and config.force_device.startswith('gpu'):
-    use(config.force_device, True)
-elif cuda_available and config.device.startswith('gpu'):
-    use(config.device)
-
-
-if config.force_device.startswith('gpu'):
-        try:
-            #in case the device if just gpu, we check that the driver init it correctly.
-            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
-        except (Exception, NameError), e:#NameError when no gpu present as cuda_ndarray is not loaded.
-            e.args+=("ERROR: GPU did not work and we told to don't use the cpu. ",)
-            raise
+if config.device.startswith('gpu'):
+    use(config.device, config.force_device)
