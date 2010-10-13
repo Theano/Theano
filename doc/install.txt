@@ -308,6 +308,7 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   in python run:
 
   .. code-block:: bash
+
       import theano
       print theano.config.blas.ldflags
 
@@ -363,12 +364,14 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   directory contain those caractere, you must add in your configuration file:
 
     .. code-block:: bash
+
       [global]
       base_compiledir=PATH_TO_A_DIRECTORY_WITHOUT_THOSE_CARACTERE
 
   You also need to add in the configuration file those line:
 
     .. code-block:: bash
+
       [cuda]
       nvccflags=-LC:\Python26\libs
 

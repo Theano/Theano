@@ -34,6 +34,7 @@ Question: does it make sense to apply the order to the loop, or is this broadcas
 Here is the loop for {{{order == c}}}. Check for errors!
 
 .. code-block:: CPP
+
     <initialize iterators>
 
     i1 = -1
