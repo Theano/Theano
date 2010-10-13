@@ -108,6 +108,7 @@ Config Attributes
     String value: either 'cpu', gpu, 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
 
     As the attribute 'device' except that if we can't use the gpu, we raise an error.
+    Have precedence over the device flag.
 
 .. attribute:: floatX
 
