@@ -38,11 +38,15 @@ Any one of them is enough.
 
 Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
 computer.
-For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu0'``.
-You can also set the device option in the .theanorc file's ``[global]`` section.  If
-your computer has multiple gpu devices, you can address them as gpu0, gpu1,
-gpu2, or gpu3.  (If you have more than 4 devices you are very lucky but you'll have to modify theano's
-*configdefaults.py* file and define more gpu devices to choose from.)
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu'``.
+You can also set the device option in the .theanorc file's ``[global]`` section.
+
+* If your computer has multiple gpu and use 'device=gpu', the driver select the one to use (normally gpu0)
+    * You can use the program nvida-smi to change that policy.
+* You can choose one specific gpu by giving device the one of those values: gpu0, gpu1, gpu2, or gpu3.  
+    * If you have more than 4 devices you are very lucky but you'll have to modify theano's *configdefaults.py* file and define more gpu devices to choose from.
+* Using the 'device=gpu*' theano flag make theano fall back to the cpu if their is a problem with the gpu. 
+  You can use the flag 'force_device=gpu*' to have theano raise an error when we can't use the gpu.
 
 .. note::
     There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
@@ -98,7 +102,7 @@ As a point of reference, a loop that calls ``numpy.exp(x.value)`` also takes abo
     Looping 100 times took 7.17374897003 seconds
     Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753 1.62323285]
 
-    bergstra@tikuanyin:~/tmp$ THEANO_FLAGS=mode=FAST_RUN,device=gpu0,floatX=float32 python thing.py 
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python thing.py 
     Using gpu device 0: GeForce GTX 285
     Looping 100 times took 0.418929815292 seconds
     Result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
@@ -110,7 +114,7 @@ Returning a handle to device-allocated data
 
 The speedup is not greater in the example above because the function is
 returning its result as a numpy ndarray which has already been copied from the
-device to the host for your convenience.  This is what makes it so easy to swap in device=gpu0, but
+device to the host for your convenience.  This is what makes it so easy to swap in device=gpu, but
 if you don't mind being less portable, you might prefer to see a bigger speedup by changing
 the graph to express a computation with a GPU-stored result.  The gpu_from_host
 Op means "copy the input from the host to the gpu" and it is optimized away

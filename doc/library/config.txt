@@ -95,11 +95,19 @@ Config Attributes
 
 .. attribute:: device
 
-    String value: either 'cpu', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+    String value: either 'cpu', gpu, 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
 
     Choose the default compute device for theano graphs.  Setting this to a
     gpu string will make the corresponding graphics device the default storage
-    for shared tensor variables with dtype float32.
+    for shared tensor variables with dtype float32. 'gpu' let the driver select
+    the gpu to use, 'gpu?' make theano try to use a specific device. If we are not
+    able to use the gpu, we fall back to the cpu.
+
+.. attribute:: force_device
+
+    String value: either 'cpu', gpu, 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+
+    As the attribute 'device' except that if we can't use the gpu, we raise an error.
 
 .. attribute:: floatX
 
