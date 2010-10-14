@@ -49,7 +49,7 @@ class Env(utils.object2):
         Called whenever a node is pruned (removed) from the env,
         after it is disconnected from the graph.
 
-    - feature.on_change_input(env, node, i, r, new_r)*
+    - feature.on_change_input(env, node, i, r, new_r, [reason=None])*
         Called whenever node.inputs[i] is changed from r to new_r.
         At the moment the callback is done, the change has already
         taken place.
