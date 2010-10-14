@@ -53,13 +53,17 @@ from gof.python25 import all
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan')
+
+
 def warning(*msg):
     _logger.warning('WARNING theano.scan: '+' '.join(msg))
+
+
 def info(*msg):
     _logger.info('INFO theano.scan: '+' '.join(msg))
 
 
-# Hashing a dictionary/list/tuple by going and hasing each element
+# Hashing a dictionary/list/tuple by xoring the hash of each element
 def hash_listsDictsTuples(x):
     hash_value = 0
     if type(x) == dict :
