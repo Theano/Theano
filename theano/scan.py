@@ -81,32 +81,46 @@ def hash_listsDictsTuples(x):
     return hash_value
 
 
-def map(fn, sequences, non_sequences = [],
-        truncate_gradient = -1, go_backwards = False,
-        mode = None, name = None):
-    """ Similar behaviour as python map 
-    
-    :param fn: the function to be applied over the elements in 
-               sequences ( see scan `fn` for more info)
-
-    :param sequences: list of arrays over which map should 
-                      iterate (see scan for more info)
-
-    :param non_sequences: list of other arguments of `fn` over which
-                          map shouldn't iterate (see scan for more info)
-
-    :param truncate_gradient: see scan for more info
-
-    :param go_backwards: set to true if you want map to start at the end of the
-                         provided arrays in ``sequences`` going towards 0 (back in time)
-
-    :param mode: see scan
-
-    :param name: see scan
+# The ``map`` view of Scan Op.
+def map( fn
+        , sequences
+        , non_sequences     = None
+        , truncate_gradient = -1
+        , go_backwards      = False
+        , mode              = None
+        , name              = None  ):
     """
-    return scan(fn, sequences= sequences, outputs_info = [],non_sequences= non_sequences,
-                truncate_gradient= truncate_gradient,
-                go_backwards= go_backwards, mode = mode, name = name)
+    Similar behaviour as python's map.
+
+    :param fn: The function that ``map`` applies at each iteration step
+               (see ``scan`` for more info).
+
+    :param sequences: List of sequences over which ``map`` iterates
+                      (see ``scan`` for more info).
+
+    :param non_sequences: List of arguments passed to ``fn``. ``map`` will
+                          not iterate over these arguments (see ``scan`` for
+                          more info).
+
+    :param truncate_gradient: See ``scan``.
+
+    :param go_backwards: Boolean value that decides the direction of
+                         iteration. True means that sequences are parsed
+                         from the end towards the begining, while False
+                         is the other way around.
+
+    :param mode: See ``scan``.
+
+    :param name: See ``scan``.
+    """
+    return scan( fn                 = fn
+                , sequences         = sequences
+                , outputs_info      = []
+                , non_sequences     = non_sequences
+                , truncate_gradient = truncate_gradient
+                , go_backwards      = go_backwards
+                , mode              = mode
+                , name              = name )
 
 
 def reduce(fn, sequences, outputs_info, non_sequences = [], go_backwards = False, 
