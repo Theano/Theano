@@ -28,6 +28,12 @@ functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
 """
 __docformat__ = 'restructedtext en'
+__authors__ = ( "Razvan Pascanu "
+                "Frederic Bastien "
+                "James Bergstra "
+                "Pascal Lamblin "  )
+__copyright__ = "(c) 2010, Universite de Montreal"
+__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import tensor
 import misc.safe_asarray as safe_asarray
