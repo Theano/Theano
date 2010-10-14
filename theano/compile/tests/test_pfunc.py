@@ -639,25 +639,27 @@ class Test_aliasing_rules(unittest.TestCase):
         assert not numpy.may_share_memory(data_of(A), data_of(B))
 
         # theano should have been smart enough to not make copies
-        assert numpy.all(data_of(A) < 5)
-        data_of_b += 10
-        assert numpy.all(data_of(A) > 5)
-        data_of_b -= 10
+        if theano.config.mode not in ['DebugMode', 'DEBUG_MODE']:
+            #we don't ask DebugMode to don't make copy. We have the right to do so.
+            assert numpy.all(data_of(A) < 5)
+            data_of_b += 10
+            assert numpy.all(data_of(A) > 5)
+            data_of_b -= 10
 
-        assert numpy.all(data_of(B) < 5)
-        data_of_a += 10
-        print data_of(B)
-        assert numpy.all(data_of(B) > 5)
-        data_of_a -= 10
+            assert numpy.all(data_of(B) < 5)
+            data_of_a += 10
+            print data_of(B)
+            assert numpy.all(data_of(B) > 5)
+            data_of_a -= 10
 
-        # N.B. may_share_memory is what we mean, but does it work?
-        assert numpy.may_share_memory(data_of(A), data_of_b)
-        assert numpy.may_share_memory(data_of(B), data_of_a)
+            # N.B. may_share_memory is what we mean, but does it work?
+            assert numpy.may_share_memory(data_of(A), data_of_b)
+            assert numpy.may_share_memory(data_of(B), data_of_a)
 
-        # N.B. This pattern could form a memory leak - each shared variable always points to a
-        # view, and that view gets further and further from the (e.g. data_of_a) with each
-        # call.  The memory leak is in the increasing number of view objects forming a chain to
-        # the underlying data.
+            # N.B. This pattern could form a memory leak - each shared variable always points to a
+            # view, and that view gets further and further from the (e.g. data_of_a) with each
+            # call.  The memory leak is in the increasing number of view objects forming a chain to
+            # the underlying data.
 
 
 
