@@ -1346,17 +1346,17 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
             # there is no aliasing only between shared variables.
             #import pdb;pdb.set_trace()
             assert len(inputs) == len(env.inputs) 
-            updated_env_inputs = [env_i for i, env_i in zip(inputs, env.inputs) if getattr(i, 'update', False)] 
+            updated_env_inputs = [env_i for ii, env_i in zip(inputs, env.inputs) if getattr(ii, 'update', False)] 
 
-            for i in xrange(len(env.outputs)):
+            for out_i in xrange(len(env.outputs)):
                 views_of_output_i = set()
-                view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
+                view_tree_set(alias_root(env.outputs[out_i]), views_of_output_i)
                 copied = False
                 # do not allow outputs to be aliased
-                for j in xrange(i+1, len(env.outputs)):
+                for j in xrange(out_i+1, len(env.outputs)):
                     if env.outputs[j] in views_of_output_i:
                         #import pdb;pdb.set_trace()
-                        env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                        env.change_input('output', out_i, deep_copy_op(env.outputs[out_i]))
                         copied = True
                         break
 
@@ -1371,7 +1371,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                             continue
                         if input_j in views_of_output_i:
                             #import pdb;pdb.set_trace()
-                            env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                            env.change_input('output', out_i, deep_copy_op(env.outputs[out_i]))
                             break
 
 
