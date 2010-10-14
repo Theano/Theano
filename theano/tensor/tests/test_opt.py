@@ -474,8 +474,8 @@ class test_canonize(unittest.TestCase):
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (dx/abs(dx),[dx],[0.5-dxv],'float64'),
                                                            (fx/abs(fx),[fx],[0.5-fxv],'float32'),
-                                                           (dx/abs(dx),[dx],[0.0*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.0*fxv],'float32'),
+                                                           (dx/abs(dx),[dx],[0.1*dxv],'float64'),
+                                                           (fx/abs(fx),[fx],[0.1*fxv],'float32'),
                                                            (dv/abs(dv),[dv],[0.5-dvv],'float64'),
                                                            (fv/abs(fv),[fv],[0.5-fvv],'float32'),
                 ]):
@@ -491,8 +491,8 @@ class test_canonize(unittest.TestCase):
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                     ((2*dx)/(3*abs(dx)),[dx],[0.5-dxv],'float64'),
                     ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv],'float32'),
-                    ((2*dx)/(3*abs(dx)),[dx],[0.0*dxv],'float64'),
-                    ((2*fx)/(3*abs(fx)),[fx],[0.0*fxv],'float32'),
+                    ((2*dx)/(3*abs(dx)),[dx],[0.1*dxv],'float64'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.1*fxv],'float32'),
                     ((2*dv)/(3*abs(dv)),[dv],[0.5-dvv],'float64'),
                     ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv],'float32'),
                 ]):
