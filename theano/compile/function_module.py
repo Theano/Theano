@@ -180,7 +180,14 @@ class DeepCopyOp(theano.gof.Op):
         return theano.gof.Apply(self, [x], [x.type()])
 
     def perform( self, node, args, outs):
-        outs[0][0] = copy.deepcopy(args[0])
+        if hasattr(args[0],'copy'):
+            #when args[0] is a an ndarray of 0 dimensions, 
+            #this return a numpy.dtype and not an ndarray
+            #So when the args have a copy attribute we use it
+            #as this don't have this problem
+            outs[0][0] = args[0].copy()
+        else:
+            outs[0][0] = copy.deepcopy(args[0])
 
     def c_code_cache_version(self):
         return (1)
