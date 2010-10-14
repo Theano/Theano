@@ -184,68 +184,79 @@ def reduce( fn
                 , mode              = mode
                 , name              = name )
 
-def foldl(fn, sequences, outputs_info, non_sequences = [], mode = None, name = None):
-    """ Similar behaviour as haskell foldl 
 
-    :param fn: the function to be applied over the elements in 
-               sequences ( see scan `fn` for more info)
-
-    :param sequences: list of arrays over which foldl should 
-                      iterate (see scan for more info)
-
-    :param outputs_info: information about outputs (mainly the initial state
-                        of each )
-
-    :param non_sequences: list of other arguments of `fn` over which 
-                          foldl shouldn't iterate (see scan for more info)
-
-    :param mode: see scan 
-    :param name: see scan
+# The ``foldl`` view of Scan Op.
+def foldl( fn
+          , sequences
+          , outputs_info
+          , non_sequences = None
+          , mode          = None
+          , name          = None  ):
     """
-    return reduce(fn = fn, sequences = sequences, outputs_info = outputs_info,
-            non_sequences= non_sequences, go_backwards = False, mode = mode, name = name)
- 
-def foldr(fn, sequences, outputs_info, non_sequences = [], mode = None):
-    """ Similar behaviour as haskell foldr 
+    Similar behaviour as haskell's foldl
 
-    :param fn: the function to be applied over the elements in 
-               sequences ( see scan `fn` for more info)
+    :param fn: The function that ``foldl`` applies at each iteration step
+               (see ``scan`` for more info).
 
-    :param sequences: list of arrays over which foldr should 
-                      iterate (see scan for more info)
 
-    :param outputs_info: information about outputs (mainly the initial state
-                        of each )
+    :param sequences: List of sequences over which ``foldl`` iterates
+                      (see ``scan`` for more info)
 
-    :param non_sequences: list of other arguments of `fn` over which 
-                          foldr shouldn't iterate (see scan for more info)
+    :param outputs_info: List of dictionaries describing the outputs of
+                        reduce (see ``scan`` for more info).
 
-    :param truncate_gradient: see scan for more info
+    :param non_sequences: List of arguments passed to `fn`. ``foldl`` will
+                          not iterate over these arguments (see ``scan`` for
+                          more info).
 
-    :param mode: see scan 
-    :param name: see scan
+    :param mode: See ``scan``.
+
+    :param name: See ``scan``.
     """
-    return reduce(fn = fn,sequences = sequences, outputs_info = outputs_info, 
-            non_sequences = non_sequences, go_backwards = True, mode = mode, name = name)
- 
-# CONSIDER ALTERNATE CALLING CONVENTIONS:
-# simple:
-#    scan(fn, [a,b], [c])
-# complex:
-#    scan(fn, [dict(input=a, taps=[0,-1,-2]), b], [dict(initial=c, taps=[-1,-3], inplace=a)])
-#
-#
-# So for example, if we wanted a scan that took a window of 3 inputs, and produced
-# x - a sequence that we need one previous value of, and only need to return the last value;
-# y - a sequence that we need no previous values of;
-# z - a sequence that we need two previous values of
-#     and we want z to be computed inplace using the storage of 'a'.
-#
-# scan(fn, [dict(input=a, taps=[-1,0,1])],
-#     [dict(initial=x_init, taps=[-1], ????????),
-#      None
-#      dict(initial=z_init, taps=[-2,-1], inplace=a,)])
+    return reduce( fn             = fn
+                  , sequences     = sequences
+                  , outputs_info  = outputs_info
+                  , non_sequences = non_sequences
+                  , go_backwards  = False
+                  , mode          = mode
+                  , name          = name )
 
+
+# The ``foldl`` view of Scan Op.
+def foldr( fn
+          , sequences
+          , outputs_info
+          , non_sequences = None
+          , mode          = None
+          , name          = None ):
+    """
+    Similar behaviour as haskell' foldr
+
+    :param fn: The function that ``foldr`` applies at each iteration step
+               (see ``scan`` for more info).
+
+
+    :param sequences: List of sequences over which ``foldr`` iterates
+                      (see ``scan`` for more info)
+
+    :param outputs_info: List of dictionaries describing the outputs of
+                        reduce (see ``scan`` for more info).
+
+    :param non_sequences: List of arguments passed to `fn`. ``foldr`` will
+                          not iterate over these arguments (see ``scan`` for
+                          more info).
+
+    :param mode: See ``scan``.
+
+    :param name: See ``scan``.
+    """
+    return reduce( fn             = fn
+                  , sequences     = sequences
+                  , outputs_info  = outputs_info
+                  , non_sequences = non_sequences
+                  , go_backwards  = True
+                  , mode          = mode
+                  , name          = name )
 
 #
 # QUESTION:
