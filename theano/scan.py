@@ -35,6 +35,11 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
+
+import logging
+import numpy
+
+import theano
 import tensor
 import misc.safe_asarray as safe_asarray
 from tensor import opt, TensorType
@@ -42,17 +47,11 @@ import gof
 from gof import Optimizer, toolbox, Op, Apply
 from compile import optdb, SharedVariable, function, Param
 import compile
-import tensor.shared_randomstreams as shared_random
 import gradient
 from gof.python25 import all
-import copy
-import tensor.elemwise as elemwise
-import printing
-import numpy
-import theano
+
 
 # Logging function for sending warning or info
-import logging
 _logger = logging.getLogger('theano.scan')
 def warning(*msg):
     _logger.warning('WARNING theano.scan: '+' '.join(msg))
