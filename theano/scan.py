@@ -515,17 +515,25 @@ def scan( fn
     # anything ( to speed things up)
 
     # check if inputs are just single variables instead of lists
-    if not (type(sequences) in (list, tuple)):
+    if not (type(sequences) in (list, tuple)) and sequences != None:
         seqs = [sequences]
+    elif sequences == None:
+        seqs = []
     else:
         seqs = sequences
-    if not (type(outputs_info) in (list,tuple)):
+
+    if not (type(outputs_info) in (list,tuple)) and outputs_info != None:
         outs_info = [outputs_info]
+    elif outputs_info == None:
+        outs_info = []
     else:
         outs_info = outputs_info
 
-    if not (type(non_sequences) in (list,tuple)):
+    if ( not (type(non_sequences) in (list,tuple))
+        and non_sequences != None):
         non_seqs = [non_sequences]
+    elif non_sequences == None:
+        non_seqs = []
     else:
         non_seqs = non_sequences
 
