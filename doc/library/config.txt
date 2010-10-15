@@ -99,8 +99,8 @@ Config Attributes
 
     Choose the default compute device for theano graphs.  Setting this to a
     gpu string will make the corresponding graphics device the default storage
-    for shared tensor variables with dtype float32. 'gpu' let the driver select
-    the gpu to use, 'gpu?' make theano try to use a specific device. If we are not
+    for shared tensor variables with dtype float32. 'gpu' lets the driver select
+    the gpu to use, while 'gpu?' makes theano try to use a specific device. If we are not
     able to use the gpu, we fall back to the cpu.
 
 .. attribute:: force_device
