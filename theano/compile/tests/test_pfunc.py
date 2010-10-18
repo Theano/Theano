@@ -639,8 +639,8 @@ class Test_aliasing_rules(unittest.TestCase):
         assert not numpy.may_share_memory(data_of(A), data_of(B))
 
         # theano should have been smart enough to not make copies
-        if theano.config.mode not in ['DebugMode', 'DEBUG_MODE']:
-            #we don't ask DebugMode to don't make copy. We have the right to do so.
+        if theano.config.mode not in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']:
+            #we don't ask DebugMode and FAST_COMPILE to don't make copy. We have the right to do so.
             assert numpy.all(data_of(A) < 5)
             data_of_b += 10
             assert numpy.all(data_of(A) > 5)
