@@ -287,7 +287,7 @@ class ProfileMode(Mode):
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
-        other_time = total_time - local_time - compile_time
+        other_time = total_time - total_fct_time - compile_time
         print
         print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
