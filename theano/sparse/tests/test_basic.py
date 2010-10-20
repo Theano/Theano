@@ -1,22 +1,24 @@
-from theano.sparse import *
+import time
+import unittest
 
 from nose.plugins.skip import SkipTest
-if enable_sparse == False:
-    raise SkipTest('Optional package sparse disabled')
+import numpy
+import scipy.sparse as sp
 import scipy.sparse
 
-import random, time
-import unittest
 import theano
-
 from theano import compile
-from theano import gradient
-from theano import gof
-
 from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_variable, _is_sparse_variable
-from theano.sparse.basic import _mtypes, _mtype_to_str
-from theano.tests import unittest_tools as utt
+from theano.sparse.basic import _mtypes
+from theano.sparse import as_sparse_variable, enable_sparse, CSC, CSR, CSM, CSMProperties, SparseType, StructuredDotCSC
+from theano.sparse import add, structured_dot, transpose
+from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 
+from theano.tests import unittest_tools as utt
+from theano import tensor
+
+if enable_sparse == False:
+    raise SkipTest('Optional package sparse disabled')
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]
@@ -172,7 +174,6 @@ class T_conversion(unittest.TestCase):
                 self.failUnless(str(val.dtype)==s.dtype)
                 self.failUnless(numpy.all(val[0] == [1,0,0,0,0]))
 
-import scipy.sparse as sp
 class test_structureddot(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
