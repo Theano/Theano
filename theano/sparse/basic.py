@@ -770,11 +770,9 @@ class StructuredDot(gof.Op):
             else:
                 raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? I have no idea why")
 
-        ## Commenting this out because variable should be a numpy.ndarray since the "assert _is_dense(variable)" above
-        ## (JB 20090109)
-        # out[0] = numpy.asarray(variable)  #TODO: fix this really bad implementation
-        #
-        out[0] = variable
+        #The cast is needed as otherwise we hit the bug mentioned into 
+        #theano._asarray function documentation.
+        out[0] = theano._asarray(variable, str(variable.dtype))
 
     def grad(self, (a,b), (g_out,)):
         # a is sparse, b is dense, g_out is dense
