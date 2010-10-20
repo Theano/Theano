@@ -29,9 +29,13 @@ def random_lil(shape, dtype, nnz):
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
         idx = numpy.random.random_integers(huge,size=len(shape)) % shape
+        value = numpy.random.rand()
+        #if dtype *int*, value will always be zeros!
+        if "int" in dtype:
+            value = int(value*100)
         rval.__setitem__(
                 idx,
-                numpy.random.rand())
+                value)
     return rval
 
 class T_transpose(unittest.TestCase):
