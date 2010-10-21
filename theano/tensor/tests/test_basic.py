@@ -3312,8 +3312,13 @@ def test_mod_compile():
     f = theano.function([x,y],out)
 
 def test_unalign():
-    a = numpy.empty(1e4, dtype="b1,f8")['f1']
-    b = numpy.empty(1e4, dtype="b1,f8")['f1']
+    if config.floatX == 'float64':
+        dtype="b1,f8"
+    else:
+        dtype="b1,f4"
+
+    a = numpy.empty(1e4, dtype=dtype)['f1']
+    b = numpy.empty(1e4, dtype=dtype)['f1']
     assert not a.flags.aligned
     assert not b.flags.aligned
     a[:] = numpy.random.rand(len(a))
