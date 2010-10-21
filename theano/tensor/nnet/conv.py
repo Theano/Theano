@@ -885,6 +885,8 @@ using namespace std;
                 _debug("return unroll patch version. all_shape=", all_shape)
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
+            assert self.unroll_batch>0
+            assert self.unroll_kern>0
             if self.verbose:
                 _debug("return unrolled batch (%s) and kern code (%s)",
                         str(self.unroll_batch), str(self.unroll_kern))
