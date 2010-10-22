@@ -100,11 +100,13 @@ if __name__ == "__main__":
  	goto/8            2.7s   2.4s   2.0s  -     4.1s
 
         Test time in float32 with cuda 3.0.14
-        (more recent cuda version are supposed to have faster gemm on the GTX4?? card)
-        GTX480            0.27s
-        GTX470            0.34s
-        GTX285            0.40s
-        8500 GT           10.68s
+        (cuda version 3.2RC and up are supposed to have faster gemm on the GTX4?? card)
+        cpu/cuda version
+        GTX480/3.0        0.27s
+        GTX470/3.0        0.34s
+        GTX285/3.0        0.40s
+        GT220/3.2RC       5.15s
+        8500GT/3.0       10.68s
  	"""
 
         print 
