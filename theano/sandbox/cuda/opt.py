@@ -89,7 +89,8 @@ def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
-                new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
+                #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
+                new_op = GpuElemwise(node.op.scalar_op)
 
                 # case 1 - all inputs are already float32
                 if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
@@ -120,7 +121,8 @@ def local_gpu_elemwise_1(node):
         host_i, = node.inputs
         if host_i.owner and isinstance(host_i.owner.op, tensor.Elemwise) and len(host_i.clients)==1:
             elemwise_node = host_i.owner
-            new_op = GpuElemwise(elemwise_node.op.scalar_op, elemwise_node.op.inplace_pattern)
+            #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
+            new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 return [new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])]
     return False
@@ -629,6 +631,9 @@ else:
     _logger.debug("not enabling optimization fusion of gpu elemwise in fast_run")
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
+#GpuElemwise inplace
+gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(GpuElemwise)
+compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace') 
 
 @register_opt()
 @local_optimizer([tensor.Alloc])

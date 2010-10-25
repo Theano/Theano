@@ -217,6 +217,9 @@ def test_elemwise0():
 
     f = pfunc([b], [], updates=[(a, a+b)], mode=mode_with_gpu)
 
+    #check that we work inplace.
+    assert f.maker.env.toposort()[1].op.destroy_map.items()==[(0,[0])]
+
     a0 = a.value * 1.0
     print 'BEFORE ADD', a.value
     for i, node in enumerate(f.maker.env.toposort()):

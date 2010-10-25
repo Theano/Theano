@@ -98,112 +98,120 @@ theano.configparser.AddConfigVar('tensor.insert_inplace_optimizer_validate_nb',
         "-1: auto, if graph have less then 500 nodes 1, else 10",
         theano.configparser.IntParam(-1))
 
-@gof.optimizer
-def insert_inplace_optimizer(env):
+def insert_inplace_optimizer_op(OP):
     """
-    Usage: inplace_optimizer.optimize(env)
-    
-    Attempts to replace all Broadcast ops by versions of them
-    that operate inplace. It operates greedily: for each Broadcast
-    Op that is encountered, for each output, tries each input to
-    see if it can operate inplace on that input. If so, makes the
-    change and go to the next output or Broadcast Op.
-
-    Examples:
-      x + y + z -> x += y += z
-      (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
+    We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    #we should not validate too often as this take too much time to execute!
-    #It is the _dfs_toposort() fct in theano/gof/destroyhandler.py
-    #that take so much time. 
-    #Should we try to use another lib that do toposort? 
-    #   igraph: http://igraph.sourceforge.net/
-    #   networkx: https://networkx.lanl.gov/
-    #Should we try to use cython? 
-    #   compiling only that fct is not enought, should we try to add the deque class too?
-    #   and init the deque and other list to an upper bound number of element?
-    #Should Theano do online toposort as in http://code.google.com/p/acyclic/?
-    #
-    #The next longuest optimizer is the canonizer phase
-    #Then I think it is the [io_?]toposort(need to validate) so check if the solution is also applicable their.
+    @gof.optimizer
+    def insert_inplace_optimizer(env):
+        """
+        Usage: inplace_optimizer.optimize(env)
 
-    #we execute validate after this number of change.
-    validate_each_change = config.tensor.insert_inplace_optimizer_validate_nb
-    if validate_each_change==-1:
-        if len(env.nodes)>500:
-            validate_each_change = 10
-        else: validate_each_change = 1
+        Attempts to replace all Broadcast ops by versions of them
+        that operate inplace. It operates greedily: for each Broadcast
+        Op that is encountered, for each output, tries each input to
+        see if it can operate inplace on that input. If so, makes the
+        change and go to the next output or Broadcast Op.
 
-    nb_change_no_validate = 0
-    chk = env.checkpoint()
-    for node in list(graph.io_toposort(env.inputs, env.outputs)):
-        op = node.op
-        if not isinstance(op, Elemwise):
-            continue
-        baseline = op.inplace_pattern
-        protected_inputs = [f.protected for f in node.env._features if isinstance(f,theano.compile.function_module.Supervisor)]
-        protected_inputs = sum(protected_inputs,[])#flatten the list
-        protected_inputs.extend(env.outputs)
-        candidate_outputs = [i for i in xrange(len(node.outputs)) if i not in baseline]
-        #node inputs that are Constant, already destroyed,
-        # env protected inputs and env outputs can't be used as inplace target.
-        # Remove here as faster.
-        candidate_inputs = [i for i in xrange(len(node.inputs)) if i not in baseline.values() \
-                                and not isinstance(node.inputs[i],Constant)\
-                                and not env.destroyers(node.inputs[i])\
-                                and node.inputs[i] not in protected_inputs]
+        Examples:
+          x + y + z -> x += y += z
+          (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
+        """
+        #we should not validate too often as this take too much time to execute!
+        #It is the _dfs_toposort() fct in theano/gof/destroyhandler.py
+        #that take so much time. 
+        #Should we try to use another lib that do toposort? 
+        #   igraph: http://igraph.sourceforge.net/
+        #   networkx: https://networkx.lanl.gov/
+        #Should we try to use cython? 
+        #   compiling only that fct is not enought, should we try to add the deque class too?
+        #   and init the deque and other list to an upper bound number of element?
+        #Should Theano do online toposort as in http://code.google.com/p/acyclic/?
+        #
+        #The next longuest optimizer is the canonizer phase
+        #Then I think it is the [io_?]toposort(need to validate) so check if the solution is also applicable their.
 
-        verbose = False
+        #we execute validate after this number of change.
+        validate_each_change = config.tensor.insert_inplace_optimizer_validate_nb
+        if validate_each_change==-1:
+            if len(env.nodes)>500:
+                validate_each_change = 10
+            else: validate_each_change = 1
 
-        raised_warning = not verbose
+        nb_change_no_validate = 0
+        chk = env.checkpoint()
 
-        for candidate_output in candidate_outputs:
-            for candidate_input in candidate_inputs:
-                #remove inputs that don't have the same dtype as the output.
-                if node.inputs[candidate_input].type!=node.outputs[candidate_output].type:
-                    continue
+        for node in list(graph.io_toposort(env.inputs, env.outputs)):
+            op = node.op
+            if not isinstance(op, OP):
+                continue
+            baseline = op.inplace_pattern
+            protected_inputs = [f.protected for f in node.env._features if isinstance(f,theano.compile.function_module.Supervisor)]
+            protected_inputs = sum(protected_inputs,[])#flatten the list
+            protected_inputs.extend(env.outputs)
+            candidate_outputs = [i for i in xrange(len(node.outputs)) if i not in baseline]
+            #node inputs that are Constant, already destroyed,
+            # env protected inputs and env outputs can't be used as inplace target.
+            # Remove here as faster.
+            candidate_inputs = [i for i in xrange(len(node.inputs)) if i not in baseline.values() \
+                                    and not isinstance(node.inputs[i],Constant)\
+                                    and not env.destroyers(node.inputs[i])\
+                                    and node.inputs[i] not in protected_inputs]
 
-                inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
-                try:
-                    if hasattr(op.scalar_op,"make_new_inplace"):
-                        new_scal = op.scalar_op.make_new_inplace(
-                            scalar.transfer_type(
-                                *[inplace_pattern.get(i, None) \
-                                      for i in xrange(len(node.outputs))]))
-                    else:
-                        new_scal = op.scalar_op.__class__(
-                            scalar.transfer_type(
-                                *[inplace_pattern.get(i, None) \
-                                      for i in xrange(len(node.outputs))]))
-                    new = Elemwise(new_scal,inplace_pattern).make_node(*node.inputs)
-                    
-                    for r,new_r in zip(node.outputs,new.outputs):
-                        env.replace(r,new_r,
-                                    reason="insert_inplace_optimizer")
-                    nb_change_no_validate +=1
-                    if nb_change_no_validate >= validate_each_change:
-                        env.validate()
-                        chk = env.checkpoint()
-                        nb_change_no_validate = 0
-                except (ValueError, TypeError, InconsistencyError), e:
-                    if validate_each_change!=1 and not raised_warning:
-                        print >> sys.stderr, "Their was some inplace optimization that was not done due to unexpected error:"
-                        print >> sys.stderr, e
-                        raised_warning = True
-                    env.revert(chk)
-                    continue
-                candidate_inputs.remove(candidate_input)
-                node = new
-                baseline = inplace_pattern
-                break
+            verbose = False
 
-    if nb_change_no_validate>0:
-        try:
-            env.validate()
-        except Exception, e:
-            if not raised_warning:
-                print >> sys.stderr, "Their was some inplace optimization that was not done due to unexpected error"
-            env.revert(chk)
+            raised_warning = not verbose
+
+            for candidate_output in candidate_outputs:
+                for candidate_input in candidate_inputs:
+                    #remove inputs that don't have the same dtype as the output.
+                    if node.inputs[candidate_input].type!=node.outputs[candidate_output].type:
+                        continue
+
+                    inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
+                    try:
+                        if hasattr(op.scalar_op,"make_new_inplace"):
+                            new_scal = op.scalar_op.make_new_inplace(
+                                scalar.transfer_type(
+                                    *[inplace_pattern.get(i, None) \
+                                          for i in xrange(len(node.outputs))]))
+                        else:
+                            new_scal = op.scalar_op.__class__(
+                                scalar.transfer_type(
+                                    *[inplace_pattern.get(i, None) \
+                                          for i in xrange(len(node.outputs))]))
+                        new = OP(new_scal,inplace_pattern).make_node(*node.inputs)
+
+                        for r,new_r in zip(node.outputs,new.outputs):
+                            env.replace(r,new_r,
+                                        reason="insert_inplace_optimizer")
+                        nb_change_no_validate +=1
+                        if nb_change_no_validate >= validate_each_change:
+                            env.validate()
+                            chk = env.checkpoint()
+                            nb_change_no_validate = 0
+                    except (ValueError, TypeError, InconsistencyError), e:
+                        if validate_each_change!=1 and not raised_warning:
+                            print >> sys.stderr, "Their was some inplace optimization that was not done due to unexpected error:"
+                            print >> sys.stderr, e
+                            raised_warning = True
+                        env.revert(chk)
+                        continue
+                    candidate_inputs.remove(candidate_input)
+                    node = new
+                    baseline = inplace_pattern
+                    break
+
+        if nb_change_no_validate>0:
+            try:
+                env.validate()
+            except Exception, e:
+                if not raised_warning:
+                    print >> sys.stderr, "Their was some inplace optimization that was not done due to unexpected error"
+                env.revert(chk)
+    return insert_inplace_optimizer
+
+insert_inplace_optimizer = insert_inplace_optimizer_op(T.Elemwise)
 
 compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 'inplace') 
 

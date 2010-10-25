@@ -85,13 +85,9 @@ class GpuElemwise(Op):
         #
         sync = config.gpuelemwise.sync
         self.scalar_op = scalar_op
-        if 0:
-            #we don't put them their as this cause trouble with the local_cut_gpu_host_gpu optimizer.
-            #and the gpu don't implement any inplace pattern for now.
-            self.inplace_pattern = inplace_pattern
-            self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
-        else:
-            self.inplace_pattern = {}
+
+        self.inplace_pattern = inplace_pattern
+        self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
 
         self.sync = sync
 
