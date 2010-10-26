@@ -92,6 +92,27 @@ class T_SoftmaxWithBias(unittest.TestCase):
             return softmax_with_bias(a, b)[:,3]
         utt.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
+    def test_broadcast(self):
+        #test that we don't raise an error during optimization for no good
+        #reason as softmax_with_bias don't support correctly some/all
+        #broadcasted inputs pattern
+        initial_W = numpy.asarray( [[0.1,0.1,0.1], \
+                            [0.1,0.1,0.1], \
+                            [0.1,0.1,0.1]], \
+                            dtype = theano.config.floatX)
+        W = theano.shared(value = initial_W, name = 'W')
+        vbias=theano.shared(value=0.1, name='vbias') #0.01
+        hid=T.vector('hid')
+
+        f = theano.function([hid], 
+                            T.nnet.softmax(T.dot(hid, W.T) + vbias))
+        ops = [node.op for node in f.maker.env.toposort()]
+        assert softmax_with_bias not in ops
+        assert softmax in ops
+
+        print f([0,1,0])
+        print f.maker.env.toposort()
+
     def test_infer_shape(self):
         fff=theano.function([],outputs=softmax_with_bias(numpy.random.rand(3,4),numpy.random.rand(4)).shape)
         assert all(fff()==[3,4])

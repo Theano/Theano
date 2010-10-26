@@ -395,7 +395,11 @@ def local_softmax_with_bias(node):
                 except:
                     #if our arguments have the wrong types, then forget about it
                     return
-                return [sm_bias]
+                
+                if sm_bias.type == node.outputs[0].type:
+                    #This condition is not always true. See the test
+                    #nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
+                    return [sm_bias]
 
 def softmax_simplifier(numerators, denominators):
     for numerator in list(numerators):
