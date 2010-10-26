@@ -2200,7 +2200,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     }
     if (self->nd != other->nd)
     {
-        PyErr_Format(PyExc_NotImplementedError, "need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.", self->nd, other->nd);
+        PyErr_Format(PyExc_NotImplementedError, "CudaNdarray_CopyFromCudaNdarray: need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.", self->nd, other->nd);
         return -1;
     }
     //standard elemwise dim checks (also compute total size)
@@ -2238,6 +2238,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     {
         case 0: // scalar
             {
+                // THIS CASE SHOULD NEVER HAPPEN BECAUSE SCALARS ARE ALWAYS C CONTIGUOUS
+                assert(0);
                 assert (size==1);
                 cublasScopy(1, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
                 CNDA_THREAD_SYNC;
