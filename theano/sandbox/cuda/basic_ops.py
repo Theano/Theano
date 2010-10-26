@@ -1838,6 +1838,8 @@ class GpuAlloc(Op):
         #the optimizer will remove them.
         v = as_cuda_ndarray_variable(value)
         sh = [tensor.as_tensor_variable(s) for s in shape]
+        if v.ndim != len(shape):
+            raise TypeError('GpuAlloc requires value of same dimensions as shape', value, len(shape))
 
         bcast = []
         for s in sh:
@@ -1860,6 +1862,7 @@ class GpuAlloc(Op):
         out[0][...] = v # broadcast v to fill us up
 
     def c_code(self, node, name, inputs, (out,), sub):
+        fail = sub['fail']
         value = inputs[0]
         shps = inputs[1:]
         nd = len(shps)
@@ -1875,7 +1878,10 @@ class GpuAlloc(Op):
         %(out)s= (CudaNdarray*)CudaNdarray_new_null();
         CudaNdarray_alloc_contiguous(%(out)s, %(nd)s, dims);
     }
-    CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true);
+    if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
+    {
+    %(fail)s;
+    }
 """%locals()
         return str
     
@@ -1886,7 +1892,7 @@ class GpuAlloc(Op):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_alloc = GpuAlloc()
 
