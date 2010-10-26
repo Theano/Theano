@@ -638,16 +638,20 @@ compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fas
 @register_opt()
 @local_optimizer([tensor.Alloc])
 def local_gpualloc(node):
+    replace=False
     if node.op == tensor.alloc:
         if node.inputs[0].owner and node.inputs[0].owner.op==host_from_gpu:#if the input was on the gpu
-            new_node = host_from_gpu(gpu_alloc(*node.inputs))
-            return [new_node]
+            replace = True
         if all([c!='output' and c.op == gpu_from_host for c,idx in node.outputs[0].clients]):#if all clients are on gpu
-            new_node = host_from_gpu(gpu_alloc(*node.inputs))
-            return [new_node]
+            replace=True
         if all([c!='output' and c.op == tensor.join and all([i.owner and i.owner.op in [host_from_gpu,tensor.alloc] for i in c.inputs[1:]]) for c,idx in node.outputs[0].clients]):#if the client is a subtensor with input on gpu or alloc
-            new_node = host_from_gpu(gpu_alloc(*node.inputs))
-            return [new_node]
+            replace=True
+    if replace:
+        val = node.inputs[0]
+        shp = node.inputs[1:]
+        val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
+        new_node = host_from_gpu(gpu_alloc(val2, *shp))
+        return [new_node]
             
 @register_opt()
 @local_optimizer([])
