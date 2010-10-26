@@ -834,14 +834,22 @@ nd_collapse_[i]=0;
         """ %locals()
 
         #check that all inputs have valid dimensions
+        emitted_inames = {}
         for id,iname in enumerate(inputs):
+            if iname in emitted_inames:
+                assert emitted_inames[iname] is node.inputs[id]
+                continue
             broadcasts = ', '.join(map(str,map(int,node.inputs[id].broadcastable)))
             nd = node.inputs[id].ndim
             print >> sio, """
         int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};
 """ %locals()
+            emitted_inames[iname] = node.inputs[id]
         #check that all inputs have valid dimensions
+        emitted_inames = {}
         for id,iname in enumerate(inputs):
+            if iname in emitted_inames:
+                continue
             print >> sio, """
         //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
         if (%(nd)s != %(iname)s->nd)
@@ -864,6 +872,7 @@ nd_collapse_[i]=0;
             }
         }
             """ %locals()
+            emitted_inames[iname] = True
 
         #check that all outputs have valid dimensions
         for oname in outputs:
