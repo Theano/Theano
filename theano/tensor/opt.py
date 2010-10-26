@@ -2008,9 +2008,12 @@ def local_sum_alloc(node):
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
     if node.op == T.mul and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == -1.0):
-        return [-local_mul_canonizer.merge_num_denum(node.inputs[1:], [])]
-    else:
-        return False
+        other_prod = local_mul_canonizer.merge_num_denum(node.inputs[1:], [])
+        if other_prod.type == node.outputs[0].type:
+            return [-other_prod]
+        # else the multiplication is also acting as a cast, so we might as well leave it alone.
+        # I don't think it's better to turn this into a negation in the wrong type, followed by
+        # an explicit cast.
 register_specialize(local_mul_to_neg)
 
 @register_specialize
