@@ -1182,7 +1182,10 @@ class OpWiseCLinker(link.LocalLinker):
                     if self.fallback_on_perform:
                         debug('Falling back on perform')
                         p = node.op.perform
-                        thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
+                        # default arguments are stored in the closure of `thunk`
+                        def thunk(p=p, i=node_input_storage, o=node_output_storage,n=node):
+                            return p(n, [x[0] for x in i], o)
+                        #thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
                         thunk.inputs = node_input_storage
                         thunk.outputs = node_output_storage
                         thunk.perform = p
