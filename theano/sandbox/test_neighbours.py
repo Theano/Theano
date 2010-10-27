@@ -200,17 +200,19 @@ def test_neibs_wrap_centered_step_manual():
     images = shared(numpy.asarray(numpy.arange(numpy.prod(shape)).reshape(shape),dtype='float32'))
     neib_shape = T.as_tensor_variable((3,3))
     neib_step = T.as_tensor_variable((2,2))
+    neib_step = neib_shape
+
     modes = [mode_without_gpu]
     if cuda.cuda_available:
         modes.append(mode_with_gpu)
 
-    for mode in modes:
+    for mode_idx,mode in enumerate(modes):
         f = function([], images2neibs(images, neib_shape, neib_step, mode="wrap_centered"), mode=mode)
         neibs = f()
         print repr(neibs)
         print neibs.shape
         print images.value
-        expected = numpy.asarray([[24, 20, 21,  4,  0,  1,  9,  5,  6],
+        expected1 = numpy.asarray([[24, 20, 21,  4,  0,  1,  9,  5,  6],
                     [21, 22, 23,  1,  2,  3,  6,  7,  8],
                     [23, 24, 20,  3,  4,  0,  8,  9,  5],
                     [ 9,  5,  6, 14, 10, 11, 19, 15, 16],
@@ -219,13 +221,14 @@ def test_neibs_wrap_centered_step_manual():
                     [19, 15, 16, 24, 20, 21,  4,  0,  1],
                     [16, 17, 18, 21, 22, 23,  1,  2,  3],
                     [18, 19, 15, 23, 24, 20,  3,  4,  0]])
+        expected2 = numpy.asarray([[ 24.,  20.,  21.,   4.,   0.,   1.,   9.,   5.,   6.],
+                                   [ 22.,  23.,  24.,   2.,   3.,   4.,   7.,   8.,   9.],
+                                   [ 14.,  10.,  11.,  19.,  15.,  16.,  24.,  20.,  21.],
+                                   [ 12.,  13.,  14.,  17.,  18.,  19.,  22.,  23.,  24.]])
 
-        assert numpy.allclose(neibs[0:9,:],expected)
-        assert numpy.allclose(neibs[9:18,:],expected+25)
-        assert numpy.allclose(neibs[18:27,:],expected+50)
-        assert numpy.allclose(neibs[27:36,:],expected+75)
-        assert numpy.allclose(neibs[36:45,:],expected+100)
-        assert numpy.allclose(neibs[45:,:],expected+125)
+        expected = expected2
+        for i in range(shape[0]*shape[1]):
+            assert numpy.allclose(neibs[i*expected.shape[0]:(i+1)*expected.shape[0],:],expected+25*i), mode_idx
 
         #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
         

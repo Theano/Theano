@@ -52,8 +52,8 @@ class Images2Neibs(Op):
         fail = sub['fail']
         mode=self.mode
         return """
-        int grid_c; //number of patch in height
-        int grid_d; //number of patch in width
+        int grid_c = -1; //number of patch in height
+        int grid_d = -1; //number of patch in width
         {
         if (%(ten4)s->nd != 4)
         {
@@ -230,8 +230,8 @@ def neibs2images(neibs, neib_shape, original_shape):
 # This is work in progress
 class GpuImages2Neibs(Images2Neibs):
     def __init__(self, mode='valid'):
-        if mode not in ['valid']:
-            raise NotImplementedError("Only the mode valid have been implemented for the op GpuImages2Neibs")
+        if mode not in ['valid', 'wrap_centered']:
+            raise NotImplementedError("Only the mode valid and wrap_centered have been implemented for the op GpuImages2Neibs")
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
@@ -253,7 +253,8 @@ class GpuImages2Neibs(Images2Neibs):
         return (2,)
 
     def c_support_code_apply(self, node, nodename):
-        return """
+        if self.mode=="valid":
+            return """
         static __global__ void k_multi_warp_%(nodename)s(
             const int nb_batch,
             const int nb_stack,
@@ -302,11 +303,74 @@ class GpuImages2Neibs(Images2Neibs):
         }
 
         """ % locals()
+        if self.mode=="wrap_centered":
+            return """
+        static __global__ void k_multi_warp_%(nodename)s(
+            const int nb_batch,
+            const int nb_stack,
+            const int height,
+            const int width,
+            const int c,
+            const int d,
+            const int grid_c,
+            const int grid_d,
+            const int stride0, const int stride1, const int stride2, const int stride3,
+            float * global_ten4,
+            float * global_out
+        )
+        {
+            const int wrap_centered_idx_shift_x = c/2;
+            const int wrap_centered_idx_shift_y = d/2;
+
+            for(int tblock = blockIdx.x;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x){
+                const int b = tblock%%grid_d;
+                int left = tblock/grid_d;
+                const int a = left%%grid_c;
+                left = left/grid_c;
+                const int s = left%%nb_stack;
+                left = left/nb_stack;
+                const int n = left;
+
+                if(n>nb_batch)continue;
+                if(s>nb_stack)continue;
+                if(a>grid_c)continue;
+                if(b>grid_d)continue;
+                            int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
+                            for (int i = 0; i < c; i++)     // loop over c
+                            {
+                                int ten4_2 = i + a * c;
+                                ten4_2 -= wrap_centered_idx_shift_x;
+                                if ( ten4_2 < 0 ) ten4_2 += height;
+                                else if (ten4_2 >= height) ten4_2 -= height;
+
+                                for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
+                                {
+                                    int ten4_3 = j + b * d;
+                                    ten4_3 -= wrap_centered_idx_shift_y;
+                                    if ( ten4_3 < 0 ) ten4_3 += width;
+                                    else if (ten4_3 >= width) ten4_3 -= width;
+                                    //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
+                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
+                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
+
+                                    int z_col = j + d * i;
+                                    int z_idx = z_col + c*d*z_row;
+                                    global_out[z_idx] = global_ten4[ten4_idx];
+                                }
+                            }
+            }
+        }
+
+        """ % locals()
 
 
     def c_code(self, node, name, (ten4, neib_shape), (z,), sub):
         fail = sub['fail']
+        mode = self.mode
         return """
+        int grid_c = -1;
+        int grid_d = -1;
+
         {
             if (%(ten4)s->nd != 4)
             {
@@ -339,26 +403,46 @@ class GpuImages2Neibs(Images2Neibs):
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
-            
-            //const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
-            //const int c = (int) cd[0];
-            //const int d = (int) cd[1];
-            
-            if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] %% c != 0)
-            {
-                PyErr_Format(PyExc_TypeError, "neib_shape[0] must divide ten4.shape[2]");
-                %(fail)s;
+            const int step_x = c;//will change when we implement neib_step
+            const int step_y = d;//will change when we implement neib_step
+
+            if ( "%(mode)s" == "wrap_centered") {
+                if (c%%2!=1 || d%%2!=1){
+                    PyErr_Format(PyExc_TypeError, "Images2Neibs: in mode wrap_centered need patch with odd shapes");
+                    %(fail)s;
+                }
+                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] < c || CudaNdarray_HOST_DIMS(%(ten4)s)[3] < d)
+                {
+                    PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%d,%%d), ten4[2:]=[%%d,%%d]",
+                                 c, d, CudaNdarray_HOST_DIMS(%(ten4)s)[2], CudaNdarray_HOST_DIMS(%(ten4)s)[3]);
+                    %(fail)s;
+                }
+                //grid_c = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]),step_x)
+                //grid_d = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]),step_y)
+                grid_c = ((CudaNdarray_HOST_DIMS(%(ten4)s))[2])/step_x + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[2])%%step_x)? 1:0);
+                grid_d = ((CudaNdarray_HOST_DIMS(%(ten4)s))[3])/step_y + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[3])%%step_y)? 1:0);
+            }else if ( "%(mode)s" == "valid") {            
+                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] %% c != 0)
+                {
+                    PyErr_Format(PyExc_TypeError, "neib_shape[0] must divide ten4.shape[2]");
+                    %(fail)s;
+                }
+                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[3] %% d != 0)
+                {
+                    PyErr_Format(PyExc_TypeError, "neib_shape[1] must divide ten4.shape[3]");
+                    %(fail)s;
+                }
+                grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
+                grid_d = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d)/step_y); //number of patch in width
+            }else{
+                PyErr_Format(PyExc_TypeError, "Images2Neibs: unknow mode '%(mode)s'");
+                 %(fail)s;
             }
-            if ( CudaNdarray_HOST_DIMS(%(ten4)s)[3] %% d != 0)
-            {
-                PyErr_Format(PyExc_TypeError, "neib_shape[1] must divide ten4.shape[3]");
-                %(fail)s;
-            }
-            
+
             // new dimensions for z
             const int z_dim1 = c * d;
-            const int z_dim0 =  CudaNdarray_HOST_DIMS(%(ten4)s)[2] / c
-                                * CudaNdarray_HOST_DIMS(%(ten4)s)[3] / d
+            const int z_dim0 =  grid_c
+                                * grid_d
                                 * CudaNdarray_HOST_DIMS(%(ten4)s)[1]
                                 * CudaNdarray_HOST_DIMS(%(ten4)s)[0];
             
@@ -400,9 +484,6 @@ class GpuImages2Neibs(Images2Neibs):
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
             
-            const int grid_c = height/c;
-            const int grid_d = width/d;
-
             int nb_block;
             if (nb_batch %% 32 == 0)
                 nb_block = nb_batch/32;
