@@ -17,18 +17,32 @@ class Images2Neibs(Op):
         return hash(type(self))
     def __str__(self):
         return self.__class__.__name__
-    def make_node(self, ten4, neib_shape):
+    def make_node(self, ten4, neib_shape, neib_step=None):
+        """
+        :param neib_step: (dx,dy) where dx is the number of rows to skip between patch
+                          and dy is the number of columns. When None, this is the same
+                          as neib_shape(patch are disjoint)
+        """
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
-        return Apply(self, [ten4, neib_shape], [T.matrix(dtype=ten4.type.dtype)])
+        if neib_step is None:
+            neib_step = neib_shape
+        else:
+            neib_step = T.as_tensor_variable(neib_step)
+
+        assert ten4.ndim==4
+        assert neib_shape.ndim==1
+        assert neib_step.ndim==1
+
+        return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
     def grad(self, (pvals, unis), (gz,)):
         return [None, None]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
                 
-    def c_code(self, node, name, (ten4, neib_shape), (z,), sub):
+    def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
 
         fail = sub['fail']
         return """
@@ -48,25 +62,44 @@ class Images2Neibs(Op):
             PyErr_Format(PyExc_TypeError, "neib_shape wrong shape ; has to contain 2 elements");
             %(fail)s;
         }
+        if (%(neib_step)s->nd != 1)
+        {
+            PyErr_Format(PyExc_TypeError, "neib_step wrong rank");
+            %(fail)s;
+        }
+        if ( (%(neib_step)s->dimensions)[0] != 2)
+        {
+            PyErr_Format(PyExc_TypeError, "neib_step wrong step ; has to contain 2 elements");
+            %(fail)s;
+        }
         
+        // (c,d) = neib_shape
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
         const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
+        // (step_x,step_y) = neib_step
+        const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+        const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
 
-        if ( (%(ten4)s->dimensions)[2] %% c != 0)
+        if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
         {
-            PyErr_Format(PyExc_TypeError, "neib_shape[0] must divide ten4.shape[2]");
+            PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%d, neib_step[0]=%%d and ten4.shape[2]=%%d not consistent",
+                         c, step_x, %(ten4)s->dimensions[2]);
             %(fail)s;
         }
-        if ( (%(ten4)s->dimensions)[3] %% d != 0)
+        if ( ((%(ten4)s->dimensions)[3] < d) ||( (((%(ten4)s->dimensions)[3]-d) %% step_y)!=0))
         {
-            PyErr_Format(PyExc_TypeError, "neib_shape[1] must divide ten4.shape[3]");
+            PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%d, neib_step[1]=%%d and ten4.shape[3]=%%d not consistent",
+                         d, step_y, %(ten4)s->dimensions[3]);
             %(fail)s;
         }
         
+        const int grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
+        const int grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
+
         // new dimensions for z
         const npy_intp z_dim1 = c * d;
-        const npy_intp z_dim0 =  (%(ten4)s->dimensions)[2] / c
-                            * (%(ten4)s->dimensions)[3] / d
+        const npy_intp z_dim0 =  grid_c
+                            * grid_d
                             * (%(ten4)s->dimensions)[1]
                             * (%(ten4)s->dimensions)[0];
         
@@ -101,26 +134,29 @@ class Images2Neibs(Op):
         const int width = (%(ten4)s->dimensions)[3];
         
         // (c,d) = neib_shape
-        const int c = (int) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
-        const int d = (int) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
+        const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
+        const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
+        // (step_x,step_y) = neib_step
+        const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+        const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
+        const int grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
+        const int grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
 
-        const int grid_c = height/c;
-        const int grid_d = width/d;
 
         // Oh this is messed up...      
         for (int n = 0; n < nb_batch; n++)              // loop over batches
             for (int s = 0; s < nb_stack; s++)          // loop over stacks
-                for (int a = 0; a < grid_c; a++)        // loop over height/c
-                    for (int b = 0; b < grid_d; b++)    // loop over width/d
+                for (int a = 0; a < grid_c; a++)        // loop over the number of patch in height
+                    for (int b = 0; b < grid_d; b++)    // loop over the number of patch in width
                     {
                         int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
                         for (int i = 0; i < c; i++)     // loop over c
                         {
-                            int ten4_2 = i + a * c;
+                            int ten4_2 = i + a * step_x;
                             for (int j = 0; j < d; j++)  // loop over d
                             {
                                 
-                                int ten4_3 = j + b * d;     
+                                int ten4_3 = j + b * step_y;     
                                 int z_col = j + d * i;
                                 
                                 dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
@@ -156,7 +192,9 @@ def neibs2images(neibs, neib_shape, original_shape):
 # This is work in progress
 class GpuImages2Neibs(Images2Neibs):
 
-    def make_node(self, ten4, neib_shape):
+    def make_node(self, ten4, neib_shape, neib_step):
+        if neib_shape!=neib_step:
+            raise NotImplementedError("neib_step not implemented now on the gpu")
         assert ten4.dtype == 'float32'
         #assert neib_shape.dtype == 'float32'
         if not isinstance(ten4.type, CudaNdarrayType):
@@ -169,6 +207,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
+        return ()
         return (2,)
 
     def c_support_code_apply(self, node, nodename):
@@ -368,7 +407,7 @@ gpu_images2neibs = GpuImages2Neibs()
 @local_optimizer()
 def use_gpu_images2neibs(node):
     if node.op == images2neibs:
-        return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(node.inputs[0]),node.inputs[1]]))]
+        return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(node.inputs[0]),node.inputs[1],node.inputs[2]]))]
 
 if cuda_available:
     register_gpu_opt()(use_gpu_images2neibs)
