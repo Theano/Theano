@@ -11,12 +11,17 @@ if cuda_available:
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 class Images2Neibs(Op):
+    def __init__(self, mode='valid'):
+        if mode not in ['valid','wrap_centered']:
+            raise NotImplementedError("Only the mode valid and wrap_centered have been implemented for the op Images2Neibs")
+        self.mode = mode
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.mode==other.mode
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self))^hash(self.mode)
     def __str__(self):
-        return self.__class__.__name__
+        return self.__class__.__name__+"{%s}"%self.mode
+
     def make_node(self, ten4, neib_shape, neib_step=None):
         """
         :param neib_step: (dx,dy) where dx is the number of rows to skip between patch
@@ -45,7 +50,10 @@ class Images2Neibs(Op):
     def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
 
         fail = sub['fail']
+        mode=self.mode
         return """
+        int grid_c; //number of patch in height
+        int grid_d; //number of patch in width
         {
         if (%(ten4)s->nd != 4)
         {
@@ -80,21 +88,40 @@ class Images2Neibs(Op):
         const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
         const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
 
-        if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
-        {
-            PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%d, neib_step[0]=%%d and ten4.shape[2]=%%d not consistent",
-                         c, step_x, %(ten4)s->dimensions[2]);
+        if ( "%(mode)s" == "wrap_centered") {
+            if (c%%2!=1 || d%%2!=1){
+                PyErr_Format(PyExc_TypeError, "Images2Neibs: in mode wrap_centered need patch with odd shapes");
+                %(fail)s;
+            }
+            if ( (%(ten4)s->dimensions)[2] < c || (%(ten4)s->dimensions)[3] < d)
+            {
+                PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%d,%%d), ten4[2:]=[%%d,%%d]",
+                             c, d,%(ten4)s->dimensions[2], %(ten4)s->dimensions[3]);
+                %(fail)s;
+            }
+            //grid_c = CEIL_INTDIV(((%(ten4)s->dimensions)[2]),step_x)
+            //grid_d = CEIL_INTDIV(((%(ten4)s->dimensions)[3]),step_y)
+            grid_c = ((%(ten4)s->dimensions)[2])/step_x + ((((%(ten4)s->dimensions)[2])%%step_x)? 1:0);
+            grid_d = ((%(ten4)s->dimensions)[3])/step_y + ((((%(ten4)s->dimensions)[3])%%step_y)? 1:0);
+        }else if ( "%(mode)s" == "valid") {
+            if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
+            {
+                PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%d, neib_step[0]=%%d and ten4.shape[2]=%%d not consistent",
+                             c, step_x, %(ten4)s->dimensions[2]);
+                %(fail)s;
+            }
+            if ( ((%(ten4)s->dimensions)[3] < d) ||( (((%(ten4)s->dimensions)[3]-d) %% step_y)!=0))
+            {
+                PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%d, neib_step[1]=%%d and ten4.shape[3]=%%d not consistent",
+                             d, step_y, %(ten4)s->dimensions[3]);
+                %(fail)s;
+            }
+            grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
+            grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
+        }else{
+            PyErr_Format(PyExc_TypeError, "Images2Neibs: unknow mode '%(mode)s'");
             %(fail)s;
         }
-        if ( ((%(ten4)s->dimensions)[3] < d) ||( (((%(ten4)s->dimensions)[3]-d) %% step_y)!=0))
-        {
-            PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%d, neib_step[1]=%%d and ten4.shape[3]=%%d not consistent",
-                         d, step_y, %(ten4)s->dimensions[3]);
-            %(fail)s;
-        }
-        
-        const int grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
-        const int grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
 
         // new dimensions for z
         const npy_intp z_dim1 = c * d;
@@ -139,10 +166,9 @@ class Images2Neibs(Op):
         // (step_x,step_y) = neib_step
         const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
         const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
-        const int grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
-        const int grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
 
-
+        const int wrap_centered_idx_shift_x = c/2;
+        const int wrap_centered_idx_shift_y = d/2;
         // Oh this is messed up...      
         for (int n = 0; n < nb_batch; n++)              // loop over batches
             for (int s = 0; s < nb_stack; s++)          // loop over stacks
@@ -153,10 +179,20 @@ class Images2Neibs(Op):
                         for (int i = 0; i < c; i++)     // loop over c
                         {
                             int ten4_2 = i + a * step_x;
+                            if ( "%(mode)s" == "wrap_centered" ){
+                                ten4_2 -= wrap_centered_idx_shift_x;
+                                if ( ten4_2 < 0 ) ten4_2 += height;
+                                else if (ten4_2 >= height) ten4_2 -= height;
+                            }
                             for (int j = 0; j < d; j++)  // loop over d
                             {
                                 
                                 int ten4_3 = j + b * step_y;     
+                                if ( "%(mode)s" == "wrap_centered" ){
+                                    ten4_3 -= wrap_centered_idx_shift_y;
+                                    if ( ten4_3 < 0 ) ten4_3 += width;
+                                    else if (ten4_3 >= width) ten4_3 -= width;
+                                }
                                 int z_col = j + d * i;
                                 
                                 dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
@@ -169,7 +205,9 @@ class Images2Neibs(Op):
                     }
         } // END NESTED SCOPE
         """ % locals()
-images2neibs = Images2Neibs()
+
+def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
+    return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
 def neibs2images(neibs, neib_shape, original_shape):
     """
@@ -191,6 +229,10 @@ def neibs2images(neibs, neib_shape, original_shape):
    
 # This is work in progress
 class GpuImages2Neibs(Images2Neibs):
+    def __init__(self, mode='valid'):
+        if mode not in ['valid']:
+            raise NotImplementedError("Only the mode valid have been implemented for the op GpuImages2Neibs")
+        self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
         if neib_shape!=neib_step:
@@ -402,12 +444,13 @@ class GpuImages2Neibs(Images2Neibs):
 
         } // END NESTED SCOPE
         """ % locals()
-gpu_images2neibs = GpuImages2Neibs()
+def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
+    return GpuImages2Neibs(mode)(ten4, neib_shape, neib_step)
 
 @local_optimizer()
 def use_gpu_images2neibs(node):
-    if node.op == images2neibs:
-        return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(node.inputs[0]),node.inputs[1],node.inputs[2]]))]
+    if type(node.op) is Images2Neibs:
+        return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),node.inputs[1],node.inputs[2],mode=node.op.mode))]
 
 if cuda_available:
     register_gpu_opt()(use_gpu_images2neibs)
