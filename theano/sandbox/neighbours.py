@@ -238,12 +238,8 @@ class GpuImages2Neibs(Images2Neibs):
         if neib_shape!=neib_step:
             raise NotImplementedError("neib_step not implemented now on the gpu")
         assert ten4.dtype == 'float32'
-        #assert neib_shape.dtype == 'float32'
         if not isinstance(ten4.type, CudaNdarrayType):
-            raise TypeError('pvals must be cudandarray', ten4)
-        #if not isinstance(neib_shape.type, CudaNdarrayType):
-        #    raise TypeError('unis must be cudandarray', neib_shape)
-        #print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
+            raise TypeError('ten4 must be cudandarray', ten4)
 
         return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,False),
                                                                 dtype=ten4.type.dtype)()])
@@ -383,23 +379,11 @@ class GpuImages2Neibs(Images2Neibs):
                 %(fail)s;
             }
             
-            //if (CudaNdarray_HOST_DIMS(%(neib_shape)s)[0] != 2)
             if (%(neib_shape)s->dimensions[0] != 2)
             {
                 PyErr_Format(PyExc_ValueError, "neib_shape has to contain two elements");
                 %(fail)s;
             }
-
-            /*if (!CudaNdarray_is_c_contiguous(%(neib_shape)s))
-            {
-                PyErr_Format(PyExc_NotImplementedError, "require unis to be contiguous");
-                %(fail)s;
-            }*/
-            /*if (!CudaNdarray_is_c_contiguous(%(ten4)s))
-            {
-                PyErr_Format(PyExc_NotImplementedError, "require ten4 to be contiguous");
-                %(fail)s;
-            }*/
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
@@ -470,16 +454,6 @@ class GpuImages2Neibs(Images2Neibs):
             const int nb_stack = CudaNdarray_HOST_DIMS(%(ten4)s)[1];
             const int height = CudaNdarray_HOST_DIMS(%(ten4)s)[2];
             const int width = CudaNdarray_HOST_DIMS(%(ten4)s)[3];
-
-            /*for (int i=0; i<4; i++)
-            {
-                 printf("\\ndim%%i %%i",i, CudaNdarray_HOST_DIMS(%(ten4)s)[i]);
-                 printf("\\nstride%%i %%i",i, CudaNdarray_HOST_STRIDES(%(ten4)s)[i]);
-            }*/
-            // (c,d) = neib_shape
-            //const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
-            //const int c = (int) cd[0];
-            //const int d = (int) cd[1];
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
