@@ -235,13 +235,15 @@ class GpuImages2Neibs(Images2Neibs):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
-        if neib_shape!=neib_step:
-            raise NotImplementedError("neib_step not implemented now on the gpu")
         assert ten4.dtype == 'float32'
         if not isinstance(ten4.type, CudaNdarrayType):
             raise TypeError('ten4 must be cudandarray', ten4)
 
-        return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,False),
+        assert ten4.ndim==4
+        assert neib_shape.ndim==1
+        assert neib_step.ndim==1
+        
+        return Apply(self, [ten4, neib_shape, neib_step], [CudaNdarrayType(broadcastable=(False,False),
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
@@ -258,6 +260,8 @@ class GpuImages2Neibs(Images2Neibs):
             const int width,
             const int c,
             const int d,
+            const int step_x,
+            const int step_y,
             const int grid_c,
             const int grid_d,
             const int stride0, const int stride1, const int stride2, const int stride3,
@@ -282,10 +286,10 @@ class GpuImages2Neibs(Images2Neibs):
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
                             for (int i = 0; i < c; i++)     // loop over c
                             {
-                                int ten4_2 = i + a * c;
+                                int ten4_2 = i + a * step_x;
                                 for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
                                 {
-                                    int ten4_3 = j + b * d;
+                                    int ten4_3 = j + b * step_y;
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
                                     //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
                                     int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
@@ -308,6 +312,8 @@ class GpuImages2Neibs(Images2Neibs):
             const int width,
             const int c,
             const int d,
+            const int step_x,
+            const int step_y,
             const int grid_c,
             const int grid_d,
             const int stride0, const int stride1, const int stride2, const int stride3,
@@ -334,14 +340,14 @@ class GpuImages2Neibs(Images2Neibs):
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
                             for (int i = 0; i < c; i++)     // loop over c
                             {
-                                int ten4_2 = i + a * c;
+                                int ten4_2 = i + a * step_x;
                                 ten4_2 -= wrap_centered_idx_shift_x;
                                 if ( ten4_2 < 0 ) ten4_2 += height;
                                 else if (ten4_2 >= height) ten4_2 -= height;
 
                                 for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
                                 {
-                                    int ten4_3 = j + b * d;
+                                    int ten4_3 = j + b * step_y;
                                     ten4_3 -= wrap_centered_idx_shift_y;
                                     if ( ten4_3 < 0 ) ten4_3 += width;
                                     else if (ten4_3 >= width) ten4_3 -= width;
@@ -360,7 +366,7 @@ class GpuImages2Neibs(Images2Neibs):
         """ % locals()
 
 
-    def c_code(self, node, name, (ten4, neib_shape), (z,), sub):
+    def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
         fail = sub['fail']
         mode = self.mode
         return """
@@ -387,8 +393,8 @@ class GpuImages2Neibs(Images2Neibs):
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
-            const int step_x = c;//will change when we implement neib_step
-            const int step_y = d;//will change when we implement neib_step
+            const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+            const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
 
             if ( "%(mode)s" == "wrap_centered") {
                 if (c%%2!=1 || d%%2!=1){
@@ -405,15 +411,17 @@ class GpuImages2Neibs(Images2Neibs):
                 //grid_d = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]),step_y)
                 grid_c = ((CudaNdarray_HOST_DIMS(%(ten4)s))[2])/step_x + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[2])%%step_x)? 1:0);
                 grid_d = ((CudaNdarray_HOST_DIMS(%(ten4)s))[3])/step_y + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[3])%%step_y)? 1:0);
-            }else if ( "%(mode)s" == "valid") {            
-                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] %% c != 0)
+            }else if ( "%(mode)s" == "valid") {
+                if ( ((CudaNdarray_HOST_DIMS(%(ten4)s))[2] < c) ||( (((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
                 {
-                    PyErr_Format(PyExc_TypeError, "neib_shape[0] must divide ten4.shape[2]");
+                    PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%d, neib_step[0]=%%d and ten4.shape[2]=%%d not consistent",
+                                 c, step_x, CudaNdarray_HOST_DIMS(%(ten4)s)[2]);
                     %(fail)s;
                 }
-                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[3] %% d != 0)
+                if ( ((CudaNdarray_HOST_DIMS(%(ten4)s))[3] < d) ||( (((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
                 {
-                    PyErr_Format(PyExc_TypeError, "neib_shape[1] must divide ten4.shape[3]");
+                    PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%d, neib_step[1]=%%d and ten4.shape[3]=%%d not consistent",
+                                 d, step_y, CudaNdarray_HOST_DIMS(%(ten4)s)[3]);
                     %(fail)s;
                 }
                 grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
@@ -457,6 +465,8 @@ class GpuImages2Neibs(Images2Neibs):
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
+            const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+            const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
             
             int nb_block;
             if (nb_batch %% 32 == 0)
@@ -472,7 +482,7 @@ class GpuImages2Neibs(Images2Neibs):
                 nb_batch,
                 nb_stack,
                 height, width,
-                c, d,
+                c, d, step_x, step_y,
                 grid_c, grid_d,
                 CudaNdarray_HOST_STRIDES(%(ten4)s)[0],
                 CudaNdarray_HOST_STRIDES(%(ten4)s)[1],

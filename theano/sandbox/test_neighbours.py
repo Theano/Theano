@@ -2,7 +2,7 @@ import numpy
 import theano
 from theano import shared, function
 import theano.tensor as T
-from neighbours import images2neibs, neibs2images, GpuImages2Neibs
+from neighbours import images2neibs, neibs2images, Images2Neibs, GpuImages2Neibs
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
@@ -147,7 +147,7 @@ def test_neibs_manual():
        [90, 91, 94, 95]])
     g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
     
-    print g()
+    #print g()
     assert numpy.allclose(images.value,g())
 
 
@@ -159,12 +159,16 @@ def test_neibs_step_manual():
     modes = [mode_without_gpu]
     if cuda.cuda_available:
         modes.append(mode_with_gpu)
-    for mode in modes:
+    for mode_idx,mode in enumerate(modes):
         f = function([], images2neibs(images, neib_shape, neib_step), mode=mode)
 
     #print images.value
         neibs = f()
-        print neibs
+        if mode_idx==0:
+            assert Images2Neibs in [type(node.op) for node in f.maker.env.toposort()]
+        elif mode_idx==1:
+            assert GpuImages2Neibs in [type(node.op) for node in f.maker.env.toposort()]
+
         assert numpy.allclose(neibs,
       [[  0,   1,   2,   5,   6,   7,  10,  11,  12],
        [  2,   3,   4,   7,   8,   9,  12,  13,  14],
@@ -196,44 +200,79 @@ def test_neibs_step_manual():
         #assert numpy.allclose(images.value,g())
 
 def test_neibs_wrap_centered_step_manual():
-    shape = (2,3,5,5)
-    images = shared(numpy.asarray(numpy.arange(numpy.prod(shape)).reshape(shape),dtype='float32'))
-    neib_shape = T.as_tensor_variable((3,3))
-    neib_step = T.as_tensor_variable((2,2))
-    neib_step = neib_shape
 
     modes = [mode_without_gpu]
     if cuda.cuda_available:
         modes.append(mode_with_gpu)
 
-    for mode_idx,mode in enumerate(modes):
-        f = function([], images2neibs(images, neib_shape, neib_step, mode="wrap_centered"), mode=mode)
-        neibs = f()
-        print repr(neibs)
-        print neibs.shape
-        print images.value
-        expected1 = numpy.asarray([[24, 20, 21,  4,  0,  1,  9,  5,  6],
-                    [21, 22, 23,  1,  2,  3,  6,  7,  8],
-                    [23, 24, 20,  3,  4,  0,  8,  9,  5],
-                    [ 9,  5,  6, 14, 10, 11, 19, 15, 16],
-                    [ 6,  7,  8, 11, 12, 13, 16, 17, 18],
-                    [ 8,  9,  5, 13, 14, 10, 18, 19, 15],
-                    [19, 15, 16, 24, 20, 21,  4,  0,  1],
-                    [16, 17, 18, 21, 22, 23,  1,  2,  3],
-                    [18, 19, 15, 23, 24, 20,  3,  4,  0]])
-        expected2 = numpy.asarray([[ 24.,  20.,  21.,   4.,   0.,   1.,   9.,   5.,   6.],
-                                   [ 22.,  23.,  24.,   2.,   3.,   4.,   7.,   8.,   9.],
-                                   [ 14.,  10.,  11.,  19.,  15.,  16.,  24.,  20.,  21.],
-                                   [ 12.,  13.,  14.,  17.,  18.,  19.,  22.,  23.,  24.]])
+    expected1 = [[24, 20, 21,  4,  0,  1,  9,  5,  6],
+                 [21, 22, 23,  1,  2,  3,  6,  7,  8],
+                 [23, 24, 20,  3,  4,  0,  8,  9,  5],
+                 [ 9,  5,  6, 14, 10, 11, 19, 15, 16],
+                 [ 6,  7,  8, 11, 12, 13, 16, 17, 18],
+                 [ 8,  9,  5, 13, 14, 10, 18, 19, 15],
+                 [19, 15, 16, 24, 20, 21,  4,  0,  1],
+                 [16, 17, 18, 21, 22, 23,  1,  2,  3],
+                 [18, 19, 15, 23, 24, 20,  3,  4,  0]]
+    expected2 = [[ 24,  20,  21,   4,   0,   1,   9,   5,   6],
+                 [ 22,  23,  24,   2,   3,   4,   7,   8,   9],
+                 [ 14,  10,  11,  19,  15,  16,  24,  20,  21],
+                 [ 12,  13,  14,  17,  18,  19,  22,  23,  24]]
+    expected3 = [[ 19,  15,  16,  24,  20,  21,   4,   0,   1,   9,   5,   6,  14,  10,  11],
+                 [ 17,  18,  19,  22,  23,  24,   2,   3,   4,   7,   8,   9,  12,  13,  14],
+                 [  9,   5,   6,  14,  10,  11,  19,  15,  16,  24,  20,  21,   4,   0,   1],
+                 [  7,   8,   9,  12,  13,  14,  17,  18,  19,  22,  23,  24,   2,   3,   4]]
+    expected4 = [[ 23,  24,  20,  21,  22,   3,   4,   0,   1,   2,   8,   9,   5,   6,   7],
+                 [ 21,  22,  23,  24,  20,   1,   2,   3,   4,   0,   6,   7,   8,   9,   5],
+                 [ 13,  14,  10,  11,  12,  18,  19,  15,  16,  17,  23,  24,  20,  21,  22],
+                 [ 11,  12,  13,  14,  10,  16,  17,  18,  19,  15,  21,  22,  23,  24,  20]]
+    expected5 = [[ 24,  20,  21,   4,   0,   1,   9,   5,   6],
+                 [ 22,  23,  24,   2,   3,   4,   7,   8,   9],
+                 [  9,   5,   6,  14,  10,  11,  19,  15,  16],
+                 [  7,   8,   9,  12,  13,  14,  17,  18,  19],
+                 [ 19,  15,  16,  24,  20,  21,   4,   0,   1],
+                 [ 17,  18,  19,  22,  23,  24,   2,   3,   4]]
+    expected6 = [[ 24,  20,  21,   4,   0,   1,   9,   5,   6],
+                 [ 21,  22,  23,   1,   2,   3,   6,   7,   8],
+                 [ 23,  24,  20,   3,   4,   0,   8,   9,   5],
+                 [ 14,  10,  11,  19,  15,  16,  24,  20,  21],
+                 [ 11,  12,  13,  16,  17,  18,  21,  22,  23],
+                 [ 13,  14,  10,  18,  19,  15,  23,  24,  20]]
 
-        expected = expected2
-        for i in range(shape[0]*shape[1]):
-            assert numpy.allclose(neibs[i*expected.shape[0]:(i+1)*expected.shape[0],:],expected+25*i), mode_idx
+    #TODO test discontinous image
+            
+    for shp_idx,(shape,neib_shape,neib_step,expected) in enumerate([
+        [(7,8,5,5),(3,3),(2,2),expected1],
+        [(7,8,5,5),(3,3),(3,3),expected2],
+        [(7,8,5,5),(5,3),(3,3),expected3],
+        [(7,8,5,5),(3,5),(3,3),expected4],
+        [(80,90,5,5),(3,3),(2,3),expected5],
+        [(1025,9,5,5),(3,3),(3,2),expected6],
+        [(1,1,5,1035),(3,3),(3,3),None],
+        [(1,1,1045,5),(3,3),(3,3),None],
+        ]):
 
-        #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
+        images = shared(numpy.asarray(numpy.arange(numpy.prod(shape)).reshape(shape),dtype='float32'))
+        neib_shape = T.as_tensor_variable(neib_shape)
+        neib_step = T.as_tensor_variable(neib_step)
+        expected = numpy.asarray(expected)
+
+        for mode_idx,mode in enumerate(modes):
+            f = function([], images2neibs(images, neib_shape, neib_step, mode="wrap_centered"), mode=mode)
+            neibs = f()
+
+            if expected.size>1:
+                for i in range(shape[0]*shape[1]):
+                    assert numpy.allclose(neibs[i*expected.shape[0]:(i+1)*expected.shape[0],:],expected+25*i), mode_idx
+
+            if mode_idx==0:
+                assert Images2Neibs in [type(node.op) for node in f.maker.env.toposort()]
+            elif mode_idx==1:
+                assert GpuImages2Neibs in [type(node.op) for node in f.maker.env.toposort()]
+
+            #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
         
-        #print g()
-        #assert numpy.allclose(images.value,g())
+            #assert numpy.allclose(images.value,g())
 
 
 def test_neibs_gpu():
