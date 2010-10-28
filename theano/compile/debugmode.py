@@ -391,7 +391,7 @@ class InvalidValueError(DebugModeError):
 
 
 
-def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.stdout):
+def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.stdout, print_destroy_map=False, print_view_map=False):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -400,7 +400,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
     :param done: set of Apply instances that have already been printed
     :param print_type: wether to print the Variable type after the other infos
     :param file: file-like object to which to print
-
+    :param print_destroy_map: wether to print the op destroy_map after ofther info
+    :param print_view_map: wether to print the op view_map after ofther info
     """
     if depth==0:
         return
@@ -424,12 +425,32 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
         if r_name is None:
             r_name = ''
 
-        if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]%s \'%s\'' % (prefix, a.op, id(r), \
-                                            type_str, r_name)
+        if print_destroy_map:
+            destroy_map_str=str(getattr(r.owner.op,'destroy_map',''))
         else:
-            print >> file, '%s%s.%i [@%i]%s \'%s\'' % (prefix, a.op, \
-                  a.outputs.index(r), id(r), type_str, r_name)
+            destroy_map_str=''
+            
+        if print_view_map:
+            view_map_str=str(getattr(r.owner.op,'view_map',''))
+        else:
+            view_map_str=''
+        if destroy_map_str and destroy_map_str!='{}':
+            destroy_map_str='d='+destroy_map_str
+        if view_map_str and view_map_str!='{}':
+            view_map_str='v='+view_map_str
+
+        if len(a.outputs) == 1:
+            print >> file, '%s%s [@%i]%s \'%s\' %s %s' % (prefix, a.op, id(r),
+                                                          type_str, r_name,
+                                                          destroy_map_str,
+                                                          view_map_str)
+        else:
+            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s' % (prefix, a.op,
+                                                             a.outputs.index(r),
+                                                             id(r), type_str,
+                                                             r_name,
+                                                             destroy_map_str,
+                                                             view_map_str)
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
