@@ -303,11 +303,23 @@ def test_neibs_gpu():
 def speed_neibs():
     shape = (100,40,18,18)
     images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
-    neib_shape = T.as_tensor_variable((2,2))#(array((2,2), dtype='float32'))
+    neib_shape = T.as_tensor_variable((3,3))
 
     from theano.sandbox.cuda.basic_ops import gpu_from_host
 
     f = function([], images2neibs(images,neib_shape))#, mode=mode_without_gpu)
+  
+    for i in range(1000):
+        f()
+
+def speed_neibs_wrap_centered():
+    shape = (100,40,18,18)
+    images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
+    neib_shape = T.as_tensor_variable((3,3))
+
+    from theano.sandbox.cuda.basic_ops import gpu_from_host
+
+    f = function([], images2neibs(images,neib_shape,mode="wrap_centered"))#, mode=mode_without_gpu)
   
     for i in range(1000):
         f()
