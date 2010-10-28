@@ -37,15 +37,16 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 12, verbose)
+    cache_version = ('debug', 13, verbose)
 
-    def __init__(self, scalar_op, sync=True):
+    def __init__(self, scalar_op, sync=True, inplace_pattern={}):
         """ 
         :param scalar_op: the scalar operation to execute on each element.
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
         self.scalar_op = scalar_op
         self.sync = sync
+        self.inplace_pattern = inplace_pattern
 
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO.StringIO()
@@ -875,8 +876,9 @@ nd_collapse_[i]=0;
             emitted_inames[iname] = True
 
         #check that all outputs have valid dimensions
-        for oname in outputs:
-            print >> sio, """
+        for idx,oname in enumerate(outputs):
+            if idx not in self.inplace_pattern.keys():
+                print >> sio, """
         for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
             if (dims[i] != CudaNdarray_HOST_DIMS(%(oname)s)[i])
             {
@@ -903,6 +905,25 @@ nd_collapse_[i]=0;
         //std::cerr << "ELEMWISE NEW %(oname)s nd" << %(oname)s->nd << "\\n";
         //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
         """ % locals()
+            else:
+                input_idx = self.inplace_pattern[idx]
+                iname = inputs[input_idx]
+                print >> sio, """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_INCREF(%(oname)s);
+        for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
+            if (dims[i] != CudaNdarray_HOST_DIMS(%(oname)s)[i])
+            {
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
+                %(fail)s;
+            }
+        }
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << %(oname)s->nd << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
+        """ % locals()
+                
         print >> sio, """
         { 
             //new block so that failure gotos don't skip over variable initialization
