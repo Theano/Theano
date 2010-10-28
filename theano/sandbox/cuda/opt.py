@@ -649,9 +649,25 @@ def local_gpualloc(node):
     if replace:
         val = node.inputs[0]
         shp = node.inputs[1:]
+        old_out = node.outputs[0]
         val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
-        new_node = host_from_gpu(gpu_alloc(val2, *shp))
-        return [new_node]
+        new_out = host_from_gpu(gpu_alloc(val2, *shp))
+        # Sigh. it's an annoying thing about theano
+        # that you can't add information to the graph.
+        # If for some reason it has come to light that 
+        # one of the dimensions is broadcastable, we have to hide that
+        # or the optimization won't go through.
+        if new_out.type != old_out.type:
+            assert new_out.type.ndim == old_out.type.ndim
+            assert new_out.type.dtype == old_out.type.dtype
+            # it seems to have happened that new_out has some broadcastable
+            # dimensions that old_out did not have
+            for b_old,b_new in zip(old_out.type.broadcastable, new_out.type.broadcastable):
+                assert b_new or (not b_old)
+            new_out = tensor.patternbroadcast(new_out, old_out.broadcastable)
+        #if old_out.type != new_out.type:
+            #import pdb; pdb.set_trace()
+        return [new_out]
             
 @register_opt()
 @local_optimizer([])
