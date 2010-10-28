@@ -22,6 +22,11 @@ class Images2Neibs(Op):
     def __str__(self):
         return self.__class__.__name__+"{%s}"%self.mode
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self,"mode"):
+            self.mode = 'valid'
+
     def make_node(self, ten4, neib_shape, neib_step=None):
         """
         :param neib_step: (dx,dy) where dx is the number of rows to skip between patch
