@@ -9,7 +9,7 @@ from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler,
         InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
-from theano.gof.python25 import any
+from theano.gof.python25 import all, any
 import theano.scalar
 import basic as T
 
