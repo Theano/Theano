@@ -90,7 +90,13 @@ except Exception, e:
     set_cuda_disabled()
 
 if cuda_available:
-    cuda_available=device_available()
+    try:
+        gpu_init()
+        cuda_available = True
+        cuda_initialization_error_message = ""
+    except EnvironmentError, e:
+        cuda_available = False
+        cuda_initialization_error_message = e.message
 
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
@@ -121,9 +127,10 @@ if cuda_available:
 def use(device, force=False):
     global cuda_enabled
     if force and not cuda_available and device.startswith('gpu'):
-        raise Exception("You force to use a gpu device but cuda is not installed or their is no usable gpu device")
+        raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
+                               "with error:\n%s" % (device, cuda_initialization_error_message))
     if not cuda_available:
-        warning('CUDA is installed, but GPU device is not available')
+        warning('CUDA is installed, but device %s is not available' % device)
         return 
 
     if device == 'gpu':
@@ -150,8 +157,8 @@ def use(device, force=False):
             handle_shared_float32(True)
             use.device_number = device
             cuda_enabled = True
-        except RuntimeError, e:
-            _logger.error("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
+        except (EnvironmentError, ValueError), e:
+            _logger.error("ERROR: Not using GPU. Initialisation of device %i failed:\n%s" % (device, e))
             cuda_enabled = False
             if force:
                 e.args+=("You asked to force this device and it failed. No fallback to the cpu or other gpu device.",)

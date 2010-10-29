@@ -1724,80 +1724,67 @@ static PyTypeObject CudaNdarrayType =
 };
 
 
-//This fct return True it is able to find a cuda card and query its properti
-//Otherwise we return False
+// Initialize the gpu.
+// Takes one optional parameter, the device number.
+// If provided, it sets that device to be the active device.
+// If not provided (usually just to test whether the gpu is available at all),
+// it does not set an active device.
+// Raises EnvironmentError or ValueError (as appropriate) if the initialization failed.
 PyObject *
-device_available(PyObject* _unsed, PyObject * args)
+CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
-  int deviceCount;
+  int card_nb = 0;
+  int card_number_provided = 1;
 
-  cudaError err = cudaGetDeviceCount(&deviceCount);
-  if( cudaSuccess != err) {
-    Py_RETURN_FALSE;
+  PyArg_ParseTuple(args, "|i", &card_nb); // if we're given something wildly invalid, this will throw a TypeError
+  
+  if(PyTuple_Size(args) == 0) {
+    card_number_provided = 0;
+    card_nb = 0;
   }
-  if (deviceCount <= 0) {
-    Py_RETURN_FALSE;
+
+  int deviceCount;
+  cudaError err = cudaGetDeviceCount(&deviceCount);
+  if(cudaSuccess != err) {
+    return PyErr_Format(PyExc_EnvironmentError,
+                        "Unable to get the number of gpus available: %s",
+                        cudaGetErrorString(cudaGetLastError()));
+  }
+  if(deviceCount <= 0) {
+    return PyErr_Format(PyExc_EnvironmentError,
+                        "Can't use the GPU, no devices support CUDA");
+  }
+  if(card_number_provided && (card_nb < 0 || card_nb > (deviceCount - 1))) {
+    return PyErr_Format(PyExc_ValueError,
+                        "Bad device number %d. There is only %d device available.",
+                        card_nb,
+                        deviceCount);
   }
 
   cudaDeviceProp deviceProp;
-  err=cudaGetDeviceProperties(&deviceProp, 0);
-  if( cudaSuccess != err) {
-    Py_RETURN_FALSE;
+  err = cudaGetDeviceProperties(&deviceProp, card_nb);
+  if(cudaSuccess != err) {
+    return PyErr_Format(PyExc_EnvironmentError,
+                        "Unable to get properties of gpu %i: %s",
+                        card_nb,
+                        cudaGetErrorString(cudaGetLastError()));
   }
 
   if(deviceProp.major == 9999 && deviceProp.minor == 9999 ){
-    Py_RETURN_FALSE;
-  }
-  
-  Py_RETURN_TRUE;
-}
-
-PyObject *
-CudaNdarray_gpu_init(PyObject* _unsed, PyObject * args)
-{
-  int card_nb=0;
-
-  if (! PyArg_ParseTuple(args, "|i", &card_nb))
-    return NULL; 
-
-  int deviceCount;
-
-  cudaError err = cudaGetDeviceCount(&deviceCount);
-  if( cudaSuccess != err) {
-    //TODO: put this as a warning and let theano continue on the cpu...
-    PyErr_Format(PyExc_RuntimeError, "ERROR: Not able to get the number of gpu available.");
-    return NULL;
-  }
-  if (deviceCount <= 0) {
-    //TODO: put this as a warning and let theano continue on the cpu...
-    PyErr_Format(PyExc_RuntimeError, "ERROR: Can't use the GPU, no devices supporting CUDA.\n");
-    return NULL;
-  }
-  if(card_nb<0 || card_nb>(deviceCount-1)){
-    PyErr_Format(PyExc_RuntimeError, "ERROR: bad device number %d. Their is only %d device available\n",
-		 card_nb, deviceCount);
-    return NULL;
+    return PyErr_Format(PyExc_EnvironmentError,
+                        "There is no device that supports CUDA");
   }
 
-  cudaDeviceProp deviceProp;
-  err=cudaGetDeviceProperties(&deviceProp, card_nb);
-  if( cudaSuccess != err) {
-    PyErr_Format(PyExc_RuntimeError, "ERROR: Was not able to get the property of the gpu %i.",
-		 card_nb);
-    exit(-1);
-  }
+  if(card_number_provided) {
+    fprintf(stderr, "Using gpu device %d: %s\n", card_nb, deviceProp.name);
 
-  if(deviceProp.major == 9999 && deviceProp.minor == 9999 ){
-    PyErr_Format(PyExc_RuntimeError, "WARNING: Their is no device that support CUDA.\n");
-    return NULL;    
-  }
-  
-  fprintf(stderr, "Using gpu device %d: %s\n", card_nb, deviceProp.name);
-
-  err = cudaSetDevice(card_nb);
-  if( cudaSuccess != err) {
-    PyErr_Format(PyExc_RuntimeError, "ERROR: Was not able to set the device. %s\n", cudaGetErrorString(err));
-    return NULL;
+    err = cudaSetDevice(card_nb);
+    if(cudaSuccess != err) {
+      return PyErr_Format(PyExc_EnvironmentError,
+                          "Unable to set device %i: %s",
+                          card_nb,
+                          cudaGetErrorString(cudaGetLastError()));
+    }
   }
 
   Py_INCREF(Py_None);
@@ -1958,8 +1945,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 
 static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
-    {"device_available", device_available, METH_VARARGS, "Return Py_True if a cuda card is available."},
-    {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Allow to select the gpu card to use."},
+    {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
