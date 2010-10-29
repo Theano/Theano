@@ -77,7 +77,10 @@ class multiple_outputs_numeric_grad:
         for i in xrange(len(pt)):
             if ndarray_mask[i]:
                 # It is a ndarray that we can tweak
-                _eps = eps if eps else dtype_eps
+		if eps:
+                    _eps = eps
+                else:
+                    _eps = dtype_eps
                 if pt[i].ndim :
                     _g = []
                     # it has several dimensions:

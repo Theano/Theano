@@ -65,7 +65,10 @@ class NeighbourhoodsFromImages(Op):
         """
         self.n_dims_before = n_dims_before
         self.dims_neighbourhoods = dims_neighbourhoods
-        self.strides = strides if not strides is None else dims_neighbourhoods
+        if not strides is None:                                                               
+            self.strides = strides                                                            
+        else:                                                                                 
+            self.strides = dims_neighbourhoods                                                
         self.ignore_border = ignore_border
 
         self.inverse = inverse

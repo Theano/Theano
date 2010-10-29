@@ -7,6 +7,7 @@ import theano
 from theano import tensor as T
 from theano import tensor
 from theano import gof
+from theano.gof.python25 import all
 from theano.tests import unittest_tools as utt
 from theano import printing, pprint
 from theano.tensor.nnet import (categorical_crossentropy,
@@ -928,7 +929,7 @@ def test_asymptotic_32():
         assert gxval[0,1] == 0.25
 
 
-class Test_softmax_opt():
+class Test_softmax_opt:
     # Test that expressions of softmax in terms of exponentiated things divided by row sums
     # are replaced by softmax expressions.
 
