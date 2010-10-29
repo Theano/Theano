@@ -2,7 +2,7 @@ import numpy
 import unittest
 import copy
 import theano
-from theano.tensor import Tensor, dmatrix, dvector, lscalar, dmatrices
+from theano.tensor import dmatrix, iscalar, lscalar, dmatrices
 from theano import tensor
 
 from theano.compile.sharedvalue import *
@@ -407,7 +407,10 @@ class Test_pfunc(unittest.TestCase):
     def test_default_updates_input(self):
         x = shared(0)
         y = shared(1)
-        a = lscalar('a')
+        if theano.gof.cmodule.local_bitwidth()==32:
+            a = iscalar('a')
+        else:
+            a = lscalar('a')
 
         x.default_update = y
         y.default_update = y+a
