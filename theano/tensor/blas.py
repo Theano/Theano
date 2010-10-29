@@ -99,6 +99,9 @@ gemv_inplace = Gemv(inplace=True)
 
 def default_blas_ldflags():
     try:
+        #if numpy was linked with library that are not installed, we can't reuse them.
+        if all(not os.path.exists(dir) for dir in numpy.distutils.__config__.blas_opt_info['library_dirs']):
+            return "-lblas"
         return ' '.join(
 			#TODO: the Gemm op below should separate the -L and -l arguments into the two callbacks that CLinker uses for that stuff.
                         # for now, we just pass the whole ldflags as the -l options part.
