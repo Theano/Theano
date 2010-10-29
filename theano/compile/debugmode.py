@@ -91,7 +91,7 @@ class BadCLinkerOutput(DebugModeError):
 
     def __init__(self, r, val_py, val_c):
         """Initialize members"""
-        super(BadCLinkerOutput, self).__init__()
+        DebugModeError.__init__(self)#to be compatible with python2.4
         self.r = r
         self.val_py = val_py
         self.val_c = val_c
@@ -190,7 +190,7 @@ class BadOptimization(DebugModeError):
 
     def __init__(self, old_r, new_r, old_r_val, new_r_val, reason, old_graph, new_graph):
         """Initialize members"""
-        super(BadOptimization, self).__init__()
+        DebugModeError.__init__(self)#to be compatible with python2.4
         self.old_r = old_r
         self.new_r = new_r
         self.old_r_val = old_r_val
