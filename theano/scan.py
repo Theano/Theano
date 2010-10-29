@@ -1900,7 +1900,10 @@ class ScanSpaceOptimizer(Optimizer):
                                         except:
                                             req_steps = None
                                             break
-                        store_steps[i] = req_steps if req_steps != None else 0
+                        if req_steps != None:
+                            store_steps[i] = req_steps
+                        else:
+                            store_steps[i] = 0
                     else:
                         store_steps[i] = op.store_steps[i]
                 if numpy.any(store_steps!= op.store_steps):

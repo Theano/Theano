@@ -155,7 +155,12 @@ class SeqOptimizer(Optimizer, list):
             elif hasattr(self,"__name__"): print self.__name__,
             print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(env.nodes))
 
-            ll = [(opt.__name__ if hasattr(opt,"__name__")else opt.name,opt.__class__.__name__) for opt in self]
+            ll=[]
+            for opt in self:
+                if hasattr(opt,"__name__"):
+                    ll.append((opt.__name__,opt.__class__.__name__))
+                else:
+                    ll.append((opt.name,opt.__class__.__name__))
             lll=zip(l,ll)
             def cmp(a,b):
                 if a[0]==b[0]: return 0
