@@ -84,11 +84,11 @@ else:
 
         def __delitem__(self, i):
             size = len(self)
-            if not (-size <= i < size):
-                raise IndexError
             data = self.data
             if i < 0:
                 i += size
+            if not data.has_key(i):
+                raise IndexError
             for j in xrange(self.left+i, self.right-1):
                 data[j] = data[j+1]
             self.pop()
