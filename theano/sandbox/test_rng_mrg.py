@@ -6,6 +6,8 @@ from theano import tensor, config
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.cuda import cuda_available, cuda_enabled
+from theano.gof.python25 import any
+
 if cuda_available:
     from theano.sandbox.cuda import float32_shared_constructor
 

@@ -13,6 +13,7 @@ from theano.tensor import raw_random, TensorType, as_tensor_variable, get_vector
 from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
+from theano.gof.python25 import all
 
 from multinomial import multinomial
 
