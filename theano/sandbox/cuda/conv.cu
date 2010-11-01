@@ -521,6 +521,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     }
 
     if (1 && (version==6||version==-1) &&
+	kern_len<=320 &&
 	!work_complete) //conv_valid_row_reduce
     {
         int outsize = CudaNdarray_SIZE(out);
