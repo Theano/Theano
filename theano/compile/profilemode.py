@@ -285,7 +285,7 @@ class ProfileMode(Mode):
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
             else:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_apply, a)
-        print '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
+        print '   ... (remaining %i Apply account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))
@@ -357,8 +357,6 @@ class ProfileMode(Mode):
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
         
-        #imported here to break circular dependency...
-        from theano.tensor.basic import as_tensor_variable
         print
         print "List of apply that don't have float64 as input but have float64 in outputs. Usefull to know if we forgot some cast when using floatX=float32 or gpu code."
         print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
