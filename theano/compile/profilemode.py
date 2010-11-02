@@ -37,8 +37,9 @@ class ProfileMode(Mode):
         fct_call_time = {}#time passed inside theano fct call including op time.
         fct_call = {}
         message=""
+        outputs_size={}
         self.__setstate__((linker, optimizer, apply_time, op_cimpl,
-                           compile_time, fct_call_time, fct_call, message))
+                           compile_time, fct_call_time, fct_call, message, outputs_size))
 
     def function_maker(self, i,o,m, *args, **kwargs):
         """Return an instance of `Profiler_Maker` which init the count"""
@@ -51,10 +52,11 @@ class ProfileMode(Mode):
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.apply_time,
-                self.op_cimpl, self.compile_time, self.fct_call_time, self.fct_call, self.message)
+                self.op_cimpl, self.compile_time, self.fct_call_time, 
+                self.fct_call, self.message, self.outputs_size)
 
     def __setstate__(self, (linker, optimizer, apply_time, op_cimpl,
-                            compile_time, fct_call_time, fct_call, message)):
+                            compile_time, fct_call_time, fct_call, message, outputs_size)):
         
         self.apply_time = apply_time
         self.op_cimpl = op_cimpl
@@ -64,8 +66,11 @@ class ProfileMode(Mode):
         self.call_time = 0
         self.fn_time = 0
         self.message = ""
+        self.outputs_size = outputs_size
 
         def profile_thunk(i, node, th):
+            """ Profile only the execution time
+            """
             if hasattr(th, 'cthunk'):
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
@@ -82,12 +87,50 @@ class ProfileMode(Mode):
             apply_time[(i,node)] += dt
 
         
+        def profile_thunk2(i, node, th):
+            """ Profile the execution time and the memory size.
+            """
+            if hasattr(th, 'cthunk'):
+                t0 = time.time()
+                failure = run_cthunk(th.cthunk)
+                dt = time.time() - t0
+                if failure:
+                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot' 
+                        ' tell you what it was though.  Use a standard mode such as'
+                        ' FAST_RUN_NOGC to correct the problem.'))
+            else:
+                t0 = time.time()
+                th()
+                dt = time.time() - t0
+            size=[]
+            for o in th.outputs:
+                s=o[0].size
+                #can't use o[0].dtype.itemsize as dtype is a str for CudaNdarray
+                dtype = str(o[0].dtype)
+                dtype2=dtype[-2:]
+                if dtype2 == '32':
+                    s *= 4
+                elif dtype2 == '64':
+                    s *= 8
+                elif dtype2 == '16':
+                    s *= 2
+                elif dtype[-1] == '8':
+                    s *= 1
+                elif dtype[-3:] == '128':
+                    s *= 16
+                else:
+                    raise Exception("Can't determine the memory size of dtype",o[0].dtype)
+                size.append(s)
+            outputs_size[node]=size
+            apply_time[(i,node)] += dt
+
+
         self.provided_linker = linker
         self.provided_optimizer = optimizer
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        linker = WrapLinker([linker], profile_thunk)
+        linker = WrapLinker([linker], profile_thunk2)
             
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
@@ -116,9 +159,10 @@ class ProfileMode(Mode):
         apply_time = self.apply_time
         op_cimpl = self.op_cimpl
         message = self.message
+        outputs_size = self.outputs_size
         
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message,
+                            apply_time, op_cimpl, message, outputs_size,
                             n_apply_to_print, n_ops_to_print)
 
 
@@ -154,15 +198,16 @@ class ProfileMode(Mode):
         apply_time = diff_dict(self.apply_time, other.apply_time)
         op_cimpl = self.op_cimpl and other.op_cimpl
         message = self.message
+        outputs_size = diff_dict(self.outputs_size,other.outputs_size)
 
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message,
+                            apply_time, op_cimpl, message, outputs_size,
                             n_apply_to_print=n_apply_to_print,
                             n_ops_to_print=n_ops_to_print, print_apply=False)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
-                       apply_time, op_cimpl, message,
+                       apply_time, op_cimpl, message, outputs_size,
                        n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
         """
         do the actual printing of print_summary and print_diff_summary.
@@ -347,6 +392,80 @@ class ProfileMode(Mode):
                 for i in fct.input_storage:
                     if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
                         print fct.name, i.name, i.type, i
+
+        if outputs_size:
+            fct_memory={}#env->dict(node->(outputs size))
+            var_mem = {}
+            for node,val in outputs_size.items():
+                fct_memory.setdefault(node.env,{})
+                fct_memory[node.env][node]=val
+                for out,v in zip(node.outputs,val):
+                    var_mem[out]=v
+            print 
+            print "Profile of Theano functions memory:"            
+            for env,nodes_mem in fct_memory.iteritems():
+                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
+                size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
+                print "    Max without gc, inplace and view (KB)",size_sum/1024
+
+                node_memory_size = 0
+                node_memory_saved_by_view = 0
+                node_memory_saved_by_inplace = 0
+                running_memory_size = 0
+                running_max_memory_size = 0
+                post_thunk_old_storage = []
+                items = nodes_mem.items()
+                items.sort(key=lambda a: a[1])
+                items.reverse()
+
+                order = env.toposort()
+                computed, last_user = gof.link.gc_helper(order)
+                for node in order:
+                    post_thunk_old_storage.append([ input_idx
+                                                    for input_idx,input in enumerate(node.inputs)
+                                                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                for node,val in items[:n_apply_to_print]:
+                    dmap = getattr(node.op,'destroy_map',None)
+                    vmap = getattr(node.op,'view_map',None)
+                    
+                    for idx,v in enumerate(val):
+                        if dmap and idx in dmap:#TODO check the op returned a view
+                            node_memory_saved_by_inplace += v
+                        elif vmap and idx in vmap:#TODO check the op returned a view
+                            node_memory_saved_by_view += v
+                        else: 
+                            node_memory_size += v
+                            running_memory_size += v
+                            if running_memory_size > running_max_memory_size:
+                                running_max_memory_size = running_memory_size
+                            old_storage = post_thunk_old_storage[order.index(node)]
+                            for old_s in old_storage:
+                                running_memory_size -= var_mem[node.inputs[old_s]]
+                                pass
+                    pass
+
+                print "    Max FAST_RUN_NO_GC (KB)", node_memory_size/1024
+                print "    Max FAST_RUN (KB)", running_max_memory_size/1024
+                print "    Memory saved by view (KB)", node_memory_saved_by_view/1024
+                print "    Memory saved by inplace (KB)", node_memory_saved_by_inplace/1024
+                print "    Memory saved by GC (KB)", (node_memory_size-running_max_memory_size)/1024
+                
+                n_apply_to_print+=10#TODO remove this line
+                print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
+                print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected." 
+                for key,val in items[:n_apply_to_print]:
+                    code = ['c']*len(node.outputs)
+                    for out,inp in getattr(key.op,'destroy_map',{}).iteritems():
+                        code[out] = "i"
+                    for out,inp in getattr(key.op,'view_map',{}).iteritems():
+                        code[out] = "v"
+                    print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
+                
+            print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(nodes_mem)-n_ops_to_print),
+                  sum(sum(val) for key, val in items[n_ops_to_print:]),
+                  sum(sum(val) for key, val in items[n_ops_to_print:])/size_sum)
+
 
         print
         print "We guess some tips to make your code faster. If you think of new one, suggest them on the mailing list. Test them before use as they are not guaranted to always give a speed up."
