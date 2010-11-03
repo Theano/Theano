@@ -252,11 +252,74 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode
         return """
+//a version that use less register but don't work in all case.
+        static __global__ void k_multi_warp_less_%(nodename)s(
+            const int nb_batch,
+            const int nb_stack,
+            const int height,
+            const int width,
+            const int c,
+            const int d,
+            const int step_x,
+            const int step_y,
+            const int grid_c,
+            const int grid_d,
+            const int stride0, const int stride1, const int stride2, const int stride3,
+            float * global_ten4,
+            float * global_out
+        )
+        {
+            const int wrap_centered_idx_shift_x = c/2;
+            const int wrap_centered_idx_shift_y = d/2;
+
+            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x*blockDim.z){
+                const int b = tblock%%grid_d;
+                int left = tblock/grid_d;
+                const int a = left%%grid_c;
+                left = left/grid_c;
+                const int s = left%%nb_stack;
+                left = left/nb_stack;
+                const int n = left;
+
+                if(n>nb_batch)continue;
+                if(s>nb_stack)continue;
+                if(a>grid_c)continue;
+                if(b>grid_d)continue;
+                            int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
+                            int i = threadIdx.y;     // loop over c
+                            {
+                                int ten4_2 = i + a * step_x;
+                                if("%(mode)s"=="wrap_centered"){
+                                    ten4_2 -= wrap_centered_idx_shift_x;
+                                    if ( ten4_2 < 0 ) ten4_2 += height;
+                                    else if (ten4_2 >= height) ten4_2 -= height;
+                                }
+                                int j = threadIdx.x;  // loop over d
+                                {
+                                    int ten4_3 = j + b * step_y;
+                                    if("%(mode)s"=="wrap_centered"){
+                                        ten4_3 -= wrap_centered_idx_shift_y;
+                                        if ( ten4_3 < 0 ) ten4_3 += width;
+                                        else if (ten4_3 >= width) ten4_3 -= width;
+                                    }
+
+                                    //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
+                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
+                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
+
+                                    int z_col = j + d * i;
+                                    int z_idx = z_col + c*d*z_row;
+                                    global_out[z_idx] = global_ten4[ten4_idx];
+                                }
+                            }
+            }
+        }
+
         static __global__ void k_multi_warp_%(nodename)s(
             const int nb_batch,
             const int nb_stack,
@@ -423,7 +486,7 @@ class GpuImages2Neibs(Images2Neibs):
             const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
             const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
             
-            dim3 n_threads(c,d,1);
+            dim3 n_threads(d,c,1);
             //Their is a max of 512 threads per blocks
             while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--; 
             while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--; 
@@ -441,7 +504,18 @@ class GpuImages2Neibs(Images2Neibs):
             dim3 n_blocks(std::min(32*1024,nb_block));
             int n_shared = 0;
 
-            k_multi_warp_%(name)s<<<n_blocks, n_threads, n_shared>>>(                
+	    void (*f)(int, int, int ,int,
+                      int, int, int ,int,
+                      int, int,
+                      int, int, int, int,
+                      float*, float*);
+            if(n_threads.x==c && n_threads.y==d){
+                f = k_multi_warp_less_%(name)s;
+            }else{
+                f = k_multi_warp_%(name)s;
+            }
+
+            f<<<n_blocks, n_threads, n_shared>>>(                
                 nb_batch,
                 nb_stack,
                 height, width,
