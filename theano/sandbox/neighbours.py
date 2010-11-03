@@ -509,7 +509,7 @@ class GpuImages2Neibs(Images2Neibs):
                       int, int,
                       int, int, int, int,
                       float*, float*);
-            if(n_threads.x==c && n_threads.y==d){
+            if(n_threads.x==d && n_threads.y==c){
                 f = k_multi_warp_less_%(name)s;
             }else{
                 f = k_multi_warp_%(name)s;
