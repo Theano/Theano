@@ -252,7 +252,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode
@@ -290,7 +290,7 @@ class GpuImages2Neibs(Images2Neibs):
                 if(a>grid_c)continue;
                 if(b>grid_d)continue;
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
-                            for (int i = 0; i < c; i++)     // loop over c
+                            for (int i = threadIdx.y; i < c; i+=blockDim.y)     // loop over c
                             {
                                 int ten4_2 = i + a * step_x;
                                 if("%(mode)s"=="wrap_centered"){
@@ -430,7 +430,7 @@ class GpuImages2Neibs(Images2Neibs):
                 nb_block = (int)((float)nb_batch/32. + 1.); 
                 
             dim3 n_blocks(std::min(32*1024,CudaNdarray_HOST_DIMS(%(z)s)[0]),1,1);
-            dim3 n_threads(32,1,1);
+            dim3 n_threads(c,d,1);
             int n_shared = 0;
 
             k_multi_warp_%(name)s<<<n_blocks, n_threads, n_shared>>>(                
