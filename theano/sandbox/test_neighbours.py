@@ -279,7 +279,10 @@ def test_neibs_gpu():
     if cuda.cuda_available == False:
        raise SkipTest('Optional package cuda disabled')
     for shape, pshape in [((100,40,18,18),(2,2)),
-                          ((10,40,66,66),(33,33))]:
+                          ((100,40,6,18),(3,2)),
+                          ((10,40,66,66),(33,33)),
+                          ((10,40,68,66),(34,33))
+                          ]:
 
         images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
         neib_shape = T.as_tensor_variable(pshape)
