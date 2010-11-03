@@ -252,7 +252,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode
@@ -276,7 +276,7 @@ class GpuImages2Neibs(Images2Neibs):
             const int wrap_centered_idx_shift_x = c/2;
             const int wrap_centered_idx_shift_y = d/2;
 
-            for(int tblock = blockIdx.x;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x){
+            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x*blockDim.z){
                 const int b = tblock%%grid_d;
                 int left = tblock/grid_d;
                 const int a = left%%grid_c;
@@ -423,14 +423,22 @@ class GpuImages2Neibs(Images2Neibs):
             const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
             const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
             
-            int nb_block;
-            if (nb_batch %% 32 == 0)
-                nb_block = nb_batch/32;
-            else
-                nb_block = (int)((float)nb_batch/32. + 1.); 
-                
-            dim3 n_blocks(std::min(32*1024,CudaNdarray_HOST_DIMS(%(z)s)[0]),1,1);
             dim3 n_threads(c,d,1);
+            //Their is a max of 512 threads per blocks
+            while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--; 
+            while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--; 
+
+            //Make bigger block to have better memory access pattern and a higher core utilisation.
+            //for smaller patch size
+            while(c*d*(n_threads.z+1) < 128 && n_threads.z<64 && n_threads.z<CudaNdarray_HOST_DIMS(%(z)s)[0]){
+                n_threads.z++;
+            }
+            int nb_block;
+            if (CudaNdarray_HOST_DIMS(%(z)s)[0] %% n_threads.z == 0)
+                nb_block = CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z;
+            else
+                nb_block = (CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z) + 1;
+            dim3 n_blocks(std::min(32*1024,nb_block));
             int n_shared = 0;
 
             k_multi_warp_%(name)s<<<n_blocks, n_threads, n_shared>>>(                
