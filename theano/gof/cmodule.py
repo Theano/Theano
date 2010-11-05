@@ -684,8 +684,8 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
         # Figure out whether the current Python executable is 32 or 64 bit and compile accordingly
         n_bits = local_bitwidth()
-        preargs.extend(['-m{0}'.format(n_bits)])
-        debug("OS X: compiling for {0} bit architecture".format(n_bits))
+        preargs.extend(['-m%s' % n_bits])
+        debug("OS X: compiling for %s bit architecture" % n_bits)
 
     # sometimes, the linker cannot find -lpython so we need to tell it 
     # explicitly where it is located
