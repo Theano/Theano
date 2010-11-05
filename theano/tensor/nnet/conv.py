@@ -18,6 +18,16 @@ from theano import gof, Op, tensor, config
 from theano.tensor.tsor_apply import Apply
 from theano.gof.python25 import any
 
+imported_scipy_signal = False
+try:
+    # TODO: move these back out to global scope when they no longer cause an atexit error
+    from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
+    from scipy.signal.sigtools import _convolve2d
+    imported_scipy_signal = True
+except ImportError:
+    pass
+    
+
 _logger=logging.getLogger("theano.signal.conv")
 def _debug(*msg):
     _logger.debug(' '.join([ str(x) for x in msg]))
@@ -547,9 +557,12 @@ class ConvOp(Op):
         """
         By default if len(img2d.shape)==3, we
         """
+        if not imported_scipy_signal:
+            raise theano.gof.utils.MethodNotDefined(
+                "c_headers", type(self), self.__class__.__name__,
+                "Need the python package for scipy.signal to be installed for the python implementation. You can use the C implementation instead.")
+            
         # TODO: move these back out to global scope when they no longer cause an atexit error
-        from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
-        from scipy.signal.sigtools import _convolve2d
         imshp = self.imshp
         if imshp is None or any([x is None for x in imshp]):
             imshp = tuple(img2d.shape[1:])
@@ -584,8 +597,6 @@ class ConvOp(Op):
             z[0] = numpy.zeros((bsize,)+(nkern,)+fulloutshp,
                            dtype=img2d.dtype)
         zz=z[0]
-        val = _valfrommode(self.out_mode)
-        bval = _bvalfromboundary('fill')
 
         stacklen = imshp[0]
 
@@ -616,12 +627,34 @@ class ConvOp(Op):
             filtersflipped = buf
             del buf, rstride, cstride
 
+        val = _valfrommode(self.out_mode)
+        bval = _bvalfromboundary('fill')
+
         for b in range(bsize):
             for n in range(nkern):
                 zz[b,n,...].fill(0)
                 for im0 in range(stacklen):
                     zz[b,n,...] +=  _convolve2d(\
                         img2d[b,im0,...], filtersflipped[n,im0,...],1,val, bval, 0)
+
+        if False:
+            if False and self.out_mode=="full":
+                img2d2 = numpy.zeros((bsize,stacklen,
+                                      imshp[1]+2*kshp[0]-2,
+                                      imshp[2]+2*kshp[1]-2))
+                img2d2[:,:,kshp[0]-1:kshp[0]-1+imshp[1],
+                           kshp[1]-1:kshp[1]-1+imshp[2]] = img2d
+                img2d = img2d2
+            #N_image_shape = image_data.shape
+
+            for b in range(bsize):
+                for n in range(nkern):
+                    zz[b,n,...].fill(0)
+                    for im0 in range(stacklen):
+                        for row in range(0,zz.shape[2],self.dx):
+                            for col in range(0,zz.shape[3],self.dy):
+                                zz[b,n,row,col] += (img2d[b,im0,row:row+kshp[0],col:col+kshp[1]]*\
+                                                            filtersflipped[n,im0,::-1,::-1]).sum()
 
         #We copy it to remove the Stride mismatch warning from DEBUG_MODE.
         #The copy make that we return an object with the same stride as the c version.

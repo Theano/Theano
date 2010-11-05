@@ -1,6 +1,5 @@
 import sys, time, unittest
 import numpy
-from scipy import signal
 
 import theano
 import theano.tensor as T
@@ -59,7 +58,13 @@ class TestSignalConv2D(unittest.TestCase):
 
                 image2d = image_data3d[b,:,:]
                 filter2d = filter_data3d[k,:,:]
-                output2d = signal.convolve2d(image2d, filter2d, 'valid')
+                output2d = numpy.zeros(ref_output.shape)
+                for row in range(ref_output.shape[0]):
+                    for col in range(ref_output.shape[1]):
+                        output2d[row,col] += (image2d[row:row+filter2d.shape[0],
+                                                            col:col+filter2d.shape[1]]*filter2d[::-1,::-1]
+                                                    ).sum()
+
 
                 self.failUnless(_allclose(theano_output4d[b,k,:,:], output2d))
 

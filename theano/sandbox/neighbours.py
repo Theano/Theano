@@ -252,13 +252,13 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return ()
-        return (2,)
+        return (6,)
 
     def c_support_code_apply(self, node, nodename):
-        if self.mode=="valid":
-            return """
-        static __global__ void k_multi_warp_%(nodename)s(
+        mode = self.mode
+        return """
+//a version that use less register but don't work in all case.
+        static __global__ void k_multi_warp_less_%(nodename)s(
             const int nb_batch,
             const int nb_stack,
             const int height,
@@ -274,8 +274,10 @@ class GpuImages2Neibs(Images2Neibs):
             float * global_out
         )
         {
-        
-            for(int tblock = blockIdx.x;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x){
+            const int wrap_centered_idx_shift_x = c/2;
+            const int wrap_centered_idx_shift_y = d/2;
+
+            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x*blockDim.z){
                 const int b = tblock%%grid_d;
                 int left = tblock/grid_d;
                 const int a = left%%grid_c;
@@ -289,12 +291,23 @@ class GpuImages2Neibs(Images2Neibs):
                 if(a>grid_c)continue;
                 if(b>grid_d)continue;
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
-                            for (int i = 0; i < c; i++)     // loop over c
+                            int i = threadIdx.y;     // loop over c
                             {
                                 int ten4_2 = i + a * step_x;
-                                for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
+                                if("%(mode)s"=="wrap_centered"){
+                                    ten4_2 -= wrap_centered_idx_shift_x;
+                                    if ( ten4_2 < 0 ) ten4_2 += height;
+                                    else if (ten4_2 >= height) ten4_2 -= height;
+                                }
+                                int j = threadIdx.x;  // loop over d
                                 {
                                     int ten4_3 = j + b * step_y;
+                                    if("%(mode)s"=="wrap_centered"){
+                                        ten4_3 -= wrap_centered_idx_shift_y;
+                                        if ( ten4_3 < 0 ) ten4_3 += width;
+                                        else if (ten4_3 >= width) ten4_3 -= width;
+                                    }
+
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
                                     //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
                                     int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
@@ -307,9 +320,6 @@ class GpuImages2Neibs(Images2Neibs):
             }
         }
 
-        """ % locals()
-        if self.mode=="wrap_centered":
-            return """
         static __global__ void k_multi_warp_%(nodename)s(
             const int nb_batch,
             const int nb_stack,
@@ -329,7 +339,7 @@ class GpuImages2Neibs(Images2Neibs):
             const int wrap_centered_idx_shift_x = c/2;
             const int wrap_centered_idx_shift_y = d/2;
 
-            for(int tblock = blockIdx.x;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x){
+            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;tblock<nb_batch*nb_stack*grid_c*grid_d;tblock+=gridDim.x*blockDim.z){
                 const int b = tblock%%grid_d;
                 int left = tblock/grid_d;
                 const int a = left%%grid_c;
@@ -343,19 +353,23 @@ class GpuImages2Neibs(Images2Neibs):
                 if(a>grid_c)continue;
                 if(b>grid_d)continue;
                             int z_row = b + grid_d*(a + grid_c*(s + nb_stack*n));
-                            for (int i = 0; i < c; i++)     // loop over c
+                            for (int i = threadIdx.y; i < c; i+=blockDim.y)     // loop over c
                             {
                                 int ten4_2 = i + a * step_x;
-                                ten4_2 -= wrap_centered_idx_shift_x;
-                                if ( ten4_2 < 0 ) ten4_2 += height;
-                                else if (ten4_2 >= height) ten4_2 -= height;
-
+                                if("%(mode)s"=="wrap_centered"){
+                                    ten4_2 -= wrap_centered_idx_shift_x;
+                                    if ( ten4_2 < 0 ) ten4_2 += height;
+                                    else if (ten4_2 >= height) ten4_2 -= height;
+                                }
                                 for (int j = threadIdx.x; j < d; j+=blockDim.x)  // loop over d
                                 {
                                     int ten4_3 = j + b * step_y;
-                                    ten4_3 -= wrap_centered_idx_shift_y;
-                                    if ( ten4_3 < 0 ) ten4_3 += width;
-                                    else if (ten4_3 >= width) ten4_3 -= width;
+                                    if("%(mode)s"=="wrap_centered"){
+                                        ten4_3 -= wrap_centered_idx_shift_y;
+                                        if ( ten4_3 < 0 ) ten4_3 += width;
+                                        else if (ten4_3 >= width) ten4_3 -= width;
+                                    }
+
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
                                     //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
                                     int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
@@ -369,7 +383,6 @@ class GpuImages2Neibs(Images2Neibs):
         }
 
         """ % locals()
-
 
     def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
         fail = sub['fail']
@@ -473,17 +486,36 @@ class GpuImages2Neibs(Images2Neibs):
             const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
             const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
             
+            dim3 n_threads(d,c,1);
+            //Their is a max of 512 threads per blocks
+            while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--; 
+            while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--; 
+
+            //Make bigger block to have better memory access pattern and a higher core utilisation.
+            //for smaller patch size
+            while(c*d*(n_threads.z+1) < 128 && n_threads.z<64 && n_threads.z<CudaNdarray_HOST_DIMS(%(z)s)[0]){
+                n_threads.z++;
+            }
             int nb_block;
-            if (nb_batch %% 32 == 0)
-                nb_block = nb_batch/32;
+            if (CudaNdarray_HOST_DIMS(%(z)s)[0] %% n_threads.z == 0)
+                nb_block = CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z;
             else
-                nb_block = (int)((float)nb_batch/32. + 1.); 
-                
-            dim3 n_blocks(std::min(32*1024,CudaNdarray_HOST_DIMS(%(z)s)[0]),1,1);
-            dim3 n_threads(32,1,1);
+                nb_block = (CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z) + 1;
+            dim3 n_blocks(std::min(32*1024,nb_block));
             int n_shared = 0;
 
-            k_multi_warp_%(name)s<<<n_blocks, n_threads, n_shared>>>(                
+	    void (*f)(int, int, int ,int,
+                      int, int, int ,int,
+                      int, int,
+                      int, int, int, int,
+                      float*, float*);
+            if(n_threads.x==d && n_threads.y==c){
+                f = k_multi_warp_less_%(name)s;
+            }else{
+                f = k_multi_warp_%(name)s;
+            }
+
+            f<<<n_blocks, n_threads, n_shared>>>(                
                 nb_batch,
                 nb_stack,
                 height, width,

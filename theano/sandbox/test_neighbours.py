@@ -278,26 +278,30 @@ def test_neibs_wrap_centered_step_manual():
 def test_neibs_gpu():
     if cuda.cuda_available == False:
        raise SkipTest('Optional package cuda disabled')
-   
-    shape = (100,40,18,18)
-    images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
-    neib_shape = T.as_tensor_variable((2,2))#(array((2,2), dtype='float32'))
+    for shape, pshape in [((100,40,18,18),(2,2)),
+                          ((100,40,6,18),(3,2)),
+                          ((10,40,66,66),(33,33)),
+                          ((10,40,68,66),(34,33))
+                          ]:
 
-    from theano.sandbox.cuda.basic_ops import gpu_from_host
+        images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
+        neib_shape = T.as_tensor_variable(pshape)
 
-    f = function([], images2neibs(images,neib_shape),
-                 mode=mode_with_gpu)
-    f_gpu = function([], images2neibs(images,neib_shape),
-                 mode=mode_with_gpu)
-    assert any([isinstance(node.op,GpuImages2Neibs) for node in f_gpu.maker.env.toposort()])
-    #print images.value
-    neibs = numpy.asarray(f_gpu())
-    assert numpy.allclose(neibs,f())
-    #print neibs
-    g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_with_gpu)
-    assert any([isinstance(node.op,GpuImages2Neibs) for node in f.maker.env.toposort()])
-    #print numpy.asarray(g())
-    assert numpy.allclose(images.value,g())
+        from theano.sandbox.cuda.basic_ops import gpu_from_host
+
+        f = function([], images2neibs(images,neib_shape),
+                     mode=mode_with_gpu)
+        f_gpu = function([], images2neibs(images,neib_shape),
+                     mode=mode_with_gpu)
+        assert any([isinstance(node.op,GpuImages2Neibs) for node in f_gpu.maker.env.toposort()])
+        #print images.value
+        neibs = numpy.asarray(f_gpu())
+        assert numpy.allclose(neibs,f())
+        #print neibs
+        g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_with_gpu)
+        assert any([isinstance(node.op,GpuImages2Neibs) for node in f.maker.env.toposort()])
+        #print numpy.asarray(g())
+        assert numpy.allclose(images.value,g())
 
 
 def speed_neibs():

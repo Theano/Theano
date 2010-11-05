@@ -1,9 +1,17 @@
 import sys, time
 import numpy
+
+from nose.plugins.skip import SkipTest
+imported_scipy_convolve2d = False
+try:
+    from scipy.signal import convolve2d
+    imported_scipy_convolve2d = True
+except ImportError:
+    pass
+
 import theano
 
 # Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -38,9 +46,23 @@ def py_conv_full_numpy(img, kern):
     pad_cols = 2*(kern.shape[3]-1) + img.shape[3]
     padded_img = numpy.zeros((img.shape[0], img.shape[1], pad_rows, pad_cols), dtype=img.dtype)
     padded_img[:,:,kern.shape[2]-1:kern.shape[2]-1+img.shape[2],kern.shape[3]-1:kern.shape[3]-1+img.shape[3]] = img
-    return py_conv_valid(padded_img, kern)
+    return py_conv_valid_numpy(padded_img, kern)
+
+def py_conv(img, kern, mode, subsample):
+    """
+    use a scipy or numpy implementation depending is scipy is available.
+    The scipy version is faster.
+    """
+    if imported_scipy_convolve2d:
+        return py_conv_scipy(img, kern, mode, subsample)
+    elif mode=='valid':
+        return py_conv_valid_numpy(img,kern)[:,:,::subsample[0],::subsample[1]]
+    elif mode=='full':
+        return py_conv_full_numpy(img,kern)[:,:,::subsample[0],::subsample[1]]
+    else:
+        raise Exception("Can't execute this kernel.")
+
 def py_conv_scipy(img, kern, mode, subsample):
-    from scipy.signal import convolve2d
     assert img.shape[1] == kern.shape[1]
     if mode == 'valid':
         outshp = (img.shape[0], kern.shape[0],
@@ -89,7 +111,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
     rval = True
     try:
         t0 = time.time()
-        cpuval = py_conv_scipy(npy_img, npy_kern, mode, subsample)
+        cpuval = py_conv(npy_img, npy_kern, mode, subsample)
         t1 = time.time()
         i = cuda_tensor4()
         k = cuda_tensor4()
@@ -550,7 +572,7 @@ def _test_dummy():
     rval = True
 
     t0 = time.time()
-    cpuval = py_conv_scipy(npy_img, npy_kern, mode, subsample)
+    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
     t1 = time.time()
     gpuval = cuda_ndarray.conv(img, kern, mode, subsample)
     t2 = time.time()

@@ -12,7 +12,7 @@ import numpy, theano
 #from copy import copy as python_copy
 
 from theano import gof, shared
-from theano.gof import Variable, Op, utils, Type, Constant,  Value
+from theano.gof import Variable, Op, Type, Constant,  Value
 from theano.tensor.tsor_apply import Apply
 
 from theano import gradient
@@ -21,7 +21,7 @@ import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
 from theano import compile, printing
-from theano.printing import pprint, Print
+from theano.printing import pprint
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum

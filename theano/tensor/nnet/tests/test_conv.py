@@ -1,6 +1,5 @@
 import sys, time, unittest
 import numpy
-from scipy import signal
 
 import theano
 import theano.tensor as T
@@ -60,6 +59,7 @@ class TestConv2D(unittest.TestCase):
 
         ############# REFERENCE IMPLEMENTATION ############
         s = 1.
+        orig_image_data = image_data
         if border_mode is not 'full': s = -1.
         out_shape2d = numpy.array(N_image_shape[-2:]) +\
                       s*numpy.array(N_filter_shape[-2:]) - s
@@ -68,26 +68,41 @@ class TestConv2D(unittest.TestCase):
         ref_output = numpy.zeros(out_shape)
 
         # loop over output feature maps
-        for k in range(N_filter_shape[0]):
-            # loop over input feature maps
-            for l in range(N_filter_shape[1]):
-
-                filter2d = filter_data[k,l,:,:]
-
-                # loop over mini-batches
-                for b in range(N_image_shape[0]):
-                    image2d = image_data[b,l,:,:]
-                    output2d = signal.convolve2d(image2d, filter2d, border_mode)
-
-                    ref_output[b,k,:,:] +=\
-                       output2d[::subsample[0],::subsample[1]]
+        ref_output.fill(0)
+        if border_mode=='full':
+            image_data2 = numpy.zeros((N_image_shape[0],N_image_shape[1],
+                                      N_image_shape[2]+2*N_filter_shape[2]-2,
+                                      N_image_shape[3]+2*N_filter_shape[3]-2))
+            image_data2[:,:,N_filter_shape[2]-1:N_filter_shape[2]-1+N_image_shape[2],
+                            N_filter_shape[3]-1:N_filter_shape[3]-1+N_image_shape[3]] = image_data
+            image_data = image_data2
+            N_image_shape = image_data.shape
+        for bb in range(N_image_shape[0]):
+            for nn in range(N_filter_shape[0]):
+                for im0 in range(N_image_shape[1]):
+                    filter2d = filter_data[nn,im0,:,:]
+                    image2d = image_data[bb,im0,:,:]
+                    for row in range(ref_output.shape[2]):
+                        irow = row * subsample[0]#image row
+                        for col in range(ref_output.shape[3]):
+                            icol = col * subsample[1]#image col
+                            ref_output[bb,nn,row,col] += (image2d[irow:irow+N_filter_shape[2],
+                                                                  icol:icol+N_filter_shape[3]]*filter2d[::-1,::-1]
+                                                          ).sum()
 
         self.failUnless(_allclose(theano_output, ref_output))
 
         ############# TEST GRADIENT ############
         if verify_grad:
-            utt.verify_grad(sym_conv2d, [image_data, filter_data])
+            utt.verify_grad(sym_conv2d, [orig_image_data, filter_data])
 
+
+    def test_basic1(self):
+        """
+        Tests that basic convolutions work for odd and even dimensions of image and filter
+        shapes, as well as rectangular images and filters.
+        """
+        self.validate((2,2,3,3), (2,2,2,2), 'valid', verify_grad=False)
 
     def test_basic(self):
         """

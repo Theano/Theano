@@ -421,7 +421,7 @@ class GpuDownsampleFactorMax(Op):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return ()
+        return (1)
     def c_code(self, node, nodename, (x,), (z,), sub):
         fail = sub['fail']
         ds0, ds1 = self.ds
