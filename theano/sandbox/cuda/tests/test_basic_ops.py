@@ -30,6 +30,7 @@ else:
 def rand_cuda_ndarray(shape):
     return cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
 
+#intentionally disabled
 def tes_use():
     tcn.use()
 
@@ -750,7 +751,38 @@ def test_set_subtensor():
     assert sum([isinstance(node.op,cuda.GpuIncSubtensor) and node.op.set_instead_of_inc==True for node in f.maker.env.toposort() ])==1
     print f(xval,yval)
 
+
+def test_many_arg_elemwise():
+    """this test checks whether the + and * elemwise ops can handle extremely large numbers of
+    arguments on gpu
+    i.e., it is a test of the optimization theano/sandbox/cuda/opt.py:local_gpu_huge_add_or_mul """
+    rng = numpy.random.RandomState( [1,2,3])
+
+    for num_args in [25]:
+
+        rows = rng.randint(1,5)
+        cols = rng.randint(1,5)
+
+        for op_to_test in [ theano.tensor.add, theano.tensor.mul ]:
+            args = [ numpy.cast['float32'](rng.randn(rows,cols)) for arg in xrange(0,num_args) ]
+            symb_args = [ theano.tensor.fmatrix() for arg in xrange(0,num_args) ]            
+
+            
+            outputs = []
+            for mode in [ mode_with_gpu, mode_without_gpu ]:
+                f = theano.function( symb_args, op_to_test(*symb_args), mode = mode )
+                #theano.printing.debugprint(f)
+                outputs.append( f( * args) )
+            
+            results_gpu, results_cpu = outputs
+
+            assert numpy.allclose(results_gpu, results_cpu)
+
+
+
+
 if __name__ == '__main__':
+    test_many_arg_elemwise()
     test_gpujoin_twomatrices_joincolumns()
     test_gpujoin_assert_cndas()
     test_gpujoin_preserves_broadcasting()
