@@ -11,7 +11,10 @@ problems, and introduce some of the tools that we use to find problems in our
 Theano code, and even (it happens) in Theano's internals, such as
 :ref:`using_debugmode`.
 
+Isolating the problem/Testing Theano compiler
+---------------------------------------------
 
+You can run your Theano function in a DebugMode(:ref:`using_debugmode`). This test the Theano optimizations and help to find where NaN, inf and other problem come from.
 
 
 How do I print an intermediate value in a Function/Method?
