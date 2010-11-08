@@ -58,7 +58,7 @@ methods:
 
       This method takes an Env object which contains the computation graph
       and does modifications in line with what the optimization is meant
-      to do. This is of the main method of the optimizer.
+      to do. This is one of the main methods of the optimizer.
 
     .. method:: add_requirements(env)
 
