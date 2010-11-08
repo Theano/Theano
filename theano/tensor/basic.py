@@ -362,6 +362,8 @@ def get_constant_value(v):
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
+        if isinstance(v.owner.op, Subtensor) and v.ndim==0 and isinstance(v.owner.inputs[0], TensorConstant):
+            return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
     raise TypeError(v)
 
 
