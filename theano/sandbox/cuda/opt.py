@@ -18,6 +18,7 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.compile import optdb
+from theano.tensor.blas import _is_real_vector, _is_real_matrix
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
 gpu_optimizer = EquilibriumDB()
@@ -150,6 +151,56 @@ def local_gpu_dimshuffle_0(node):
             return [new_op(gpu_from_host(dimshuffle_node.inputs[0]))]
     return False
 
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_dot_to_dot22(node):
+    """
+    gpu_from_host(dot) -> gpudot(gpu_from_host)
+    dot(host_from_gpu) -> host_from_gpu(gpudot)
+
+    This optimization solves the vector-matrix multiplication issue by
+    transforming the vector into a matrix, apply gpudot22 and reshaping
+    the output.
+
+    A more suitable solution would be to use the right cublas call
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op == tensor.basic.dot:
+            x, y = host_input.owner.inputs
+            # case one vector X matrix
+            if _is_real_vector(x) and _is_real_matrix(y):
+                new_op = GpuDimShuffle((False,), ['x',0])
+                shape_out = y.shape[0],dimshuffle(['x'])
+                gpu_x = new_op(gpu_from_host(x))
+                gpu_y = gpu_from_host(y)
+            # case two matrix X vector
+            elif _is_real_matrix(x) and _is_real_vector(y):
+                new_op = GpuDimShuffle((False,), [0,'x'])
+                shape_out = x.shape[1].dimshuffle(['x'])
+                gpu_x = gpu_from_host(x)
+                gpu_y = new_op(gpu_from_host(y))
+            return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
+    if node.op == tensor.basic.dot:
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
+            x, y = node.inputs
+            if _is_real_vector(x) and _is_real_matrix(y):
+                new_op = GpuDimShuffle((False,), ['x',0])
+                shape_out = y.shape[0].dimshuffle(['x'])
+                gpu_x = new_op(gpu_from_host(x))
+                gpu_y = gpu_from_host(y)
+
+            elif _is_real_matrix(x) and _is_real_vector(y):
+                new_op = GpuDimShuffle((False,), [0,'x'])
+                shape_out = x.shape[1].dimshuffle(['x'])
+                gpu_x = gpu_from_host(x)
+                gpu_y = new_op(gpu_from_host(y))
+            return [host_from_gpu(GpuReshape(1)(gpu_dot22(gpu_x, gpu_y),
+                                                shape_out))]
+    return False
+
+
 @register_opt()
 @local_optimizer([])
 def local_gpu_dot22(node):
@@ -187,6 +238,50 @@ def local_gpu_dot22scalar(node):
             x, y, scalar = node.inputs
             return [host_from_gpu(gpu_dot22scalar(gpu_from_host(x), gpu_from_host(y),tensor.blas._as_scalar(scalar)))]
     return False
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_gemv_as_gemm(node):
+    """
+    gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
+    gemm(host_from_gpu) -> host_from_gpu(gpu_gemv)
+
+    This optimization solves the vector-matrix multiplication issue by
+    transforming the vector into a matrix, apply gpudot22 and reshaping
+    the output.
+
+    A more suitable solution would be to use the right cublas call
+    """
+    gemvs = {tensor.blas.gemv_inplace: gpu_gemm_inplace,
+            tensor.blas.gemv_no_inplace: gpu_gemm_no_inplace}
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op in gemvs:
+            op = host_input.owner.op
+            z, a, x, y, b = host_input.owner.inputs
+            return [
+                GpuDimShuffle((False,True),[0])(gemvs[op](
+                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+                    , a
+                    , gpu_from_host(x)
+                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
+                    , b))]
+    if node.op in gemvs:
+        z, a, x, y, b = node.inputs
+        x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
+        y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
+        z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
+        if x_on_gpu or y_on_gpu or z_on_gpu:
+            return [host_from_gpu(GpuDimShuffle((False,True),[0])(
+                gemvs[node.op](
+                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+                    , a
+                    , gpu_from_host(x)
+                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
+                    , b)))]
+    return False
+
 
 @register_opt()
 @local_optimizer([])
