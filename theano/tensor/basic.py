@@ -57,7 +57,7 @@ __oplist_constructor_list = []
 """List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
 def constructor(f):
     """Add `f` to :doc:`oplist`.
-    
+
     Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt).
     """
     __oplist_constructor_list.append(f)
@@ -80,7 +80,7 @@ if 0:
         if hasattr(x, '_as_CudaNdarrayVariable'):
             return x._as_CudaNdarrayVariable() #TODO: pass name and ndim arguments
         return as_tensor_variable(x, name, ndim)
-    
+
 def as_tensor_variable(x, name = None, ndim=None):
     """Return `x`, transformed into a `TensorType`
 
@@ -158,7 +158,7 @@ class NumpyAutocaster(object):
 
     When config.floatX is float32 (at the time of calling), then this function downcasts float
     and numpy.float arguments to numpy.float32, if float32 is in the self.dtypes list.
-    
+
     Python ints are always 64bit and floats are always double precision.
     This class uses the algorithm in __call__ to use a narrower dtype when no precision would
     be lost, and to even lose precision when this is demanded by the list of dtypes (e.g. to
@@ -182,7 +182,7 @@ class NumpyAutocaster(object):
         # recall: float is numpy.float
         if isinstance(x, float) and config.floatX in self.dtypes and config.floatX == 'float32':
             return theano._asarray(x, dtype='float32')
-            
+
         for dtype in self.dtypes:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
@@ -200,7 +200,7 @@ autocast_float = NumpyAutocaster(('float32', 'float64'))
 # this autocasting, and in future, our ops might be smarter about factoring out upcasts.   The
 # advantage of this mechanism is to combine it with floatX so that 1.0 + xmatrix() will always
 # have the same type as the xmatrix().
-# 
+#
 class autocast_float_as(object):
     """This class makes it possible to temporarily and locally adjust autocasting behaviour.
 
@@ -222,7 +222,7 @@ class autocast_float_as(object):
 
 def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`
-    
+
     :Exceptions:
      - `TypeError`: `x` could not be converted to a numpy.ndarray
      - `ValueError`: `x` could not be expanded to have ndim dimensions
@@ -295,19 +295,19 @@ if int(config.tensor.cmp_sloppy)>1:
     # useful to test the GPU as they don't use extended precision and
     # this cause some difference bigger then the normal sloppy.
     float32_atol = 5e-4
-    float32_rtol = 1e-3 
+    float32_rtol = 1e-3
     float64_rtol = 1e-4
     float64_atol = 1e-3
 elif int(config.tensor.cmp_sloppy):
     float32_atol = 1e-4
-    float32_rtol = 1e-3 
+    float32_rtol = 1e-3
     float64_rtol = 1e-4
     float64_atol = 1e-3
 else:
     #If you change those value in test don't forget to put them back when the test end.
     #Don't forget the case when the test fail.
     float32_atol = 1e-5
-    float32_rtol = 1e-3 
+    float32_rtol = 1e-3
 
     # defaults in numpy.allclose
     float64_rtol = 1.0000000000000001e-05
@@ -395,7 +395,7 @@ class TensorType(Type):
         if self.dtype=='floatX':
           self.dtype=config.floatX
         ###    broadcastable is immutable, and all elements are either True or False
-        self.broadcastable = tuple(bool(b) for b in broadcastable) 
+        self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.dtype_specs() # error checking is done there
         self.name = name
         self.numpy_dtype = numpy.dtype(self.dtype)
@@ -438,12 +438,12 @@ class TensorType(Type):
         except Exception, e:
             return str(e)
         return "value is valid"
-        
+
 
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that corresponds to
         self.dtype.
-        
+
         This function is used internally as part of C code generation.
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
@@ -483,7 +483,7 @@ class TensorType(Type):
         a_eq_b = (a==b)
         r = numpy.all(a_eq_b)
         if r: return True
-        # maybe the trouble is that there are NaNs 
+        # maybe the trouble is that there are NaNs
         a_missing = numpy.isnan(a)
         if a_missing.any():
             b_missing = numpy.isnan(b)
@@ -546,7 +546,7 @@ class TensorType(Type):
                 #set it to False
                 cmp_elemwise = numpy.where(both_inf&cmp_elemwise,
                                            a==b,cmp_elemwise)
-                
+
                 #check the sign of the inf
                 both_inf = numpy.where(both_inf,a==b,both_inf)
 
@@ -554,7 +554,7 @@ class TensorType(Type):
                     both_inf += a_inf
                 if allow_remove_nan:
                     both_missing += a_missing
-                
+
                 # Combine all information.
                 return (cmp_elemwise + both_missing + both_inf).all()
 
@@ -885,7 +885,7 @@ class _tensor_py_operators:
     def __abs__(self): return abs_(self)
     def __neg__(self): return neg(self)
 
-    #CASTS 
+    #CASTS
     #### REMOVED THESE BECAUSE PYTHON appears to require __int__ to return an int. -JB 20081112
     #def __int__(self): return convert_to_int32(self)
     #def __float__(self): return convert_to_float64(self)
@@ -898,7 +898,7 @@ class _tensor_py_operators:
     def __ge__(self,other): return ge(self, other)
 
     #BITWISE
-    def __invert__(self): return invert(self) 
+    def __invert__(self): return invert(self)
     def __and__(self,other): return and_(self, other)
     def __or__(self,other): return or_(self, other)
     def __xor__(self,other): return xor(self, other)
@@ -910,27 +910,27 @@ class _tensor_py_operators:
 #     def __ixor__(self, other): return _xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
-    def __add__(self,other): 
+    def __add__(self,other):
         try:
             return add(self,other)
         except Exception, e:
             return NotImplemented
-    def __sub__(self,other): 
+    def __sub__(self,other):
         try:
             return sub(self,other)
         except Exception, e:
             return NotImplemented
-    def __mul__(self,other): 
-        try: 
+    def __mul__(self,other):
+        try:
             return mul(self,other)
         except Exception, e:
             return NotImplemented
-    def __div__(self,other): 
-        try: 
+    def __div__(self,other):
+        try:
             return div_proxy(self,other)
         except Exception, e:
             return NotImplemented
-    def __pow__(self,other): 
+    def __pow__(self,other):
         try:
             return pow(self,other)
         except Exception, e:
@@ -1031,12 +1031,12 @@ class _tensor_py_operators:
     def __getslice__(self, *args):
         args = slice(*args),
         return self.__getitem__(args)
-    
+
     #COPYING
     def copy(self):
         return tensor_copy(self)
 
-    def __iter__(self): 
+    def __iter__(self):
         try:
             for i in xrange(get_vector_length(self)):
                 yield self[i]
@@ -1044,7 +1044,7 @@ class _tensor_py_operators:
             # This prevents accidental iteration via builtin.sum(self)
             raise TypeError('TensorType does not support iteration. '
             'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
-        
+
 
     # CONVENIENT ACCESS TO TYPE PROPERTIES
     ndim = property(lambda self: self.type.ndim)
@@ -1053,7 +1053,7 @@ class _tensor_py_operators:
     """The broadcastable signature of this tensor.
 
     See :doc:`broadcasting` for details.
-    
+
     """
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
@@ -1095,7 +1095,7 @@ class _tensor_py_operators:
 
     def get_constant_value(self):
         return get_constant_value(self)
-    
+
 class TensorVariable(Variable, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 TensorType.Variable = TensorVariable
@@ -1115,7 +1115,7 @@ class TensorConstantSignature(tuple):
         #N.B. compare shape to ensure no broadcasting in ==
         #N.B. compare elementwise last because it is the most expensive check
         return (t0 == t1) and (d0.shape == d1.shape) \
-                and (self.sum == other.sum) and (numpy.all(d0 == d1)) 
+                and (self.sum == other.sum) and (numpy.all(d0 == d1))
     def __hash__(self):
         t, d = self
         return hashtype(self) ^ hash(t) ^ hash(d.shape) ^ hash(self.sum)
@@ -1130,7 +1130,7 @@ class TensorConstantSignature(tuple):
 
 class TensorConstant(Constant, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Constant` class.
-    
+
     To create a TensorConstant, use the `constant` function in this module.
     """
     def signature(self):
@@ -1139,7 +1139,7 @@ TensorType.Constant = TensorConstant
 
 class TensorValue(Value, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Value` class.
-    
+
     To create a TensorValue, use the `value` function in this module.
 
     :note: Value is deprecated by SharedVariable
@@ -1167,8 +1167,8 @@ def _elemwise(scalar_op, name, doc_prefix=''):
     inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
 
     # don't add the inplace versions, they aren't supposed to be part of the user interface
-    _constructor_list.append(straight) 
-    
+    _constructor_list.append(straight)
+
     # This is here so that gen_oplist can detect which module declared these variables.
 
     straight.__module__ = 'tensor'
@@ -1181,7 +1181,7 @@ def _elemwise(scalar_op, name, doc_prefix=''):
 
 def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
-    
+
     This is useful to trick epydoc into doing what we want.  It's a hack.
     """
     real_symbol_value.__module__ = 'tensor.basic'
@@ -1275,7 +1275,7 @@ def _conversion(real_value, name):
 
 _convert_to_int8  = _conversion(elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
-    
+
 _convert_to_int16 = _conversion(elemwise.Elemwise(scal.convert_to_int16), 'int16')
 """Cast to 16-bit integer"""
 
@@ -1287,7 +1287,7 @@ _convert_to_int64 = _conversion(elemwise.Elemwise(scal.convert_to_int64), 'int64
 
 _convert_to_uint8  = _conversion(elemwise.Elemwise(scal.convert_to_uint8), 'uint8')
 """Cast to unsigned 8-bit integer"""
-    
+
 _convert_to_uint16 = _conversion(elemwise.Elemwise(scal.convert_to_uint16), 'uint16')
 """Cast to unsigned 16-bit integer"""
 
@@ -1324,9 +1324,9 @@ _cast_mapping = {
            'complex128': _convert_to_complex128}
 @constructor
 def cast(x, dtype):
-    """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    """Symbolically cast `x` to a Tensor of type `dtype`."""
     if dtype=='floatX': dtype = config.floatX
-    
+
     _x = as_tensor_variable(x)
     if _x.type.dtype == dtype:
         return _x
@@ -1382,7 +1382,7 @@ pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis.
-    
+
     .. note::
 
         If axis is None it means to calculate the max over the last dimension which is
@@ -1393,7 +1393,7 @@ class MaxAndArgmax(Op):
     nin=2 # tensor, axis
     nout=2 # max val, max idx
     E_axis = 'invalid axis'
-    
+
     def __eq__(self,other):
         return type(self)==type(other)
     def __hash__(self):
@@ -1422,7 +1422,7 @@ class MaxAndArgmax(Op):
         inputs = [x, axis]
         #TODO: figure things out if axis is a constant
         broadcastable = [False] * (x.type.ndim - 1)
-        outputs = [tensor(x.type.dtype, broadcastable,name='max'), 
+        outputs = [tensor(x.type.dtype, broadcastable,name='max'),
                    tensor('int32', broadcastable,name='argmax')]
         return Apply(self, inputs, outputs)
     def perform(self, node, (x, axis), (max, max_idx)):
@@ -1445,7 +1445,7 @@ class MaxAndArgmax(Op):
 #        gMax * dMax/dx + gArgMax * dArgMax/dx, gMax * dMax/daxis + gArgMax * dArgMax/daxis
 #       g_max has one less dimension than x, so you need to complete g_max to x's shape
 #        when axis=0 the broadcasting mechanism does it automatically
-        
+
         if not ( axis.data == 0 or axis.data == x.ndim-1):
             raise NotImplementedError('MaxAndArgmax gradient with axis corresponding to internal dimension')
         if axis.data==0:
@@ -1874,7 +1874,7 @@ if 0:
 class Alloc(gof.Op):
     """Create a Tensor from an initial value and a desired shape
 
-    alloc(value, shape0, shape1, ..., shapeN) 
+    alloc(value, shape0, shape1, ..., shapeN)
 
     Returns an N-dimensional tensor initialized by `value` using something equivalent to
     >>> z = numpy.zeros(shape, value.dtype)
@@ -1883,7 +1883,7 @@ class Alloc(gof.Op):
     The result has N dimensions, has the dtype of `value` and is obtained by broadcasting value
     over the output ndarray.
 
-    This Op is used to replace fill() during optimizations because after shapes are lifted, 
+    This Op is used to replace fill() during optimizations because after shapes are lifted,
     the first argument to fill can often be pruned from the graph.
     """
     def __init__(self):
@@ -1943,7 +1943,7 @@ class Alloc(gof.Op):
             pass
         return ret
 
-        
+
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
@@ -2006,8 +2006,8 @@ def mean(input, axis = None, op = False):
     :param axis: compute the mean along this axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
-    
-    :note: for gpu, if you manually cast the input to float32 before calling 
+
+    :note: for gpu, if you manually cast the input to float32 before calling
            mean, everything will be done on the gpu.
     """
     if op:
@@ -2117,7 +2117,7 @@ class Default(gof.Op):
         if x is None:
             # why copy?  Theano can't yet understand out[0] being a view of either x or y,
             # so we can be a view of x, but only a copy of y.
-            out[0] = default.copy() 
+            out[0] = default.copy()
         else:
             out[0] = x
 default = Default()
@@ -2221,7 +2221,7 @@ class Subtensor(Op):
     integers are indexes into the inputs array, and the start/stop/step members
     of each slice are also integer indexes into the inputs array (or None).  The
     inputs array is the tensor x, followed by scalar integer variables.
-    
+
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
     The idx_list is a tuple similar in structure to the sort of key you might expect in numpy's
@@ -2246,7 +2246,7 @@ class Subtensor(Op):
             elif isinstance(entry, slice):
                 helper(entry.start)
                 helper(entry.stop)
-                helper(entry.step)
+                helper( entry.step)
         for idx in idxs:
             helper(idx)
         return ret
@@ -2312,7 +2312,7 @@ class Subtensor(Op):
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
         inputs = tuple(self.my_as_scalar(a) for a in inputs)
-        
+
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
             raise ValueError(Subtensor.e_invalid,
@@ -2412,7 +2412,7 @@ class Subtensor(Op):
             msg += [(entry.start, entry.stop, entry.step)]
           else:
             msg += [entry]
-        
+
         idx_list = tuple(msg)
         #backport
         #idx_list = tuple((entry.start, entry.stop, entry.step)
@@ -2472,7 +2472,7 @@ class SubtensorPrinter:
                       msg3 = ""
                     else:
                       msg3 =  ":%s" % entry.step
-                    
+
                     sidxs.append("%s:%s%s"  % (msg1, msg2, msg3))
                     #backport
                     #sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
@@ -2531,10 +2531,10 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False):
 class IncSubtensor(Op):
     """Increment a subtensor.
 
-    This is like numpy's 
+    This is like numpy's
 
         x[i,j,k] += y
-    
+
     It is used internally to implement the gradient on SubTensor.
 
     :param set_instead_of_inc: if True set the subtensor to the value instead
@@ -2592,7 +2592,7 @@ class IncSubtensor(Op):
     def make_node(self, x, y, *inputs):
         x, y = map(as_tensor_variable, [x, y])
         inputs = tuple(map(Subtensor.my_as_scalar, inputs))
-        
+
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
             raise ValueError(Subtensor.e_invalid,
@@ -2671,11 +2671,11 @@ class Split(Op):
     """Partition a `TensorVariable` along some axis.
 
     .. python::
-        
+
         x = vector()
         splits = lvector()
         # you have to declare right away how many split_points there will be.
-        ra, rb, rc = split(x, splits, n_splits = 3, axis = 0)  
+        ra, rb, rc = split(x, splits, n_splits = 3, axis = 0)
 
         f = function([x, splits], [ra, rb, rc])
 
@@ -2709,16 +2709,16 @@ class Split(Op):
         node = self.make_node(*inputs, **kwargs)
         node.tag.trace = traceback.extract_stack()[:-1]
         return node.outputs
- 
+
     def make_node(self, x, axis, splits):
         """WRITEME"""
         x = as_tensor_variable(x)
         axis = as_tensor_variable(axis)
         splits = as_tensor_variable(splits)
 
-        if splits.type not in int_vector_types: 
+        if splits.type not in int_vector_types:
             raise TypeError('splits must have type tensor.lvector', splits.type)
-        if axis.type not in int_types: 
+        if axis.type not in int_types:
             raise TypeError('axis must have type lscalar', axis.type)
 
 #         # The following lines are necessary if we allow splits of zero
@@ -2738,21 +2738,21 @@ class Split(Op):
         #in python 2.4, x.shape[numpy.asarray(1)] don't work.
         if sys.version_info[0:2]==(2, 4) and axis.size==1:
           axis=int(axis)
-        
+
         try:
             len_along_axis = x.shape[axis]
         except :
             raise ValueError('Split.perform() with axis=(%s) is invalid for x.shape==(%s)'
                     %(axis, x.shape))
         if len(splits) != self.len_splits:
-            raise ValueError('In Split.perform(), len(splits) != len_splits.', 
+            raise ValueError('In Split.perform(), len(splits) != len_splits.',
                     (len(splits), self.len_splits))
 
         if numpy.sum(splits) != len_along_axis:
             raise ValueError('The splits sum to %s, expected %s' % (numpy.sum(splits), len_along_axis))
         if not all(splits):
             raise ValueError('Cannot have a split of zero.')
-         
+
         # Checking is done, let's roll the splitting algorithm!
         # Basically we step along the given axis of x, extracting subtensors of size splits[i]
         # as we go along.
@@ -2826,7 +2826,7 @@ def addbroadcast(x, *axes):
 def unbroadcast(x, *axes):
     """
     Make the input impossible to broadcast in the specified axes.
-    
+
     We apply the opt here to don't pollute the graph especially during the gpu optimization
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
@@ -2835,7 +2835,7 @@ def unbroadcast(x, *axes):
 def patternbroadcast(x, broadcastable):
     """
     Make the input impossible to broadcast in the specified axes.
-    
+
     We apply the opt here to don't pollute the graph especially during the gpu optimization
     """
     rval = Rebroadcast(*[(i,broadcastable[i]) for i in range(len(broadcastable))])(x)
@@ -2853,7 +2853,7 @@ class Join(Op):
     For joins involving scalar values, see @stack.
 
     .. python::
-        
+
         x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
         u = tensor.vector()
 
@@ -2952,7 +2952,7 @@ class Join(Op):
             return [None] + split_gz
         else:
             # assume that this isn't differentiable
-            return [None] * (1 + len(tensors)) 
+            return [None] * (1 + len(tensors))
 
     def _native_grad(self, axis_and_tensors, (gz,)):
         """WRITEME"""
@@ -3006,7 +3006,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
 @constructor
 def shape_padleft(t, n_ones=1):
     """Reshape `t` by left-padding the shape with `n_ones` 1s
-    
+
     See also: `shape_padright` and `Dimshuffle`
     """
     _t = as_tensor_variable(t)
@@ -3017,7 +3017,7 @@ def shape_padleft(t, n_ones=1):
 @constructor
 def shape_padright(t, n_ones=1):
     """Reshape `t` by right-padding the shape with `n_ones` 1s
-    
+
     See also: `shape_padleft` and `Dimshuffle`
     """
     _t = as_tensor_variable(t)
@@ -3045,10 +3045,10 @@ def stack(*tensors):
 @constructor
 def concatenate(tensor_list, axis=0):
     """Alias for `join`(axis, *tensor_list).
-    
+
     This function is similar to `join`, but uses the signature of numpy's concatenate function.
 
-    This function 
+    This function
     :Exceptions:
      - `TypeError` : the tensor_list must be a tuple or list
 
@@ -3072,7 +3072,7 @@ def get_vector_length(v):
     :Exceptions:
      - `TypeError` : `v` hasn't the proper type.
      - `ValueError` : No special case applies, the length is not known.
-    
+
     In general this is not possible, but for a number of special cases the length can be
     determined at compile / graph-construction time.  This function implements these special
     cases.
@@ -3165,7 +3165,7 @@ else:
 
 class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
-    The number of dimensions to which to reshape to (ndim) must be known at graph 
+    The number of dimensions to which to reshape to (ndim) must be known at graph
     build time."""
     view_map = {0: [0]} #output 0 is potentially aliased to inputs [0]
     def __init__(self, ndim, name = None):
@@ -3248,7 +3248,7 @@ class Flatten(Op):
     def grad(self, (x,), (g_out,)):
         return [reshape(g_out, shape(x), x.ndim)]
 
-def flatten(x, outdim=1): 
+def flatten(x, outdim=1):
     return Flatten(outdim)(x)
 
 class TileGrad(Op):
@@ -3634,7 +3634,7 @@ class AdvancedSubtensor(Op):
         # TODO: in general, we need to re-pack the inputs into a valid index, just like
         # subtensor
         out[0] = inputs[0].__getitem__(inputs[1:])
-        #return 
+        #return
         #raise NotImplementedError()
 
     def grad(self, inputs, (gz,)):
@@ -3703,7 +3703,7 @@ class Dot(Op):
         return hash(type(self))
 
     # the rationale for Dot22 is related to getting GEMM Ops into the graph.  See Dot22 in tensor.blas for details.
-    
+
     def make_node(self, *inputs):
         inputs = map(as_tensor_variable, inputs)
 
@@ -3764,7 +3764,7 @@ class Dot(Op):
         elif x.type.ndim == 1 and y.type.ndim > 1:
             rval = dot(gz, y.T), outer(x.T, gz)
         elif x.type.ndim > 1 and y.type.ndim == 1:
-            rval = outer(gz, y.T), dot(x.T, gz) 
+            rval = outer(gz, y.T), dot(x.T, gz)
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
         return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
@@ -3865,7 +3865,7 @@ class TensorDot(Op):
             if len(axes[0])!=len(axes[1]):
                 raise ValueError("We need that the axes 2 sub list of axes are of the same size")
             assert len(axes[0])==len(axes[1])
-            
+
         self.axes = axes
 
     def __eq__(self, other):
@@ -3887,7 +3887,7 @@ class TensorDot(Op):
         if axesdim > x.type.ndim or axesdim > y.type.ndim:
             raise TypeError('Cannot sum over more dimensions than input. %i > %i,%i' %
                     axesdim, x.type.ndim, y.type.ndim)
-       
+
         outdim = x.type.ndim + y.type.ndim - 2*axesdim
         output = tensor(dtype=scal.upcast(x.dtype, y.dtype),
                         broadcastable=[False]*outdim);
@@ -3904,7 +3904,7 @@ class TensorDot(Op):
     def grad(self, (x, y), (gz,)):
         gx, gy = tensordot_grad(self.axes)(x, y, gz)
         return [gx, gy]
-    
+
     def __str__(self):
         return "tensordot"
 tensordot = TensorDot
@@ -3923,7 +3923,7 @@ class Outer(Op):
 
         if nx != 1: raise TypeError('non-vector arg0 to outer()', x)
         if ny != 1: raise TypeError('not-vector arg1 to outer()', y)
-        
+
         bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
 
         i_dtypes = [input.type.dtype for input in inputs]
@@ -3997,8 +3997,8 @@ class numeric_grad:
     #
     # There is a relationship between the step size and the function value and the measurement
     # error that is incurred due to rounding.  The finite difference we measure is
-    # delta = f(x0) - f(x0+eps) 
-    # 
+    # delta = f(x0) - f(x0+eps)
+    #
     # For maximum precision, f should be close to zero.
     # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
     #
@@ -4009,7 +4009,7 @@ class numeric_grad:
     # bias into our measurement in general for non-linear functions.
     #
     # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
-    # 
+    #
     # For now, we use a heuristic that catches very bad gradients, but is not perfectly
     # accurate.
     type_eps = {'float64': 1e-7,
@@ -4161,7 +4161,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         mode=None, cast_to_output_type=False):
     """ Test a gradient by Finite Difference Method. Raise error on failure.
 
-    Example: 
+    Example:
     >>> verify_grad(theano.tensor.tanh,
                     (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
                     rng=numpy.random)
@@ -4187,8 +4187,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
            debug mode, which can be very slow if it has to verify a lot
            of intermediate computations.
 
-    :note: This op does not support multiple outputs. In tests/test_scan.py there is 
-           an experimental verify_grad that covers that case as well by using random 
+    :note: This op does not support multiple outputs. In tests/test_scan.py there is
+           an experimental verify_grad that covers that case as well by using random
            projections.
     """
     assert isinstance(pt, (list,tuple))
@@ -4244,7 +4244,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     t_r = shared(random_projection())
 
     #random projection of o onto t_r
-    cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum. 
+    cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
     cost_fn = function(tensor_pt, cost)
 
     #todo-- determine if this is actually needed
