@@ -49,6 +49,9 @@ def test_int_pow():
     #theano.printing.debugprint(f)
 
 
+
+
+
 def test_softmax():
     x = tensor.fmatrix()
 
@@ -78,7 +81,7 @@ def test_opt_gpujoin_onlyajoin():
     b = cuda.shared_constructor(_b)
 
     c = tensor.join(1,a,b)
-    
+
     f = theano.function([], c, mode=mode_with_gpu)
 
     #theano.printing.debugprint(f)
@@ -105,7 +108,7 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     b_prime = tensor.sin(b)
 
     c = tensor.join(0,a_prime,b_prime)
-    
+
     d = c[:-1]
 
     f = theano.function([], d, mode=mode_with_gpu)

@@ -58,12 +58,12 @@ class InputToGpuOptimizer(Optimizer):
                     if new_input.type==input.type:
                         env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
                 except Exception, e:
-                    #as we currently only support float32, this can fail. 
-                    #Using try except make that we won't need 
+                    #as we currently only support float32, this can fail.
+                    #Using try except make that we won't need
                     pass
 
 #we register it before all other gpu optimizer to be sure that the input are on the gpu.
-gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(), 
+gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')#TODO: how to make it mandatory for gpu_seqopt?
 
 @local_optimizer([])
@@ -73,9 +73,9 @@ def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
         return [node.inputs[0].owner.inputs[0]]
     return False
-gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 
+gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
         'fast_run', 'inplace', 'gpu')
-gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_folding, 
+gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_folding,
         'fast_run', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
@@ -84,7 +84,7 @@ compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_h
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
-    """elemwise(..., host_from_gpu, ...) 
+    """elemwise(..., host_from_gpu, ...)
        -> host_from_gpu(elemwise(gpu_from_host, ..., gpu_from_host)
     """
     if isinstance(node.op, tensor.Elemwise):
@@ -139,14 +139,14 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
-            new_op = GpuDimShuffle(node.op.input_broadcastable, 
+            new_op = GpuDimShuffle(node.op.input_broadcastable,
                     node.op.new_order)
             return [host_from_gpu(new_op(gpu_from_host(input)))]
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, tensor.DimShuffle):
             dimshuffle_node = host_input.owner
-            new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable, 
+            new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable,
                     dimshuffle_node.op.new_order)
             return [new_op(gpu_from_host(dimshuffle_node.inputs[0]))]
     return False
@@ -516,7 +516,7 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
         x,b,y = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
-            # if y is a cast to integers, we can go to the underlying thing if we want, 
+            # if y is a cast to integers, we can go to the underlying thing if we want,
             # since this gpu op will cast to integers internally anyway
             int_cast_ops = (
                     tensor.basic._convert_to_int32,
@@ -531,8 +531,8 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
                 gpu_from_host(b),
                 gpu_from_host(cast(y, 'float32')))
             am_dtype = node.outputs[2].type.dtype
-            return [host_from_gpu(gpu_nll), 
-                    host_from_gpu(gpu_sm), 
+            return [host_from_gpu(gpu_nll),
+                    host_from_gpu(gpu_sm),
                     cast(host_from_gpu(gpu_am), am_dtype)]
     return False
 
@@ -728,7 +728,7 @@ else:
 
 #GpuElemwise inplace
 gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(GpuElemwise)
-compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace') 
+compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace')
 
 @register_opt()
 @local_optimizer([tensor.Alloc])
@@ -749,7 +749,7 @@ def local_gpualloc(node):
         new_out = host_from_gpu(gpu_alloc(val2, *shp))
         # Sigh. it's an annoying thing about theano
         # that you can't add information to the graph.
-        # If for some reason it has come to light that 
+        # If for some reason it has come to light that
         # one of the dimensions is broadcastable, we have to hide that
         # or the optimization won't go through.
         if new_out.type != old_out.type:
@@ -763,7 +763,7 @@ def local_gpualloc(node):
         #if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
-            
+
 @register_opt()
 @local_optimizer([])
 def local_gpu_huge_add_or_mul(node):
@@ -774,7 +774,7 @@ def local_gpu_huge_add_or_mul(node):
     The CUDA c compiler limits the number of arguments to 256 bytes' worth or something.
     """
     if isinstance(node.op, GpuElemwise) and node.op.scalar_op in (scal.add, scal.mul):
-        if len(node.inputs)>10: 
+        if len(node.inputs)>10:
             # TODO: look up how arguments are passed to the GpuElemwise function
             #   and figure out how many arguments can fit in 256 bytes.
             #   this will depend on the number of dimensions in each argument.
