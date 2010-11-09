@@ -25,9 +25,9 @@ class TestConv2D(unittest.TestCase):
                  verify_grad=True, should_raise=False):
 
         if N_image_shape is None:
-            N_image_shape = image_shape
+            N_image_shape = [T.get_constant_value(T.as_tensor_variable(x)) for x in image_shape]
         if N_filter_shape is None:
-            N_filter_shape = filter_shape
+            N_filter_shape = [T.get_constant_value(T.as_tensor_variable(x)) for x in filter_shape]
     
         if not input:
             input = self.input
@@ -202,6 +202,19 @@ class TestConv2D(unittest.TestCase):
         self.validate((3,2,7,5), (5,2,2,3), 'valid', subsample=(2,2))
         self.validate((3,2,7,5), (5,2,2,3), 'full', subsample=(2,2))
         self.validate((3,2,7,5), (5,2,2,3), 'valid', subsample=(2,1))
+
+    def test_shape_Constant_tensor(self):
+        """
+        Tests convolution where the {image,filter}_shape is a Constant tensor.
+        """
+        as_t=T.as_tensor_variable
+        self.validate((as_t(3),as_t(2),as_t(7),as_t(5)), (5,2,2,3), 'valid')
+        self.validate(as_t([3,2,7,5]), (5,2,2,3), 'valid')
+        self.validate(as_t((3,2,7,5)), (5,2,2,3), 'valid')
+        self.validate((3,2,7,5), (as_t(5),as_t(2),as_t(2),as_t(3)), 'valid')
+        self.validate((3,2,7,5), as_t([5,2,2,3]), 'valid')
+        self.validate((3,2,7,5), as_t((5,2,2,3)), 'valid')
+        self.validate(as_t([3,2,7,5]), as_t([5,2,2,3]), 'full')
 
     def test_invalid_filter_shape(self):
         """
