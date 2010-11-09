@@ -46,9 +46,6 @@ class Images2Neibs(Op):
 
         return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
-    def grad(self, (pvals, unis), (gz,)):
-        return [None, None]
-
     def c_code_cache_version(self):
         return (3,)
                 
@@ -224,6 +221,11 @@ def neibs2images(neibs, neib_shape, original_shape):
     
     Return a 4d tensor of shape `original_shape`.
     """
+    # TODO: handle the case where patches either overlap
+    # TODO: handle the case where patches are not directly adjacent
+    # TODO: at least separate these cases so that the following code does not incorrectly
+    # handle them by accident.
+    raise NotImplementedError('check for overlapping patches or non-adjacent patches.')
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
