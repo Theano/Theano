@@ -773,6 +773,9 @@ def test_many_arg_elemwise():
                 f = theano.function( symb_args, op_to_test(*symb_args), mode = mode )
                 #theano.printing.debugprint(f)
                 outputs.append( f( * args) )
+                #assert that the test was done on the gpu.
+                if mode is mode_with_gpu:
+                    assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
             
             results_gpu, results_cpu = outputs
 
