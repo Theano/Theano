@@ -68,7 +68,7 @@ squared difference between two matrices ``a`` and ``b`` at the same time:
 >>> f = function([a, b], [diff, abs_diff, diff_squared])
 
 .. note:: 
-   `dmatrices` produces as many outputs as names that you provide.  It's a
+   `dmatrices` produces as many outputs as names that you provide.  It is a
    shortcut for allocating symbolic variables that we will often use in the
    tutorials.
 
@@ -151,7 +151,7 @@ with respect to the second. In this way, Theano can be used for
    output is also a list. The order in both list is important, element
    *i* of the output list is the gradient of the first argument of
    ``T.grad`` with respect to the *i*-th element of the list given as second argument.
-   The first arguement of ``T.grad`` has to be a scalar (a tensor
+   The first argument of ``T.grad`` has to be a scalar (a tensor
    of size 1). For more information on the semantics of the arguments of 
    ``T.grad`` and details about the implementation, see :ref:`this <libdoc_gradient>`.
 
@@ -227,7 +227,7 @@ variables.  Shared variables can be used in symbolic expressions just like
 the objects returned by ``dmatrices(...)`` but they also have a ``.value``
 property that defines the value taken by this symbolic variable in *all* the
 functions that use it.  It is called a *shared* variable because its value is
-shared between many functions.  We'll come back to this soon.
+shared between many functions.  We will come back to this soon.
 
 The other new thing in this code is the ``updates`` parameter of function.
 The updates is a list of pairs of the form (shared-variable, new expression).
@@ -314,7 +314,7 @@ numpy, though also not too complicated.
 The way to think about putting randomness into Theano's computations is 
 to put random variables in your graph. Theano will allocate a numpy 
 RandomStream object (a random number generator) for each such 
-variable, and draw from it as necessary. I'll call this sort of 
+variable, and draw from it as necessary. We will call this sort of 
 sequence of random numbers a *random stream*. *Random streams* are at 
 their core shared variables, so the observations on shared variables
 hold here as well.

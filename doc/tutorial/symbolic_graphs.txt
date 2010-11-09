@@ -74,7 +74,7 @@ output. You can now print the name of the op that is applied to get
 'Elemwise{mul,no_inplace}'
 
 So a elementwise multiplication is used to compute ``y``. This
-muliplication is done between the inputs
+muliplication is done between the inputs:
 
 >>> len(y.owner.inputs)
 2
@@ -97,7 +97,7 @@ same shape as x. This is done by using the op ``DimShuffle`` :
 [2.0]
 
 
-Starting from this graph structure is easy to understand how 
+Starting from this graph structure it is easy to understand how 
 *automatic differentiation* is done, or how the symbolic relations
 can be optimized for performance or stability.
 
@@ -108,11 +108,11 @@ Automatic Differentiation
 Having the graph structure, computing automatic differentiation is
 simple. The only thing :func:`tensor.grad` has to do is to traverse the
 graph from the outputs back towards the inputs through all :ref:`apply`
-nodes ( :ref:`apply` nodes are those who define what computations the
+nodes (:ref:`apply` nodes are those that define which computations the
 graph does). For each such :ref:`apply` node, its  :ref:`op` defines 
 how to compute the gradient of the node's outputs with respect to its
 inputs. Note that if an :ref:`op` does not provide this information, 
-it is assumed that the gradient does not defined.
+it is assumed that the gradient is not defined.
 Using the 
 `chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_ 
 these gradients can be composed in order to obtain the expression of the 
@@ -127,8 +127,8 @@ When compiling a Theano function, what you give to the
 (starting from the outputs variables you can traverse the graph up to
 the input variables). While this graph structure shows how to compute
 the output from the input, it also offers the posibility to improve the  
-the way this computation is carried out. The way optimizations work in 
-Theano is by indentifying and replacing certain patterns in the graph 
+way this computation is carried out. The way optimizations work in 
+Theano is by identifying and replacing certain patterns in the graph 
 with other specialized patterns that produce the same results but are either 
 faster or more stable. Optimizations can also detect 
 identical subgraphs and ensure that the same values are not computed

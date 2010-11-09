@@ -75,7 +75,7 @@ field, as you can see here:
 TensorType(float64, scalar)
 >>> T.dscalar
 TensorType(float64, scalar)
->>> x.type == T.dscalar
+>>> x.type is T.dscalar
 True
 
 You can learn more about the structures in Theano in :ref:`graphstructures`.
