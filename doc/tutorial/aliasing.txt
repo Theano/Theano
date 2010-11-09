@@ -1,0 +1,70 @@
+
+.. _basictutaliasing:
+
+===============
+Memory Aliasing
+===============
+
+The aggressive reuse of memory is one of the ways Theano makes code fast, and
+it's important for the correctness and speed of your program that you understand
+which buffers Theano might alias to which others.
+
+This file describes the principles for how Theano treats memory, and explains
+when you might want to change the default behaviour of some functions and
+methods for faster performance.
+
+
+The memory model: 2 spaces
+==========================
+
+There are some simple principles that guide Theano's treatment of memory.  The
+main idea is that there is a pool of memory managed by Theano, and Theano tracks
+changes to values in that pool.
+
+ 1. Theano manages its own memory space, which typically does not overlap with
+    the memory of normal python variables that non-theano code creates.
+
+ 2. Theano's memory space includes the buffers allocated to store shared
+    variables and the temporaries used to evaluate Functions.
+
+ 3. Physically, Theano's memory space may be spread across the host, a GPU
+    device(s), and in the future may even include objects on a remote machine.
+
+ 4. The memory allocated for a shared variable buffer is unique: it is never
+    aliased to another shared variable.
+
+ 5. Theano's managed memory is constant while Theano Functions are not running
+    and theano library code is not running.
+
+ 6. The default behaviour of Function is to return user-space values for
+    outputs, and to expect user-space values for inputs.
+    
+The distinction between Theano-managed memory and user-managed memory can be
+broken down by some theano functions (e.g. In, Out,shared, get_value)) by using
+a ``borrow=True`` flag.  This can make those methods faster (by avoiding copy
+operations) at the expense of risking subtle bugs in the overall program (by
+aliasing memory).
+
+The rest of this section is aimed at helping you to understand when it is safe
+to use the ``borrow=True`` argument and reap the benefit of faster code.
+
+Borrowing when creating shared variables
+========================================
+
+TODO
+
+Borrowing when construction Function objects
+============================================
+
+TODO
+
+
+Borrowing when accessing value of shared variable
+=================================================
+
+TODO
+
+Describe interaction with 'raw' flag as well.
+
+
+
