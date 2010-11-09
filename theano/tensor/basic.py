@@ -2230,7 +2230,11 @@ class Subtensor(Op):
     can additionally be a Scalar instance, and slice components can also be Scalar instances
     too.
     """
-    e_invalid = 'The index list is longer than the number of dimensions of the tensor.'
+    e_invalid = ( 'The index list is longer (size %d) than the number of '
+                 'dimensions of the tensor(namely %d). You are asking for '
+                 'a dimension of the tensor that does not exist! You might '
+                 'need to use dimshuffle to add extra dimension to your '
+                 'tensor.')
     e_subslice = 'nested slicing is not supported'
     e_indextype = "Invalid index type or slice for Subtensor"
     debug = 0
@@ -2315,8 +2319,7 @@ class Subtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            raise ValueError(Subtensor.e_invalid,
-                             (len(idx_list), x.type.ndim))
+            raise ValueError(Subtensor.e_invalid%(len(idx_list), x.type.ndim))
 
         #infer the broadcasting pattern
         padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
@@ -2595,8 +2598,7 @@ class IncSubtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            raise ValueError(Subtensor.e_invalid,
-                             (len(idx_list), x.type.ndim))
+            raise ValueError(Subtensor.e_invalid%(len(idx_list), x.type.ndim))
 
         #infer the broadcasting pattern
         padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
