@@ -58,10 +58,12 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :type subsample: tuple of len 2
     :param subsample: factor by which to subsample the output
                        
-    :type image_shape: tuple of len 4
+    :type image_shape: tuple of len 4 of int or Contant variable
     :param image_shape: (batch size, stack size, nb row, nb col)
-    :type filter_shape: tuple of len 4
+                        Optional, used for optimization.
+    :type filter_shape: tuple of len 4 of int or Contant variable
     :param filter_shape: (nb filters, stack size, nb row, nb col)
+                         Optional, used for optimization.
 
     :param kwargs: kwargs are passed onto ConvOp. Can be used to set the following:
                    unroll_batch, unroll_kern, unroll_patch (see ConvOp doc)
