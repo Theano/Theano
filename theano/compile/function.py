@@ -16,8 +16,8 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
-    :type params: list of either Variable or Param instances.
-    :param params: function parameters, these are not allowed to be shared
+    :type inputs: list of either Variable or Param instances.
+    :param inputs: function parameters, these are not allowed to be shared
     variables
 
     :type outputs: list of Variables or Out instances
@@ -60,6 +60,10 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     optimizations in that Var2 is not expected to be equivalent to Var1.
 
     """
+    #tuple are used in some tests, as we accepted them in the past
+    #I prefer to allow it as they act the same as list for what they are used.
+    if not isinstance(inputs,(list,tuple)):
+        raise Exception("Inputs variable of a Theano function should be contained in a list, even when there is a single input.")
 
     # compute some features of the arguments:
     uses_In = any([isinstance(i, In) for i in inputs]) #N.B. the square brackets are ncessary
