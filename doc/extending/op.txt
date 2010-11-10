@@ -137,17 +137,23 @@ following methods:
   the gradient of the Op's output but rather the gradient of some
   other criterion C with respect to the Op's input.
 
-  If the outputs of your op are [ f_1, ... f_n], then
-  ``output_derivatives`` gives [ grad_{f_1} C, grad_{f_2} C, ... , grad_{f_n} C ]
-  If the inputs of your op are [x_1, ..., x_n], then your Op.grad should
-  return [ grad_{x_1} C, grad_{x_2} C, ..., grad_{x_n} C ]
-
-  where (grad_{y} z)_i = partial z / partial y_i  (and i can have any
-  number of dimensions)
-  (note: in the case where i is 2 dimensional, this definition of grad
+  If the outputs of your op are :math:`[ f_1, ... f_n]`, then
+  ``output_derivatives`` gives
+  :math:`[ grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C) ]`.
+  If the inputs of your op are :math:`[x_1, ..., x_m]`, then your Op.grad
+  should return :math:`[ grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C) ]`,
+  where :math:`(grad_{y} z)_i = \frac{\partial z}{\partial y_i}`
+  (and :math:`i` can have any number of dimensions).
+  (Note: in the case where i is 2 dimensional, this definition of grad
   is different from the standard mathematical definition of the gradient
-  of a scalar with respect to a matrix, where you transpose the indices)
- 
+  of a scalar with respect to a matrix, where you transpose the indices.)
+
+  In other words, :func:`grad` does not return
+  :math:`\frac{\partial f_i}{\partial x_j}`, but
+  :math:`\frac{\partial C}{\partial x_j} =
+  \frac{\partial C}{\partial f_i} \cdot \frac{\partial f_i}{\partial x_j}`.
+  Both the partial derivation and that multiplication have to be done by
+  :func:`grad`.
 
 
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.

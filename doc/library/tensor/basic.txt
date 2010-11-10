@@ -1105,10 +1105,14 @@ Gradient / Differentiation
 
     Return symbolic gradients for one or more variables with respect to some
     cost.
-    
+
+    For more information about how automatic differentiation works in Theano,
+    see :mod:`gradient`. For information on how to implement the gradient of
+    a certain Op, see :func:`grad`.
+
     :type cost: 0-d tensor variable
     :type wrt: tensor variable or list of tensor variables
-    :type g_cost: same as `cost`
+    :type g_cost: same as type of `cost`
     :type consider_constant: list of variables
     :type warn_type: bool
 
