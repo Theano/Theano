@@ -93,25 +93,29 @@ def local_gpu_elemwise_0(node):
                 #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
                 new_op = GpuElemwise(node.op.scalar_op)
 
+                #   first establish that float32 can store all inputs
+                upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
                 # case 1 - all inputs are already float32
                 if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
                     #TODO: change this when fusion makes Elemwise with multiple outputs
-                    return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
-
-                # THIS IS PROBABLY TRUE....
-                # case 2 - it would still be ok if some inputs were upcast to float32
-                #   first establish that float32 can store all inputs
-                upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
-                if numpy.all([i.type.dtype in upcastable for i in node.inputs]):
+                    gpu_elemwise = new_op(*(gpu_from_host(i) for i in node.inputs))
+                # case 2 - it is still ok if some inputs were upcast to float32
+                elif numpy.all([i.type.dtype in upcastable for i in node.inputs]):
                     # second - establish that a new node with upcasted inputs has the same outputs
                     # types as the original node
                     casted = node.op.make_node(*[tensor.cast(i, 'float32') for i in node.inputs])
                     if [o.type for o in casted.outputs] == [o.type for o in node.outputs]:
 
                         new_inputs = [gpu_from_host(tensor.cast(i, 'float32')) for i in node.inputs]
+                        gpu_elemwise = new_op(*new_inputs)
+                    else:
+                        return False
+                else:
+                    return False
 
-                        return [host_from_gpu(new_op(*new_inputs))]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
 
+                return [host_from_gpu(gpu_elemwise)]
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_1(node):
@@ -125,7 +129,9 @@ def local_gpu_elemwise_1(node):
             #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
             new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
-                return [new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])]
+                gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
+                return [gpu_elemwise]
     return False
 
 @register_opt()
@@ -764,35 +770,41 @@ def local_gpualloc(node):
             #import pdb; pdb.set_trace()
         return [new_out]
 
-@register_opt()
-@local_optimizer([])
-def local_gpu_huge_add_or_mul(node):
+def max_inputs_to_GpuElemwise(node):
     """
-    The gpu code generator for elemwise fusion knows when there are too many inputs, but add
-    doesn't.  So there's this workaround.
-
-    The CUDA c compiler limits the number of arguments to 256 bytes' worth or something.
+    return the maximum number of input this Apply node to an GpuElemwise can accept.
+    This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
+    This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
     """
-    if isinstance(node.op, GpuElemwise) and node.op.scalar_op in (scal.add, scal.mul):
-        #TODO: detect the size of gpu pointeur and c int.
-        int_size = 8
-        ptr_size = 8
+    #TODO: detect the size of gpu pointeur and c int.
+    int_size = 8
+    ptr_size = 8
         
-        argument_limit = 256  # 16 bytes are used for block and thread coords etc.
-        size_param_mandatory = int_size #for numels
-        size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
-        size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
-        nb_bytes_avail = argument_limit-size_param_mandatory
-        nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
-        max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
-        #print "max_nb_inputs",max_nb_inputs
+    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
+    size_param_mandatory = int_size #for numels
+    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
+    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
 
-        if len(node.inputs)>max_nb_inputs: 
+    nb_bytes_avail = argument_limit-size_param_mandatory
+    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
+    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+    return max_nb_inputs
+
+def split_huge_add_or_mul(node):
+    """
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
+
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
+    """
+    if node.op.scalar_op in (scal.add, scal.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        while len(node.inputs)>max_nb_inputs: 
             inner_op = []
-            #we split the input in one call to the optimization
-            #if this generate too much split, another call to this optimization
-            #will fix that.
             for i in range(0,len(node.inputs),max_nb_inputs):
                 inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
-            return [node.op(*inner_op)]
-
+            node = node.op(*inner_op).owner
+    return node
