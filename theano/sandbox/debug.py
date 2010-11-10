@@ -15,7 +15,7 @@ class DebugLinker(gof.WrapLinker):
                  copy_originals = False,
                  check_types = True,
                  compare_variables = True,
-                 compare_fn = lambda x, y: x == y):
+                 compare_fn = (lambda x, y: x == y)):
         gof.WrapLinker.__init__(self,
                                 linkers = linkers,
                                 wrapper = self.wrapper)
