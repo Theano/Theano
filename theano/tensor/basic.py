@@ -2319,7 +2319,10 @@ class Subtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            raise ValueError(Subtensor.e_invalid%(len(idx_list), x.type.ndim))
+            exception = ValueError(Subtensor.e_invalid%(len(idx_list),
+                                                        x.type.ndim))
+            exception.subtensor_invalid = True
+            raise exception
 
         #infer the broadcasting pattern
         padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
@@ -2598,7 +2601,10 @@ class IncSubtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            raise ValueError(Subtensor.e_invalid%(len(idx_list), x.type.ndim))
+            exception = ValueError(Subtensor.e_invalid%(len(idx_list),
+                                                        x.type.ndim))
+            exception.subtensor_invalid = True
+            raise exception
 
         #infer the broadcasting pattern
         padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
