@@ -769,11 +769,22 @@ def test_many_arg_elemwise():
             
                 outputs = []
                 for mode in [ mode_with_gpu, mode_without_gpu ]:
-                    f = theano.function( symb_args, op_to_test(*symb_args), mode = mode )
+                    #test the optijmization local_gpu_elemwise_0
+                    f = theano.function( symb_args, op_to_test(*symb_args), mode = mode.excluding("local_gpu_elemwise_1") )
                     outputs.append( f( * args) )
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
+                        
+                    #test the optijmization local_gpu_elemwise_1
+                    f = theano.function( symb_args, 
+                                         cuda.gpu_from_host(op_to_test(*symb_args)), 
+                                         mode = mode.excluding("local_gpu_elemwise_0") )
+                    out = f( * args)
+                    #assert that the test was done on the gpu.
+                    if mode is mode_with_gpu:
+                        assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
+                    assert numpy.allclose(out, outputs[-1])
             
                 results_gpu, results_cpu = outputs
 
