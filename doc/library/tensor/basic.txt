@@ -463,15 +463,6 @@ TensorVariable
             (0, 'x', 1) -> AxB to Ax1xB
             (1, 'x', 0) -> AxB to Bx1xA
 
-
-        See :func:`dimshuffle`.
-
-        (The above link just points back to this paragraph. Maybe whoever
-        wrote that meant to refer to theano.tensor.DimShuffle)
-
-        
-
-
     .. method:: flatten(ndim=1)
 
         Returns a view of this tensor with `ndim` dimensions, whose shape for the first
@@ -500,7 +491,7 @@ Shaping and Shuffling
 =====================
 
 To re-order the dimensions of a variable, to insert or remove broadcastable
-dimensions, see :meth:`_tensor_py_operators.dimshuffle`
+dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
 .. function:: shape(x)
 
