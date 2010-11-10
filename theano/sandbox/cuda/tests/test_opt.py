@@ -1,17 +1,17 @@
 import sys, time
-from theano.compile.sharedvalue import shared
+
+import numpy
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+
 from theano.compile.pfunc import pfunc
 from theano import tensor
 import theano
-import numpy
 
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.compile.mode
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 if theano.config.mode=='FAST_COMPILE':
