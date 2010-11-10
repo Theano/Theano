@@ -1117,7 +1117,7 @@ Gradient / Differentiation
        expression
 
     :rtype: variable or list of variables (matching `wrt`)
-    :returns: gradients with respect to cost for each of the `wrt` terms 
+    :returns: gradients of the cost with respect to each of the `wrt` terms
 
 
 
