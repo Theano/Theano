@@ -2087,6 +2087,13 @@ if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
 
-
-
-
+def test_local_mul_to_neg():
+    """
+    Test that a multiplication by -1 or -1.0 yields the appropriate data type
+    """
+    a = T.imatrix()
+    f1 = theano.function([a], -1*a)
+    f2 = theano.function([a], -1.0*a)
+    aval = numpy.random.randint(0,10,(2,2))
+    assert f1(aval).dtype == a.dtype
+    assert f2(aval).dtype == 'float64'
