@@ -272,61 +272,84 @@ that fail on your platform (use the ``theano-users@googlegroups.com`` mailing li
 but note that you must first register to it, by going to `theano-users`_).
 
 
-Windows V1(bigger install, but simpler instruction + try instruction for gpu)
------------------------------------------------------------------------------
+Windows V1 (bigger install, but simpler instructions + tentative GPU instructions)
+----------------------------------------------------------------------------------
 
-- If you don't have Python yet, I would recommend the Python(x,y)
-  distribution. It is only one installation and contains the most
-  important packages (NumPy, SciPy, IPython, Matplotlib, Mingw, Nose,
-  etc.).
+- Install `Python(x,y) <http://www.pythonxy.com>`_. It is a single installation
+  file that contains additional packages like Numpy, Scipy, IPython, Matplotlib,
+  MinGW, Nose, etc. Note that this implies you do not already have a Python
+  installation (if you do have one, then you will need to either remove it first,
+  or install those additional packages manually as described in the V2 instructions).
 
-- Next you should install Mercurial and download Theano.
-  Command line version: http://mercurial.selenic.com/
-  One gui version(Tortoise hg): http://mercurial.selenic.com/downloads/
-  the command is
-  hg clone http://hg.assembla.com/theano Theano
+- Install Mercurial. You can use either the
+  `command-line version <http://groups.google.com/group/theano-users>`_ or the
+  `GUI version <http://groups.google.com/group/theano-users>`_ (for the purpose of
+  simply downloading Theano, the command line version is enough).
 
-- Theano needs 1 environment variable:
-  a) system variable PYTHONPATH with value C:\...\Theano
-  (installation folder of theano)
+- Start a shell (hit the Start button and run the ``cmd`` command) and navigate to
+  the directory where you want to install Theano (it is ok to just stay in the
+  default directory, which should be your user profile directory). Then download
+  Theano with:
 
-  In the USERPROFILE directory 
-  you should create a configuration file .theanorc.
-  .theanorc.txt is also accepted on Windows if the environment 
-  variable THEANORC is not set. The file should have the following
+    .. code-block:: bash
+
+        hg clone http://hg.assembla.com/theano Theano
+
+- Add (or edit) the PYTHONPATH environment variable (available through Control
+  Panel / System / Advanced / Environment Variables), so that it contains
+  the full installation directory of Theano. Restart a shell (``cmd``) to verify
+  that it works:
+
+    .. code-block:: bash
+
+        C:\Users\login>echo %PYTHONPATH%
+        C:\Users\login\Theano
+        
+- Create a new ``.theanorc`` text file (or ``.theanorc.txt``, which is easier
+  to create under Windows) in your user profile directory, with the following
   two lines:
-
+ 
     .. code-block:: bash
 
       [blas]
       ldflags =
 
-  This is enough to run Theano! It will use NumPy for dot products
-  which, however, is pretty fast (see below).
-  
-  To test that theano read correctly the .theanorc or .theanorc.txt file,
-  in python run:
+- You are now ready to run Theano.
+  It will use NumPy for dot products, which is still pretty fast (see below for
+  optional instructions on how to compile your own BLAS library).
+  To test that theano read correctly your configuration file, run Python (easiest
+  way is to just type ``python`` in a shell) and run the following:
 
-  .. code-block:: bash
+  .. code-block:: python
 
       import theano
       print theano.config.blas.ldflags
 
-  That should print the same content as what is in your config file.
-  
-- (Optional) If you want a faster and/or multithreaded BLAS library, you can
-  compile GotoBLAS2. I did not try to compile ATLAS because I read that
-  it is slower than Goto and very difficult to compile (especially for
+  This should print the same content as in your config file, i.e. nothing
+  (if your config file was not read properly, it would print ``-lblas``).
+
+Windows V1.5 (optional follow-up to V1 instructions)
+----------------------------------------------------
+
+- If you want a faster and/or multithreaded BLAS library, you can
+  compile GotoBLAS2. We did not try to compile ATLAS because we read that
+  it is slower than Goto and more difficult to compile (especially on
   Windows).
-  GotoBLAS can be downloaded after a simple registration (the most
-  recent version is 1.13 right now). To compile it, you need to install
-  two more programs: MSYS and Perl (for example ActivePerl). Actually,
-  the GotoBLAS makefiles expect a full UNIX environment (like Cygwin)
-  but the BLAS compilation seems to work with only MSYS and Perl. The
-  LAPACK compilation fails, but we don't need it anyway.
+  GotoBLAS2 can be downloaded
+  `here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`_
+  after registering on the website (we tested v1.13).
+  To compile it, you also need to install MSYS and Perl (for instance
+  ActivePerl).
+  The GotoBLAS makefiles actually expect a full UNIX environment (like
+  Cygwin) but the BLAS compilation seems to work with only MSYS and Perl.
+  The LAPACK compilation fails, but is not needed anyways.
+
+  (WORK-IN-PROGRESS, TO BE CONTINUED)
 
   Compilation steps:
-  a) Unpack GotoBLAS2 (using 7-zip or the MSYS tar command)
+
+  a) Unpack GotoBLAS2 (using `7-zip <http://www.7-zip.org/>`_ or the
+     MSYS tar command).
 
   b) open MSYS, change directory to GotoBLAS2 (cd command)
 
@@ -354,7 +377,7 @@ Windows V1(bigger install, but simpler instruction + try instruction for gpu)
   b) The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
   c) GotoBLAS is even faster, in particular if you have several kernels.
 
-- (Optional) Gpu on Windows. Not sur it work! Can you report success/error on the `theano-user <http://groups.google.ca/group/theano-users?pli=1>`_ mailing list?
+- (Optional) Gpu on Windows. Not sur it work! Can you report success/error on the `theano-users <http://groups.google.com/group/theano-users>`_ mailing list?
 
   Those are indication for 32 bits version of python, the one that come with pythonxy is 32 bits.
 
