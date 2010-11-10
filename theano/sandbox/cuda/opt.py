@@ -774,13 +774,25 @@ def local_gpu_huge_add_or_mul(node):
     The CUDA c compiler limits the number of arguments to 256 bytes' worth or something.
     """
     if isinstance(node.op, GpuElemwise) and node.op.scalar_op in (scal.add, scal.mul):
-        if len(node.inputs)>10:
-            # TODO: look up how arguments are passed to the GpuElemwise function
-            #   and figure out how many arguments can fit in 256 bytes.
-            #   this will depend on the number of dimensions in each argument.
-            #   The current heuristic to chop at 10 prevents crashing in the
-            #   pylearn/algorithms/tests/test_mcRBM feature extractor.
-            return [node.op(
-                    node.op(*node.inputs[:10]),
-                    node.op(*node.inputs[10:]))]
+        #TODO: detect the size of gpu pointeur and c int.
+        int_size = 8
+        ptr_size = 8
+        
+        argument_limit = 256  # 16 bytes are used for block and thread coords etc.
+        size_param_mandatory = int_size #for numels
+        size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
+        size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
+        nb_bytes_avail = argument_limit-size_param_mandatory
+        nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
+        max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+        #print "max_nb_inputs",max_nb_inputs
+
+        if len(node.inputs)>max_nb_inputs: 
+            inner_op = []
+            #we split the input in one call to the optimization
+            #if this generate too much split, another call to this optimization
+            #will fix that.
+            for i in range(0,len(node.inputs),max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
+            return [node.op(*inner_op)]
 
