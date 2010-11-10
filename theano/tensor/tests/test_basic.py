@@ -3342,6 +3342,20 @@ def test_unalign():
         if not should_raise:
             raise Exception("Theano raised an exception when none was expected")
 
+def test_dimshuffle_duplicate():
+    x = theano.tensor.vector()
+
+    success = False
+
+    try:
+        y = theano.tensor.DimShuffle((False, ), (0, 0))(x)
+    except ValueError, e:
+        assert str(e).find("may not appear twice") != -1
+        success = True
+
+    assert success
+
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
