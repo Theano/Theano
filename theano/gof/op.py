@@ -50,7 +50,7 @@ class CLinkerObject(object):
          - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise utils.MethodNotDefined("c_lib_dirs", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("c_header_dirs", type(self), self.__class__.__name__)
 
     def c_libraries(self):
         """Optional: Return a list of libraries required by code returned by
