@@ -790,6 +790,16 @@ def test_many_arg_elemwise():
 
                 assert numpy.allclose(results_gpu, results_cpu)
 
+def test_duplicate_arg_elemwise():
+    A = theano.tensor.fmatrix()
+    B = A + A
+
+    f = theano.function([A],B, mode = mode_with_gpu)
+
+    Aval = numpy.random.RandomState([1,2,3]).randn(5,5)
+    Bval = Aval + Aval
+
+    assert numpy.allclose(Bval,f(Aval))
 
 
 
