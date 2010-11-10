@@ -634,8 +634,6 @@ class TensorType(Type):
 
     def c_extract(self, name, sub):
         """Override `CLinkerOp.c_extract` """
-        # TODO: make the error message print out the dtype of the
-        # input received.
         return """
         %(name)s = NULL;
         if (py_%(name)s == Py_None) {
@@ -649,11 +647,13 @@ class TensorType(Type):
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
             %(fail)s
         }
+        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
         if (!PyArray_ISALIGNED(py_%(name)s)) {
-            PyErr_SetString(PyExc_NotImplementedError, "expected an aligned array");
+            PyErr_Format(PyExc_NotImplementedError,
+                         "expected an aligned array of type %%d (%(type_num)s), got non-aligned array of type %%d",
+                         %(type_num)s, type_num_%(name)s);
             %(fail)s
         }
-        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
         if (type_num_%(name)s != %(type_num)s) {
             PyErr_Format(PyExc_ValueError, "expected type_num %%d (%(type_num)s) got %%d", %(type_num)s, type_num_%(name)s);
             %(fail)s
