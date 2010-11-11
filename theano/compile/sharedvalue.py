@@ -73,17 +73,18 @@ class SharedVariable(Variable):
                     readonly=False,
                     strict=strict)
 
-    def get_value(self, borrow=False):
+    def get_value(self, borrow=False, return_internal_type=False):
         """Get the non-symbolic value associated with this SharedVariable.
 
         :param borrow: 
-            True to return the internal value directly, potentially creating problems related
-            to aliased memory.
+            True to permit returning of an object aliased to internal memory.
+        :param return_internal_type:
+            True to permit the returning of an arbitrary type object used internally to store
+            the shared variable.
 
-        If the return value is mutable, and you have used borrow=True to get at the internal
-        value, then you should be careful about changing it.  If you modify it, call
-        set_value(rval, borrow=True) to tell Theano that you modified it.  (Theano may have
-        cached computations based on the old value.)
+        Only with borrow=False and return_internal_type=True does this function guarantee that
+        you actually get the internal object.  But in that case, you may get different return
+        types when using different compute devices.
         
         """
         if borrow:
@@ -116,7 +117,7 @@ class SharedVariable(Variable):
         return cp
 
     def _value_get(self):
-        return self.get_value(borrow=config.shared.value_borrows)
+        return self.get_value(borrow=config.shared.value_borrows, return_internal_type=False)
     def _value_set(self, new_value):
         return self.set_value(new_value, borrow=config.shared.value_borrows)
 

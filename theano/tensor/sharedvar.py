@@ -9,7 +9,7 @@ class TensorSharedVariable(SharedVariable, _tensor_py_operators):
     pass
 
 @shared_constructor
-def tensor_constructor(value, name=None, strict=False, broadcastable=None):
+def tensor_constructor(value, name=None, strict=False, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType
     
     :note: Regarding the inference of the broadcastable pattern... 
@@ -27,7 +27,7 @@ def tensor_constructor(value, name=None, strict=False, broadcastable=None):
     if broadcastable is None:
         broadcastable = (False,)*len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
-    return TensorSharedVariable(type=type, value=numpy.array(value,copy=True), name=name, strict=strict)
+    return TensorSharedVariable(type=type, value=numpy.array(value,copy=(not borrow)), name=name, strict=strict)
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
 # dont do purely scalar-scalar operations 

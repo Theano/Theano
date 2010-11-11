@@ -48,15 +48,22 @@ CudaNdarrayType.Constant = CudaNdarrayConstant
 
 class CudaNdarraySharedVariable(SharedVariable, _operators):
 
-    def __getvalue(self):
-        # Return a read-only array, since it is only a copy,
-        # to avoid users modifying it expecting self.container.value to change
-        v = numpy.asarray(self.container.value)
-        v.setflags(write=False)
-        return v
-    def __setvalue(self, value):
-        self.container.value = value #container does the filtering 
-    value = property(__getvalue, __setvalue)
+    def get_value(self, borrow=False, return_internal_type=False):
+        if return_internal_type: # return a cuda_ndarray
+            if borrow:
+                return self.container.value
+            else:
+                return copy.deepcopy(self.container.value)
+        else: #return an ndarray
+            return numpy.asarray(self.container.value)
+
+    def set_value(self, value, borrow=False):
+        if not borrow:
+            #TODO: check for cuda_ndarray type
+            if not isinstance(value, numpy.ndarray):
+                # in case this is a cuda_ndarray, we copy it
+                value = copy.deepcopy(value)
+        self.container.value = value # this will copy a numpy ndarray
 
     def filter_update(self, other):
         if hasattr(other, '_as_CudaNdarrayVariable'):
@@ -73,7 +80,7 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
 
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
-def cuda_shared_constructor(value, name=None, strict=False, broadcastable=None):
+def cuda_shared_constructor(value, name=None, strict=False, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
 
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
@@ -103,7 +110,7 @@ def cuda_shared_constructor(value, name=None, strict=False, broadcastable=None):
         raise
     return rval
 
-def float32_shared_constructor(value, name=None, strict=False, broadcastable=None):
+def float32_shared_constructor(value, name=None, strict=False, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
 
     # if value isn't a float32 ndarray, then raise

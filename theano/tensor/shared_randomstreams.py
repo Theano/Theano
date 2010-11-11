@@ -1,7 +1,7 @@
 """Define RandomStreams, providing random number variables for Theano graphs."""
 __docformat__ = "restructuredtext en"
 
-import sys
+import copy, sys
 import numpy
 
 from theano.gof import Container
@@ -12,10 +12,12 @@ class RandomStateSharedVariable(SharedVariable):
     pass
 
 @shared_constructor
-def randomstate_constructor(value, name=None, strict=False):
+def randomstate_constructor(value, name=None, strict=False, borrow=False):
     """SharedVariable Constructor for RandomState"""
     if not isinstance(value, numpy.random.RandomState):
         raise TypeError
+    if not borrow:
+        value = copy.deepcopy(value)
     return RandomStateSharedVariable(
             type=raw_random.random_state_type,
             value=value, 
