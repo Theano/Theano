@@ -892,10 +892,35 @@ class _tensor_py_operators:
     #def __complex__(self): return convert_to_complex128(self)
 
     #COMPARISONS
-    def __lt__(self,other): return lt(self, other)
-    def __le__(self,other): return le(self, other)
-    def __gt__(self,other): return gt(self, other)
-    def __ge__(self,other): return ge(self, other)
+    _is_nonzero = True
+    def __lt__(self,other): 
+        rval = lt(self, other)
+        rval._is_nonzero=False
+        return rval
+    def __le__(self,other): 
+        rval =  le(self, other)
+        rval._is_nonzero=False
+        return rval
+    def __gt__(self,other): 
+        rval = gt(self, other)
+        rval._is_nonzero=False
+        return rval
+    def __ge__(self,other): 
+        rval = ge(self, other)
+        rval._is_nonzero=False
+        return rval
+    def __nonzero__(self):
+        # This is meant to prohibit stuff like a < b < c, which is internally implemented as 
+        # (a < b) and (b < c). The trouble with this is the side-effect that checking for a
+        # non-NULL a by typing "if a: ..." uses the same __nonzero__ method.  We want these
+        # both to work, but it seems impossible.  Currently, all vars evaluate to nonzero
+        # except the return values of comparison operators, which raise this exception.  If you
+        # can think of a better solution, go for it!
+        if self._is_nonzero:
+            return True
+        else:
+            raise TypeError("Variable does not support boolean operations.")
+
 
     #BITWISE
     def __invert__(self): return invert(self)
