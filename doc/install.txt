@@ -281,10 +281,10 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
   installation (if you do have one, then you will need to either remove it first,
   or install those additional packages manually as described in the V2 instructions).
 
-- Install Mercurial. You can use either the
-  `command-line version <http://groups.google.com/group/theano-users>`_ or the
-  `GUI version <http://groups.google.com/group/theano-users>`_ (for the purpose of
-  simply downloading Theano, the command line version is enough).
+- Install Mercurial. You can download it
+  `here <http://mercurial.selenic.com/downloads>`_. You may get either the command
+  line Windows version or the TortoiseHG GUI version: it does not matter as
+  far as installing Theano is concerned.
 
 - Start a shell (hit the Start button and run the ``cmd`` command) and navigate to
   the directory where you want to install Theano (it is ok to just stay in the
@@ -295,18 +295,18 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
 
         hg clone http://hg.assembla.com/theano Theano
 
-- Add (or edit) the PYTHONPATH environment variable (available through Control
+- Add (or edit) the PYTHONPATH environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
   the full installation directory of Theano. Restart a shell (``cmd``) to verify
   that it works:
 
-    .. code-block:: bash
+    .. code-block:: none
 
         C:\Users\login>echo %PYTHONPATH%
         C:\Users\login\Theano
         
 - Create a new ``.theanorc`` text file (or ``.theanorc.txt``, which is easier
-  to create under Windows) in your user profile directory, with the following
+  to create under Windows) in your user profile directory, containing the following
   two lines:
  
     .. code-block:: bash
@@ -317,8 +317,8 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
 - You are now ready to run Theano.
   It will use NumPy for dot products, which is still pretty fast (see below for
   optional instructions on how to compile your own BLAS library).
-  To test that theano read correctly your configuration file, run Python (easiest
-  way is to just type ``python`` in a shell) and run the following:
+  To test that theano correctly reads your configuration file, run Python
+  (e.g. by just typing ``python`` in a shell) and run the following code:
 
   .. code-block:: python
 
@@ -326,7 +326,9 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
       print theano.config.blas.ldflags
 
   This should print the same content as in your config file, i.e. nothing
-  (if your config file was not read properly, it would print ``-lblas``).
+  (if your config file was not read properly, it would print ``-lblas``, and
+  trying to compile any Theano function would result in a compilation error
+  due to the system being unable to find ``blas.dll``).
 
 Windows V1.5 (optional follow-up to V1 instructions)
 ----------------------------------------------------
