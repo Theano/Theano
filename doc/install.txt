@@ -94,6 +94,32 @@ In csh:
 
     setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
 
+Testing your installation
+---------------------------
+
+Once you have completed these steps, you should run the theano test suite like this:
+
+.. code-block:: bash
+
+    cd Theano
+    THEANO_FLAGS=warn.ignore_bug_before=all nosetests #execute all the tests
+
+
+THEANO_FLAGS is an environment variable that define Theano flags (:ref:`libdoc_config`).
+For Windows user, you can remove it or see the doc to know how to configure them differently.
+
+All tests should pass except the test marked as KnownFailureTest. If some test 
+fails on your machine, you are encouraged to tell us what went wrong on the 
+``theano-users@googlegroups.com`` mailing list.
+
+.. note::
+
+    `warn.ignore_bug_before=all` remove warning that you don't need to see here.
+    It is also recommended for new user to put this flag to a different value 
+    into their .theanorc file. Go 
+    `here <file:///u/bastienf/repos/Theano/html/library/config.html?libdoc-config#config.warn.ignore_bug_before>`__
+    for detail.
+
 Troubleshooting: Make sure you have a BLAS library
 -----------------------------------------------------
 
@@ -149,20 +175,6 @@ Here are some different way to configure BLAS:
     This might be just a problem with the way Theano passes compilation
     arguments to gcc, but the problem is not fixed yet.
 
-
-Testing your installation
----------------------------
-
-Once you have completed these steps, you should run the theano test suite like this:
-
-.. code-block:: bash
-
-    cd Theano
-    nosetests #execute all the tests
-
-All tests should pass except the test marked as KnownFailureTest. If some test 
-fails on your machine, you are encouraged to tell us what went wrong on the 
-``theano-users@googlegroups.com`` mailing list.
 
 Updating
 -------------

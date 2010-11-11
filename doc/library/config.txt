@@ -147,6 +147,30 @@ Config Attributes
 
     When the mode is Mode, it set the default optimizer used.
 
+.. attribute:: warn.ignore_bug_before
+
+    String value: 'None', 'all', '0.3'
+
+    Default: 'None'
+
+    When we fix a Theano bug that generated bad result in a case, we also make
+    Theano raise a warning when it enconter it again. This help to detect if fixed bug
+    affected your past experiments as you only need to run your experimentand not
+    understands the Theano internal that trigger the bug. A better way to detect
+    that see this will be implemented. See this
+    `ticket <http://trac-hg.assembla.com/theano/ticket/514>`__.
+
+    This flags allo new user to don't get warning about old fixed bug
+    that they don't need. You can set its value to the first version of Theano 
+    that you used(probably 0.3 or higher)
+
+    `None` mean that we should all warning.
+    `all` mean to hide all warning.
+
+    It is recommended that you put a version, so that you will see futur warning.
+    It is also recommended you put this into the .theanorc to have this always
+    actif.
+
 .. attribute:: home
 
     Default: env-variable $HOME
