@@ -3,8 +3,11 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
-import scipy.sparse as sp
-import scipy.sparse
+try:
+    import scipy.sparse as sp
+    import scipy.sparse
+except ImportError:
+    pass#the variable enable_sparse will be used to disable the test file.
 
 import theano
 from theano import compile
