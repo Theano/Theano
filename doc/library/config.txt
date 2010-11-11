@@ -124,11 +124,28 @@ Config Attributes
 
 .. attribute:: mode
 
-    String value: 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'
+    String value: 'Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE'
 
-    Default 'FAST_RUN'
+    Default 'Mode'
 
-    This sets the default compilation mode for theano functions.
+    This set the default compilation mode for theano functions. By default the
+    mode Mode is equivalent to FAST_RUN. See Config attribute linker and optimizer.
+
+.. attribute:: linker
+
+    String value: 'c|py', 'py', 'c', 'c|py_nogc', 'c&py'
+
+    Default: 'c|py'
+
+    When the mode is Mode, it set the default linker used.
+
+.. attribute:: optimizer
+
+    String value: 'fast_run', 'merge', 'fast_compile', 'None'
+
+    Default: 'fast_run'
+
+    When the mode is Mode, it set the default optimizer used.
 
 .. attribute:: home
 
