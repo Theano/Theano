@@ -204,10 +204,10 @@ class Variable(utils.object2):
 
     - `Variable` (this base type) is typically the output of a symbolic computation,
     
-    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner == None
+    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner is None
 
-    - `Constant` (a subclass) which adds a default and un-replacable :literal:`value`, and
-      requires that owner == None
+    - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
+      requires that owner is None
 
     A Variable which is the output of a symbolic computation will have an owner != None.
 

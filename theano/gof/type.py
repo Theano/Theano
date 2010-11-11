@@ -315,7 +315,7 @@ class Type(object2, PureType, CLinkerType):
     Type instance defines the kind of value which might end up in that variable when executing
     a `Function`.  In this sense, theano is like a strongly-typed language because the types
     are included in the graph before the values.  In our example above, b is a Variable which is
-    guaranteed to corresond to a numpy.ndarray of rank 1 when we try to do some computations
+    guaranteed to correspond to a numpy.ndarray of rank 1 when we try to do some computations
     with it.
 
     Many `Op` instances will raise an exception if they are applied to inputs with incorrect
