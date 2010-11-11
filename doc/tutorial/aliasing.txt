@@ -73,18 +73,19 @@ subsequently make to ``np_array`` have no effect on our shared variable.
     np_array += 1 # now it is an array of 2.0 s
 
     s_default.value  # -> array([1.0, 1.0])
-    s_false.value    # -> array([2.0, 2.0])
+    s_false.value    # -> array([1.0, 1.0])
+    s_true.value    # -> array([2.0, 2.0])
 
 If we are running this with the CPU as the device, 
-then changes we make to np_array *right away* will show up in ``s_false.value``
-because numpy arrays are mutable, and ``s_false`` is using the ``np_array``
+then changes we make to np_array *right away* will show up in ``s_true.value``
+because numpy arrays are mutable, and ``s_true`` is using the ``np_array``
 object as it's internal buffer.
 
-However, this aliasing of ``np_array`` and ``s_false`` is *inconsistent and fragile*!
+However, this aliasing of ``np_array`` and ``s_true`` is *inconsistent and fragile*!
 It is inconsistent because if Theano is using a GPU device, then the borrow flag
 has no effect.
 It is fragile because
-if we call a theano function that updates the value of ``s_false`` the aliasing
+if we call a theano function that updates the value of ``s_true`` the aliasing
 relationship *may* or *may not* be broken (it depends on what the Theano
 function does).
 
@@ -135,7 +136,7 @@ factors (e.g. the compute device, the dtype of the numpy array).
 
 .. code-block:: python
 
-    v_internal = s.get_internal_value(borrow=True, return_internal_type=True)
+    v_internal = s.get_value(borrow=True, return_internal_type=True)
 
 It is possible to use ``borrow=False`` in conjunction with
 ``return_internal_type=True``, which will return a deep copy of the internal object.
@@ -188,12 +189,17 @@ that control how ``theano.function`` handles its arguments and return value[s].
 Borrowing an input means that Theano will treat the argument you provide as if
 it were part of Theano's pool of temporaries.  Consequently, your input
 may be reused as a buffer (and overwritten!) during the computation of other variables in the
-course of evaluating that function (e.g. ``f``).  
+course of evaluating that function (e.g. ``f``). 
+
 
 Borrowing an output means that Theano will not insist on allocating a fresh
 output buffer every time you call the function.  It will possibly reuse the same one as
 a previous call, and overwrite the old contents.  Consequently, it may overwrite
 old return values by side effect.
+Those return values may also be overwritten in
+the course of evaluating *another compiled function* (for example, the output
+may be aliased to a shared variable).  So be careful to use a borrowed return
+value right away before calling any more Theano functions.
 
 It is also possible to pass an ``return_internal_type=True`` flag to the ``Out``
 variable which has the same interpretation as the ``return_internal_type`` flag
