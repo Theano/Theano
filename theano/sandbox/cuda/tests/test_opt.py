@@ -1,17 +1,17 @@
 import sys, time
-from theano.compile.sharedvalue import shared
+
+import numpy
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+
 from theano.compile.pfunc import pfunc
 from theano import tensor
 import theano
-import numpy
 
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.compile.mode
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 if theano.config.mode=='FAST_COMPILE':
@@ -49,6 +49,9 @@ def test_int_pow():
     #theano.printing.debugprint(f)
 
 
+
+
+
 def test_softmax():
     x = tensor.fmatrix()
 
@@ -78,7 +81,7 @@ def test_opt_gpujoin_onlyajoin():
     b = cuda.shared_constructor(_b)
 
     c = tensor.join(1,a,b)
-    
+
     f = theano.function([], c, mode=mode_with_gpu)
 
     #theano.printing.debugprint(f)
@@ -105,7 +108,7 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     b_prime = tensor.sin(b)
 
     c = tensor.join(0,a_prime,b_prime)
-    
+
     d = c[:-1]
 
     f = theano.function([], d, mode=mode_with_gpu)

@@ -119,11 +119,11 @@ def insert_inplace_optimizer_op(OP):
         """
         #we should not validate too often as this take too much time to execute!
         #It is the _dfs_toposort() fct in theano/gof/destroyhandler.py
-        #that take so much time. 
-        #Should we try to use another lib that do toposort? 
+        #that take so much time.
+        #Should we try to use another lib that do toposort?
         #   igraph: http://igraph.sourceforge.net/
         #   networkx: https://networkx.lanl.gov/
-        #Should we try to use cython? 
+        #Should we try to use cython?
         #   compiling only that fct is not enought, should we try to add the deque class too?
         #   and init the deque and other list to an upper bound number of element?
         #Should Theano do online toposort as in http://code.google.com/p/acyclic/?
@@ -213,7 +213,7 @@ def insert_inplace_optimizer_op(OP):
 
 insert_inplace_optimizer = insert_inplace_optimizer_op(T.Elemwise)
 
-compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 'inplace') 
+compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 'inplace')
 
 def register_canonicalize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
@@ -304,7 +304,7 @@ class MakeVector(T.Op):
     """Concatenate a number of scalars together into a vector
 
     This is a simple version of stack() that introduces far less cruft into the graph.
-    
+
     Should work with 0 inputs. The constant_folding optimization will remove it.
     """
     def __init__(self, dtype='int64'):
@@ -398,7 +398,7 @@ class Shape_i(T.Op):
             %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
             ((npy_int64*)PyArray_DATA(%(out)s))[0]=%(x)s->dimensions[%(i)s];
             """%locals()
-        
+
         elif node.inputs[0].type.__class__.__name__=="CudaNdarrayType":
             #Don't want to import cuda stuff here.
             return """
@@ -413,12 +413,12 @@ class Shape_i(T.Op):
 
 class ShapeFeature(object):
     """Graph optimizer for removing all calls to shape()
-    
+
     This optimizer replaces all Shapes and Subtensors of Shapes with Shape_i and MakeVector
     Ops.
 
     This optimizer has several goals:
-    1. to 'lift' Shapes to as close to the inputs as possible.  
+    1. to 'lift' Shapes to as close to the inputs as possible.
     2. to infer the shape of every node in the graph in terms of the input shapes.
     3. remove all fills (T.second, T.fill) from the graph
 
@@ -430,7 +430,7 @@ class ShapeFeature(object):
     Many optimizations refuse to work on nodes with multiple clients.
 
     Lifting is done by using an `<Op>.infer_shape` function if one is present, or else using a
-    conservative default.  An Op that supports shape-lifting should define a 
+    conservative default.  An Op that supports shape-lifting should define a
     infer_shape(self, node, input_shapes) function.  The argument input_shapes is a tuple
     of tuples... there is an interior tuple for each input to the node.  The tuple has as many
     elements as dimensions.  The element in position i of tuple j represents the i'th shape
@@ -439,9 +439,9 @@ class ShapeFeature(object):
     the output[j].shape[i] of the function.  If an output is not a TensorType, then None should
     be returned instead of a tuple for that output.
 
-    For example the infer_shape for a matrix-matrix product would accept 
+    For example the infer_shape for a matrix-matrix product would accept
     input_shapes=((x0,x1), (y0,y1)) and return ((x0, y1),).
-    
+
 
     Inferring the shape of internal nodes in the graph is important for doing size-driven
     optimizations.  If we know how big various intermediate results will be, we can estimate
@@ -495,7 +495,7 @@ class ShapeFeature(object):
             return T.constant(s_i, dtype='int64')
         if type(s_i) in (tuple,list):
             # this dimension is the same as many of the inputs
-            # which tells us that if one of the inputs is known, 
+            # which tells us that if one of the inputs is known,
             # the others all become known.
             # TODO: should be implemented in Elemwise, and Dot
             #
@@ -506,7 +506,7 @@ class ShapeFeature(object):
                 raise TypeError('Shape element must be scalar', s_i)
             return s_i
         else:
-            raise TypeError('Unsupported shape element', 
+            raise TypeError('Unsupported shape element',
                     s_i, type(s_i), getattr(s_i, 'type', None))
 
     def set_shape(self, r, s):
@@ -534,7 +534,7 @@ class ShapeFeature(object):
         assert not hasattr(env, 'shape_feature')
         env.shape_feature = self
         self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-        self.scheduled = {} # Variable -> 
+        self.scheduled = {} # Variable ->
         self.lscalar_one = T.constant(1, dtype='int64')
         assert self.lscalar_one.type == T.lscalar
         for node in env.toposort():
@@ -622,7 +622,7 @@ def local_fill_to_alloc(node):
 
     This is an important optimization because with the shape_to_shape_i optimization, the
     dependency on 's' is often removed.
-    
+
     """
     if node.op == T.fill:
         r, v = node.inputs
@@ -637,7 +637,7 @@ def local_fill_to_alloc(node):
             shape_of = node.env.shape_feature.shape_of
             # TODO: cut out un-necessary dimshuffles of v
             rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
-        
+
         #if rval[0].type != node.outputs[0].type:
             #print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
 
@@ -700,7 +700,7 @@ def local_subtensor_make_vector(node):
                 raise
 
             if isinstance(idx, (scalar.Scalar, T.TensorType)):
-                # The idx is a Scalar, ie a Type. This means the actual index 
+                # The idx is a Scalar, ie a Type. This means the actual index
                 # is contained in node.inputs[1]
                 old_idx, idx = idx, node.inputs[1]
                 assert idx.type == old_idx
@@ -773,7 +773,7 @@ class Assert(T.Op):
         cond = [T.as_tensor_variable(c) for c in conds]
         assert numpy.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value]+cond, [value.type()])
-    
+
     def __str__(self):
         return self.__class__.__name__
     def perform(self, node, inputs, (out,)):
@@ -807,7 +807,7 @@ class Assert(T.Op):
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
-    
+
 assert_ = Assert()
 
 @register_specialize
@@ -818,13 +818,13 @@ def local_remove_useless_assert(node):
         for c in node.inputs[1:]:
             try:
                 const = get_constant_value(c)
-                
+
                 if 0!=const.ndim or const==0:
                     #Should we raise an error here? How to be sure it is not catched?
                     cond.append(c)
             except TypeError:
                 cond.append(c)
-        
+
         if len(cond)==0:
             return [node.inputs[0]]
         if len(cond)!=len(node.inputs)-1:
@@ -873,12 +873,12 @@ def local_alloc_elemwise(node):
                       isinstance(i.owner.inputs[0].owner.op,T.Alloc)):
             no_broad_idx = idx
             break
-            
+
     assert no_broad_idx>=0
     assert_op = node.inputs[no_broad_idx]
     cmp_op = assert_op
     new = []
-    
+
     for i in node.inputs:
         if i.owner and isinstance(i.owner.op,T.Alloc) and i.owner.inputs[0].type != i.owner.outputs[0].type:
             #when i.owner.inputs[0].type == i.owner.outputs[0].type we will remove that alloc later
@@ -1017,8 +1017,8 @@ def local_IncSubtensor_serialize(node):
             IncSubtensor(Elemwise{second}(a, 0), g(f(a[2])), [2])
 
     This is much worse because this time we have to produce 3 matrices the size of 'a', just so
-    we can add them together. 
-    
+    we can add them together.
+
     This Op rearranges IncSubtensor's that all work on the same initial argument (here,
     Elemwise{second}(a,0)) into a chain.  The advantage of the chain structure is that each one
     can be optimized later in the pipeline to operate inplace.
@@ -1028,7 +1028,7 @@ def local_IncSubtensor_serialize(node):
     #
     #  add(x, incsubtensor(b, c), incsubtensor(b, d))
     #  -> incsubtensor(incsubtensor(add(x,b,b), c), d)
-    
+
     """
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
@@ -1138,7 +1138,7 @@ def local_rebroadcast_lift(node):
 
 def apply_rebroadcast_opt(rval):
     """
-    Apply as many times as required the optimization local_useless_rebroadcast 
+    Apply as many times as required the optimization local_useless_rebroadcast
     and local_rebroadcast_lift.
 
     :param rval: a Variable
@@ -1149,7 +1149,7 @@ def apply_rebroadcast_opt(rval):
     while changed and rval.owner:
       changed = False
       rval2 = theano.tensor.opt.local_useless_rebroadcast.transform(rval.owner)
-      if rval2: 
+      if rval2:
         assert len(rval2)==1
         rval = rval2[0]
         changed = True
@@ -1216,7 +1216,7 @@ def local_mul_switch_sink(node):
                     fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
                     return fct
             except TypeError:
-               pass 
+               pass
             try:
                 if get_constant_value(switch.inputs[2]) == 0.:
                     listmul = node.inputs[:idx] + node.inputs[idx+1:]
@@ -1274,7 +1274,7 @@ def local_reshape_chain(node):
     """
     if not opt.check_chain(node, T.Reshape, T.Reshape):
         return False
-    
+
     # TODO: this can permit a failing program to run by eliminating the the lower
     #       reshape
     return [node.op(node.inputs[0].owner.inputs[0], node.inputs[1])]
@@ -1304,7 +1304,7 @@ if 0:
             y_shape = node.env.shape_feature.shape_of[y]
 
             def tmp(thing):
-                try: 
+                try:
                     return T.get_constant_value(thing)
                 except (TypeError, ValueError), e:
                     print e, thing.owner.inputs[0]
@@ -1322,15 +1322,15 @@ def local_fill_cut(node):
     If c.type == a.type.
     """
 
-    # this optimization is essentially for getting broadcasting to replace fill. 
-    # This is always possible when using a Compound Elemwise operation, 
+    # this optimization is essentially for getting broadcasting to replace fill.
+    # This is always possible when using a Compound Elemwise operation,
     # but it is not always possible without one (consider filling a large matrix with a scalar,
     # and then adding another scalar.  The only numbers that count are the two scalars, but we
     # can't ignore the large matrix because it gives the shape of the result.
 
     if not opt.check_chain(node, T.Elemwise):
         return False
-    
+
     output = node.outputs[0]
     try:
         #reference is some input with the same type as the input but that is not produced by a fill
@@ -1397,7 +1397,7 @@ class Canonizer(gof.LocalOptimizer):
     Simplification tool.
 
     Usage: Canonizer(main, inverse, reciprocal, calculate)
-    
+
     * main: a suitable Op class that is commutative, associative and
             takes one to an arbitrary number of inputs, e.g. add or
             mul
@@ -1421,7 +1421,7 @@ class Canonizer(gof.LocalOptimizer):
       T = theano.tensor
       add_canonizer = Canonizer(T.add, T.sub, T.neg, lambda n, d: sum(n) - sum(d))
       mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, lambda n, d: prod(n) / prod(d))
-    
+
     Examples of optimizations mul_canonizer can perform:
       x / x -> 1
       (x * y) / x -> y
@@ -1659,7 +1659,7 @@ class Canonizer(gof.LocalOptimizer):
 
         # Lists representing the *constant* elements of num and denum
         numct, denumct = [], []
-        
+
         for v in orig_num:
             ct = self.get_constant(v)
             if ct is not None:
@@ -1788,7 +1788,7 @@ register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
     if node.op == T.neg:
-        return [T.mul(numpy.array(-1, dtype = node.inputs[0].dtype), 
+        return [T.mul(numpy.array(-1, dtype = node.inputs[0].dtype),
             node.inputs[0])]
 register_canonicalize(local_neg_to_mul)
 
@@ -1797,7 +1797,7 @@ register_canonicalize(local_neg_to_mul)
 def local_sum_mul_by_scalar(node):
     """sum(scalar * smth) -> scalar * sum(smth)
     """
-    # TODO: if the the thing inside the Sum is a division, 
+    # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
     if isinstance(node.op, T.Sum):
         thing_summed, = node.inputs
@@ -1935,7 +1935,7 @@ def local_sum_sum(node):
                     # special case of local_cut_useless_reduce
                     return [T.Sum(None)(summed.owner.inputs[0])]
                 if node.op.axis is None:
-                    # we're summing up everything anyway so lets 
+                    # we're summing up everything anyway so lets
                     # do it all at once
                     return [T.Sum(None)(summed.owner.inputs[0])]
 
@@ -1983,7 +1983,6 @@ def local_sum_alloc(node):
         if summed.owner and isinstance(summed.owner.op, T.Alloc):
             input = summed.owner.inputs[0]
             shapes = summed.owner.inputs[1:]
-            #import pdb;pdb.set_trace()
             if node.op.axis is None or node.op.axis == tuple(range(input.ndim)):
                 try:
                     val = get_constant_value(input)
@@ -2019,7 +2018,7 @@ register_specialize(local_mul_to_neg)
 @register_specialize
 @gof.local_optimizer([T.neg])
 def local_neg_neg(node):
-    # other specializations shouldn't put this in, 
+    # other specializations shouldn't put this in,
     # but sometimes they do
     if node.op == T.neg:
         if node.inputs[0].owner and node.inputs[0].owner.op == T.neg:
@@ -2177,11 +2176,11 @@ def local_pow_specialize_device(node):
                 rval1 = None
                 rval1_scal = None
                 while y_to_do>0:
-                    log_to_do = int(numpy.log2(y_to_do))                    
+                    log_to_do = int(numpy.log2(y_to_do))
                     if rval1:
                         rval1 *= pow2[log_to_do]
                         rval1_scal *= pow2_scal[log_to_do]
-                    else: 
+                    else:
                         rval1 = pow2[log_to_do]
                         rval1_scal = pow2_scal[log_to_do]
                     y_to_do -= 2**log_to_do
@@ -2197,7 +2196,7 @@ def local_pow_specialize_device(node):
                 rval[0] = T.cast(rval[0], odtype)
                 assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
                 return rval
-   
+
 @gof.local_optimizer([T.mul])
 def local_mul_specialize(node):
     """Remove special-case constants from mul arguments
@@ -2210,7 +2209,7 @@ def local_mul_specialize(node):
         neg = False
         new_inputs = []
         for input in node.inputs:
-            # remove any neg arguments 
+            # remove any neg arguments
             while input.owner and input.owner.op == T.neg:
                 neg ^= True
                 input = input.owner.inputs[0]
@@ -2303,8 +2302,8 @@ def check_for_x_over_absX(numerators, denominators):
         if den.owner and den.owner.op == T.abs_ and den.owner.inputs[0] in numerators:
             if den.owner.inputs[0].type.dtype.startswith('complex'):
                 #TODO: Make an Op that projects a complex number to have unit length
-                #      but projects 0 to 0.  That would be a weird Op, but consistent with the 
-                #      special case below.  I heard there's some convention in Matlab that is 
+                #      but projects 0 to 0.  That would be a weird Op, but consistent with the
+                #      special case below.  I heard there's some convention in Matlab that is
                 #      similar to this... but not sure.
                 pass
             else:
@@ -2319,7 +2318,7 @@ local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'X_over_absX')
 def local_abs_lift(node):
     """
     move the abs toward the input. This is needed for check_for_x_over_absX to apply in more case.
-    
+
     """
     if node.op == T.abs_ and node.inputs[0].owner:
         assert node.nin == 1
@@ -2328,13 +2327,13 @@ def local_abs_lift(node):
         if node.inputs[0].owner.op == T.true_div:
             i = node.inputs[0].owner.inputs
             return [T.true_div(T.abs_(i[0]),T.abs_(i[1]))]
-    
+
 @register_specialize
 @gof.local_optimizer([])
 def local_abs_merge(node):
     """
     merge abs generated by local_abs_lift when the canonizer don't need it anymore
-    
+
     """
     if node.op == T.mul and sum([i.owner.op == T.abs_ for i in node.inputs if i.owner])>1:
         inputs = []
@@ -2570,7 +2569,7 @@ def constant_folding(node):
     return msg
 
 register_canonicalize(constant_folding, 'fast_compile')
-register_stabilize(constant_folding) # because 
+register_stabilize(constant_folding) # because
 register_specialize(constant_folding)
 
 
@@ -2598,7 +2597,7 @@ def _is_minus1(expr):
         return False
 
 #1+erf(x)=>erfc(-x)
-local_one_plus_erf = gof.PatternSub((T.add, 
+local_one_plus_erf = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_1),
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
@@ -2608,7 +2607,7 @@ register_stabilize(local_one_plus_erf, name='local_one_plus_erf')
 register_specialize(local_one_plus_erf, name='local_one_plus_erf')
 
 #1-erf(x)=>erfc(x)
-local_one_minus_erf = gof.PatternSub((T.sub, 
+local_one_minus_erf = gof.PatternSub((T.sub,
                                      dict(pattern='y', constraint = _is_1),
                                      (T.erf, 'x')),
                                     (T.erfc, 'x'),
@@ -2629,7 +2628,7 @@ register_specialize(local_one_minus_erf2)
 
 #1+(-erf(x))=>erfc(x)
 #This is a different graph then the previous as the canonicalize don't work completly
-local_one_plus_neg_erf = gof.PatternSub((T.add, 
+local_one_plus_neg_erf = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_1),
                                      (T.neg,(T.erf, 'x'))),
                                     (T.erfc, 'x'),
@@ -2640,7 +2639,7 @@ register_specialize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
 
 #(-1)+erf(x) => -erfc(x)
 #don't need erf(x)+(-1) as the canonicalize will put the -1 as the first argument.
-local_erf_minus_one = gof.PatternSub((T.add, 
+local_erf_minus_one = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_minus1),
                                      (T.erf, 'x')),
                                     (T.neg,(T.erfc, 'x')),
@@ -2650,7 +2649,7 @@ register_stabilize(local_erf_minus_one, name='local_erf_minus_one')
 register_specialize(local_erf_minus_one, name='local_erf_minus_one')
 
 #1-erfc(x) => erf(x)
-local_one_minus_erfc = gof.PatternSub((T.sub, 
+local_one_minus_erfc = gof.PatternSub((T.sub,
                                      dict(pattern='y', constraint = _is_1),
                                      (T.erfc, 'x')),
                                     (T.erf, 'x'),
@@ -2665,7 +2664,7 @@ local_one_minus_erfc2 = gof.PatternSub((T.add,
                                        (T.erf, 'x'),
                                        allow_multiple_clients = True,
                                        name='local_one_minus_erfc2')
-register_canonicalize(local_one_minus_erfc2) 
+register_canonicalize(local_one_minus_erfc2)
 register_stabilize(local_one_minus_erfc2)
 register_specialize(local_one_minus_erfc2)
 
@@ -2675,13 +2674,13 @@ local_one_minus_erfc3 = gof.PatternSub((T.add,
                                        (T.erf, 'x'),
                                        allow_multiple_clients = True,
                                        name='local_one_minus_erfc3')
-register_canonicalize(local_one_minus_erfc3) 
+register_canonicalize(local_one_minus_erfc3)
 register_stabilize(local_one_minus_erfc3)
 register_specialize(local_one_minus_erfc3)
 
 #1+(-erfc(x)) => erf(x)
 #This is a different graph then the previous as the canonicalize don't work completly
-local_one_add_neg_erfc = gof.PatternSub((T.add, 
+local_one_add_neg_erfc = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_1),
                                      (T.neg,(T.erfc, 'x'))),
                                     (T.erf, 'x'),
@@ -2691,7 +2690,7 @@ register_stabilize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
 register_specialize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
 
 #(-1)+erfc(-x)=>erf(x)
-local_erf_neg_minus_one = gof.PatternSub((T.add, 
+local_erf_neg_minus_one = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_minus1),
                                      (T.erfc, (T.neg,'x'))),
                                     (T.erf, 'x'),
@@ -2701,7 +2700,7 @@ register_stabilize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 register_specialize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
 
 #(-1)+erfc(-1*x)=>erf(x)
-local_erf_neg_minus_one2 = gof.PatternSub((T.add, 
+local_erf_neg_minus_one2 = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint = _is_minus1),
                                      (T.erfc, (T.mul,-1,'x'))),
                                     (T.erf, 'x'),
@@ -2732,7 +2731,7 @@ def local_log_erfc(node):
 
     x = node.inputs[0].owner.inputs[0]
     stab_value = -x**2-T.log(x)-.5*T.log(numpy.pi)+T.log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
-    
+
     if node.outputs[0].dtype=='float32':
         threshold = 10.0541949
     elif node.outputs[0].dtype=='float64':
@@ -2749,7 +2748,7 @@ def local_log_erfc(node):
 #for float64: threshold=26.63 see at the end of the fct for the explaination
 #for float32: threshold=9.3 see at the end of the fct for the explaination
 #TODO: remove the contraint that their is only 2 inputs to mul and the exp(x**2) is the second.
-#TODO: at the test point 10 in float32, their is instability in the original value. 
+#TODO: at the test point 10 in float32, their is instability in the original value.
 #      the original give -30.0, the stab -20.1 and in float64 -18.1.
 #      Make the test don't generate error in that case!
 @register_stabilize
@@ -2809,7 +2808,7 @@ def local_grad_log_erfc_neg(node):
                     new_inputs.append(i)
             return new_inputs
         mul_inputs = check_input(mul_neg.owner.inputs)
-        
+
         #put the constant first
         for i in range(len(mul_inputs)):
             if isinstance(i, Constant):
@@ -2821,7 +2820,7 @@ def local_grad_log_erfc_neg(node):
                     mul_inputs[i]=tmp
                     break
         mul_neg = T.mul(*mul_inputs)
-        
+
         try:
             cst2 = get_constant_value(mul_neg.owner.inputs[0])
         except TypeError:
@@ -2840,25 +2839,25 @@ def local_grad_log_erfc_neg(node):
             return False
 
         if cst2!=-1:
-            if (not erfc_x.owner or erfc_x.owner.op != T.mul 
+            if (not erfc_x.owner or erfc_x.owner.op != T.mul
                 or len(erfc_x.owner.inputs)!=2):
                 #todo implement that case
                 return False
             if erfc_x.owner.inputs[1] is not mul_neg.owner.inputs[1]:
                 return False
-            
+
             x = erfc_x
-            try:                
+            try:
                 cst = get_constant_value(erfc_x.owner.inputs[0])
             except TypeError:
                 return False
             if cst2 != -cst*2:
                 return False
-            
+
             #The constant is valid. Must check that the
-        elif erfc_x is not x: 
+        elif erfc_x is not x:
                 return False
-            
+
     else:
         return False
 
@@ -3014,7 +3013,7 @@ def local_elemwise_fusion_op(OP):
         try:
             s_new_out.owner.op.c_code(s_new_out.owner, "test_presence_of_c_code",
                              ["x" for x in s_g],
-                             "z",{}) 
+                             "z",{})
         except MethodNotDefined:
             _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
             return False
@@ -3046,19 +3045,18 @@ def local_elemwise_fusion_op(OP):
                 return False
 
     #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
-            
+
         #we fuse as many that we can at the same time to make debug mode faster
         #debug mode will be faster as it won't test all intermediate step.
         while True:
             ret = local_fuse(n)
             if ret is not False and ret is not None:
                 #print n,ret
-                #import pdb;pdb.set_trace()
                 assert len(ret)==len(n.outputs)
                 assert len(ret)==1
                 n = ret[0].owner
             else: break
-                
+
         return n.outputs
     return local_fuse
 

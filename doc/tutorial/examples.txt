@@ -144,6 +144,8 @@ array([[ 0.25      ,  0.19661193],
 The resulting function computes the gradient of its first argument
 with respect to the second. In this way, Theano can be used for
 `automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_.
+As opposed to what this page tell, Theano do efficient symbolic differentiation 
+even for function with many inputs.
 
 .. note::
    

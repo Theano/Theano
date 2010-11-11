@@ -174,9 +174,9 @@ Config Attributes
 
     A list of optimizer tags that we don't want included in the default Mode.
     If multiple tags, separate them by ':'.
-    Ex: to remove the elemwise inplace optimizer(slow for big graph)
-        use the flags: optimizer_excluding:inplace_opt
-	inplace_opt is the name of that optimization.
+    Ex: to remove the elemwise inplace optimizer(slow for big graph),
+    use the flags: optimizer_excluding:inplace_opt, where
+    inplace_opt is the name of that optimization.
 
 .. attribute:: optimizer_including
 

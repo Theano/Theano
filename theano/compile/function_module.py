@@ -510,7 +510,7 @@ class Function(object):
 
         # Set positional arguments
         i = 0
-        for arg in args:
+        for arg_index, arg in enumerate(args):
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
@@ -520,7 +520,7 @@ class Function(object):
                 try:
                     s.storage[0] = s.type.filter(arg, strict=s.strict)
                 except Exception, e:
-                    e.args = tuple(list(e.args)+["Bad input argument at index %d"%(list(args).index(arg))])
+                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % arg_index])
                     raise
             s.provided += 1
             i+=1

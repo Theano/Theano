@@ -759,28 +759,47 @@ def test_many_arg_elemwise():
     rng = numpy.random.RandomState( [1,2,3])
 
     for num_args in [25]:
-
-        rows = rng.randint(1,5)
-        cols = rng.randint(1,5)
-
         for op_to_test in [ theano.tensor.add, theano.tensor.mul ]:
-            args = [ numpy.cast['float32'](rng.randn(rows,cols)) for arg in xrange(0,num_args) ]
-            symb_args = [ theano.tensor.fmatrix() for arg in xrange(0,num_args) ]            
+            for nb_dim in [2,3,4,5]:
+                shapes = [rng.randint(1,5) for i in range(nb_dim)]
+                args = [ numpy.cast['float32'](rng.randn(*shapes)) for arg in xrange(0,num_args) ]
+                
+                symb_args = [ theano.tensor.TensorType('float32', (False,)*nb_dim)() for arg in xrange(0,num_args) ]            
 
             
-            outputs = []
-            for mode in [ mode_with_gpu, mode_without_gpu ]:
-                f = theano.function( symb_args, op_to_test(*symb_args), mode = mode )
-                #theano.printing.debugprint(f)
-                outputs.append( f( * args) )
-                #assert that the test was done on the gpu.
-                if mode is mode_with_gpu:
-                    assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
+                outputs = []
+                for mode in [ mode_with_gpu, mode_without_gpu ]:
+                    #test the optijmization local_gpu_elemwise_0
+                    f = theano.function( symb_args, op_to_test(*symb_args), mode = mode.excluding("local_gpu_elemwise_1") )
+                    outputs.append( f( * args) )
+                    #assert that the test was done on the gpu.
+                    if mode is mode_with_gpu:
+                        assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
+                        
+                    #test the optijmization local_gpu_elemwise_1
+                    f = theano.function( symb_args, 
+                                         cuda.gpu_from_host(op_to_test(*symb_args)), 
+                                         mode = mode.excluding("local_gpu_elemwise_0") )
+                    out = f( * args)
+                    #assert that the test was done on the gpu.
+                    if mode is mode_with_gpu:
+                        assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.nodes])
+                    assert numpy.allclose(out, outputs[-1])
             
-            results_gpu, results_cpu = outputs
+                results_gpu, results_cpu = outputs
 
-            assert numpy.allclose(results_gpu, results_cpu)
+                assert numpy.allclose(results_gpu, results_cpu)
 
+def test_duplicate_arg_elemwise():
+    A = theano.tensor.fmatrix()
+    B = A + A
+
+    f = theano.function([A],B, mode = mode_with_gpu)
+
+    Aval = numpy.random.RandomState([1,2,3]).randn(5,5)
+    Bval = Aval + Aval
+
+    assert numpy.allclose(Bval,f(Aval))
 
 
 

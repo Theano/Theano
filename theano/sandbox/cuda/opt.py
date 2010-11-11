@@ -18,6 +18,7 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.compile import optdb
+from theano.tensor.blas import _is_real_vector, _is_real_matrix
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
 gpu_optimizer = EquilibriumDB()
@@ -57,12 +58,12 @@ class InputToGpuOptimizer(Optimizer):
                     if new_input.type==input.type:
                         env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
                 except Exception, e:
-                    #as we currently only support float32, this can fail. 
-                    #Using try except make that we won't need 
+                    #as we currently only support float32, this can fail.
+                    #Using try except make that we won't need
                     pass
 
 #we register it before all other gpu optimizer to be sure that the input are on the gpu.
-gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(), 
+gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')#TODO: how to make it mandatory for gpu_seqopt?
 
 @local_optimizer([])
@@ -72,9 +73,9 @@ def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
         return [node.inputs[0].owner.inputs[0]]
     return False
-gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 
+gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
         'fast_run', 'inplace', 'gpu')
-gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_folding, 
+gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_folding,
         'fast_run', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
@@ -83,7 +84,7 @@ compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_h
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
-    """elemwise(..., host_from_gpu, ...) 
+    """elemwise(..., host_from_gpu, ...)
        -> host_from_gpu(elemwise(gpu_from_host, ..., gpu_from_host)
     """
     if isinstance(node.op, tensor.Elemwise):
@@ -92,25 +93,29 @@ def local_gpu_elemwise_0(node):
                 #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
                 new_op = GpuElemwise(node.op.scalar_op)
 
+                #   first establish that float32 can store all inputs
+                upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
                 # case 1 - all inputs are already float32
                 if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
                     #TODO: change this when fusion makes Elemwise with multiple outputs
-                    return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
-
-                # THIS IS PROBABLY TRUE....
-                # case 2 - it would still be ok if some inputs were upcast to float32
-                #   first establish that float32 can store all inputs
-                upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
-                if numpy.all([i.type.dtype in upcastable for i in node.inputs]):
+                    gpu_elemwise = new_op(*(gpu_from_host(i) for i in node.inputs))
+                # case 2 - it is still ok if some inputs were upcast to float32
+                elif numpy.all([i.type.dtype in upcastable for i in node.inputs]):
                     # second - establish that a new node with upcasted inputs has the same outputs
                     # types as the original node
                     casted = node.op.make_node(*[tensor.cast(i, 'float32') for i in node.inputs])
                     if [o.type for o in casted.outputs] == [o.type for o in node.outputs]:
 
                         new_inputs = [gpu_from_host(tensor.cast(i, 'float32')) for i in node.inputs]
+                        gpu_elemwise = new_op(*new_inputs)
+                    else:
+                        return False
+                else:
+                    return False
 
-                        return [host_from_gpu(new_op(*new_inputs))]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
 
+                return [host_from_gpu(gpu_elemwise)]
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_1(node):
@@ -124,7 +129,9 @@ def local_gpu_elemwise_1(node):
             #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
             new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
-                return [new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])]
+                gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
+                return [gpu_elemwise]
     return False
 
 @register_opt()
@@ -138,17 +145,67 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
-            new_op = GpuDimShuffle(node.op.input_broadcastable, 
+            new_op = GpuDimShuffle(node.op.input_broadcastable,
                     node.op.new_order)
             return [host_from_gpu(new_op(gpu_from_host(input)))]
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, tensor.DimShuffle):
             dimshuffle_node = host_input.owner
-            new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable, 
+            new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable,
                     dimshuffle_node.op.new_order)
             return [new_op(gpu_from_host(dimshuffle_node.inputs[0]))]
     return False
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_dot_to_dot22(node):
+    """
+    gpu_from_host(dot) -> gpudot(gpu_from_host)
+    dot(host_from_gpu) -> host_from_gpu(gpudot)
+
+    This optimization solves the vector-matrix multiplication issue by
+    transforming the vector into a matrix, apply gpudot22 and reshaping
+    the output.
+
+    A more suitable solution would be to use the right cublas call
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op == tensor.basic.dot:
+            x, y = host_input.owner.inputs
+            # case one vector X matrix
+            if _is_real_vector(x) and _is_real_matrix(y):
+                new_op = GpuDimShuffle((False,), ['x',0])
+                shape_out = y.shape[0],dimshuffle(['x'])
+                gpu_x = new_op(gpu_from_host(x))
+                gpu_y = gpu_from_host(y)
+            # case two matrix X vector
+            elif _is_real_matrix(x) and _is_real_vector(y):
+                new_op = GpuDimShuffle((False,), [0,'x'])
+                shape_out = x.shape[1].dimshuffle(['x'])
+                gpu_x = gpu_from_host(x)
+                gpu_y = new_op(gpu_from_host(y))
+            return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
+    if node.op == tensor.basic.dot:
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
+            x, y = node.inputs
+            if _is_real_vector(x) and _is_real_matrix(y):
+                new_op = GpuDimShuffle((False,), ['x',0])
+                shape_out = y.shape[0].dimshuffle(['x'])
+                gpu_x = new_op(gpu_from_host(x))
+                gpu_y = gpu_from_host(y)
+
+            elif _is_real_matrix(x) and _is_real_vector(y):
+                new_op = GpuDimShuffle((False,), [0,'x'])
+                shape_out = x.shape[1].dimshuffle(['x'])
+                gpu_x = gpu_from_host(x)
+                gpu_y = new_op(gpu_from_host(y))
+            return [host_from_gpu(GpuReshape(1)(gpu_dot22(gpu_x, gpu_y),
+                                                shape_out))]
+    return False
+
 
 @register_opt()
 @local_optimizer([])
@@ -187,6 +244,50 @@ def local_gpu_dot22scalar(node):
             x, y, scalar = node.inputs
             return [host_from_gpu(gpu_dot22scalar(gpu_from_host(x), gpu_from_host(y),tensor.blas._as_scalar(scalar)))]
     return False
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_gemv_as_gemm(node):
+    """
+    gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
+    gemm(host_from_gpu) -> host_from_gpu(gpu_gemv)
+
+    This optimization solves the vector-matrix multiplication issue by
+    transforming the vector into a matrix, apply gpudot22 and reshaping
+    the output.
+
+    A more suitable solution would be to use the right cublas call
+    """
+    gemvs = {tensor.blas.gemv_inplace: gpu_gemm_inplace,
+            tensor.blas.gemv_no_inplace: gpu_gemm_no_inplace}
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op in gemvs:
+            op = host_input.owner.op
+            z, a, x, y, b = host_input.owner.inputs
+            return [
+                GpuDimShuffle((False,True),[0])(gemvs[op](
+                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+                    , a
+                    , gpu_from_host(x)
+                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
+                    , b))]
+    if node.op in gemvs:
+        z, a, x, y, b = node.inputs
+        x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
+        y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
+        z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
+        if x_on_gpu or y_on_gpu or z_on_gpu:
+            return [host_from_gpu(GpuDimShuffle((False,True),[0])(
+                gemvs[node.op](
+                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+                    , a
+                    , gpu_from_host(x)
+                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
+                    , b)))]
+    return False
+
 
 @register_opt()
 @local_optimizer([])
@@ -421,7 +522,7 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
         x,b,y = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
-            # if y is a cast to integers, we can go to the underlying thing if we want, 
+            # if y is a cast to integers, we can go to the underlying thing if we want,
             # since this gpu op will cast to integers internally anyway
             int_cast_ops = (
                     tensor.basic._convert_to_int32,
@@ -436,8 +537,8 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
                 gpu_from_host(b),
                 gpu_from_host(cast(y, 'float32')))
             am_dtype = node.outputs[2].type.dtype
-            return [host_from_gpu(gpu_nll), 
-                    host_from_gpu(gpu_sm), 
+            return [host_from_gpu(gpu_nll),
+                    host_from_gpu(gpu_sm),
                     cast(host_from_gpu(gpu_am), am_dtype)]
     return False
 
@@ -633,7 +734,7 @@ else:
 
 #GpuElemwise inplace
 gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(GpuElemwise)
-compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace') 
+compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace')
 
 @register_opt()
 @local_optimizer([tensor.Alloc])
@@ -654,7 +755,7 @@ def local_gpualloc(node):
         new_out = host_from_gpu(gpu_alloc(val2, *shp))
         # Sigh. it's an annoying thing about theano
         # that you can't add information to the graph.
-        # If for some reason it has come to light that 
+        # If for some reason it has come to light that
         # one of the dimensions is broadcastable, we have to hide that
         # or the optimization won't go through.
         if new_out.type != old_out.type:
@@ -668,24 +769,42 @@ def local_gpualloc(node):
         #if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
-            
-@register_opt()
-@local_optimizer([])
-def local_gpu_huge_add_or_mul(node):
-    """
-    The gpu code generator for elemwise fusion knows when there are too many inputs, but add
-    doesn't.  So there's this workaround.
 
-    The CUDA c compiler limits the number of arguments to 256 bytes' worth or something.
+def max_inputs_to_GpuElemwise(node):
     """
-    if isinstance(node.op, GpuElemwise) and node.op.scalar_op in (scal.add, scal.mul):
-        if len(node.inputs)>10: 
-            # TODO: look up how arguments are passed to the GpuElemwise function
-            #   and figure out how many arguments can fit in 256 bytes.
-            #   this will depend on the number of dimensions in each argument.
-            #   The current heuristic to chop at 10 prevents crashing in the
-            #   pylearn/algorithms/tests/test_mcRBM feature extractor.
-            return [node.op(
-                    node.op(*node.inputs[:10]),
-                    node.op(*node.inputs[10:]))]
+    return the maximum number of input this Apply node to an GpuElemwise can accept.
+    This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
+    This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
+    """
+    #TODO: detect the size of gpu pointeur and c int.
+    int_size = 8
+    ptr_size = 8
+        
+    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
+    size_param_mandatory = int_size #for numels
+    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
+    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
 
+    nb_bytes_avail = argument_limit-size_param_mandatory
+    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
+    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+    return max_nb_inputs
+
+def split_huge_add_or_mul(node):
+    """
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
+
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
+    """
+    if node.op.scalar_op in (scal.add, scal.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        while len(node.inputs)>max_nb_inputs: 
+            inner_op = []
+            for i in range(0,len(node.inputs),max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
+            node = node.op(*inner_op).owner
+    return node

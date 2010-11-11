@@ -1,5 +1,12 @@
 import os
+import subprocess
+import logging
+
 from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+
+_logger = logging.getLogger('theano.configdefaults')
+def warning(*msg):
+    _logger.warning('WARNING theano.configdefaults: '+' '.join(msg))
 
 config = TheanoConfigParser()
 
@@ -24,10 +31,22 @@ AddConfigVar('mode',
         "Default compilation mode",
         EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
 
-#Keep the default linker the same as the one for the mode FAST_RUN
-AddConfigVar('linker',
-        "Default linker. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
-        EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'))
+# Test whether or not gcc is present: disable C code if it is not
+try:
+    subprocess.Popen('gcc', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Keep the default linker the same as the one for the mode FAST_RUN
+    AddConfigVar('linker',
+            "Default linker. If not None, will use this linker with the Mode "+
+            "object(not ProfileMode or DebugMode)",
+            EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'))
+except OSError:
+    # gcc is not present, linker should default to python only
+    AddConfigVar('linker',
+            "Default linker. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
+            EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py'))
+    warning('GCC not detected ! Theano will be unable to execute optimized '+
+            'C-implementations (for both CPU and GPU) and will default to '+
+            'Python implementations. Performance will be severely degraded.')
 
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
@@ -88,19 +107,23 @@ AddConfigVar('experimental.mrg',
 ###
 ### To disable some warning about old bug that are fixed now.
 ###
+AddConfigVar('warn.old_bug_default',
+             "If False, will disable by default the warning about old Theano bug. If you never used Theano, you set it to False.",
+             BoolParam(True))
+default_warn = config.warn.old_bug_default
 
 AddConfigVar('warn.argmax_pushdown_bug',
              "Warn if in past version of Theano we generated a bug with the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
-             BoolParam(True))
+             BoolParam(default_warn))
 
 AddConfigVar('warn.gpusum_01_011_0111_bug',
              "Warn if we are in a case where old version of Theano had a silent bug with GpuSum pattern 01,011 and 0111 when the first dimensions was bigger then 4096. Was fixed 31 may 2010",
-             BoolParam(True))
+             BoolParam(default_warn))
 
 AddConfigVar('warn.sum_sum_bug',
              "Warn if we are in a case where Theano version between version 9923a40c7b7a and the 2 august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. Was fixed 2 August 2010",
-             BoolParam(True))
+             BoolParam(default_warn))
 
 AddConfigVar('warn.sum_div_dimshuffle_bug',
              "Warn if previous versions of Theano (between rev. 3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03) would have given incorrect result. This bug was triggered by sum of division of dimshuffled tensors.",
-             BoolParam(True))
+             BoolParam(default_warn))

@@ -3,22 +3,27 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
-import scipy.sparse as sp
-import scipy.sparse
+try:
+    import scipy.sparse as sp
+    import scipy.sparse
+except ImportError:
+    pass#the variable enable_sparse will be used to disable the test file.
 
 import theano
 from theano import compile
+from theano.sparse import enable_sparse
+if enable_sparse == False:
+    raise SkipTest('Optional package sparse disabled')
+
 from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_variable, _is_sparse_variable
 from theano.sparse.basic import _mtypes
-from theano.sparse import as_sparse_variable, enable_sparse, CSC, CSR, CSM, CSMProperties, SparseType, StructuredDotCSC
+from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties, SparseType, StructuredDotCSC
 from theano.sparse import add, structured_dot, transpose
 from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
 
-if enable_sparse == False:
-    raise SkipTest('Optional package sparse disabled')
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]

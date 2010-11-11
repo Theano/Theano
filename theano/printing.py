@@ -23,7 +23,7 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
     :type file: None, 'str', or file-like object
     :param file: print to this file ('str' means to return a string)
 
-    :returns: str if `file`=='str', else file arg
+    :returns: string if `file` == 'str', else file arg
 
     Each line printed represents a Variable in the graph.
     The indentation of each line corresponds to its depth in the symbolic graph.

@@ -101,6 +101,11 @@ class DimShuffle(Op):
         self.new_order = new_order
         self.inplace = inplace
 
+        for i in xrange(len(new_order)-1):
+            j = new_order[i]
+            if j != 'x' and j in new_order[i+1:]:
+                raise ValueError("The same input dimension may not appear twice in the list of output dimensions", (new_order))
+
         # list of dimensions of the input to drop
         self.drop = []
         i2j = {} # this maps i before dropping dimensions to j after dropping dimensions so self.shuffle can be set properly later on

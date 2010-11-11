@@ -463,15 +463,6 @@ TensorVariable
             (0, 'x', 1) -> AxB to Ax1xB
             (1, 'x', 0) -> AxB to Bx1xA
 
-
-        See :func:`dimshuffle`.
-
-        (The above link just points back to this paragraph. Maybe whoever
-        wrote that meant to refer to theano.tensor.DimShuffle)
-
-        
-
-
     .. method:: flatten(ndim=1)
 
         Returns a view of this tensor with `ndim` dimensions, whose shape for the first
@@ -500,11 +491,11 @@ Shaping and Shuffling
 =====================
 
 To re-order the dimensions of a variable, to insert or remove broadcastable
-dimensions, see :meth:`_tensor_py_operators.dimshuffle`
+dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
 .. function:: shape(x)
 
-    Returns lvector representing shape of `x`
+    Returns an lvector representing the shape of `x`.
 
 .. function:: reshape(x, newshape, ndim=None)
 
@@ -562,7 +553,8 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
 
     Make `x` broadcastable in the specified axes `axes`. For
     example, `unbroadcast(x,0)` will make the first dimension of `x`
-    broadcastable.
+    broadcastable. When performing the function, if the length of `x`
+    along that dimension is not 1, a ``ValueError`` will be raised.
 
 .. function:: flatten(x, outdim=1)
     
@@ -1105,10 +1097,14 @@ Gradient / Differentiation
 
     Return symbolic gradients for one or more variables with respect to some
     cost.
-    
+
+    For more information about how automatic differentiation works in Theano,
+    see :mod:`gradient`. For information on how to implement the gradient of
+    a certain Op, see :func:`grad`.
+
     :type cost: 0-d tensor variable
     :type wrt: tensor variable or list of tensor variables
-    :type g_cost: same as `cost`
+    :type g_cost: same as type of `cost`
     :type consider_constant: list of variables
     :type warn_type: bool
 
@@ -1121,7 +1117,7 @@ Gradient / Differentiation
        expression
 
     :rtype: variable or list of variables (matching `wrt`)
-    :returns: gradients with respect to cost for each of the `wrt` terms 
+    :returns: gradients of the cost with respect to each of the `wrt` terms
 
 
 
