@@ -48,7 +48,14 @@ def test_int_pow():
 
     #theano.printing.debugprint(f)
 
+def test_gpualloc():
 
+    x = theano.shared(numpy.ones(3,dtype='float32'), 'x')
+    m = (x).dimshuffle(['x',0])
+    v = TT.alloc(1., *m.shape)
+    f = theano.function([], v+x)
+    l = f.maker.env.toposort()
+    assert numpy.any(ininstance(x.op, cuda.GpuAlloc) for x in l )
 
 
 
