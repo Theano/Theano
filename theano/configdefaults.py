@@ -116,7 +116,8 @@ if config.warn.ignore_bug_before == 'None':
     default_0_3 = True
 elif config.warn.ignore_bug_before == 'all':
     default_0_3 = False
-elif config.warn.ignore_bug_before == '0.3':
+elif config.warn.ignore_bug_before >= '0.3':
+    # Disable 0.3 warnings for 0.3 and all subsequent versions
     default_0_3 = False
 
 AddConfigVar('warn.argmax_pushdown_bug',
