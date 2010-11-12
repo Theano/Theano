@@ -153,23 +153,26 @@ Config Attributes
 
     Default: 'None'
 
-    When we fix a Theano bug that generated bad result in a case, we also make
-    Theano raise a warning when it enconter it again. This help to detect if fixed bug
-    affected your past experiments as you only need to run your experimentand not
-    understands the Theano internal that trigger the bug. A better way to detect
-    that see this will be implemented. See this
-    `ticket <http://trac-hg.assembla.com/theano/ticket/514>`__.
+    When we fix a Theano bug that generated bad results under some
+    circonstances, we also make Theano raise a warning when it encounter
+    the same circonstances again. This helps to detect if said bug
+    had affected your past experiments, as you only need to run your
+    experiment again with the new version, and you do not have to
+    understand the Theano internal that triggered the bug. A better
+    way to detect that see this will be implemented. See this `ticket
+    <http://trac-hg.assembla.com/theano/ticket/514>`__.
 
-    This flags allo new user to don't get warning about old fixed bug
-    that they don't need. You can set its value to the first version of Theano 
-    that you used(probably 0.3 or higher)
+    This flag allows a new user not to get warnings about old bugs, that were fixed
+    before their first checkout of Theano.
+    You can set its value to the first version of Theano 
+    that you used (probably 0.3 or higher)
 
-    `None` mean that we should all warning.
-    `all` mean to hide all warning.
+    `None` mean that all warnings will be displayed.
+    `all` mean to hide all warnings.
 
-    It is recommended that you put a version, so that you will see futur warning.
-    It is also recommended you put this into the .theanorc to have this always
-    actif.
+    It is recommended that you put a version, so that you will see future warning.
+    It is also recommended you put this into the .theanorc, so this setting
+    will always be used.
 
 .. attribute:: home
 

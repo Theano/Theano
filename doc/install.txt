@@ -114,11 +114,10 @@ fails on your machine, you are encouraged to tell us what went wrong on the
 
 .. note::
 
-    `warn.ignore_bug_before=all` remove warning that you don't need to see here.
-    It is also recommended for new user to put this flag to a different value 
-    into their .theanorc file. Go 
-    `here <file:///u/bastienf/repos/Theano/html/library/config.html?libdoc-config#config.warn.ignore_bug_before>`__
-    for detail.
+    `warn.ignore_bug_before=all` removes warnings that you don't need to see here.
+    It is also recommended for a new user to set this flag to a different value 
+    into their .theanorc file.
+    See :attr:`config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
 -----------------------------------------------------
