@@ -49,10 +49,18 @@ def test_int_pow():
     #theano.printing.debugprint(f)
 
 def test_gpualloc():
+    '''
+    This tests tries to catch the scenario when, due to infer_shape,
+    the input of the alloc changes from tesnor scalar to a constant
+    1. In this case the original constracted broadcastable pattern will
+    have a False for that dimension, but the new broadcastable pattern
+    that will be inserted by gpualloc will have  a True since it knows the
+    dimension is 1 and therefore broadcastable.
+    '''
 
     x = theano.shared(numpy.ones(3,dtype='float32'), 'x')
     m = (x).dimshuffle(['x',0])
-    v = TT.alloc(1., *m.shape)
+    v = tensor.alloc(1., *m.shape)
     f = theano.function([], v+x)
     l = f.maker.env.toposort()
     assert numpy.any(ininstance(x.op, cuda.GpuAlloc) for x in l )
@@ -164,6 +172,7 @@ def test_elemwise_fusion():
 
 
 if __name__ == '__main__':
+    test_gpualloc()
     test_opt_gpujoin_onlyajoin()
     test_opt_gpujoin_joinvectors_elemwise_then_minusone()
 
