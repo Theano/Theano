@@ -60,9 +60,9 @@ A ``borrow`` argument can be provided to the shared-variable constructor.
     import numpy, theano
     np_array = numpy.ones(2, dtype='float32')
 
-    s_default = shared(np_array)
-    s_false   = shared(np_array, borrow=False)
-    s_true    = shared(np_array, borrow=True)
+    s_default = theano.shared(np_array)
+    s_false   = theano.shared(np_array, borrow=False)
+    s_true    = theano.shared(np_array, borrow=True)
 
 By default (``s_default``) and when explicitly setting ``borrow=False``, the
 shared variable we construct gets a [deep] copy of ``np_array``.  So changes we
@@ -110,7 +110,7 @@ A ``borrow`` argument can also be used to control how a shared variable's value 
 
 .. code-block:: python
 
-    s = shared(np_array)
+    s = theano.shared(np_array)
 
     v_false = s.get_value(borrow=False) # N.B. borrow default is False
     v_true = s.get_value(borrow=True)
@@ -124,7 +124,7 @@ But both of these calls might create copies of the internal memory.
 
 The reason that ``borrow=True`` might still make a copy is that the internal
 representation of a shared variable might not be what you expect.  When you
-create a variable by passing a numpy array for example, then ``get_value()``
+create a shared variable by passing a numpy array for example, then ``get_value()``
 must return a numpy array too.  That's how Theano can make the GPU use
 transparent.  But when you are using a GPU (or in future perhaps a remote machine), then the numpy.ndarray
 is not the internal representation of your data.
@@ -200,6 +200,7 @@ Those return values may also be overwritten in
 the course of evaluating *another compiled function* (for example, the output
 may be aliased to a shared variable).  So be careful to use a borrowed return
 value right away before calling any more Theano functions.
+The default is of course to *not borrow* internal results.
 
 It is also possible to pass an ``return_internal_type=True`` flag to the ``Out``
 variable which has the same interpretation as the ``return_internal_type`` flag
@@ -214,4 +215,7 @@ When a return value ``y`` is large (in terms of memory footprint), and you only 
 away when it's returned, then consider marking it with an ``Out(y,
 borrow=True)``.
 
+Shared variable .value attribute
+================================
 
+TODO: talk about sharedvar.value and the associated config variable.
