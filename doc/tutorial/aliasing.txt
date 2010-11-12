@@ -22,9 +22,9 @@ main idea is that there is a pool of memory managed by Theano, and Theano tracks
 changes to values in that pool.
 
  1. Theano manages its own memory space, which typically does not overlap with
-    the memory of normal python variables that non-theano code creates.
+    the memory of normal python variables that non-Theano code creates.
 
- 1. Theano functions only modify buffers that are in its memory space.
+ 1. Theano Functions only modify buffers that are in Theano's memory space.
 
  1. Theano's memory space includes the buffers allocated to store shared
     variables and the temporaries used to evaluate Functions.
@@ -36,13 +36,14 @@ changes to values in that pool.
     aliased to another shared variable.
 
  1. Theano's managed memory is constant while Theano Functions are not running
-    and theano library code is not running.
+    and Theano library code is not running.
 
  1. The default behaviour of Function is to return user-space values for
     outputs, and to expect user-space values for inputs.
     
 The distinction between Theano-managed memory and user-managed memory can be
-broken down by some theano functions (e.g. In, Out,shared, get_value)) by using
+broken down by some Theano functions (e.g. shared, get_value and the
+constructors for In and Out) by using
 a ``borrow=True`` flag.  This can make those methods faster (by avoiding copy
 operations) at the expense of risking subtle bugs in the overall program (by
 aliasing memory).
@@ -81,13 +82,16 @@ then changes we make to np_array *right away* will show up in ``s_true.value``
 because numpy arrays are mutable, and ``s_true`` is using the ``np_array``
 object as it's internal buffer.
 
-However, this aliasing of ``np_array`` and ``s_true`` is *inconsistent and fragile*!
-It is inconsistent because if Theano is using a GPU device, then the borrow flag
-has no effect.
-It is fragile because
-if we call a theano function that updates the value of ``s_true`` the aliasing
-relationship *may* or *may not* be broken (it depends on what the Theano
-function does).
+However, this aliasing of ``np_array`` and ``s_true`` is not guaranteed to occur,
+and may occur only temporarily even if it occurs at all.
+It is not guaranteed to occur because if Theano is using a GPU device, then the
+borrow flag has no effect.
+It may occur only temporarily because
+if we call a Theano function that updates the value of ``s_true`` the aliasing
+relationship *may* or *may not* be broken (the function is allowed to 
+update the shared variable by modifying its buffer, which will preserve
+the aliasing, or by changing which buffer the variable points to, which
+will terminate the aliasing).
 
 *Take home message:*
 
@@ -184,7 +188,6 @@ that control how ``theano.function`` handles its arguments and return value[s].
     x = theano.tensor.matrix()
     y = 2*x
     f = theano.function([theano.In(x, borrow=True)], theano.Out(y, borrow=True))
-
 
 Borrowing an input means that Theano will treat the argument you provide as if
 it were part of Theano's pool of temporaries.  Consequently, your input
