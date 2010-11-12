@@ -278,10 +278,11 @@ def test_mlp():
     classifier = MLP( rng = rng, input=x, n_in=28*28, n_hidden = 500, n_out=10)
 
     # the cost we minimize during training is the negative log likelihood of 
-    # the model
-    cost = classifier.negative_log_likelihood(y)
+    # the model.
+    # We take the mean of the cost over each minibatch.
+    cost = classifier.negative_log_likelihood(y).mean()
 
-    # compute the gradient of cost with respect to theta (sotred in params)
+    # compute the gradient of cost with respect to theta (stored in params)
     # the resulting gradients will be stored in a list gparams
     gparams = []
     for param in classifier.params:

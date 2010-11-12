@@ -926,7 +926,7 @@ class T_max_and_argmax(unittest.TestCase):
 
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[0], [data])
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[1], [data])
-        check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=0)[0],n)),axis=0)
+        check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=0)[0].sum(),n)),axis=0)
 
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[1])[0], [data])
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[1])[1], [data])
@@ -1241,7 +1241,7 @@ class T_min_max(unittest.TestCase):
         utt.verify_grad(lambda v: max(v), [data])
 
         utt.verify_grad(lambda v: max(v,axis=[0]), [data])
-        check_grad_max(data,eval_outputs(grad(max(n,axis=0),n)),axis=0)
+        check_grad_max(data,eval_outputs(grad(max(n,axis=0).sum(),n)),axis=0)
 
         utt.verify_grad(lambda v: max(v,axis=[1]), [data])
         #check_grad_max(data,eval_outputs(grad(max(n,axis=1),n)),axis=1)
@@ -1273,7 +1273,7 @@ class T_min_max(unittest.TestCase):
         utt.verify_grad(lambda v: min(v), [data])
 
         utt.verify_grad(lambda v: min(v,axis=[0]), [data])
-        check_grad_min(data,eval_outputs(grad(min(n,axis=0),n)),axis=0)
+        check_grad_min(data,eval_outputs(grad(min(n,axis=0).sum(),n)),axis=0)
 
         utt.verify_grad(lambda v: min(v,axis=[1]), [data])
         #check_grad_min(data,eval_outputs(grad(min(n,axis=1),n)),axis=1)

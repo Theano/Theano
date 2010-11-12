@@ -1843,7 +1843,7 @@ class T_local_erfc(unittest.TestCase):
         mode_fusion = copy.copy(self.mode_fusion)
         mode_fusion.check_isfinite = False
 
-        f = theano.function([x],T.grad(T.log(T.erfc(x)),x), mode=mode)
+        f = theano.function([x],T.grad(T.log(T.erfc(x)).sum(),x), mode=mode)
         #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
         assert all(numpy.isfinite(f(val)))
@@ -1878,13 +1878,13 @@ class T_local_erfc(unittest.TestCase):
         assert all(numpy.isfinite(f(val)))
 
         #test that it work correctly if x is x*2 in the graph.
-        f = theano.function([x],T.grad(T.log(T.erfc(2*x)),x), mode=mode)
+        f = theano.function([x],T.grad(T.log(T.erfc(2*x)).sum(),x), mode=mode)
         #theano.printing.debugprint(f)
         assert len(f.maker.env.nodes)==23, len(f.maker.env.nodes)
         assert numpy.isfinite(f(val)).all()
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
 
-        f = theano.function([x],T.grad(T.log(T.erfc(x)),x), mode=mode_fusion)
+        f = theano.function([x],T.grad(T.log(T.erfc(x)).sum(),x), mode=mode_fusion)
         assert len(f.maker.env.nodes)==1, len(f.maker.env.nodes)
         assert f.maker.env.outputs[0].dtype==theano.config.floatX
 
