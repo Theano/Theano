@@ -1503,7 +1503,10 @@ def max(x, axis='DEFAULT'):
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     :note2: see MaxAndArgmax note for a difference between numpy and theano when axis==None
     """
-    if axis=='DEFAULT':
+    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+        # The old and new behavior are not different.
+        axis = 0
+    elif axis=='DEFAULT':
         axis = x.type.ndim - 1
         warnings.warn("The default axis of max will change! Now we return the max over the last dimensions. It will change to be the same as numpy: the max over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling max().")
     elif axis is None:
@@ -1524,7 +1527,10 @@ def argmax(x, axis='DEFAULT'):
 
     Default axis is the last one. This will change.
     """
-    if axis=='DEFAULT':
+    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+        # The old and new behavior are not different.
+        axis = 0
+    elif axis=='DEFAULT':
         axis = x.type.ndim - 1
         warnings.warn("The default axis of argmax will change! Now we return the argmax over the last dimensions. It will change to be the same as numpy: the argmax over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the tensor before calling max().")
     elif axis is None:
@@ -1537,7 +1543,10 @@ def argmax(x, axis='DEFAULT'):
 
 @constructor
 def min(x, axis='DEFAULT'):
-    if axis=='DEFAULT':
+    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+        # The old and new behavior are not different.
+        axis = 0
+    elif axis=='DEFAULT':
         axis = x.type.ndim - 1
         warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
     elif axis is None:
@@ -1552,7 +1561,10 @@ def min(x, axis='DEFAULT'):
 
 @constructor
 def argmin(x, axis='DEFAULT'):
-    if axis=='DEFAULT':
+    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+        # The old and new behavior are not different.
+        axis = 0
+    elif axis=='DEFAULT':
         axis = x.type.ndim - 1
         warnings.warn("The default axis of argmin will change! Now we return the argmin over the last dimensions. It will change to be the same as numpy: the argmin over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the axis before calling argmin.")
     elif axis is None:
