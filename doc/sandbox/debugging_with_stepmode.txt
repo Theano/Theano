@@ -1,4 +1,6 @@
 
+.. _sandbox_debugging_step_mode:
+
 Debugging with a customized so-called StepMode
 ==============================================
 

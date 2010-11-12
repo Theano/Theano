@@ -1,3 +1,4 @@
+.. sandbox_randnb:
 
 ''' This has been implemented (#182). 20090327.'''
 

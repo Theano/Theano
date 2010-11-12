@@ -1,3 +1,4 @@
+.. _sandbox_broadcasting:
 
 The following may go either in:
 a) numpy refresher.

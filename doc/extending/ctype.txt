@@ -1,3 +1,5 @@
+.. _theano_ctype:
+
 
 ========================
 Implementing double in C

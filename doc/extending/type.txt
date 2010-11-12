@@ -1,4 +1,4 @@
-
+.. _theano_type:
 
 ======================
 Making the double type
