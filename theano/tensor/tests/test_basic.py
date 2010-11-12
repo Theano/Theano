@@ -2414,6 +2414,17 @@ class test_grad(unittest.TestCase):
         self.failUnless((f(a) == 0).all())  # Zero gradient.
         self.failUnless(a.shape == f(a).shape)  # With proper shape.
 
+    def test_cost_is_scalar(self):
+        '''grad: Test that a non-scalar cost raises a TypeError'''
+        s = scalar()
+        v = vector()
+        m = matrix()
+        # grad(v,...) and grad(m,...) should fail
+        self.assertRaises(TypeError, grad, v, s)
+        self.assertRaises(TypeError, grad, v, m)
+        self.assertRaises(TypeError, grad, m, s)
+        self.assertRaises(TypeError, grad, m, v)
+
 class T_op_cache(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
