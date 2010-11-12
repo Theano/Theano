@@ -175,18 +175,21 @@ def local_gpu_dot_to_dot22(node):
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op == tensor.basic.dot:
             x, y = host_input.owner.inputs
-            # case one vector X matrix
+            # case one: vector X matrix
             if _is_real_vector(x) and _is_real_matrix(y):
                 new_op = GpuDimShuffle((False,), ['x',0])
-                shape_out = y.shape[0],dimshuffle(['x'])
+                shape_out = y.shape[0].dimshuffle(['x'])
                 gpu_x = new_op(gpu_from_host(x))
                 gpu_y = gpu_from_host(y)
-            # case two matrix X vector
+            # case two: matrix X vector
             elif _is_real_matrix(x) and _is_real_vector(y):
                 new_op = GpuDimShuffle((False,), [0,'x'])
                 shape_out = x.shape[1].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
+            else:
+                return False
+
             return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
     if node.op == tensor.basic.dot:
         if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
@@ -202,6 +205,9 @@ def local_gpu_dot_to_dot22(node):
                 shape_out = x.shape[1].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
+            else:
+                return False
+
             return [host_from_gpu(GpuReshape(1)(gpu_dot22(gpu_x, gpu_y),
                                                 shape_out))]
     return False

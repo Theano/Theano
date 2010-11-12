@@ -40,11 +40,18 @@ def test_dot_vm():
                                    dtype='float32'))
     no_gpu_f = theano.function([], theano.dot(v,m), mode = mode_without_gpu)
     gpu_f    = theano.function([], theano.dot(v,m), mode = mode_with_gpu)
+    #gpu_f2 is needed to test the case when the input is not on the gpu
+    #but the output is moved to the gpu.
+    gpu_f2   = theano.function([], cuda.gpu_from_host(theano.dot(v,m)), mode = mode_with_gpu)
+
     # Assert they produce the same output
     assert numpy.allclose(no_gpu_f(), gpu_f(), atol = atol)
+    assert numpy.allclose(no_gpu_f(), gpu_f2(), atol = atol)
     # Assert that the gpu version actually uses gpu
     assert sum([isinstance(node.op, blasop.GpuDot22) for node in
                 gpu_f.maker.env.toposort() ]) == 1
+    assert sum([isinstance(node.op, blasop.GpuDot22) for node in
+                gpu_f2.maker.env.toposort() ]) == 1
 
 def test_dot_mv():
     ''' Test matrix dot vector '''
@@ -53,42 +60,61 @@ def test_dot_mv():
                                    dtype='float32'))
     no_gpu_f = theano.function([], theano.dot(m,v), mode = mode_without_gpu)
     gpu_f    = theano.function([], theano.dot(m,v), mode = mode_with_gpu)
+    #gpu_f2 is needed to test the case when the input is not on the gpu
+    #but the output is moved to the gpu.
+    gpu_f2   = theano.function([], cuda.gpu_from_host(theano.dot(m,v)), mode = mode_with_gpu)
+
     # Assert they produce the same output
     assert numpy.allclose(no_gpu_f(), gpu_f(), atol = atol)
+    assert numpy.allclose(no_gpu_f(), gpu_f2(), atol = atol)
     # Assert that the gpu version actually uses gpu
     assert sum([isinstance(node.op, blasop.GpuDot22) for node in
                 gpu_f.maker.env.toposort() ]) == 1
+    assert sum([isinstance(node.op, blasop.GpuDot22) for node in
+                gpu_f2.maker.env.toposort() ]) == 1
 
 def test_gemv1():
-    ''' Is this the same test as test_gemv2 ? '''
+    ''' test vector1+dot(matrix,vector2) '''
     v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
     v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
     m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
 
     no_gpu_f = theano.function([], v2+theano.dot(m,v1), mode = mode_without_gpu)
     gpu_f    = theano.function([], v2+theano.dot(m,v1), mode = mode_with_gpu)
+    #gpu_f2 is needed to test the case when the input is not on the gpu
+    #but the output is moved to the gpu.
+    gpu_f2    = theano.function([], cuda.gpu_from_host(v2+theano.dot(m,v1)), mode = mode_with_gpu)
+
     # Assert they produce the same output
     assert numpy.allclose(no_gpu_f(), gpu_f(), atol = atol)
+    assert numpy.allclose(no_gpu_f(), gpu_f2(), atol = atol)
     # Assert that the gpu version actually uses gpu
     assert sum([isinstance(node.op, blasop.GpuGemm) for node in
                 gpu_f.maker.env.toposort() ]) == 1
+    assert sum([isinstance(node.op, blasop.GpuGemm) for node in
+                gpu_f2.maker.env.toposort() ]) == 1
 
 
 def test_gemv2():
-    ''' Is this the same test as test_gemv1 ? '''
+    ''' test vector1+dot(vector2,matrix) '''
     v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
     v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
     m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
 
     no_gpu_f = theano.function([], v2+theano.dot(v1,m), mode = mode_without_gpu)
     gpu_f    = theano.function([], v2+theano.dot(v1,m), mode = mode_with_gpu)
+    #gpu_f2 is needed to test the case when the input is not on the gpu
+    #but the output is moved to the gpu.
+    gpu_f2    = theano.function([], cuda.gpu_from_host(v2+theano.dot(v1,m)), mode = mode_with_gpu)
+
     # Assert they produce the same output
     assert numpy.allclose(no_gpu_f(), gpu_f(), atol = atol)
+    assert numpy.allclose(no_gpu_f(), gpu_f2(), atol = atol)
     # Assert that the gpu version actually uses gpu
     assert sum([isinstance(node.op, blasop.GpuGemm) for node in
                 gpu_f.maker.env.toposort() ]) == 1
-
-
+    assert sum([isinstance(node.op, blasop.GpuGemm) for node in
+                gpu_f2.maker.env.toposort() ]) == 1
 
 if __name__=='__main__':
     test_dot_vm()
