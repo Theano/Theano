@@ -508,6 +508,11 @@ class TensorType(Type):
             if 'int' in str(a.dtype):
                 return numpy.all(a==b)
             else:
+                #work around a numpy.allclose bug: http://projects.scipy.org/numpy/ticket/1672
+                if a.ndim==0 and numpy.isinf(a):
+                    a = a.reshape(1)
+                    b = b.reshape(1)
+
                 cmp = _allclose(a, b)
                 if cmp:
                     # Numpy claims they are close, this is good enough for us.
