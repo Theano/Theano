@@ -168,16 +168,20 @@ class SparseType(gof.Type):
         else:
             raise NotImplementedError('unsupported format "%s" not in list' % format, self.format_cls.keys())
 
-    def filter(self, value, strict = False):
+    def filter(self, value, strict=False, allow_downcast=False):
         if isinstance(value, self.format_cls[self.format])\
                 and value.dtype == self.dtype:
             return value
         if strict:
-            raise TypeError("%s is not sparse" % value)
+            raise TypeError("%s is not sparse, or not the right dtype (is %s, expected %s)"
+                    % (value, value.dtype, self.dtype))
         #The input format could be converted here
-        sp = self.format_cls[self.format](value)
-        if str(sp.dtype) != self.dtype:
-            raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype,str(sp.dtype)))
+        if allow_downcast:
+            sp = self.format_cls[self.format](value, dtype=self.dtype)
+        else:
+            sp = self.format_cls[self.format](value)
+            if str(sp.dtype) != self.dtype:
+                raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype,str(sp.dtype)))
         if sp.format != self.format:
             raise NotImplementedError()
         return sp

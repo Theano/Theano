@@ -123,7 +123,8 @@ class Container(object):
     """This class joins a variable with its computed value. 
     It is used in linkers, especially for the inputs and outputs of a Function.
     """
-    def __init__(self, r, storage, readonly = False, strict = False, name = None):
+    def __init__(self, r, storage, readonly=False, strict=False,
+            allow_downcast=False, name=None):
         """WRITEME
 
         :Parameters:
@@ -131,6 +132,7 @@ class Container(object):
          `storage`: a list of length 1, whose element is the value for `r`
          `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.
+         `allow_downcast`: if True (and `strict` is False), allow type upcasting, but not downcasting.
          `name`: A string (for pretty-printing?)
 
         """
@@ -144,13 +146,14 @@ class Container(object):
         if name is None:
           self.name = r.name
 
-        #backport
-        #self.name = r.name if name is None else name
         self.storage = storage
         self.readonly = readonly
         self.strict = strict
+        self.allow_downcast = allow_downcast
+
     def __get__(self):
         return self.storage[0]
+
     def __set__(self, value):
         if self.readonly:
             raise Exception("Cannot set readonly storage: %s" % self.name)
@@ -164,10 +167,14 @@ class Container(object):
                 #That cause 2 region allocated at the same time!
                 #We decrement the memory reference conter now to try to lower the memory usage.
                 self.storage[0] = None
+
+            kwargs = {}
             if self.strict:
-                self.storage[0] = self.type.filter(value, strict = True)
-            else:
-                self.storage[0] = self.type.filter(value)
+                kwargs['strict'] = True
+            if self.allow_downcast:
+                kwargs['allow_downcast'] = True
+            self.storage[0] = self.type.filter(value, **kwargs)
+
         except Exception, e:
             e.args = e.args + (('Container name "%s"' % self.name),)
             raise

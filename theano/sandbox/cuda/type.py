@@ -3,8 +3,10 @@
 import sys, os, StringIO
 import numpy
 
+import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, config
+from theano import scalar as scal
 
 import cuda_ndarray.cuda_ndarray as cuda
 import cuda_ndarray
@@ -50,8 +52,34 @@ class CudaNdarrayType(Type):
         self.name = name
         self.dtype_specs() # error checking is done there
 
-    def filter(self, data, strict=False):
-        return cuda.filter(data, self.broadcastable, strict, None)
+    def filter(self, data, strict=False, allow_downcast=False):
+        if strict or allow_downcast or isinstance(data, cuda.CudaNdarray):
+            return cuda.filter(data, self.broadcastable, strict, None)
+        else: # (not strict) and (not allow_downcast)
+            # Check if data.dtype can be accurately casted to self.dtype
+            if isinstance(data, numpy.ndarray):
+                up_dtype = scal.upcast(self.dtype, data.dtype)
+                if up_dtype == self.dtype:
+                    return cuda.filter(data, self.broadcastable, strict, None)
+                else:
+                    raise TypeError(
+                        '%s, with dtype %s, cannot store a value of '
+                        'dtype %s without risking loss of precision.'
+                        'If you do not mind, please cast your data to %s.'
+                        % (self, self.dtype, data.dtype, self.dtype),
+                        data)
+            else:
+                converted_data = theano._asarray(data, self.dtype)
+                if numpy.all(data == converted_data):
+                    return cuda.filter(converted_data, self.broadcastable,
+                            strict, None)
+                else:
+                    raise TypeError(
+                        '%s, with dtype %s, cannot store accurately value %s, '
+                        'it would be represented as %s. If you do not mind, '
+                        'you can cast your data to %s.'
+                        % (self, self.dtype, data, converted_data, self.dtype),
+                        data)
 
     @staticmethod
     def values_eq(a, b):

@@ -12,7 +12,7 @@ from numpy import any #for to work in python 2.4
 
 def function(inputs, outputs=None, mode=None, updates=[], givens=[],
              no_default_updates=False, accept_inplace=False, name=None,
-             rebuild_strict = True):
+             rebuild_strict=True, allow_input_downcast=False):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -54,6 +54,13 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     inputs to outputs).  If one of the new types does not make sense for one of the Ops in the
     graph, an Exception will be raised.
 
+    :type allow_input_downcast: Boolean
+    :param allow_input_downcast: True means that the values passed as
+    inputs when calling the function can be silently downcasted to fit
+    the dtype of the corresponding Variable, which may lose precision.
+    False means that it will only be casted to a more general, or
+    precise, type.
+
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
     another expression is undefined.  Replacements specified with givens are different from
@@ -93,7 +100,8 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
                 givens=givens,
                 no_default_updates=no_default_updates,
                 accept_inplace=accept_inplace,name=name,
-                rebuild_strict=rebuild_strict)
+                rebuild_strict=rebuild_strict,
+                allow_input_downcast=allow_input_downcast)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs

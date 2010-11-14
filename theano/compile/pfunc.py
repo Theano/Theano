@@ -7,8 +7,8 @@ from theano.compile.sharedvalue import SharedVariable, shared
 import numpy # for backport to 2.4, to get any().
 
 class Param(object):
-    def __init__(self, variable, default=None, name=None, mutable=False, strict=False,
-            implicit=None):
+    def __init__(self, variable, default=None, name=None, mutable=False,
+            strict=False, allow_downcast=False, implicit=None):
         """
         :param variable: A variable in an expression graph to use as a compiled-function parameter
 
@@ -23,6 +23,9 @@ class Param(object):
         type required by the parameter `variable`.  True -> function arguments must exactly match the type
         required by `variable`.
 
+        :param allow_downcast: Only applies if `strict` is False.
+        True -> allows assigned value to lose precision when casted during assignment.
+
         :param implicit: see help(theano.io.In)
 
         """
@@ -31,10 +34,12 @@ class Param(object):
         self.name = name
         self.mutable = mutable
         self.strict = strict
+        self.allow_downcast = allow_downcast
         self.implicit = implicit
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
-        no_default_updates=False, accept_inplace=False, name=None, rebuild_strict = True):
+        no_default_updates=False, accept_inplace=False, name=None,
+        rebuild_strict=True, allow_input_downcast=False):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -66,6 +71,13 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     :rtype: theano.compile.Function
     :returns: a callable object that will compute the outputs (given the inputs)
     and update the implicit function arguments according to the `updates`.
+
+    :type allow_input_downcast: Boolean
+    :param allow_input_downcast: True means that the values passed as
+    inputs when calling the function can be silently downcasted to fit
+    the dtype of the corresponding Variable, which may lose precision.
+    False means that it will only be casted to a more general, or
+    precise, type.
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
@@ -165,7 +177,8 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         clone_d[v_orig] = clone_v_get_shared_updates(v_repl)
 
     # transform params into theano.compile.In objects.
-    inputs = [_pfunc_param_to_in(p) for p in params]
+    inputs = [_pfunc_param_to_in(p, allow_downcast=allow_input_downcast)
+              for p in params]
 
     #Switch inputs to cloned variables
     input_variables = [clone_d.setdefault(i.variable, i.variable) for i in inputs]
@@ -253,14 +266,14 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
             accept_inplace=accept_inplace, name=name)
 
 
-def _pfunc_param_to_in(param):
+def _pfunc_param_to_in(param, strict=False, allow_downcast=False):
     if isinstance(param, Constant):
         raise TypeError('Constants not allowed in param list', param)
     #if isinstance(param, Value):
         #return In(variable=param)
         #raise NotImplementedError()
     if isinstance(param, Variable): #N.B. includes Value and SharedVariable
-        return In(variable=param)
+        return In(variable=param, strict=strict, allow_downcast=allow_downcast)
     elif isinstance(param, Param):
         return In(
                 variable=param.variable, 
@@ -268,6 +281,7 @@ def _pfunc_param_to_in(param):
                 value=param.default,
                 mutable=param.mutable,
                 strict=param.strict,
+                allow_downcast=param.allow_downcast,
                 implicit = param.implicit)
     raise TypeError('Unknown parameter type: %s' % type(param))
 

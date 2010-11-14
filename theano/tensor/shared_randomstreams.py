@@ -12,7 +12,7 @@ class RandomStateSharedVariable(SharedVariable):
     pass
 
 @shared_constructor
-def randomstate_constructor(value, name=None, strict=False, borrow=False):
+def randomstate_constructor(value, name=None, strict=False, allow_downcast=False, borrow=False):
     """SharedVariable Constructor for RandomState"""
     if not isinstance(value, numpy.random.RandomState):
         raise TypeError
@@ -20,9 +20,10 @@ def randomstate_constructor(value, name=None, strict=False, borrow=False):
         value = copy.deepcopy(value)
     return RandomStateSharedVariable(
             type=raw_random.random_state_type,
-            value=value, 
+            value=value,
             name=name,
-            strict=strict)
+            strict=strict,
+            allow_downcast=allow_downcast)
 
 class RandomStreams(raw_random.RandomStreamsBase):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""

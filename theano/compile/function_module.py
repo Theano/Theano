@@ -362,6 +362,8 @@ class Function(object):
                 c = containers[0]  #containers is being used as a stack. Here we pop off the next one.
                 if input.strict:
                     c.strict = True
+                if input.allow_downcast:
+                    c.allow_downcast = True
 
                 if value is not None:
                     # Always initialize the storage.
@@ -519,7 +521,8 @@ class Function(object):
                 s.storage[0] = arg
             else:
                 try:
-                    s.storage[0] = s.type.filter(arg, strict=s.strict)
+                    s.storage[0] = s.type.filter(arg, strict=s.strict,
+                            allow_downcast=s.allow_downcast)
 
                 except Exception, e:
                     e.args = tuple(list(e.args)+["Bad input argument at index %d" % arg_index])

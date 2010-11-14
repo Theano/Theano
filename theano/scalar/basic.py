@@ -69,15 +69,19 @@ class Scalar(Type):
             dtype = config.floatX
         self.dtype = dtype
         self.dtype_specs() # error checking
-    
-    def filter(self, data, strict = False):
+
+    def filter(self, data, strict=False, allow_downcast=False):
         py_type = self.dtype_specs()[0]
         if strict and not isinstance(data, py_type):
             raise TypeError("%s expected a %s, got %s of type %s" % (self, py_type, data,
                 type(data)), 
                     data)
         try:
-            return py_type(data)
+            converted_data = py_type(data)
+            if allow_downcast or data == converted_data:
+                return py_type(data)
+            else:
+                raise TypeError('Value cannot accurately be converted to dtype (%s) and allow_downcast is False' % self.dtype)
         except Exception, e:
             raise TypeError("Could not convert %s (value=%s) to %s" % (type(data), data, self.dtype), e)
 

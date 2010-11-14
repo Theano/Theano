@@ -9,7 +9,7 @@ class TensorSharedVariable(SharedVariable, _tensor_py_operators):
     pass
 
 @shared_constructor
-def tensor_constructor(value, name=None, strict=False, borrow=False, broadcastable=None):
+def tensor_constructor(value, name=None, strict=False, allow_downcast=False, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType
     
     :note: Regarding the inference of the broadcastable pattern... 
@@ -27,7 +27,11 @@ def tensor_constructor(value, name=None, strict=False, borrow=False, broadcastab
     if broadcastable is None:
         broadcastable = (False,)*len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
-    return TensorSharedVariable(type=type, value=numpy.array(value,copy=(not borrow)), name=name, strict=strict)
+    return TensorSharedVariable(type=type,
+            value=numpy.array(value,copy=(not borrow)),
+            name=name,
+            strict=strict,
+            allow_downcast=allow_downcast)
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
 # dont do purely scalar-scalar operations 
@@ -35,7 +39,7 @@ class ScalarSharedVariable(SharedVariable, _tensor_py_operators):
     pass
 
 @shared_constructor
-def scalar_constructor(value, name=None, strict=False):
+def scalar_constructor(value, name=None, strict=False, allow_downcast=False):
     """SharedVariable constructor for scalar values. Default: int64 or float64. 
 
     :note: We implement this using 0-d tensors for now.
@@ -57,7 +61,7 @@ def scalar_constructor(value, name=None, strict=False):
         # strict is True and the types do not match.
         rval = ScalarSharedVariable(type=tensor_type,
                 value=numpy.array(value, copy=True),
-                name=name, strict=strict)
+                name=name, strict=strict, allow_downcast=allow_downcast)
         return rval
     except:
         traceback.print_exc()

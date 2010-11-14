@@ -28,6 +28,12 @@ class SymbolicInput(object):
         True: means that the value you pass for this input must have exactly the right type
         False: the value you pass for this input may be casted automatically to the proper type
 
+    allow_downcast: Bool (default: False)
+        Only applies when `strict` is False.
+        True: the value you pass for this input can be silently
+        downcasted to fit the right type, which may lose precision.
+        False: the value will only be casted to a more general, or precise, type.
+
     autoname: Bool (default: True)
         See the name option.
 
@@ -36,7 +42,8 @@ class SymbolicInput(object):
         symbolic case.
     """
 
-    def __init__(self, variable, name=None, update=None, mutable=None, strict=False, autoname=True,
+    def __init__(self, variable, name=None, update=None, mutable=None,
+            strict=False, allow_downcast=False, autoname=True,
             implicit=False):
         assert implicit is not None # Safety check.
         self.variable = variable
@@ -45,8 +52,6 @@ class SymbolicInput(object):
         else:
             self.name = name
 
-        #backport
-        #self.name = variable.name if (autoname and name is None) else name
         if self.name is not None and not isinstance(self.name, str):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
@@ -55,9 +60,8 @@ class SymbolicInput(object):
         else:
           self.mutable = (update is not None)
 
-        #backport
-        #self.mutable = mutable if (mutable is not None) else (update is not None)
         self.strict = strict
+        self.allow_downcast = allow_downcast
         self.implicit = implicit
 
     def __str__(self):
@@ -156,6 +160,12 @@ class In(SymbolicInput):
         True: means that the value you pass for this input must have exactly the right type
         False: the value you pass for this input may be cast automatically to the proper type
 
+    allow_downcast: Bool (default: False)
+        Only applies when `strict` is False.
+        True: the value you pass for this input can be silently
+        downcasted to fit the right type, which may lose precision.
+        False: the value will only be casted to a more general, or precise, type.
+
     autoname: Bool (default: True)
         See the name option.
 
@@ -173,13 +183,20 @@ class In(SymbolicInput):
     # Note: the documentation above is duplicated in doc/topics/function.txt,
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
-            mutable=None, strict=False, autoname=True,
+            mutable=None, strict=False, allow_downcast=False, autoname=True,
             implicit=None):
         if implicit is None:
             implicit = (isinstance(value, gof.Container) or
                     isinstance(value, SharedVariable))
-        super(In, self).__init__(variable, name, update, mutable, strict,
-                autoname, implicit = implicit)
+        super(In, self).__init__(
+                variable=variable,
+                name=name,
+                update=update,
+                mutable=mutable,
+                strict=strict,
+                allow_downcast=allow_downcast,
+                autoname=autoname,
+                implicit=implicit)
         self.value = value
         if self.implicit and value is None:
             raise TypeError('An implicit input must be given a default value')

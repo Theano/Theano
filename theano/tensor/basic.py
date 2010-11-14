@@ -400,7 +400,7 @@ class TensorType(Type):
         self.name = name
         self.numpy_dtype = numpy.dtype(self.dtype)
 
-    def filter(self, data, strict = False):
+    def filter(self, data, strict=False, allow_downcast=False):
         """Convert `data` to something which can be associated to a `TensorVariable`.
 
         This function is not meant to be called in user code.  It is for
@@ -411,7 +411,7 @@ class TensorType(Type):
         elif strict:
             # this is its own subcase that doesn't fall through to anything
             if not isinstance(data, numpy.ndarray):
-                raise TypeError("%s expected a ndarray object.", data, type(data))
+                raise TypeError("%s expected a ndarray object." % self, data, type(data))
             if not str(data.dtype) == self.dtype:
                 raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.dtype, data.dtype))
             if not data.ndim == self.ndim:
@@ -419,8 +419,54 @@ class TensorType(Type):
 
             return data
         else:
-            data = theano._asarray(data, dtype = self.dtype) #TODO - consider to pad shape with ones
-            # to make it consistent with self.broadcastable... like vector->row type thing
+            if allow_downcast:
+                # Convert to self.dtype, regardless of the type of data
+                data = theano._asarray(data, dtype=self.dtype) #TODO - consider to pad shape with ones
+                # to make it consistent with self.broadcastable... like vector->row type thing
+            else:
+                if isinstance(data, numpy.ndarray):
+                    # Check if self.dtype can accurately represent data
+                    # (do not try to convert the data)
+                    up_dtype = scal.upcast(self.dtype, data.dtype)
+                    if up_dtype == self.dtype:
+                        # Bug in the following line when data is a scalar array,
+                        # see http://projects.scipy.org/numpy/ticket/1611
+                        #data = data.astype(self.dtype)
+                        data = theano._asarray(data, dtype=self.dtype)
+                    if up_dtype != self.dtype:
+                        err_msg = (
+                            '%s cannot store a value of dtype %s without '
+                            'risking loss of precision. If you do not mind '
+                            'this loss, you can: '
+                            '1) explicitly cast your data to %s, or '
+                            '2) set "allow_input_downcast=True" when calling '
+                            '"function".'
+                            % (self, data.dtype, self.dtype))
+                        raise TypeError(err_msg, data)
+                else:
+                    # data has to be converted.
+                    # Check that this conversion is lossless
+                    converted_data = theano._asarray(data, self.dtype)
+                    if numpy.all(data == converted_data):
+                        data = converted_data
+                    else:
+                        # Do not print a too long description of data
+                        # (ndarray truncates it, but it's not sure for data)
+                        str_data = str(data)
+                        if len(str_data) > 80:
+                            str_data = str_data[:75] + '(...)'
+
+                        err_msg = (
+                            '%s cannot store accurately value %s, '
+                            'it would be represented as %s. '
+                            'If you do not mind this precision loss, you can: '
+                            '1) explicitly convert your data to a numpy array '
+                            'of dtype %s, or '
+                            '2) set "allow_input_downcast=True" when calling '
+                            '"function".'
+                            % (self, data, converted_data, self.dtype))
+                        raise TypeError(err_msg, data)
+
         if self.ndim != data.ndim:
             raise TypeError("Wrong number of dimensions: expected %s, got %s with shape %s." % (self.ndim, data.ndim, data.shape), data)
         i = 0
@@ -434,7 +480,7 @@ class TensorType(Type):
 
     def value_validity_msg(self, a):
         try:
-            self.filter(a, True)
+            self.filter(a, strict=True)
         except Exception, e:
             return str(e)
         return "value is valid"
@@ -4300,11 +4346,15 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
                 'You may want to use theano.tests.unittest_tools.verify_grad instead of theano.tensor.verify_grad.')
 
+    # We allow input downcast in function, because numeric_grad works in the
+    # most precise dtype used among the inputs, so we may need to cast some.
     def function(inputs, output):
         if mode is None:
-            f = compile.function(inputs, output, accept_inplace=True)
+            f = compile.function(inputs, output, accept_inplace=True,
+                    allow_input_downcast=True)
         else:
-            f = compile.function(inputs, output, accept_inplace=True, mode=mode)
+            f = compile.function(inputs, output, accept_inplace=True,
+                    allow_input_downcast=True, mode=mode)
         return f
 
     tensor_pt = [TensorType(as_tensor_variable(p).dtype, as_tensor_variable(p).broadcastable)(name='input %i'%i) for i,p in enumerate(pt)]

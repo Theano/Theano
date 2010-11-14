@@ -42,7 +42,7 @@ class SharedVariable(Variable):
     # this Variable, unless another update value has been passed to "function",
     # or the "no_default_updates" list passed to "function" contains it.
 
-    def __init__(self, name, type, value, strict, container=None):
+    def __init__(self, name, type, value, strict, allow_downcast=False, container=None):
         """
         :param name: The name for this variable (see `Variable`).
 
@@ -52,6 +52,9 @@ class SharedVariable(Variable):
 
         :param strict: True -> assignments to .value will not be casted or copied, so they must
         have the correct type.
+
+        :param allow_downcast: Only applies if `strict` is False.
+        True -> allows assigned value to lose precision when casted during assignment.
 
         :param container: The container to use for this variable. Illegal to pass this as well
         as a value.
@@ -69,9 +72,10 @@ class SharedVariable(Variable):
             if container is not None:
                 raise TypeError('Error to specify both value and container')
             self.container = Container(self,
-                    storage=[type.filter(value, strict=strict)],
+                    storage=[type.filter(value, strict=strict, allow_downcast=allow_downcast)],
                     readonly=False,
-                    strict=strict)
+                    strict=strict,
+                    allow_downcast=allow_downcast)
 
     def get_value(self, borrow=False, return_internal_type=False):
         """Get the non-symbolic value associated with this SharedVariable.
@@ -156,7 +160,7 @@ def shared_constructor(ctor):
     shared.constructors.append(ctor)
     return ctor
 
-def shared(value, name=None, strict=False, **kwargs):
+def shared(value, name=None, strict=False, allow_downcast=False, **kwargs):
     """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
 
     This function iterates over constructor functions (see `shared_constructor`) to find a
@@ -169,7 +173,8 @@ def shared(value, name=None, strict=False, **kwargs):
     """
     for ctor in reversed(shared.constructors):
         try:
-            return ctor(value, name=name, strict=strict, **kwargs)
+            return ctor(value, name=name, strict=strict,
+                    allow_downcast=allow_downcast, **kwargs)
         except TypeError:
             continue
     # This may happen when kwargs were supplied
@@ -181,7 +186,8 @@ def shared(value, name=None, strict=False, **kwargs):
 shared.constructors = []
 
 @shared_constructor
-def generic_constructor(value, name=None, strict=False):
+def generic_constructor(value, name=None, strict=False, allow_downcast=False):
     """SharedVariable Constructor"""
-    return SharedVariable(type=generic, value=value, name=name, strict=strict)
+    return SharedVariable(type=generic, value=value, name=name, strict=strict,
+            allow_downcast=allow_downcast)
 
