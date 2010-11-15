@@ -531,32 +531,40 @@ class Function(object):
         for k, arg in kwargs.iteritems():
             self[k] = arg
 
-        ## Collect aliased inputs among the storage space
-        args_share_memory = []
-        for i in xrange(len(self.input_storage)):
-            if self.input_storage[i].storage[0] is not None:
-                is_aliased = False
-                for j in xrange(len(args_share_memory)):
-                    if numpy.may_share_memory(
-                            self.input_storage[i].storage[0] ,
-                            self.input_storage[args_share_memory[j][0]].storage[0]):
-                        is_aliased = True
-                        args_share_memory[j].append(i)
-                        break
 
-                if not is_aliased:
-                    args_share_memory.append([i])
+        if ( not hasattr(self, '_check_for_aliased_inputs') or
+            self._check_for_aliased_inputs):
+            ## Collect aliased inputs among the storage space
+            args_share_memory = []
+            for i in xrange(len(self.input_storage)):
+                if isinstance(self.input_storage[i].storage[0],
+                              numpy.ndarray):
+                    is_aliased = False
+                    for j in xrange(len(args_share_memory)):
+                        for k in args_share_memory[j]:
+                            if numpy.may_share_memory(
+                                    self.input_storage[i].storage[0] ,
+                                    self.input_storage[k].storage[0]):
+                                is_aliased = True
+                                args_share_memory[j].append(i)
+                                break
+                        if is_aliased:
+                                      break
 
-            # Check for groups of more than one argument that share memory
-            for group in args_share_memory:
-                if len(group) > 1:
-                    # see if any of these arguments are mutable
-                    mutable = numpy.any([self.maker.inputs[idx].mutable
-                                         for idx in group])
-                    # copy all but the first
-                    for idx in group[1:]:
-                        self.input_storage[i].storage[0] = copy.copy(
-                            self.input_storage[i].storage[0])
+                    if not is_aliased:
+                        args_share_memory.append([i])
+
+                # Check for groups of more than one argument that share memory
+                for group in args_share_memory:
+                    if len(group) > 1:
+                        # see if any of these arguments are mutable
+                        mutable = numpy.any([(self.maker.inputs[idx].mutable or
+                                             self.maker.inputs[idx].borrow )
+                                             for idx in group ])
+                        # copy all but the first
+                        for idx in group[1:]:
+                            self.input_storage[i].storage[0] = copy.copy(
+                                self.input_storage[i].storage[0])
 
 
 
