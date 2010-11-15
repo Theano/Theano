@@ -3378,61 +3378,94 @@ def test_dimshuffle_duplicate():
 
     assert success
 
-def test_shared_dont_alias():
-    rng = numpy.random.RandomState([3,5,17])
-    x = rng.uniform(0,1,[2,4])
-    
-    x_shared = theano.shared(x, borrow = False)
+def build_test_shared_options(shared_constructor_,
+                              dtype_,
+                              get_value_borrow_true_alias_,
+                              shared_borrow_true_alias_):
+    """
+    This is a generic fct to allow reusing the same test function
+    for many shared variable of many types.
+    """
+    class SharedTester(unittest.TestCase):
+        shared_constructor = staticmethod(shared_constructor_)
+        dtype = dtype_
+        get_value_borrow_true_alias = get_value_borrow_true_alias_
+        shared_borrow_true_alias = shared_borrow_true_alias_
 
-    total = theano.tensor.sum(x_shared)
-    
-    total_func = theano.function([],total)
+        def test_shared_dont_alias(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
 
-    total_val = total_func()
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x_sum = x.sum()
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = theano.tensor.sum(x_shared)
 
-    assert numpy.allclose(x.sum(), total_val)
+            total_func = theano.function([],total)
 
-    x += 1
+            total_val = total_func()
 
-    total_val_2 = total_func()
+            assert numpy.allclose(x.sum(), total_val)
 
-    #value used to construct should not alias with internal
-    assert total_val == total_val_2
+            x += 1
 
-    x = x_shared.get_value(borrow = False)
+            total_val_2 = total_func()
 
-    x += 1
+            #value used to construct should not alias with internal
+            assert total_val == total_val_2
 
-    total_val_3 = total_func()
+            x = x_shared.get_value(borrow = False)
 
-    #value returned by access should not alias with internal
-    assert total_val == total_val_3
+            x += 1
 
-    #in this case we can alias
-    x = x_shared.get_value(borrow = True)
-    x += 1
+            total_val_3 = total_func()
 
-    #this is not required by the contract but it is a feature we've implemented
-    assert numpy.allclose(x.sum(), total_func())
+            #value returned by access should not alias with internal
+            assert total_val == total_val_3
 
-def test_shared_do_alias():
-    rng = numpy.random.RandomState([2,4,16])
-    x = rng.uniform(1,2,[4,2])
+            #in this case we can alias
+            x = x_shared.get_value(borrow = True)
+            x += 1
 
-    x_shared = theano.shared(x, borrow = True)
+            #this is not required by the contract but it is a feature we've 
+            #implemented for some type of SharedVariable.
+            if self.get_value_borrow_true_alias:
+                assert numpy.allclose(x.sum(), total_func())
+            else:
+                assert numpy.allclose(x_sum, total_func())
 
-    total = theano.tensor.sum(x_shared)
+        def test_shared_do_alias(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
 
-    total_func = theano.function([],total)
+            rng = numpy.random.RandomState([2,4,16])
+            x = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
+            x_sum = x.sum()
 
-    total_val = total_func()
+            x_shared = self.shared_constructor(x, borrow = True)
 
-    assert numpy.allclose(x.sum(), total_val)
+            total = theano.tensor.sum(x_shared)
 
-    x += 1
+            total_func = theano.function([],total)
 
-    #not required by the contract but it is a feature we've implemented
-    assert numpy.allclose(x.sum(), total_func())
+            total_val = total_func()
+
+            assert numpy.allclose(x.sum(), total_val)
+
+            x += 1
+
+            #not required by the contract but it is a feature we've implemented
+            if self.shared_borrow_true_alias:
+                assert numpy.allclose(x.sum(), total_func())
+            else:
+                assert numpy.allclose(x_sum, total_func())
+
+    return SharedTester
+
+test_shared_options=build_test_shared_options(tensor.shared, 'float64', True, True)
 
 
 if __name__ == '__main__':

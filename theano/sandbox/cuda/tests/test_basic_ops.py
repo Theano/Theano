@@ -802,6 +802,8 @@ def test_duplicate_arg_elemwise():
     assert numpy.allclose(Bval,f(Aval))
 
 
+import theano.tensor.tests.test_basic
+test_shared_options = theano.tensor.tests.test_basic.build_test_shared_options(tcn.shared_constructor, 'float32', False, False)
 
 if __name__ == '__main__':
     test_many_arg_elemwise()
