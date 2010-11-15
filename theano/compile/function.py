@@ -71,15 +71,22 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     uses_updates = (updates != [])
     uses_givens = (givens != [])
 
+    # See if we have any mutable / borrow inputs
+    check_for_aliased_inputs = False
+    for i in inputs:
+        if (isinstance(i, In) and ( (hasattr(i,'borrow') and i.borrow) or
+                                   (hasattr(i,'mutable') and i.mutable)) ):
+            check_for_aliased_inputs = True
+
     if uses_In or uses_tuple:
         # we must use old semantics in this case.
         if uses_updates or uses_givens:
             raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
-        return orig_function(inputs, outputs, 
+        fn =  orig_function(inputs, outputs,
                 mode=mode,
                 accept_inplace=accept_inplace, name=name)
     else:
-        return pfunc(params=inputs, 
+        fn = pfunc(params=inputs,
                 outputs=outputs,
                 mode=mode,
                 updates=updates,
@@ -87,3 +94,7 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
                 no_default_updates=no_default_updates,
                 accept_inplace=accept_inplace,name=name,
                 rebuild_strict=rebuild_strict)
+    # We need to add the flag check_aliased inputs if we have any mutable or
+    # borrowed used defined inputs
+    fn._check_for_aliased_inputs = check_for_aliased_inputs
+    return fn
