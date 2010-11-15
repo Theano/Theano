@@ -2920,7 +2920,7 @@ class test_tensordot(unittest.TestCase):
         avec = vector()
         bvec = vector()
         axes = ((0,),(0,))
-        c = tensordot(axes)(avec, bvec)
+        c = tensordot(avec, bvec, axes)
         f1 = inplace_func([avec,bvec],c)
         aval = self.rand(5);
         bval = self.rand(5);
@@ -2931,7 +2931,7 @@ class test_tensordot(unittest.TestCase):
         # test matrix-vector
         bmat = matrix()
         axes = ((0,),(1,))
-        c = tensordot(axes)(avec, bmat)
+        c = tensordot(avec, bmat, axes)
         f2 = inplace_func([avec,bmat],c)
         aval = self.rand(5);
         bval = self.rand(8,5);
@@ -2942,7 +2942,7 @@ class test_tensordot(unittest.TestCase):
         # test matrix-matrix
         amat = matrix()
         axes = ((1,),(0,))
-        c = tensordot(axes)(amat, bmat)
+        c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         aval = self.rand(4,7);
         bval = self.rand(7,9);
@@ -2953,7 +2953,7 @@ class test_tensordot(unittest.TestCase):
         # test ndarray-matrix, sum over one dim of matrix
         atens = tensor4()
         axes = ((2,),(1,))
-        c = tensordot(axes)(atens, bmat)
+        c = tensordot(atens, bmat, axes)
         f4 = inplace_func([atens,bmat],c)
         aval = self.rand(1,2,3,4);
         bval = self.rand(2,3);
@@ -2965,7 +2965,7 @@ class test_tensordot(unittest.TestCase):
         atens = tensor4()
         btens = tensor3()
         axes = ((1,3),(0,2))
-        c = tensordot(axes)(atens, btens)
+        c = tensordot(atens, btens, axes)
         f5 = inplace_func([atens,btens],c)
         aval = self.rand(4,3,5,2);
         bval = self.rand(3,4,2);
@@ -2974,62 +2974,74 @@ class test_tensordot(unittest.TestCase):
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
         axes = (axes[1],axes[0])
-        c = tensordot(axes)(btens, atens)
+        c = tensordot(btens, atens, axes)
         f6 = inplace_func([btens,atens],c)
         self.failUnless(numpy.allclose(numpy.tensordot(bval,aval,axes),
                                        f6(bval,aval)))
         utt.verify_grad(TensorDot(axes), [bval,aval])
 
     def test_raise_error(self):
-
-        # test vector-vector
-        avec = vector()
+        amat = matrix()
+        bmat = matrix()
         bvec = vector()
-        axes = ((0,),())
+
+        # test invalid length for axes
         try:
-            c = tensordot(axes)(avec, bvec)
-            assert False
-        except ValueError:
-            pass
-        # test matrix-vector
-        bmat = matrix()
-        axes = ((0,),())
-        try:
-            c = tensordot(axes)(avec, bmat)
+            c = tensordot(amat, bmat, (0,1,2))
             assert False
         except ValueError:
             pass
 
+        # test axes of uneven length
+        try:
+            c = tensordot(amat, bmat, ((0,1),(0)))
+            assert False
+        except ValueError:
+            pass
+
+        # test invalid len(axes) given inputs are matrices
+        try:
+            c = tensordot(amat, bmat, ((0,1,2),(0,1,2)))
+            assert False
+        except ValueError:
+            pass
+
+        # test invalid axes[1] given that y is a vector
+        try:
+            c = tensordot(amat, bvec, (0,1))
+            assert False
+        except ValueError:
+            pass
+
+        # test invalid scalar axes given inputs are matrices
+        try:
+            c = tensordot(amat, bvec, 2)
+            assert False
+        except ValueError:
+            pass
+
+
+    def test_weird_valid_axes(self):
         # test matrix-matrix
         amat = matrix()
-        axes = ((1,),())
-        try:
-            c = tensordot(axes)(amat, bmat)
-            assert False
-        except ValueError:
-            pass
-
-    def test_list(self):
-        # test matrix-matrix
-        amat = matrix()
         bmat = matrix()
-        axes = [[1,],[0,]]
-        c = tensordot(axes)(amat, bmat)
-        f3 = inplace_func([amat,bmat],c)
-        aval = self.rand(4,7);
-        bval = self.rand(7,9);
-        self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
-                                       f3(aval,bval)))
-        utt.verify_grad(TensorDot(axes), [aval,bval])
+        for axes in 0, (1,0), [1,0], (1,(0,)), ((1,),0), ([1],[0]):
+            c = tensordot(amat, bmat, axes)
+            f3 = inplace_func([amat,bmat],c)
+            aval = self.rand(4,7);
+            bval = self.rand(7,9);
+            self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
+                                           f3(aval,bval)))
+            utt.verify_grad(TensorDot(axes), [aval,bval])
 
-    def test_scalar(self):
+    def test_scalar_axes(self):
         # test matrix-matrix
         amat = fmatrix()
         bmat = dmatrix()#we let at float64 to test mix of float32 and float64.
         axes = 1
         aval = self.rand(4,5)
         bval = numpy.random.rand(5,3)
-        c = tensordot(axes)(amat, bmat)
+        c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f3(aval,bval)))
@@ -3041,7 +3053,7 @@ class test_tensordot(unittest.TestCase):
         axes = 2
         aval = self.rand(3,4,5)
         bval = self.rand(4,5,3)
-        c = tensordot(axes)(amat, bmat)
+        c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f3(aval,bval)))
@@ -3054,7 +3066,7 @@ class test_tensordot(unittest.TestCase):
         axes = 0
         aval = self.rand(4,5)
         bval = self.rand(5,4)
-        c = tensordot(axes)(amat, bmat)
+        c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.failUnless(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f3(aval,bval)))

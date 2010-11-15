@@ -3841,19 +3841,7 @@ pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'], -1, 
 #########################
 class TensorDotGrad(Op):
     def __init__(self, axes):
-        if isinstance(axes,list):
-            for i,a in enumerate(axes):
-                if isinstance(a,list):
-                    axes[i]=tuple(a)
-            axes=tuple(axes)
-        if isinstance(axes, tuple):
-            if len(axes)!=2:
-                raise ValueError("We need the list/tuple of axes to be of length 2")
-            if len(axes[0])!=len(axes[1]):
-                raise ValueError("We need that the axes 2 sub list of axes are of the same size")
-            assert len(axes[0])==len(axes[1])
-
-        self.axes = axes;
+        self.axes = TensorDot.parse_axes(axes)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axes == other.axes
@@ -3903,20 +3891,31 @@ class TensorDot(Op):
 
     """
 
-    def __init__(self, axes):
-        if isinstance(axes,list):
-            for i,a in enumerate(axes):
-                if isinstance(a,list):
-                    axes[i]=tuple(a)
-            axes=tuple(axes)
-        if isinstance(axes, tuple):
-            if len(axes)!=2:
-                raise ValueError("We need the list/tuple of axes to be of length 2")
-            if len(axes[0])!=len(axes[1]):
-                raise ValueError("We need that the axes 2 sub list of axes are of the same size")
-            assert len(axes[0])==len(axes[1])
+    @classmethod
+    def parse_axes(cls, axes):
 
-        self.axes = axes
+        if not numpy.isscalar(axes) and len(axes)!=2:
+            raise ValueError("Axes should be scalar valued or a list/tuple of len 2.")
+
+        if isinstance(axes,(list,tuple)):
+            axes_out = []
+            # cast axes[0] and axes[1] to tuples
+            for i,a in enumerate(axes):
+                if numpy.isscalar(a):
+                    axes_out.append((a,))
+                else:
+                    axes_out.append(tuple(a))
+
+            # these should be of same length
+            if len(axes_out[0])!=len(axes_out[1]):
+                raise ValueError("Elements of the axes list/tuple need to be of the same size.")
+
+            axes = tuple(axes_out)
+
+        return axes
+
+    def __init__(self, axes):
+        self.axes = self.parse_axes(axes)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axes == other.axes
@@ -3957,7 +3956,40 @@ class TensorDot(Op):
 
     def __str__(self):
         return "tensordot"
-tensordot = TensorDot
+
+def tensordot(x, y, axes=2):
+    if x.ndim==0 or y.ndim==0:
+        raise ValueError('Cannot perform tensordot of 0-d inputs.')
+
+    axes = TensorDot.parse_axes(axes)
+    
+    # check whether axes is valid given the dimensions of x and y
+    if numpy.isscalar(axes):
+        if axes >= x.ndim or axes >= y.ndim:
+            raise ValueError('axes should be smaller than the dimension of '\
+                    'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim,y.ndim))
+    elif isinstance(axes, (list,tuple)):
+
+        if isinstance(axes[0],(list,tuple)) and \
+           (len(axes[0]) > x.ndim or (numpy.array(axes[0]) >= x.ndim).any()):
+            raise ValueError('axes[0] should be array_like, of length smaller'\
+                    ' than the dimension of x (x.ndim=%i, len(axes[0])=%i).' %
+                    (x.ndim, len(axes[0])))
+
+        if isinstance(axes[1],(list,tuple)) and \
+           (len(axes[1]) > y.ndim or (numpy.array(axes[1]) >= y.ndim).any()):
+            raise ValueError('axes[1] should be array_like, of length smaller'\
+                    'than the dimension of y (y.ndim=%i, len(axes[1])=%i).' % 
+                    (y.ndim, len(axes[1])))
+
+    if not hasattr(tensordot, 'op'):
+        tensordot.op = {}
+    
+    if axes not in tensordot.op:
+        tensordot.op[axes] = TensorDot(axes)
+
+    return tensordot.op[axes](x, y)
+
 
 #TODO: tensordot should be function as described in rst docs.
 
