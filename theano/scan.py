@@ -505,9 +505,9 @@ def scan( fn
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
              Theano variable or a list of Theano variables representing the
              outputs of ``scan`` (in the same order as in
-             ``outputs_info``. ``updates`` is a dictionary specifying the
-             updates rules for all shared variables used in the scan
-             operation. This dictionary should be pass to ``theano.function``
+             ``outputs_info``). ``updates`` is a dictionary specifying the
+             update rules for all shared variables used in the scan
+             operation. This dictionary should be passed to ``theano.function``
              when you compile your function.
     """
     # General observation : this code is executed only once, at creation
