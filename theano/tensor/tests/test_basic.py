@@ -3366,6 +3366,62 @@ def test_dimshuffle_duplicate():
 
     assert success
 
+def test_shared_dont_alias():
+    rng = numpy.random.RandomState([3,5,17])
+    x = rng.uniform(0,1,[2,4])
+    
+    x_shared = theano.shared(x, borrow = False)
+
+    total = theano.tensor.sum(x_shared)
+    
+    total_func = theano.function([],total)
+
+    total_val = total_func()
+
+    assert numpy.allclose(x.sum(), total_val)
+
+    x += 1
+
+    total_val_2 = total_func()
+
+    #value used to construct should not alias with internal
+    assert total_val == total_val_2
+
+    x = x_shared.get_value(borrow = False)
+
+    x += 1
+
+    total_val_3 = total_func()
+
+    #value returned by access should not alias with internal
+    assert total_val == total_val_3
+
+    #in this case we can alias
+    x = x_shared.get_value(borrow = True)
+    x += 1
+
+    #this is not required by the contract but it is a feature we've implemented
+    assert numpy.allclose(x.sum(), total_func())
+
+def test_shared_do_alias():
+    rng = numpy.random.RandomState([2,4,16])
+    x = rng.uniform(1,2,[4,2])
+
+    x_shared = theano.shared(x, borrow = True)
+
+    total = theano.tensor.sum(x_shared)
+
+    total_func = theano.function([],total)
+
+    total_val = total_func()
+
+    assert numpy.allclose(x.sum(), total_val)
+
+    x += 1
+
+    #not required by the contract but it is a feature we've implemented
+    assert numpy.allclose(x.sum(), total_func())
+
 
 if __name__ == '__main__':
     if 1:
