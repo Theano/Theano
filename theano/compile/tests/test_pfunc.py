@@ -515,7 +515,36 @@ class Test_aliasing_rules(unittest.TestCase):
 
         # rule #2 reading back from theano-managed memory
         assert not numpy.may_share_memory(A.get_value(borrow=False), data_of(A))
-        
+
+
+    def test_potential_input_aliasing_affecting_inplace_operations(self):
+
+        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        #        you need to make in inputs mutable ( so that inplace
+        #        operations are used) and to break the elemwise composition
+        #        with some non-elemwise op ( here dot )
+        x  = theano.tensor.dvector()
+        y  = theano.tensor.dvector()
+        m1 = theano.tensor.dmatrix()
+        m2 = theano.tensor.dmatrix()
+        f = theano.function( [theano.In(x,  mutable = True),
+                              theano.In(y,  mutable = True),
+                              theano.In(m1, mutable = True),
+                              theano.In(m2, mutable = True)],
+                            theano.dot(x*2,m1)+theano.dot(y*3,m2))
+        # Compute bogus values
+        v = numpy.asarray([1,2], dtype = 'float64')
+        m = numpy.asarray([[1,0],[0,1]], dtype = 'float64')
+        bogus_vals =  f(v,v,m,m)
+        # Since we used inplace operation v and m may be corrupted
+        # so we need to recreate them
+        m = numpy.asarray([[1,0],[0,1]], dtype = 'float64')
+        v = numpy.asarray([1,2], dtype = 'float64')
+        m_copy = m.copy()
+        v_copy = v.copy()
+        vals =  f(v,v_copy,m,m_copy)
+
+        assert numpy.allclose(vals, bogus_vals)
 
     def test_potential_output_aliasing_induced_by_updates(self):
 
