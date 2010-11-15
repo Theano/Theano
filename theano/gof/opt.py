@@ -645,7 +645,7 @@ class PatternSub(LocalOptimizer):
                     raise KeyError("Malformed pattern: %s (expected key 'pattern')" % pattern)
                 constraint = pattern.get('constraint', lambda expr: True)
                 if constraint(expr):
-                    return match(real_pattern, expr, u, pattern.get('allow_multiple_clients', False))
+                    return match(real_pattern, expr, u, pattern.get('allow_multiple_clients', allow_multiple_clients))
                 else:
                     return retry_with_equiv()
             elif isinstance(pattern, str):
