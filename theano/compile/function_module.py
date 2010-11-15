@@ -38,7 +38,7 @@ def view_tree_set(v, treeset):
     """Add to `treeset` all variables that are views of v, given that v is not a view"""
     treeset.add(v)
     for cl, v_input_pos_to_cl in v.clients:
-        if cl == 'output': 
+        if cl == 'output':
             continue
         vmap = getattr(cl.op, 'view_map', {})
         dmap = getattr(cl.op, 'destroy_map', {})
@@ -181,7 +181,7 @@ class DeepCopyOp(theano.gof.Op):
 
     def perform( self, node, args, outs):
         if hasattr(args[0],'copy'):
-            #when args[0] is a an ndarray of 0 dimensions, 
+            #when args[0] is a an ndarray of 0 dimensions,
             #this return a numpy.dtype and not an ndarray
             #So when the args have a copy attribute we use it
             #as this don't have this problem
@@ -207,7 +207,7 @@ class DeepCopyOp(theano.gof.Op):
             PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
             %(fail)s;
         }
- 
+
         """%locals()
         elif isinstance(node.inputs[0].type, theano.sandbox.cuda.CudaNdarrayType):
             return """
@@ -220,7 +220,7 @@ class DeepCopyOp(theano.gof.Op):
             PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
             %(fail)s;
         }
- 
+
         """%locals()
 
 deep_copy_op = DeepCopyOp()
@@ -246,7 +246,7 @@ class Function(object):
     A Function instance is hashable, on the basis of its memory address (its id).
 
     A Function instance is only equal to itself.
-    
+
     A Function instance may be serialized using the `pickle` or `cPickle` modules.
     This will save all default inputs, the graph, and *** to the pickle file (WRITEME).
 
@@ -262,7 +262,7 @@ class Function(object):
 
     If the value is 'raise', then an AliasedMemoryError will be raised if aliased storage is
     detected during pickle.dump.
-    
+
     """
 
     input_storage = None
@@ -303,7 +303,7 @@ class Function(object):
 
     finder = None
     """Dictionary mapping several kinds of things to containers.
-    
+
     We set an entry in finder for:
 
     - the index of the input
@@ -337,7 +337,7 @@ class Function(object):
         self.maker = maker
 
         # We will be popping stuff off this `containers` object.  It is a copy.
-        containers = list(self.input_storage) 
+        containers = list(self.input_storage)
         finder = {}
         inv_finder = {}
 
@@ -379,7 +379,7 @@ class Function(object):
                 finder[i] = c
                 finder[input.variable] = c
                 if input.name not in finder:
-                  finder[input.name] = c 
+                  finder[input.name] = c
                 else:
                   finder[input.name] = DUPLICATE
                 if input.name is None:
@@ -486,8 +486,8 @@ class Function(object):
 
     def __setitem__(self, item, value):
         self.value[item] = value
-        
-    
+
+
     def __copy__(self):
         defaults = [default for _1, _2, default in self.defaults]
         cpy = self.maker.create(defaults, trustme = True)
@@ -519,15 +519,47 @@ class Function(object):
             else:
                 try:
                     s.storage[0] = s.type.filter(arg, strict=s.strict)
+
                 except Exception, e:
                     e.args = tuple(list(e.args)+["Bad input argument at index %d" % arg_index])
                     raise
             s.provided += 1
             i+=1
 
+
         # Set keyword arguments
         for k, arg in kwargs.iteritems():
             self[k] = arg
+
+        ## Collect aliased inptus among the storage space
+        args_share_memory = []
+        for i in xrange(len(self.input_storage)):
+            if self.input_storage[i].storage[0] != None:
+                is_aliased = False
+                for j in xrange(len(args_share_memory)):
+                    if  numpy.may_share_memory(
+                            self.input_storage[i].storage[0] ,
+                            self.input_storage[args_share_memory[j][0]].storage[0]):
+                        is_aliased = True
+                        args_share_memory[j] += [i]
+                        break
+
+                if not is_aliased:
+                    args_share_memory.append( [i] )
+
+            # Check for groups of more than one argument that share memory
+            for group in args_share_memory:
+                if len(group) > 1:
+                    # see if any of these arguments are mutable
+                    mutable = numpy.any( [self.maker.inputs[idx].mutable for
+                                        idx in group])
+                    # copy all but the first
+                    for idx in group[1:]:
+                        self.input_storage[i].storage[0] = copy.copy(
+                            self.input_storage[i].storage[0])
+
+
+
 
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
@@ -576,7 +608,7 @@ class Function(object):
                 if isinstance(value, gof.Container):
                     value = value.storage[0]
                 self[i] = value
-        
+
         dt_call=time.time()-t0
         if hasattr(self.maker.mode,'fct_call_time'):
           self.maker.mode.fct_call_time[self] += dt_call
@@ -584,7 +616,7 @@ class Function(object):
 
         self.maker.mode.call_time += dt_call
         self.maker.mode.fn_time += dt_fn
-        
+
         if self.return_none:
             return None
         elif self.unpack_single and len(outputs) == 1:
@@ -726,7 +758,7 @@ class SanityCheckFunction(Function):
 NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
-    
+
     This class has the env, the optimizer, and the linker.  When copying a `Function`, there is
     no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
     variable in re-compilation.
@@ -770,7 +802,7 @@ class FunctionMaker(object):
         else:
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
-    def __init__(self, inputs, outputs, 
+    def __init__(self, inputs, outputs,
             mode = None, accept_inplace = False, function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
@@ -805,7 +837,7 @@ class FunctionMaker(object):
         # Wrap them in In or Out instances if needed.
         #import pudb; pudb.set_trace()
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
-        _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update 
+        _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update
             for i in inputs if getattr(i, 'update', False)])
 
         #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
@@ -824,9 +856,9 @@ class FunctionMaker(object):
         t0 = time.time()
         optimizer(env)
         _logger.debug('Optimizing took %f seconds' % (time.time() - t0))
-        
+
         # This loop was inserted to remove aliasing between outputs when they all
-        # evaluete to the same value. Originally it was OK for outputs to be aliased, 
+        # evaluete to the same value. Originally it was OK for outputs to be aliased,
         # but some of the outputs can be shared variables, and is not good for shared
         # variables to be aliased. It might be possible to optimize this by making sure
         # there is no aliasing only between shared variables.
@@ -848,7 +880,7 @@ class FunctionMaker(object):
 
             if not copied:
                 for input_j in env.inputs:
-                    # do not allow outputs to be aliased to an inputs (j), unless 
+                    # do not allow outputs to be aliased to an inputs (j), unless
                     # a) that j'th input has been 'destroyed' by e.g. in-place computations
                     # b) that j'th input is a shared variable that is also being updated
                     if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
@@ -873,7 +905,7 @@ class FunctionMaker(object):
             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
         else:
             self.linker = linker.accept(env)
-        
+
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = expanded_inputs
@@ -887,7 +919,7 @@ class FunctionMaker(object):
         self.required = [(i.value == None) for i in self.inputs]
         self.refeed = [
                 (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
-                    for i in self.inputs] 
+                    for i in self.inputs]
 
     def create(self, input_storage=None, trustme=False):
         """
@@ -991,7 +1023,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
 
     :param mode: a descriptive string or a Mode instance. (Default of None means to use
     `config.mode` (See below for descriptive string list).
-    
+
     :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
 
     Currently, the library provides the following mode strings:
@@ -1033,7 +1065,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
             raise ValueError("Please provide at least one mode.")
         elif len(mode) == 1:
             fn = FunctionMaker(inputs, outputs, mode[0], accept_inplace = accept_inplace).create(defaults)
-        else:              
+        else:
             #return a different kind of function
             def dup_defaults():
                 # TODO This may need to be changed to use containers as defaults.
@@ -1056,18 +1088,18 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
-    
+
     t2 = time.time()
     if hasattr(mode, 'compile_time'):
         mode.compile_time+=t2-t1
 
     fn.name = name
-    
+
     if hasattr(mode,'fct_call_time'):
       mode.fct_call_time.setdefault(fn,0)
     if hasattr(mode,'fct_call'):
       mode.fct_call.setdefault(fn,0)
-      
+
     return fn
 
 
@@ -1075,13 +1107,13 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
 def convert_function_input(input):
     """
     Upgrade a input shortcut to an In instance.
-    
+
     The rules for upgrading are as follows:
 
     - a `Variable` instance r will be upgraded like `In`(r)
 
     - a tuple (name, r) will be `In`(r, name=name)
-    
+
     - a tuple (r, val) will be `In`(r, value=value, autoname=True)
 
     - a tuple ((r,up), val) will be `In`(r, value=value, update=up, autoname=True)
