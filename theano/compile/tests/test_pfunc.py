@@ -110,7 +110,7 @@ class Test_pfunc(unittest.TestCase):
         f = pfunc([Param(a, strict=False)], [out])
         f(numpy.random.rand(8)) # works, rand generates float64 by default
         f(numpy.array([1,2,3,4], dtype='int32')) # works, casting is allowed
-        
+
         f = pfunc([Param(a, strict=True)], [out])
         try:
             f(numpy.array([1,2,3,4], dtype='int32')) # fails, f expects float64
@@ -471,7 +471,7 @@ class Test_pfunc(unittest.TestCase):
         a.default_update = a+3
         c = a+ 10
         f = pfunc([],c, givens = { a: a+10} )
-        
+
         assert f() == 21
         assert f() == 34
 
