@@ -531,6 +531,36 @@ class Function(object):
         for k, arg in kwargs.iteritems():
             self[k] = arg
 
+        ## Collect aliased inptus among the storage space
+        args_share_memory = []
+        for i in xrange(len(self.input_storage)):
+            if self.input_storage[i].storage[0] != None:
+                is_aliased = False
+                for j in xrange(len(args_share_memory)):
+                    if  numpy.may_share_memory(
+                            self.input_storage[i].storage[0] ,
+                            self.input_storage[args_share_memory[j][0]].storage[0]):
+                        is_aliased = True
+                        args_share_memory[j] += [i]
+                        break
+
+                if not is_aliased:
+                    args_share_memory.append( [i] )
+
+            # Check for groups of more than one argument that share memory
+            for group in args_share_memory:
+                if len(group) > 1:
+                    # see if any of these arguments are mutable
+                    mutable = numpy.any( [self.maker.inputs[idx].mutable for
+                                        idx in group])
+                    # copy all but the first
+                    for idx in group[1:]:
+                        self.input_storage[i].storage[0] = copy.copy(
+                            self.input_storage[i].storage[0])
+
+
+
+
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
         for c in self.input_storage:
