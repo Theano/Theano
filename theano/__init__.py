@@ -169,3 +169,12 @@ def dot(l, r):
     return rval
 
 
+# Version information
+try:
+    import version
+    __version__ = version.version
+except ImportError:
+    import warnings
+    warnings.warn(
+        "version.py could not be imported. Run setup.py at least once to generate it"
+    )
