@@ -1,9 +1,11 @@
+import copy
+
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Variable, Constant
 from theano import tensor
-from theano.compile import shared, SharedVariable
+from theano.compile import SharedVariable
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import filter as type_support_filter
