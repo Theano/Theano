@@ -8,11 +8,11 @@ class SymbolicInput(object):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    variable: a Variable instance. 
+    variable: a Variable instance.
         This will be assigned a value before running the function,
         not computed from its owner.
 
-    name: Any type. (If autoname=True, defaults to variable.name). 
+    name: Any type. (If autoname=True, defaults to variable.name).
         If name is a valid Python identifier, this input can be set by kwarg, and its value
         can be accessed by self.<name>.
 
@@ -41,9 +41,9 @@ class SymbolicInput(object):
         assert implicit is not None # Safety check.
         self.variable = variable
         if  (autoname and name is None):
-          self.name = variable.name
+            self.name = variable.name
         else:
-          self.name = name
+            self.name = name
 
         #backport
         #self.name = variable.name if (autoname and name is None) else name
@@ -131,11 +131,11 @@ class In(SymbolicInput):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    variable: a Variable instance. 
+    variable: a Variable instance.
         This will be assigned a value before running the function,
         not computed from its owner.
 
-    name: Any type. (If autoname=True, defaults to variable.name). 
+    name: Any type. (If autoname=True, defaults to variable.name).
         If name is a valid Python identifier, this input can be set by kwarg, and its value
         can be accessed by self.<name>.
 
@@ -194,7 +194,7 @@ class SymbolicOutput(object):
             returned for this output might be clobbered by running
             the function again, but the function might be faster.
     """
-    
+
     def __init__(self, variable, borrow=False):
         self.variable = variable
         self.borrow = borrow
