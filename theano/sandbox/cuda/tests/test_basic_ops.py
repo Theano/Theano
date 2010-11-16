@@ -803,7 +803,7 @@ def test_duplicate_arg_elemwise():
 
 
 import theano.tensor.tests.test_basic
-test_shared_options = theano.tensor.tests.test_basic.build_test_shared_options(tcn.shared_constructor, 'float32', False, False, cuda_ndarray.CudaNdarray, theano.tensor.exp, numpy.exp)
+test_shared_options = theano.tensor.tests.test_basic.build_test_shared_options(tcn.shared_constructor, 'float32', False, False, False, cuda_ndarray.CudaNdarray, theano.tensor.exp, numpy.exp)
 
 if __name__ == '__main__':
     test_many_arg_elemwise()

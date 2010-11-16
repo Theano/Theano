@@ -3382,6 +3382,7 @@ def build_test_shared_options(shared_constructor_,
                               dtype_,
                               get_value_borrow_true_alias_,
                               shared_borrow_true_alias_,
+                              set_value_borrow_true_alias_,
                               internal_type_,
                               theano_fct_,
                               ref_fct_):
@@ -3397,6 +3398,7 @@ def build_test_shared_options(shared_constructor_,
         internal_type = internal_type_
         theano_fct = staticmethod(theano_fct_)
         ref_fct = staticmethod(ref_fct_)
+        set_value_borrow_true_alias = set_value_borrow_true_alias_
 
         def test_shared_dont_alias(self):
             dtype = self.dtype
@@ -3444,8 +3446,6 @@ def build_test_shared_options(shared_constructor_,
 
 
         def test_return_internal_type(self):
-            ################ TODO test Out.
-            ################ TODO test set_value!!!!
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
@@ -3479,6 +3479,50 @@ def build_test_shared_options(shared_constructor_,
             #this is required by the contract
             assert not numpy.allclose(self.ref_fct(x), total_func())
 
+        def test_set_value(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x_orig = x
+            x_orig_copy = x.copy()
+            x_ref = self.ref_fct(x)
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = self.theano_fct(x_shared)
+
+            total_func = theano.function([],total)
+
+            #test if that theano shared variable optimize set_value(borrow=True)
+            get_x = x_shared.get_value(borrow=True)
+            assert get_x is not x_orig#borrow=False to shared_constructor
+            get_x +=1
+            x_shared.set_value(get_x, borrow=True)
+            x = x_shared.get_value(borrow=True)
+            if self.set_value_borrow_true_alias:
+                assert x is get_x
+            else:
+                assert x is not get_x
+            assert numpy.allclose(self.ref_fct(x_orig+1),self.ref_fct(x))
+
+            #test optimized get set value on the gpu(don't pass data to the cpu)
+            get_x = x_shared.get_value(borrow=True, return_internal_type=True)
+            assert get_x is not x_orig#borrow=False to shared_constructor
+            assert isinstance(get_x, self.internal_type)
+            values_to_add = numpy.ones(x.shape,dtype=dtype)
+            if not isinstance(values_to_add, self.internal_type):
+                values_to_add = self.internal_type(values_to_add)#supported for cudandarray, but not ndarray.
+            assert isinstance(values_to_add, self.internal_type)
+
+            get_x += values_to_add#supported by ndarray and CudaNdarray
+            assert isinstance(get_x, self.internal_type)
+            x_shared.set_value(get_x, borrow=True)
+            x = x_shared.get_value(borrow=True, return_internal_type=True)
+            assert isinstance(x, self.internal_type)
+            assert x is get_x
+
+            ################ TODO test Out.
         def test_shared_do_alias(self):
             dtype = self.dtype
             if dtype is None:
@@ -3509,7 +3553,7 @@ def build_test_shared_options(shared_constructor_,
     return SharedTester
 
 test_shared_options=build_test_shared_options(tensor.shared, 'float64',
-                                              True, True, numpy.ndarray,
+                                              True, True, True, numpy.ndarray,
                                               theano.tensor.sum, numpy.sum)
 
 
