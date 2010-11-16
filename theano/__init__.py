@@ -62,6 +62,9 @@ from compile import \
 
 from misc.safe_asarray import _asarray
 
+import numpy.testing
+test = numpy.testing.Tester().test
+
 FancyModule = Module
 
 from printing import \
