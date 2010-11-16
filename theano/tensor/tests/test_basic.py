@@ -3378,7 +3378,7 @@ def test_dimshuffle_duplicate():
 
     assert success
 
-def build_test_shared_options(shared_constructor_,
+def makeSharedTester(shared_constructor_,
                               dtype_,
                               get_value_borrow_true_alias_,
                               shared_borrow_true_alias_,
@@ -3552,7 +3552,7 @@ def build_test_shared_options(shared_constructor_,
 
     return SharedTester
 
-test_shared_options=build_test_shared_options(tensor.shared, 'float64',
+test_shared_options=makeSharedTester(tensor.shared, 'float64',
                                               True, True, True, numpy.ndarray,
                                               theano.tensor.sum, numpy.sum)
 
