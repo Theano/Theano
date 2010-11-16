@@ -3961,7 +3961,12 @@ class TensorDot(Op):
     def __str__(self):
         return "tensordot"
 
-def tensordot(x, y, axes=2):
+def tensordot(x, y=None, axes=2):
+    if y==None:
+        raise NotImplementedError('The interface to tensordot has changed from '\
+            'tensor.tensordot(axes)(x,y) to tensor.tensordot(x,y,axes). Please '\
+            'modify your code accordingly.')
+
     if x.ndim==0 or y.ndim==0:
         raise ValueError('Cannot perform tensordot of 0-d inputs.')
 
