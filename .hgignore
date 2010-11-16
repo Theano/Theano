@@ -22,3 +22,4 @@ html
 pdf
 pull.sh
 setuptools-*.egg
+theano/version.py
