@@ -107,8 +107,8 @@ def search_entries(module_list, ops = None, constructors = None, seen = None):
     for module in module_list:
         symbol_name_list = [s for s in dir(module) if not s[0] == '_']
         
-	for symbol_name in symbol_name_list:
-	    symbol = getattr(module, symbol_name)
+        for symbol_name in symbol_name_list:
+            symbol = getattr(module, symbol_name)
             try:
                 if symbol in seen:
                     continue

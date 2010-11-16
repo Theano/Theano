@@ -44,7 +44,7 @@ def test_add():
         print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', cpu_dt / gpu_dt
         assert numpy.allclose(asum,  numpy.asarray(bsum))
 
-	if len(shape)>0:
+        if len(shape)>0:
             #test inplace version, not implemented with 0 dims
             b0 += b1
             a0 += a1
@@ -299,20 +299,20 @@ def test_mapping_getitem_w_int():
     def _cmpf(x,*y):
         try:
             x.__getitem__(y)
-	except IndexError:
+        except IndexError:
             pass
-	else:
+        else:
             raise Exception("Did not generate out or bound error")
 
     def _cmpfV(x,*y):
         try:
             if len(y)==1:
                 x.__getitem__(*y)
-	    else:
+            else:
                 x.__getitem__(y)
-	except ValueError:
+        except ValueError:
             pass
-	else:
+        else:
             raise Exception("Did not generate out or bound error")
 
     dim =(2,)
@@ -421,7 +421,7 @@ def test_setitem_matrixvector1():
     try:
         _a[:,1] =  b*100
         a[:,1] =  b*100
-	raise Exception("CudaNdarray.__setitem__ should have returned an error")
+        raise Exception("CudaNdarray.__setitem__ should have returned an error")
         assert numpy.allclose(a,numpy.asarray(_a))
     except NotImplementedError, e:
         pass
@@ -450,7 +450,7 @@ def test_setitem_matrix_tensor3():
     try:
         _a[:,1,1] = b*100
         a[:,1,1] = b*100
-	raise Exception("CudaNdarray.__setitem__ should have returned an error")  
+        raise Exception("CudaNdarray.__setitem__ should have returned an error")  
         assert numpy.allclose(a,numpy.asarray(_a))
     except NotImplementedError:
         pass
@@ -605,7 +605,7 @@ def test_setitem_broadcast_numpy():
     try:
         _a[:] = b.reshape((1,))
         a[:] = b.reshape((1,))
-	assert False
+        assert False
         assert numpy.allclose(numpy.asarray(_a),a)
     except ValueError:
 	    pass
@@ -619,10 +619,10 @@ def test_setitem_broadcast_numpy():
         b = theano._asarray([7,8,9], dtype='float32')
         _a[:,:] = b.reshape((1,3))
         a[:,:] = b.reshape((1,3))
-	assert False
-	assert numpy.allclose(numpy.asarray(_a),a)
+        assert False
+        assert numpy.allclose(numpy.asarray(_a),a)
     except ValueError:
-	    pass
+        pass
 
     #test vector to matrice with stride
     a = numpy.arange(27)
@@ -635,10 +635,10 @@ def test_setitem_broadcast_numpy():
         b = b[0]
         _a[1,:,:] = b.reshape((1,3))
         a[1,:,:] = b.reshape((1,3))
-	assert False
-	assert numpy.allclose(numpy.asarray(_a),a)
+        assert False
+        assert numpy.allclose(numpy.asarray(_a),a)
     except ValueError:
-	    pass
+        pass
 
 # this also fails for the moment
 def test_setitem_rightvalue_ndarray_fails():
