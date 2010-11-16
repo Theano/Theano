@@ -1,6 +1,6 @@
 """
 Theano is an optimizing compiler in Python, built to evaluate complicated expressions
-(especially matrix-valued ones) as quickly as possible. 
+(especially matrix-valued ones) as quickly as possible.
 Theano compiles expression graphs (see :doc:`graph` ) that are built by Python code.
 The expressions in these graphs are called `Apply` nodes and the variables in these graphs are called `Variable` nodes.
 
@@ -147,7 +147,7 @@ def __src_version__():
 
     return __src_version__.rval
 
-### This is defined here because it is designed to work across symbolic datatypes 
+### This is defined here because it is designed to work across symbolic datatypes
 #   (Sparse and Tensor)
 def dot(l, r):
     """Return a symbolic matrix/dot product between l and r """
