@@ -473,6 +473,10 @@ class TensorType(Type):
             and other.broadcastable == self.broadcastable
 
     @staticmethod
+    def may_share_memory(a,b):
+        return numpy.may_share_memory(a,b)
+
+    @staticmethod
     def values_eq(a, b):
         #TODO: check to see if the dtype and shapes must match
         #      for now, we err on safe side...

@@ -174,6 +174,12 @@ class SparseType(gof.Type):
             raise NotImplementedError()
         return sp
 
+    @staticmethod
+    def may_share_memory(a,b):
+        # This is Fred suggestion for a quick and dirty way of checking
+        # aliasing .. this can potentially be further refined (ticket #374)
+        return a is b
+
     def make_variable(self, name = None):
         return SparseVariable(self, name = name)
 
