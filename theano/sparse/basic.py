@@ -99,6 +99,7 @@ def as_sparse_variable(x, name=None):
     except TypeError:
         raise TypeError("Cannot convert %s to SparseType" % x, type(x))
 
+
 as_sparse = as_sparse_variable
 
 def constant(x, name=None):
@@ -147,13 +148,12 @@ class SparseType(gof.Type):
         @param format:  The sparse storage strategy.
         @return         An empty SparseVariable instance.
         """
-
         dtype = str(dtype)
         if dtype in self.dtype_set:
             self.dtype = dtype
         else:
             raise NotImplementedError('unsupported dtype "%s" not in list' % dtype, list(self.dtype_set))
-        
+
         assert isinstance(format, str)
         if format in self.format_cls:
             self.format = format
@@ -173,6 +173,12 @@ class SparseType(gof.Type):
         if sp.format != self.format:
             raise NotImplementedError()
         return sp
+
+    @staticmethod
+    def may_share_memory(a,b):
+        # This is Fred suggestion for a quick and dirty way of checking
+        # aliasing .. this can potentially be further refined (ticket #374)
+        return a is b
 
     def make_variable(self, name = None):
         return SparseVariable(self, name = name)
@@ -259,7 +265,7 @@ class SparseValue(gof.Value, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
 
-    
+
 # CONSTRUCTION
 class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr"""
@@ -276,14 +282,14 @@ class CSMProperties(gof.Op):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
     def __ne__(self, other): return not (self == other)
-    
+
     def __hash__(self):
         return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
 
     def make_node(self, csm):
         csm = as_sparse_variable(csm)
         data = tensor.TensorType(dtype=csm.type.dtype, broadcastable = (False,)).make_variable()
-        return gof.Apply(self, [csm], 
+        return gof.Apply(self, [csm],
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
     def perform(self, node, (csm,), out):
@@ -347,10 +353,10 @@ class CSM(gof.Op):
     def __hash__(self):
         return self._hashval
 
-    def make_node(self, data, indices, indptr, shape): 
+    def make_node(self, data, indices, indptr, shape):
         """Build a SparseVariable from the internal parametrization
-        
-        :param data: 
+
+        :param data:
         :param indices:
         :param indptr:
         :type data: 1-d tensor
@@ -397,13 +403,13 @@ class CSM(gof.Op):
                      'as indices (shape'+`indices.shape`+') or elements as kmap ('+`numpy.size(self.kmap)`+')'
             raise ValueError(errmsg)
         if self.format == 'csc':
-            out[0] = scipy.sparse.csc_matrix((data, indices.copy(), indptr.copy()), 
+            out[0] = scipy.sparse.csc_matrix((data, indices.copy(), indptr.copy()),
                     numpy.asarray(shape),
                     copy = False #1000*len(data.flatten())
                     )
         else:
             assert self.format == 'csr'
-            out[0] = scipy.sparse.csr_matrix((data, indices.copy(), indptr.copy()), 
+            out[0] = scipy.sparse.csr_matrix((data, indices.copy(), indptr.copy()),
                     shape.copy(),
                     copy = False #1000*len(data.flatten())
                     )
@@ -427,7 +433,7 @@ class CSMGrad(gof.op.Op):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
     def __ne__(self, other): return not (self == other)
-    
+
     def __hash__(self):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
 
@@ -456,7 +462,7 @@ def skip_pack_csc01(node):
 register_specialize(skip_pack_csc01)
 
 
-    
+
 #
 # Conversion
 #
@@ -479,7 +485,7 @@ class DenseFromSparse(gof.op.Op):
                                         broadcastable = (False, False)).make_variable()])
     def perform(self, node, (x, ), (out, )):
         if _is_dense(x):
-            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix." 
+            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix."
             out[0] = x
         else:
             out[0] = x.toarray()
@@ -572,7 +578,7 @@ class AddSS(gof.op.Op):
                          [x, y],
                          [SparseType(dtype = x.type.dtype,
                                  format = x.type.format).make_variable()])
-    def perform(self, node, (x, y), (out, )): 
+    def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         out[0] = x + y
@@ -598,7 +604,7 @@ class AddSD(gof.op.Op):
                          [x, y],
                          [tensor.TensorType(dtype = y.type.dtype,
                                         broadcastable = y.type.broadcastable).make_variable()])
-    def perform(self, node, (x, y), (out, )): 
+    def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         out[0] = x + y
     def grad(self, (x, y), (gz,)):
@@ -612,7 +618,7 @@ def add(x,y):
     """
     if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
-    
+
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
@@ -637,7 +643,7 @@ class MulSS(gof.op.Op):
         if x.type != y.type:
             raise NotImplementedError()
         return gof.Apply(self, [x, y], [x.type()])
-    def perform(self, node, (x, y), (out, )): 
+    def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert len(x.shape) == 2
         assert y.shape == x.shape
@@ -664,7 +670,7 @@ class MulSD(gof.op.Op):
         # Broadcasting of the sparse matrix is not supported.
         assert y.type.ndim <= 2
         return gof.Apply(self, [x, y], [x.type()])
-    def perform(self, node, (x, y), (out, )): 
+    def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         if len(y.shape) == 0:
             out[0] = x.copy()
@@ -716,7 +722,7 @@ def mul(x,y):
     """
     if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
-    
+
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
@@ -770,7 +776,7 @@ class StructuredDot(gof.Op):
             else:
                 raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? I have no idea why")
 
-        #The cast is needed as otherwise we hit the bug mentioned into 
+        #The cast is needed as otherwise we hit the bug mentioned into
         #theano._asarray function documentation.
         out[0] = theano._asarray(variable, str(variable.dtype))
 
@@ -809,12 +815,12 @@ class StructuredDotCSC(gof.Op):
         return hash(type(self))
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
-        r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b], 
+        r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b],
                 [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
-        a = scipy.sparse.csc_matrix((a_val, a_ind, a_ptr), 
+        a = scipy.sparse.csc_matrix((a_val, a_ind, a_ptr),
                 (a_nrows, b.shape[0]),
                 copy = False)
         #out[0] = a.dot(b)
@@ -852,7 +858,7 @@ class StructuredDotCSC(gof.Op):
 
         if (%(a_val)s->descr->type_num != %(typenum_a_val)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for a_val"); %(fail)s;}
-        
+
         if (%(b)s->descr->type_num != %(typenum_b)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for b"); %(fail)s;}
 
@@ -908,7 +914,7 @@ class StructuredDotCSC(gof.Op):
 
             //clear the output array
             memset(Dz, 0, M*N*sizeof(dtype_%(z)s));
- 
+
             //iterate over the sparse array, making the most of an entry wherever we find it.
             //
             // Normal matrix matrix multiply: A MxK, B KxN =>  Z = AB
@@ -916,7 +922,7 @@ class StructuredDotCSC(gof.Op):
             //   for n
             //     for k
             //        z[m,n] += a[m,k] * b[k,n]
-            // Here instead: Z = 
+            // Here instead: Z =
             // for k
             //   for m (sparse)
             //     for n
@@ -927,20 +933,20 @@ class StructuredDotCSC(gof.Op):
             {
                 // get pointer to k-th row of dense matrix
                 const dtype_%(b)s* __restrict__ bk = (dtype_%(b)s*)(%(b)s->data + %(b)s->strides[0] * k);
-                
-                // loop over sparse column indices through index pointer array 
+
+                // loop over sparse column indices through index pointer array
                 // (amounts to looping over rows M of sparse matrix)
 
                 for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1) * Sptr]; ++m_idx)
                 {
                     npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
                     const dtype_%(a_val)s Amk = Dval[m_idx * Sval]; // actual value at that location
-    
+
                     // pointer to m-th row of the output matrix Z
                     dtype_%(z)s* __restrict__ zm = (dtype_%(z)s*)(%(z)s->data + %(z)s->strides[0] * m);
 
                     //RESOLVE: a.shape[0] equals z.shape[0], why is this not an equality constraint?
-                    if (m >= %(z)s->dimensions[0]) 
+                    if (m >= %(z)s->dimensions[0])
                     {PyErr_SetString(PyExc_NotImplementedError, "illegal row index in a"); %(fail)s;}
 
                     // loop over final dimension (cols of dense matrix) and perform dot product
@@ -975,12 +981,12 @@ class StructuredDotCSR(gof.Op):
         return hash(type(self))
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
-        r = gof.Apply(self, [a_val, a_ind, a_ptr, b], 
+        r = gof.Apply(self, [a_val, a_ind, a_ptr, b],
                 [tensor.tensor(self.dtype_out, (False, b.type.broadcastable[1]))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, b), (out,)):
-        a = scipy.sparse.csr_matrix((a_val, a_ind, a_ptr), 
+        a = scipy.sparse.csr_matrix((a_val, a_ind, a_ptr),
                 (len(a_ptr)-1, b.shape[0]),
                 copy = True) #use view_map before setting this to False
         #out[0] = a.dot(b)
@@ -1056,7 +1062,7 @@ class StructuredDotCSR(gof.Op):
 
             //clear the output array
             memset(Dz, 0, M*N*sizeof(dtype_%(z)s));
- 
+
             //iterate over the sparse array, making the most of an entry wherever we find it.
             // Normal matrix matrix multiply:
             // for m
@@ -1075,16 +1081,16 @@ class StructuredDotCSR(gof.Op):
                 // pointer to m-th row of the output matrix Z
                 dtype_%(z)s* __restrict__ zm = (dtype_%(z)s*)(%(z)s->data + %(z)s->strides[0] * m);
 
-                // loop over sparse rows indices through index pointer array 
+                // loop over sparse rows indices through index pointer array
                 // (amounts to looping over cols k of sparse matrix)
                 for (npy_int32 k_idx = Dptr[m * Sptr]; k_idx < Dptr[(m+1) * Sptr]; ++k_idx)
                 {
                     npy_int32 k = Dind[k_idx * Sind]; // col index of non-null value for row m
                     const dtype_%(a_val)s Amk = Dval[k_idx * Sval]; // actual value at that location
-                
+
                     // get pointer to k-th row of dense matrix
                     const dtype_%(b)s* __restrict__ bk = (dtype_%(b)s*)(%(b)s->data + %(b)s->strides[0] * k);
-    
+
                     // loop over final dimension (cols of dense matrix) and perform dot product
                     for(npy_int32 n = 0; n < N; ++n)
                     {
@@ -1093,7 +1099,7 @@ class StructuredDotCSR(gof.Op):
                 }
             }
         }
- 
+
         """% dict(locals(), **sub)
 
     def c_code_cache_version(self):
@@ -1114,7 +1120,7 @@ def local_structured_dot(node):
             return [sd_csr(a_val, a_ind, a_ptr, b)]
     return False
 
-# Commented out because 
+# Commented out because
 # a) it is only slightly faster than scipy these days, and sometimes a little slower, and
 # b) the resulting graphs make it very difficult for an op to do size checking on the matrices
 #    involved.  dimension mismatches are hard to detect sensibly.
@@ -1152,7 +1158,7 @@ class StructuredDotGradCSC(gof.Op):
     def __hash__(self):
         return hash(type(self))
     def make_node(self, a_indices, a_indptr, b, g_ab):
-        return gof.Apply(self, [a_indices, a_indptr, b, g_ab], 
+        return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
                                [tensor.tensor(g_ab.dtype, (False,))])
     def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
@@ -1195,7 +1201,7 @@ class StructuredDotGradCSC(gof.Op):
             PyErr_SetString(PyExc_NotImplementedError, "somehow _zout got the wrong size.. and I don't know how to resize it.");
             %(fail)s;
         }
-        
+
         {   //makes it compile even though labels jump over variable definitions.
             npy_intp nnz = %(_indices)s->dimensions[0];
             npy_intp N =  %(_indptr)s->dimensions[0]-1; //TODO: error checking with this
@@ -1223,15 +1229,15 @@ class StructuredDotGradCSC(gof.Op):
                 {
                     // extract row index of non-null value
                     npy_int32 i = indices[i_idx * Sindices];
-                    
+
                     // extract corresponding row in gradient
                     const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
-                    // Note: wouldn't the above operation fail if that were the case ? 
-                    //       when would this ever be true anyway ? 
-                    if (i >= %(_g)s->dimensions[0]) 
+                    // Note: wouldn't the above operation fail if that were the case ?
+                    //       when would this ever be true anyway ?
+                    if (i >= %(_g)s->dimensions[0])
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows
@@ -1266,7 +1272,7 @@ class StructuredDotGradCSR(gof.Op):
             ind1 = a_indptr[i+1]
             for j_idx in xrange(ind0, ind1): # loop over values in that row (columns)
                 j = a_indices[j_idx]
-                # grad is dot product of i-th row of gradient with j-th row of b 
+                # grad is dot product of i-th row of gradient with j-th row of b
                 g_a_data[j_idx] = numpy.dot(g_ab[i], b[j])
         out[0] = g_a_data
 
@@ -1302,7 +1308,7 @@ class StructuredDotGradCSR(gof.Op):
             PyErr_SetString(PyExc_NotImplementedError, "somehow _zout got the wrong size.. and I don't know how to resize it.");
             %(fail)s;
         }
-        
+
         {   //makes it compile even though labels jump over variable definitions.
             npy_intp nnz = %(_indices)s->dimensions[0];
             // extract number of rows
@@ -1327,7 +1333,7 @@ class StructuredDotGradCSR(gof.Op):
                 {
                     // extract column index of non-null value
                     npy_int32 j = indices[j_idx * Sindices];
-                 
+
                     // extract j-th row of dense matrix
                     const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
                     if(j >= %(_d)s->dimensions[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
@@ -1337,9 +1343,9 @@ class StructuredDotGradCSR(gof.Op):
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
-                    // Note: wouldn't the above operation fail if that were the case ? 
-                    //       when would this ever be true anyway ? 
-                    if (i >= %(_g)s->dimensions[0]) 
+                    // Note: wouldn't the above operation fail if that were the case ?
+                    //       when would this ever be true anyway ?
+                    if (i >= %(_g)s->dimensions[0])
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows
@@ -1353,7 +1359,7 @@ class StructuredDotGradCSR(gof.Op):
                 }
             }
         }
- 
+
         """% dict(locals(), **sub)
 sdg_csr = StructuredDotGradCSR()
 

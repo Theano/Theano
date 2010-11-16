@@ -473,6 +473,10 @@ class TensorType(Type):
             and other.broadcastable == self.broadcastable
 
     @staticmethod
+    def may_share_memory(a,b):
+        return numpy.may_share_memory(a,b)
+
+    @staticmethod
     def values_eq(a, b):
         #TODO: check to see if the dtype and shapes must match
         #      for now, we err on safe side...
@@ -898,24 +902,24 @@ class _tensor_py_operators:
 
     #COMPARISONS
     _is_nonzero = True
-    def __lt__(self,other): 
+    def __lt__(self,other):
         rval = lt(self, other)
         rval._is_nonzero=False
         return rval
-    def __le__(self,other): 
+    def __le__(self,other):
         rval =  le(self, other)
         rval._is_nonzero=False
         return rval
-    def __gt__(self,other): 
+    def __gt__(self,other):
         rval = gt(self, other)
         rval._is_nonzero=False
         return rval
-    def __ge__(self,other): 
+    def __ge__(self,other):
         rval = ge(self, other)
         rval._is_nonzero=False
         return rval
     def __nonzero__(self):
-        # This is meant to prohibit stuff like a < b < c, which is internally implemented as 
+        # This is meant to prohibit stuff like a < b < c, which is internally implemented as
         # (a < b) and (b < c). The trouble with this is the side-effect that checking for a
         # non-NULL a by typing "if a: ..." uses the same __nonzero__ method.  We want these
         # both to work, but it seems impossible.  Currently, all vars evaluate to nonzero
@@ -3962,7 +3966,7 @@ def tensordot(x, y, axes=2):
         raise ValueError('Cannot perform tensordot of 0-d inputs.')
 
     axes = TensorDot.parse_axes(axes)
-    
+
     # check whether axes is valid given the dimensions of x and y
     if numpy.isscalar(axes):
         if axes >= x.ndim or axes >= y.ndim:
@@ -3979,12 +3983,12 @@ def tensordot(x, y, axes=2):
         if isinstance(axes[1],(list,tuple)) and \
            (len(axes[1]) > y.ndim or (numpy.array(axes[1]) >= y.ndim).any()):
             raise ValueError('axes[1] should be array_like, of length smaller'\
-                    'than the dimension of y (y.ndim=%i, len(axes[1])=%i).' % 
+                    'than the dimension of y (y.ndim=%i, len(axes[1])=%i).' %
                     (y.ndim, len(axes[1])))
 
     if not hasattr(tensordot, 'op'):
         tensordot.op = {}
-    
+
     if axes not in tensordot.op:
         tensordot.op[axes] = TensorDot(axes)
 

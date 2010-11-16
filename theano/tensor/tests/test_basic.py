@@ -3378,10 +3378,14 @@ def test_dimshuffle_duplicate():
 
     assert success
 
-def build_test_shared_options(shared_constructor_,
+def makeSharedTester(shared_constructor_,
                               dtype_,
                               get_value_borrow_true_alias_,
-                              shared_borrow_true_alias_):
+                              shared_borrow_true_alias_,
+                              set_value_borrow_true_alias_,
+                              internal_type_,
+                              theano_fct_,
+                              ref_fct_):
     """
     This is a generic fct to allow reusing the same test function
     for many shared variable of many types.
@@ -3391,6 +3395,10 @@ def build_test_shared_options(shared_constructor_,
         dtype = dtype_
         get_value_borrow_true_alias = get_value_borrow_true_alias_
         shared_borrow_true_alias = shared_borrow_true_alias_
+        internal_type = internal_type_
+        theano_fct = staticmethod(theano_fct_)
+        ref_fct = staticmethod(ref_fct_)
+        set_value_borrow_true_alias = set_value_borrow_true_alias_
 
         def test_shared_dont_alias(self):
             dtype = self.dtype
@@ -3399,22 +3407,22 @@ def build_test_shared_options(shared_constructor_,
 
             rng = numpy.random.RandomState([3,5,17])
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
-            x_sum = x.sum()
+            x_ref = self.ref_fct(x)
             x_shared = self.shared_constructor(x, borrow = False)
-            total = theano.tensor.sum(x_shared)
+            total = self.theano_fct(x_shared)
 
             total_func = theano.function([],total)
 
             total_val = total_func()
 
-            assert numpy.allclose(x.sum(), total_val)
+            assert numpy.allclose(self.ref_fct(x), total_val)
 
             x += 1
 
             total_val_2 = total_func()
 
             #value used to construct should not alias with internal
-            assert total_val == total_val_2
+            assert numpy.allclose(total_val, total_val_2)
 
             x = x_shared.get_value(borrow = False)
 
@@ -3423,7 +3431,7 @@ def build_test_shared_options(shared_constructor_,
             total_val_3 = total_func()
 
             #value returned by access should not alias with internal
-            assert total_val == total_val_3
+            assert numpy.allclose(total_val, total_val_3)
 
             #in this case we can alias
             x = x_shared.get_value(borrow = True)
@@ -3432,10 +3440,89 @@ def build_test_shared_options(shared_constructor_,
             #this is not required by the contract but it is a feature we've 
             #implemented for some type of SharedVariable.
             if self.get_value_borrow_true_alias:
-                assert numpy.allclose(x.sum(), total_func())
+                assert numpy.allclose(self.ref_fct(x), total_func())
             else:
-                assert numpy.allclose(x_sum, total_func())
+                assert numpy.allclose(x_ref, total_func())
 
+
+        def test_return_internal_type(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x_ref = self.ref_fct(x)
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = self.theano_fct(x_shared)
+
+            total_func = theano.function([],total)
+
+            #in this case we can alias with the internal value
+            x = x_shared.get_value(borrow = True, return_internal_type = True)
+            assert isinstance(x, self.internal_type)
+            
+            values_to_add = numpy.ones(x.shape,dtype=dtype)
+            if not isinstance(values_to_add, self.internal_type):
+                values_to_add = self.internal_type(values_to_add)#supported for cudandarray, but not ndarray.
+            x += values_to_add#supported by ndarray and CudaNdarray
+
+            #this is not required by the contract but it is a feature we can 
+            #implement for some type of SharedVariable.
+            assert numpy.allclose(self.ref_fct(x), total_func())
+            
+            x = x_shared.get_value(borrow = False, return_internal_type = True)
+            assert isinstance(x, self.internal_type)
+            
+            x += values_to_add#supported by ndarray and CudaNdarray
+
+            #this is required by the contract
+            assert not numpy.allclose(self.ref_fct(x), total_func())
+
+        def test_set_value(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x_orig = x
+            x_orig_copy = x.copy()
+            x_ref = self.ref_fct(x)
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = self.theano_fct(x_shared)
+
+            total_func = theano.function([],total)
+
+            #test if that theano shared variable optimize set_value(borrow=True)
+            get_x = x_shared.get_value(borrow=True)
+            assert get_x is not x_orig#borrow=False to shared_constructor
+            get_x +=1
+            x_shared.set_value(get_x, borrow=True)
+            x = x_shared.get_value(borrow=True)
+            if self.set_value_borrow_true_alias:
+                assert x is get_x
+            else:
+                assert x is not get_x
+            assert numpy.allclose(self.ref_fct(x_orig+1),self.ref_fct(x))
+
+            #test optimized get set value on the gpu(don't pass data to the cpu)
+            get_x = x_shared.get_value(borrow=True, return_internal_type=True)
+            assert get_x is not x_orig#borrow=False to shared_constructor
+            assert isinstance(get_x, self.internal_type)
+            values_to_add = numpy.ones(x.shape,dtype=dtype)
+            if not isinstance(values_to_add, self.internal_type):
+                values_to_add = self.internal_type(values_to_add)#supported for cudandarray, but not ndarray.
+            assert isinstance(values_to_add, self.internal_type)
+
+            get_x += values_to_add#supported by ndarray and CudaNdarray
+            assert isinstance(get_x, self.internal_type)
+            x_shared.set_value(get_x, borrow=True)
+            x = x_shared.get_value(borrow=True, return_internal_type=True)
+            assert isinstance(x, self.internal_type)
+            assert x is get_x
+
+            ################ TODO test Out.
         def test_shared_do_alias(self):
             dtype = self.dtype
             if dtype is None:
@@ -3443,29 +3530,31 @@ def build_test_shared_options(shared_constructor_,
 
             rng = numpy.random.RandomState([2,4,16])
             x = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
-            x_sum = x.sum()
+            x_ref = self.ref_fct(x)
 
             x_shared = self.shared_constructor(x, borrow = True)
 
-            total = theano.tensor.sum(x_shared)
+            total = self.theano_fct(x_shared)
 
             total_func = theano.function([],total)
 
             total_val = total_func()
 
-            assert numpy.allclose(x.sum(), total_val)
+            assert numpy.allclose(self.ref_fct(x), total_val)
 
             x += 1
 
             #not required by the contract but it is a feature we've implemented
             if self.shared_borrow_true_alias:
-                assert numpy.allclose(x.sum(), total_func())
+                assert numpy.allclose(self.ref_fct(x), total_func())
             else:
-                assert numpy.allclose(x_sum, total_func())
+                assert numpy.allclose(x_ref, total_func())
 
     return SharedTester
 
-test_shared_options=build_test_shared_options(tensor.shared, 'float64', True, True)
+test_shared_options=makeSharedTester(tensor.shared, 'float64',
+                                              True, True, True, numpy.ndarray,
+                                              theano.tensor.sum, numpy.sum)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,9 @@
 
 .. _basictutaliasing:
 
-===============
-Memory Aliasing
-===============
+=======================================================
+Understanding Memory Aliasing for Speed and Correctness
+=======================================================
 
 The aggressive reuse of memory is one of the ways Theano makes code fast, and
 it's important for the correctness and speed of your program that you understand
@@ -174,6 +174,26 @@ This pattern works regardless of the compute device, and when the compute device
 makes it possible to expose Theano's internal variables without a copy, then it
 goes as fast as an in-place update.
 
+Retrieving and assigning via the .value property
+------------------------------------------------
+
+Shared variables have a ``.value`` property that is connected to ``get_value``
+and ``set_value``.  The borrowing behaviour of the property is controlled by a
+boolean configuration variable ``config.shared.value_borrows``, which currently
+defaults to ``True``.  If that variable is ``True`` then an assignment like ``s.value=v``
+is equivalent to ``s.set_value(v, borrow=True)``, and a retrieval like ``print
+s.value`` is equivalent to ``print s.get_value(borrow=True)``.  Likewise, 
+if ``config.shared.value_borrows`` is ``False``, then the borrow parameter that the ``.value`` property 
+passes to ``set_value`` and ``get_value`` is ``False``.
+
+The ``True`` default value of ``config.shared.value_borrows`` means that
+aliasing can sometimes happen and sometimes not, which can be confusing. 
+Be aware that the default value may be changed to ``False`` sometime in the
+not-to-distant future. This change will create more copies, and potentially slow
+down code that accesses ``.value`` attributes inside tight loops.  To avoid this
+potential impact on your code, use the ``.get_value`` and ``.set_value`` methods
+directly with appropriate flags.
+
 
 Borrowing when constructing Function objects
 ============================================
@@ -207,7 +227,11 @@ The default is of course to *not borrow* internal results.
 
 It is also possible to pass an ``return_internal_type=True`` flag to the ``Out``
 variable which has the same interpretation as the ``return_internal_type`` flag
-to the shared variable's ``get_value`` function.
+to the shared variable's ``get_value`` function.  Unlike ``get_value()``, the
+combination of ``return_internal_type=True`` and ``borrow=True`` arguments to
+``Out()`` are not guaranteed to avoid copying an output value.  They are just
+hints that give more flexibility to the compilation and optimization of the
+graph.
 
 *Take home message:*
 When an input ``x`` to a function is not needed after the function returns and you
@@ -218,7 +242,3 @@ When a return value ``y`` is large (in terms of memory footprint), and you only 
 away when it's returned, then consider marking it with an ``Out(y,
 borrow=True)``.
 
-Shared variable .value attribute
-================================
-
-TODO: talk about sharedvar.value and the associated config variable.

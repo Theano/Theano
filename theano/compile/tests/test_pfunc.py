@@ -517,7 +517,57 @@ class Test_aliasing_rules(unittest.TestCase):
         assert not numpy.may_share_memory(A.get_value(borrow=False), data_of(A))
 
 
-    def test_potential_input_aliasing_affecting_inplace_operations(self):
+    def test_sparse_input_aliasing_affecting_inplace_operations(self):
+        ##
+        ## Note this test will never fail because I am not aware of any
+        ## inplace op on sparse variables
+        try:
+            import scipy.sparse as sp
+        except ImportError:
+            pass#the variable enable_sparse will be used to disable the test file.
+
+        from theano.sparse import enable_sparse
+        if enable_sparse == False:
+            raise SkipTest('Optional package sparse disabled')
+
+        from theano import sparse
+
+        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        #        you need to make in inputs mutable ( so that inplace
+        #        operations are used) and to break the elemwise composition
+        #        with some non-elemwise op ( here dot )
+
+        x  = sparse.SparseType('csc', dtype = 'float64')()
+        y  = sparse.SparseType('csc', dtype = 'float64')()
+        f = theano.function( [theano.In(x,  mutable = True),
+                              theano.In(y, mutable = True)],
+                                (x+y)+(x+y))
+        ## Test 1. If the same variable is given twice
+
+        # Compute bogus values
+        m = sp.csc_matrix(numpy.asarray([[1,0,0,0,0],
+                           [0,1,0,0,0],
+                           [0,0,1,0,0],
+                           [0,0,0,1,0],
+                           [0,0,0,0,1]], dtype = 'float64'))
+        bogus_vals =  f(m,m)
+        # Since we used inplace operation v and m may be corrupted
+        # so we need to recreate them
+
+        m = sp.csc_matrix(numpy.asarray([[1,0,0,0,0],
+                           [0,1,0,0,0],
+                           [0,0,1,0,0],
+                           [0,0,0,1,0],
+                           [0,0,0,0,1]], dtype = 'float64'))
+        m_copy = m.copy()
+        vals =  f(m,m_copy)
+
+        assert numpy.allclose(vals.todense(), bogus_vals.todense())
+
+
+
+
+    def test_input_aliasing_affecting_inplace_operations(self):
 
         ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
         #        you need to make in inputs mutable ( so that inplace
@@ -532,19 +582,78 @@ class Test_aliasing_rules(unittest.TestCase):
                               theano.In(m1, mutable = True),
                               theano.In(m2, mutable = True)],
                             theano.dot(x*2,m1)+theano.dot(y*3,m2))
+        ## Test 1. If the same variable is given twice
+
         # Compute bogus values
-        v = numpy.asarray([1,2], dtype = 'float64')
-        m = numpy.asarray([[1,0],[0,1]], dtype = 'float64')
+        v = numpy.asarray( [1,2,3,4,5], dtype = 'float64')
+        m = numpy.asarray([[1,0,0,0,0],
+                           [0,1,0,0,0],
+                           [0,0,1,0,0],
+                           [0,0,0,1,0],
+                           [0,0,0,0,1]], dtype = 'float64')
         bogus_vals =  f(v,v,m,m)
         # Since we used inplace operation v and m may be corrupted
         # so we need to recreate them
-        m = numpy.asarray([[1,0],[0,1]], dtype = 'float64')
-        v = numpy.asarray([1,2], dtype = 'float64')
+
+        v = numpy.asarray( [1,2,3,4,5], dtype = 'float64')
+        m = numpy.asarray([[1,0,0,0,0],
+                           [0,1,0,0,0],
+                           [0,0,1,0,0],
+                           [0,0,0,1,0],
+                           [0,0,0,0,1]], dtype = 'float64')
         m_copy = m.copy()
         v_copy = v.copy()
         vals =  f(v,v_copy,m,m_copy)
 
         assert numpy.allclose(vals, bogus_vals)
+
+    def test_partial_input_aliasing_affecting_inplace_operations(self):
+
+        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        #        you need to make in inputs mutable ( so that inplace
+        #        operations are used) and to break the elemwise composition
+        #        with some non-elemwise op ( here dot )
+        x  = theano.tensor.dvector()
+        y  = theano.tensor.dvector()
+        z  = theano.tensor.dvector()
+        m1 = theano.tensor.dmatrix()
+        m2 = theano.tensor.dmatrix()
+        m3 = theano.tensor.dmatrix()
+
+        ## Test 2. If variables only partial overlap
+        #   more exactly we care about the case when we have a,b,c
+        #   and a shares memory with b, b shares memory with c, but
+        #   c does not share memory with a
+
+
+
+        f = theano.function( [theano.In(x,  mutable = True),
+                              theano.In(y,  mutable = True),
+                              theano.In(z,  mutable = True),
+                              theano.In(m1, mutable = True),
+                              theano.In(m2, mutable = True),
+                              theano.In(m3, mutable = True)],
+                            theano.dot(x*2,m1)+theano.dot(y*3,m2)+theano.dot(z*4,m3))
+        # Compute bogus values
+        v = numpy.asarray( [1,2,3,4,5], dtype = 'float64')
+        m = numpy.asarray([[1,0],
+                           [0,1]], dtype = 'float64')
+        bogus_vals =  f(v[:2],v[1:3],v[2:4],m,m,m)
+        # Since we used inplace operation v and m may be corrupted
+        # so we need to recreate them
+
+        v = numpy.asarray( [1,2,3,4,5], dtype = 'float64')
+        m = numpy.asarray([[1,0],
+                           [0,1]], dtype = 'float64')
+        m_copy1 = m.copy()
+        v_copy1 = v.copy()
+        m_copy2 = m.copy()
+        v_copy2 = v.copy()
+        vals =  f(v[:2],v_copy1[1:3],v_copy2[2:4],m,m_copy1, m_copy2)
+
+        assert numpy.allclose(vals, bogus_vals)
+
+
 
     def test_potential_output_aliasing_induced_by_updates(self):
 

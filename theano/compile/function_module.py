@@ -5,6 +5,7 @@ __docformat__ = "restructuredtext en"
 
 import copy_reg
 import cPickle
+import itertools
 
 import sys, time, copy
 
@@ -537,19 +538,24 @@ class Function(object):
             ## Collect aliased inputs among the storage space
             args_share_memory = []
             for i in xrange(len(self.input_storage)):
-                if isinstance(self.input_storage[i].storage[0],
-                              numpy.ndarray):
+                i_var = self.maker.inputs[i].variable
+                i_val = self.input_storage[i].storage[0]
+                if hasattr( i_var.type, 'may_share_memory'):
                     is_aliased = False
                     for j in xrange(len(args_share_memory)):
-                        for k in args_share_memory[j]:
-                            if numpy.may_share_memory(
-                                    self.input_storage[i].storage[0] ,
-                                    self.input_storage[k].storage[0]):
-                                is_aliased = True
-                                args_share_memory[j].append(i)
-                                break
-                        if is_aliased:
-                                      break
+
+                        group_j = itertools.izip(
+                            [self.maker.inputs[k].variable for k
+                             in args_share_memory[j]],
+                            [self.input_storage[k].storage[0] for k
+                             in args_share_memory[j]])
+                        if numpy.any([ (var.type is i_var.type and
+                                        var.type.may_share_memory(val,i_val)
+                                       ) for (var,val) in group_j]):
+
+                            is_aliased = True
+                            args_share_memory[j].append(i)
+                            break
 
                     if not is_aliased:
                         args_share_memory.append([i])
