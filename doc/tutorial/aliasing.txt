@@ -1,9 +1,9 @@
 
 .. _basictutaliasing:
 
-===============
-Memory Aliasing
-===============
+=======================================================
+Understanding Memory Aliasing for Speed and Correctness
+=======================================================
 
 The aggressive reuse of memory is one of the ways Theano makes code fast, and
 it's important for the correctness and speed of your program that you understand
