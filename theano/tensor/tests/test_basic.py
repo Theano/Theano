@@ -3435,7 +3435,7 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow = True)
             x += 1
 
-            #this is not required by the contract but it is a feature we've 
+            #this is not required by the contract but it is a feature we've
             #implemented for some type of SharedVariable.
             if self.get_value_borrow_true_alias:
                 assert numpy.allclose(self.ref_fct(x), total_func())
@@ -3459,19 +3459,19 @@ def makeSharedTester(shared_constructor_,
             #in this case we can alias with the internal value
             x = x_shared.get_value(borrow = True, return_internal_type = True)
             assert isinstance(x, self.internal_type)
-            
+
             values_to_add = numpy.ones(x.shape,dtype=dtype)
             if not isinstance(values_to_add, self.internal_type):
                 values_to_add = self.internal_type(values_to_add)#supported for cudandarray, but not ndarray.
             x += values_to_add#supported by ndarray and CudaNdarray
 
-            #this is not required by the contract but it is a feature we can 
+            #this is not required by the contract but it is a feature we can
             #implement for some type of SharedVariable.
             assert numpy.allclose(self.ref_fct(x), total_func())
-            
+
             x = x_shared.get_value(borrow = False, return_internal_type = True)
             assert isinstance(x, self.internal_type)
-            
+
             x += values_to_add#supported by ndarray and CudaNdarray
 
             #this is required by the contract
