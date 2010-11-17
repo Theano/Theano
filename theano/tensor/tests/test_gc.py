@@ -12,7 +12,7 @@ def test_no_reuse():
     f = theano.function([x, y], x + y)
 
     #provide both inputs in the first call
-    f(numpy.ones(10), numpy.ones(10))
+    f(numpy.ones(10, dtype='int64'), numpy.ones(10, dtype='int64'))
 
     try:
         f(numpy.ones(10))

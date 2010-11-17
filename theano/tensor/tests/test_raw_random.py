@@ -665,8 +665,8 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 1
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
 
-        low_val = [.1, .2, .3]
-        high_val = [1.1, 2.2, 3.3]
+        low_val = [100, 200, 300]
+        high_val = [110, 220, 330]
         rng = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 

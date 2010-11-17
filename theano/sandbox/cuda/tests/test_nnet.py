@@ -42,7 +42,8 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     dot_result = T.fmatrix('dot_result')
 
     xx = numpy.asarray(numpy.random.rand(batch_size,n_in),dtype=numpy.float32)
-    yy = numpy.ones((batch_size,),dtype='float32')
+    #?????yy = numpy.ones((batch_size,),dtype='float32')
+    yy = numpy.ones((batch_size,),dtype='int32')
     b_values = numpy.zeros((n_out,),dtype='float32')
     W_values = numpy.asarray(numpy.random.rand(n_in,n_out),dtype='float32')
     
@@ -82,7 +83,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     batch_size = 4097
     n_out = 1250
     
-    softmax_output_value = numpy.random.rand(batch_size, n_out)
+    softmax_output_value = numpy.random.rand(batch_size, n_out).astype('float32')
 
     softmax_output = T.fmatrix()
     softmax_output /= softmax_output.sum(axis=1).reshape(softmax_output.shape[1],1)

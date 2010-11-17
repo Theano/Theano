@@ -527,8 +527,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert out.ndim == 1
         f = function([low, high], out)
 
-        low_val = [.1, .2, .3]
-        high_val = [1.1, 2.2, 3.3]
+        low_val = [100, 200, 300]
+        high_val = [110, 220, 330]
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 

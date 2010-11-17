@@ -206,7 +206,7 @@ def test_elemwise_empty():
     f2 = pfunc([b], [], updates=[(a, a+b)], mode=mode_without_gpu)
 
     a0 = a.value * 1.0
-    f(numpy.ones((0,0)))
+    f(numpy.ones((0,0), dtype='float32'))
 
     assert numpy.all(a0 + 1.0 == a.value)
 
@@ -225,7 +225,7 @@ def test_elemwise0():
     print 'BEFORE ADD', a.value
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
-    f(numpy.ones((4,4)))
+    f(numpy.ones((4,4), dtype='float32'))
     print 'AFTER ADD', a.value
 
     assert numpy.all(a0 + 1.0 == a.value)
@@ -796,7 +796,7 @@ def test_duplicate_arg_elemwise():
 
     f = theano.function([A],B, mode = mode_with_gpu)
 
-    Aval = numpy.random.RandomState([1,2,3]).randn(5,5)
+    Aval = numpy.random.RandomState([1,2,3]).randn(5,5).astype('float32')
     Bval = Aval + Aval
 
     assert numpy.allclose(Bval,f(Aval))

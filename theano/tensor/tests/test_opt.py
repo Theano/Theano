@@ -2094,6 +2094,6 @@ def test_local_mul_to_neg():
     a = T.imatrix()
     f1 = theano.function([a], -1*a)
     f2 = theano.function([a], -1.0*a)
-    aval = numpy.random.randint(0,10,(2,2))
+    aval = numpy.random.randint(0,10,(2,2)).astype('int32')
     assert f1(aval).dtype == a.dtype
     assert f2(aval).dtype == 'float64'

@@ -23,7 +23,7 @@ class TestRealImag(unittest.TestCase):
 
 
         x= imatrix()
-        xval = numpy.asarray(rng.randn(3,3)*100, dtype='int')
+        xval = numpy.asarray(rng.randn(3,3)*100, dtype='int32')
         numpy.all( 0 == theano.function([x], imag(x))(xval))
         numpy.all( xval == theano.function([x], real(x))(xval))
 

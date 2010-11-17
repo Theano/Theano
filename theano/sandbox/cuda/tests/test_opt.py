@@ -73,7 +73,7 @@ def test_softmax():
     f = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_with_gpu)
     f2 = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_without_gpu)
     assert isinstance(f.maker.env.toposort()[1].op,cuda.nnet.GpuSoftmax)
-    xv=numpy.random.rand(7,8)
+    xv=numpy.random.rand(7,8).astype('float32')
     assert numpy.allclose(f(xv),f2(xv))
 
 
@@ -84,8 +84,8 @@ def test_softmax_with_bias():
     f = theano.function([x,b],tensor.nnet.nnet.SoftmaxWithBias()(x,b), mode=mode_with_gpu)
     f2 = theano.function([x,b],tensor.nnet.nnet.SoftmaxWithBias()(x,b), mode=mode_without_gpu)
     assert isinstance(f.maker.env.toposort()[2].op,cuda.nnet.GpuSoftmaxWithBias)
-    xv=numpy.random.rand(7,8)
-    bv=numpy.random.rand(8)
+    xv=numpy.random.rand(7,8).astype('float32')
+    bv=numpy.random.rand(8).astype('float32')
     assert numpy.allclose(f(xv,bv),f2(xv,bv))
 
 def test_opt_gpujoin_onlyajoin():
@@ -153,7 +153,7 @@ def test_print_op():
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, cuda.GpuElemwise)
     assert topo[3].op == cuda.host_from_gpu
-    f(numpy.random.random((5,5)))
+    f(numpy.random.random((5,5)).astype('float32'))
 
 def test_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly"""

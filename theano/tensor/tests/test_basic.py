@@ -1654,48 +1654,48 @@ class test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], x > y)
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l > r)), (v, (l>r)))
 
     def test_lt(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], x < y)
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l < r)), (v, (l<r)))
 
     def test_le(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], x <= y)
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l <= r)), (v, (l<=r)))
 
     def test_ge(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], x >= y)
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l >= r)), (v, (l>=r)))
 
     def test_eq(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], eq(x,y))
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l == r)), (v, (l==r)))
 
     def test_neq(self):
         x, y = fvector(), fvector()
         fn = inplace_func([x,y], neq(x, y))
-        l = numpy.asarray([0.,-1.,1.])
-        r = numpy.asarray([0.,1.,-1.])
+        l = numpy.asarray([0.,-1.,1.], dtype='float32')
+        r = numpy.asarray([0.,1.,-1.], dtype='float32')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
 
@@ -2607,30 +2607,32 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0,0,1) == numpy.arange(0,0,1))
 
     def test_float32(self):
-        """Test arange constructor, on integer outputs"""
+        """Test arange constructor, on float32 outputs"""
         start, stop, step = fscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
 
         assert out.dtype == start.type.dtype
-        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1, dtype=start.type.dtype))
-        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4, dtype=start.type.dtype))
-        assert numpy.all(f(-5,1.1,1.2) == numpy.arange(-5,1.1,1.2, dtype=start.type.dtype))
-        assert numpy.all(f(1.3,2,-2.1) == numpy.arange(1.3,2,-2.1, dtype=start.type.dtype))
-        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2, dtype=start.type.dtype))
+        arg_vals = [ (0,5,1), (2,11,4), (-5,1.1,1.2), (1.3,2,-2.1), (10,2,2) ]
+        for arg_v in arg_vals:
+            start_v, stop_v, step_v = arg_v
+            start_v_, stop_v_, step_v_ = numpy.asarray(arg_v, dtype=start.type.dtype)
+            assert numpy.all(f(start_v_, stop_v_, step_v_) == \
+                    numpy.arange(start_v, stop_v, step_v, dtype=start.type.dtype))
 
     def test_float64(self):
-        """Test arange constructor, on integer outputs"""
+        """Test arange constructor, on float64 outputs"""
         start, stop, step = dscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
 
         assert out.dtype == start.type.dtype
-        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1, dtype=start.type.dtype))
-        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4, dtype=start.type.dtype))
-        assert numpy.all(f(-5,1.1,1.2) == numpy.arange(-5,1.1,1.2, dtype=start.type.dtype))
-        assert numpy.all(f(1.3,2,-2.1) == numpy.arange(1.3,2,-2.1, dtype=start.type.dtype))
-        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2, dtype=start.type.dtype))
+        arg_vals = [ (0,5,1), (2,11,4), (-5,1.1,1.2), (1.3,2,-2.1), (10,2,2) ]
+        for arg_v in arg_vals:
+            start_v, stop_v, step_v = arg_v
+            start_v_, stop_v_, step_v_ = numpy.asarray(arg_v, dtype=start.type.dtype)
+            assert numpy.all(f(start_v_, stop_v_, step_v_) == \
+                    numpy.arange(start_v, stop_v, step_v, dtype=start.type.dtype))
 
     def test_default_step(self):
         """Test that arange constructor uses the correct default step"""
@@ -2669,9 +2671,10 @@ class TestARange(unittest.TestCase):
         ff = function([fstop], fout)
 
         assert fout.dtype == fstop.type.dtype
-        assert numpy.all(ff(0.2) == numpy.arange(0.2))
-        assert numpy.all(ff(-0.7) == numpy.arange(-0.7))
-        assert numpy.all(ff(8.5) == numpy.arange(8.5))
+        fstop_values = [0.2, -0.7, 8.5]
+        for fstop_v in fstop_values:
+            fstop_v32 = numpy.float32(fstop_v)
+            assert numpy.all(ff(fstop_v32) == numpy.arange(fstop_v))
 
     def test_upcast(self):
         """Test that arange compute output type adequately"""
@@ -2756,7 +2759,7 @@ class TestInversePermutation(unittest.TestCase):
 
         # Generate a random permutation
         rng = numpy.random.RandomState(utt.fetch_seed())
-        p_val = rng.permutation(10)
+        p_val = rng.permutation(10).astype('int32')
         inv_val = f_inverse(p_val)
 
         # Check that the inverse of the inverse is the original permutation
@@ -2774,7 +2777,8 @@ class TestInversePermutation(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         # Generate 10 random permutations
-        p_val = numpy.asarray([rng.permutation(10) for i in range(7)])
+        p_val = numpy.asarray([rng.permutation(10) for i in range(7)],
+                              dtype='int32')
         inv_val = f_inverse(p_val)
 
         # Check that the inverse of the inverse is the original permutation list
@@ -2799,7 +2803,7 @@ class TestPermuteRowElements(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(5,))
-        p_val = rng.permutation(5)
+        p_val = rng.permutation(5).astype('int32')
         out_val = permute(input_val, p_val)
 
         # Should be equivalent to advanced indexing
@@ -2821,7 +2825,7 @@ class TestPermuteRowElements(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(3,5))
-        p_val = rng.permutation(5)
+        p_val = rng.permutation(5).astype('int32')
         out_val = permute(input_val, p_val)
 
         # The same permutation should be applied to every row of the input matrix.
@@ -2843,7 +2847,8 @@ class TestPermuteRowElements(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(3,5))
-        p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
+        p_val = numpy.asarray([rng.permutation(5) for i in range(3)],
+                              dtype='int32')
         out_val = permute(input_val, p_val)
 
         # Each row of p contains a permutation to apply to the corresponding
@@ -2867,7 +2872,7 @@ class TestPermuteRowElements(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(5,))
-        p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
+        p_val = numpy.asarray([rng.permutation(5) for i in range(3)], dtype='int32')
         out_val = permute(input_val, p_val)
 
         # Each row of p contains a permutation to apply to the input vector
@@ -2892,7 +2897,8 @@ class TestPermuteRowElements(unittest.TestCase):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(4,1,5))
-        p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
+        p_val = numpy.asarray([rng.permutation(5) for i in range(3)],
+                              dtype='int32')
         out_val = permute(input_val, p_val)
 
         # Each row of p contains a permutation to apply to each row
@@ -3039,7 +3045,7 @@ class test_tensordot(unittest.TestCase):
         amat = fmatrix()
         bmat = dmatrix()#we let at float64 to test mix of float32 and float64.
         axes = 1
-        aval = self.rand(4,5)
+        aval = self.rand(4,5).astype('float32')
         bval = numpy.random.rand(5,3)
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
