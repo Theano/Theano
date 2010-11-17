@@ -169,6 +169,52 @@ class Test_pfunc(unittest.TestCase):
         # ... but not to b.value !
         assert not (bval == b.value).all()
 
+    def test_param_allow_downcast(self):
+        a = tensor.wvector('a') # int16
+        b = tensor.bvector('b') # int8
+        f = pfunc([Param(a, allow_downcast=True),
+                   Param(b, allow_downcast=False)],
+                  a+b)
+
+        # Both values are in range. Since they're not ndarrays (but lists),
+        # they will be converted, and their value checked.
+        assert numpy.all(f([3], [6]) == 9)
+
+        # Values are in range, but a dtype too large has explicitly been given
+        # For performance reasons, no check of the data is explicitly performed
+        # (It might be OK to change this in the future.)
+        self.assertRaises(TypeError, f,
+                [3], numpy.array([6], dtype='int16'))
+
+        # Value too big for a, silently ignored
+        assert numpy.all(f([2**20], numpy.ones(1, dtype='int8')) == 1)
+
+        # Value too big for b, raises TypeError
+        self.assertRaises(TypeError, f, [3], [312])
+
+    def test_allow_input_downcast(self):
+        a = tensor.wvector('a') # int16
+        b = tensor.bvector('b') # int8
+
+        f = pfunc([a, b], a+b, allow_input_downcast=True)
+        # Value too big for a or b, silently ignored
+        assert f([2**20], [1]) == 1
+        assert f([3], [312]) == 59
+
+        g = pfunc([a, b], a+b, allow_input_downcast=False)
+        # Both values are in range. Since they're not ndarrays (but lists),
+        # they will be converted, and their value checked.
+        assert numpy.all(g([3], [6]) == 9)
+
+        # Values are in range, but a dtype too large has explicitly been given
+        # For performance reasons, no check of the data is explicitly performed
+        # (It might be OK to change this in the future.)
+        self.assertRaises(TypeError, g,
+                [3], numpy.array([6], dtype='int16'))
+
+        # Value too big for b, raises TypeError
+        self.assertRaises(TypeError, g, [3], [312])
+
     def test_update(self):
         """Test update mechanism in different settings."""
 
