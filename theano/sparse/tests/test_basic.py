@@ -440,99 +440,13 @@ class test_structureddot(unittest.TestCase):
             self.failUnless(numpy.allclose(theano_result, scipy_result))
             self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
 
-
-def test_shared_dont_alias():
-    rng = numpy.random.RandomState([3,5,17])
-    x_lil = random_lil((2,4), 'float64', 5)
-    x = sp.csr_matrix(x_lil) 
-    densifier = rng.randn(*x.shape)
-
-    x_shared = theano.shared(x, borrow = False)
-    prod = theano.sparse.mul_s_d(x_shared,densifier)
-
-    prod_func = theano.function([],prod)
-
-    prod_val = prod_func().todense()
-
-    x_dense_fake = x.todense()
-    x_dense = numpy.asarray(x_dense_fake)
-    scipy_prod_val = x_dense * densifier
-    assert numpy.allclose(scipy_prod_val, prod_val)
-
-    for i in xrange(x.shape[0]):
-        for j in xrange(x.shape[1]):
-            if x[i,j] != 0:
-                x[i,j] += 1
-
-    prod_val_2 = prod_func().todense()
-
-    #value used to construct should not alias with internal
-    assert numpy.allclose(prod_val_2,prod_val)
-
-    x = x_shared.get_value(borrow = False)
-
-    for i in xrange(x.shape[0]):
-        for j in xrange(x.shape[1]):
-            if x[i,j] != 0:
-                x[i,j] += 1
-
-    prod_val_3 = prod_func().todense()
-
-    #value returned by access should not alias with internal
-    assert numpy.allclose(prod_val, prod_val_3)
-
-    #in this case we can alias
-    x = x_shared.get_value(borrow = True)
-    
-    for i in xrange(x.shape[0]):
-        for j in xrange(x.shape[1]):
-            if x[i,j] != 0:
-                x[i,j] += 1
-
-    
-    x_dense_fake = x.todense()
-    x_dense = numpy.asarray(x_dense_fake)
-    scipy_prod_val = x_dense * densifier
-
-
-    #this is not required by the contract but it is a feature we've implemented
-    assert numpy.allclose(scipy_prod_val, prod_func().todense())
-
-def test_shared_do_alias():
-    rng = numpy.random.RandomState([2,4,16])
-    x_lil = random_lil((2,4), 'float64', 5)
-    x = sp.csr_matrix(x_lil)
-
-    x_shared = theano.shared(x, borrow = True)
-
-    densifier = rng.randn(*x.shape)
-
-    prod = theano.sparse.mul_s_d(x_shared,densifier)
-
-    prod_func = theano.function([],prod)
-
-    prod_val = prod_func().todense()
-
-    x_dense_fake = x.todense()
-    x_dense = numpy.asarray(x_dense_fake)
-    scipy_prod_val = x_dense * densifier
-
-    assert numpy.allclose(scipy_prod_val, prod_val)
-
-    for i in xrange(x.shape[0]):
-        for j in xrange(x.shape[1]):
-            if x[i,j] != 0:
-                x[i,j] += 1    
-
-
-    x_dense_fake = x.todense()
-    x_dense = numpy.asarray(x_dense_fake)
-    scipy_prod_val = x_dense * densifier
-
-
-    #not required by the contract but it is a feature we've implemented
-    assert numpy.allclose(scipy_prod_val, prod_func().todense())
-
+import theano.tensor.tests.test_basic
+test_shared_options=theano.tensor.tests.test_basic.makeSharedTester(
+    theano.sparse.shared, 'float64',
+    True, True, True, scipy.sparse.csc_matrix, scipy.sparse.issparse,
+    lambda a: dense_from_sparse(a*2.),
+    lambda a: numpy.asarray((a*2).todense()),
+    scipy.sparse.csr_matrix)
 
 if __name__ == '__main__':
     unittest.main()
