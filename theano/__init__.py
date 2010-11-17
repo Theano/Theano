@@ -171,8 +171,8 @@ def dot(l, r):
 
 # Version information
 try:
-    import version
-    __version__ = version.version
+    import theano.version
+    __version__ = theano.version.version
 except ImportError:
     import warnings
     warnings.warn(
