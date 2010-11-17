@@ -1,6 +1,5 @@
 import sys, time
 
-from theano import shared
 from theano.compile.pfunc import pfunc
 from theano import tensor
 
@@ -17,7 +16,7 @@ if cuda_ndarray.cuda_available == False:
 import theano.sandbox.cuda as tcn
 import theano.sandbox.cuda as cuda
 import theano.sandbox.cuda.basic_ops as B
-import theano.compile.mode
+from theano.tensor.basic import _allclose
 from theano.tests import unittest_tools as utt
 
 if theano.config.mode=='FAST_COMPILE':
@@ -98,7 +97,7 @@ def test_sum():
         if val.size==0:
             assert f2(val)==f(val), ('shape', shape, 'pattern', pattern)
         else:
-            assert numpy.allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern)
+            assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
         
 
         #test with dimshuffle
@@ -121,7 +120,7 @@ def test_sum():
         f2 = theano.function([a],b, mode=mode_without_gpu)
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
-        assert numpy.allclose(f2(val),f(val))
+        assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
         
 
         #test with broadcast
@@ -155,7 +154,7 @@ def test_sum():
         f2 = theano.function([a2],b2, mode=mode_with_gpu)
         assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
-        assert numpy.allclose(f2(val2),f(val))
+        assert _allclose(f2(val2),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
         
 def test_flatten():
     x = cuda.fmatrix('x')

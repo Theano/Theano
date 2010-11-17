@@ -367,18 +367,22 @@ class T_RandomStreams(unittest.TestCase):
         made = m.make()
         made.random.initialize()
 
-        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        numpy_rng = numpy.random.RandomState(int(rng_seed))
+        #seed_rng is generator for generating *seeds* for RandomStates
+        seed_rng = numpy.random.RandomState(utt.fetch_seed())
+        uniform_rng = numpy.random.RandomState(int(seed_rng.randint(2**30)))
+        multinomial_rng = numpy.random.RandomState(int(seed_rng.randint(2**30)))
+
         val0 = made.f()
         val1 = made.f()
-        numpy_val0 = numpy_rng.uniform()
-        numpy_val1 = numpy_rng.uniform()
+        numpy_val0 = uniform_rng.uniform()
+        numpy_val1 = uniform_rng.uniform()
         assert numpy.allclose(val0, numpy_val0)
         assert numpy.allclose(val1, numpy_val1)
 
-        val2 = made.g()
-        numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
-        assert numpy.all(val2 == numpy_val2)
+        for i in range(10): # every test has 50% chance of passing even with non-matching random states
+            val2 = made.g()
+            numpy_val2 = multinomial_rng.multinomial(n=1, pvals=[.5, .5])
+            assert numpy.all(val2 == numpy_val2)
 
     def test_vector_arguments(self):
         m = Module()

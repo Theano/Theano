@@ -876,61 +876,123 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
     }
     return (PyObject *) rval;
 }
-__global__ void k_iAdd_3(const int d0, const int d1, const int d2,
-        float* a, const int sA0, const int sA1, const int sA2,
-        const float* b, const int sB0, const int sB1, const int sB2)
-{
-    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
-    {
-        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
-        {
-            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)
-            {
-                a[i0*sA0 + i1*sA1 + i2*sA2] += b[i0*sB0 + i1*sB1 + i2*sB2];
-            }
-        }
-    }
-}
-__global__ void k_iAdd_4(const int d0, const int d1, const int d2, const int d3,
-			 float* a, const int sA0, const int sA1,
-			 const int sA2, const int sA3,
-			 const float* b, const int sB0, const int sB1,
-			 const int sB2, const int sB3)
-{
-    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
-    {
-        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
-        {
-            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)
-            {
-	      for (int i3 = threadIdx.y; i3 < d3; i3 += blockDim.y)
-		{
-		  a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3] += b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3];
-		}
-            }
-        }
-    }
-}
+
 /*
- * We need this inplace Add to support IncSubTensor
- */
-// Will be called by __iadd__ in Python
+#define decl_k_elemwise_binary_inplace_rowmajor_3(name, F) \
+__global__ void name(const int d0, const int d1, const int d2,\
+        float* a, const int sA0, const int sA1, const int sA2,\
+        const float* b, const int sB0, const int sB1, const int sB2){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      F(a[i0*sA0 + i1*sA1 + i2*sA2], b[i0*sB0 + i1*sB1 + i2*sB2]); \
+            }\
+        }\
+    }\
+}
+
+#define decl_k_elemwise_binary_inplace_rowmajor_4(name, F) \
+__global__ void name(const int d0, const int d1, const int d2, const int d3,\
+			 float* a, const int sA0, const int sA1,\
+			 const int sA2, const int sA3,\
+			 const float* b, const int sB0, const int sB1,\
+			 const int sB2, const int sB3){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      for (int i3 = threadIdx.y; i3 < d3; i3 += blockDim.y){\
+		F(a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3], b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3]); \
+		}\
+            }\
+        }\
+    }\
+}
+
+template<typename T> __device__ T binary_iadd(T a, T b) { a = a+b; }
+template<typename T> __device__ T binary_idiv(T a, T b) { a = a/b; }
+
+decl_k_elemwise_binary_inplace_rowmajor_3(k_iAdd_3, binary_iadd<float>)
+decl_k_elemwise_binary_inplace_rowmajor_4(k_iAdd_4, binary_iadd<float>)
+decl_k_elemwise_binary_inplace_rowmajor_3(k_iDiv_3, binary_idiv<float>)
+decl_k_elemwise_binary_inplace_rowmajor_4(k_iDiv_4, binary_idiv<float>)
+*/
+__global__ void k_iAdd_3(const int d0, const int d1, const int d2,\
+        float* a, const int sA0, const int sA1, const int sA2,\
+        const float* b, const int sB0, const int sB1, const int sB2){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      a[i0*sA0 + i1*sA1 + i2*sA2]+= b[i0*sB0 + i1*sB1 + i2*sB2]; \
+            }\
+        }\
+    }\
+}
+
+__global__ void k_iAdd_4(const int d0, const int d1, const int d2, const int d3,\
+			 float* a, const int sA0, const int sA1,\
+			 const int sA2, const int sA3,\
+			 const float* b, const int sB0, const int sB1,\
+			 const int sB2, const int sB3){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      for (int i3 = threadIdx.y; i3 < d3; i3 += blockDim.y){\
+		a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3] += b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3]; \
+		}\
+            }\
+        }\
+    }\
+}
+
+__global__ void k_iDiv_3(const int d0, const int d1, const int d2,\
+        float* a, const int sA0, const int sA1, const int sA2,\
+        const float* b, const int sB0, const int sB1, const int sB2){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      a[i0*sA0 + i1*sA1 + i2*sA2]/= b[i0*sB0 + i1*sB1 + i2*sB2]; \
+            }\
+        }\
+    }\
+}
+
+__global__ void k_iDiv_4(const int d0, const int d1, const int d2, const int d3,\
+			 float* a, const int sA0, const int sA1,\
+			 const int sA2, const int sA3,\
+			 const float* b, const int sB0, const int sB1,\
+			 const int sB2, const int sB3){\
+    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
+        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
+            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
+	      for (int i3 = threadIdx.y; i3 < d3; i3 += blockDim.y){\
+		a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3] /= b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3]; \
+		}\
+            }\
+        }\
+    }\
+}
+
 static PyObject *
-CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
+CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
 {
     int verbose = 0;
     if (! CudaNdarray_Check(py_self)) {
-        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add need a CudaNdarray on left");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add_div need a CudaNdarray on left");
         return NULL;
     }
     if (! CudaNdarray_Check(py_other)) {
-        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add need a CudaNdarray on right");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add_div need a CudaNdarray on right");
         return NULL;
     }
+    if (fct_nb<0 || fct_nb>1){
+      PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add_div fct_nb param supported are only 0 and 1.");
+      return NULL;
+    }
+
     CudaNdarray * self = (CudaNdarray *)py_self;
     CudaNdarray * other = (CudaNdarray *)py_other;
 
-    if (verbose) fprintf(stderr, "INPLACE ADD for nd=%d\n",self->nd);
+    if (verbose) fprintf(stderr, "INPLACE ADD/DIV for nd=%d\n",self->nd);
 
     //standard elemwise size checks
     if (self->nd != other->nd)
@@ -955,6 +1017,21 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
       Py_INCREF(py_self);
       return py_self;
     }
+    void (*k_iop_3)(const int, const int, const int,
+		    float*, const int, const int, const int,
+		    const float*, const int, const int, const int);
+    void (*k_iop_4)(const int, const int, const int, const int,
+		    float*, const int, const int,    
+		    const int, const int,
+		    const float*, const int, const int,
+		    const int, const int);
+    if(fct_nb == 0){
+      k_iop_3 = k_iAdd_3;
+      k_iop_4 = k_iAdd_4;
+    }else if(fct_nb == 1){
+      k_iop_3 = k_iDiv_3;
+      k_iop_4 = k_iDiv_4;
+    }
     
     switch(self->nd)
     {
@@ -964,7 +1041,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 dim3 n_threads(
                         std::min(CudaNdarray_HOST_DIMS(self)[0], NUM_VECTOR_OP_THREADS_PER_BLOCK)
                     );
-                k_iAdd_3<<<n_blocks, n_threads>>>(1,
+                k_iop_3<<<n_blocks, n_threads>>>(1,
                         1, //CudaNdarray_HOST_DIMS(self)[0],
                         CudaNdarray_HOST_DIMS(self)[0],
                         CudaNdarray_DEV_DATA(self),
@@ -979,7 +1056,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_3", cudaGetErrorString(err));
                     return NULL;
                 }
                 Py_INCREF(py_self);
@@ -993,7 +1070,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 dim3 n_threads(
                         std::min(CudaNdarray_HOST_DIMS(self)[1], NUM_VECTOR_OP_THREADS_PER_BLOCK)
                     );
-                k_iAdd_3<<<n_blocks, n_threads>>>(1,
+		k_iop_3<<<n_blocks, n_threads>>>(1,
                         CudaNdarray_HOST_DIMS(self)[0],
                         CudaNdarray_HOST_DIMS(self)[1],
                         CudaNdarray_DEV_DATA(self),
@@ -1008,7 +1085,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_3", cudaGetErrorString(err));
                     return NULL;
                 }
                 Py_INCREF(py_self);
@@ -1024,7 +1101,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 dim3 n_threads(
                         std::min(CudaNdarray_HOST_DIMS(self)[2], NUM_VECTOR_OP_THREADS_PER_BLOCK)
                     );
-                k_iAdd_3<<<n_blocks, n_threads>>>(
+		k_iop_3<<<n_blocks, n_threads>>>(
                         CudaNdarray_HOST_DIMS(self)[0],
                         CudaNdarray_HOST_DIMS(self)[1],
                         CudaNdarray_HOST_DIMS(self)[2],
@@ -1040,7 +1117,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_3", cudaGetErrorString(err));
                     return NULL;
                 }
                 Py_INCREF(py_self);
@@ -1056,7 +1133,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 dim3 n_threads(
                         std::min(CudaNdarray_HOST_DIMS(self)[2], NUM_VECTOR_OP_THREADS_PER_BLOCK)
                     );
-                k_iAdd_4<<<n_blocks, n_threads>>>(
+		k_iop_4<<<n_blocks, n_threads>>>(
                         CudaNdarray_HOST_DIMS(self)[0],
                         CudaNdarray_HOST_DIMS(self)[1],
                         CudaNdarray_HOST_DIMS(self)[2],
@@ -1075,7 +1152,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_4", cudaGetErrorString(err));
                     return NULL;
                 }
                 Py_INCREF(py_self);
@@ -1093,7 +1170,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                     );
                 for (int i = 0; i < CudaNdarray_HOST_DIMS(self)[0]; ++i)
                 {
-                    k_iAdd_4<<<n_blocks, n_threads>>>(
+                  k_iop_4<<<n_blocks, n_threads>>>(
                             CudaNdarray_HOST_DIMS(self)[1],
                             CudaNdarray_HOST_DIMS(self)[2],
                             CudaNdarray_HOST_DIMS(self)[3],
@@ -1112,7 +1189,7 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                     cudaError_t err = cudaGetLastError();
                     if( cudaSuccess != err) 
                     {
-                        PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                        PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_4", cudaGetErrorString(err));
                         return NULL;
                     }
                 }
@@ -1123,6 +1200,24 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 
     PyErr_Format(PyExc_NotImplementedError, "inplace_add w nd=%i\n", self->nd);
     return NULL;
+}
+
+/*
+ * We need this inplace Add to support IncSubTensor
+ */
+// Will be called by __iadd__ in Python
+static PyObject *
+CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other){
+  CudaNdarray_inplace_add_div(py_self, py_other, 0);
+}
+
+/*
+ * We need this inplace div for cuda/tests/test_basic_ops.py:test_shared_options
+ */
+// Will be called by __idiv__ in Python
+static PyObject *
+CudaNdarray_inplace_div(PyObject* py_self, PyObject * py_other){
+  CudaNdarray_inplace_add_div(py_self, py_other, 1);
 }
 
 static PyNumberMethods CudaNdarrayNumberMethods =
@@ -1155,7 +1250,7 @@ static PyNumberMethods CudaNdarrayNumberMethods =
      (binaryfunc)CudaNdarray_inplace_add,  //binaryfunc nb_inplace_add;  __iadd__
      0,  //binaryfunc nb_inplace_subtract;      __isub__
      0,  //binaryfunc nb_inplace_multiply;      __imul__
-     0,  //binaryfunc nb_inplace_divide;        __idiv__
+     (binaryfunc)CudaNdarray_inplace_div,  //binaryfunc nb_inplace_divide;        __idiv__
      0,  //binaryfunc nb_inplace_remainder;     __imod__
      0,  //ternaryfunc nb_inplace_power;        __ipow__
      0,  //binaryfunc nb_inplace_lshift;        __ilshift__
