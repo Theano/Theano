@@ -6,11 +6,10 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 @todo: Automatic methods for determining best sparse format?
 """
 
-import sys, operator
+import sys
+
 import numpy, theano
 import scipy.sparse
-from theano.printing import Print
-
 
 from theano import gof
 from theano import tensor
@@ -101,6 +100,15 @@ def as_sparse_variable(x, name=None):
 
 
 as_sparse = as_sparse_variable
+def as_sparse_or_tensor_variable(x, name=None):
+    """
+    If we can't make a sparse variable, we try to make a tensor variable.
+    """
+    try:
+        return as_sparse_variable(x,name)
+    except (ValueError, TypeError):
+        return theano.tensor.as_tensor_variable(x,name)
+
 
 def constant(x, name=None):
     if not isinstance(x, scipy.sparse.spmatrix):
@@ -610,7 +618,7 @@ class AddSD(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
-        return sp_one_like(x) * gz, gz
+        return sp_ones_like(x) * gz, gz
 add_s_d = AddSD()
 def add(x,y):
     """
@@ -633,7 +641,7 @@ def sub(x,y):
 
 
 class MulSS(gof.op.Op):
-    ''' Elementwise multiply a sparse and a ndarray '''
+    ''' Elementwise multiply a sparse and a sparse '''
     def __eq__(self, other):
         return (type(self) == type(other))
     def __hash__(self):
@@ -663,6 +671,12 @@ class MulSD(gof.op.Op):
         return hash(type(self))
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        #upcast the tensor. Is the cast of sparse done implemented?
+        dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if y.type.dtype != dtype:
+            y = tensor.cast(y,dtype)
+
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         # The magic number two here arises because L{scipy.sparse}
@@ -720,8 +734,8 @@ def mul(x,y):
     """
     Multiply (elementwise) two matrices, at least one of which is sparse.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    x = as_sparse_or_tensor_variable(x)
+    y = as_sparse_or_tensor_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
