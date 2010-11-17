@@ -15,7 +15,7 @@ def test_host_to_device():
         c = numpy.asarray(b)
         assert numpy.all(a == c)
 
-def test_add():
+def test_add_iadd_idiv():
     for shape in ((), (0,), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),
 		  (1000,10000),(10000,1000),
 		  (4100,33,34),(33,4100,34),(33,34,4100),
@@ -50,6 +50,11 @@ def test_add():
             a0 += a1
             assert numpy.allclose(a0, numpy.asarray(b0))
             assert numpy.allclose(a0,a1*2)
+
+            b0 /= b1
+            a0 /= a1
+            assert numpy.allclose(a0, numpy.asarray(b0))
+            assert numpy.allclose(a0,numpy.ones(a0.shape)*2)
 
         if len(shape)==2:
             #test not contiguous version.
