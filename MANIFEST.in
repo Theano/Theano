@@ -1,0 +1,3 @@
+include *.cu
+include *.cuh
+include *.sh
