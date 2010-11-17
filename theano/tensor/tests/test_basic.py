@@ -2759,6 +2759,7 @@ class TestInversePermutation(unittest.TestCase):
         """Test the inversion of one permutation (int vector)"""
         p = ivector()
         inv = inverse_permutation(p)
+        assert inv.dtype == p.dtype
         f_inverse = function([p], inv)
 
         # Generate a random permutation

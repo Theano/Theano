@@ -3625,7 +3625,10 @@ def inverse_permutation(perm):
     """Computes the inverse of permutations.
     Each row of input should contain a permutation of the first integers.
     """
-    return permute_row_elements(arange(perm.shape[-1]), perm, inverse=True)
+    return permute_row_elements(
+            arange(perm.shape[-1], dtype=perm.dtype),
+            perm,
+            inverse=True)
 
 #########################
 # Advanced indexing
