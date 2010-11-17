@@ -52,7 +52,7 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath=True'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
