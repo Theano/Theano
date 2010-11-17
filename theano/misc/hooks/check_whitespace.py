@@ -28,15 +28,20 @@ def get_parse_error(code):
     code_buffer = StringIO(code)
     try:
         tabnanny.process_tokens(tokenize.generate_tokens(code_buffer.readline))
-    except tokenize.TokenError as err:
-        return "Could not parse code: {err}".format(err=err)
-    except IndentationError as err:
-        return "Indentation error: {err}".format(err=err)
-    except tabnanny.NannyNag as err:
-        return "Ambiguous tab at line {line_number}; line is '{line}'.".format(line_number=err.get_lineno(),
-                                                                               line=err.get_line())
+    except tokenize.TokenError, err:
+        return "Could not parse code: %s" % err
+    except IndentationError, err:
+        return "Indentation error: %s" % err
+    except tabnanny.NannyNag, err:
+        return "Ambiguous tab at line %d; line is '%s'." % (err.get_lineno(), err.get_line())
     return None
 
+
+def clean_diff_line_for_python_bug_2142(diff_line):
+    if diff_line.endswith("\n"):
+        return diff_line
+    else:
+        return diff_line + "\n\\ No newline at end of file\n"
 
 def get_correct_indentation_diff(code, filename):
     """
@@ -58,8 +63,7 @@ def get_correct_indentation_diff(code, filename):
         diff_generator = difflib.unified_diff(code.splitlines(True), reindent_output.splitlines(True),
                                               fromfile=filename, tofile=filename + " (reindented)")
         # work around http://bugs.python.org/issue2142
-        diff_tuple = [diff_line if diff_line.endswith("\n") else diff_line + "\n\\ No newline at end of file\n"
-                      for diff_line in diff_generator]
+        diff_tuple = map(clean_diff_line_for_python_bug_2142, diff_generator)
         diff = "".join(diff_tuple)
         return diff
     else:
@@ -77,7 +81,12 @@ class MercurialRuntimeError(Exception):
     pass
 
 def run_mercurial_command(hg_command):
-    hg_subprocess = Popen(hg_command.split(), stdout=PIPE, stderr=PIPE)
+    try:
+        hg_subprocess = Popen(hg_command.split(), stdout=PIPE, stderr=PIPE)
+    except OSError:
+        print >> sys.stderr, "Can't find the hg executable!"
+        sys.exit(1)
+
     hg_out, hg_err = hg_subprocess.communicate()
     if len(hg_err) > 0:
         raise MercurialRuntimeError(hg_err)
@@ -101,18 +110,20 @@ def is_python_file(filename):
     return filename.endswith(".py")
 
 def get_file_contents(filename, revision="tip"):
-    hg_out = run_mercurial_command("hg cat -r {revision} {filename}".format(filename=filename, revision=revision))
+    hg_out = run_mercurial_command("hg cat -r %s %s" % (revision, filename))
     return hg_out
 
 def save_commit_message(filename):
     commit_message = run_mercurial_command("hg tip --template '{desc}'")
-    with open(filename, "w") as save_file:
-        save_file.write(commit_message)
+    save_file = open(filename, "w")
+    save_file.write(commit_message)
+    save_file.close()
 
 def save_diffs(diffs, filename):
     diff = "\n\n".join(diffs)
-    with open(filename, "w") as diff_file:
-        diff_file.write(diff)
+    diff_file = open(filename, "w")
+    diff_file.write(diff)
+    diff_file.close()
 
 def main(argv=None):
     if argv is None:
@@ -148,7 +159,7 @@ def main(argv=None):
         code = get_file_contents(filename)
         parse_error = get_parse_error(code)
         if parse_error is not None:
-            print >> sys.stderr, "*** {filename} has parse error: {err}".format(filename=filename, err=parse_error)
+            print >> sys.stderr, "*** %s has parse error: %s" % (filename, parse_error)
             block_commit = True
         else:
             # parsing succeeded, it is safe to check indentation
@@ -164,18 +175,18 @@ def main(argv=None):
                     if indentation_diff is not None:
                         block_commit = True
                         diffs.append(indentation_diff)
-                        print >> sys.stderr, "{filename} is not correctly indented".format(filename=filename)
+                        print >> sys.stderr, "%s is not correctly indented" % filename
 
     if len(diffs) > 0:
         diffs_filename = ".hg/indentation_fixes.patch"
         save_diffs(diffs, diffs_filename)
-        print >> sys.stderr, "*** To fix all indentation issues, run: cd `hg root` && patch -p0 < {filename}".format(filename=diffs_filename)
+        print >> sys.stderr, "*** To fix all indentation issues, run: cd `hg root` && patch -p0 < %s" % diffs_filename
 
 
     if block_commit:
         save_filename = ".hg/commit_message.saved"
         save_commit_message(save_filename)
-        print >> sys.stderr, "*** Commit message saved to {filename}".format(filename=save_filename)
+        print >> sys.stderr, "*** Commit message saved to %s" % save_filename
 
     return int(block_commit)
 
