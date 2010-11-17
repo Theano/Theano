@@ -4,6 +4,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 
 import theano
+from theano import config
 from theano import tensor as T
 from theano import tensor
 from theano import gof
@@ -62,7 +63,7 @@ class T_Softmax(unittest.TestCase):
         x = T.vector()
         f = theano.function([x], softmax(x))
 
-        xv = numpy.random.randn(6)
+        xv = numpy.random.randn(6).astype(config.floatX)
         assert numpy.allclose(f(xv), numpy.exp(xv) / numpy.exp(xv).sum())
     def test_vector_grad(self):
         def f(a):
@@ -241,15 +242,16 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 
         f = theano.function([x, one_of_n], xe)
 
-        xe_val = f(numpy.asarray([[.4, .6, .0], [.1, .8, .1]]), [0,1])
+        x_val = numpy.asarray([[.4, .6, .0], [.1, .8, .1]],
+                dtype=config.floatX)
+        xe_val = f(x_val, [0,1])
 
         assert numpy.allclose(xe_val, -numpy.log([.4, .8]))
 
         def oplike(x):
             return op(x, [0,1])
 
-        tensor.verify_grad(oplike, [numpy.asarray([[.4, .6, .0], [.1, .8, .1]])],
-                rng=numpy.random)
+        tensor.verify_grad(oplike, [x_val], rng=numpy.random)
 
 
     def test_softmax_optimizations(self):
@@ -958,7 +960,7 @@ class Test_softmax_opt:
         print '==='
         assert len(f_ops) == 1
         assert softmax in f_ops
-        f(self.rng.rand(3,4))
+        f(self.rng.rand(3,4).astype(config.floatX))
 
     def test_grad(self):
         c = T.matrix()

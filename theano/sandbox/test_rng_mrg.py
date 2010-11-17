@@ -331,7 +331,10 @@ def test_uniform():
         steps = int(1e3)
     
     x = tensor.matrix()
-    for size,var_input,input in [(sample_size,[],[]), (x.shape,[x],[numpy.zeros(sample_size)])]:
+    for size, var_input, input in [
+            (sample_size, [], []),
+            (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
+            ]:
 
         print ''
         print 'ON CPU with size=(%s):'%str(size)
@@ -394,7 +397,10 @@ def test_binomial():
     x = tensor.matrix()
     v = tensor.vector()
     for mean in [0.1, 0.5]:
-        for size,var_input,input in [(sample_size,[],[]), (x.shape,[x],[numpy.zeros(sample_size)])]:
+        for size, var_input, input in [
+                (sample_size, [], []),
+                (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
+                ]:
 
             print ''
             print 'ON CPU with size=(%s) and mean(%d):'%(str(size),mean)
@@ -442,10 +448,12 @@ def test_normal0():
         rtol=.01
     sample_size_odd = (sample_size[0],sample_size[1]-1)
     x = tensor.matrix()
-    for size,const_size,var_input,input in [(sample_size,sample_size,[],[]), (x.shape,sample_size,[x],[numpy.zeros(sample_size)]),
-                                 (sample_size_odd,sample_size_odd,[],[]),#test odd value
-                                 (x.shape,sample_size_odd,[x],[numpy.zeros(sample_size_odd)]),#test odd value
-                                 ]:
+    for size, const_size, var_input, input in [
+            (sample_size, sample_size, [], []),
+            (x.shape, sample_size, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
+            (sample_size_odd, sample_size_odd, [], []),#test odd value
+            (x.shape, sample_size_odd, [x], [numpy.zeros(sample_size_odd, dtype=config.floatX)]),#test odd value
+            ]:
         print ''
         print 'ON CPU:'
 

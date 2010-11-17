@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
+from theano import config
 from theano import gof
 from theano.tensor.opt import *
 from theano import tensor  #do not use, there is  an import * below that hides it
@@ -109,9 +110,14 @@ class test_greedy_distribute(unittest.TestCase):
 
         f = function([s, eps, x,y], r**2)
 
-        r0 = f(4,1.e-6, [1.5,2], [2.3,3.1])
-        r1 = f(4,1.e-6, [1.5,2], [2.3,3.1])
-        r2 = f(4,1.e-6, [1.5,2], [2.3,3.1])
+        s_val = numpy.asarray(4, dtype=config.floatX)
+        eps_val = numpy.asarray(1.e-6, dtype=config.floatX)
+        x_val = numpy.asarray([1.5,2], dtype=config.floatX)
+        y_val = numpy.asarray([2.3,3.1], dtype=config.floatX)
+
+        r0 = f(s_val, eps_val, x_val, y_val)
+        r1 = f(s_val, eps_val, x_val, y_val)
+        r2 = f(s_val, eps_val, x_val, y_val)
 
         assert numpy.all(r0 == r1)
         assert numpy.all(r0 == r2)
@@ -614,9 +620,9 @@ class test_canonize(unittest.TestCase):
 
 def test_local_merge_abs():
     x,y,z = T.matrices('xyz')
-    x_val = numpy.random.rand(5,5)
-    y_val = numpy.random.rand(5,5)
-    z_val = numpy.random.rand(5,5)
+    x_val = numpy.random.rand(5,5).astype(config.floatX)
+    y_val = numpy.random.rand(5,5).astype(config.floatX)
+    z_val = numpy.random.rand(5,5).astype(config.floatX)
     mode = theano.config.mode
     if mode == "FAST_COMPILE":
         mode = "FAST_RUN"
@@ -1211,7 +1217,8 @@ class test_shapeoptimizer(unittest.TestCase):
 
         # Without the optimization
         f = theano.function([x], ins_x.shape, mode=mode)
-        assert numpy.all(f(rng.randn(3,4,7)) == [3,4,7])
+        xval = rng.randn(3,4,7).astype(config.floatX)
+        assert numpy.all(f(xval) == [3,4,7])
         f_ops = [node.op for node in f.maker.env.toposort()]
         assert len(f_ops) == 5
         assert identity_noshape in f_ops
@@ -1224,7 +1231,8 @@ class test_shapeoptimizer(unittest.TestCase):
         # The identity_shape op is should not be needed anymore to compute
         # the shape
         g = theano.function([x], ins_x.shape, mode=mode)
-        assert numpy.all(g(rng.randn(6,1,2)) == [6,1,2])
+        xval = rng.randn(6,1,2).astype(config.floatX)
+        assert numpy.all(g(xval) == [6,1,2])
         g_ops = [node.op for node in g.maker.env.toposort()]
         assert len(g_ops) == 4
         assert identity_noshape not in g_ops
@@ -1234,7 +1242,8 @@ class test_shapeoptimizer(unittest.TestCase):
         ###test multiple level of op without infer_shape
         ins_x3 = identity_noshape(identity_noshape(identity_noshape(x)))
         h = theano.function([x], ins_x3.shape, mode=mode)
-        assert numpy.all(h(rng.randn(6,1,2)) == [6,1,2])
+        xval = rng.randn(6,1,2).astype(config.floatX)
+        assert numpy.all(h(xval) == [6,1,2])
         h_ops = [node.op for node in h.maker.env.toposort()]
         assert len(h_ops) == 4
         assert identity_noshape not in h_ops
@@ -1660,7 +1669,7 @@ class T_local_erf(unittest.TestCase):
         self.mode._optimizer.position_cutoff = 1.50001
 
     def test_local_one_plus_erf(self):
-        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30], dtype=config.floatX)
         x = T.vector()
 
         f = theano.function([x],1+T.erf(x), mode=self.mode)
@@ -1683,7 +1692,7 @@ class T_local_erf(unittest.TestCase):
         f(val)
 
     def test_local_one_minus_erf(self):
-        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30], dtype=config.floatX)
         x = T.vector()
 
         f = theano.function([x],1-T.erf(x), mode=self.mode)
@@ -1711,7 +1720,7 @@ class T_local_erf(unittest.TestCase):
         print f(val)
 
     def test_local_erf_minus_one(self):
-        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30], dtype=config.floatX)
         x = T.vector()
 
         f = theano.function([x],T.erf(x)-1, mode=self.mode)
@@ -1747,7 +1756,7 @@ class T_local_erfc(unittest.TestCase):
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """
-        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30], dtype=config.floatX)
         x = T.vector('x')
 
         f = theano.function([x],1-T.erfc(x), mode=self.mode)
@@ -1771,7 +1780,7 @@ class T_local_erfc(unittest.TestCase):
 
     def test_local_erf_neg_minus_one(self):
         """ test opt: (-1)+erfc(-x)=>erf(x)"""
-        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30])
+        val = numpy.asarray([-30,-3,-2,-1,0,1,2,3,30], dtype=config.floatX)
         x = T.vector('x')
 
         f = theano.function([x],-1+T.erfc(-x), mode=self.mode)
@@ -1794,7 +1803,7 @@ class T_local_erfc(unittest.TestCase):
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
             #python mode don't like the inv(0)
             val.remove(0)
-        val = numpy.asarray(val)
+        val = numpy.asarray(val, dtype=config.floatX)
         x = T.vector('x')
 
         #their is some nan that will happear in the graph for the log of the negatives values
@@ -1833,7 +1842,7 @@ class T_local_erfc(unittest.TestCase):
             # In float32 their is a plage of values close to 10 that we stabilize as it give bigger error then the stabilized version.
             # The orig value in float32 -30.0, the stab value -20.1 the orig value in float64 -18.1.
             val.remove(10)
-        val = numpy.asarray(val)
+        val = numpy.asarray(val, dtype=config.floatX)
         x = T.vector('x')
         y = T.vector('y')
 
@@ -1919,7 +1928,7 @@ class T_local_sum(unittest.TestCase):
 
     def test_local_sum_all_to_none(self):
         a = T.tensor3()
-        input=numpy.arange(3*3*3).reshape(3,3,3)
+        input=numpy.arange(3*3*3, dtype=config.floatX).reshape(3,3,3)
         f = theano.function([a],a.sum(),mode=self.mode)
         assert len(f.maker.env.nodes)==1
         assert numpy.allclose(f(input),input.sum())
@@ -1935,7 +1944,7 @@ class T_local_sum(unittest.TestCase):
 
     def test_local_sum_sum(self):
         a=T.tensor3()
-        input=numpy.arange(3*3*3).reshape(3,3,3)
+        input=numpy.arange(3*3*3, dtype=config.floatX).reshape(3,3,3)
         dims=[(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]
 
         for d,dd in dims:
@@ -2036,10 +2045,10 @@ class T_local_sum_dimshuffle(unittest.TestCase):
             ]
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        a_val = rng.randn(2,2)
-        b_val = rng.randn(2)
-        c_val = rng.randn(2,2,2)
-        d_val = rng.randn()
+        a_val = rng.randn(2,2).astype(config.floatX)
+        b_val = rng.randn(2).astype(config.floatX)
+        c_val = rng.randn(2,2,2).astype(config.floatX)
+        d_val = numpy.asarray(rng.randn(), config.floatX)
 
         for i,s in enumerate(sums):
             print i

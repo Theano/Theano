@@ -5,6 +5,7 @@ from theano import tensor as T
 from theano.tensor import nnet as NN
 from theano.compile import module
 from theano.compile.mode import get_default_mode
+from theano import config
 from theano import tensor as T, sparse as S
 import numpy as N
 import sys
@@ -199,17 +200,20 @@ class QuadraticDenoisingAA(module.Module):
             sz = (input_size, hidden_size)
             inf = 1/N.sqrt(input_size)
             hif = 1/N.sqrt(hidden_size)
-            obj.w1 = R.uniform(size = sz, low = -inf, high = inf)
+            obj.w1 = N.asarray(R.uniform(size = sz, low = -inf, high = inf),
+                    dtype=config.floatX)
             if not self.tie_weights:
-                obj.w2 = R.uniform(size = list(reversed(sz)), low = -hif, high = hif)
-            obj.b1 = N.zeros(hidden_size)
-            obj.b2 = N.zeros(input_size)
+                obj.w2 = N.asarray(
+                        R.uniform(size=list(reversed(sz)), low=-hif, high=hif),
+                        dtype=config.floatX)
+            obj.b1 = N.zeros(hidden_size, dtype=config.floatX)
+            obj.b2 = N.zeros(input_size, dtype=config.floatX)
             obj.qfilters = [R.uniform(size = sz, low = -inf, high = inf) * qfilter_relscale \
                     for qf in self.qfilters]
         if seed is not None:
             obj.random.seed(seed)
 
-        obj.lr = lr
+        obj.lr = N.asarray(lr, dtype=config.floatX)
 
         obj.__hide__ = ['params']
 
@@ -251,7 +255,7 @@ class SigmoidXEQuadraticDenoisingAA(QuadraticDenoisingAA):
 
     def _instance_initialize(self, obj, input_size, hidden_size, noise_level, seed, lr, qfilter_relscale):
 #        obj.l2_coef = 0.0
-        obj.noise_level = noise_level
+        obj.noise_level = N.asarray(noise_level, dtype=config.floatX)
         super(SigmoidXEQuadraticDenoisingAA, self)._instance_initialize(obj, input_size, hidden_size, seed, lr, qfilter_relscale)
 
 QDAA = SigmoidXEQuadraticDenoisingAA
@@ -438,7 +442,7 @@ class ConvolutionalMLP(module.FancyModule):
         self.hidden_representation_size = hidden_representation_size
         self.output_size = output_size
 
-        self.lr = lr
+        self.lr = N.asarray(lr, dtype=config.floatX)
 #        for layer in obj.layers:
 #            if layer.lr is None:
 #                layer.lr = lr

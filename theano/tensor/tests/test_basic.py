@@ -32,8 +32,12 @@ except ImportError:
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
 
-def inplace_func(inputs, outputs, mode=get_default_mode()):
-    return function(inputs, outputs, mode=mode, accept_inplace=True)
+def inplace_func(inputs, outputs, mode=get_default_mode(),
+        allow_input_downcast=False):
+    return function(inputs, outputs,
+            mode=mode,
+            allow_input_downcast=allow_input_downcast,
+            accept_inplace=True)
 
 def eval_outputs(outputs):
     variables = inplace_func([], outputs)()
@@ -2437,7 +2441,7 @@ class T_op_cache(unittest.TestCase):
         fn_py = inplace_func([v], gv)
         fn_c_or_py = inplace_func([v], gv)
 
-        a = numpy.random.rand(5,2)
+        a = numpy.random.rand(5,2).astype(config.floatX)
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 
@@ -3168,7 +3172,7 @@ def test_default_state():
     assert f(3) == 15
     f['x'] = None
     assert numpy.allclose(f(1), 4.8)
-    assert numpy.allclose(f(2.2), 7)
+    assert numpy.allclose(f(numpy.asarray(2.2, dtype=config.floatX)), 7)
 
 def test_autocast():
     orig_autocast = autocast_float.dtypes

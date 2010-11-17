@@ -1,6 +1,7 @@
 import unittest
 import theano
 from theano import tensor as T
+from theano import config
 from theano import gof
 import numpy
 from theano.tests import unittest_tools as utt
@@ -97,7 +98,7 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
         assert isinstance(topo[1].op.scalar_op, theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
-        f(numpy.random.rand(54))
+        f(numpy.random.rand(54).astype(config.floatX))
 
     def test_log1msigm_to_softplus(self):
         x = T.vector()
@@ -108,7 +109,7 @@ class T_softplus_opts(unittest.TestCase):
         assert len(topo)==2
         assert isinstance(topo[0].op.scalar_op, theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[1].op.scalar_op, theano.scalar.Neg)
-        f(numpy.random.rand(54))
+        f(numpy.random.rand(54).astype(config.floatX))
         
     def test_log1pexp_to_softplus(self):
         m = theano.config.mode
@@ -122,4 +123,4 @@ class T_softplus_opts(unittest.TestCase):
         topo = f.maker.env.toposort()
         assert len(topo)==1
         assert isinstance(topo[0].op.scalar_op,theano.tensor.nnet.sigm.ScalarSoftplus)
-        f(numpy.random.rand(54))
+        f(numpy.random.rand(54).astype(config.floatX))

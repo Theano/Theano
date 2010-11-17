@@ -314,14 +314,18 @@ class Warning(Exception):
 
 def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()], max_graphlen=0):
     try:
-        f = inplace_func([Param(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        f = inplace_func(
+                [Param(ii, mutable=True, allow_downcast=True) for ii in i],
+                o,
+                mode='FAST_RUN')
         at_least_one_gemm = False
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Warning('dot not changed to gemm_inplace in graph')
             if node.op == _dot22: raise Warning('_dot22 not changed to gemm_inplace in graph')
             if node.op == gemm_inplace: at_least_one_gemm = True
         assert at_least_one_gemm
-        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
+                allow_input_downcast=True)
         for node in g.maker.env.nodes:
             if node.op == gemm_inplace: raise Exception('gemm_inplace in original graph')
 
@@ -568,8 +572,8 @@ def test_dot22():
     f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
     topo = f.maker.env.toposort()
     assert _dot22 in [x.op for x in topo]
-    av=numpy.random.rand(5,5)
-    bv=numpy.random.rand(5,5)
+    av=numpy.random.rand(5,5).astype(config.floatX)
+    bv=numpy.random.rand(5,5).astype(config.floatX)
     f(av,bv)
 
 def test_dot22scalar():
@@ -581,9 +585,9 @@ def test_dot22scalar():
     a=T.matrix()
     b=T.matrix()
     c=T.matrix()
-    av=numpy.random.rand(5,5)
-    bv=numpy.random.rand(5,5)
-    cv=numpy.random.rand(5,5)
+    av=numpy.random.rand(5,5).astype(config.floatX)
+    bv=numpy.random.rand(5,5).astype(config.floatX)
+    cv=numpy.random.rand(5,5).astype(config.floatX)
 
     if True:
         f = theano.function([a,b],0.2*T.dot(a,b),mode=mode_blas_opt)
@@ -651,4 +655,4 @@ def test_dot_w_self():
     f = theano.function([B], p, updates = { A : A - grad[0]} )
 
     # tests correctness in debugmode
-    f(numpy.asarray([[0,1], [2,3]]))
+    f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))

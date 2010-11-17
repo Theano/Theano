@@ -2,7 +2,10 @@
 import unittest
 import theano
 import numpy
+
+from theano import config
 from theano.tests  import unittest_tools as utt
+
 '''
   Questions and notes about scan that should be answered :
 
@@ -161,7 +164,7 @@ class T_Scan(unittest.TestCase):
         my_f = theano.function([state,n_steps], output, updates = updates)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        state = rng.uniform()
+        state = asarrayX(rng.uniform())
         steps = 5
 
         numpy_values = numpy.array([ state*(2**(k+1)) for k in xrange(steps) ])
@@ -186,10 +189,10 @@ class T_Scan(unittest.TestCase):
         f2   = theano.function([u,x0,W_in,W], output, updates = updates)
         # get random initial values
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_u  = rng.uniform( size = (4,), low = -5., high = 5.)
-        v_x0 = rng.uniform()
-        W    = rng.uniform()
-        W_in = rng.uniform()
+        v_u  = asarrayX(rng.uniform(size = (4,), low = -5., high = 5.))
+        v_x0 = asarrayX(rng.uniform())
+        W    = asarrayX(rng.uniform())
+        W_in = asarrayX(rng.uniform())
 
         # compute the output in numpy
         v_out = numpy.zeros((4,))
@@ -218,8 +221,8 @@ class T_Scan(unittest.TestCase):
         f3    = theano.function([u,x0], output, updates = updates)
         # get random initial values
 
-        v_u   = rng.uniform( size = (4,), low = -5., high = 5.)
-        v_x0  = rng.uniform()
+        v_u   = asarrayX(rng.uniform(size = (4,), low = -5., high = 5.))
+        v_x0  = asarrayX(rng.uniform())
         # compute the output i numpy
         v_out = numpy.zeros((4,))
         v_out[0] = v_u[0]*W_in.value + v_x0*W.value
@@ -491,7 +494,8 @@ class T_Scan(unittest.TestCase):
 #TypeError: ('__array__() takes no arguments (1 given)', <theano.scan.Scan object at 0x3dbbf90>(?_steps, u1, u2, y0, y1, 0.0, W1, W2), 'Sequence id of Apply node=0')
 #
 #  This don't seam to be a theano related bug...
-        vu1 = rng.rand(3,20)
+        #vu1 = rng.rand(3,20)
+        vu1 = asarrayX(rng.rand(3,20))
 
         W1 = theano.shared(vW1,'W1')
         W2 = theano.shared(vW2,'W2')
@@ -632,7 +636,7 @@ class T_Scan(unittest.TestCase):
         f2    = theano.function([u], outputs, updates = updates)
         rng = numpy.random.RandomState(utt.fetch_seed())
 
-        v_u   = rng.uniform(size=(5,), low = -5., high = 5.)
+        v_u   = rng.uniform(size=(5,), low = -5., high = 5.).astype(config.floatX)
         numpy_result = v_u + 3
         theano_result = f2(v_u)
         assert numpy.allclose(theano_result , numpy_result)
@@ -645,7 +649,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([v],abs_expr,updates = abs_updates)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        vals = rng.uniform(size=(10,), low = -5., high = 5.)
+        vals = rng.uniform(size=(10,), low = -5., high = 5.).astype(config.floatX)
         abs_vals = abs(vals)
         theano_vals = f(vals)
         assert numpy.allclose(abs_vals , theano_vals)
@@ -665,10 +669,10 @@ class T_Scan(unittest.TestCase):
         f2   = theano.function([u,x0,W_in,W], output, updates = updates)
         # get random initial values
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_u  = rng.uniform( size = (4,), low = -5., high = 5.)
-        v_x0 = rng.uniform()
-        W    = rng.uniform()
-        W_in = rng.uniform()
+        v_u  = asarrayX(rng.uniform(size=(4,), low=-5., high=5.))
+        v_x0 = asarrayX(rng.uniform())
+        W    = asarrayX(rng.uniform())
+        W_in = asarrayX(rng.uniform())
 
         # compute the output in numpy
         v_out = numpy.zeros((4,))
@@ -686,7 +690,7 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([v,s], result, updates = updates)
         rng = numpy.random.RandomState(utt.fetch_seed())
-        v_v = rng.uniform( size = (5,), low = -5., high = 5.)
+        v_v = rng.uniform(size = (5,), low = -5., high = 5.).astype(config.floatX)
         assert abs(numpy.sum(v_v) - f(v_v, 0.)) < 1e-3
 
 
@@ -705,7 +709,7 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([u,x0,W_in, W], [gu,gx0,gW_in, gW],
                 updates = updates, no_default_updates = True)
         cost_fn = theano.function([u,x0,W_in, W], cost, updates = updates,
-                no_default_updates = True)
+                no_default_updates = True, allow_input_downcast=True)
 
         # get random initial values
         rng  = numpy.random.RandomState(utt.fetch_seed())
@@ -754,7 +758,8 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([u1,u2,x0,y0,W_in1], gparams,
                 updates = updates, no_default_updates = True)
         cost_fn = theano.function([u1,u2,x0,y0,W_in1], cost,
-                updates = updates, no_default_updates = True)
+                updates = updates, no_default_updates = True,
+                allow_input_downcast=True)
 
         num_grad = multiple_outputs_numeric_grad(cost_fn,[v_u1,v_u2,v_x0,v_y0,vW_in1])
         analytic_grad = grad_fn(v_u1,v_u2, v_x0,v_y0, vW_in1)
@@ -954,7 +959,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x],[y,z], updates = updates)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        nx = rng.uniform( size = (10,10) )
+        nx = rng.uniform( size = (10,10) ).astype(config.floatX)
         ny1,nz1 = f(nx)
         ny2,nz2 = f(nx)
 

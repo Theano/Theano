@@ -467,7 +467,8 @@ class T_picklefunction(unittest.TestCase):
         assert f2.container[s].storage is f1.container[s].storage
 
         # now put in a function with non-scalar
-        f3 = function([x, In(v, value=numpy.asarray([2,3,4.]))], x+v)
+        v_value = numpy.asarray([2,3,4.], dtype=config.floatX)
+        f3 = function([x, In(v, value=v_value)], x+v)
         list_of_things.append(f3)
 
         # try to pickle the entire things

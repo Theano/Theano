@@ -9,7 +9,7 @@ from theano.tensor import raw_random
 
 from theano import tensor
 
-from theano import compile, gof
+from theano import compile, config, gof
 
 class T_random_function(unittest.TestCase):
     def setUp(self):
@@ -494,7 +494,7 @@ class T_random_function(unittest.TestCase):
         rng_state0 = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1])
-        post1, val1 = f(post0, [.9])
+        post1, val1 = f(post0, as_floatX([.9]))
         numpy_val0 = as_floatX(numpy_rng.uniform(low=[-5, .5, 0, 1], high=1))
         numpy_val1 = as_floatX(numpy_rng.uniform(low=as_floatX([.9]), high=1))
 
@@ -597,7 +597,7 @@ class T_random_function(unittest.TestCase):
         f = compile.function([rng_R, n, prob], [post_r, out], accept_inplace=True)
 
         n_val = [1, 2, 3]
-        prob_val = [.1, .2, .3]
+        prob_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
         rng = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
@@ -628,14 +628,15 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 1
         f = compile.function([rng_R, avg, std], [post_r, out], accept_inplace=True)
 
+        def as_floatX(thing):
+            return numpy.asarray(thing, dtype=theano.config.floatX)
+
         avg_val = [1, 2, 3]
-        std_val = [.1, .2, .3]
+        std_val = as_floatX([.1, .2, .3])
         rng = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
-        def as_floatX(thing):
-            return numpy.asarray(thing, dtype=theano.config.floatX)
         rng0, val0 = f(rng, avg_val, std_val)
         numpy_val0 = as_floatX(numpy_rng.normal(loc=as_floatX(avg_val),
             scale=as_floatX(std_val)))
@@ -705,6 +706,7 @@ class T_random_function(unittest.TestCase):
 
         n_val = [1, 2, 3]
         pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
+        pvals_val = numpy.asarray(pvals_val, dtype=config.floatX)
         rng = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 

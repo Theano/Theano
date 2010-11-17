@@ -9,7 +9,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from theano import function
 
 from theano import tensor
-from theano import compile, gof
+from theano import compile, config, gof
 
 from theano.tests import unittest_tools as utt
 
@@ -466,7 +466,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         f = function([n, prob], out)
 
         n_val = [1, 2, 3]
-        prob_val = [.1, .2, .3]
+        prob_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 
@@ -566,6 +566,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         n_val = [1, 2, 3]
         pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
+        pvals_val = numpy.asarray(pvals_val, dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 

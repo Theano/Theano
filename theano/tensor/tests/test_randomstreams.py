@@ -9,7 +9,7 @@ from theano.compile import Module, Method, Member
 from theano.tests import unittest_tools as utt
 
 from theano import tensor
-from theano import compile, gof
+from theano import compile, config, gof
 
 
 class T_RandomStreams(unittest.TestCase):
@@ -402,10 +402,12 @@ class T_RandomStreams(unittest.TestCase):
 
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
-        val0 = made.f([-5, .5, 0, 1])
-        val1 = made.f([.9])
-        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
-        numpy_val1 = numpy_rng.uniform(low=[.9], high=1)
+        low_val0 = numpy.asarray([-5, .5, 0, 1], dtype=config.floatX)
+        low_val1 = numpy.asarray([.9], dtype=config.floatX)
+        val0 = made.f(low_val0)
+        val1 = made.f(low_val1)
+        numpy_val0 = numpy_rng.uniform(low=low_val0, high=1)
+        numpy_val1 = numpy_rng.uniform(low=low_val1, high=1)
         assert numpy.allclose(val0, numpy_val0)
         assert numpy.allclose(val1, numpy_val1)
 
@@ -447,13 +449,22 @@ class T_RandomStreams(unittest.TestCase):
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         numpy_rng = numpy.random.RandomState(int(rng_seed))
-        val0 = made.f([-5, .5, 0, 1], [[1.]])
-        val1 = made.f([.9], [[1.], [1.1], [1.5]])
-        val2 = made.f([-5, .5, 0, 1], [[1.], [1.1], [1.5]])
+        low_vals = [
+                numpy.asarray([-5, .5, 0, 1], dtype=config.floatX),
+                numpy.asarray([.9], dtype=config.floatX),
+                numpy.asarray([-5, .5, 0, 1], dtype=config.floatX) ]
+        high_vals = [
+                numpy.asarray([[1.]], dtype=config.floatX),
+                numpy.asarray([[1.], [1.1], [1.5]], dtype=config.floatX),
+                numpy.asarray([[1.], [1.1], [1.5]], dtype=config.floatX) ]
 
-        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[1.])
-        numpy_val1 = numpy_rng.uniform(low=[.9], high=[[1.], [1.1], [1.5]])
-        numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[[1.], [1.1], [1.5]])
+        val0 = made.f(low_vals[0], high_vals[0])
+        val1 = made.f(low_vals[1], high_vals[1])
+        val2 = made.f(low_vals[2], high_vals[2])
+
+        numpy_val0 = numpy_rng.uniform(low=low_vals[0], high=high_vals[0])
+        numpy_val1 = numpy_rng.uniform(low=low_vals[1], high=high_vals[1])
+        numpy_val2 = numpy_rng.uniform(low=low_vals[2], high=high_vals[2])
 
         assert numpy.allclose(val0, numpy_val0)
         assert numpy.allclose(val1, numpy_val1)
@@ -473,8 +484,8 @@ class T_RandomStreams(unittest.TestCase):
         made = m.make()
         made.random.initialize()
 
-        low_val = [.1, .2, .3]
-        high_val = [1.1, 2.2, 3.3]
+        low_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
+        high_val = numpy.asarray([1.1, 2.2, 3.3], dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 
@@ -510,7 +521,7 @@ class T_RandomStreams(unittest.TestCase):
         made.random.initialize()
 
         n_val = [1, 2, 3]
-        prob_val = [.1, .2, .3]
+        prob_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 
@@ -546,7 +557,7 @@ class T_RandomStreams(unittest.TestCase):
         made.random.initialize()
 
         avg_val = [1, 2, 3]
-        std_val = [.1, .2, .3]
+        std_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 
@@ -624,7 +635,8 @@ class T_RandomStreams(unittest.TestCase):
         made.random.initialize()
 
         n_val = [1, 2, 3]
-        pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
+        pvals_val = numpy.asarray([[.1, .9], [.2, .8], [.3, .7]],
+                dtype=config.floatX)
         seed_gen = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
 
