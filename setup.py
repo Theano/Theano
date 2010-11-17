@@ -36,12 +36,15 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 3
 MICRO               = 0
-ISRELEASED          = False
+SUFFIX              = "rc1"  # Should be blank except for rc's, betas, etc.
+ISRELEASED          = True
 
 if MICRO > 0:
     VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 else:
     VERSION             = "%d.%d" % (MAJOR, MINOR)
+
+VERSION += SUFFIX
 
 # Return the hg revision as a string -- borrowed from hg_version in NumPy's
 # setup.py file
@@ -83,16 +86,15 @@ if not release:
     version = full_version
 """
     FULL_VERSION = VERSION
-    if not ISRELEASED:
-        if os.path.exists('.hg'):
-            HG_REVISION = hg_version()
-        elif os.path.exists(filename):
-            # must be a source distribution, use existing version file
-            from theano.version import hg_revision as HG_REVISION
-        else:
-            HG_REVISION = "unknown-hg"
+    if os.path.exists('.hg'):
+        HG_REVISION = hg_version()
+    elif os.path.exists(filename):
+        # must be a source distribution, use existing version file
+        from theano.version import hg_revision as HG_REVISION
+    else:
+        HG_REVISION = "unknown-hg"
 
-        FULL_VERSION += '.dev-' + HG_REVISION
+    FULL_VERSION += '.dev-' + HG_REVISION
 
     a = open(filename, 'w')
     try:
