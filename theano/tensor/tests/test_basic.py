@@ -1507,19 +1507,6 @@ class T_Join_and_Split(unittest.TestCase):
     """
     Split is tested by each verify_grad method.
     """
-
-    class Join1(Op):
-        def make_node(self, *inputs):
-            inputs = [as_tensor_variable(t) for t in inputs]
-            outputs = [lscalar()] + [i.type() for i in inputs]
-            return Apply(self, inputs, outputs)
-        def perform(self, node, inputs, outputs):
-            outputs[0][0] = 1
-            for i,o in zip(inputs, outputs[1:]):
-                o[0] = i.copy()
-        def grad(self, inputs, g_outputs):
-            return g_outputs[1:]
-
     def setUp(self):
         Join.debug = False
 
