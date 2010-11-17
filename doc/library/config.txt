@@ -34,7 +34,7 @@ theano.config.  For example, to see a list  of all active configuration
 variables, type this from the command-line:
 
 .. code-block:: bash
-    
+
     python -c 'import theano; print theano.config' | less
 
 Environment Variables
@@ -86,7 +86,7 @@ that you might want to use.  For the complete list (including documentation),
 import theano and print the config variable, as in:
 
 .. code-block:: bash
-    
+
     python -c 'import theano; print theano.config' | less
 
 
@@ -164,7 +164,7 @@ Config Attributes
 
     This flag allows a new user not to get warnings about old bugs, that were fixed
     before their first checkout of Theano.
-    You can set its value to the first version of Theano 
+    You can set its value to the first version of Theano
     that you used (probably 0.3 or higher)
 
     `None` mean that all warnings will be displayed.
