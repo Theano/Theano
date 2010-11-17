@@ -6,11 +6,10 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 @todo: Automatic methods for determining best sparse format?
 """
 
-import sys, operator
+import sys
+
 import numpy, theano
 import scipy.sparse
-from theano.printing import Print
-
 
 from theano import gof
 from theano import tensor
@@ -619,7 +618,7 @@ class AddSD(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
-        return sp_one_like(x) * gz, gz
+        return sp_ones_like(x) * gz, gz
 add_s_d = AddSD()
 def add(x,y):
     """
