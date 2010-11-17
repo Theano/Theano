@@ -393,10 +393,10 @@ class _scalar_py_operators:
     def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
-class ScalarVariable(Variable, _scalar_py_operators):
+class ScalarVariable(_scalar_py_operators, Variable):
     pass
 
-class ScalarConstant(Constant, _scalar_py_operators):
+class ScalarConstant(_scalar_py_operators, Constant):
     pass
 
 
