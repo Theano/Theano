@@ -1641,6 +1641,70 @@ class T_Join_and_Split(unittest.TestCase):
         f = function([x,y], [b,c,a])
         assert numpy.allclose(f(4, 5), [5, 9, 4])
 
+    def test_broadcastable_flag_assignment_mixed_otheraxes(self):
+        """
+        Test that the broadcastable flags for the output of
+        a join operation on non-join axes are True if one or
+        more inputs is broadcastable on that dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[0, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(1, a, b)
+        assert c.type.broadcastable[0] and c.type.broadcastable[2]
+        assert not c.type.broadcastable[1]
+
+    def test_broadcastable_flag_assignment_mixed_thisaxes(self):
+        """
+        Test that the broadcastable flag of the join axis
+        is False when some inputs are broadcastable on that
+        dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[0, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        assert not c.type.broadcastable[0]
+
+    def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
+        """
+        Test that joining together several inputs which are all
+        broadcastable on the join dimension results in the output
+        being non-broadcastable on the join dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        assert not c.type.broadcastable[0]
+
+    def test_broadcastable_single_input_broadcastable_dimension(self):
+        """
+        Test that all broadcastable flags are preserved by a
+        single-input join.
+        """
+        a = join(0, TensorType(dtype='int8', broadcastable=[1, 0, 1])())
+        assert a.type.broadcastable[0]
+        assert a.type.broadcastable[2]
+        assert not a.type.broadcastable[1]
+
+    def test_broadcastable_flags_many_dims_and_inputs(self):
+        """
+        Test that the right broadcastable flags get set for a  join
+        with many inputs and many input dimensions.
+        """
+        a = TensorType(dtype='int8', broadcastable=[1, 0, 1, 0, 0, 0])()
+        b = TensorType(dtype='int8', broadcastable=[1, 1, 1, 0, 0, 0])()
+        c = TensorType(dtype='int8', broadcastable=[1, 0, 0, 0, 0, 0])()
+        d = TensorType(dtype='int8', broadcastable=[1, 0, 1, 1, 0, 1])()
+        e = TensorType(dtype='int8', broadcastable=[1, 0, 1, 0, 0, 1])()
+        f = join(0, a, b, c, d, e)
+        fb = f.type.broadcastable
+        assert not fb[0] and fb[1] and fb[2] and fb[3] and not fb[4] and fb[5]
+        g = join(1, a, b, c, d, e)
+        gb = g.type.broadcastable
+        assert gb[0] and not gb[1] and gb[2] and gb[3] and not gb[4] and gb[5]
+        h = join(4, a, b, c, d, e)
+        hb = h.type.broadcastable
+        assert hb[0] and hb[1] and hb[2] and hb[3] and not hb[4] and hb[5]
+
 class test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()

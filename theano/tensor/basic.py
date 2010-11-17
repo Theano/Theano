@@ -2995,32 +2995,50 @@ class Join(Op):
 
     def _make_node_internal(self, axis, tensors,
                 as_tensor_variable_args, output_maker):
+        orig = as_tensor_variable_args
         if not all(targs.type.ndim for targs in as_tensor_variable_args):
             raise TypeError('Join cannot handle arguments of dimension 0. For joining scalar values, see @stack');
-
-        # When the axis may vary, no dimension can be guaranteed to be
-        # broadcastable.
-        bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
-
-        # When the axis is fixed, the broadcastable dimensions remain, except
-        # for the axis dimension.
-        # All concatenated elements must also have the same broadcastable
-        # dimensions.
-        orig = as_tensor_variable_args
-        if isinstance(axis, int):
-            bcasts = [x.type.broadcastable[0:axis] + \
-                      x.type.broadcastable[axis + 1:] for x in as_tensor_variable_args]
-            if not all([bcasts[0] == bc for bc in bcasts[1:]]):
-                raise ValueError('Dimensions other than the given axis must'
-                    ' have the same broadcast behavior', tensors)
-            bcastable[:] = as_tensor_variable_args[0].type.broadcastable
-            try:
-                bcastable[axis] = False
-            except IndexError, e:
-                raise ValueError('Join argument "axis" is out of range (given input dimensions)')
-            as_tensor_variable_args = [unbroadcast(x, axis) for x in as_tensor_variable_args]
+        # Handle single-tensor joins immediately.
+        if len(as_tensor_variable_args) == 1:
+            bcastable = list(as_tensor_variable_args[0].type.broadcastable)
         else:
-            as_tensor_variable_args = [unbroadcast(x, *range(x.type.ndim)) for x in as_tensor_variable_args]
+            # When the axis is fixed, the broadcastable dimensions remain, except
+            # for the axis dimension.
+            # All concatenated elements must also have the same broadcastable
+            # dimensions.
+            # initialize bcastable all false, and then fill in some trues with
+            # the loops -- a dimension should be broadcastable if at least one
+            # of the inputs is broadcastable on that dimension (see
+            # justification below)
+            bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
+            ndim = len(bcastable)
+            if isinstance(axis, int):
+                # Basically, broadcastable -> length 1, but the converse does not
+                # hold. So we permit e.g. T/F/T joins, and if they fail at runtime
+                # they fail, but if they don't then it means that the argument
+                # where that broadcastable flag was False had length 1 along this
+                # dimension, and therefore this dimension should be broadcastable
+                # for the output.
+                for x in as_tensor_variable_args:
+                    for current_axis, bflag in enumerate(x.type.broadcastable):
+                        # Not sure if this Op supports/supported/will support
+                        # negative indices, but just to be sure...
+                        if current_axis == axis % ndim:
+                            continue
+                        if bflag:
+                            bcastable[current_axis] = True
+                try:
+                    bcastable[axis] = False
+                except IndexError, e:
+                    raise ValueError('Join argument "axis" is out of range (given input dimensions)')
+                as_tensor_variable_args = [unbroadcast(x, axis) for x in as_tensor_variable_args]
+            else:
+                # These unbroadcasts are for the gradient... not sure exactly
+                # why...
+                as_tensor_variable_args = [unbroadcast(x, *range(x.type.ndim)) for x in as_tensor_variable_args]
+                # When the axis may vary, no dimension can be guaranteed to be
+                # broadcastable.
+                bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
 
         inputs = [as_tensor_variable(axis)] + as_tensor_variable_args
         if inputs[0].type not in int_types:
