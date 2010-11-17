@@ -1130,7 +1130,7 @@ class _tensor_py_operators:
     def get_constant_value(self):
         return get_constant_value(self)
 
-class TensorVariable(Variable, _tensor_py_operators):
+class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 TensorType.Variable = TensorVariable
 
@@ -1162,7 +1162,7 @@ class TensorConstantSignature(tuple):
     sum = property(_get_sum)
 
 
-class TensorConstant(Constant, _tensor_py_operators):
+class TensorConstant(_tensor_py_operators, Constant):
     """Subclass to add the tensor operators to the basic `Constant` class.
 
     To create a TensorConstant, use the `constant` function in this module.
@@ -1171,7 +1171,7 @@ class TensorConstant(Constant, _tensor_py_operators):
         return TensorConstantSignature((self.type, self.data))
 TensorType.Constant = TensorConstant
 
-class TensorValue(Value, _tensor_py_operators):
+class TensorValue(_tensor_py_operators, Value):
     """Subclass to add the tensor operators to the basic `Value` class.
 
     To create a TensorValue, use the `value` function in this module.

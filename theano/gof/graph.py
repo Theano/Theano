@@ -299,6 +299,15 @@ class Variable(utils.object2):
         cp = self.__class__(self.type, None, None, self.name)
         cp.tag = copy(self.tag)
         return cp
+    
+    def __lt__(self,other): 
+        raise NotImplementedError('Subclasses of Variable must implement __lt__')
+    def __le__(self,other): 
+        raise NotImplementedError('Subclasses of Variable must implement __le__')
+    def __gt__(self,other): 
+        raise NotImplementedError('Subclasses of Variable must implement __gt__')
+    def __ge__(self,other): 
+        raise NotImplementedError('Subclasses of Variable must implement __ge__')
 
 class Value(Variable):
     """
