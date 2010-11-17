@@ -286,11 +286,14 @@ but note that you must first register to it, by going to `theano-users`_).
 Windows V1 (bigger install, but simpler instructions + tentative GPU instructions)
 ----------------------------------------------------------------------------------
 
-- Install `Python(x,y) <http://www.pythonxy.com>`_. It is a single installation
+- Install `Python(x,y) <http://www.pythonxy.com>`_ in a directory without blank
+  spaces in the name (in particular not into ``C:\Program Files``).
+  It is a single installation
   file that contains additional packages like Numpy, Scipy, IPython, Matplotlib,
   MinGW, Nose, etc. Note that this implies you do not already have a Python
   installation (if you do have one, then you will need to either remove it first,
   or install those additional packages manually as described in the V2 instructions).
+  You can keep the default install options (except for the installation directory).
 
 - Install Mercurial. You can download it
   `here <http://mercurial.selenic.com/downloads>`_. You may get either the command
@@ -351,31 +354,67 @@ Windows V1.5 (optional follow-up to V1 instructions)
   GotoBLAS2 can be downloaded
   `here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`_
   after registering on the website (we tested v1.13).
-  To compile it, you also need to install MSYS and Perl (for instance
+  To compile it, you will also need to install MSYS and Perl (for instance
   ActivePerl).
   The GotoBLAS makefiles actually expect a full UNIX environment (like
   Cygwin) but the BLAS compilation seems to work with only MSYS and Perl.
-  The LAPACK compilation fails, but is not needed anyways.
+  The LAPACK compilation fails, but Theano does not need it.
 
-  (WORK-IN-PROGRESS, TO BE CONTINUED)
+  a) Download the mingw-get command-line installer from the
+     `MinGW files <http://sourceforge.net/projects/mingw/>`_ (click
+     "View all files", and make sure you do not mix it up with
+     mingw-get-inst).
 
-  Compilation steps:
+  b) Unpack it into your pythonxy\mingw directory.
 
-  a) Unpack GotoBLAS2 (using `7-zip <http://www.7-zip.org/>`_ or the
-     MSYS tar command).
+  c) On the command-line, install MSYS with
 
-  b) open MSYS, change directory to GotoBLAS2 (cd command)
+    .. code-block:: bash
+    
+        mingw-get install msys-base
 
-  c) type "quickbuild.win32 1>log.txt 2>err.txt"
-     The compilation takes a few minutes. Afterwards, you will find
-     lots of error messages in the err.txt file, but you
-     should also find a libgoto2.dll file in the exports folder.
+  d) Create an easily accessible shortcut (e.g. on your desktop) to
+     pythonxy\mingw\msys\1.0\msys.bat. Run it and within the MSYS
+     console, run the MSYS post-install script:
 
-  d) Copy libgoto2.dll from the exports folder to mingw\bin and mingw\lib.
+    .. code-block:: bash
 
-  e) Modify the .theanorc file: ldflags = -lgoto2
+        /postinstall/pi.sh
+
+    It will ask for your MinGW installation directory (e.g.
+    c:/pythonxy/mingw).
+
+  e) Download `ActivePerl <http://www.activestate.com/activeperl>`_ and
+     install it.
+    
+  f) Unpack GotoBLAS2 (e.g. using `7-zip <http://www.7-zip.org/>`_ or in
+     MSYS with:
+
+    .. code-block:: bash
+
+        tar zxvf /path/to/GotoBLAS2-1.13.tar.gz
+
+  g) In MSYS, go into the GotoBLAS2 directory that was unpacked.
+
+  h) Compile GotoBLAS2 with:
+
+    .. code-block:: bash
+
+      quickbuild.win32 1>log.txt 2>err.txt  
+
+    Compilation should take a few minutes. Afterwards, you will probably
+    find many error messages in err.txt, but also a libgoto2.dll
+    file in the exports folder. [NOTE: INSTRUCTIONS TO BE CONTINUED]
+
+  i) Copy libgoto2.dll from the exports folder to pythonxy\mingw\bin
+     and pythonxy\mingw\lib.
+
+  j) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
      This setting can also be changed in Python for testing purposes:
-     theano.config.blas.ldflags = ...
+
+    .. code-block:: python
+
+        theano.config.blas.ldflags = "-lgoto2"
 
 - (Optional). To test the BLAS performance, you can run the script check_blas.py.
   For comparison I also downloaded and compiled the unoptimized standard
