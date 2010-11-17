@@ -18,7 +18,7 @@ if enable_sparse == False:
 from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_variable, _is_sparse_variable
 from theano.sparse.basic import _mtypes
 from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties, SparseType, StructuredDotCSC
-from theano.sparse import add, structured_dot, transpose
+from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 
 from theano.tests import unittest_tools as utt
@@ -72,22 +72,43 @@ class T_transpose(unittest.TestCase):
         vta = eval_outputs([ta])
         self.failUnless(vta.shape == (3,5))
 
-class T_Add(unittest.TestCase):
-    def testSS(self):
+class T_AddMul(unittest.TestCase):
+    def testAddSS(self):
+        self._testSS(add)
+    def testAddSD(self):
+        self._testSD(add)
+    def testAddDS(self):
+        self._testDS(add)
+
+    def testMulSS(self):
+        self._testSS(mul,
+                     numpy.array([[1., 0], [3, 0], [0, 6]]),
+                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+    def testMulSD(self):
+        self._testSD(mul,
+                     numpy.array([[1., 0], [3, 0], [0, 6]]),
+                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+    def testMulDS(self):
+        self._testDS(mul,
+                     numpy.array([[1., 0], [3, 0], [0, 6]]),
+                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+
+    def _testSS(self, op, array1 = numpy.array([[1., 0], [3, 0], [0, 6]]),
+                array2 = numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(numpy.array([[1., 0], [3, 0], [0, 6]]))
+            a = mtype(array1)
             aR = as_sparse_variable(a)
             self.failIf(aR.data is a)
             self.failUnless(_is_sparse(a))
             self.failUnless(_is_sparse_variable(aR))
 
-            b = mtype(numpy.asarray([[0, 2.], [0, 4], [5, 0]]))
+            b = mtype(array2)
             bR = as_sparse_variable(b)
             self.failIf(bR.data is b)
             self.failUnless(_is_sparse(b))
             self.failUnless(_is_sparse_variable(bR))
 
-            apb = add(aR, bR)
+            apb = op(aR, bR)
             self.failUnless(_is_sparse_variable(apb))
 
             self.failUnless(apb.type.dtype == aR.type.dtype, apb.type.dtype)
@@ -97,58 +118,77 @@ class T_Add(unittest.TestCase):
 
             val = eval_outputs([apb])
             self.failUnless(val.shape == (3,2))
-            self.failUnless(numpy.all(val.todense() == (a + b).todense()))
-            self.failUnless(numpy.all(val.todense() == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            if op is add:
+                self.failUnless(numpy.all(val.todense() == (a + b).todense()))
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            elif op is mul:
+                self.failUnless(numpy.all(val.todense() == (a.multiply(b)).todense()))
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0], [9, 0], [0, 36]])))
 
-    def testSD(self):
+    def _testSD(self, op, array1 = numpy.array([[1., 0], [3, 0], [0, 6]]),
+                array2 = numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = numpy.array([[1., 0], [3, 0], [0, 6]])
+            a = numpy.array(array1)
             aR = tensor.as_tensor_variable(a)
             self.failIf(aR.data is a) #constants are copied
             self.failUnless(_is_dense(a))
             self.failUnless(_is_dense_variable(aR))
 
-            b = mtype(numpy.asarray([[0, 2.], [0, 4], [5, 0]]))
+            b = mtype(array2)
             bR = as_sparse_variable(b)
             self.failIf(bR.data is b) #constants are copied
             self.failUnless(_is_sparse(b))
             self.failUnless(_is_sparse_variable(bR))
 
-            apb = add(aR, bR)
-            self.failUnless(_is_dense_variable(apb))
+            apb = op(aR, bR)
 
             self.failUnless(apb.type.dtype == aR.type.dtype, apb.type.dtype)
             self.failUnless(apb.type.dtype == bR.type.dtype, apb.type.dtype)
 
             val = eval_outputs([apb])
             self.failUnless(val.shape == (3, 2))
-            self.failUnless(numpy.all(val == (a + b)))
-            self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            if op is add:
+                self.failUnless(_is_dense_variable(apb))
+                self.failUnless(numpy.all(val == (a + b)))
+                self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            elif op is mul:
+                self.failUnless(_is_sparse_variable(apb))
+                self.failUnless(numpy.all(val.todense() == (b.multiply(a))))
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0], 
+[9, 0], [0, 36]])))
 
-    def testDS(self):
+    def _testDS(self, op, array1 = numpy.array([[1., 0], [3, 0], [0, 6]]),
+                array2 = numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(numpy.array([[1., 0], [3, 0], [0, 6]]))
+            a = mtype(array1)
             aR = as_sparse_variable(a)
             self.failIf(aR.data is a)
             self.failUnless(_is_sparse(a))
             self.failUnless(_is_sparse_variable(aR))
 
-            b = numpy.asarray([[0, 2.], [0, 4], [5, 0]])
+            b = numpy.asarray(array2)
             bR = tensor.as_tensor_variable(b)
             self.failIf(bR.data is b)
             self.failUnless(_is_dense(b))
             self.failUnless(_is_dense_variable(bR))
 
-            apb = add(aR, bR)
-            self.failUnless(_is_dense_variable(apb))
+            apb = op(aR, bR)
 
             self.failUnless(apb.type.dtype == aR.type.dtype, apb.type.dtype)
             self.failUnless(apb.type.dtype == bR.type.dtype, apb.type.dtype)
 
             val = eval_outputs([apb])
             self.failUnless(val.shape == (3, 2))
-            self.failUnless(numpy.all(val == (a + b)))
-            self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            if op is add:
+                self.failUnless(_is_dense_variable(apb))
+                self.failUnless(numpy.all(val == (a + b)))
+                self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
+            elif op is mul:
+                self.failUnless(_is_sparse_variable(apb))
+                self.failUnless(numpy.all(val.todense() == (a.multiply(b))))
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0], 
+[9, 0], [0, 36]])))
+
 
 class T_conversion(unittest.TestCase):
     def setUp(self):
