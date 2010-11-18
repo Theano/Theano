@@ -81,8 +81,11 @@ class MercurialRuntimeError(Exception):
     pass
 
 def run_mercurial_command(hg_command):
+    hg_executable = os.environ.get("HG", None) or "hg"
+    hg_command_tuple = hg_command.split()
+    hg_command_tuple.insert(0, hg_executable)
     try:
-        hg_subprocess = Popen(hg_command.split(), stdout=PIPE, stderr=PIPE)
+        hg_subprocess = Popen(hg_command_tuple, stdout=PIPE, stderr=PIPE)
     except OSError:
         print >> sys.stderr, "Can't find the hg executable!"
         sys.exit(1)
@@ -99,22 +102,22 @@ def parse_stdout_filelist(hg_out_filelist):
     return files
 
 def changed_files():
-    hg_out = run_mercurial_command("hg tip --template '{file_mods}'")
+    hg_out = run_mercurial_command("tip --template '{file_mods}'")
     return parse_stdout_filelist(hg_out)
 
 def added_files():
-    hg_out = run_mercurial_command("hg tip --template '{file_adds}'")
+    hg_out = run_mercurial_command("tip --template '{file_adds}'")
     return parse_stdout_filelist(hg_out)
 
 def is_python_file(filename):
     return filename.endswith(".py")
 
 def get_file_contents(filename, revision="tip"):
-    hg_out = run_mercurial_command("hg cat -r %s %s" % (revision, filename))
+    hg_out = run_mercurial_command("cat -r %s %s" % (revision, filename))
     return hg_out
 
 def save_commit_message(filename):
-    commit_message = run_mercurial_command("hg tip --template '{desc}'")
+    commit_message = run_mercurial_command("tip --template '{desc}'")
     save_file = open(filename, "w")
     save_file.write(commit_message)
     save_file.close()
