@@ -1887,7 +1887,14 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 }
 
 PyObject *
-CudaNdarray_Dot(PyObject* _unsed, PyObject * args)
+CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
+    cudaThreadExit();
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+PyObject *
+CudaNdarray_Dot(PyObject* _unused, PyObject* args)
 {
     PyObject *l=NULL;
     PyObject *r=NULL;
@@ -2041,6 +2048,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
+    {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */

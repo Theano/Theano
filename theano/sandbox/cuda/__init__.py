@@ -1,4 +1,4 @@
-import os, stat
+import atexit, os, stat
 from theano.compile import optdb
 from theano import config
 
@@ -94,6 +94,7 @@ if cuda_available:
         gpu_init()
         cuda_available = True
         cuda_initialization_error_message = ""
+        atexit.register(gpu_shutdown)
     except EnvironmentError, e:
         cuda_available = False
         cuda_initialization_error_message = e.message
