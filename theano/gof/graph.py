@@ -305,7 +305,7 @@ class Variable(utils.object2):
     def __le__(self,other): 
         raise NotImplementedError('Subclasses of Variable must implement __le__')
     def __gt__(self,other): 
-        raise NotImplementedError('Subclasses of Variable must implement __gt__')
+        raise NotImplementedError('Subclasses of Variable must implement __gt__',self.__class__.__name__)
     def __ge__(self,other): 
         raise NotImplementedError('Subclasses of Variable must implement __ge__')
 
