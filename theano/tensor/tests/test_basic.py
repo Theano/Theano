@@ -1507,19 +1507,6 @@ class T_Join_and_Split(unittest.TestCase):
     """
     Split is tested by each verify_grad method.
     """
-
-    class Join1(Op):
-        def make_node(self, *inputs):
-            inputs = [as_tensor_variable(t) for t in inputs]
-            outputs = [lscalar()] + [i.type() for i in inputs]
-            return Apply(self, inputs, outputs)
-        def perform(self, node, inputs, outputs):
-            outputs[0][0] = 1
-            for i,o in zip(inputs, outputs[1:]):
-                o[0] = i.copy()
-        def grad(self, inputs, g_outputs):
-            return g_outputs[1:]
-
     def setUp(self):
         Join.debug = False
 
@@ -1653,6 +1640,70 @@ class T_Join_and_Split(unittest.TestCase):
         a,b,c = triple
         f = function([x,y], [b,c,a])
         assert numpy.allclose(f(4, 5), [5, 9, 4])
+
+    def test_broadcastable_flag_assignment_mixed_otheraxes(self):
+        """
+        Test that the broadcastable flags for the output of
+        a join operation on non-join axes are True if one or
+        more inputs is broadcastable on that dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[0, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(1, a, b)
+        assert c.type.broadcastable[0] and c.type.broadcastable[2]
+        assert not c.type.broadcastable[1]
+
+    def test_broadcastable_flag_assignment_mixed_thisaxes(self):
+        """
+        Test that the broadcastable flag of the join axis
+        is False when some inputs are broadcastable on that
+        dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[0, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        assert not c.type.broadcastable[0]
+
+    def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
+        """
+        Test that joining together several inputs which are all
+        broadcastable on the join dimension results in the output
+        being non-broadcastable on the join dimension.
+        """
+        a = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        b = TensorType(dtype='int8', broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        assert not c.type.broadcastable[0]
+
+    def test_broadcastable_single_input_broadcastable_dimension(self):
+        """
+        Test that all broadcastable flags are preserved by a
+        single-input join.
+        """
+        a = join(0, TensorType(dtype='int8', broadcastable=[1, 0, 1])())
+        assert a.type.broadcastable[0]
+        assert a.type.broadcastable[2]
+        assert not a.type.broadcastable[1]
+
+    def test_broadcastable_flags_many_dims_and_inputs(self):
+        """
+        Test that the right broadcastable flags get set for a  join
+        with many inputs and many input dimensions.
+        """
+        a = TensorType(dtype='int8', broadcastable=[1, 0, 1, 0, 0, 0])()
+        b = TensorType(dtype='int8', broadcastable=[1, 1, 1, 0, 0, 0])()
+        c = TensorType(dtype='int8', broadcastable=[1, 0, 0, 0, 0, 0])()
+        d = TensorType(dtype='int8', broadcastable=[1, 0, 1, 1, 0, 1])()
+        e = TensorType(dtype='int8', broadcastable=[1, 0, 1, 0, 0, 1])()
+        f = join(0, a, b, c, d, e)
+        fb = f.type.broadcastable
+        assert not fb[0] and fb[1] and fb[2] and fb[3] and not fb[4] and fb[5]
+        g = join(1, a, b, c, d, e)
+        gb = g.type.broadcastable
+        assert gb[0] and not gb[1] and gb[2] and gb[3] and not gb[4] and gb[5]
+        h = join(4, a, b, c, d, e)
+        hb = h.type.broadcastable
+        assert hb[0] and hb[1] and hb[2] and hb[3] and not hb[4] and hb[5]
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):
@@ -3458,7 +3509,7 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow = True)
             x /= .5
 
-            #this is not required by the contract but it is a feature we've 
+            #this is not required by the contract but it is a feature we've
             #implemented for some type of SharedVariable.
             if self.get_value_borrow_true_alias:
                 assert numpy.allclose(self.ref_fct(x), total_func())
@@ -3484,16 +3535,16 @@ def makeSharedTester(shared_constructor_,
             #in this case we can alias with the internal value
             x = x_shared.get_value(borrow = True, return_internal_type = True)
             assert self.test_internal_type(x)
-            
+
             values_to_add = .5
             if self.add_matrix:
                 values_to_add = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
             x /= values_to_add#supported by ndarray and CudaNdarray
 
-            #this is not required by the contract but it is a feature we can 
+            #this is not required by the contract but it is a feature we can
             #implement for some type of SharedVariable.
             assert numpy.allclose(self.ref_fct(x), total_func())
-            
+
             x = x_shared.get_value(borrow = False, return_internal_type = True)
             assert self.test_internal_type(x)
             assert x is not x_shared.container.value
@@ -3582,8 +3633,8 @@ test_shared_options=makeSharedTester(tensor.shared, 'float64',
                                      True, True, True,
                                      numpy.ndarray,
                                      lambda a: isinstance(a,numpy.ndarray),
-                                     theano.tensor.sum, numpy.sum)
-
+                                     theano.tensor.sum,
+                                     numpy.sum)
 
 if __name__ == '__main__':
     if 1:

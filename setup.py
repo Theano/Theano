@@ -36,8 +36,8 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 3
 MICRO               = 0
-SUFFIX              = "rc1"  # Should be blank except for rc's, betas, etc.
-ISRELEASED          = True
+SUFFIX              = "rc3"  # Should be blank except for rc's, betas, etc.
+ISRELEASED          = False
 
 if MICRO > 0:
     VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
@@ -90,7 +90,7 @@ if not release:
         HG_REVISION = hg_version()
     elif os.path.exists(filename):
         # must be a source distribution, use existing version file
-        from theano.version import hg_revision as HG_REVISION
+        HG_REVISION = "RELEASE"
     else:
         HG_REVISION = "unknown-hg"
 
