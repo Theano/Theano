@@ -81,7 +81,7 @@ class MercurialRuntimeError(Exception):
     pass
 
 def run_mercurial_command(hg_command):
-    hg_executable = os.environ.get("HG", None) or "hg"
+    hg_executable = os.environ.get("HG", "hg")
     hg_command_tuple = hg_command.split()
     hg_command_tuple.insert(0, hg_executable)
     try:
