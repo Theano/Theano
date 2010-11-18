@@ -5,7 +5,8 @@ from basic import TensorType, _tensor_py_operators, autocast_int, autocast_float
 from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
-class TensorSharedVariable(SharedVariable, _tensor_py_operators):
+# _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
+class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     pass
 
 @shared_constructor
@@ -33,9 +34,10 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=False, bor
             strict=strict,
             allow_downcast=allow_downcast)
 
-# TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
-# dont do purely scalar-scalar operations
-class ScalarSharedVariable(SharedVariable, _tensor_py_operators):
+# TensorSharedVariable brings in the tensor operators, is not ideal, but works
+# as long as we dont do purely scalar-scalar operations
+# _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
+class ScalarSharedVariable(_tensor_py_operators, SharedVariable):
     pass
 
 @shared_constructor
