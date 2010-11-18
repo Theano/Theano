@@ -11,19 +11,19 @@ class TensorSharedVariable(SharedVariable, _tensor_py_operators):
 @shared_constructor
 def tensor_constructor(value, name=None, strict=False, allow_downcast=False, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType
-    
-    :note: Regarding the inference of the broadcastable pattern... 
+
+    :note: Regarding the inference of the broadcastable pattern...
     The default is to assume that the value might be resized in any dimension, so the default
     broadcastable is ``(False,)*len(value.shape)``.  The optional `broadcastable` argument will
     override this default.
-    
+
     """
     if not isinstance(value, numpy.ndarray):
         raise TypeError()
 
     # if no broadcastable is given, then the default is to assume that the value might be
     # resized in any dimension in the future.
-    # 
+    #
     if broadcastable is None:
         broadcastable = (False,)*len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
@@ -34,17 +34,17 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=False, bor
             allow_downcast=allow_downcast)
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
-# dont do purely scalar-scalar operations 
+# dont do purely scalar-scalar operations
 class ScalarSharedVariable(SharedVariable, _tensor_py_operators):
     pass
 
 @shared_constructor
 def scalar_constructor(value, name=None, strict=False, allow_downcast=False):
-    """SharedVariable constructor for scalar values. Default: int64 or float64. 
+    """SharedVariable constructor for scalar values. Default: int64 or float64.
 
     :note: We implement this using 0-d tensors for now.
-    
-    """  
+
+    """
     if not isinstance (value, (numpy.number, float, int, complex)):
         raise TypeError()
     try:
