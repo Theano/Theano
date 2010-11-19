@@ -94,10 +94,11 @@ if cuda_available:
         gpu_init()
         cuda_available = True
         cuda_initialization_error_message = ""
-        # do garbage collection before releasing the gpu to avoid releasing invalid pointers later
-        atexit.register(gc.collect)
         # actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
+        # do garbage collection before releasing the gpu to avoid releasing invalid pointers later
+        # note that atexit-registered calls are called in LIFO order
+        atexit.register(gc.collect)
     except EnvironmentError, e:
         cuda_available = False
         cuda_initialization_error_message = e.message
