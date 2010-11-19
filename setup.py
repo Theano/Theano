@@ -24,7 +24,8 @@ Operating System :: MacOS
 NAME                = 'Theano'
 MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
-DESCRIPTION         = 'Optimizing compiler for mathematical expressions'
+DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
+                       'expressions on CPUs and GPUs.')
 LONG_DESCRIPTION    = ""
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
@@ -39,12 +40,7 @@ MICRO               = 0
 SUFFIX              = "rc3"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
-if MICRO > 0:
-    VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
-else:
-    VERSION             = "%d.%d" % (MAJOR, MINOR)
-
-VERSION += SUFFIX
+VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
 
 # Return the hg revision as a string -- borrowed from hg_version in NumPy's
 # setup.py file
