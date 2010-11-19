@@ -332,6 +332,7 @@ conv_patch_stack( float* img, float* kern, float* out,
 	
 	for (int row=0; row < kern_len; row++) {//loop over row
 	  if(!preload_full_kern){
+	    __syncthreads();
 	    int idx2;
 	    if(flipped_kern) idx2=(kern_len-row-1)*kern_stride_row;
 	    else idx2=(row)*kern_stride_row;
@@ -381,6 +382,7 @@ conv_patch_stack( float* img, float* kern, float* out,
 	  
 	  for (int row=0; row < kern_len; row++) {//loop over row
 	    if(!preload_full_kern){
+	      __syncthreads();
 	      int idx2=kern_stride_stack*stack;
 	      if(flipped_kern)
 		idx2+=(kern_len-row-1)*kern_stride_row;
