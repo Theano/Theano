@@ -903,19 +903,19 @@ class T_graphstructures(unittest.TestCase):
 
     def test_graphstructures_1(self):
 
-        from theano.tensor import *
-
-        x = dmatrix('x')
-        y = dmatrix('y')
+        x = T.dmatrix('x')
+        y = T.dmatrix('y')
         z = x + y
 
-        x = matrix('x')
-        y = matrix('y')
-        z = matrix('z')
+        x = T.matrix('x')
+        y = T.matrix('y')
+        z = T.matrix('z')
 
         # create 2 Variables (one for 'e', one intermediate for y*z)
         # create 2 Apply instances (one for '+', one for '*')
         e = x + y * z
+
+        from theano.tensor import add, mul, Apply, Variable, TensorType
 
         # Instantiate a type that represents a matrix of doubles
         float64_matrix = TensorType(dtype = 'float64',              # double

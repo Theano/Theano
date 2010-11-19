@@ -26,7 +26,7 @@ should help you understand how these pieces fit together:
 
 **Diagram**
 
-.. image:: apply.png 
+.. image:: apply.png
 
 -----------------------
 
@@ -74,12 +74,10 @@ This is what you would normally type:
 
 .. code-block:: python
 
-    from theano.tensor import *
-
     # create 3 Variables with owner = None
-    x = matrix('x')
-    y = matrix('y')
-    z = matrix('z')
+    x = T.matrix('x')
+    y = T.matrix('y')
+    z = T.matrix('z')
 
     # create 2 Variables (one for 'e', one intermediate for y*z)
     # create 2 Apply instances (one for '+', one for '*')
@@ -95,7 +93,7 @@ This is what you would type to build the graph explicitly:
 
 .. code-block:: python
 
-    from theano.tensor import *
+    from theano.tensor import add, mul, Apply, Variable, TensorType
 
     # Instantiate a type that represents a matrix of doubles
     float64_matrix = TensorType(dtype = 'float64',              # double
