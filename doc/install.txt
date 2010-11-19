@@ -21,12 +21,13 @@ to be installed:
         not well-tested.
 
     Python >= 2.5 (2.4 should be supported as well)
-        Including the development package(python-dev or python-devel on most OS)
+        Including the development package (``python-dev`` or ``python-devel``
+	on most Linux distributions).
 
     ``g++``, ``python-dev``
 	Not technically required but *highly* recommended, in order to compile
-	generated C code. Theano `can` fall back on a NumPy-based execution model,
-	but a C compiler allows for vastly faster execution.
+	generated C code. Theano `can` fall back on a NumPy-based execution
+	model, but a C compiler allows for vastly faster execution.
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.3.0
         Earlier versions have memory leaks.
@@ -50,13 +51,14 @@ The following libraries and software are optional:
     `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
         Recommended, to run Theano's test-suite.
     `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
-	For building the documentation. LaTeX_ and dvipng_ are also necessary for
-	math to show up as images.
+	For building the documentation. LaTeX_ and dvipng_ are also necessary
+	for math to show up as images.
     `Mercurial <http://www.selenic.com/mercurial/>`_
         To download bleeding-edge versions of Theano.
-    `NVIDIA CUDA drivers and SDK <http://developer.nvidia.com/object/gpucomputing.html>`_
-	Required for GPU code generation/execution. Only NVIDIA GPUs using 32-bit
-	floating point numbers are currently supported.
+    `NVIDIA CUDA drivers and SDK
+    <http://developer.nvidia.com/object/gpucomputing.html>`_
+	Required for GPU code generation/execution. Only NVIDIA GPUs using
+	32-bit floating point numbers are currently supported.
 
 .. _LaTeX: http://www.latex-project.org/
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
@@ -66,23 +68,24 @@ The following libraries and software are optional:
 Getting the code
 -----------------
 
-If you are a developer of Theano, then check out the :ref:`dev_start_guide` guide. 
+If you are a developer of Theano, then check out the :ref:`dev_start_guide`
+guide.
 
-The following are general instructions that will set you up with the bleeding-edge 
-version of Theano. First, get the code using `mercurial <http://www.selenic.com/mercurial/wiki/>`__:
+The following are general instructions that will set you up with the
+bleeding-edge version of Theano. First, get the code using `mercurial
+<http://www.selenic.com/mercurial/wiki/>`__:
 
 .. code-block:: bash
 
     hg clone http://hg.assembla.com/theano Theano
 
-Configuring PYTHONPATH
----------------------------
+Configuring ``PYTHONPATH``
+--------------------------
 
-The subdirectory Theano/theano has to be located in a path
-mentioned in your PYTHONPATH. In order to do that, you can either
-create a symbolic link to Theano/theano in a directory already
-mentioned in your PYTHONPATH environment variable, or modify the
-PYTHONPATH so that it mentions Theano.
+The subdirectory ``Theano/theano`` has to be located in a path mentioned in
+your ``PYTHONPATH``. In order to do that, you can either create a symbolic
+link to Theano/theano in a directory already mentioned in your ``PYTHONPATH``
+environment variable, or modify the ``PYTHONPATH`` so that it mentions Theano.
 
 To create a symbolic link:
 
@@ -113,36 +116,38 @@ Once you have completed these steps, you should run the theano test suite like t
     THEANO_FLAGS=warn.ignore_bug_before=all nosetests #execute all the tests
 
 
-THEANO_FLAGS is an environment variable that define Theano flags (:ref:`libdoc_config`).
-For Windows user, you can remove it or see the doc to know how to configure them differently.
+``THEANO_FLAGS`` is an environment variable that define Theano flags
+(:ref:`libdoc_config`).  For Windows users, you can remove it or see the
+documentation to know how to configure them differently.
 
-All tests should pass except the test marked as KnownFailureTest. If some test 
-fails on your machine, you are encouraged to tell us what went wrong on the 
-``theano-users@googlegroups.com`` mailing list.
+All tests should pass except the test marked as ``KnownFailureTest``. If some
+test fails on your machine, you are encouraged to tell us what went wrong on
+the ``theano-users@googlegroups.com`` mailing list.
 
 .. note::
 
-    `warn.ignore_bug_before=all` removes warnings that you don't need to see here.
-    It is also recommended for a new user to set this flag to a different value 
-    into their .theanorc file.
-    See :attr:`config.warn.ignore_bug_before` for more details.
+    `warn.ignore_bug_before=all` removes warnings that you don't need to see
+    here.  It is also recommended for a new user to set this flag to a
+    different value into their .theanorc file.  See
+    :attr:`config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
------------------------------------------------------
+--------------------------------------------------
 
-There are many ways to configure BLAS for Theano. This is done with the 
-Theano flags blas.ldflags (:ref:`libdoc_config`). The default is to use
-the blas installation information in numpy, accessible via ``numpy.distutils.__config__.show()``.
-You can tell theano to use a different
-version of BLAS, in case you didn't compile numpy with a fast BLAS or if numpy was compiled with a 
-static library of blas (the latter is not supported in theano).
+There are many ways to configure BLAS for Theano. This is done with the Theano
+flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
+installation information in NumPy, accessible via
+``numpy.distutils.__config__.show()``.  You can tell theano to use a different
+version of BLAS, in case you didn't compile numpy with a fast BLAS or if numpy
+was compiled with a static library of BLAS (the latter is not supported in
+Theano).
 
-The short way to configure the theano flags blas.ldflags is by setting the
-environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX``
-(in bash ``export THEANO_FLAGS=blas.ldflags=XXX``)
+The short way to configure the Theano flags ``blas.ldflags`` is by setting the
+environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX`` (in bash
+``export THEANO_FLAGS=blas.ldflags=XXX``)
 
-The ``${HOME}/.theanorc`` file is the simplest way to set a relatively permanent
-option like this one.  Add a ``[blas]`` section with an ``ldflags``
+The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
+permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
 entry like this:
 
 .. code-block:: text
@@ -154,20 +159,20 @@ entry like this:
 
     # other stuff can go here
 
-For more information on the formatting of ``~/.theanorc`` and the configuration options that you can put there, 
-see :ref:`libdoc_config`.
+For more information on the formatting of ``~/.theanorc`` and the
+configuration options that you can put there, see :ref:`libdoc_config`.
 
 Here are some different way to configure BLAS:
 
-0) Do nothing and use the default config, which is to link against the same BLAS that numpy was built with. This doesn't work in the case numpy was compiled with a static library (e.g. ATLAS is compiled by default only as a static lib). 
+0) Do nothing and use the default config, which is to link against the same BLAS against which NumPy was built. This doesn't work in the case NumPy was compiled with a static library (e.g. ATLAS is compiled by default only as a static library).
 
-1) Disable the usage of BLAS and fall back on numpy for dot products. To do this, set the value of blas.ldflags as the empty string (ex: ``export THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your theano code performs, this might slow some things down (vs. linking with BLAS directly).
+1) Disable the usage of BLAS and fall back on NumPy for dot products. To do this, set the value of ``blas.ldflags`` as the empty string (ex: ``export THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your Theano code performs, this might slow some things down (vs. linking with BLAS directly).
 
-2) You can install the default (reference) version of BLAS if the numpy version (which theano links against) doesn't work. If you have root or sudo access in fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian ``sudo apt-get install libblas-dev``. Then put the theano flags ``blas.ldflags=-lblas``. Not that the default version of blas is not optimized. Using an optimized version can give up to 10x speedups in the BLAS functions that we use.
+2) You can install the default (reference) version of BLAS if the NumPy version (against which Theano links) doesn't work. If you have root or sudo access in fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian ``sudo apt-get install libblas-dev``. Then use the Theano flags ``blas.ldflags=-lblas``. Not that the default version of blas is not optimized. Using an optimized version can give up to 10x speedups in the BLAS functions that we use.
 
-3) Install the ATLAS library. ATLAS is an open source optimized version of BLAS. You can install a precompiled version on most OSes, but if you're willing to invest the time, you can compile it to have a faster version (we have seen speed-ups of up to 3x, especialy on more recent computers, against the precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu, ``sudo apt-get install libatlas-base-dev libatlas-base`` or ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that these flags are sometimes OS dependent.
+3) Install the ATLAS library. ATLAS is an open source optimized version of BLAS. You can install a precompiled version on most OSes, but if you're willing to invest the time, you can compile it to have a faster version (we have seen speed-ups of up to 3x, especialy on more recent computers, against the precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu, ``sudo apt-get install libatlas-base-dev libatlas-base`` or ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that these flags are sometimes OS dependent.
 
-4) Use a faster version like MKL, GOTO, ... You are on your own to install it. See the doc of that software and set the theano flags ``blas.ldflags`` correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or ``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc -lpthread``).
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it. See the doc of that software and set the Theano flags ``blas.ldflags`` correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or ``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc -lpthread``).
 
 .. note::
 
@@ -208,21 +213,21 @@ Mac
 
         $ sudo port install gcc44 py25-scipy mercurial python_select
 
-    This will install all the required theano dependencies.  Note that
+    This will install all the required Theano dependencies.  Note that
     compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
-    good BLAS implementation) and numpy, so these will be installed for you automatically.
+    good BLAS implementation) and NumPy, so these will be installed for you automatically.
 
-- You might have some old versions of gcc, SciPy, numpy, Python installed on
-  your system, perhaps via XCode. It is a good idea to use **either** the
+- You might have some old versions of gcc, SciPy, NumPy, Python installed on
+  your system, perhaps via Xcode. It is a good idea to use **either** the
   MacPorts version of everything **or** some other set of compatible versions
-  (provided by fink, or by XCode). The advantages of MacPorts are the
+  (provided by Fink, or by Xcode). The advantages of MacPorts are the
   transparency with which everything can be installed and the fact that
   packages are updated quite frequently.
 
 - In order to use the MacPorts version of python, you might
   need to explicitly select it with ``sudo python_select python25``. The
   reason this is necessary is because you might have an Apple-provided python
-  (via, for example, an XCode installation). After performing this step, you
+  (via, for example, an Xcode installation). After performing this step, you
   should check that the symbolic link provided by ``which python`` points to
   the MacPorts python. For instance, on Snow Leopard with the latest MacPorts, 
   the output of ``which python`` is ``/opt/local/bin/python`` and this symbolic
@@ -230,7 +235,7 @@ Mac
   python_select python26-apple`` (which you should **not** do), the link
   points to ``/usr/bin/python2.6``.
 
-- Once this is fixed, please check that the scipy module that is imported in
+- Once this is fixed, please check that the ``scipy`` module that is imported in
   Python is the right one (and is a recent one). For instance, ``import
   scipy`` followed by ``print scipy.version`` and ``print scipy.__path__``
   should result in a version number of at least 0.7.0 and a path that starts
@@ -242,11 +247,11 @@ Mac
 
 - Put ``export PYTHONPATH=/opt/local/lib/python2.5/site-packages:$PYTHONPATH``
   in your ``.bashrc`` in order to include your MacPorts Python packages 
-  (numpy, scipy) in Python's path.
+  (NumPy, SciPy) in Python's path.
 
 - Make sure that the gcc version that you have installed on your system is
   up-to-date (at the very least 3.4, but 4.x is better). If you have an old
-  version of XCode lying around, chances are that your gcc install is old. You
+  version of Xcode lying around, chances are that your gcc install is old. You
   should also check  ``which gcc``: if it says  ``/usr/bin/gcc`` then you
   should install gcc_select from MacPorts (``sudo port install gcc_select``)
   and use the MacPorts-provided gcc. Use ``gcc_select -l`` to see which gcc
@@ -275,7 +280,7 @@ Mac
   Theano-generated object files against the ``framework`` library in Leopard.
   For this reason, we've disabled linking with ``-framework Python``, since on 
   most configurations this solves the ``Bus error`` problem. If this default
-  configuration causes problems with your Python/theano installation and you think
+  configuration causes problems with your Python/Theano installation and you think
   that linking with ``-framework Python`` might help, then either set
   ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
   contain
@@ -297,7 +302,7 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
 - Install `Python(x,y) <http://www.pythonxy.com>`_ in a directory without blank
   spaces in the name (in particular not into ``C:\Program Files``).
   It is a single installation
-  file that contains additional packages like Numpy, Scipy, IPython, Matplotlib,
+  file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
   MinGW, Nose, etc. Note that this implies you do not already have a Python
   installation (if you do have one, then you will need to either remove it first,
   or install those additional packages manually as described in the V2 instructions).
@@ -339,7 +344,7 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
 - You are now ready to run Theano.
   It will use NumPy for dot products, which is still pretty fast (see below for
   optional instructions on how to compile your own BLAS library).
-  To test that theano correctly reads your configuration file, run Python
+  To test that Theano correctly reads your configuration file, run Python
   (e.g. by just typing ``python`` in a shell) and run the following code:
 
   .. code-block:: python
@@ -373,7 +378,7 @@ Windows V1.5 (optional follow-up to V1 instructions)
      "View all files", and make sure you do not mix it up with
      mingw-get-inst).
 
-  b) Unpack it into your pythonxy\mingw directory.
+  b) Unpack it into your ``pythonxy\mingw`` directory.
 
   c) On the command-line, install MSYS with
 
@@ -382,7 +387,7 @@ Windows V1.5 (optional follow-up to V1 instructions)
         mingw-get install msys-base
 
   d) Create an easily accessible shortcut (e.g. on your desktop) to
-     pythonxy\mingw\msys\1.0\msys.bat. Run it and within the MSYS
+     ``pythonxy\mingw\msys\1.0\msys.bat``. Run it and within the MSYS
      console, run the MSYS post-install script:
 
     .. code-block:: bash
@@ -390,7 +395,7 @@ Windows V1.5 (optional follow-up to V1 instructions)
         /postinstall/pi.sh
 
     It will ask for your MinGW installation directory (e.g.
-    c:/pythonxy/mingw).
+    ``c:\pythonxy\mingw``).
 
   e) Download `ActivePerl <http://www.activestate.com/activeperl>`_ and
      install it.
@@ -414,8 +419,8 @@ Windows V1.5 (optional follow-up to V1 instructions)
     find many error messages in err.txt, but also a libgoto2.dll
     file in the exports folder. [NOTE: INSTRUCTIONS TO BE CONTINUED]
 
-  i) Copy libgoto2.dll from the exports folder to pythonxy\mingw\bin
-     and pythonxy\mingw\lib.
+  i) Copy libgoto2.dll from the exports folder to ``pythonxy\mingw\bin``
+     and ``pythonxy\mingw\lib``.
 
   j) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
      This setting can also be changed in Python for testing purposes:
@@ -424,7 +429,7 @@ Windows V1.5 (optional follow-up to V1 instructions)
 
         theano.config.blas.ldflags = "-lgoto2"
 
-- (Optional). To test the BLAS performance, you can run the script check_blas.py.
+- (Optional). To test the BLAS performance, you can run the script ``check_blas.py``.
   For comparison I also downloaded and compiled the unoptimized standard
   BLAS. The results were the following (Intel Core2 Duo 1.86 GHz):
 
@@ -439,7 +444,7 @@ Windows V1.5 (optional follow-up to V1 instructions)
 
 - (Optional) Gpu on Windows. Not sur it work! Can you report success/error on the `theano-users <http://groups.google.com/group/theano-users>`_ mailing list?
 
-  Those are indication for 32 bits version of python, the one that come with pythonxy is 32 bits.
+  Those are indication for 32-bit version of Python, the one that come with Python(x,y) is 32-bit.
 
   Space or non ascii caracter are not always supported in path. Python support 
   them, so your configuration file path can contain them. 
@@ -460,34 +465,34 @@ Windows V1.5 (optional follow-up to V1 instructions)
 
   Then
   
-  1) Install cuda driver(32 bits on 32 bits Windows, idem for 64 bits).
+  1) Install CUDA driver (32-bit on 32-bit Windows, idem for 64-bit).
   
-  2) Install cuda toolkit 32 bits(even if you computer is 64 bits, 
-     must match the python installation version)
+  2) Install CUDA toolkit 32-bit (even if you computer is 64-bit, 
+     must match the Python installation version)
   
-  3) Install cuda sdk 32 bits
+  3) Install CUDA SDK 32-bit
   
   4) Test some pre-compiled example of the sdk
 
   5) Download Visual Studio 2008 Express(free, VS2010 not supported by nvcc 3.1,
      VS2005, not available for download, but supported by nvcc, the non free version should work too)
 
-  6) Follow the instruction in the GettingStartedWindows.pdf file from cuda web 
-     site to compile cuda code with VS2008. If that don't work, you won't be 
-     able to compile gpu code with theano.
+  6) Follow the instruction in the GettingStartedWindows.pdf file from CUDA web 
+     site to compile CUDA code with VS2008. If that don't work, you won't be 
+     able to compile GPU code with Theano.
 
   7) Put into you PATH environment variable the directory where cl.exe is. 
-     In my case it is: C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin
+     In my case it is: ``C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin``
 
-  8) Make sure the theano folder is in your PYTHONPATH environment variable.
+  8) Make sure the Theano folder is in your ``PYTHONPATH`` environment variable.
 
-  9) Then in theano do: import theano.sandbox.cuda
+  9) Then in Python do: ``import theano.sandbox.cuda``
 
-     That will print some error if their is an error to compile the first cuda file.
+     That will print some error if their is an error to compile the first CUDA file.
 
-  10) Then run the theano cuda test file. In Windows command line (cmd.exe), 
-      run the program nosetests inside the theano repository. 
-      nosetests is installed by pythonxy.
+  10) Then run the Theano CUDA test file. In Windows command line (cmd.exe), 
+      run the program nosetests inside the Theano repository. 
+      nosetests is installed by Python(x,y).
 
 Windows V2(smaller install, but longer instruction)
 ---------------------------------------------------
@@ -539,7 +544,7 @@ but this has not been tested yet.
 
 - If you do not have them already, install the latest versions of
   `Python 2.x <http://www.python.org/download/windows>`__ and
-  corresponding `Numpy <http://sourceforge.net/projects/numpy/files/>`__
+  corresponding `NumPy <http://sourceforge.net/projects/numpy/files/>`__
   then `SciPy <http://sourceforge.net/projects/scipy/files/>`__
   packages (simply use the executable installers).
 
