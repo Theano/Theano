@@ -20,7 +20,7 @@ to be installed:
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
         not well-tested.
 
-    Python >= 2.5 (2.4 should be supported as well)
+    Python >= 2.4
         Including the development package (``python-dev`` or ``python-devel``
 	on most Linux distributions).
 
