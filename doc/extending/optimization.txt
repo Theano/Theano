@@ -115,6 +115,9 @@ Global optimization
 Here is the code for a global optimization implementing the
 simplification described above:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 .. code-block:: python
 
    from theano.gof import toolbox
@@ -172,6 +175,9 @@ and :ref:`apply` to get a better understanding of the
 pointer-following game you need to get ahold of the nodes of interest
 for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 Test time:
 
@@ -239,6 +245,9 @@ Local optimization
 
 The local version of the above code would be the following:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 
 .. code-block:: python
 
@@ -274,6 +283,9 @@ In order to apply the local optimizer we must use it in conjunction
 with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
 optimizer that loops through all nodes in the graph (or a well-defined
 subset of them) and applies one or several local optimizers on them.
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 >>> x = double('x')
 >>> y = double('y')

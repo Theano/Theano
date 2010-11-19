@@ -67,6 +67,9 @@ Putting it all Together
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_1
+
 .. code-block:: python
 
     from theano import function, config, shared, sandbox
@@ -120,6 +123,9 @@ the graph to express a computation with a GPU-stored result.  The gpu_from_host
 Op means "copy the input from the host to the gpu" and it is optimized away
 after the T.exp(x) is replaced by a GPU version of exp().
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_2
+
 .. code-block:: python
 
     from theano import function, config, shared, sandbox
@@ -171,6 +177,8 @@ that it has the un-wanted side-effect of really slowing things down.
     The story here about copying and working buffers is misleading and potentially not correct
     ... why exactly does borrow=True cut 75% of the runtime ???
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_3
 .. code-block:: python
 
     from theano import function, config, shared, sandbox, Out

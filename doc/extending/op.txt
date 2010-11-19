@@ -170,6 +170,9 @@ multiplication Op could take an arbitrary number of arguments.
 
 First, we'll instantiate a ``mul`` Op:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
+
 .. code-block:: python
 
    from theano import gof
@@ -186,6 +189,9 @@ type.
 Since multiplying two doubles yields a double,
 this function makes an Apply node with an output Variable of type
 ``double``.
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
 .. code-block:: python
 
@@ -219,6 +225,8 @@ built-in type ``float`` because this is the type that ``double.filter()``
 will always return, per our own definition. ``output_storage`` will
 contain a single storage cell for the multiplication's variable.
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 .. code-block:: python
 
    def perform(node, inputs, output_storage):
@@ -247,6 +255,8 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
 Trying out our new Op
 =====================
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 In the following code, we use our new Op:
 
 >>> x, y = double('x'), double('y')
@@ -276,6 +286,8 @@ Well, OK. We'd like our Op to be a bit more flexible. This can be done
 by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 ``x`` and/or ``y``:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 .. code-block:: python
 
    def make_node(x, y):
@@ -291,6 +303,9 @@ by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 Whenever we pass a Python int or float instead of a Variable as ``x`` or
 ``y``, ``make_node`` will convert it to :ref:`constant` for us. ``gof.Constant``
 is a :ref:`variable` we statically know the value of.
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_op.test_op_1
 
 >>> x = double('x')
 >>> z = mul(x, 2)
@@ -318,6 +333,9 @@ The above example is pedagogical.  When you define other basic arithmetic
 operations ``add``, ``sub`` and ``div``, code for ``make_node`` can be
 shared between these Ops. Here is revised implementation of these four
 arithmetic operators:
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
 .. code-block:: python
 

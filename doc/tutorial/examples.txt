@@ -28,6 +28,10 @@ individual element of the matrix.
 
 Well, what you do is this:
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_1
+
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
 >>> logistic = function([x], s)
@@ -47,6 +51,8 @@ It is also the case that:
 
 We can verify that this alternate form produces the same values:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_2
 >>> s2 = (1 + T.tanh(x / 2)) / 2
 >>> logistic2 = function([x], s2)
 >>> logistic2([[0, 1], [-1, -2]])
@@ -61,6 +67,8 @@ Theano supports functions with multiple outputs. For example, we can
 compute the :ref:`elementwise <libdoc_tensor_elementwise>` difference, absolute difference, and
 squared difference between two matrices ``a`` and ``b`` at the same time:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_3
 >>> a, b = T.dmatrices('a', 'b')
 >>> diff = a - b
 >>> abs_diff = abs(diff)
@@ -95,6 +103,10 @@ gradient of :math:`x^2` with respect to :math:`x`. Note that:
 
 Here is code to compute this gradient:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_4
+
+>>> from theano import pp
 >>> x = T.dscalar('x')
 >>> y = x**2
 >>> gy = T.grad(y, x)
@@ -132,6 +144,10 @@ logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
     A plot of the gradient of the logistic function, with x on the x-axis
     and :math:`ds(x)/dx` on the y-axis.
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_5
+
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
 >>> gs = T.grad(s, x)
@@ -165,6 +181,10 @@ Let's say you want to define a function that adds two numbers, except
 that if you only provide one number, the other input is assumed to be
 one. You can do it like this:
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_6
+
+>>> from theano import Param
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
 >>> f = function([x, Param(y, default=1)], z)
@@ -181,6 +201,10 @@ its ``default`` field set to 1.
 Inputs with default values must follow inputs without default
 values (like python's functions).  There can be multiple inputs with default values. These parameters can
 be set positionally or by name, as in standard Python:
+
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_7
 
 >>> x, y, w = T.dscalars('x', 'y', 'w')
 >>> z = (x + y) * w
@@ -219,6 +243,10 @@ is incremented by the function's argument.
 First let's define the ``accumulator`` function. It adds its argument to the
 internal state, and returns the old state value.
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_8
+
+>>> from theano import shared
 >>> state = shared(0)
 >>> inc = T.iscalar('inc')
 >>> accumulator = function([inc], state, updates=[(state, state+inc)])
@@ -240,6 +268,9 @@ corresponding expression".  Above, our accumulator replaces the ``state``'s valu
 of the state and the increment amount.
 
 Anyway, let's try it out! 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> state.value
 array(0)
@@ -263,6 +294,9 @@ array(2)
 As we mentioned above, you can define more than one function to use the same
 shared variable.  These functions can both update the value.
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_8
+
 >>> decrementor = function([inc], state, updates=[(state, state-inc)])
 >>> decrementor(2)
 array(2)
@@ -282,6 +316,9 @@ It may happen that you expressed some formula using a shared variable, but
 you do *not* want to use its value. In this case, you can use the
 ``givens`` parameter of ``function`` which replaces a particular node in a graph
 for the purpose of one particular function.
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
 >>> foo = lscalar()    # the type (lscalar) must match the shared variable we
@@ -325,6 +362,9 @@ Brief example
 -------------
 
 Here's a brief example.  The setup code is:
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_9
 
 .. code-block:: python
 

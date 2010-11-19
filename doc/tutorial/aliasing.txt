@@ -56,6 +56,10 @@ Borrowing when creating shared variables
 
 A ``borrow`` argument can be provided to the shared-variable constructor.
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_1
+
 .. code-block:: python
 
     import numpy, theano
@@ -111,6 +115,10 @@ Retrieving
 ----------
 
 A ``borrow`` argument can also be used to control how a shared variable's value is retrieved.
+
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_2
 
 .. code-block:: python
 
@@ -200,6 +208,9 @@ Borrowing when constructing Function objects
 
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
 that control how ``theano.function`` handles its arguments and return value[s]. 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_3
 
 .. code-block:: python
 

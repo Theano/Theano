@@ -123,6 +123,8 @@ out:
 Defining the methods
 ====================
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 **c_declare**
 
 .. code-block:: python
@@ -153,6 +155,9 @@ your Type. If you wish people to develop operations that make use of
 it, it's best to publish it somewhere.
 
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 **c_init**
 
 .. code-block:: python
@@ -178,6 +183,9 @@ been done).
 you should only assume that either ``c_init`` or ``c_extract`` has been
 called, without knowing for sure which of the two.
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 **c_extract**
 
@@ -215,6 +223,8 @@ using the ``PyFloat_AsDouble`` function (yet again provided by CPython's C
 API) and we put it in our double variable that we declared previously.
 
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 **c_sync**
 
 .. code-block:: python
@@ -274,6 +284,9 @@ than sorry.
    do *NOT* decrease its reference count!
 
 
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 **c_cleanup**
 
 .. code-block:: python
@@ -321,6 +334,9 @@ anymore. In other words, the use of these functions for a given Variable
 depends on the the relationship between Python and C with respect to
 that Variable. For instance, imagine you define the following function
 and call it:
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 .. code-block:: python
 
@@ -404,6 +420,9 @@ multiplication block.
 
 Final version
 =============
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 .. code-block:: python
 

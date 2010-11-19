@@ -49,6 +49,10 @@ Sneak peek
 Here is an example of how to use Theano. It doesn't show off many of
 Theano's features, but it illustrates concretely what Theano is.
 
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_introduction.test_introduction_1
+
 .. code-block:: python
 
     import theano
