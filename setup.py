@@ -24,7 +24,8 @@ Operating System :: MacOS
 NAME                = 'Theano'
 MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
-DESCRIPTION         = 'Optimizing compiler for mathematical expressions'
+DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
+                       'expressions on CPUs and GPUs.')
 LONG_DESCRIPTION    = ""
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
