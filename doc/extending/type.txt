@@ -113,7 +113,7 @@ must define ``filter`` and shall override ``values_eq_approx``.
 
     # Note that we shadow Python's function ``filter`` with this
     # definition.
-    def filter(x, strict=False, allow_downcast = False):
+    def filter(x, strict=False, allow_downcast=None):
         if strict:
             if isinstance(x, float):
                 return x
@@ -278,7 +278,7 @@ Final version
 
    class Double(gof.Type):
 
-       def filter(self, x, strict=False, allow_downcast = False):
+       def filter(self, x, strict=False, allow_downcast=None):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)

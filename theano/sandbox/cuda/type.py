@@ -52,7 +52,7 @@ class CudaNdarrayType(Type):
         self.name = name
         self.dtype_specs() # error checking is done there
 
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         if strict or allow_downcast or isinstance(data, cuda.CudaNdarray):
             return cuda.filter(data, self.broadcastable, strict, None)
         else: # (not strict) and (not allow_downcast)
@@ -70,7 +70,13 @@ class CudaNdarrayType(Type):
                         data)
             else:
                 converted_data = theano._asarray(data, self.dtype)
-                if numpy.all(data == converted_data):
+
+                if (allow_downcast is None and
+                        type(data) is float and
+                        self.dtype==theano.config.floatX):
+                    return cuda.filter(converted_data, self.broadcastable,
+                            strict, None)
+                elif numpy.all(data == converted_data):
                     return cuda.filter(converted_data, self.broadcastable,
                             strict, None)
                 else:

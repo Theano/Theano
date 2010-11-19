@@ -35,11 +35,12 @@ class SymbolicInput(object):
         True: means that the value you pass for this input must have exactly the right type
         False: the value you pass for this input may be casted automatically to the proper type
 
-    allow_downcast: Bool (default: False)
+    allow_downcast: Bool or None (default: None)
         Only applies when `strict` is False.
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
         False: the value will only be casted to a more general, or precise, type.
+        None: Almost like False, but allows downcast of Python floats to floatX.
 
     autoname: Bool (default: True)
         See the name option.
@@ -50,7 +51,7 @@ class SymbolicInput(object):
     """
 
     def __init__(self, variable, name=None, update=None, mutable=None,
-            strict=False, allow_downcast=False, autoname=True,
+            strict=False, allow_downcast=None, autoname=True,
             implicit=False):
         assert implicit is not None # Safety check.
         self.variable = variable
@@ -167,11 +168,12 @@ class In(SymbolicInput):
         True: means that the value you pass for this input must have exactly the right type
         False: the value you pass for this input may be cast automatically to the proper type
 
-    allow_downcast: Bool (default: False)
+    allow_downcast: Bool or None (default: None)
         Only applies when `strict` is False.
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
         False: the value will only be casted to a more general, or precise, type.
+        None: Almost like False, but allows downcast of Python floats to floatX.
 
     autoname: Bool (default: True)
         See the name option.
@@ -190,7 +192,7 @@ class In(SymbolicInput):
     # Note: the documentation above is duplicated in doc/topics/function.txt,
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
-            mutable=None, strict=False, allow_downcast=False, autoname=True,
+            mutable=None, strict=False, allow_downcast=None, autoname=True,
             implicit=None, borrow=None):
         
         # mutable implies the output can be both aliased to the input and that the input can be

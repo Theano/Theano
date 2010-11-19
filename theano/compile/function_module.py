@@ -360,10 +360,8 @@ class Function(object):
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
             if indices is None: # this is true iff input is not a SymbolicInputKit
                 c = containers[0]  #containers is being used as a stack. Here we pop off the next one.
-                if input.strict:
-                    c.strict = True
-                if input.allow_downcast:
-                    c.allow_downcast = True
+                c.strict = getattr(input, 'strict', False)
+                c.allow_downcast = getattr(input, 'allow_downcast', None)
 
                 if value is not None:
                     # Always initialize the storage.

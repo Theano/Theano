@@ -12,7 +12,7 @@ from numpy import any #for to work in python 2.4
 
 def function(inputs, outputs=None, mode=None, updates=[], givens=[],
              no_default_updates=False, accept_inplace=False, name=None,
-             rebuild_strict=True, allow_input_downcast=False):
+             rebuild_strict=True, allow_input_downcast=None):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -54,12 +54,13 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     inputs to outputs).  If one of the new types does not make sense for one of the Ops in the
     graph, an Exception will be raised.
 
-    :type allow_input_downcast: Boolean
+    :type allow_input_downcast: Boolean or None
     :param allow_input_downcast: True means that the values passed as
     inputs when calling the function can be silently downcasted to fit
     the dtype of the corresponding Variable, which may lose precision.
     False means that it will only be casted to a more general, or
-    precise, type.
+    precise, type. None (default) is almost like False, but allows
+    downcasting of Python float scalars to floatX.
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in

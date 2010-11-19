@@ -8,7 +8,7 @@ import numpy # for backport to 2.4, to get any().
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False,
-            strict=False, allow_downcast=False, implicit=None):
+            strict=False, allow_downcast=None, implicit=None):
         """
         :param variable: A variable in an expression graph to use as a compiled-function parameter
 
@@ -24,7 +24,9 @@ class Param(object):
         required by `variable`.
 
         :param allow_downcast: Only applies if `strict` is False.
-        True -> allows assigned value to lose precision when casted during assignment.
+        True -> allow assigned value to lose precision when casted during assignment.
+        False -> never allow precision loss.
+        None -> only allow downcasting of a Python float to a scalar floatX.
 
         :param implicit: see help(theano.io.In)
 
@@ -39,7 +41,7 @@ class Param(object):
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         no_default_updates=False, accept_inplace=False, name=None,
-        rebuild_strict=True, allow_input_downcast=False):
+        rebuild_strict=True, allow_input_downcast=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -77,7 +79,8 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     inputs when calling the function can be silently downcasted to fit
     the dtype of the corresponding Variable, which may lose precision.
     False means that it will only be casted to a more general, or
-    precise, type.
+    precise, type. None (default) is almost like False, but allows
+    downcasting of Python float scalars to floatX.
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
@@ -267,7 +270,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
             accept_inplace=accept_inplace, name=name)
 
 
-def _pfunc_param_to_in(param, strict=False, allow_downcast=False):
+def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
     if isinstance(param, Constant):
         raise TypeError('Constants not allowed in param list', param)
     #if isinstance(param, Value):

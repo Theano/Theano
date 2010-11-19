@@ -400,7 +400,7 @@ class TensorType(Type):
         self.name = name
         self.numpy_dtype = numpy.dtype(self.dtype)
 
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         """Convert `data` to something which can be associated to a `TensorVariable`.
 
         This function is not meant to be called in user code.  It is for
@@ -443,6 +443,12 @@ class TensorType(Type):
                             '"function".'
                             % (self, data.dtype, self.dtype))
                         raise TypeError(err_msg, data)
+                elif (allow_downcast is None and
+                        type(data) is float and
+                        self.dtype == theano.config.floatX):
+                    # Special case where we allow downcasting of Python float
+                    # literals to floatX, even when floatX=='float32'
+                    data = theano._asarray(data, self.dtype)
                 else:
                     # data has to be converted.
                     # Check that this conversion is lossless

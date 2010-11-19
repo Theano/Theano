@@ -124,7 +124,7 @@ class Container(object):
     It is used in linkers, especially for the inputs and outputs of a Function.
     """
     def __init__(self, r, storage, readonly=False, strict=False,
-            allow_downcast=False, name=None):
+            allow_downcast=None, name=None):
         """WRITEME
 
         :Parameters:
@@ -132,7 +132,9 @@ class Container(object):
          `storage`: a list of length 1, whose element is the value for `r`
          `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.
-         `allow_downcast`: if True (and `strict` is False), allow type upcasting, but not downcasting.
+         `allow_downcast`: if True (and `strict` is False), allow upcasting
+            of type, but not downcasting. If False, prevent it. If None
+            (default), allows only downcasting of float to floatX scalar.
          `name`: A string (for pretty-printing?)
 
         """
@@ -171,8 +173,8 @@ class Container(object):
             kwargs = {}
             if self.strict:
                 kwargs['strict'] = True
-            if self.allow_downcast:
-                kwargs['allow_downcast'] = True
+            if self.allow_downcast is not None:
+                kwargs['allow_downcast'] = self.allow_downcast
             self.storage[0] = self.type.filter(value, **kwargs)
 
         except Exception, e:

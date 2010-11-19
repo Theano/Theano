@@ -12,7 +12,7 @@ class RandomStateSharedVariable(SharedVariable):
     pass
 
 @shared_constructor
-def randomstate_constructor(value, name=None, strict=False, allow_downcast=False, borrow=False):
+def randomstate_constructor(value, name=None, strict=False, allow_downcast=None, borrow=False):
     """SharedVariable Constructor for RandomState"""
     if not isinstance(value, numpy.random.RandomState):
         raise TypeError

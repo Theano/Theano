@@ -70,7 +70,7 @@ class Scalar(Type):
         self.dtype = dtype
         self.dtype_specs() # error checking
 
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         py_type = self.dtype_specs()[0]
         if strict and not isinstance(data, py_type):
             raise TypeError("%s expected a %s, got %s of type %s" % (self, py_type, data,
@@ -78,10 +78,14 @@ class Scalar(Type):
                     data)
         try:
             converted_data = py_type(data)
-            if allow_downcast or data == converted_data:
+            if (allow_downcast or
+                    (allow_downcast is None and
+                        type(data) is float and
+                        self.dtype==theano.config.floatX) or
+                    data == converted_data):
                 return py_type(data)
             else:
-                raise TypeError('Value cannot accurately be converted to dtype (%s) and allow_downcast is False' % self.dtype)
+                raise TypeError('Value cannot accurately be converted to dtype (%s) and allow_downcast is not True' % self.dtype)
         except Exception, e:
             raise TypeError("Could not convert %s (value=%s) to %s" % (type(data), data, self.dtype), e)
 

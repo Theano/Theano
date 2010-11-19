@@ -10,7 +10,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     pass
 
 @shared_constructor
-def tensor_constructor(value, name=None, strict=False, allow_downcast=False, borrow=False, broadcastable=None):
+def tensor_constructor(value, name=None, strict=False, allow_downcast=None, borrow=False, broadcastable=None):
     """SharedVariable Constructor for TensorType
 
     :note: Regarding the inference of the broadcastable pattern...
@@ -41,7 +41,7 @@ class ScalarSharedVariable(_tensor_py_operators, SharedVariable):
     pass
 
 @shared_constructor
-def scalar_constructor(value, name=None, strict=False, allow_downcast=False):
+def scalar_constructor(value, name=None, strict=False, allow_downcast=None):
     """SharedVariable constructor for scalar values. Default: int64 or float64.
 
     :note: We implement this using 0-d tensors for now.

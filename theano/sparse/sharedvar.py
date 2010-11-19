@@ -8,7 +8,7 @@ class SparseTensorSharedVariable(SharedVariable, _sparse_py_operators):
     pass
 
 @shared_constructor
-def sparse_constructor(value, name=None, strict=False, allow_downcast=False,
+def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
         borrow=False, format = None):
     """SharedVariable Constructor for SparseType
 

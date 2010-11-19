@@ -42,7 +42,7 @@ class SharedVariable(Variable):
     # this Variable, unless another update value has been passed to "function",
     # or the "no_default_updates" list passed to "function" contains it.
 
-    def __init__(self, name, type, value, strict, allow_downcast=False, container=None):
+    def __init__(self, name, type, value, strict, allow_downcast=None, container=None):
         """
         :param name: The name for this variable (see `Variable`).
 
@@ -54,7 +54,9 @@ class SharedVariable(Variable):
         have the correct type.
 
         :param allow_downcast: Only applies if `strict` is False.
-        True -> allows assigned value to lose precision when casted during assignment.
+        True -> allow assigned value to lose precision when casted during assignment.
+        False -> never allow precision loss.
+        None -> only allow downcasting of a Python float to a scalar floatX.
 
         :param container: The container to use for this variable. Illegal to pass this as well
         as a value.
@@ -160,7 +162,7 @@ def shared_constructor(ctor):
     shared.constructors.append(ctor)
     return ctor
 
-def shared(value, name=None, strict=False, allow_downcast=False, **kwargs):
+def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
 
     This function iterates over constructor functions (see `shared_constructor`) to find a
@@ -186,7 +188,7 @@ def shared(value, name=None, strict=False, allow_downcast=False, **kwargs):
 shared.constructors = []
 
 @shared_constructor
-def generic_constructor(value, name=None, strict=False, allow_downcast=False):
+def generic_constructor(value, name=None, strict=False, allow_downcast=None):
     """SharedVariable Constructor"""
     return SharedVariable(type=generic, value=value, name=name, strict=strict,
             allow_downcast=allow_downcast)

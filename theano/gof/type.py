@@ -204,7 +204,7 @@ class PureType(object):
     Variable = graph.Variable #the type that will be created by call to make_variable.
     Constant = graph.Constant #the type that will be created by call to make_constant
 
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         """Required: Return data or an appropriately wrapped/converted data.
         
         Subclass implementation should raise a TypeError exception if the data is not of an
@@ -214,7 +214,8 @@ class PureType(object):
         data passed as an argument. If it is False, and allow_downcast
         is True, filter may cast it to an appropriate type. If
         allow_downcast is False, filter may only upcast it, not lose
-        precision.
+        precision. If allow_downcast is None, only Python float can be
+        downcasted, and only to a floatX scalar.
 
         :Exceptions:
          - `MethodNotDefined`: subclass doesn't implement this function.
@@ -353,7 +354,7 @@ class Generic(SingletonType):
     WRITEME
     """
     
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         return data
 
     def is_valid_value(self, a):

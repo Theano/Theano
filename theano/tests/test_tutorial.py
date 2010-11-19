@@ -22,7 +22,7 @@ class T_extending(unittest.TestCase):
 
         # Note that we shadow Python's function ``filter`` with this
         # definition.
-        def filter(x, strict=False, allow_downcast = False):
+        def filter(x, strict=False, allow_downcast=None):
             if strict:
                 if isinstance(x, float):
                     return x
@@ -66,7 +66,7 @@ class T_extending(unittest.TestCase):
 
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast = False):
+           def filter(self, x, strict=False, allow_downcast=None):
                if strict and not isinstance(x, float):
                    raise TypeError('Expected a float!')
                return float(x)
@@ -168,7 +168,7 @@ class T_extending(unittest.TestCase):
 
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast = False):
+           def filter(self, x, strict=False, allow_downcast=None):
                if strict and not isinstance(x, float):
                    raise TypeError('Expected a float!')
                return float(x)
@@ -274,7 +274,7 @@ class T_extending(unittest.TestCase):
         from theano import gof
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast = False):
+           def filter(self, x, strict=False, allow_downcast=None):
                if strict and not isinstance(x, float):
                    raise TypeError('Expected a float!')
                return float(x)

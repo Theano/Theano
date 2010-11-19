@@ -433,7 +433,7 @@ Final version
 
    class Double(gof.Type):
 
-       def filter(self, x, strict=False, allow_downcast = False):
+       def filter(self, x, strict=False, allow_downcast=None):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)

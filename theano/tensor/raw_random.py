@@ -22,7 +22,7 @@ class RandomStateType(gof.Type):
     def __str__(self):
         return 'RandomStateType'
 
-    def filter(self, data, strict=False, allow_downcast=False):
+    def filter(self, data, strict=False, allow_downcast=None):
         if self.is_valid_value(data):
             return data
         else:
