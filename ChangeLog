@@ -1,0 +1,21 @@
+2010-10-22 Theano 0.3
+	* This is in important release since 0.1. Their have been a 0.2 started internally that was never advertised.
+	* Their is so much change that we lost trac of many of them. Here is some of them.
+
+	* Gpu code with cuda are now generated for many op
+	* Some interface change since 0.1
+		* New SharedVariable system to allow reusing memory space between theano function.
+			* A new memory contract have been done for Theano for people that want to minimize memory copy.
+		* We Deprecate the old Module system
+		* No silent downcast of a theano function input by default.
+		* Raise an error when using the result of logical operation on Theano varible in if (call to __nonzeros__)
+		* Raise an error when we receive not aligned ndarray.(this is not supported)
+		* Raise an error when DimShuffle receive bad configuration number.
+		* Call numpy blas binding for gemv (We already linked with blas gemm)
+		* If gcc is not enable by default fall back to the python version with a warning.
+		* Raise an error when tensor.grad is called on a non scalar theano variable
+			* In the past we where implecitly doing a sum on the tensor to make it a scalar
+		* added erf and erfc fct.
+	* Deprecate the current default value of the paramter axis of theano.{max,min,argmax,argmin,max_and_argmax}. We will use the same interface as numpy
+	* make easy_install theano work
+
