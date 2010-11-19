@@ -149,7 +149,7 @@ logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_5
 
 >>> x = T.dmatrix('x')
->>> s = 1 / (1 + T.exp(-x))
+>>> s = T.sum(1 / (1 + T.exp(-x)))
 >>> gs = T.grad(s, x)
 >>> dlogistic = function([x], gs)
 >>> dlogistic([[0, 1], [-1, -2]])
@@ -321,7 +321,7 @@ for the purpose of one particular function.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
->>> foo = lscalar()    # the type (lscalar) must match the shared variable we
+>>> foo = T.lscalar()    # the type (lscalar) must match the shared variable we
 >>>                    # are replacing with the ``givens`` list
 >>> skip_shared = function([inc, foo], fn_of_state,
         givens=[(state, foo)])
@@ -394,7 +394,7 @@ not affected by calling the returned function.  So for example, calling
 ``g`` multiple times will return the same numbers.
 
 >>> g_val0 = g()  # different numbers from f_val0 and f_val1
->>> g_val0 = g()  # same numbers as g_val0 !!!
+>>> g_val1 = g()  # same numbers as g_val0 !!!
 
 An important remark is that a random variable is drawn at most once during any
 single function execution.  So the ``nearly_zeros`` function is guaranteed to

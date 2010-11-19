@@ -162,7 +162,7 @@ it, it's best to publish it somewhere.
 
 .. code-block:: python
 
-    def c_init(self, name, sub):
+    def c_init(name, sub):
         return """
         %(name)s = 0.0;
         """ % dict(name = name)
@@ -191,7 +191,7 @@ called, without knowing for sure which of the two.
 
 .. code-block:: python
 
-    def c_extract(self, name, sub):
+    def c_extract(name, sub):
         return """
         if (!PyFloat_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_TypeError, "expected a float");
@@ -229,7 +229,7 @@ API) and we put it in our double variable that we declared previously.
 
 .. code-block:: python
 
-    def c_sync(self, name, sub):
+    def c_sync(name, sub):
         return """
         Py_XDECREF(py_%(name)s);
         py_%(name)s = PyFloat_FromDouble(%(name)s);
@@ -291,7 +291,7 @@ than sorry.
 
 .. code-block:: python
 
-    def c_cleanup(self, name, sub):
+    def c_cleanup(name, sub):
         return ""
     double.c_cleanup = c_cleanup
 
@@ -339,6 +339,9 @@ and call it:
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 .. code-block:: python
+   
+   from theano import function
+   from theano.tensor import double
 
    x, y, z = double('x'), double('y'), double('z')
    a = add(x, y)
@@ -430,7 +433,7 @@ Final version
 
    class Double(gof.Type):
 
-       def filter(self, x, strict=False):
+       def filter(self, x, strict=False, allow_downcast = False):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)

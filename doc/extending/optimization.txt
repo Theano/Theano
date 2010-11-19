@@ -469,6 +469,8 @@ Here are a few examples of how to use a Query on optdb to produce an
 Optimizer:
 
 .. code-block:: python
+   
+   from theano.compile import optdb
 
    # This is how the optimizer for the fast_run mode is defined
    fast_run = optdb.query(Query(include = ['fast_run']))

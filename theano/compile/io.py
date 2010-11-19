@@ -184,7 +184,7 @@ class In(SymbolicInput):
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
             mutable=None, strict=False, allow_downcast=False, autoname=True,
-            implicit=None):
+            implicit=None, borrow=False):
         if implicit is None:
             implicit = (isinstance(value, gof.Container) or
                     isinstance(value, SharedVariable))
