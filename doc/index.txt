@@ -20,12 +20,22 @@ since 2007.  But it is also approachable enough to be used in the classroom
 Download
 ========
 
-We recommend the latest development version, available via::
+Theano is now `available on PyPI`_, and can be installed via ``easy_install
+Theano``, or by downloading and unpacking the tarball and typing ``python
+setup.py install``.
+
+Those interested in bleeding-edge features should obtain the latest development 
+version, available via::
 
     hg clone http://hg.assembla.com/theano Theano
 
-The theano subfolder should be on your ``$PYTHONPATH``.  For more information about
+You can then place the checkout directory on your ``$PYTHONPATH`` or use
+``python setup.py develop`` to install a ``.pth`` into your ``site-packages``
+directory, so that when you pull updates via Mercurial they will be
+automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
+
+.. _available on PyPI: http://pypi.python.org/pypi/Theano
 
 Documentation
 =============
