@@ -1,4 +1,4 @@
-import atexit, os, stat
+import atexit, gc, os, stat
 from theano.compile import optdb
 from theano import config
 
@@ -94,6 +94,9 @@ if cuda_available:
         gpu_init()
         cuda_available = True
         cuda_initialization_error_message = ""
+        # do garbage collection before releasing the gpu to avoid releasing invalid pointers later
+        atexit.register(gc.collect)
+        # actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
     except EnvironmentError, e:
         cuda_available = False
