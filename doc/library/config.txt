@@ -65,7 +65,7 @@ Environment Variables
 
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
 
-    .. code-block:: text
+    .. code-block:: cfg
 
         [global]
         floatX = float32

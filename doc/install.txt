@@ -150,7 +150,7 @@ The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
 permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
 entry like this:
 
-.. code-block:: text
+.. code-block:: cfg
 
     # other stuff can go here
     
@@ -269,7 +269,7 @@ Mac
   the case already (so that we link to the correct libraries). You may also
   need to add
 
-    .. code-block:: bash
+    .. code-block:: cfg
 
       [gcc]
       cxxflags = -L/opt/local/lib
@@ -285,7 +285,7 @@ Mac
   ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
   contain
 
-    .. code-block:: bash
+    .. code-block:: cfg
 
       [cmodule]
       mac_framework_link=True
@@ -336,7 +336,7 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
   to create under Windows) in your user profile directory, containing the following
   two lines:
  
-    .. code-block:: bash
+    .. code-block:: cfg
 
       [blas]
       ldflags =
@@ -451,14 +451,14 @@ Windows V1.5 (optional follow-up to V1 instructions)
   nvcc(at least version 3.1) don't support them well. If your USERPROFILE 
   directory contain those caractere, you must add in your configuration file:
 
-    .. code-block:: bash
+    .. code-block:: cfg
 
       [global]
       base_compiledir=PATH_TO_A_DIRECTORY_WITHOUT_THOSE_CARACTERE
 
   You also need to add in the configuration file those line:
 
-    .. code-block:: bash
+    .. code-block:: cfg
 
       [cuda]
       nvccflags=-LC:\Python26\libs
@@ -573,7 +573,7 @@ but this has not been tested yet.
 
 - Edit (or create) your ``$HOME/.theanorc`` and add the following section:
 
-    .. code-block:: bash
+    .. code-block:: cfg
 
         [blas]
         ldflags = -lblas
