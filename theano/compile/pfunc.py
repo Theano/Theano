@@ -257,9 +257,10 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     for sv in shared_inputs:
         if sv in update_d:
             si = In(variable=sv, value=sv.container, mutable=True,
-                    update=update_d[sv])
+                    borrow=True, update=update_d[sv])
         else:
-            si = In(variable=sv, value=sv.container, mutable=False)
+            si = In(variable=sv, value=sv.container, 
+                    mutable=False, borrow=True)
         inputs.append(si)
 
     return orig_function(inputs, cloned_outputs, mode,

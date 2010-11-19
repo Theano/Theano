@@ -281,6 +281,26 @@ class T_function(unittest.TestCase):
         self.failUnless(dec[s] == -1)
 
 
+    def test_borrow_input(self):
+        """
+        Tests that the contract for io.In is respected. When borrow=False, it should be
+        impossible for outputs to be aliased to the input variables provided by the user,
+        either through a view-map or a destroy map. New tests should be added in the future
+        when borrow=True is implemented.
+        """
+        a = T.dmatrix()
+        aval = numpy.random.rand(3,3)
+     
+        # when borrow=False, test that a destroy map cannot alias output to input
+        f = theano.function([In(a, borrow=False)], Out(a+1, borrow=True))
+        assert numpy.all(f(aval) == aval+1)
+        assert not numpy.may_share_memory(aval, f(aval))
+
+        # when borrow=False, test that a viewmap cannot alias output to input
+        f = theano.function([In(a, borrow=False)], Out(a[0,:], borrow=True))
+        assert numpy.all(f(aval) == aval[0,:])
+        assert not numpy.may_share_memory(aval, f(aval))
+
     def test_borrow_output(self):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
