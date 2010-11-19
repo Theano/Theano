@@ -1,0 +1,39 @@
+.. _release:
+
+=======
+Release
+=======
+
+Here is our release plan for Theano.
+
+Having a release system have many benefit. One of them is protecting people that want to try Theano to don't checkout a version that is in the middle of change. We try to make change in an order that don't break the trunk, but mistake happen. This also won't ask people to install mercurial and can make the installation of python dependency automatic (numpy for now, maybe pycuda, cython later).
+
+So here is the plan we try to follow. Any comments/suggestion are welcome on the mailing list.
+
+1) We do monthly release. We call them light weight releases. We include in them what was done in the last month, not what we want in it. So if we want a new feature, do it for the next release, don't delay the current one. That make us release frequently, but not too frequently.
+2) We can release more often to fix bug that generate bad result, but not for other reason.
+3) The criterion that a release MUST have to happen(otherwise we delay it or skip it)
+    1) No regression
+    2) No know silent error
+    3) No error that give bad result.
+    4) No test errors/failures except know errors
+        1) Known error should are not for wanted feature as done in some case now
+        2) Bad result should be error, not known error(that always have been the case)
+        3) All known error should all have a ticket and a reference to that ticket in the error.
+4) The release number follow the scheme X.Y.Z
+   1) We update Z by 1 for each normal release
+   2) We update Y for bug fix, interface change or significant feature we want to publicize.
+   4) We will pass to 1.0.0 when we think we have a pretty stable interface that cover atleast what numpy cover.
+5) tagging the trunk
+6) uploading to pypi.python.org, mloss.org and freshmeat.net.
+7) sending an email to theano-users, theano-announce, numpy?
+
+Optional things:
+
+8) A scrum of 1 week before the release to fix the problem that make a release not possible
+    1) If we have a deadline, we can skip the release or just check for the criterion to release.
+    1) Every body could participate, event people in the mailing list
+    2) Should encourage people to finish what they started(missing documentation, missing test, ...)
+       This should help finishing stuff and have the documentation more up to date.
+    3) If possible, try to have one medium interesting feature.
+    4) Participating in the scrum benefit for all participant as they learn more about our tools and this help develop them. A good indication that you should participate is that you have something that you would like to be done and its not done.
