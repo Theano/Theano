@@ -117,7 +117,7 @@ def do_setup():
           packages=find_packages(),
           install_requires=['numpy>=1.3.0', 'scipy>=0.7.0'],
           package_data={
-              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.sh'],
+              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.sh', 'ChangeLog'],
               'theano.misc': ['*.sh']
           },
           keywords=' '.join([
