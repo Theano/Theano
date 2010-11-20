@@ -63,10 +63,25 @@ The following libraries and software are optional:
 .. _LaTeX: http://www.latex-project.org/
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 
+
+Basic user install instructions
+-------------------------------
+
+The easiest way to obtain the released version of Theano is from PyPI using
+the ``easy_install`` command provided by distribute_ (and it's predecessor,
+`setuptools`_). If you have one of these installed, installing Theano should
+be simply a matter of::
+
+    easy_install Theano
+
+.. _distribute: http://packages.python.org/distribute/
+.. _setuptools: http://pypi.python.org/pypi/setuptools
+
+
 .. _install_bleeding_edge:
 
-Getting the code
------------------
+Bleeding-edge (developer) install instructions
+----------------------------------------------
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`
 guide.
