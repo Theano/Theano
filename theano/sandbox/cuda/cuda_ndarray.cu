@@ -16,6 +16,7 @@
 // Alloc and Free
 /////////////////////////
 
+static int g_gpu_context_active = 0;
 
 /**
  *
@@ -69,6 +70,10 @@ void * device_malloc(size_t size)
 }
 int device_free(void *ptr)
 {
+    // if there is no gpu context, the call to cudaFree will fail; skip it entirely
+    if(!g_gpu_context_active) {
+        return 0;
+    }
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
@@ -1845,6 +1850,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                         "Unable to get the number of gpus available: %s",
                         cudaGetErrorString(cudaGetLastError()));
   }
+  
+  // as soon as the first successful call to a cuda* function is made, a
+  // gpu context has been created
+  g_gpu_context_active = 1;
+  
   if(deviceCount <= 0) {
     return PyErr_Format(PyExc_EnvironmentError,
                         "Can't use the GPU, no devices support CUDA");
@@ -1889,6 +1899,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     cudaThreadExit();
+    g_gpu_context_active = 0; // context has now been closed down
     Py_INCREF(Py_None);
     return Py_None;
 }
