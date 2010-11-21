@@ -800,6 +800,17 @@ def test_duplicate_arg_elemwise():
 
     assert numpy.allclose(Bval,f(Aval))
 
+def test_shared_float32():
+    '''Test use of cuda.shared_constructor through theano.shared'''
+    # Register cuda.shared_constructor in theano.shared
+    theano.shared.constructors.append(cuda.shared_constructor)
+
+    a = theano.shared(numpy.ones((2,3), dtype='float32'))
+    assert isinstance(a.type, tcn.CudaNdarrayType)
+
+    # Unregister
+    del theano.shared.constructors[-1]
+
 
 import theano.tensor.tests.test_basic
 test_shared_options = theano.tensor.tests.test_basic.makeSharedTester(
