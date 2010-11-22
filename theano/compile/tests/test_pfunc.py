@@ -1,6 +1,9 @@
-import numpy
-import unittest
 import copy
+import unittest
+
+from nose.plugins.skip import SkipTest
+import numpy
+
 import theano
 from theano.tensor import dmatrix, iscalar, lscalar, dmatrices
 from theano import tensor
