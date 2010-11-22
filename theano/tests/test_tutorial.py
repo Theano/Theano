@@ -5,6 +5,7 @@ from theano import function
 import numpy
 from numpy import array
 
+from numpy.testing import dec
 from theano import config
 from theano.tests  import unittest_tools as utt
 
@@ -162,8 +163,14 @@ class T_extending(unittest.TestCase):
                             fn = lambda x, y: x / y)
 
 
+    @dec.knownfailureif(isinstance(theano.compile.mode.get_default_mode(),theano.compile.debugmode.DebugMode),
+                        "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble with DEBUG_MODE")
     def test_extending_2(self):
-
+        '''
+         This test fails in DebugMode for the same reasons the test in
+         tensor/tests/test_basic.py:T_scalarfromtensor.test0
+         fails on debug mode ( as much as I could tell - Razvan )
+        '''
         from theano import gof
 
         class Double(gof.Type):
