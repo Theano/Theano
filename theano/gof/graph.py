@@ -17,7 +17,7 @@ class Apply(utils.object2):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
     of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
-    
+
     This class is typically instantiated by an Op's make_node() function, which is typically
     called by that Op's __call__() function.
 
@@ -89,9 +89,9 @@ class Apply(utils.object2):
 
     def default_output(self):
         """Returns the default output for this node.
-        
+
         :rtype:
-            Variable instance 
+            Variable instance
 
         :return:
             an element of self.outputs, typically self.outputs[0].
@@ -101,7 +101,7 @@ class Apply(utils.object2):
             multiple outputs and self.op.default_output does not exist.
 
         """
-        
+
         do = getattr(self.op, 'default_output', None)
         if do is None:
             if len(self.outputs) == 1:
@@ -112,7 +112,7 @@ class Apply(utils.object2):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
 
-    out = property(default_output, 
+    out = property(default_output,
                    doc = "alias for self.default_output()")
     """Alias for self.default_output()"""
 
@@ -145,7 +145,7 @@ class Apply(utils.object2):
 
         :type strict: Bool
 
-        :param strict: 
+        :param strict:
             If True, the type fields of all the inputs must be equal to the current ones, and
             returned outputs are guaranteed to have the same types as self.outputs.  If False,
             then there's no guarantee that the clone's outputs will have the same types as
@@ -203,7 +203,7 @@ class Variable(utils.object2):
     the position of itself in the owner's output list (property: index).
 
     - `Variable` (this base type) is typically the output of a symbolic computation,
-    
+
     - `Value` (a subclass) adds a default :literal:`value`, and requires that owner is None
 
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
@@ -248,7 +248,7 @@ class Variable(utils.object2):
         """Initialize type, owner, index, name.
 
         :type type: a Type instance
-        :param type: 
+        :param type:
             the type governs the kind of data that can be associated with this variable
 
         :type owner: None or Apply instance
@@ -299,15 +299,15 @@ class Variable(utils.object2):
         cp = self.__class__(self.type, None, None, self.name)
         cp.tag = copy(self.tag)
         return cp
-    
-    def __lt__(self,other): 
-        raise NotImplementedError('Subclasses of Variable must implement __lt__')
-    def __le__(self,other): 
-        raise NotImplementedError('Subclasses of Variable must implement __le__')
-    def __gt__(self,other): 
+
+    def __lt__(self,other):
+        raise NotImplementedError('Subclasses of Variable must implement __lt__',self.__class__.__name__)
+    def __le__(self,other):
+        raise NotImplementedError('Subclasses of Variable must implement __le__',self.__class__.__name__)
+    def __gt__(self,other):
         raise NotImplementedError('Subclasses of Variable must implement __gt__',self.__class__.__name__)
-    def __ge__(self,other): 
-        raise NotImplementedError('Subclasses of Variable must implement __ge__')
+    def __ge__(self,other):
+        raise NotImplementedError('Subclasses of Variable must implement __ge__',self.__class__.__name__)
 
 class Value(Variable):
     """
@@ -324,7 +324,7 @@ class Value(Variable):
     def __init__(self, type, data, name = None):
         """Initialize self.
 
-        :note: 
+        :note:
             The data field is filtered by what is provided in the constructor for the Value's
             type field.
 
@@ -353,7 +353,7 @@ class Value(Variable):
         if value is not None:
             raise ValueError("Value instances cannot have an owner.")
     owner = property(lambda self: None, __set_owner)
-    value = property(lambda self: self.data, 
+    value = property(lambda self: self.data,
             doc='read-only data access method')
 
     # index is not defined, because the `owner` attribute must necessarily be None
@@ -394,15 +394,15 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     :type start: deque
     :param start: search from these nodes
     :type expand: callable
-    :param expand: 
+    :param expand:
         when we get to a node, add expand(node) to the list of nodes to visit.  This function
         should return a list, or None
     :rtype: list of `Variable` or `Apply` instances (depends on `expend`)
     :return: the list of nodes in order of traversal.
-    
+
     :note:
         a node will appear at most once in the return value, even if it appears multiple times
-        in the start parameter.  
+        in the start parameter.
 
     :postcondition: every element of start is transferred to the returned list.
     :postcondition: start is empty.
@@ -440,7 +440,7 @@ def inputs(variable_list, blockers = None):
     :param variable_list:
         output `Variable` instances from which to search backward through owners
     :rtype: list of `Variable` instances
-    :returns: 
+    :returns:
         input nodes with no owner, in the order found by a left-recursive depth-first search
         started at the nodes in `variable_list`.
 
@@ -548,7 +548,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     :type o: list
     :param o: output L{Variable}s
     :type copy_inputs_and_orphans: bool
-    :param copy_inputs_and_orphans: 
+    :param copy_inputs_and_orphans:
         if True, the inputs and the orphans will be replaced in the cloned graph by copies
         available in the equiv dictionary returned by the function (copy_inputs_and_orphans
         defaults to True)
@@ -592,10 +592,10 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
 def general_toposort(r_out, deps, debug_print = False):
     """WRITEME
 
-    :note: 
+    :note:
         deps(i) should behave like a pure function (no funny business with internal state)
 
-    :note: 
+    :note:
         deps(i) will be cached by this function (to be fast)
 
     :note:
@@ -645,10 +645,10 @@ def io_toposort(i, o, orderings = {}):
     """
     #the inputs are used only here in the function that decides what 'predecessors' to explore
     iset = set(i)
-    def deps(obj): 
+    def deps(obj):
         rval = []
         if obj not in iset:
-            if isinstance(obj, Variable): 
+            if isinstance(obj, Variable):
                 if obj.owner:
                     rval = [obj.owner]
             if isinstance(obj, Apply):
@@ -685,7 +685,7 @@ def as_string(i, o,
     :type leaf_formatter: function
     :param leaf_formatter: takes a `Variable`  and returns a string to describe it
     :type node_formatter: function
-    :param node_formatter: 
+    :param node_formatter:
         takes an `Op`  and the list of strings corresponding to its arguments and returns a
         string to describe it
 
@@ -701,7 +701,7 @@ def as_string(i, o,
     i = set(i)
 
     orph = orphans(i, o)
-    
+
     multi = set()
     seen = set()
     for output in o:
@@ -771,5 +771,3 @@ def view_roots(r):
             return [r]
     else:
         return [r]
-
-
