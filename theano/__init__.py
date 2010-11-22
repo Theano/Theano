@@ -110,7 +110,4 @@ try:
     import theano.version
     __version__ = theano.version.version
 except ImportError:
-    import warnings
-    warnings.warn(
-        "version.py could not be imported. Run setup.py at least once to generate it"
-    )
+    __version__ = "unknown"
