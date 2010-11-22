@@ -33,7 +33,7 @@ to be installed:
         Earlier versions have memory leaks.
 
     `SciPy <http://scipy.org>`_
-	Specifically ``scipy.sparse``, and ``scipy.weave``. We recommend SciPy
+	Not technically required but *highly* recommended. We recommend SciPy
 	>=0.7 if you are using sparse matrices, because ``scipy.sparse``
 	is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
 	bug with singleton dimensions, there may be more bugs).
