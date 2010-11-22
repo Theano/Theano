@@ -68,7 +68,7 @@ class t_gemm(TestCase):
             # If blas.ldflags is equal to '', the C code will not be generated
             cmp_linker(copy(z), a, x, y, b, 'c')
 
-    def test0a(self): 
+    def test0a(self):
         Gemm.debug = True
         try:
             g = gemm_inplace([1.], 1., [1.], [1.], 1.)
@@ -77,7 +77,7 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
-    def test0(self): 
+    def test0(self):
         try:
             self.cmp(1., 0., 1.0, 1.0, 1.0)
         except ValueError, e:
@@ -85,14 +85,14 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
-    def test2(self): 
+    def test2(self):
         try:
             self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
         except ValueError, e:
             self.failUnless(e[0] == Gemm.E_rank)
             return
         self.fail()
-    def test4(self): 
+    def test4(self):
         self.cmp(self.rand(3,4), 1.0, self.rand(3,5), self.rand(5,4), 0.0)
     def test5(self): self.cmp(self.rand(3,4), 1.0,
             self.rand(3,5), self.rand(5,4), 1.0)
@@ -104,7 +104,7 @@ class t_gemm(TestCase):
             self.rand(3,5), self.rand(5,4), 0.6)
     def test9(self): self.cmp(self.rand(3,4), 0.0,
             self.rand(3,5), self.rand(5,4), -1.0)
-    def test10(self): 
+    def test10(self):
         _approx_eq.debug = 1
         self.cmp(self.rand(3,4), -1.0, self.rand(3,5), self.rand(5,4), 0.0)
     def test11(self): self.cmp(self.rand(3,4), -1.0,
@@ -285,7 +285,7 @@ class t_as_scalar(TestCase):
         self.failUnless(_as_scalar(a) is a)
         self.failUnless(_as_scalar(d_a) is a)
         self.failUnless(_as_scalar(d_a2) is a)
-        
+
     def test3(self):
         """Test that it fails on nonscalar variables"""
         a = T.dmatrix()
@@ -309,7 +309,7 @@ def XYZab():
 class Failure(Exception):
     pass
 
-class Warning(Exception): 
+class Warning(Exception):
     pass
 
 def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()], max_graphlen=0):
@@ -633,7 +633,7 @@ def test_dot22scalar():
     #
     #    assert _dot22scalar in [x.op for x in topo]
     #    assert len(topo)==2
-    
+
     f(av,bv,cv)
     f = theano.function([a,b,c],c * a*0.2*T.dot(a,b),mode=m2)
     topo = f.maker.env.toposort()
