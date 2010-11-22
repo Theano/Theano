@@ -4,36 +4,63 @@
 Release
 =======
 
-Here is our release plan for Theano.
+Having a release system has many benefits. First and foremost, it makes trying
+out Theano easy. You can install a stable version of Theano, without having to
+worry about the current state of the repository.  While we usually try NOT to
+break the trunk, mistakes can happen. This also greatly simplifies the
+installation process: mercurial is no longer required and certain python
+dependencies can be handled automatically (numpy for now, maybe pycuda, cython
+later).
 
-Having a release system have many benefit. One of them is protecting people that want to try Theano to don't checkout a version that is in the middle of change. We try to make change in an order that don't break the trunk, but mistake happen. This also won't ask people to install mercurial and can make the installation of python dependency automatic (numpy for now, maybe pycuda, cython later).
+The Theano release plan is detailed below. Comments and/or suggestions are
+welcome on the mailing list.
 
-So here is the plan we try to follow. Any comments/suggestion are welcome on the mailing list.
+1) We will perform a monthly release of Theano. These will be "lightweight"
+   releases and will include everything that was done in the last month. All
+   outstanding feature requests are pushed back to the following month, so as
+   not to delay the current release.  
 
-1) We do monthly release. We call them light weight releases. We include in them what was done in the last month, not what we want in it. So if we want a new feature, do it for the next release, don't delay the current one. That make us release frequently, but not too frequently.
-2) We can release more often to fix bug that generate bad result, but not for other reason.
-3) The criterion that a release MUST have to happen(otherwise we delay it or skip it)
-    1) No regression
-    2) No know silent error
-    3) No error that give bad result.
-    4) No test errors/failures except know errors
-        1) Known error should are not for wanted feature as done in some case now
-        2) Bad result should be error, not known error(that always have been the case)
-        3) All known error should all have a ticket and a reference to that ticket in the error.
-4) The release number follow the scheme X.Y.Z
-   1) We update Z by 1 for each normal release
-   2) We update Y for bug fix, interface change or significant feature we want to publicize.
-   4) We will pass to 1.0.0 when we think we have a pretty stable interface that cover atleast what numpy cover.
-5) tagging the trunk
-6) uploading to pypi.python.org, mloss.org and freshmeat.net.
-7) sending an email to theano-users, theano-announce, numpy?
+2) Asynchronous releases will only be made when a bug generating incorrect
+   output is discovered and fixed.
 
-Optional things:
+3) Each release must satisfy the following criteria. Non-compliance will
+   result in us delaying or skipping the release in question.
+    1) No regression errors.
+    2) No known, silent errors.
+    3) No errors giving incorrect results.
+    4) No test errors/failures, except for known errors.
+        1) Known errors should not be used to encode "feature wish lists", as
+           is currently the case.
+        2) Incorrect results should raise errors and not known errors (this
+           has always been the case) 
+        3) All known errors should have a ticket and a reference to that
+           ticket in the error message.
 
-8) A scrum of 1 week before the release to fix the problem that make a release not possible
-    1) If we have a deadline, we can skip the release or just check for the criterion to release.
-    1) Every body could participate, event people in the mailing list
-    2) Should encourage people to finish what they started(missing documentation, missing test, ...)
-       This should help finishing stuff and have the documentation more up to date.
-    3) If possible, try to have one medium interesting feature.
-    4) Participating in the scrum benefit for all participant as they learn more about our tools and this help develop them. A good indication that you should participate is that you have something that you would like to be done and its not done.
+4) The release numbers will follow the X.Y.Z scheme:
+   1) We update Z by 1 for each lightweight release.
+   2) We update Y for bug fixes, interface changes and/or significant features
+      we wish to publicize.
+   4) The Theano v1.0.0 release will be made when the interface is deemed
+      stable enough and covers most of numpy's interface.
+
+5) The trunk will be tagged on each release.
+
+6) Each release will be uploaded to pypi.python.org, mloss.org and freshmeat.net
+
+7) Release emails will be sent to theano-users and theano-announce.
+
+Optional:
+
+8) A 1-week scrum might take place before a release, in order to fix bugs
+   which would otherwise prevent a release.
+    1) Occasional deadlines might cause us to skip a release.
+    1) Everybody can (and should) participate, even people on the mailing
+       list.
+    2) The scrum should encourage people to finish what they have already
+       started (missing documentation, missing test, ...). This should help
+       push out new features and keep the documentation up to date.
+    3) If possible, aim for the inclusion of one new interesting feature.
+    4) Participating in the scrum should benefit all those involved, as you
+       will learn more about our tools and help develop them in the process. A
+       good indication that you should participate is if you have a need for a
+       feature which is not yet implemented.
