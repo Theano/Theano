@@ -46,8 +46,8 @@ class Images2Neibs(Op):
 
         return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
-    def grad(self, (pvals, unis), (gz,)):
-        return [None, None]
+    def grad(self, (x, neib_shape, neib_step), (gz,)):
+        return [neibs2images(gz, neib_shape, x.shape), None, None]
 
     def c_code_cache_version(self):
         return (3,)
