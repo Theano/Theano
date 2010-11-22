@@ -301,13 +301,13 @@ class Variable(utils.object2):
         return cp
 
     def __lt__(self,other):
-        raise NotImplementedError('Subclasses of Variable must implement __lt__')
+        raise NotImplementedError('Subclasses of Variable must implement __lt__',self.__class__.__name__)
     def __le__(self,other):
-        raise NotImplementedError('Subclasses of Variable must implement __le__')
+        raise NotImplementedError('Subclasses of Variable must implement __le__',self.__class__.__name__)
     def __gt__(self,other):
         raise NotImplementedError('Subclasses of Variable must implement __gt__',self.__class__.__name__)
     def __ge__(self,other):
-        raise NotImplementedError('Subclasses of Variable must implement __ge__')
+        raise NotImplementedError('Subclasses of Variable must implement __ge__',self.__class__.__name__)
 
 class Value(Variable):
     """
