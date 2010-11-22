@@ -20,7 +20,7 @@ to be installed:
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
         not well-tested.
 
-    Python >= 2.4
+    Python_ >= 2.4
         Including the development package (``python-dev`` or ``python-devel``
 	on most Linux distributions).
 
@@ -33,7 +33,8 @@ to be installed:
         Earlier versions have memory leaks.
 
     `SciPy <http://scipy.org>`_
-	Specifically ``scipy.sparse``, and ``scipy.weave``. We recommend SciPy
+	Only currently required for sparse matrix and special functions
+	support, but highly recommended. We recommend SciPy
 	>=0.7 if you are using sparse matrices, because ``scipy.sparse``
 	is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
 	bug with singleton dimensions, there may be more bugs).
@@ -45,6 +46,7 @@ to be installed:
 
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 .. _Accelerate framework: http://developer.apple.com/performance/accelerateframework.html
+.. _Python: http://www.python.org/
 
 The following libraries and software are optional:
 
@@ -68,47 +70,100 @@ Basic user install instructions
 -------------------------------
 
 The easiest way to obtain the released version of Theano is from PyPI using
-the ``easy_install`` command provided by distribute_ (and it's predecessor,
-`setuptools`_). If you have one of these installed, installing Theano should
-be simply a matter of::
+pip_ by typing
 
-    easy_install Theano
+.. code-block:: bash
+
+    pip install Theano
+
+You may need to add ``sudo``  before this command to install into your
+system's ``site-packages`` directory. If you do not have administrator access
+to your machine, you can install to an alternate prefix using
+
+.. code-block:: bash
+
+    pip install Theano --install-option='--prefix=YOURPREFIX'
+
+e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
+install Theano into ``.local/lib/python2.4/site-packages`` inside your home
+directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
+listed in your ``$PYTHONPATH``; for Python 2.6 and later, ``~/.local`` is
+automatically searched and does *not* need to be explicitly included in
+``$PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
+
+Alternatively you can use virtualenv_ to create an isolated ``site-packages``
+directory; see the `virtualenv documentation`_ for details.
+
+.. note::
+
+    Theano *can* be installed with easy_install_, however we recommend pip_ as
+    a bug in ``easy_install`` prevents ``theano.test()`` from running the Theano
+    test suite. If you do not have pip_ installed but do have ``easy_install``,
+    you can get pip_ by typing ``easy_install pip``.
 
 .. _distribute: http://packages.python.org/distribute/
 .. _setuptools: http://pypi.python.org/pypi/setuptools
-
+.. _easy_install: http://packages.python.org/distribute/easy_install.html
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv
+.. _virtualenv documentation: http://virtualenv.openplans.org/
+.. _pip: http://pypi.python.org/pypi/pip
 
 .. _install_bleeding_edge:
 
 Bleeding-edge (developer) install instructions
 ----------------------------------------------
 
-If you are a developer of Theano, then check out the :ref:`dev_start_guide`
-guide.
+If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 The following are general instructions that will set you up with the
-bleeding-edge version of Theano. First, get the code using `mercurial
-<http://www.selenic.com/mercurial/wiki/>`__:
+bleeding-edge version of Theano. First, get the code using `Mercurial
+<http://mercurial.selenic.com/>`__:
 
 .. code-block:: bash
 
     hg clone http://hg.assembla.com/theano Theano
 
-Configuring ``PYTHONPATH``
---------------------------
-
-The subdirectory ``Theano/theano`` has to be located in a path mentioned in
-your ``PYTHONPATH``. In order to do that, you can either create a symbolic
-link to Theano/theano in a directory already mentioned in your ``PYTHONPATH``
-environment variable, or modify the ``PYTHONPATH`` so that it mentions Theano.
-
-To create a symbolic link:
+From here, the easiest way to get started is
 
 .. code-block:: bash
 
-    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
+    cd Theano
+    python setup.py develop
 
-To modify the environment variable PYTHONPATH in bash, you may do this:
+This will install a ``.pth`` file in your ``site-packages`` directory that
+tells Python where to look for your Theano installation (i.e. in the
+directory your just checked out of Mercurial). Using ``develop`` mode is
+preferable to ``install`` as any modifications you make in the checkout
+directory (or changes you pull with Mercurial) will be automatically reflected
+in the "installed" version without re-running ``python setup.py install``.
+
+If you do not have permission to modify your ``site-packages`` directory you
+can specify an alternative installation prefix using
+
+.. code-block:: bash
+
+    python setup.py develop --prefix=YOURPREFIX
+
+A common choice is ``~/.local`` which is automatically searched for Python >=
+2.6; for earlier Python versions and other installation prefixes, the prefix
+specified must contain ``lib/pythonA.B/site-packages``, where ``A.B`` is e.g.
+2.5, and this ``site-packages`` directory must be listed in ``$PYTHONPATH``.
+
+An alternative, perhaps simpler way of creating and using an isolated
+``site-packages`` is to use virtualenv_; see the `virtualenv documentation`_
+for details. If you find yourself using virtualenv frequently you may find the
+virtualenvwrapper_ package useful for switching between them.
+
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv
+.. _virtualenv documentation: http://virtualenv.openplans.org/
+.. _virtualenvwrapper: http://www.doughellmann.com/projects/virtualenvwrapper/
+
+.. _config_pythonpath:
+
+Configuring ``PYTHONPATH``
+##########################
+
+To modify the environment variable ``PYTHONPATH`` in bash, you may do this:
 
 .. code-block:: bash
 
@@ -120,16 +175,26 @@ In csh:
 
     setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
 
+To make this change stick you'll usually need to add the command to one or
+more of your shell's startup scripts, i.e. ``~/.bashrc`` or ``~/.cshrc``.
+Consult your shell's documentation for details.
+
 Testing your installation
 ---------------------------
 
-Once you have completed these steps, you should run the theano test suite like this:
+Once you have completed these steps, you should run the Theano test suite. At
+a Python (or IPython) interpreter,
+
+.. code-block:: python
+
+    >>> import theano
+    >>> theano.test()
+
+You can also run them in-place from the Mercurial checkout directory by typing
 
 .. code-block:: bash
 
-    cd Theano
-    THEANO_FLAGS=warn.ignore_bug_before=all nosetests #execute all the tests
-
+    nosetests
 
 ``THEANO_FLAGS`` is an environment variable that define Theano flags
 (:ref:`libdoc_config`).  For Windows users, you can remove it or see the
@@ -143,7 +208,7 @@ the ``theano-users@googlegroups.com`` mailing list.
 
     `warn.ignore_bug_before=all` removes warnings that you don't need to see
     here.  It is also recommended for a new user to set this flag to a
-    different value into their .theanorc file.  See
+    different value in their ``.theanorc`` file.  See
     :attr:`config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
@@ -168,7 +233,6 @@ entry like this:
 .. code-block:: cfg
 
     # other stuff can go here
-    
     [blas]
     ldflags = -lf77blas -latlas -lgfortran #put your flags here
 

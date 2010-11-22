@@ -1,40 +1,41 @@
-
 .. _dev_start_guide:
 
 =====================
 Developer Start Guide
 =====================
 
+To get up to speed, you'll need to
 
-- Learn some non-basic python to understand what's going on in some of the
-  tricker files (like tensor.py).
+- Learn some non-basic Python to understand what's going on in some of the
+  trickier files (like tensor.py).
+- Go through the `NumPy documentation`_.
+- Learn to write reStructuredText_ for epydoc_ and Sphinx_.
+- Learn about how unittest_ and nose_ work
 
-- Roughly go through the numpy documentation.
-
-- Learn to write reStructuredText_ for epydoc_.
-
-- ExternalTools - packages that play well with Numpy
-
-- EssentialUnitTest - essential usage of python.unittest
-
+.. _Sphinx: http://sphinx.pocoo.org/
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _epydoc: http://epydoc.sourceforge.net/
+.. _NumPy documentation: http://docs.scipy.org/numpy/
+.. _unittest: http://docs.python.org/library/unittest.html
+.. _nose: http://somethingaboutorange.com/mrl/projects/nose/
 
 Accounts
-========
+--------
 
 To obtain developer access: register with `Assembla
-<http://www.assembla.com/>`_ and add yourself as a watcher on the `Theano space 
-<http://www.assembla.com/spaces/theano>`_. Then send an email to an admin asking 
-to be promoted to a member of the project.
+<http://www.assembla.com/>`_ and add yourself as a watcher on the `Theano
+space <http://www.assembla.com/spaces/theano>`_. Then send an email to an
+admin asking to be promoted to a member of the project.
 
 
 Theano code
-===========
+-----------
 
-*To get the source via mercurial,* you must have `mercurial
-<http://www.selenic.com/mercurial/wiki/>`__ installed.
+*To get the source via Mercurial,* you must have `Mercurial
+<http://mercurial.selenic.com/>`__ installed.
 
 The code that makes up Theano is in a `single repository
-<http://www.assembla.com/spaces/theano/trac_mercurial_tool>`__. As a developer, 
+<http://www.assembla.com/spaces/theano/trac_mercurial_tool>`__. As a developer,
 you should clone this repository like this:
 
 .. code-block:: bash
@@ -47,70 +48,46 @@ You can also clone the code anonymously:
 
     hg clone http://hg.assembla.com/theano Theano
 
-Setting up your environment
-===========================
+Then follow the :ref:`install_bleeding_edge`.
 
-Some notes on the environment variable $PYTHONPATH.
+Details about ``PYTHONPATH``
+----------------------------
 
-The subdirectory Theano/theano has to be located in a location
-mentionned in your PYTHONPATH. In order to do that, you can either
-create a symbolic link to Theano/theano in a directory already
-mentionned in your PYTHONPATH environment variable, or modify the
-PYTHONPATH so that it mentions Theano.
+``$PYTHONPATH`` should contain a ":"-separated list of paths, each of which
+contains one or several Python packages, in the order in which you would like
+Python to search for them. If a package has sub-packages of interest to you,
+do **not** add them to ``$PYTHONPATH``: it is not portable, might shadow other
+packages or short-circuit important things in its ``__init__``.
 
-To create a symbolic link:
+It is advisable to never import Theano's files from outside Theano itself
+(this is good advice for Python packages in general). Use ``from theano import
+tensor`` instead of ``import tensor``. ``$PYTHONPATH`` should only contain
+paths to complete packages.
 
-.. code-block:: bash
-
-    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
-
-To modify the environment variable PYTHONPATH in bash, you may do this:
-
-.. code-block:: bash
-
-    export PYTHONPATH=<path to Theano's parent dir>/Theano:$PYTHONPATH
-
-In csh:
-
-.. code-block:: csh
-
-    setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
-
-Olivier Breuleux explains:
-
-$PYTHONPATH should contain a ":"-separated list of paths, each of which
-contains one or several Python packages, in the order in which you would
-like Python to search for them. If a package has sub-packages of interest
-to you, do _not_ add them in the path: it is not portable, might shadow
-other packages or short-circuit important things in its __init__.
-
-I advise to never import theano's files from outside theano itself
-(and I think that is good advice for Python packages in general). Use
-"from theano import tensor" instead of "import tensor". ... $PYTHONPATH
-... should only contain paths to complete packages, so you don't get
-surprised if I add files that enter in conflict with other packages.
-
-When you install a package, only the package name can be imported
-directly. If you want a sub-package, you must import it from the main
-package. That's how it will work in 99.9% of installs because it is the
-default. Therefore, if you stray from this practice, your code will not
-be portable. Also, some ways to circumvent circular dependencies might
-make it so you have to import files in a certain order, which is best
-handled by the package's own __init__.py.
+When you install a package, only the package name can be imported directly. If
+you want a sub-package, you must import it from the main package. That's how
+it will work in 99.9% of installs because it is the default. Therefore, if you
+stray from this practice, your code will not be portable. Also, some ways to
+circumvent circular dependencies might make it so you have to import files in
+a certain order, which is best handled by the package's own ``__init__.py``.
 
 More instructions
 =================
 
 Once you have completed these steps, you should run the tests like this:
 
-.. code-block:: bash
+.. code-block:: python
 
-    cd Theano
-    nosetests #execute all the tests
+    >>> import theano
+    >>> theano.test()
+
+Or by running ``nosetests`` from your checkout directory.
 
 All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the ``theano-users@googlegroups.com``
+encouraged to tell us what went wrong on the `theano-users`_
 mailing list.
+
+.. _theano-users: https://groups.google.com/group/theano-users
 
 To update your library to the latest revision, change directory (``cd``)
 to your ``Theano`` folder and execute the following command:
@@ -122,26 +99,9 @@ to your ``Theano`` folder and execute the following command:
 Nightly test
 ============
 
-Each night we execute all the unit tests automatically.
-The result is sent by email to one of the developers, who (at his discretion) forwards it to the mailing list.
-Said developer may not read his email obsessively (especially on the weekend)
-so there might be some latency in the process.
-For more detail :ref:`see <metadocumentation_nightly_build>`.
-
-
-.. TODO: fix this links
-
-.. _non-basic python: http://pylearn.org/theano/wiki/NonbasicPython
-.. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _epydoc: http://epydoc.sourceforge.net/
-.. _basicnumpy: http://pylearn.org/theano/wiki/BasicNumpy
-
-
-.. _README: ../README.html
-.. _Download: ../README.html#downloading-theano
-.. _Documentation: index.html
-.. _Wiki: http://pylearn.org/theano
-.. _TRAC: http://trac.edgewall.org/
-.. _task list: http://pylearn.org/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
-
+Each night we execute all the unit tests automatically.  The result is sent by
+email to one of the developers, who (at his discretion) forwards it to the
+mailing list.  Said developer may not read his email obsessively (especially
+on the weekend) so there might be some latency in the process.  For more
+detail :ref:`see <metadocumentation_nightly_build>`.
 
