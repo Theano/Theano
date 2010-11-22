@@ -130,10 +130,7 @@ bleeding-edge version of Theano. First, get the code using `Mercurial
 
 From here, the easiest way to get started is
 
-The subdirectory ``Theano/theano`` has to be located in a path mentioned in
-your ``PYTHONPATH``. In order to do that, you can either create a symbolic
-link to Theano/theano in a directory already mentioned in your ``PYTHONPATH``
-environment variable, or modify the ``PYTHONPATH`` so that it mentions Theano.
+.. code-block:: bash
 
     cd Theano
     python setup.py develop
