@@ -9,6 +9,7 @@ import subprocess
 
 CLASSIFIERS = """\
 Development Status :: 4 - Beta
+Intended Audience :: Education
 Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: BSD License
