@@ -321,6 +321,11 @@ def _allclose(a, b):
     else:
         atol = float64_atol
         rtol = float64_rtol
+
+    # Work around bug in Numpy, see http://projects.scipy.org/numpy/ticket/1684
+    if str(b.dtype).startswith('int') and (numpy.absolute(b) < 0).any():
+        b = theano._asarray(b, dtype='float64')
+
     return numpy.allclose(a,b, atol=atol, rtol=rtol)
 
 def get_constant_value(v):
