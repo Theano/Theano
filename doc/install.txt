@@ -33,7 +33,8 @@ to be installed:
         Earlier versions have memory leaks.
 
     `SciPy <http://scipy.org>`_
-	Not technically required but *highly* recommended. We recommend SciPy
+	Only currently required for sparse matrix and special functions
+	support, but highly recommended. We recommend SciPy
 	>=0.7 if you are using sparse matrices, because ``scipy.sparse``
 	is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
 	bug with singleton dimensions, there may be more bugs).
