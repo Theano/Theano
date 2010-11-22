@@ -172,13 +172,13 @@ To modify the environment variable ``PYTHONPATH`` in bash, you may do this:
 
 .. code-block:: bash
 
-    export PYTHONPATH=<path to Theano's parent dir>/Theano:$PYTHONPATH
+    export PYTHONPATH=<new location to add>:$PYTHONPATH
 
 In csh:
 
 .. code-block:: csh
 
-    setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
+    setenv PYTHONPATH <new location to add>:$PYTHONPATH
 
 To make this change stick you'll usually need to add the command to one or
 more of your shell's startup scripts, i.e. ``~/.bashrc`` or ``~/.cshrc``.
