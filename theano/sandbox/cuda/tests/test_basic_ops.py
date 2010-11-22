@@ -812,8 +812,8 @@ def test_shared_float32():
     del theano.shared.constructors[-1]
 
 
-import theano.tensor.tests.test_basic
-test_shared_options = theano.tensor.tests.test_basic.makeSharedTester(
+import theano.tensor.tests.test_sharedvar
+test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     tcn.shared_constructor, 'float32', False, False, False,
     cuda_ndarray.CudaNdarray,
     lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
