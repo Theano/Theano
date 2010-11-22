@@ -54,7 +54,7 @@ The following libraries and software are optional:
     `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
 	For building the documentation. LaTeX_ and dvipng_ are also necessary
 	for math to show up as images.
-    `Mercurial <http://www.selenic.com/mercurial/>`_
+    `Mercurial <http://mercurial.selenic.com/>`_
         To download bleeding-edge versions of Theano.
     `NVIDIA CUDA drivers and SDK
     <http://developer.nvidia.com/object/gpucomputing.html>`_
@@ -88,7 +88,7 @@ If you are a developer of Theano, then check out the :ref:`dev_start_guide`
 guide.
 
 The following are general instructions that will set you up with the
-bleeding-edge version of Theano. First, get the code using `mercurial
+bleeding-edge version of Theano. First, get the code using `Mercurial
 <http://www.selenic.com/mercurial/wiki/>`__:
 
 .. code-block:: bash
