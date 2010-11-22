@@ -110,10 +110,13 @@ def do_setup():
     setup(name=NAME,
           version=VERSION,
           description=DESCRIPTION,
+          long_description=LONG_DESCRIPTION,
+          classifiers=CLASSIFIERS,
           author=AUTHOR,
           author_email=AUTHOR_EMAIL,
           url=URL,
           license=LICENSE,
+          platforms=PLATFORMS,
           packages=find_packages(),
           install_requires=['numpy>=1.3.0', 'scipy>=0.7.0'],
           package_data={
