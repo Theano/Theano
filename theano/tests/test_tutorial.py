@@ -706,29 +706,31 @@ class T_loading_and_saving(unittest.TestCase):
         my_obj =  theano.function([theano.In(x, borrow=True)]
                                   , theano.Out(y, borrow=True))
 
-        f = file('obj.save', 'wb')
-        cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
-        f.close()
+        mode_instance = theano.compile.mode.get_mode(None)
+        if not isinstance(mode_instance, theano.compile.debugmode.DebugMode):
+            f = file('obj.save', 'wb')
+            cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+            f.close()
 
 
-        f = file('obj.save', 'rb')
-        loaded_obj = cPickle.load(f)
-        f.close()
+            f = file('obj.save', 'rb')
+            loaded_obj = cPickle.load(f)
+            f.close()
 
-        obj1 = my_obj
-        obj2 = my_obj
-        obj3 = my_obj
+            obj1 = my_obj
+            obj2 = my_obj
+            obj3 = my_obj
 
-        f = file('objects.save', 'wb')
-        for obj in [obj1, obj2, obj3]:
-            cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
-        f.close()
+            f = file('objects.save', 'wb')
+            for obj in [obj1, obj2, obj3]:
+                cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+            f.close()
 
-        f = file('objects.save', 'rb')
-        loaded_objects = []
-        for i in range(3):
-            loaded_objects.append(cPickle.load(f))
-        f.close()
+            f = file('objects.save', 'rb')
+            loaded_objects = []
+            for i in range(3):
+                loaded_objects.append(cPickle.load(f))
+            f.close()
 
 
 class T_modes(unittest.TestCase):
