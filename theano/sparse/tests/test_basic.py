@@ -23,6 +23,7 @@ from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
+from theano.tensor.basic import _allclose
 
 
 def eval_outputs(outputs):
@@ -298,7 +299,7 @@ class test_structureddot(unittest.TestCase):
                 scipy_result = spmat * mat
                 assert theano_result.shape == scipy_result.shape
                 assert theano_result.dtype == scipy_result.dtype
-                assert numpy.allclose(theano_result, scipy_result)
+                assert _allclose(theano_result, scipy_result)
 
 
     def test_opt_unpack(self):
