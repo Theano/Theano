@@ -656,3 +656,58 @@ def test_dot_w_self():
 
     # tests correctness in debugmode
     f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))
+
+
+def test_dot_vm():
+    ''' Test vector dot matrix '''
+    v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
+    m = theano.shared( numpy.array(numpy.random.rand(2,2),
+                                   dtype='float32'))
+    f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
+
+    # Assert they produce the same output
+    assert numpy.allclose(f(), numpy.dot(v.value,m.value))
+
+    assert sum([isinstance(node.op, T.Dot) for node in
+                f.maker.env.toposort() ]) == 1
+
+def test_dot_mv():
+    ''' Test matrix dot vector '''
+    v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
+    m = theano.shared( numpy.array(numpy.random.rand(2,2),
+                                   dtype='float32'))
+    f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
+
+    # Assert they produce the same output
+    assert numpy.allclose(f(), numpy.dot(m.value,v.value))
+
+    assert sum([isinstance(node.op, T.Dot) for node in
+                f.maker.env.toposort() ]) == 1
+
+def test_gemv1():
+    ''' test vector1+dot(matrix,vector2) '''
+    v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
+
+    f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
+
+    # Assert they produce the same output
+    assert numpy.allclose(f(), numpy.dot(m.value,v1.value)+v2.value)
+
+    assert sum([isinstance(node.op, Gemv) for node in
+                f.maker.env.toposort() ]) == 1
+
+def test_gemv2():
+    ''' test vector1+dot(vector2,matrix) '''
+    v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
+
+    f = theano.function([], v2+theano.dot(v1,m), mode = mode_blas_opt)
+
+    # Assert they produce the same output
+    assert numpy.allclose(f(), numpy.dot(v1.value,m.value)+v2.value)
+
+    assert sum([isinstance(node.op, Gemv) for node in
+                f.maker.env.toposort() ]) == 1
