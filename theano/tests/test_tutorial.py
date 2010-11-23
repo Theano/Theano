@@ -1,3 +1,6 @@
+""" test code snipet in the Theano tutorials.
+"""
+
 import unittest
 import theano
 import theano.tensor as T
