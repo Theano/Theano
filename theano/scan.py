@@ -332,7 +332,7 @@ def scan( fn
         The list of ``non_sequences`` can also contain shared variables
         used in the function, though ``scan`` is able to figure those
         out on its own so they can be skipped. For the clarity of the
-        code we recommand though to provide them to scan.
+        code we recommend though to provide them to scan.
 
         The function is expected to return two things. One is a list of
         outputs ordered in the same order as ``outputs_info``, with the
@@ -358,12 +358,12 @@ def scan( fn
           sequence.
 
         * ``taps`` -- Temporal taps of the sequence required by ``fn``.
-          They are provided as a list of integers, where a value ``k`` impiles
+          They are provided as a list of integers, where a value ``k`` implies
           that at iteration step ``t`` scan will pass to ``fn`` the slice
           ``t+k``. Default value is ``[0]``
 
         Any Theano variable in the list ``sequences`` is automatically
-        wrapped into a dictionary where ``taps`` is set to ``[0]``
+        wrapped into a dictionary where ``taps`` is set to ``[0]``.
 
 
     :param outputs_info:
@@ -376,8 +376,8 @@ def scan( fn
 
         * ``initial`` -- Theano variable that represents the initial
           state of a given output. In case the output is not computed
-          recursively (think of a map) and does not require a initial
-          state this field can be skiped. Given that only the previous
+          recursively (think of a map) and does not require an initial
+          state this field can be skipped. Given that only the previous
           time step of the output is used by ``fn`` the initial state
           should have the same shape as the output. If multiple time
           taps are used, the initial state should have one extra
@@ -388,16 +388,16 @@ def scan( fn
           the initial state, which in this case should have the shape
           (5,)+output.shape. If this variable containing the initial
           state is called ``init_y`` then ``init_y[0]`` *corresponds to*
-          ``output[-5]``. ``init_y[1]`` *correponds to* ``output[-4]``,
-          ``init_y[2]`` corresponds to ``output[-3]``, ``init_y[3]``
-          coresponds to ``output[-2]``, ``init_y[4]`` corresponds to
+          ``output[-5]``; ``init_y[1]`` *correponds to* ``output[-4]``;
+          ``init_y[2]`` corresponds to ``output[-3]``; ``init_y[3]``
+          coresponds to ``output[-2]``; ``init_y[4]`` corresponds to
           ``output[-1]``. While this order might seem strange, it comes
           natural from splitting an array at a given point. Assume that
           we have a array ``x``, and we choose ``k`` to be time step
           ``0``. Then our initial state would be ``x[:k]``, while the
           output will be ``x[k:]``. Looking at this split, elements in
           ``x[:k]`` are ordered exactly like those in ``init_y``.
-        * ``taps`` -- Temporal taps of the output that will be pass to
+        * ``taps`` -- Temporal taps of the output that will be passed to
           ``fn``. They are provided as a list of *negative* integers,
           where a value ``k`` implies that at iteration step ``t`` scan will
           pass to ``fn`` the slice ``t+k``.
@@ -417,12 +417,12 @@ def scan( fn
           provided, ``scan`` will return ``output[-k:]``. This is meant as a
           hint, based on ``k`` and the past taps of the outputs used, scan
           can be smart about the amount of memory it requires to store
-          intermidiate results. If not given, or ``0``, ``scan`` will return
+          intermediate results. If not given, or ``0``, ``scan`` will return
           all computed steps.
         * ``store_steps`` -- Integer representing the number of
-          intermidiate steps ``scan`` should use for a given output. Use
+          intermediate steps ``scan`` should use for a given output. Use
           this key only if you really know what you are doing. In general
-          is recommendat to let scan decide for you the ammount of memory
+          it is recommended to let scan decide for you the ammount of memory
           it should use.
 
         ``scan`` will follow this logic if partial information is given:
@@ -450,7 +450,7 @@ def scan( fn
 
     :param non_sequences:
         ``non_sequences`` is the list of arguments that are passed to
-        ``fn`` at each steps. Once can opt to exclude shared variables
+        ``fn`` at each steps. One can opt to exclude shared variables
         used in ``fn`` from this list.
 
 
@@ -462,8 +462,8 @@ def scan( fn
         outputs will have *0 rows*. If the value is negative, ``scan``
         run backwards in time. If the ``go_backwards`` flag is already
         set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n stpes is not provided, or evaluates to ``None``,
-        ``inf`` or ``NaN``, ``scan`` will figure out the amount of
+        in time. If ``n_steps`` is not provided, or evaluates to ``None``,
+        ``inf`` or ``NaN``, then ``scan`` will figure out the amount of
         steps it should run given its input sequences.
 
 
@@ -495,8 +495,8 @@ def scan( fn
     :param mode:
         It is recommended to leave this argument to None, especially
         when profiling ``scan`` (otherwise the results are not going to
-        be accurate). If you prefer the computations of one step os
-        ``scan`` to be done differently then the entire function set
+        be accurate). If you prefer the computations of one step of
+        ``scan`` to be done differently compared to the entire function, set
         this parameters (see ``theano.function`` for details about
         possible values and their meaning).
 
@@ -633,7 +633,7 @@ def scan( fn
             elif (not outs_info[i].get('initial',None)) and \
                     (outs_info[i].get('taps',None)):
                 raise ValueError('If you are using slices of an output you need to '\
-                        'provide a initial state for it', outs_info[i])
+                        'provide an initial state for it', outs_info[i])
                 # if there is an intial state but no tap, we will add the default value
                 # for taps, namely [-1] ( previous value); not that this will happen
                 # even though you have provided for taps the value None, which is a bit
@@ -643,7 +643,7 @@ def scan( fn
             elif outs_info[i].get('initial',None) and \
                     ( not outs_info[i].get('taps',None)):
                 if outs_info[i].has_key('taps'):
-                    warning('You are providing a initial state for an output and then '
+                    warning('You are providing an initial state for an output and then '
                         'tell scan not to use it. Why? Scan will overwrite this setting'
                         ' and use the previous value of the provided initial state. If'
                         ' this is not what you wanted, check your code and do not '
@@ -729,7 +729,7 @@ def scan( fn
     # go through outputs picking up time slices as needed
     for i,init_out in enumerate(outs_info):
         # Note that our convention dictates that if an output uses
-        # just the previous time step, as a initial state we will only provide
+        # just the previous time step, as an initial state we will only provide
         # a tensor of the same dimension as one time step; This makes code
         # much cleaner for those who do not use taps. Otherwise they would
         # always had to shape_pad_left the initial state .. which is ugly
@@ -1565,7 +1565,7 @@ class Scan(Op):
         for x in self.store_steps[:self.n_outs_not_shared]:
             if x>0 :
                 raise ValueError('Can not compute gradients if one does not ',
-                        'store all intermidiate results (remove store_steps'
+                        'store all intermediate results (remove store_steps'
                         'from the dictionaries describing your outputs)')
         g_scan = ScanGrad((inner_gfn_ins, inner_gfn_outs),
                 self.n_seqs, self.n_outs, self.n_outs_not_shared,
