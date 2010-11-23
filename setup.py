@@ -3,8 +3,15 @@
 #  TODO:
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
-import distribute_setup
-distribute_setup.use_setuptools()
+
+# Detect whether or not the user has setuptools and use the bundled
+# distribute_setup.py bootstrap module if they don't.
+try:
+    import setuptools
+except ImportError:
+    import distribute_setup
+    distribute_setup.use_setuptools()
+
 import os
 import subprocess
 
