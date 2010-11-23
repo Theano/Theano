@@ -36,7 +36,8 @@ MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
-LONG_DESCRIPTION    = open("DESCRIPTION.txt").read()
+LONG_DESCRIPTION    = (open("DESCRIPTION.txt").read() + "\n\n"
+                       open("NEWS.txt").read())
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'

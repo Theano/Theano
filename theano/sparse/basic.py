@@ -248,6 +248,12 @@ class _sparse_py_operators:
     def __dot__(left, right): return structured_dot(left, right)
     def __rdot__(right, left): return structured_dot(left, right)
 
+    #def _as_TensorVariable(self):
+    #    return dense_from_sparse(self)
+    shape = property(lambda self: tensor.shape(self))
+    ndim = property(lambda self: self.type.ndim)
+    dtype = property(lambda self: self.type.dtype)
+
 
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
@@ -1148,16 +1154,16 @@ def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc','csr'):
 
         if sparse_A.type.format == 'csc':
-          sdgcsx = sdg_csc
+            sdgcsx = sdg_csc
         else:
-          sdgcsx = sdg_csr
+            sdgcsx = sdg_csr
         #backport
         #sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
 
         if sparse_A.type.format == 'csc':
-          CSx = CSC
+            CSx = CSC
         else:
-          CSx = CSR
+            CSx = CSR
         #backport
         #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
@@ -1380,4 +1386,3 @@ class StructuredDotGradCSR(gof.Op):
 
         """% dict(locals(), **sub)
 sdg_csr = StructuredDotGradCSR()
-

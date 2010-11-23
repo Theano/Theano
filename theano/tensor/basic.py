@@ -398,7 +398,7 @@ class TensorType(Type):
         """
         self.dtype = str(dtype)
         if self.dtype=='floatX':
-          self.dtype=config.floatX
+            self.dtype=config.floatX
         ###    broadcastable is immutable, and all elements are either True or False
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.dtype_specs() # error checking is done there
@@ -676,7 +676,7 @@ class TensorType(Type):
                 if any(b):
                     bcast = str(b)
                 else:
-                        bcast = '%iD' % len(b)
+                    bcast = '%iD' % len(b)
             return "TensorType(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
@@ -1291,9 +1291,9 @@ def _scal_elemwise(symbol):
     symbolname = symbol.__name__
     inplace = symbolname.endswith('_inplace')
     if inplace:
-      msg = "inplace"
+        msg = "inplace"
     else:
-      msg = "no_inplace"
+        msg = "no_inplace"
     n="Elemwise{%s,%s}"%(symbolname,msg)
 
     if inplace:
@@ -1507,7 +1507,7 @@ class MaxAndArgmax(Op):
             for id,a in enumerate(axis):
                 if not isinstance(a, TensorVariable) and a<0:
                     if -a>x.type.ndim:
-                      raise ValueError('axis out of range')
+                        raise ValueError('axis out of range')
                     axis[id]=x.type.ndim+a
         axis = _as_tensor_variable(axis)
         inputs = [x, axis]
@@ -1540,18 +1540,18 @@ class MaxAndArgmax(Op):
         if not ( axis.data == 0 or axis.data == x.ndim-1):
             raise NotImplementedError('MaxAndArgmax gradient with axis corresponding to internal dimension')
         if axis.data==0:
-          g_max_pad = shape_padleft(g_max)
+            g_max_pad = shape_padleft(g_max)
         else:
-           g_max_pad = shape_padright(g_max)
+            g_max_pad = shape_padright(g_max)
         xmax = max(x, axis)
         if axis.data==0:
-          xmax_pad = shape_padleft(xmax)
+            xmax_pad = shape_padleft(xmax)
         else:
-          xmax_pad = shape_padright(xmax)
+            xmax_pad = shape_padright(xmax)
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, None
     def __str__(self):
-      return self.__class__.__name__
+        return self.__class__.__name__
 
 _max_and_argmax = MaxAndArgmax()
 @_redefine_asRoutine(_max_and_argmax)
@@ -1579,12 +1579,12 @@ def max(x, axis='DEFAULT'):
         axis = x.type.ndim - 1
         warnings.warn("The behavior of max when axis==None will change! Now we return the max over the last dimensions. It will change to the max over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling max().")
     if isinstance(axis,(list,tuple)) and len(axis)>1:
-       return CAReduce(scal.maximum,axis)(x)
+        return CAReduce(scal.maximum,axis)(x)
     try:
-      const = get_constant_value(axis)
-      return CAReduce(scal.maximum,list(const))(x)
+        const = get_constant_value(axis)
+        return CAReduce(scal.maximum,list(const))(x)
     except:
-      return max_and_argmax(x,axis)[0]
+        return max_and_argmax(x,axis)[0]
 
 @constructor
 def argmax(x, axis='DEFAULT'):
@@ -2086,16 +2086,16 @@ class Mean(elemwise.CAReduce):
         return 'float64'
 
     def perform(self, node, (input, ), (output, )):
-      output[0]=numpy.mean(input,axis=self.axis)
+        output[0]=numpy.mean(input,axis=self.axis)
 
     def c_code(self, node, name, inames, onames, sub):
-      if self.axis!=None:
-        return super(Op, self).c_code(node, name, inames, onames, sub)
-      ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
-      #TODO: c_code perform support only axis==None
-      return ret + """
-*((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
-"""%(onames[0],inames[0])
+        if self.axis!=None:
+            return super(Op, self).c_code(node, name, inames, onames, sub)
+        ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
+        #TODO: c_code perform support only axis==None
+        return ret + """
+  *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
+  """%(onames[0],inames[0])
 
 #TODO: implement the grad. When done and tested, you can make this the default version.
 #    def grad(self, (x,), (gout,)):
@@ -2114,11 +2114,11 @@ def mean(input, axis = None, op = False):
            mean, everything will be done on the gpu.
     """
     if op:
-      return Mean(axis)(input)
+        return Mean(axis)(input)
 
     if str(input.dtype).startswith('int'):
-        # we need to cast eventually anyway, and this helps
-        # to prevents overflow
+            # we need to cast eventually anyway, and this helps
+            # to prevents overflow
         input = cast(input, 'float64')
     s = sum(input, axis)
     shp = shape(input)
@@ -2183,10 +2183,10 @@ if 0:
             assert axis.type == iscalar
             broadcastable = []
             for i,x in enumerate(input.broadcastable):
-              if i==axis:
-                broadcastable += [False]
-              else:
-                broadcastable += [x]
+                if i==axis:
+                    broadcastable += [False]
+                else:
+                    broadcastable += [x]
 
             type = TensorType(dtype = input.type.dtype, broadcastable = \
                               broadcastable)
@@ -2360,46 +2360,46 @@ class Subtensor(Op):
 
     @staticmethod
     def convert(entry, slice_ok=True):
-      scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
-      tensor_types = [bscalar, iscalar, lscalar]
-      if isinstance(entry, gof.Variable) and entry.type in scal_types:
-        return entry.type
-      elif isinstance(entry, gof.Type) and entry in scal_types:
-        return entry
-      if isinstance(entry, gof.Variable) and entry.type in tensor_types and numpy.all(entry.type.broadcastable):
-        return scal.Scalar(entry.type.dtype)
-      elif isinstance(entry, gof.Type) and entry in tensor_types and numpy.all(entry.broadcastable):
-        return scal.Scalar(entry.dtype)
-      elif slice_ok and isinstance(entry, slice):
-        a = entry.start
-        b = entry.stop
-        c = entry.step
+        scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
+        tensor_types = [bscalar, iscalar, lscalar]
+        if isinstance(entry, gof.Variable) and entry.type in scal_types:
+            return entry.type
+        elif isinstance(entry, gof.Type) and entry in scal_types:
+            return entry
+        if isinstance(entry, gof.Variable) and entry.type in tensor_types and numpy.all(entry.type.broadcastable):
+            return scal.Scalar(entry.type.dtype)
+        elif isinstance(entry, gof.Type) and entry in tensor_types and numpy.all(entry.broadcastable):
+            return scal.Scalar(entry.dtype)
+        elif slice_ok and isinstance(entry, slice):
+            a = entry.start
+            b = entry.stop
+            c = entry.step
 
-        if a is not None:
-          slice_a = Subtensor.convert(a, False)
-        else:
-          slice_a = None
+            if a is not None:
+                slice_a = Subtensor.convert(a, False)
+            else:
+                slice_a = None
 
-        if b is not None:
-           slice_b = Subtensor.convert(b, False)
-        else:
-           slice_b = None
+            if b is not None:
+                slice_b = Subtensor.convert(b, False)
+            else:
+                slice_b = None
 
-        if c is not None:
-           slice_c = Subtensor.convert(c, False)
-        else:
-           slice_c = None
+            if c is not None:
+                slice_c = Subtensor.convert(c, False)
+            else:
+                slice_c = None
 
-        return slice(slice_a,slice_b,slice_c)
-          #backport
-          #return slice(Subtensor.convert(a, False) if a is not None else None,
+            return slice(slice_a,slice_b,slice_c)
+                #backport
+                #return slice(Subtensor.convert(a, False) if a is not None else None,
             #             Subtensor.convert(b, False) if b is not None else None,
             #             Subtensor.convert(c, False) if c is not None else None)
 
-      elif isinstance(entry, int):
-        return entry
-      else:
-        raise TypeError(Subtensor.e_indextype, entry)
+        elif isinstance(entry, int):
+            return entry
+        else:
+            raise TypeError(Subtensor.e_indextype, entry)
 
     def __init__(self, idx_list):
         self.idx_list = map(self.convert, idx_list)
@@ -2493,7 +2493,7 @@ class Subtensor(Op):
                 if (idx.start is None or idx.start == 0)\
                     and (idx.stop is None or idx.stop == sys.maxint)\
                     and (idx.step is None or idx.step == 1):
-                        outshp.append(xl)
+                    outshp.append(xl)
                 else:
                     # Not implemented yet
                     outshp.append(shape_i(i)(node.outputs[0]))
@@ -2517,10 +2517,10 @@ class Subtensor(Op):
         #TODO: optimize by cache this hash value
         msg = []
         for entry in self.idx_list:
-          if isinstance(entry, slice):
-            msg += [(entry.start, entry.stop, entry.step)]
-          else:
-            msg += [entry]
+            if isinstance(entry, slice):
+                msg += [(entry.start, entry.stop, entry.step)]
+            else:
+                msg += [entry]
 
         idx_list = tuple(msg)
         #backport
@@ -2568,19 +2568,19 @@ class SubtensorPrinter:
                     sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
                 elif isinstance(entry, slice):
                     if entry.start is None or entry.start==0:
-                      msg1 = ""
+                        msg1 = ""
                     else:
-                      msg1 =  entry.start
+                        msg1 =  entry.start
 
                     if entry.stop is None or entry.stop == sys.maxint:
-                      msg2 = ""
+                        msg2 = ""
                     else:
-                      msg2 =  entry.stop
+                        msg2 =  entry.stop
 
                     if entry.step is None:
-                      msg3 = ""
+                        msg3 = ""
                     else:
-                      msg3 =  ":%s" % entry.step
+                        msg3 =  ":%s" % entry.step
 
                     sidxs.append("%s:%s%s"  % (msg1, msg2, msg3))
                     #backport
@@ -2666,10 +2666,10 @@ class IncSubtensor(Op):
     def __hash__(self):
         msg = []
         for entry in self.idx_list:
-          if isinstance(entry, slice):
-            msg += [(entry.start, entry.stop, entry.step)]
-          else:
-            msg += [entry]
+            if isinstance(entry, slice):
+                msg += [(entry.start, entry.stop, entry.step)]
+            else:
+                msg += [entry]
 
         idx_list = tuple(msg)
         #backport
@@ -2848,7 +2848,7 @@ class Split(Op):
         """WRITEME"""
         #in python 2.4, x.shape[numpy.asarray(1)] don't work.
         if sys.version_info[0:2]==(2, 4) and axis.size==1:
-          axis=int(axis)
+            axis=int(axis)
 
         try:
             len_along_axis = x.shape[axis]
@@ -3032,8 +3032,8 @@ class Join(Op):
                 # for the output.
                 for x in as_tensor_variable_args:
                     for current_axis, bflag in enumerate(x.type.broadcastable):
-                        # Not sure if this Op supports/supported/will support
-                        # negative indices, but just to be sure...
+                    # Not sure if this Op supports/supported/will support
+                    # negative indices, but just to be sure...
                         if current_axis == axis % ndim:
                             continue
                         if bflag:
@@ -3103,9 +3103,9 @@ class Join(Op):
         if node.ndim != 1:
             raise TypeError('argument must be symbolic vector')
         if node.owner.tag.shape_zero is None:
-          raise ValueError("could not determine vector length")
+            raise ValueError("could not determine vector length")
         else:
-          return node.owner.tag.shape_zero
+            return node.owner.tag.shape_zero
 
 @_redefine_asRoutine(Join())
 def join(axis, *tensors):
@@ -3420,7 +3420,7 @@ def tile(x, reps, ndim=None):
     if not hasattr(tile, 'op'):
         tile.op = {}
     if ndim is None:
-      ndim = len(reps)
+        ndim = len(reps)
 
     #backport
     #ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going to work.
@@ -4404,9 +4404,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     o_fn_out = o_fn(*[p.copy() for p in pt])
 
     if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
-            raise TypeError('It seems like you are trying to use verify_grad '
-                    'on an op or a function which outputs a list: there should'
-                    ' be a single (array-like) output instead')
+        raise TypeError('It seems like you are trying to use verify_grad '
+                'on an op or a function which outputs a list: there should'
+                ' be a single (array-like) output instead')
 
     # random_projection should not have elements too small,
     # otherwise too much precision is lost in numerical gradient

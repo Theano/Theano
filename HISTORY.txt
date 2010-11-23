@@ -1,0 +1,32 @@
+
+.. _NEWS:
+
+=============
+Release Notes
+=============
+
+Theano 0.1
+==========
+
+*Release date: 2009-04-02*
+
+What works
+----------
+
+- building symbolic expression.
+- arranging symbolic expressions into Modules so that multiple functions
+  can work on the same data.
+- symbolic gradient descent.
+- graph optimization.
+- compilation to C for many kinds of expression.
+- a debugging mode that checks that your expression results are correct,
+  using a variety of sanity checks.
+
+What's missing?
+---------------
+
+- An algorithm library. We're missing a library of examples and standard
+  component implementations.  Some examples will find their way into
+  the Theano repo, but standard algorithms will go into the 'pylearn'
+  project (toolbox style). Now that we have a stable foundation, we
+  can reach a consensus on style for algorithms.
