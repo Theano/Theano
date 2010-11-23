@@ -36,7 +36,7 @@ MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
-LONG_DESCRIPTION    = (open("DESCRIPTION.txt").read() + "\n\n"
+LONG_DESCRIPTION    = (open("DESCRIPTION.txt").read() + "\n\n" +
                        open("NEWS.txt").read())
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
@@ -48,7 +48,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 3
 MICRO               = 0
-SUFFIX              = "rc4"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
