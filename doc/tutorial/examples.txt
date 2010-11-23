@@ -377,11 +377,11 @@ Here's a brief example.  The setup code is:
     nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
-distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
+distribution.  Likewise,  'rv_n' represents a random stream of 2x2 matrices of
 draws from a normal distribution.  The distributions that are implemented are
 defined in :class:`RandomStreams`.
 
-Now let's use these things.  If we call f(), we get random uniform numbers.
+Now let's use these objects.  If we call f(), we get random uniform numbers.
 The internal state of the random number generator is automatically updated,
 so we get different random numbers every time.
 
@@ -394,7 +394,7 @@ not affected by calling the returned function.  So for example, calling
 ``g`` multiple times will return the same numbers.
 
 >>> g_val0 = g()  # different numbers from f_val0 and f_val1
->>> g_val1 = g()  # same numbers as g_val0 !!!
+>>> g_val1 = g()  # same numbers as g_val0!
 
 An important remark is that a random variable is drawn at most once during any
 single function execution.  So the ``nearly_zeros`` function is guaranteed to

@@ -149,7 +149,7 @@ Reference
     will be used as the update expression for this variable.  Passing
     ``no_default_updates=True`` to ``function`` disables this behavior
     entirely, passing ``no_default_updates=[sharedvar1, sharedvar2]``
-    disables it for the mentionned variables.
+    disables it for the mentioned variables.
 
     Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading
