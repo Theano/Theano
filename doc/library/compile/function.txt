@@ -152,7 +152,8 @@ Reference
     disables it for the mentioned variables.
 
     Regarding givens: Be careful to make sure that these substitutions are
-    independent--behaviour when Var1 of one pair appears in the graph leading
-    to Var2 in another expression is undefined.  Replacements specified with
+    independent, because behaviour when Var1 of one pair appears in the graph leading
+    to Var2 in another expression is undefined (e.g. with ``{a: x, b: a + 1}``).
+    Replacements specified with
     givens are different from optimizations in that Var2 is not expected to be
     equivalent to Var1.
