@@ -102,7 +102,9 @@ if __name__ == "__main__":
         Test time in float32 with cuda 3.0.14
         (cuda version 3.2RC and up are supposed to have faster gemm on the GTX4?? card)
         cpu/cuda version
+        GTX480/3.2        0.24s
         GTX480/3.0        0.27s
+        GTX470/3.2        0.29s
         GTX470/3.0        0.34s
         GTX285/3.0        0.40s
         GT220/3.2RC       5.15s
