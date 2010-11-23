@@ -729,8 +729,47 @@ optdb.register('InplaceGpuBlasOpt',
             max_use_ratio=5),
                70.0, 'fast_run', 'inplace')
 
+def max_inputs_to_GpuElemwise(node):
+    """
+    return the maximum number of input this Apply node to an GpuElemwise can accept.
+    This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
+    This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
+    """
+    #TODO: detect the size of gpu pointeur and c int.
+    int_size = 8
+    ptr_size = 8
+
+    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
+    size_param_mandatory = int_size #for numels
+    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
+    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
+
+    nb_bytes_avail = argument_limit-size_param_mandatory
+    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
+    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+    return max_nb_inputs
+
+def split_huge_add_or_mul(node):
+    """
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
+
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
+    """
+    if node.op.scalar_op in (scal.add, scal.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        while len(node.inputs)>max_nb_inputs:
+            inner_op = []
+            for i in range(0,len(node.inputs),max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
+            node = node.op(*inner_op).owner
+    return node
+
 #GpuElemwise fusion
-gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(GpuElemwise)
+gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(GpuElemwise, max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
@@ -775,42 +814,3 @@ def local_gpualloc(node):
         #if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
-
-def max_inputs_to_GpuElemwise(node):
-    """
-    return the maximum number of input this Apply node to an GpuElemwise can accept.
-    This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
-    This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
-    """
-    #TODO: detect the size of gpu pointeur and c int.
-    int_size = 8
-    ptr_size = 8
-        
-    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
-    size_param_mandatory = int_size #for numels
-    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
-    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
-
-    nb_bytes_avail = argument_limit-size_param_mandatory
-    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
-    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
-    return max_nb_inputs
-
-def split_huge_add_or_mul(node):
-    """
-    For add and mul, it can happen that we have too much input
-    That will make nvcc fail compilation of our current code.
-    We don't want node in the graph that can't execute
-    as this break DebugMode.
-
-    This should not happen for other GpuElemwise as their is only the fusion
-    that can generate op with too much input and it check for that.
-    """
-    if node.op.scalar_op in (scal.add, scal.mul):
-        max_nb_inputs = max_inputs_to_GpuElemwise(node)
-        while len(node.inputs)>max_nb_inputs: 
-            inner_op = []
-            for i in range(0,len(node.inputs),max_nb_inputs):
-                inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
-            node = node.op(*inner_op).owner
-    return node

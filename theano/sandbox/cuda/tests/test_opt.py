@@ -155,6 +155,27 @@ def test_print_op():
     assert topo[3].op == cuda.host_from_gpu
     f(numpy.random.random((5,5)).astype('float32'))
 
+def test_huge_elemwise_fusion():
+    """ Test the the GpuElemwise fusion work correctly
+        We check that we fuse one node with part of its input
+        in case their is too many inputs and that would make it bust the 256
+        bytes limits.
+    """
+    shape = (3,4,5,6)
+    vars = [tensor.tanh(tensor.ftensor4()) for x in range(10)]
+    f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
+    topo = f.maker.env.toposort()
+    #theano.printing.debugprint(f)
+    #for i, node in enumerate(topo):
+    #    print >> sys.stdout, i, node
+    assert len(topo)==10
+    assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo])==2
+    assert isinstance(topo[7].op.scalar_op,theano.scalar.basic.Composite)
+    assert isinstance(topo[8].op.scalar_op,theano.scalar.basic.Composite)
+    #let debugmode catch errors
+    gen = lambda : theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    f(gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen())
+
 def test_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly"""
     shape = (3,4)

@@ -2919,9 +2919,13 @@ for i in range(1,len(p64)): print i, 64[i]-p64[i-1]
 # ###############
 # # Loop fusion #
 # ###############
-def local_elemwise_fusion_op(OP):
+def local_elemwise_fusion_op(OP, max_input_fct = lambda node: 1024):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
+
+    :param OP: GpuElemwise or Elemwise class (the one that we want to fuse)
+
+    :param max_input_fct: a fct that return the maximum number of input that this elemwise can take(usefull for the GpuElemwise)
     """
     def local_fuse(node):
         """
@@ -2951,16 +2955,24 @@ def local_elemwise_fusion_op(OP):
 
         if not isinstance(node.op, OP):
             return False
-        nb_elemwise=0
         inputs=[]#inputs of the new Elemwise op.
         s_inputs = []#inputs of the new scalar op.
         s_g=[]#graph of scalar, what will by done in the inner loop.
+
+        # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
+        max_nb_input = max_input_fct(node)
+        #print len(node.inputs),max_nb_input
+        new_nb_input = len(node.inputs)
+
         for i in node.inputs:
             do_fusion = False
             catch = False
             tmp_input=[]#used to remove duplicate input.
             tmp_scalar=[]
-            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)==1:
+            if ((new_nb_input+1)<=max_nb_input
+                and i.owner
+                and isinstance(i.owner.op, OP)
+                and len(i.clients)==1):
                 #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
                 do_fusion=True
                 try:
@@ -2988,7 +3000,7 @@ def local_elemwise_fusion_op(OP):
 
             if do_fusion:
                 #we should not put duplicate input into s_inputs and inputs
-                nb_elemwise+=1
+                new_nb_input+=1
                 inputs.extend(tmp_input)
                 s_inputs.extend(tmp_scalar)
                 s_g.append(s_op)
@@ -3002,7 +3014,7 @@ def local_elemwise_fusion_op(OP):
                 s_g.append(s)
 
         #if no inputs have are an elemwise, there is nothing to fuse.
-        if nb_elemwise==0:
+        if new_nb_input==len(node.inputs):
     #        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
             return False
 
@@ -3029,22 +3041,9 @@ def local_elemwise_fusion_op(OP):
         assert len(n.outputs)==1
         assert node.outputs[0].dtype==n.outputs[0].dtype
 
-        # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
-        # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
-        if OP != T.Elemwise:
-            argument_limit = 240  # 16 bytes are used for block and thread coords etc.
-            #TODO: read in from architecture to make this 4 or 8
-            int_size = 8
-            ptr_size = 8
-            argument_size = int_size #for numels
-            argument_size += int_size *  inputs[0].type.ndim # for the shape
-            argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.inputs)
-            argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.outputs)
-            if argument_size >= argument_limit:
-                _logger.info('loop fusion failed because Op would exceed kernel argument limit.')
-                return False
-
-    #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
+        if len(n.inputs)>max_nb_input:
+            _logger.info('loop fusion failed because Op would exceed kernel argument limit.')
+            return False
 
         #we fuse as many that we can at the same time to make debug mode faster
         #debug mode will be faster as it won't test all intermediate step.
