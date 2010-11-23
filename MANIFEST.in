@@ -2,5 +2,5 @@ global-include *.txt
 global-include *.cu
 global-include *.cuh
 global-include *.sh
-include ChangeLog
+recursive-include docs *.png *.gp
 include distribute_setup.py
