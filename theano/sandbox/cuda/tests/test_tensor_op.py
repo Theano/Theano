@@ -40,6 +40,18 @@ def test_shape_i():
         assert len(topo)==1
         assert isinstance(topo[0].op,T.opt.Shape_i)
 
+def test_shape():
+    x = cuda.ftensor3()
+    v = cuda.CudaNdarray(numpy.zeros((3,4,5),dtype='float32'))
+    f = theano.function([x],x.shape)
+    topo = f.maker.env.toposort()
+    assert numpy.all(f(v)==(3,4,5))
+    if theano.config.mode!='FAST_COMPILE':
+        assert len(topo)==4
+        assert isinstance(topo[0].op,T.opt.Shape_i)
+        assert isinstance(topo[1].op,T.opt.Shape_i)
+        assert isinstance(topo[2].op,T.opt.Shape_i)
+        assert isinstance(topo[3].op,T.opt.MakeVector)
 
 def test_softmax_optimizations():
     from theano.tensor.nnet.nnet import softmax, crossentropy_categorical_1hot, crossentropy_softmax_argmax_1hot_with_bias
