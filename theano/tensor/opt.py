@@ -465,7 +465,7 @@ class ShapeFeature(object):
     """
     def shape_i(self, i):
         def op_deco(r):
-            if r.type.broadcastable[i]:
+            if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
                 return self.lscalar_one
             else:
                 return Shape_i(i)(r)

@@ -1,3 +1,6 @@
+""" test code snipet in the Theano tutorials.
+"""
+
 import unittest
 import theano
 import theano.tensor as T
@@ -33,7 +36,7 @@ class T_extending(unittest.TestCase):
                 return float(x)
 
         def values_eq_approx(x, y, tolerance=1e-4):
-           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+            return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
 
         from theano import gof
@@ -47,13 +50,13 @@ class T_extending(unittest.TestCase):
 
         class Double(gof.Type):
 
-           def filter(self, x, strict=False):
-               if strict and not isinstance(x, float):
-                   raise TypeError('Expected a float!')
-               return float(x)
+            def filter(self, x, strict=False):
+                if strict and not isinstance(x, float):
+                    raise TypeError('Expected a float!')
+                return float(x)
 
-           def values_eq_approx(self, x, y, tolerance=1e-4):
-               return abs(x - y) / (abs(x) + abs(y)) < tolerance
+            def values_eq_approx(self, x, y, tolerance=1e-4):
+                return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
         double = Double()
 
@@ -67,16 +70,16 @@ class T_extending(unittest.TestCase):
 
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast=None):
-               if strict and not isinstance(x, float):
-                   raise TypeError('Expected a float!')
-               return float(x)
+            def filter(self, x, strict=False, allow_downcast=None):
+                if strict and not isinstance(x, float):
+                    raise TypeError('Expected a float!')
+                return float(x)
 
-           def values_eq_approx(self, x, y, tolerance=1e-4):
-               return abs(x - y) / (abs(x) + abs(y)) < tolerance
+            def values_eq_approx(self, x, y, tolerance=1e-4):
+                return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
-           def __str__(self):
-               return "double"
+            def __str__(self):
+                return "double"
 
         double = Double()
 
@@ -107,13 +110,13 @@ class T_extending(unittest.TestCase):
 
 
         def make_node(x, y):
-           if isinstance(x, (int, float)):
-               x = gof.Constant(double, x)
-           if isinstance(y, (int, float)):
-               y = gof.Constant(double, y)
-           if x.type != double or y.type != double:
-               raise TypeError('mul only works on doubles')
-           return gof.Apply(mul, [x, y], [double()])
+            if isinstance(x, (int, float)):
+                x = gof.Constant(double, x)
+            if isinstance(y, (int, float)):
+                y = gof.Constant(double, y)
+            if x.type != double or y.type != double:
+                raise TypeError('mul only works on doubles')
+            return gof.Apply(mul, [x, y], [double()])
         mul.make_node = make_node
 
 
@@ -125,30 +128,30 @@ class T_extending(unittest.TestCase):
 
         from theano import gof
         class BinaryDoubleOp(gof.Op):
-           def __init__(self, name, fn):
-               self.name = name
-               self.fn = fn
+            def __init__(self, name, fn):
+                self.name = name
+                self.fn = fn
 
-           def __eq__(self, other):
-               return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
+            def __eq__(self, other):
+                return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
 
-           def __hash__(self):
-               return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
+            def __hash__(self):
+                return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
 
-           def make_node(self, x, y):
-               if isinstance(x, (int, float)):
-                   x = gof.Constant(double, x)
-               if isinstance(y, (int, float)):
-                   y = gof.Constant(double, y)
-               if x.type != double or y.type != double:
-                   raise TypeError('%s only works on doubles' % self.name)
-               return gof.Apply(self, [x, y], [double()])
+            def make_node(self, x, y):
+                if isinstance(x, (int, float)):
+                    x = gof.Constant(double, x)
+                if isinstance(y, (int, float)):
+                    y = gof.Constant(double, y)
+                if x.type != double or y.type != double:
+                    raise TypeError('%s only works on doubles' % self.name)
+                return gof.Apply(self, [x, y], [double()])
 
-           def perform(self, node, (x, y), (z, )):
-               z[0] = self.fn(x, y)
+            def perform(self, node, (x, y), (z, )):
+                z[0] = self.fn(x, y)
 
-           def __str__(self):
-               return self.name
+            def __str__(self):
+                return self.name
 
         add = BinaryDoubleOp(name = 'add',
                             fn = lambda x, y: x + y)
@@ -175,44 +178,44 @@ class T_extending(unittest.TestCase):
 
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast=None):
-               if strict and not isinstance(x, float):
-                   raise TypeError('Expected a float!')
-               return float(x)
+            def filter(self, x, strict=False, allow_downcast=None):
+                if strict and not isinstance(x, float):
+                    raise TypeError('Expected a float!')
+                return float(x)
 
-           def values_eq_approx(self, x, y, tolerance=1e-4):
-               return abs(x - y) / (abs(x) + abs(y)) < tolerance
+            def values_eq_approx(self, x, y, tolerance=1e-4):
+                return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
-           def __str__(self):
-               return "double"
+            def __str__(self):
+                return "double"
 
         double = Double()
 
         class BinaryDoubleOp(gof.Op):
-           def __init__(self, name, fn):
-               self.name = name
-               self.fn = fn
+            def __init__(self, name, fn):
+                self.name = name
+                self.fn = fn
 
-           def __eq__(self, other):
-               return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
+            def __eq__(self, other):
+                return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
 
-           def __hash__(self):
-               return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
+            def __hash__(self):
+                return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
 
-           def make_node(self, x, y):
-               if isinstance(x, (int, float)):
-                   x = gof.Constant(double, x)
-               if isinstance(y, (int, float)):
-                   y = gof.Constant(double, y)
-               if x.type != double or y.type != double:
-                   raise TypeError('%s only works on doubles' % self.name)
-               return gof.Apply(self, [x, y], [double()])
+            def make_node(self, x, y):
+                if isinstance(x, (int, float)):
+                    x = gof.Constant(double, x)
+                if isinstance(y, (int, float)):
+                    y = gof.Constant(double, y)
+                if x.type != double or y.type != double:
+                    raise TypeError('%s only works on doubles' % self.name)
+                return gof.Apply(self, [x, y], [double()])
 
-           def perform(self, node, (x, y), (z, )):
-               z[0] = self.fn(x, y)
+            def perform(self, node, (x, y), (z, )):
+                z[0] = self.fn(x, y)
 
-           def __str__(self):
-               return self.name
+            def __str__(self):
+                return self.name
 
         add = BinaryDoubleOp(name = 'add',
                             fn = lambda x, y: x + y)
@@ -281,87 +284,87 @@ class T_extending(unittest.TestCase):
         from theano import gof
         class Double(gof.Type):
 
-           def filter(self, x, strict=False, allow_downcast=None):
-               if strict and not isinstance(x, float):
-                   raise TypeError('Expected a float!')
-               return float(x)
+            def filter(self, x, strict=False, allow_downcast=None):
+                if strict and not isinstance(x, float):
+                    raise TypeError('Expected a float!')
+                return float(x)
 
-           def values_eq_approx(self, x, y, tolerance=1e-4):
-               return abs(x - y) / (x + y) < tolerance
+            def values_eq_approx(self, x, y, tolerance=1e-4):
+                return abs(x - y) / (x + y) < tolerance
 
-           def __str__(self):
-               return "double"
+            def __str__(self):
+                return "double"
 
-           def c_declare(self, name, sub):
-               return """
-               double %(name)s;
-               """ % dict(name = name)
+            def c_declare(self, name, sub):
+                return """
+                double %(name)s;
+                """ % dict(name = name)
 
-           def c_init(self, name, sub):
-               return """
-               %(name)s = 0.0;
-               """ % dict(name = name)
+            def c_init(self, name, sub):
+                return """
+                %(name)s = 0.0;
+                """ % dict(name = name)
 
-           def c_extract(self, name, sub):
-               return """
-               if (!PyFloat_Check(py_%(name)s)) {
-                   PyErr_SetString(PyExc_TypeError, "expected a float");
-                   %(fail)s
-               }
-               %(name)s = PyFloat_AsDouble(py_%(name)s);
-               """ % dict(sub, name = name)
+            def c_extract(self, name, sub):
+                return """
+                if (!PyFloat_Check(py_%(name)s)) {
+                    PyErr_SetString(PyExc_TypeError, "expected a float");
+                    %(fail)s
+                }
+                %(name)s = PyFloat_AsDouble(py_%(name)s);
+                """ % dict(sub, name = name)
 
-           def c_sync(self, name, sub):
-               return """
-               Py_XDECREF(py_%(name)s);
-               py_%(name)s = PyFloat_FromDouble(%(name)s);
-               if (!py_%(name)s) {
-                   printf("PyFloat_FromDouble failed on: %%f\\n", %(name)s);
-                   Py_XINCREF(Py_None);
-                   py_%(name)s = Py_None;
-               }
-               """ % dict(name = name)
+            def c_sync(self, name, sub):
+                return """
+                Py_XDECREF(py_%(name)s);
+                py_%(name)s = PyFloat_FromDouble(%(name)s);
+                if (!py_%(name)s) {
+                    printf("PyFloat_FromDouble failed on: %%f\\n", %(name)s);
+                    Py_XINCREF(Py_None);
+                    py_%(name)s = Py_None;
+                }
+                """ % dict(name = name)
 
-           def c_cleanup(self, name, sub):
-               return ""
+            def c_cleanup(self, name, sub):
+                return ""
 
         double = Double()
 
 
         def c_code(node, name, input_names, output_names, sub):
-           x_name, y_name = input_names[0], input_names[1]
-           output_name = output_names[0]
-           return """
-           %(output_name)s = %(x_name)s * %(y_name)s;
-           """ % locals()
+            x_name, y_name = input_names[0], input_names[1]
+            output_name = output_names[0]
+            return """
+            %(output_name)s = %(x_name)s * %(y_name)s;
+            """ % locals()
         mul.c_code = c_code
 
 
         from theano import gof
         class BinaryDoubleOp(gof.Op):
 
-           def __init__(self, name, fn, ccode):
-               self.name = name
-               self.fn = fn
-               self.ccode = ccode
+            def __init__(self, name, fn, ccode):
+                self.name = name
+                self.fn = fn
+                self.ccode = ccode
 
-           def make_node(self, x, y):
-               if isinstance(x, (int, float)):
-                   x = gof.Constant(double, x)
-               if isinstance(y, (int, float)):
-                   y = gof.Constant(double, y)
-               if x.type != double or y.type != double:
-                   raise TypeError('%s only works on doubles' % self.name)
-               return gof.Apply(self, [x, y], [double()])
+            def make_node(self, x, y):
+                if isinstance(x, (int, float)):
+                    x = gof.Constant(double, x)
+                if isinstance(y, (int, float)):
+                    y = gof.Constant(double, y)
+                if x.type != double or y.type != double:
+                    raise TypeError('%s only works on doubles' % self.name)
+                return gof.Apply(self, [x, y], [double()])
 
-           def perform(self, node, (x, y), (z, )):
-               z[0] = self.fn(x, y)
+            def perform(self, node, (x, y), (z, )):
+                z[0] = self.fn(x, y)
 
-           def __str__(self):
-               return self.name
+            def __str__(self):
+                return self.name
 
-           def c_code(self, node, name, (x, y), (z, ), sub):
-               return self.ccode % locals()
+            def c_code(self, node, name, (x, y), (z, ), sub):
+                return self.ccode % locals()
 
 
         add = BinaryDoubleOp(name = 'add',
@@ -384,19 +387,19 @@ class T_extending(unittest.TestCase):
         from theano.gof import toolbox
 
         class Simplify(gof.Optimizer):
-           def add_requirements(self, env):
-               env.extend(toolbox.ReplaceValidate())
-           def apply(self, env):
-               for node in env.toposort():
-                   if node.op == div:
-                       x, y = node.inputs
-                       z = node.outputs[0]
-                       if x.owner and x.owner.op == mul:
-                           a, b = x.owner.inputs
-                           if y == a:
-                               env.replace_validate(z, b)
-                           elif y == b:
-                               env.replace_validate(z, a)
+            def add_requirements(self, env):
+                env.extend(toolbox.ReplaceValidate())
+            def apply(self, env):
+                for node in env.toposort():
+                    if node.op == div:
+                        x, y = node.inputs
+                        z = node.outputs[0]
+                        if x.owner and x.owner.op == mul:
+                            a, b = x.owner.inputs
+                            if y == a:
+                                env.replace_validate(z, b)
+                            elif y == b:
+                                env.replace_validate(z, a)
 
         simplify = Simplify()
         x = double('x')
@@ -407,21 +410,21 @@ class T_extending(unittest.TestCase):
         simplify.optimize(e)
 
         class LocalSimplify(gof.LocalOptimizer):
-           def transform(self, node):
-               if node.op == div:
-                   x, y = node.inputs
-                   if x.owner and x.owner.op == mul:
-                       a, b = x.owner.inputs
-                       if y == a:
-                           return [b]
-                       elif y == b:
-                           return [a]
-               return False
-           def tracks(self):
-               # This should be needed for the EquilibriumOptimizer
-               # but it isn't now
-               # TODO: do this and explain it
-               return [] # that's not what you should do
+            def transform(self, node):
+                if node.op == div:
+                    x, y = node.inputs
+                    if x.owner and x.owner.op == mul:
+                        a, b = x.owner.inputs
+                        if y == a:
+                            return [b]
+                        elif y == b:
+                            return [a]
+                return False
+            def tracks(self):
+                # This should be needed for the EquilibriumOptimizer
+                # but it isn't now
+                # TODO: do this and explain it
+                return [] # that's not what you should do
 
         local_simplify = LocalSimplify()
 
@@ -595,7 +598,7 @@ class T_examples(unittest.TestCase):
 
         fn_of_state = state * 2 + inc
         foo = T.lscalar()    # the type (lscalar) must match the shared variable we
-                           # are replacing with the ``givens`` list
+                            # are replacing with the ``givens`` list
         skip_shared = function([inc, foo], fn_of_state,
                                                 givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
@@ -967,7 +970,3 @@ class T_graphstructures(unittest.TestCase):
         assert e.owner.inputs[1] is mul_variable
         assert e.owner.inputs[1].owner.inputs[0] is y
         assert e.owner.inputs[1].owner.inputs[1] is z
-
-
-
-

@@ -1444,7 +1444,11 @@ class Shape(Op):
     def __str__(self):
         return self.__class__.__name__
     def make_node(self, x):
-        x = as_tensor_variable(x)
+        if not isinstance(x, Variable):
+            raise TypeError('x must be Variable whose value have a shape attribute', x)
+        #Must work for all type that have a shape attribute.
+        #This will fail at execution time.
+        #x = as_tensor_variable(x)
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
         out[0] = theano._asarray(x.shape, dtype = 'int64')

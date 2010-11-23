@@ -47,7 +47,7 @@ welcome on the mailing list.
 
 6) Each release will be uploaded to pypi.python.org, mloss.org and freshmeat.net
 
-7) Release emails will be sent to theano-users and theano-announce.
+7) Release emails will be sent to theano-users, theano-announce, numpy-discussion@scipy.org and scipy-user@scipy.org .
 
 Optional:
 
