@@ -32,13 +32,13 @@ def execute(execute=True, verbose=True):
         print '    blas.ldflags=',theano.config.blas.ldflags
         print '    compiledir=',theano.config.compiledir
         print '    floatX=',theano.config.floatX
-        print 
+        print
         print 'Numpy config:(used when the theano flags "blas.ldflags" is empty)'
-        numpy.show_config(); 
-        print 'Numpy dot module:',numpy.dot.__module__; 
+        numpy.show_config();
+        print 'Numpy dot module:',numpy.dot.__module__;
         print 'Numpy file location that was loaded:',numpy.__file__;
         print 'Numpy version:',numpy.__version__
-        print 
+        print
         if any( [x.op.__class__.__name__=='Gemm' for x in f.maker.env.toposort()]):
             print 'Used the cpu'
         elif any( [x.op.__class__.__name__=='GpuGemm' for x in f.maker.env.toposort()]):
@@ -66,7 +66,7 @@ def jobman_job(state, channel):
 
 def test():
     execute()
-    
+
 
 if __name__ == "__main__":
     verbose = True
@@ -81,8 +81,8 @@ if __name__ == "__main__":
 
     if verbose:
         print """
- 	Some result that you can compare again. They where 10 executions of gemm in float64 with matrix of shape 2000x2000 on FC9.
- 	
+        Some result that you can compare again. They where 10 executions of gemm in float64 with matrix of shape 2000x2000 on FC9.
+
         Cpu tested: Xeon E5345, Xeon E5430, Xeon E5450, Core 2 E8500, Core i7 930(hyper-threads enabled)
 
         Lib tested:
@@ -90,14 +90,14 @@ if __name__ == "__main__":
             * manually compiled numpy and ATLAS with 2 threads
             * goto with 1, 2, 4 and 8 threads.
                           Xeon   Xeno   Xeon  Core2 i7
- 	lib/nb threads    E5345  E5430  E5450 E8500 930
+        lib/nb threads    E5345  E5430  E5450 E8500 930
 
         numpy_FC9_atlas/1 39.2s  35.0s  30.7s 29.6s 21.5s
- 	goto/1            18.7s  16.1s  14.2s 13.7s 16.1s
+        goto/1            18.7s  16.1s  14.2s 13.7s 16.1s
         numpy_MAN_atlas/2 12.0s  11.6s  10.2s 9.2s  9.0s
- 	goto/2            9.5s   8.1s   7.1s  7.3s  8.1s
- 	goto/4            4.9s   4.4s   3.7s  -     4.1s
- 	goto/8            2.7s   2.4s   2.0s  -     4.1s
+        goto/2            9.5s   8.1s   7.1s  7.3s  8.1s
+        goto/4            4.9s   4.4s   3.7s  -     4.1s
+        goto/8            2.7s   2.4s   2.0s  -     4.1s
 
         Test time in float32 with cuda 3.0.14
         (cuda version 3.2RC and up are supposed to have faster gemm on the GTX4?? card)
@@ -109,9 +109,9 @@ if __name__ == "__main__":
         GTX285/3.0        0.40s
         GT220/3.2RC       5.15s
         8500GT/3.0       10.68s
- 	"""
+        """
 
-        print 
+        print
         print "We timed",iters,"executions of gemm with matrix of shapes",shapes
     else:
         print t
