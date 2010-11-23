@@ -1147,18 +1147,18 @@ def apply_rebroadcast_opt(rval):
 
     changed = True
     while changed and rval.owner:
-      changed = False
-      rval2 = theano.tensor.opt.local_useless_rebroadcast.transform(rval.owner)
-      if rval2:
-        assert len(rval2)==1
-        rval = rval2[0]
-        changed = True
-      if rval.owner:
-        rval2 = theano.tensor.opt.local_rebroadcast_lift.transform(rval.owner)
+        changed = False
+        rval2 = theano.tensor.opt.local_useless_rebroadcast.transform(rval.owner)
         if rval2:
-          assert len(rval2)==1
-          rval = rval2[0]
-          changed = True
+            assert len(rval2)==1
+            rval = rval2[0]
+            changed = True
+        if rval.owner:
+            rval2 = theano.tensor.opt.local_rebroadcast_lift.transform(rval.owner)
+            if rval2:
+                assert len(rval2)==1
+                rval = rval2[0]
+                changed = True
     return rval
 
 
@@ -1216,7 +1216,7 @@ def local_mul_switch_sink(node):
                     fct[0].values_eq_approx = fct[0].type.values_eq_approx_remove_nan
                     return fct
             except TypeError:
-               pass
+                pass
             try:
                 if get_constant_value(switch.inputs[2]) == 0.:
                     listmul = node.inputs[:idx] + node.inputs[idx+1:]
@@ -2398,9 +2398,9 @@ def local_log_add(node):
 def add_calculate(num, denum, aslist = False, out_type=None):
     #TODO: make sure that this function and mul_calculate are similar
     if out_type is None:
-      zero = 0.0
+        zero = 0.0
     else:
-      zero = theano._asarray(0, dtype=out_type.dtype)
+        zero = theano._asarray(0, dtype=out_type.dtype)
     #zero = 0.0 if out_type is None else theano._asarray(0, dtype=out_type.dtype)
     v = reduce(N.add, num, zero) - reduce(N.add, denum, zero)
     if aslist:
@@ -2856,7 +2856,7 @@ def local_grad_log_erfc_neg(node):
 
             #The constant is valid. Must check that the
         elif erfc_x is not x:
-                return False
+            return False
 
     else:
         return False
@@ -3098,5 +3098,3 @@ if config.tensor.local_elemwise_fusion:
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion', FusionOptimizer(local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
-
-
