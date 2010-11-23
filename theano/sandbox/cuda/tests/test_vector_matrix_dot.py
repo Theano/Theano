@@ -1,12 +1,6 @@
-import sys, time
-
-from theano import shared
-from theano.compile.pfunc import pfunc
-from theano import tensor
-
 import numpy
+
 import theano
-import theano.tensor as TT
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -14,12 +8,8 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.sandbox.cuda as tcn
 import theano.sandbox.cuda as cuda
-import theano.sandbox.cuda.basic_ops as B
 import theano.sandbox.cuda.blas as blasop
-import theano.compile.mode
-from theano.tests import unittest_tools as utt
 
 ### Tolerance factor used in this tests !!!
 atol = 1e-6
@@ -121,4 +111,3 @@ if __name__=='__main__':
     test_dot_mv()
     test_gemv1()
     test_gemv2()
-
