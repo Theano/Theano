@@ -8,6 +8,7 @@ from theano.configparser import config, AddConfigVar, StrParam
 
 def default_compiledirname():
     platform_id = platform.platform() + '-' + platform.processor()
+    platform_id += ('-' + platform.python_version())
     platform_id = re.sub("[\(\)\s]+", "_", platform_id)
     return 'compiledir_'+platform_id
 
