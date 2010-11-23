@@ -129,33 +129,19 @@ You can see a list of all `pylint messages
 The nightly build/tests process
 ---------------------------------------
 
-The user ``lisa`` runs a cronjob on the computer ``boltzmann``.
-This happens nightly.
-The cronjob executes the script ``~/www/nightly_build/do_nightly_build_theano``.
-This script performs a an "hg pull -u" of theano (and pylearn too). 
-Then it executes something like
+The user ``lisa`` runs a cronjob on the computer ``ceylon``,  this
+happens nightly. (To have the crontab executed, the ``lisa`` user must
+be logged into ``ceylon``, Fred leaves a shell open for that.)
 
-.. code-block:: bash
+The cronjob executes the scripts
+``~/nightly_build/do_nightly_build_{theano,pylearn,deeplearning}``.
+These scripts perform an "hg pull -u" of theano (and pylearn, and
+DeepLearningTutorials too), and execute nosetests (in various settings).
 
-    THEANO_FLAGS='unittests.rseed=<SEED>,mode=DEBUG_MODE' /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
+The output is emailed automatically to the `theano-buildbot`_ mailing list.
 
-in the updated ``theano`` directory.
-The output is emailed automatically to one of the developers.
-This line is executed with a several fixed ``SEED`` values in DEBUG_MODE.  It
-is executed in FAST_RUN and FAST_COMPILE with just one SEED value.
+.. _theano-buildbot: https://groups.google.com/group/theano-buildbot
 
-We can't email directly to the mailing list as it is emailed as the root user.
-We haven't yet found a way to have google groups accept email from a user without sending an email to it.
-As we don't have root control from this domain, we won't receive the email.
-We haven't pursued the option of configuring the ``lisa`` account to send
-email from an official gmail account.
-
-Also, to have the crontab executed, *the ``lisa`` user must be logged into
-``boltzmann``*.
-
-In a nutshell: Fred keeps a shell open on boltzmann at all times, gets the
-email, and forwards it to the mailing list when something interesting shows up
-in the report.
 
 TO WRITE
 ---------------------------------------

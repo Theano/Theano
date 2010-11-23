@@ -23,6 +23,7 @@ from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
+from theano.tensor.basic import _allclose
 
 
 def eval_outputs(outputs):
@@ -298,7 +299,7 @@ class test_structureddot(unittest.TestCase):
                 scipy_result = spmat * mat
                 assert theano_result.shape == scipy_result.shape
                 assert theano_result.dtype == scipy_result.dtype
-                assert numpy.allclose(theano_result, scipy_result)
+                assert _allclose(theano_result, scipy_result)
 
 
     def test_opt_unpack(self):
@@ -440,8 +441,8 @@ class test_structureddot(unittest.TestCase):
             self.failUnless(numpy.allclose(theano_result, scipy_result))
             self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
 
-import theano.tensor.tests.test_basic
-test_shared_options=theano.tensor.tests.test_basic.makeSharedTester(
+import theano.tensor.tests.test_sharedvar
+test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
     theano.sparse.shared, 'float64',
     True, True, True, scipy.sparse.csc_matrix, scipy.sparse.issparse,
     lambda a: dense_from_sparse(a*2.),

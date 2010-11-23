@@ -1,6 +1,6 @@
 To install the package, see this page:
 
-   http://deeplearning.net/software/theano/install.html#install
+   http://deeplearning.net/software/theano/install.html
 
 
 For the documentation, see the project website:

@@ -100,8 +100,9 @@ Nightly test
 ============
 
 Each night we execute all the unit tests automatically.  The result is sent by
-email to one of the developers, who (at his discretion) forwards it to the
-mailing list.  Said developer may not read his email obsessively (especially
-on the weekend) so there might be some latency in the process.  For more
-detail :ref:`see <metadocumentation_nightly_build>`.
+email to the `theano-buildbot`_ mailing list.
+
+.. _theano-buildbot: https://groups.google.com/group/theano-buildbot
+
+For more detail, see :ref:`see <metadocumentation_nightly_build>`.
 

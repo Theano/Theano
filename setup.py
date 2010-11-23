@@ -4,11 +4,21 @@
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
 
+# Detect whether or not the user has setuptools and use the bundled
+# distribute_setup.py bootstrap module if they don't.
+try:
+    from setuptools import setup, find_packages
+except ImportError:
+    import distribute_setup
+    distribute_setup.use_setuptools()
+    from setuptools import setup, find_packages
+
 import os
 import subprocess
 
 CLASSIFIERS = """\
 Development Status :: 4 - Beta
+Intended Audience :: Education
 Intended Audience :: Science/Research
 Intended Audience :: Developers
 License :: OSI Approved :: BSD License
@@ -26,7 +36,7 @@ MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
-LONG_DESCRIPTION    = ""
+LONG_DESCRIPTION    = open("DESCRIPTION.txt").read()
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'
@@ -37,7 +47,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 3
 MICRO               = 0
-SUFFIX              = "rc3"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = "rc4"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -106,14 +116,16 @@ if not release:
 
 def do_setup():
     write_version_py()
-    from setuptools import setup, find_packages
     setup(name=NAME,
           version=VERSION,
           description=DESCRIPTION,
+          long_description=LONG_DESCRIPTION,
+          classifiers=CLASSIFIERS,
           author=AUTHOR,
           author_email=AUTHOR_EMAIL,
           url=URL,
           license=LICENSE,
+          platforms=PLATFORMS,
           packages=find_packages(),
           install_requires=['numpy>=1.3.0', 'scipy>=0.7.0'],
           package_data={
