@@ -155,7 +155,7 @@ class T_AddMul(unittest.TestCase):
             elif op is mul:
                 self.failUnless(_is_sparse_variable(apb))
                 self.failUnless(numpy.all(val.todense() == (b.multiply(a))))
-                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0], 
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0],
 [9, 0], [0, 36]])))
 
     def _testDS(self, op, array1 = numpy.array([[1., 0], [3, 0], [0, 6]]),
@@ -187,7 +187,7 @@ class T_AddMul(unittest.TestCase):
             elif op is mul:
                 self.failUnless(_is_sparse_variable(apb))
                 self.failUnless(numpy.all(val.todense() == (a.multiply(b))))
-                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0], 
+                self.failUnless(numpy.all(val.todense() == numpy.array([[1, 0],
 [9, 0], [0, 36]])))
 
 
@@ -244,7 +244,7 @@ class test_structureddot(unittest.TestCase):
             assert rval.type.dtype == 'float32'
             return rval
 
-        utt.verify_grad(buildgraphCSC, 
+        utt.verify_grad(buildgraphCSC,
                     [spmat.data, mat])
 
     def test_structureddot_csr_grad(self):
@@ -264,7 +264,7 @@ class test_structureddot(unittest.TestCase):
             assert rval.type.dtype == 'float64'
             return rval
 
-        utt.verify_grad(buildgraph, 
+        utt.verify_grad(buildgraph,
                     [spmat.data, mat])
 
     def test_upcast(self):
@@ -307,7 +307,7 @@ class test_structureddot(unittest.TestCase):
         # Test that a graph involving structured_dot(assembled_csc_matrix) is optimized to be
         # just a structured_dot_csc Op and no assembly of a csc_matrix.
         #
-        # The optimization from structured_dot -> structured_dot_csc is currently disabled, 
+        # The optimization from structured_dot -> structured_dot_csc is currently disabled,
         # So this test is not expected to pass
 
         return
@@ -320,7 +320,7 @@ class test_structureddot(unittest.TestCase):
             y = numpy.floor(numpy.random.rand()*spmat.shape[1])
             spmat[x,y] = numpy.random.rand()*10
         spmat = sp.csc_matrix(spmat)
-               
+
         images = tensor.Tensor(dtype='float32', broadcastable=[False, False])('images')
 
         cscmat = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
@@ -364,7 +364,7 @@ class test_structureddot(unittest.TestCase):
 
         #print f.maker.env.toposort()
 
-        for M,N,K,nnz in [(4,3,2,3), 
+        for M,N,K,nnz in [(4,3,2,3),
                 (40,30,20,3),
                 (40,30,20,30),
                 (400,3000,200,6000),
@@ -417,7 +417,7 @@ class test_structureddot(unittest.TestCase):
 
         print f.maker.env.toposort()
 
-        for M,N,K,nnz in [(4,3,2,3), 
+        for M,N,K,nnz in [(4,3,2,3),
                 (40,30,20,3),
                 (40,30,20,30),
                 (400,3000,200,6000),
