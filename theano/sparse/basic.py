@@ -248,6 +248,12 @@ class _sparse_py_operators:
     def __dot__(left, right): return structured_dot(left, right)
     def __rdot__(right, left): return structured_dot(left, right)
 
+    #def _as_TensorVariable(self):
+    #    return dense_from_sparse(self)
+    shape = property(lambda self: tensor.shape(self))
+    ndim = property(lambda self: self.type.ndim)
+    dtype = property(lambda self: self.type.dtype)
+
 
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
