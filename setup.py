@@ -7,10 +7,11 @@
 # Detect whether or not the user has setuptools and use the bundled
 # distribute_setup.py bootstrap module if they don't.
 try:
-    import setuptools
+    from setuptools import setup, find_packages
 except ImportError:
     import distribute_setup
     distribute_setup.use_setuptools()
+    from setuptools import setup, find_packages
 
 import os
 import subprocess
@@ -115,7 +116,6 @@ if not release:
 
 def do_setup():
     write_version_py()
-    from setuptools import setup, find_packages
     setup(name=NAME,
           version=VERSION,
           description=DESCRIPTION,
