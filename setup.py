@@ -3,7 +3,8 @@
 #  TODO:
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
-
+import distribute_setup
+distribute_setup.use_setuptools()
 import os
 import subprocess
 
