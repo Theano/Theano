@@ -1148,16 +1148,16 @@ def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc','csr'):
 
         if sparse_A.type.format == 'csc':
-          sdgcsx = sdg_csc
+            sdgcsx = sdg_csc
         else:
-          sdgcsx = sdg_csr
+            sdgcsx = sdg_csr
         #backport
         #sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
 
         if sparse_A.type.format == 'csc':
-          CSx = CSC
+            CSx = CSC
         else:
-          CSx = CSR
+            CSx = CSR
         #backport
         #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
@@ -1380,4 +1380,3 @@ class StructuredDotGradCSR(gof.Op):
 
         """% dict(locals(), **sub)
 sdg_csr = StructuredDotGradCSR()
-
