@@ -46,14 +46,14 @@ def test_softmax_optimizations():
     x = tensor.fmatrix('x')
     one_of_n = tensor.lvector('one_of_n')
     op = crossentropy_categorical_1hot
-    
+
     xe = op(x, one_of_n)
-    
+
     env = theano.gof.Env(
         [x, one_of_n],
         [op(softmax(x), one_of_n)])
     assert env.outputs[0].owner.op == op
-    
+
     mode_with_gpu.optimizer.optimize(env)
 
     assert str(env.outputs[0].owner.op) == 'OutputGuard'
