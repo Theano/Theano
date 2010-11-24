@@ -459,8 +459,31 @@ class ShapeFeature(object):
         to promise that inputs will have a certain shape (or even to have certain shapes in
         certain dimensions). We can't automatically infer the shape of shared variable as
         they can change of shape during the execution by default.
-        (NOT IMPLEMENTED YET)
+        (NOT IMPLEMENTED YET, BUT IS IN TRAC)
 
+
+    Using Shape information in Optimizations
+    ========================================
+
+    To use this shape information in OPTIMIZATIONS, use the ``shape_of`` dictionary.
+
+    For example:
+
+    .. code-block:: python
+
+        try:
+            shape_of = node.env.shape_feature.shape_of
+        except AttributeError:
+            # This can happen when the compilation mode doesn't include the ShapeFeature.
+            return
+
+        shape_of_output_zero = shape_of[node.output[0]]
+
+    The ``shape_of_output_zero'' symbol will contain a tuple, whose elements are either
+    integers or symbolic integers.
+
+    TODO: check to see if the symbols are necessarily non-constant... or are integer literals
+    sometimes Theano constants?? That would be confusing.
 
     """
     def shape_i(self, i):
