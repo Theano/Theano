@@ -42,7 +42,8 @@ to be installed:
     A `BLAS`_ installation (with Level 3 functionality)
     	Including the development headers (``-dev``, ``-devel``, depending on
 	your Linux distribution). Mac OS X comes with the `Accelerate
-	framework`_ built in, and various options exist for Windows.
+	framework`_ built in, and various options exist for Windows (see
+        below).
 
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 .. _Accelerate framework: http://developer.apple.com/performance/accelerateframework.html
@@ -380,8 +381,8 @@ that fail on your platform (use the ``theano-users@googlegroups.com`` mailing li
 but note that you must first register to it, by going to `theano-users`_).
 
 
-Windows V1 (bigger install, but simpler instructions + tentative GPU instructions)
-----------------------------------------------------------------------------------
+Windows V1 (Installing from Scratch)
+------------------------------------
 
 - Install `Python(x,y) <http://www.pythonxy.com>`_ in a directory without blank
   spaces in the name (in particular not into ``C:\Program Files``).
@@ -437,25 +438,25 @@ Windows V1 (bigger install, but simpler instructions + tentative GPU instruction
       print theano.config.blas.ldflags
 
   This should print the same content as in your config file, i.e. nothing
-  (if your config file was not read properly, it would print ``-lblas``, and
+  (if your config file was not read properly, it would print '-lblas', and
   trying to compile any Theano function would result in a compilation error
-  due to the system being unable to find ``blas.dll``).
+  due to the system being unable to find 'blas.dll').
 
-Windows V1.5 (optional follow-up to V1 instructions)
-----------------------------------------------------
+Windows: Using a Faster BLAS
+----------------------------
 
-- If you want a faster and/or multithreaded BLAS library, you can
-  compile GotoBLAS2. We did not try to compile ATLAS because we read that
-  it is slower than Goto and more difficult to compile (especially on
-  Windows).
-  GotoBLAS2 can be downloaded
-  `here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`_
-  after registering on the website (we tested v1.13).
-  To compile it, you will also need to install MSYS and Perl (for instance
-  ActivePerl).
-  The GotoBLAS makefiles actually expect a full UNIX environment (like
-  Cygwin) but the BLAS compilation seems to work with only MSYS and Perl.
-  The LAPACK compilation fails, but Theano does not need it.
+If you want a faster and/or multithreaded BLAS library, you can
+compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
+usually reported to be slower and more difficult to compile -- especially
+on Windows).
+GotoBLAS2 can be downloaded
+`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`_
+after registering on the website (we tested v1.13).
+To compile it, you will also need to install MSYS and Perl,
+as described below.
+The GotoBLAS makefiles actually expect a full UNIX environment (like
+Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
+(LAPACK compilation fails, but Theano does not need it).
 
   a) Download the mingw-get command-line installer from the
      `MinGW files <http://sourceforge.net/projects/mingw/>`_ (click
@@ -479,12 +480,12 @@ Windows V1.5 (optional follow-up to V1 instructions)
         /postinstall/pi.sh
 
     It will ask for your MinGW installation directory (e.g.
-    ``c:\pythonxy\mingw``).
+    ``c:/pythonxy/mingw``).
 
-  e) Download `ActivePerl <http://www.activestate.com/activeperl>`_ and
-     install it.
+  e) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
+     install it (other Perl interpreters should also work).
     
-  f) Unpack GotoBLAS2 (e.g. using `7-zip <http://www.7-zip.org/>`_ or in
+  f) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`_ or in
      MSYS with:
 
     .. code-block:: bash
@@ -500,47 +501,61 @@ Windows V1.5 (optional follow-up to V1 instructions)
       quickbuild.win32 1>log.txt 2>err.txt  
 
     Compilation should take a few minutes. Afterwards, you will probably
-    find many error messages in err.txt, but also a libgoto2.dll
-    file in the exports folder. [NOTE: INSTRUCTIONS TO BE CONTINUED]
+    find many error messages in err.txt, but there should be an ``exports``
+    folder containing in particular ``libgoto2.dll``.
 
-  i) Copy libgoto2.dll from the exports folder to ``pythonxy\mingw\bin``
+  i) Copy ``libgoto2.dll`` from the ``exports`` folder to ``pythonxy\mingw\bin``
      and ``pythonxy\mingw\lib``.
 
   j) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
-     This setting can also be changed in Python for testing purposes:
+     This setting can also be changed in Python for testing purpose (in which
+     case it will remain only for the duration of your Python session):
 
     .. code-block:: python
 
         theano.config.blas.ldflags = "-lgoto2"
 
-- (Optional). To test the BLAS performance, you can run the script ``check_blas.py``.
-  For comparison I also downloaded and compiled the unoptimized standard
-  BLAS. The results were the following (Intel Core2 Duo 1.86 GHz):
+  k) To test the BLAS performance, you can run the script
+     ``theano/misc/check_blas.py``.
+     Note that you may control the number of threads used by GotoBLAS2 with
+     the ``GOTO_NUM_THREADS`` environment variable (default behavior is to use
+     all available cores).
+     Here are some performance results on an Intel Core2 Duo 1.86 GHz,
+     compared to using Numpy's BLAS or the un-optimized standard BLAS
+     (compiled manually from its source code):
 
-         Standard BLAS: 166 sec (unoptimized, 1 thread)
-         NumPy: 48 sec (1 thread)
-         Goto2: 16 sec (2 threads)
+         * GotoBLAS2 (2 threads): 16s
+         * NumPy (1 thread): 48s
+         * Standard BLAS (un-optimized, 1 thread): 166s
 
-  Conclusions:
-  a) The unoptimized standard BLAS is very slow. Don't use it.
-  b) The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
-  c) GotoBLAS is even faster, in particular if you have several kernels.
+     Conclusions:
+        * The unoptimized standard BLAS is very slow and should not be used.
+        * The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
+        * GotoBLAS2 is even faster, in particular if you can use multiple cores.
 
-- (Optional) Gpu on Windows. Not sur it work! Can you report success/error on the `theano-users <http://groups.google.com/group/theano-users>`_ mailing list?
+Windows: Using the GPU
+----------------------
 
-  Those are indication for 32-bit version of Python, the one that come with Python(x,y) is 32-bit.
+Please note that these are tentative instructions (we have not yet been able to
+get the GPU to work under Windows with Theano).
+Please report your own successes / failures on the
+`theano-users <http://groups.google.com/group/theano-users>`_ mailing list.
 
-  Space or non ascii caracter are not always supported in path. Python support 
-  them, so your configuration file path can contain them. 
-  nvcc(at least version 3.1) don't support them well. If your USERPROFILE 
-  directory contain those caractere, you must add in your configuration file:
+Those are instructions for the 32-bit version of Python (the one that comes
+with Python(x,y) is 32-bit).
+
+Blanks or non ASCII characters are not always supported in paths. Python supports
+them, but nvcc (at least version 3.1) does not.
+If your ``USERPROFILE`` directory (the one you get into when you run ``cmd``)
+contains such characters, you must edit your Theano configuration file to
+use a compilation directory located somewhere else:
 
     .. code-block:: cfg
 
       [global]
-      base_compiledir=PATH_TO_A_DIRECTORY_WITHOUT_THOSE_CARACTERE
+      base_compiledir=path_to_a_directory_without_such_characters
 
-  You also need to add in the configuration file those line:
+  You also need to add in the configuration file those lines:
 
     .. code-block:: cfg
 
@@ -578,8 +593,10 @@ Windows V1.5 (optional follow-up to V1 instructions)
       run the program nosetests inside the Theano repository. 
       nosetests is installed by Python(x,y).
 
-Windows V2(smaller install, but longer instruction)
----------------------------------------------------
+Windows V2: Installing Python Components Individually
+-----------------------------------------------------
+
+DISCLAIMER: These are old installation instructions (to be revised).
 
 Running Theano under Windows is currently achieved by using the `MinGW
 <http://www.mingw.org>`__ port of the GCC compiler.
