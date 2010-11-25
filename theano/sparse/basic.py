@@ -248,9 +248,18 @@ class _sparse_py_operators:
     def __dot__(left, right): return structured_dot(left, right)
     def __rdot__(right, left): return structured_dot(left, right)
 
+    #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
+    #     Discussion with Fred & James (at least, and maybe others before) 
+    #     we decided that casting from a sparse to dense should be explicit
+    #     because it's usually something you want to be pretty careful about,
+    #     and not to do by accident.
     #def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
-    shape = property(lambda self: tensor.shape(self))
+
+    shape = property(lambda self: tensor.shape(dense_from_sparse(self))) # don't worry!
+    # ... the plan is that the ShapeFeature in tensor.opt will do shape propagation
+    # ... and remove the dense_from_sparse from the graph.  This will *NOT* actually expand
+    # ... your sparse matrix just to get the shape.
     ndim = property(lambda self: self.type.ndim)
     dtype = property(lambda self: self.type.dtype)
 
@@ -513,6 +522,8 @@ class DenseFromSparse(gof.op.Op):
             return [sp_ones_like(x) * gz]
         else:
             return [SparseFromDense(x.type.format)(gz)]
+    def infer_shape(self, node, (ishape,)):
+        return [ishape]
 dense_from_sparse = DenseFromSparse()
 
 class SparseFromDense(gof.op.Op):
@@ -535,6 +546,8 @@ class SparseFromDense(gof.op.Op):
         out[0] = SparseType.format_cls[self.format](x)
     def grad(self, (x, ), (gz, )):
         return dense_from_sparse(gz),
+    def infer_shape(self, node, (ishape,)):
+        return [ishape]
 csr_from_dense = SparseFromDense('csr')
 csc_from_dense = SparseFromDense('csc')
 

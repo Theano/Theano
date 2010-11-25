@@ -449,6 +449,8 @@ def test_shape_i():
     assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3)))==(10)
 
 def test_shape():
+    # Test that getting the shape of a sparse variable
+    # does not actually create a dense tensor in the process.
     sparse_dtype = 'float32'
 
     a = SparseType('csr', dtype=sparse_dtype)()

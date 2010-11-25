@@ -407,6 +407,9 @@ class Shape_i(T.Op):
             ((npy_int64*)PyArray_DATA(%(out)s))[0]=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
             """%locals()
         else:
+            #TODO: if your type is not listed here, make a damn registry of shape_i ops for
+            #      various types of variables.
+            #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
     def grad(self, (x,), (gz,)):
         return [None]
