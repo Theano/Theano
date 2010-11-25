@@ -46,6 +46,9 @@ class Images2Neibs(Op):
 
         return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
+    def grad(self, (x, neib_shape, neib_step), (gz,)):
+        return [neibs2images(gz, neib_shape, x.shape), None, None]
+
     def c_code_cache_version(self):
         return (3,)
                 
@@ -211,36 +214,16 @@ class Images2Neibs(Op):
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
-def neibs2images(neibs, neib_shape, original_shape, neib_step=None, mode='valid'):
+def neibs2images(neibs, neib_shape, original_shape):
     """
-    Inverse of images2neib. Don't implement neib_step and mode.
+    Inverse of images2neib.
     
-    :type neibs: Theano variable
-    :param neibs: matrix like the one obtained by images2neib
-
-    :type neib_shape: Theano variable
-    :param neib_shape: neib_shape that was used in images2neib
-
-    :type original_shape: Theano variable
-    :param original_shape: original shape of the 4d tensor given to images2neib.
-
-    :type neib_step: Theano variable or None
-    :param neib_step: neib_step that was used in images2neib Implement only None.
-                      None is non overlapping patches and not-adjacent patches.
-
-    :type mode: str
-    :param mode: The mode that was used in images2neib. Implement only valid.
-
+    neibs : matrix like the one obtained by images2neib
+    neib_shape : neib_shape that was used in images2neib
+    original_shape : original shape of the 4d tensor given to images2neib
+    
     Return a 4d tensor of shape `original_shape`.
     """
-    # TODO: handle the case where patches either overlap
-    # TODO: handle the case where patches are not directly adjacent
-    # TODO: at least separate these cases so that the following code does not incorrectly
-    # handle them by accident.
-    if neib_step != None:
-        raise NotImplementedError('neibs2images do not implement overlapping patches or non-adjacent patches.')
-    if mode != 'valid':
-        raise NotImplementedError('neibs2images do not implement the mode %s. It currently only implement `valid`.'%mode)
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)

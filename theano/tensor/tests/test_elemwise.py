@@ -254,5 +254,52 @@ class test_CAReduce(unittest.TestCase):
         #self.with_linker(gof.CLinker(), and_)
 
 
+class test_Prod(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
+
+    def test_prod_grad(self):
+        x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
+        x = theano.tensor.dmatrix()
+        p = Prod(axis=0)(x)
+
+        # sanity check
+        fn = theano.function([x], [p])
+        assert numpy.allclose(fn(x_val), numpy.array([  28.,  80.,  162.]))
+
+        # very basic case for the product; no broadcasting in x
+        g = theano.tensor.grad(p.sum(), x)
+        g_fn = theano.function([x], g)
+        assert numpy.allclose(g_fn(x_val),
+                numpy.asarray([[28.,40.,54.],[7.,16.,27.],[4.,10.,18.]]))
+
+        # now with some tranposition in input
+        x_bc = x.dimshuffle(1, 0)
+        p_bc = Prod(axis=0)(x_bc)
+        p_bc_sum = p_bc.sum()
+        g_bc = theano.tensor.grad(p_bc_sum, x)
+        g_fn_bc = theano.function([x], [p_bc,g_bc])
+        p_bc_ret, g_bc_ret =  g_fn_bc(x_val)
+
+        assert numpy.allclose(p_bc_ret, numpy.array([  6.,  120.,  504.]))
+        assert numpy.allclose(g_bc_ret,
+                numpy.asarray([[6.,3.,2.],[30.,24.,20.],[72.,63.,56.]]))
+
+    def test_verify_grad(self):
+        x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
+        x = theano.tensor.dmatrix()
+        # now with verify_grad
+        unittest_tools.verify_grad(Prod(axis=0), [x_val])
+
+        # second time, with some added complexity
+        # verify_grad takes the sum of the matrices anyway
+        def fn(x2):
+            return theano.tensor.sqr(Prod(axis=0)(x2))
+
+        unittest_tools.verify_grad(fn, [x_val])
+
 if __name__ == '__main__':
     unittest.main()
+    #suite = unittest.TestSuite([test_Prod('test_prod_grad')])
+    #unittest.TextTestRunner().run(suite)
+
