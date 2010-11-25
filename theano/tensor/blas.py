@@ -85,10 +85,15 @@ class Gemv(Op):
     def perform(self, node, inputs, out_storage):
         y, alpha, A, x, beta = inputs
         if _have_fblas:
-            if not self.inplace:
-                y = y.copy()
             gemv = _blas_gemv_fns[y.dtype]
-            out_storage[0][0] = gemv(alpha, A, x, beta, y, overwrite_y=self.inplace)
+
+            #Here I suppose that A is in c order. If we don't make it explicitly
+            #  as fortran order, scipy 0.7.2 seam to create a copy in fortran
+            #  order instead of just reshaping it and using the trans flag.
+            #If A is already in fortran order, make it in c order and using the
+            #  trans flag don't seam to cause slowdown.
+            #out_storage[0][0] = gemv(alpha, A, x, beta, y, overwrite_y=self.inplace)
+            out_storage[0][0] = gemv(alpha, A.T, x, beta, y, overwrite_y=self.inplace, trans=True)
         else:
             out_storage[0][0] = numpy.asarray(
                     beta * y + alpha * numpy.dot(A, x)
