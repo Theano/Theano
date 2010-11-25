@@ -1889,6 +1889,22 @@ def zeros_like(model):
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
+
+def zeros(shape, dtype=config.floatX):
+    """
+    Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
+    """
+    return alloc(numpy.array(0, dtype=dtype), *shape)
+
+
+def ones(shape, dtype=config.floatX):
+    """
+    Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
+    """
+    return alloc(numpy.array(1, dtype=dtype), *shape)
+
+
+
 class Eye(gof.Op):
     def __init__(self, dtype=config.floatX):
         self.dtype = dtype
@@ -2053,6 +2069,7 @@ class Alloc(gof.Op):
 
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
+
 
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
