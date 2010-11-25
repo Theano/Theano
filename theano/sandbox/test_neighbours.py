@@ -7,6 +7,8 @@ from neighbours import images2neibs, neibs2images, Images2Neibs, GpuImages2Neibs
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
 
+from theano.tests import unittest_tools
+
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
@@ -375,9 +377,18 @@ def test_neibs_grad():
     assert numpy.allclose(got[0], should_get[0])
     assert numpy.allclose(got[1], should_get[1])
 
+def test_neibs_grad_verify_grad():
+    shape = (2,3,4,4)
+    images = T.dtensor4()
+    images_val = numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+
+    def fn(images):
+        return T.sum(T.sqr(images2neibs(images, (2,2))), axis=[0,1])
+
+    unittest_tools.verify_grad(fn, [images_val])
 
 if __name__ == '__main__':
     #test_neibs_gpu()
     #test_neibs()
-    test_neibs_grad()
+    test_neibs_grad_verify_grad()
 
