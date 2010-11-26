@@ -301,5 +301,6 @@ class test_Prod(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
     #suite = unittest.TestSuite([test_Prod('test_prod_grad')])
+    #suite.addTest(test_Prod('test_verify_grad'))
     #unittest.TextTestRunner().run(suite)
 
