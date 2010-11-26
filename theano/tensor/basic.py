@@ -531,7 +531,12 @@ class TensorType(Type):
 
     @staticmethod
     def may_share_memory(a,b):
-        return numpy.may_share_memory(a,b)
+        import pdb;pdb.set_trace()
+        #when this is called with a an ndarray and b
+        #a sparce matrix, numpy.may_share_memory fail.
+        if a.__class__ is b.__class__:
+            return numpy.may_share_memory(a,b)
+        else: return False
 
     @staticmethod
     def values_eq(a, b):
