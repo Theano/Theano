@@ -710,7 +710,8 @@ def test_gemv1():
     topo = f.maker.env.toposort()
     assert len(topo)==1
     assert isinstance(topo[0].op, Gemv)
-    assert topo[0].op.inplace==True
+    if config.mode != 'FAST_COMPILE':
+        assert topo[0].op.inplace==True
     
 
 def test_gemv2():
@@ -737,5 +738,5 @@ def test_gemv2():
     assert numpy.allclose(v2.value, numpy.dot(v1.value, m.value)+v2_orig)
     topo = f.maker.env.toposort()
     assert sum(isinstance(node.op, Gemv) for node in topo)==1
-    assert topo[0].op.inplace==True
-
+    if config.mode != 'FAST_COMPILE':
+        assert topo[-1].op.inplace==True
