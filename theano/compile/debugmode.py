@@ -522,8 +522,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
     if warn_input_not_reused:
         vmap=getattr(node.op,'view_map',{})
         for oo,ii in vmap.iteritems():
-            if hasattr(node.outputs[00].type,"may_share_memory"):
-                if not numpy.may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0]):
+            if hasattr(node.outputs[0].type,"may_share_memory"):
+                if not node.outputs[0].type.may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0]):
                     #when a subtensor return a tensor ofndim==0, numpy seam to return a copy.
                     #when have an empty ndarray(happen with output guard) it is not the same. why?
                     if storage_map[node.outputs[oo]][0].ndim>0 and storage_map[node.outputs[oo]][0].size>0:
