@@ -385,7 +385,9 @@ def test_neibs_grad_verify_grad():
     def fn(images):
         return T.sum(T.sqr(images2neibs(images, (2,2))), axis=[0,1])
 
-    unittest_tools.verify_grad(fn, [images_val])
+    unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+    if cuda.cuda_available:
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
 
 if __name__ == '__main__':
     #test_neibs_gpu()
