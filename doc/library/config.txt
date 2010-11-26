@@ -131,6 +131,16 @@ Config Attributes
     This set the default compilation mode for theano functions. By default the
     mode Mode is equivalent to FAST_RUN. See Config attribute linker and optimizer.
 
+.. attribute:: config.lib.amdlibm
+
+    Bool value: either True or False
+
+    Default False
+
+    This make the compilation use the 
+    `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
+    librari that is faster then the standard libm. 
+
 .. attribute:: linker
 
     String value: 'c|py', 'py', 'c', 'c|py_nogc', 'c&py'
