@@ -790,7 +790,11 @@ class StructuredDot(gof.Op):
         dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
         if b.type.ndim != 2:
             raise NotImplementedError('non-matrix b')
-        return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
+
+        if _is_sparse_variable(b):
+            return gof.Apply(self, [a,b], [SparseType(a.type.format,dtype_out)()])
+        else:
+            return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
 
     def perform(self, node, (a,b), (out,)):
         if a.shape[1] != b.shape[0]:
@@ -798,6 +802,11 @@ class StructuredDot(gof.Op):
 
         #variable = a.dot(b)  # deprecated
         variable = a * b
+        if isinstance(node.outputs[0].type,SparseType):
+            assert _is_sparse(variable)
+            out[0] = variable
+            return
+
         assert _is_dense(variable) # scipy 0.7 automatically converts to dense
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
