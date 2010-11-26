@@ -100,8 +100,8 @@ class Images2Neibs(Op):
             }
             if ( (%(ten4)s->dimensions)[2] < c || (%(ten4)s->dimensions)[3] < d)
             {
-                PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%d,%%d), ten4[2:]=[%%d,%%d]",
-                             c, d,%(ten4)s->dimensions[2], %(ten4)s->dimensions[3]);
+                PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%ld,%%ld), ten4[2:]=[%%ld,%%ld]",
+                             (long int)c, (long int)d, (long int)(%(ten4)s->dimensions[2]), (long int)(%(ten4)s->dimensions[3]));
                 %(fail)s;
             }
             //grid_c = CEIL_INTDIV(((%(ten4)s->dimensions)[2]),step_x)
@@ -111,14 +111,14 @@ class Images2Neibs(Op):
         }else if ( "%(mode)s" == "valid") {
             if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
             {
-                PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%d, neib_step[0]=%%d and ten4.shape[2]=%%d not consistent",
-                             c, step_x, %(ten4)s->dimensions[2]);
+                PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%ld, neib_step[0]=%%ld and ten4.shape[2]=%%ld not consistent",
+                             (long int)c, (long int)step_x, (long int)(%(ten4)s->dimensions[2]));
                 %(fail)s;
             }
             if ( ((%(ten4)s->dimensions)[3] < d) ||( (((%(ten4)s->dimensions)[3]-d) %% step_y)!=0))
             {
-                PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%d, neib_step[1]=%%d and ten4.shape[3]=%%d not consistent",
-                             d, step_y, %(ten4)s->dimensions[3]);
+                PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%ld, neib_step[1]=%%ld and ten4.shape[3]=%%ld not consistent",
+                             (long int)d, (long int)step_y, (long int)(%(ten4)s->dimensions[3]));
                 %(fail)s;
             }
             grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
