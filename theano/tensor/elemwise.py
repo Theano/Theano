@@ -1173,22 +1173,10 @@ class Prod(CAReduce):
                 new_dims.append(i)
                 i += 1
 
-        # fill a matrix with the same shape as x by broadcasting
-        # values taken from gz, which has the same shape as the output
-        # of prod().
-        gz_filled_x = Elemwise(scalar.second)(x, 
-                        DimShuffle(gz.type.broadcastable, new_dims)(gz))
+        p_gz = theano.tensor.mul(prod_out, gz)
+        p_gz = DimShuffle(p_gz.type.broadcastable, new_dims)(p_gz)
 
-        # do the same with the output of prod, by broadcasting along
-        # axises where the product was taken
-        prod_out_filled_x = Elemwise(scalar.second)(x, 
-                        DimShuffle(prod_out.type.broadcastable,
-                                    new_dims)(prod_out))
-
-        return [theano.tensor.mul(gz_filled_x,
-                    theano.tensor.true_div(prod_out_filled_x, x))]
-        #else:
-        #    raise NotImplementedError('Will be implemented shortly')
+        return [Elemwise(scalar.true_div)(p_gz, x)]
 
     def __str__(self):
         if self.axis is None:
