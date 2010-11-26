@@ -80,6 +80,49 @@ def makeSharedTester(shared_constructor_,
             else:
                 assert numpy.allclose(x_ref, total_func())
 
+        def test_shape(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x = self.cast_value(x)
+
+            x_ref = self.ref_fct(x)
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = self.theano_fct(x_shared)
+
+            f = theano.function([],x_shared.shape)
+            topo = f.maker.env.toposort()
+
+            assert numpy.all(f()==(2,4))
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo)==3
+                assert isinstance(topo[0].op,tensor.opt.Shape_i)
+                assert isinstance(topo[1].op,tensor.opt.Shape_i)
+                assert isinstance(topo[2].op,tensor.opt.MakeVector)
+
+        def test_shape_i(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([3,5,17])
+            x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x = self.cast_value(x)
+
+            x_ref = self.ref_fct(x)
+            x_shared = self.shared_constructor(x, borrow = False)
+            total = self.theano_fct(x_shared)
+
+            f = theano.function([],x_shared.shape[1])
+            topo = f.maker.env.toposort()
+
+            assert numpy.all(f()==(4))
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo)==1
+                assert isinstance(topo[0].op,tensor.opt.Shape_i)
 
         def test_return_internal_type(self):
             dtype = self.dtype
@@ -199,4 +242,3 @@ test_shared_options=makeSharedTester(tensor.shared, 'float64',
                                      lambda a: isinstance(a,numpy.ndarray),
                                      theano.tensor.sum,
                                      numpy.sum)
-
