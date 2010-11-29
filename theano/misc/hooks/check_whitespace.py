@@ -14,6 +14,8 @@ import tokenize
 import argparse
 import reindent
 
+SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
+
 def get_parse_error(code):
     """
     Checks code for ambiguous tabs or other basic parsing issues.
@@ -128,6 +130,20 @@ def save_diffs(diffs, filename):
     diff_file.write(diff)
     diff_file.close()
 
+def should_skip_commit():
+    if not os.path.exists(SKIP_WHITESPACE_CHECK_FILENAME):
+        return False
+    whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "r")
+    whitespace_check_changeset = whitespace_check_file.read()
+    whitespace_check_file.close()
+    return whitespace_check_changeset == parent_commit()
+
+def save_skip_next_commit():
+    whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "w")
+    whitespace_check_file.write(parent_commit())
+    whitespace_check_file.close()
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
@@ -145,10 +161,30 @@ def main(argv=None):
                         const=True,
                         help="only check indentation if the file was previously correctly indented (or is new)"
                        )
+    parser.add_argument("-s", "--skip-after-failure",
+                        action="store_const",
+                        default=False,
+                        const=True,
+                        help="when this pre-commit hook fails, don't run it on the next commit; "
+                             "this lets you check in your changes and then check in "
+                             "any necessary whitespace changes in the subsequent commit"
+                       )
     args = parser.parse_args(argv)
+
+    # -i and -s are incompatible; if you skip checking, you end up with a not-correctly-indented
+    # file, which -i then causes you to ignore!
+    if args.skip_after_failure and args.incremental:
+        print >> sys.stderr, "*** check whitespace hook misconfigured! -i and -s are incompatible."
+        return 1
 
     if is_merge():
         # don't inspect merges: (a) they're complex and (b) they don't really introduce new code
+        return 0
+
+    if args.skip_after_failure and should_skip_commit():
+        # we're set up to skip this one, so skip it, but
+        # first, make sure we don't skip the next one as well :)
+        os.remove(SKIP_WHITESPACE_CHECK_FILENAME)
         return 0
 
     block_commit = False
@@ -185,11 +221,14 @@ def main(argv=None):
         save_diffs(diffs, diffs_filename)
         print >> sys.stderr, "*** To fix all indentation issues, run: cd `hg root` && patch -p0 < %s" % diffs_filename
 
-
     if block_commit:
         save_filename = ".hg/commit_message.saved"
         save_commit_message(save_filename)
         print >> sys.stderr, "*** Commit message saved to %s" % save_filename
+
+        if args.skip_after_failure:
+            save_skip_next_commit()
+            print >> sys.stderr, "*** Next commit attempt will not be checked. To change this, rm %s" % SKIP_WHITESPACE_CHECK_FILENAME
 
     return int(block_commit)
 
