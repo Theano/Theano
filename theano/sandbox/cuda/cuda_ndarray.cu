@@ -16,7 +16,7 @@
 // Alloc and Free
 /////////////////////////
 
-static int g_gpu_shutdown = 0;
+static int g_gpu_context_active = 0;
 
 /**
  *
@@ -70,6 +70,10 @@ void * device_malloc(size_t size)
 }
 int device_free(void *ptr)
 {
+    // if there is no gpu context, the call to cudaFree will fail; skip it entirely
+    if(!g_gpu_context_active) {
+        return 0;
+    }
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
@@ -95,16 +99,6 @@ int device_free(void *ptr)
     if(i==TABLE_SIZE)
       printf("Unallocated unknow size!\n");
 #endif
-
-    if(g_gpu_shutdown && (0 == _outstanding_mallocs[0])) {
-      // we're done with the gpu, and all relevant memory has been freed
-      // we're now free to close the cuda context; if we don't explicitly
-      // exit our cuda context, some systems segfault on process exit
-      // for as-yet unknown reasons; see
-      // http://groups.google.com/group/theano-users/browse_thread/thread/c351846e5cebe35f
-      cudaThreadExit();
-    }
-
     return 0;
 }
 static PyObject *
@@ -1856,6 +1850,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                         "Unable to get the number of gpus available: %s",
                         cudaGetErrorString(cudaGetLastError()));
   }
+  
+  // as soon as the first successful call to a cuda* function is made, a
+  // gpu context has been created
+  g_gpu_context_active = 1;
+  
   if(deviceCount <= 0) {
     return PyErr_Format(PyExc_EnvironmentError,
                         "Can't use the GPU, no devices support CUDA");
@@ -1899,7 +1898,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
-    g_gpu_shutdown = 1;
+    cudaThreadExit();
+    g_gpu_context_active = 0; // context has now been closed down
     Py_INCREF(Py_None);
     return Py_None;
 }
