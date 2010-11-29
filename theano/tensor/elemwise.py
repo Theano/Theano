@@ -842,8 +842,8 @@ class CAReduce(Op):
      CAReduce(add) -> sum
      CAReduce(mul) -> product
      CAReduce(maximum) -> sum
-     CAReduce(_or) -> any # not lazy
-     CAReduce(_and) -> all # not lazy
+     CAReduce(or_) -> any # not lazy
+     CAReduce(and_) -> all # not lazy
 
     In order to (eventually) optimize memory usage patterns,
     L{CAReduce} makes zero guarantees on the order in which it
