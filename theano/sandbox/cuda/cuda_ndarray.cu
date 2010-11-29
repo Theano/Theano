@@ -12,42 +12,11 @@
 //If true, we fill with NAN allocated device memory.
 #define ALLOC_MEMSET 0
 
-#define DEBUG_GPU_CONTEXT_REFCOUNT 0
-// g_gpu_context_refcount starts at one b/c the gpu context will be implicitly created
-// on the first successful cuda call. the matching decref is in CudaNdarray_gpu_shutdown.
-static int g_gpu_context_refcount = 1;
-
-///////////////////////////
-// cuda context management
-///////////////////////////
-
-void gpu_context_incref() {
-  g_gpu_context_refcount++;
-#if DEBUG_GPU_CONTEXT_REFCOUNT
-  fprintf(stderr, "gpu_context_incref, to %d\n", g_gpu_context_refcount);
-#endif
-}
-
-void gpu_context_decref() {
-  g_gpu_context_refcount--;
-#if DEBUG_GPU_CONTEXT_REFCOUNT
-  fprintf(stderr, "gpu_context_decref, to %d\n", g_gpu_context_refcount);
-#endif
-  if(g_gpu_context_refcount == 0) {
-    // we're now free to close the cuda context; if we don't explicitly
-    // exit our cuda context, some systems segfault on process exit
-    // for as-yet unknown reasons; see
-    // http://groups.google.com/group/theano-users/browse_thread/thread/c351846e5cebe35f
-    cudaThreadExit();
-#if DEBUG_GPU_CONTEXT_REFCOUNT
-    fprintf(stderr, "gpu_context_decref at 0, calling cudaThreadExit\n");
-#endif
-  }
-}
-
 /////////////////////////
 // Alloc and Free
 /////////////////////////
+
+static int g_gpu_shutdown = 0;
 
 /**
  *
@@ -80,9 +49,6 @@ void * device_malloc(size_t size)
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
-    if(rval != NULL) {
-        gpu_context_incref(); // keep the gpu context around until we've free this memory
-    }
 #if COMPUTE_GPU_MEM_USED
     for(int i=0;i<TABLE_SIZE;i++){
       if(NULL==_alloc_size_table[i].ptr){
@@ -116,9 +82,6 @@ int device_free(void *ptr)
         return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
-    if(ptr != NULL) {
-        gpu_context_decref();
-    }
 #if COMPUTE_GPU_MEM_USED
     int i=0;
     for(;i<TABLE_SIZE;i++)
@@ -132,6 +95,16 @@ int device_free(void *ptr)
     if(i==TABLE_SIZE)
       printf("Unallocated unknow size!\n");
 #endif
+
+    if(g_gpu_shutdown && (0 == _outstanding_mallocs[0])) {
+      // we're done with the gpu, and all relevant memory has been freed
+      // we're now free to close the cuda context; if we don't explicitly
+      // exit our cuda context, some systems segfault on process exit
+      // for as-yet unknown reasons; see
+      // http://groups.google.com/group/theano-users/browse_thread/thread/c351846e5cebe35f
+      cudaThreadExit();
+    }
+
     return 0;
 }
 static PyObject *
@@ -1926,7 +1899,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
-    gpu_context_decref();
+    g_gpu_shutdown = 1;
     Py_INCREF(Py_None);
     return Py_None;
 }
