@@ -234,6 +234,107 @@ def makeSharedTester(shared_constructor_,
             else:
                 assert numpy.allclose(x_ref, total_func())
 
+        def test_specify_shape(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([2,4,16])
+            x1_1 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
+            x1_1 = self.cast_value(x1_1)
+            x1_2 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
+            x1_2 = self.cast_value(x1_2)
+            x2 = numpy.asarray(rng.uniform(1,2,[4,3]),dtype=dtype)
+            x2 = self.cast_value(x2)
+
+            #Test that we can replace with values of the same shape
+            x1_shared = self.shared_constructor(x1_1)
+            x1_specify_shape = tensor.specify_shape(x1_shared,x1_1.shape)
+            x1_shared.set_value(x1_2)
+            assert numpy.allclose(self.ref_fct(x1_shared.value), self.ref_fct( x1_2))
+            shape_op_fct = theano.function([],x1_shared.shape)
+            topo = shape_op_fct.maker.env.toposort()
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo)==3
+                assert isinstance(topo[0].op,tensor.opt.Shape_i)
+                assert isinstance(topo[1].op,tensor.opt.Shape_i)
+                assert isinstance(topo[2].op,tensor.opt.MakeVector)
+            
+            #Test that we forward the input
+            specify_shape_fct = theano.function([],x1_specify_shape)
+            assert numpy.all(specify_shape_fct()==x1_2)
+            topo_specify = specify_shape_fct.maker.env.toposort()
+            assert len(topo_specify)==2
+
+            #Test that we put the shape info into the graph
+            shape_constant_fct = theano.function([],x1_specify_shape.shape)
+            assert numpy.all(shape_constant_fct()==shape_op_fct())
+            topo_cst = shape_constant_fct.maker.env.toposort()
+            assert len(topo_cst)==0
+
+            #Test that we can replace with values of the different shape
+            # but that will raise an error in some case, but not all
+            x1_shared.set_value(x2)
+            self.assertRaises(AssertionError, specify_shape_fct)
+
+            #No assertion will be raised as the Op is removed from the graph
+            shape_constant_fct()
+
+
+        def test_specify_shape_inplace(self):
+            #test that specify_shape don't break inserting inplace op
+
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState([2,4,16])
+            a = numpy.asarray(rng.uniform(1,2,[40,40]),dtype=dtype)
+            a = self.cast_value(a)
+            a_shared = self.shared_constructor(a)
+            b = numpy.asarray(rng.uniform(1,2,[40,40]),dtype=dtype)
+            b = self.cast_value(b)
+            b_shared = self.shared_constructor(b)
+            s = numpy.zeros((40,40),dtype=dtype)
+            s = self.cast_value(s)
+            s_shared = self.shared_constructor(s)
+            f = theano.function([],
+                                updates={s_shared:theano.dot(a_shared,b_shared)
+                                         +s_shared})
+            topo=f.maker.env.toposort()
+            f()
+            #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
+            #print topo
+            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
+            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+            
+            s_shared_specify = tensor.specify_shape(s_shared,s_shared.value.shape)
+            
+            #now test with the specify shape op in the output
+            f = theano.function([], s_shared.shape,
+                                updates={s_shared:theano.dot(a_shared,b_shared)
+                                         +s_shared_specify})
+            topo=f.maker.env.toposort()
+            print topo
+            shp=f()
+            assert numpy.all(shp == (40,40))
+            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
+            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+
+            #now test with the specify shape op in the inputs and outputs
+            a_shared = tensor.specify_shape(a_shared,a_shared.value.shape)
+            b_shared = tensor.specify_shape(b_shared,b_shared.value.shape)
+
+            f = theano.function([], s_shared.shape,
+                                updates={s_shared:theano.dot(a_shared,b_shared)
+                                         +s_shared_specify})
+            topo=f.maker.env.toposort()
+            print topo
+            shp=f()
+            assert numpy.all(shp == (40,40))
+            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
+            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+
     return SharedTester
 
 test_shared_options=makeSharedTester(tensor.shared, 'float64',

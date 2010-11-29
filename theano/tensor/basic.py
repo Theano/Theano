@@ -1481,6 +1481,53 @@ shape = Shape()
 _shape = shape #was used in the past, now use shape directly.
 pprint.assign(_shape, printing.MemberPrinter('shape'))
 
+class SpecifyShape(Op):
+    """
+    L{Op} put into the graph the user provided shape
+
+    In the case where this op stay in the final graph, we assert the shape.
+    For this the output of this op must be used in the graph. This is not 
+    the case most of the time if we only take the shape of the output.
+    Maybe there is other optimization that will mess with this.
+
+    @note:     Maybe in the futur we will never do the assert!
+    @note:     We currently don't support specifying partial shape information.
+    """
+    view_map = {0: [0]}
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __str__(self):
+        return self.__class__.__name__
+    def make_node(self, x, shape):
+        if not isinstance(x,Variable):
+            x = as_tensor_variable(x)
+        shape = as_tensor_variable(shape)
+        return Apply(self, [x, shape], [x.type()])
+    
+    def perform(self, node, (x,shape ), (out, )):
+        assert numpy.all(x.shape==shape), ("got shape", x.shape,
+                                           "expected", shape)
+        out[0] = x
+        
+    def infer_shape(self, node, (xshape, sshape)):
+        new_shape=[]
+        for dim in range(node.inputs[0].ndim):
+            try:
+                s=get_constant_value(node.inputs[1][dim])
+                new_shape.append(s)
+            except TypeError, e:
+                new_shape.append(xshape[dim])
+
+        assert len(new_shape)==len(xshape)
+        return [new_shape]
+
+    def grad(self, (x,), (gz,)):
+        return [gz]
+
+specify_shape = SpecifyShape()
+
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis.
 
