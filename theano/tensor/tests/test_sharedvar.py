@@ -262,7 +262,8 @@ def makeSharedTester(shared_constructor_,
 
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
-            assert numpy.all(specify_shape_fct()==x1_2)
+            assert numpy.all(self.ref_fct(specify_shape_fct())==
+                             self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.env.toposort()
             assert len(topo_specify)==2
 
@@ -270,7 +271,8 @@ def makeSharedTester(shared_constructor_,
             shape_constant_fct = theano.function([],x1_specify_shape.shape)
             assert numpy.all(shape_constant_fct()==shape_op_fct())
             topo_cst = shape_constant_fct.maker.env.toposort()
-            assert len(topo_cst)==0
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo_cst)==0
 
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
@@ -278,7 +280,11 @@ def makeSharedTester(shared_constructor_,
             self.assertRaises(AssertionError, specify_shape_fct)
 
             #No assertion will be raised as the Op is removed from the graph
-            shape_constant_fct()
+            #when their is optimization
+            if theano.config.mode not in ['FAST_COMPILE','DebugMode','DEBUG_MODE']:
+                shape_constant_fct()
+            else:
+                self.assertRaises(AssertionError, shape_constant_fct)
 
 
         def test_specify_shape_inplace(self):
@@ -305,9 +311,12 @@ def makeSharedTester(shared_constructor_,
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
             #print topo
-            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
-            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
-            
+            if theano.config.mode!='FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
+                assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+                assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
+            #Their is no inplace gemm for sparse
+            #assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "StructuredDot")
             s_shared_specify = tensor.specify_shape(s_shared,s_shared.value.shape)
 
             #now test with the specify shape op in the output
@@ -318,9 +327,10 @@ def makeSharedTester(shared_constructor_,
             print topo
             shp=f()
             assert numpy.all(shp == (40,40))
-            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
-            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
-
+            if theano.config.mode!='FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
+                assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+                assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             #now test with the specify shape op in the inputs and outputs
             a_shared = tensor.specify_shape(a_shared,a_shared.value.shape)
             b_shared = tensor.specify_shape(b_shared,b_shared.value.shape)
@@ -332,8 +342,10 @@ def makeSharedTester(shared_constructor_,
             print topo
             shp=f()
             assert numpy.all(shp == (40,40))
-            assert sum([isinstance(node.op,tensor.blas.Gemm) or node.op.__class__.__name__=="GpuGemm"for node in topo])==1
-            assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+            if theano.config.mode!='FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
+                assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
+                assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
 
     return SharedTester
 
