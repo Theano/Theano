@@ -259,7 +259,7 @@ def makeSharedTester(shared_constructor_,
                 assert isinstance(topo[0].op,tensor.opt.Shape_i)
                 assert isinstance(topo[1].op,tensor.opt.Shape_i)
                 assert isinstance(topo[2].op,tensor.opt.MakeVector)
-            
+
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
             assert numpy.all(specify_shape_fct()==x1_2)
@@ -309,7 +309,7 @@ def makeSharedTester(shared_constructor_,
             assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
             
             s_shared_specify = tensor.specify_shape(s_shared,s_shared.value.shape)
-            
+
             #now test with the specify shape op in the output
             f = theano.function([], s_shared.shape,
                                 updates={s_shared:theano.dot(a_shared,b_shared)
