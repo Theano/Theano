@@ -841,7 +841,7 @@ class CAReduce(Op):
     Examples:
      CAReduce(add) -> sum
      CAReduce(mul) -> product
-     CAReduce(maximum) -> sum
+     CAReduce(maximum) -> max
      CAReduce(or_) -> any # not lazy
      CAReduce(and_) -> all # not lazy
 
