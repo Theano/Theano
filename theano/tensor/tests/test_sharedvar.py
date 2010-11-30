@@ -313,7 +313,7 @@ def makeSharedTester(shared_constructor_,
                 assert isinstance(topo[0].op,tensor.opt.Shape_i)
                 assert isinstance(topo[1].op,tensor.opt.Shape_i)
                 assert isinstance(topo[2].op,tensor.opt.MakeVector)
-            
+
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
             theano.printing.debugprint(specify_shape_fct)
