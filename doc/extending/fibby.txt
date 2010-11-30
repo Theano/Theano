@@ -99,7 +99,7 @@ The ``make_node`` method creates a node to be included in the expression graph.
 It runs when we apply our Op (``fibby``) to Variable (``x``), as in ``fibby(tensor.vector())``.
 When an Op has multiple inputs, their order in the inputs argument to ``Apply``
 is important:  Theano will call ``make_node(*inputs)`` to copy the graph, 
-so it is important to not change the semantics of the expression by doing changing the argument order.
+so it is important not to change the semantics of the expression by changing the argument order.
 
 
 
