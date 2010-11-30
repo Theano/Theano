@@ -372,11 +372,22 @@ def get_constant_value(v):
                 return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
             #Needed to make better graph in this test.
             #theano/tensor/tests/test_sharedvar.py:test_shared_options.test_specify_shape_partial
-            if v.owner.inputs[0].owner and isinstance(v.owner.inputs[0].owner.op, Join):
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op, Join) and
+                # Ensure the Join is joining only scalar variables (so that
+                # the constant value can be found at the same index as the one
+                # used in the sub-tensor).
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                # Note the '+ 1' is because the first argument to Join is the
+                # axis.
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]+1]
                 ret = get_constant_value(ret)
                 #join can cast implicitly its input in some case.
-                return numpy.asarray(ret, dtype=v.type.dtype)
+                return theano._asarray(ret, dtype=v.type.dtype)
     raise TypeError(v)
 
 
