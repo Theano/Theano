@@ -1524,9 +1524,10 @@ class SpecifyShape(Op):
         for dim in range(node.inputs[0].ndim):
             try:
                 s=get_constant_value(node.inputs[1][dim])
+                s=as_tensor_variable(s)
                 new_shape.append(s)
             except TypeError, e:
-                new_shape.append(xshape[dim])
+                new_shape.append(node.inputs[1][dim])
 
         assert len(new_shape)==len(xshape)
         return [new_shape]
