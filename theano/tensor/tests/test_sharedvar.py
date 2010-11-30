@@ -317,16 +317,19 @@ def makeSharedTester(shared_constructor_,
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
             theano.printing.debugprint(specify_shape_fct)
-            assert numpy.all(specify_shape_fct()==x1_2)
+            assert numpy.all(self.ref_fct(specify_shape_fct())
+                             ==self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.env.toposort()
-            assert len(topo_specify)==6
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo_specify)==6
 
             #Test that we put the shape info into the graph
             shape_constant_fct = theano.function([],x1_specify_shape.shape)
             theano.printing.debugprint(shape_constant_fct)
             assert numpy.all(shape_constant_fct()==shape_op_fct())
             topo_cst = shape_constant_fct.maker.env.toposort()
-            assert len(topo_cst)==6
+            if theano.config.mode!='FAST_COMPILE':
+                assert len(topo_cst)==6
 
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
@@ -334,8 +337,10 @@ def makeSharedTester(shared_constructor_,
             self.assertRaises(AssertionError, specify_shape_fct)
 
             #No assertion will be raised as the Op is removed from the graph
-            shape_constant_fct()
-
+            if theano.config.mode not in ['FAST_COMPILE','DebugMode','DEBUG_MODE']:
+                shape_constant_fct()
+            else:
+                self.assertRaises(AssertionError, shape_constant_fct)
 
         def test_specify_shape_inplace(self):
             #test that specify_shape don't break inserting inplace op
