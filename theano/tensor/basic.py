@@ -1620,10 +1620,10 @@ def min(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of min when axis==None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The behavior of min when axis is None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
@@ -2159,9 +2159,10 @@ def mean(input, axis = None, op = False):
 
 @constructor
 def var(input, axis = None):
-    """Compute the variance along the given axis of a tensor `input`
+    """Compute the variance along the given axis of a tensor `input`.
 
-    :param axis: compute the variance along this axis of the tensor.  None means trailing axis.
+    :param axis: Compute the variance along this axis of the tensor.
+                 None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
     """
@@ -2195,6 +2196,16 @@ def var(input, axis = None):
     #return the mean sqr
     return mean(centered_input**2, axis)
 
+@constructor
+def std(input, axis=None):
+    """Compute the standard deviation along the given axis of a tensor `input`.
+
+    :param axis: Compute the standard deviation along this axis of the tensor.
+                 None means all axes (like numpy).
+    :type axis: None or int or (list of int) (see `Sum`)
+    """
+    return sqrt(var(input=input, axis=axis))
+ 
 if 0:
     ## COMMENTED OUT FEB 17 2010
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
