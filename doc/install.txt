@@ -555,14 +555,15 @@ use a compilation directory located somewhere else:
       [global]
       base_compiledir=path_to_a_directory_without_such_characters
 
-  You also need to add in the configuration file those lines:
+You also need to add in the configuration file those lines (make sure this
+is the correct Python installation path):
 
     .. code-block:: cfg
 
       [cuda]
       nvccflags=-LC:\Python26\libs
 
-  Then
+Then
   
   1) Install CUDA driver (32-bit on 32-bit Windows, idem for 64-bit).
   
