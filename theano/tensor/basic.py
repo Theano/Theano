@@ -3271,7 +3271,8 @@ def stack(*tensors):
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
     if numpy.all([isinstance(t, Variable) and\
                   isinstance(t.type, TensorType) and\
-                  t.ndim==0 and t.type==tensors[0].type\
+                  t.ndim==0 and \
+                  t.type.__class__==tensors[0].type.__class__\
                   for t in tensors]):
         return theano.tensor.opt.MakeVector(scal.upcast(*[i.dtype for i in tensors]))(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
