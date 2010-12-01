@@ -1,7 +1,6 @@
 import theano
 from theano.tensor import basic as T
 import numpy as N
-from theano.sandbox.cuda import cuda_available, cuda_enabled
 #from util import strutil
 from theano import printing
 from theano.tensor.blas_headers import blas_header_text
@@ -570,6 +569,6 @@ def computeH(V,W,b,d):
 from . import ConvGrad3D
 from . import ConvTransp3D
 
-if cuda_available:
-    from . import GpuConv3D
-
+#from theano.sandbox.cuda import cuda_available, cuda_enabled
+#if cuda_available:
+#    from . import GpuConv3D
