@@ -33,6 +33,9 @@ def _info(*msg):
 def _warn(*msg):
     _logger.warn(' '.join(msg))
 
+#This is needed as we will hide it later
+python_complex=complex
+
 def check_equal_numpy(x, y):
     """
     Returns True iff x and y are equal (checks the dtype and
@@ -387,6 +390,20 @@ def get_constant_value(v):
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]+1]
                 ret = get_constant_value(ret)
                 #join can cast implicitly its input in some case.
+                return theano._asarray(ret, dtype=v.type.dtype)
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op,
+                           theano.tensor.opt.MakeVector) and
+                # MakeVector normally accept only scalar as input.
+                # We put this check in case there is change in the future
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
+                ret = get_constant_value(ret)
+                #MakeVector can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
     raise TypeError(v)
 
@@ -1505,7 +1522,7 @@ class SpecifyShape(Op):
     L{Op} put into the graph the user provided shape
 
     In the case where this op stay in the final graph, we assert the shape.
-    For this the output of this op must be used in the graph. This is not 
+    For this the output of this op must be used in the graph. This is not
     the case most of the time if we only take the shape of the output.
     Maybe there is other optimization that will mess with this.
 
@@ -1524,12 +1541,12 @@ class SpecifyShape(Op):
             x = as_tensor_variable(x)
         shape = as_tensor_variable(shape)
         return Apply(self, [x, shape], [x.type()])
-    
+
     def perform(self, node, (x,shape ), (out, )):
         assert numpy.all(x.shape==shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
-        
+
     def infer_shape(self, node, (xshape, sshape)):
         new_shape=[]
         for dim in range(node.inputs[0].ndim):
@@ -2276,7 +2293,7 @@ def std(input, axis=None):
     :type axis: None or int or (list of int) (see `Sum`)
     """
     return sqrt(var(input=input, axis=axis))
- 
+
 if 0:
     ## COMMENTED OUT FEB 17 2010
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
@@ -3269,11 +3286,18 @@ def stack(*tensors):
         raise Exception('theano.tensor.stack(*tensors) must have at least one parameter')
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
-    if numpy.all([isinstance(t, Variable) and\
-                  isinstance(t.type, TensorType) and\
-                  t.ndim==0 and t.type==tensors[0].type\
+    if isinstance(tensors[0], (numpy.number, float, int, python_complex)):
+        tensors=list(tensors)
+        tensors[0]=as_tensor_variable(tensors[0])
+    if numpy.all([isinstance(t, (numpy.number, float, int, python_complex))#in case their is direct int
+                  or (isinstance(t, Variable) and
+                      isinstance(t.type, TensorType) and
+                      t.ndim==0 and
+                      t.type.__class__==tensors[0].type.__class__)
                   for t in tensors]):
-        return theano.tensor.opt.MakeVector(scal.upcast(*[i.dtype for i in tensors]))(*tensors)
+        tensors = map(as_tensor_variable,tensors)#in case their is direct int
+        dtype = scal.upcast(*[i.dtype for i in tensors])
+        return theano.tensor.opt.MakeVector(dtype)(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
