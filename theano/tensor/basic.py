@@ -1486,7 +1486,7 @@ class SpecifyShape(Op):
     L{Op} put into the graph the user provided shape
 
     In the case where this op stay in the final graph, we assert the shape.
-    For this the output of this op must be used in the graph. This is not 
+    For this the output of this op must be used in the graph. This is not
     the case most of the time if we only take the shape of the output.
     Maybe there is other optimization that will mess with this.
 
@@ -1505,12 +1505,12 @@ class SpecifyShape(Op):
             x = as_tensor_variable(x)
         shape = as_tensor_variable(shape)
         return Apply(self, [x, shape], [x.type()])
-    
+
     def perform(self, node, (x,shape ), (out, )):
         assert numpy.all(x.shape==shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
-        
+
     def infer_shape(self, node, (xshape, sshape)):
         new_shape=[]
         for dim in range(node.inputs[0].ndim):
@@ -3385,6 +3385,7 @@ class Reshape(Op):
         return '%s{%s}' %(self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
+        shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int'):
             raise TypeError("Shape must be integers")
@@ -3393,7 +3394,16 @@ class Reshape(Op):
             bcast = [s==1 for s in shp.data]
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
         else:
-            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
+            bcasts = [False] * self.ndim
+            for index in xrange(self.ndim):
+                y = shp_orig[index]
+                # Try to see if we can infer that y has a constant value of 1.
+                # If so, that dimension should be broadcastable.
+                try:
+                    bcasts[index] = (hasattr(y, 'get_constant_value') and y.get_constant_value() == 1)
+                except TypeError:
+                    pass
+            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
