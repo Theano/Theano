@@ -2,7 +2,6 @@ import numpy as N
 from theano.tensor import basic as T
 #from util import strutil
 import theano
-from theano.sandbox.cuda import cuda_available, cuda_enabled
 
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
@@ -405,5 +404,6 @@ def computeR(W,b,d,H,Rshape = None):
 from Conv3D import conv3D
 from ConvGrad3D import convGrad3D
 
-if cuda_available:
-    import GpuConvTransp3D
+#from theano.sandbox.cuda import cuda_available, cuda_enabled
+#if cuda_available:
+#    import GpuConvTransp3D
