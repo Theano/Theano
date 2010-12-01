@@ -562,49 +562,61 @@ on Windows).
 GotoBLAS2 can be downloaded
 `here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`__
 after registering on the website (we tested v1.13).
-To compile it, you will also need to install MSYS and Perl,
-as described below.
+To compile it, you will also need MSYS and Perl (installation steps are
+described below).
 The GotoBLAS makefiles actually expect a full UNIX environment (like
 Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
 (LAPACK compilation fails, but Theano does not need it).
 
-  a) Download the mingw-get command-line installer from the
-     `MinGW files <http://sourceforge.net/projects/mingw/>`_ (click
-     "View all files", and make sure you do not mix it up with
-     mingw-get-inst).
+If you installed MinGW manually as described above, you should already
+have MSYS included in your MinGW install, and should be able to start a
+shell (Start / MinGW / MinGW Shell), in which case you can skip the MSYS
+installation.
+If instead you installed Python(x,y), you will need to install MSYS on
+top of the MinGW installation included within Python(x,y), as follows:
 
-  b) Unpack it into your ``pythonxy\mingw`` directory.
+- Download the mingw-get command-line installer binary from the
+  `MinGW files <http://sourceforge.net/projects/mingw/>`_ (click
+  "View all files", and make sure you do not mix it up with
+  mingw-get-inst).
 
-  c) On the command-line, install MSYS with
+- Unpack it into your ``pythonxy\mingw`` directory.
+
+- In a prompt (``cmd``), install MSYS with
 
     .. code-block:: bash
     
         mingw-get install msys-base
 
-  d) Create an easily accessible shortcut (e.g. on your desktop) to
-     ``pythonxy\mingw\msys\1.0\msys.bat``. Run it and within the MSYS
-     console, run the MSYS post-install script:
+- Edit ``pythonxy\mingw\msys\1.0\msys.bat`` (e.g. in Wordpad) and add as first
+  line ``set HOME=%USERPROFILE%``. Then create an easily accessible shortcut
+  (e.g. on your desktop) to this file, run it and within the MSYS
+  console, run the MSYS post-install script:
 
     .. code-block:: bash
 
         /postinstall/pi.sh
 
-    It will ask for your MinGW installation directory (e.g.
-    ``c:/pythonxy/mingw``).
+  It will ask for your MinGW installation directory (e.g.
+  ``c:/pythonxy/mingw``).
 
-  e) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
-     install it (other Perl interpreters should also work).
+Once you have a working MinGW/MSYS shell environment, you can go on as
+follows:
+
+  a) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
+     install it (other Perl interpreters should also work, but were not
+     tested).
     
-  f) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
-     MSYS with:
+  b) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
+     a shell with:
 
     .. code-block:: bash
 
         tar zxvf /path/to/GotoBLAS2-1.13.tar.gz
 
-  g) In MSYS, go into the GotoBLAS2 directory that was unpacked.
+  c) In a shell, go into the GotoBLAS2 directory that was unpacked.
 
-  h) Compile GotoBLAS2 with:
+  d) Compile GotoBLAS2 with:
 
     .. code-block:: bash
 
@@ -614,10 +626,11 @@ Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
     find many error messages in err.txt, but there should be an ``exports``
     folder containing in particular ``libgoto2.dll``.
 
-  i) Copy ``libgoto2.dll`` from the ``exports`` folder to ``pythonxy\mingw\bin``
-     and ``pythonxy\mingw\lib``.
+  e) Copy ``libgoto2.dll`` from the ``exports`` folder to both your ``bin`` and
+     ``lib`` subdirectories of your MinGW installation (which may be under
+     ``pythonxy\mingw`` if you used Python(x,y)).
 
-  j) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
+  f) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
@@ -625,7 +638,7 @@ Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
 
         theano.config.blas.ldflags = "-lgoto2"
 
-  k) To test the BLAS performance, you can run the script
+  g) To test the BLAS performance, you can run the script
      ``theano/misc/check_blas.py``.
      Note that you may control the number of threads used by GotoBLAS2 with
      the ``GOTO_NUM_THREADS`` environment variable (default behavior is to use
