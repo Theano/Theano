@@ -404,6 +404,3 @@ def computeR(W,b,d,H,Rshape = None):
 from Conv3D import conv3D
 from ConvGrad3D import convGrad3D
 
-#from theano.sandbox.cuda import cuda_available, cuda_enabled
-#if cuda_available:
-#    import GpuConvTransp3D

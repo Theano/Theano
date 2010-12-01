@@ -265,10 +265,3 @@ class ConvGrad3D(theano.Op):
 
 
 convGrad3D = ConvGrad3D()
-
-from Conv3D import conv3D
-from ConvTransp3D import convTransp3D
-#from theano.sandbox.cuda import cuda_available, cuda_enabled
-#if cuda_available:
-#    from theano.sandbox.cuda import CudaNdarrayType, float32_shared_constructor
-#    from . import GpuConvGrad3D

@@ -508,67 +508,63 @@ global conv3D
 conv3D = Conv3D()
 
 def computeH(V,W,b,d):
-        assert len(W.shape) == 5
-        assert len(V.shape) == 5
-        if len(b.shape) != 1:
-            print b.shape
-            assert False
-        assert len(d) == 3
+    assert len(W.shape) == 5
+    assert len(V.shape) == 5
+    if len(b.shape) != 1:
+        print b.shape
+        assert False
+    assert len(d) == 3
 
-        batchSize = V.shape[0]
-        outputChannels = W.shape[0]
-        inputChannels = V.shape[4]
-        if W.shape[4] != inputChannels:
-            raise Exception("W.shape[4] = "+str(W.shape[4])+" but inputChannels = "+str(inputChannels))
-        filterHeight = W.shape[1]
-        filterWidth = W.shape[2]
-        filterDur = W.shape[3]
-        vidHeight = V.shape[1]
-        vidWidth = V.shape[2]
-        vidDur = V.shape[3]
-        assert vidHeight >= filterHeight
-        assert vidWidth >= filterWidth
-        assert vidDur >= filterDur
-        dx,dy,dt = d
-        assert dx > 0
-        assert dy > 0
-        assert dt > 0
+    batchSize = V.shape[0]
+    outputChannels = W.shape[0]
+    inputChannels = V.shape[4]
+    if W.shape[4] != inputChannels:
+        raise Exception("W.shape[4] = "+str(W.shape[4])+" but inputChannels = "+str(inputChannels))
+    filterHeight = W.shape[1]
+    filterWidth = W.shape[2]
+    filterDur = W.shape[3]
+    vidHeight = V.shape[1]
+    vidWidth = V.shape[2]
+    vidDur = V.shape[3]
+    assert vidHeight >= filterHeight
+    assert vidWidth >= filterWidth
+    assert vidDur >= filterDur
+    dx,dy,dt = d
+    assert dx > 0
+    assert dy > 0
+    assert dt > 0
 
-        outputHeight = int( (vidHeight - filterHeight) / dx )+1
-        outputWidth = int( (vidWidth - filterWidth) / dy )+1
-        outputDur = int( (vidDur - filterDur) / dt ) +1
+    outputHeight = int( (vidHeight - filterHeight) / dx )+1
+    outputWidth = int( (vidWidth - filterWidth) / dy )+1
+    outputDur = int( (vidDur - filterDur) / dt ) +1
 
 
-        H =  N.zeros( (batchSize,  outputHeight,
-            outputWidth, outputDur, outputChannels ), dtype=V.dtype )
+    H =  N.zeros( (batchSize,  outputHeight,
+        outputWidth, outputDur, outputChannels ), dtype=V.dtype )
 
-        #H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
-        for i in xrange(0,H.shape[0]):
-            #print '\texample '+str(i+1)+'/'+str(H.shape[0])
-            for j in xrange(0,H.shape[4]):
+    #H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
+    for i in xrange(0,H.shape[0]):
+        #print '\texample '+str(i+1)+'/'+str(H.shape[0])
+        for j in xrange(0,H.shape[4]):
                 #print '\t\tfeature map '+str(j+1)+'/'+str(H.shape[1])
-                for x in xrange(0,H.shape[1]):
-                    #print '\t\t\trow '+str(x+1)+'/'+str(H.shape[2])
-                    for y in xrange(0,H.shape[2]):
-                        for t in xrange(0,H.shape[3]):
-                            H[i,x,y,t,j] = b[j]
-                            for k in xrange(0,filterHeight):
-                                for l in xrange(0,filterWidth):
-                                    for m in xrange(0,filterDur):
-                                        for z in xrange(0,inputChannels):
-                                            #if (i,j,x,y,t) == (0,0,0,0,0):
-                                            #    print (( W[j,z,k,l,m] , V[i,z,d[0]*x+k,d[1]*y+l,d[2]*t+m] ), (k,l,m) )
-                                            w = W[j,k,l,m,z]
-                                            v = V[i,d[0]*x+k, d[1]*y+l, d[2]*t+m,z]
-                                            #if i == 0 and x == 0 and y == 0 and t == 0 and j == 0:
-                                            #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
-                                            H[i,x,y,t,j] += w * v
-        return H
+            for x in xrange(0,H.shape[1]):
+                #print '\t\t\trow '+str(x+1)+'/'+str(H.shape[2])
+                for y in xrange(0,H.shape[2]):
+                    for t in xrange(0,H.shape[3]):
+                        H[i,x,y,t,j] = b[j]
+                        for k in xrange(0,filterHeight):
+                            for l in xrange(0,filterWidth):
+                                for m in xrange(0,filterDur):
+                                    for z in xrange(0,inputChannels):
+                                        #if (i,j,x,y,t) == (0,0,0,0,0):
+                                        #    print (( W[j,z,k,l,m] , V[i,z,d[0]*x+k,d[1]*y+l,d[2]*t+m] ), (k,l,m) )
+                                        w = W[j,k,l,m,z]
+                                        v = V[i,d[0]*x+k, d[1]*y+l, d[2]*t+m,z]
+                                        #if i == 0 and x == 0 and y == 0 and t == 0 and j == 0:
+                                        #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
+                                        H[i,x,y,t,j] += w * v
+    return H
 
 
 from . import ConvGrad3D
 from . import ConvTransp3D
-
-#from theano.sandbox.cuda import cuda_available, cuda_enabled
-#if cuda_available:
-#    from . import GpuConv3D
