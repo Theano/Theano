@@ -22,8 +22,8 @@ instructions below for detailed installation steps):
         not well-tested.
 
     Python_ >= 2.4
-        Including the development package (``python-dev`` or ``python-devel``
-	on most Linux distributions).
+        The development package (``python-dev`` or ``python-devel``
+	    on most Linux distributions) is recommended (see just below).
 
     ``g++``, ``python-dev``
 	Not technically required but *highly* recommended, in order to compile
