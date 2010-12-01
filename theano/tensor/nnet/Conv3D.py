@@ -2,7 +2,7 @@ import theano
 from theano.tensor import basic as T
 import numpy as N
 from theano.sandbox.cuda import cuda_available, cuda_enabled
-from util import strutil
+#from util import strutil
 from theano import printing
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags

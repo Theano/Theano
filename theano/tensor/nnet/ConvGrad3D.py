@@ -1,7 +1,7 @@
 import theano
 from theano.tensor import basic as T
 from theano.sandbox.cuda import cuda_available, cuda_enabled
-from util import strutil
+#from util import strutil
 import numpy as N
 
 class ConvGrad3D(theano.Op):

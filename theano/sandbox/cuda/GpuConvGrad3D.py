@@ -3,7 +3,7 @@ import theano.tensor as T
 import numpy as N
 from theano.sandbox.cuda import cuda_available, cuda_enabled
 from theano.sandbox.cuda.basic_ops import *
-from util import strutil
+#from util import strutil
 from .ConvGrad3D import ConvGrad3D
 
 

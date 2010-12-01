@@ -1,6 +1,6 @@
 import numpy as N
 from theano.tensor import basic as T
-from util import strutil
+#from util import strutil
 import theano
 from theano.sandbox.cuda import cuda_available, cuda_enabled
 
