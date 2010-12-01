@@ -94,9 +94,10 @@ to your machine, you can install to an alternate prefix using
 e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
 install Theano into ``.local/lib/python2.4/site-packages`` inside your home
 directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
-listed in your ``$PYTHONPATH``; for Python 2.6 and later, ``~/.local`` is
+listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
+``~/.local`` is
 automatically searched and does *not* need to be explicitly included in
-``$PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
+``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
 
 Alternatively you can use virtualenv_ to create an isolated ``site-packages``
 directory; see the `virtualenv documentation`_ for details.
@@ -159,7 +160,7 @@ can specify an alternative installation prefix using
 A common choice is ``~/.local`` which is automatically searched for Python >=
 2.6; for earlier Python versions and other installation prefixes, the prefix
 specified must contain ``lib/pythonA.B/site-packages``, where ``A.B`` is e.g.
-2.5, and this ``site-packages`` directory must be listed in ``$PYTHONPATH``.
+2.5, and this ``site-packages`` directory must be listed in ``PYTHONPATH``.
 
 An alternative, perhaps simpler way of creating and using an isolated
 ``site-packages`` is to use virtualenv_; see the `virtualenv documentation`_
@@ -505,7 +506,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
         hg clone http://hg.assembla.com/theano Theano
 
-- Add (or edit) the PYTHONPATH environment variable (into Control
+- Add (or edit) the ``PYTHONPATH`` environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
   the full installation directory of Theano. Restart a prompt to verify
   that it works:
