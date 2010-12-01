@@ -1571,6 +1571,8 @@ class T_Join_and_Split(unittest.TestCase):
         event when the scalar are simple int type.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
+        #test when the constant is the first element.
+        #The first element is used in a special way
         s = stack(10,a,b, numpy.int8(3))
         f = function([a,b], s)
         val = f(1,2)
@@ -3467,6 +3469,28 @@ def test_dimshuffle_duplicate():
         success = True
 
     assert success
+
+class T_get_constant_value(unittest.TestCase):
+
+    def test_get_constant_value(self):
+        a = tensor.stack(1,2,3)
+        assert get_constant_value(a[0])==1
+        assert get_constant_value(a[1])==2
+        assert get_constant_value(a[2])==3
+
+        b = tensor.iscalar()
+        a = tensor.stack(b,2,3)
+        self.assertRaises(TypeError, get_constant_value, a[0])
+        assert get_constant_value(a[1])==2
+        assert get_constant_value(a[2])==3
+
+        #For now get_constant_value got throught only MakeVector and Join of scalar.
+        v = tensor.ivector()
+        a = tensor.stack(v,2,3)
+        self.assertRaises(TypeError, get_constant_value, a[0])
+        self.assertRaises(TypeError, get_constant_value, a[1])
+        self.assertRaises(TypeError, get_constant_value, a[2])
+
 
 if __name__ == '__main__':
     if 1:

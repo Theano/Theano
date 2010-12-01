@@ -391,6 +391,20 @@ def get_constant_value(v):
                 ret = get_constant_value(ret)
                 #join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op,
+                           theano.tensor.opt.MakeVector) and
+                # MakeVector normally accept only scalar as input.
+                # We put this check in case there is change in the future
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
+                ret = get_constant_value(ret)
+                #MakeVector can cast implicitly its input in some case.
+                return theano._asarray(ret, dtype=v.type.dtype)
     raise TypeError(v)
 
 
