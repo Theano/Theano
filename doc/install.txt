@@ -414,17 +414,21 @@ but note that you must first register to it, by going to `theano-users`_).
 Windows
 -------
 
-Installing from scratch (no existing Python install)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing Dependencies
+~~~~~~~~~~~~~~~~~~~~~~~
 
-- Install `Python(x,y) <http://www.pythonxy.com>`_ in a directory without blank
-  spaces in the name (in particular not into ``C:\Program Files``).
-  It is a single installation
-  file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
-  MinGW, Nose, etc. Note that this implies you do not already have a Python
-  installation (if you do have one, then you will need to either remove it first,
-  or install those additional packages manually as described in the V2 instructions).
-  You can keep the default install options (except for the installation directory).
+If neither Python nor MinGW is installed on your computer, the easiest way to
+install most dependencies is to install
+`Python(x,y) <http://www.pythonxy.com>`__.
+It is a single installation
+file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
+MinGW, Nose, etc.
+You can keep the default install options, except that the installation directory should not contain any blank space (in particular, do not install it into
+``C:\Program Files``).
+
+If you already have either Python or MinGW installed, it is safer to
+install components individually to avoid conflicts.
+
 
 - Install Mercurial. You can download it
   `here <http://mercurial.selenic.com/downloads>`__. You may get either the command
