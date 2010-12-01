@@ -23,11 +23,11 @@ instructions below for detailed installation steps):
 
     Python_ >= 2.4
         The development package (``python-dev`` or ``python-devel``
-	    on most Linux distributions) is recommended (see just below).
+	on most Linux distributions) is recommended (see just below).
 
     ``g++``, ``python-dev``
 	Not technically required but *highly* recommended, in order to compile
-	generated C code. Theano `can` fall back on a NumPy-based execution
+	generated C code. Theano `can` fall back on a NumPy-based Python execution
 	model, but a C compiler allows for vastly faster execution.
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.3.0
@@ -188,6 +188,7 @@ In csh:
 .. code-block:: csh
 
     setenv PYTHONPATH <new location to add>:$PYTHONPATH
+
 To make this change stick you will usually need to add the above command to
 your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
 Consult your shell's documentation for details.
@@ -448,7 +449,7 @@ components as in Python(x,y) that are required by Theano, follow these steps:
   other programs) is to edit your ``msys.bat`` file (found e.g. under
   ``C:\MinGW\msys\1.0``) and add the following line at the beginning:
 
-    .. code-bloack:: bash
+    .. code-block:: bash
 
         set HOME=%USERPROFILE%
 
@@ -465,11 +466,13 @@ components as in Python(x,y) that are required by Theano, follow these steps:
   sub-directory are in your system path. This may be done by
   modifying the global ``PATH`` Windows environment variables, or by creating
   a ``.profile`` file in your MinGW home, containing a line like
-  ``export PATH=$PATH:/c/Python27:/c/Python27/Scripts``.
+  ``export PATH=$PATH:/c/Python27:/c/Python27/Scripts`` (note that the latter
+  will work only when you run Theano from a MinGW shell).
 
 - In order to run Theano's test-suite, you will need `nose
   <http://somethingaboutorange.com/mrl/projects/nose>`__.
-  After unpacking its source code, you can build and install it from within
+  After unpacking its source code (you may use `7-zip
+  <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
   command prompot or a MinGW shell):
 
@@ -479,18 +482,21 @@ components as in Python(x,y) that are required by Theano, follow these steps:
 
 At this point, whether you installed Python(x,y) or individual components, you
 should have MinGW, Python, Numpy, Scipy and Nose installed.
+In order to download Theano you will also need Mercurial, which you can get
+`here <http://mercurial.selenic.com/downloads>`__.
+You may install either the command
+line Windows version or the TortoiseHG GUI version: it does not matter as
+far as installing Theano is concerned.
+
+Installing Theano.
+~~~~~~~~~~~~~~~~~~~~~~~
+
 It should be possible to install Theano with ``pip`` as described in
 :ref:`linux_basic`, but this has not been tested yet under Windows. We describe
 here instructions to use the latest code repository version (bleeding-edge).
-Command lines listed below can be run either in a Windows prompt
-(click ``Start`` and type the ``cmd`` command) or a MinGW Shell (not available
-if you only installed Python(x,y)).
-
-- Install Mercurial. You can download it
-  `here <http://mercurial.selenic.com/downloads>`__.
-  You may get either the command
-  line Windows version or the TortoiseHG GUI version: it does not matter as
-  far as installing Theano is concerned.
+Command lines listed below are assumed to be run in a Windows prompt
+(click ``Start`` and type the ``cmd`` command), and may need to be adapted if
+used within a MinGW Shell (not available if you only installed Python(x,y)).
 
 - Navigate into the directory you want Theano to be installed in, and download
   it with
@@ -501,7 +507,7 @@ if you only installed Python(x,y)).
 
 - Add (or edit) the PYTHONPATH environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
-  the full installation directory of Theano. Restart a shell to verify
+  the full installation directory of Theano. Restart a prompt to verify
   that it works:
 
     .. code-block:: none
@@ -523,7 +529,7 @@ if you only installed Python(x,y)).
   It will use NumPy for dot products, which is still pretty fast (see below for
   optional instructions on how to compile your own BLAS library).
   To test that Theano correctly reads your configuration file, run Python
-  (e.g. by just typing ``python`` in a shell) and run the following code:
+  (e.g. by just typing ``python`` in a prompt) and run the following code:
 
   .. code-block:: python
 
@@ -588,7 +594,7 @@ Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
   e) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
      install it (other Perl interpreters should also work).
     
-  f) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`_ or in
+  f) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
      MSYS with:
 
     .. code-block:: bash
