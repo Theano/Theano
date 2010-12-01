@@ -420,14 +420,70 @@ Installing Dependencies
 If neither Python nor MinGW is installed on your computer, the easiest way to
 install most dependencies is to install
 `Python(x,y) <http://www.pythonxy.com>`__.
-  It is a single installation
-  file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
+It is a single installation
+file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
 MinGW, Nose, etc.
-You can keep the default install options, except that the installation directory should not contain any blank space (in particular, do not install it into
-``C:\Program Files``).
+You can keep the default install options, except that the installation
+directory should not contain any blank space (in particular, do not install it
+into ``C:\Program Files``).
 
 If you already have either Python or MinGW installed, it is safer to
-install components individually to avoid conflicts.
+install components individually to avoid conflicts:
+
+Installing components individually
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DISCLAIMER: These are old installation instructions (to be revised).
+
+Running Theano under Windows is currently achieved by using the `MinGW
+<http://www.mingw.org>`__ port of the GCC compiler.
+It could probably also run with `Cygwin <http://www.cygwin.com/>`__,
+but this has not been tested yet.
+
+- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
+  download the latest version of the ``Automated MinGW Installer``
+  (``mingw-get-inst``) and install it with all optional components (although
+  you probably do not need them all: if you feel like figuring out exactly
+  which ones are required, let us know!).
+
+- If you do not have them already, install the latest versions of
+  `Python 2.x <http://www.python.org/download/windows>`__ and
+  corresponding `NumPy <http://sourceforge.net/projects/numpy/files/>`__
+  then `SciPy <http://sourceforge.net/projects/scipy/files/>`__
+  packages (simply use the executable installers). Note that we experienced
+  issues with the 64 bit version of Python, and thus recommend using the 32 bit
+  version instead (if you managed to get Theano to work with 64 bit Python under
+  Windows, please let us know!).
+
+- Ensure that the Python installation directory and its ``Scripts``
+  sub-directory are in your system path. This may be done by
+  modifying the global ``PATH`` Windows environment variables, or by creating
+  a ``.profile`` file in your MinGW home, containing a line like
+  ``export PATH=$PATH:/c/Python27:/c/Python27/Scripts``.
+
+- In order to run Theano's test-suite, you will need `nose
+  <http://somethingaboutorange.com/mrl/projects/nose>`__.
+  After unpacking its source code, you can build and install it from within
+  the code directory by:
+
+    .. code-block:: bash
+
+        python setup.py install
+
+- Install Theano using the above :ref:`install_bleeding_edge` installation
+  instructions
+  (using ``easy_install`` and has not been tested yet).
+  In particular, do not forget to make the Theano package accessible from
+  Python, e.g. by adding to your ``.profile`` a line like
+  ``export PYTHONPATH=PYTHONPATH:$HOME/Theano``.
+
+- Please note that at this time, the test suite may be broken under Windows.
+  In particular, many tests may fail while running the test-suite,
+  due to insufficient memory resources (in which case you will probably get an
+  error of the type ``"Not enough storage is available to
+  process this command"``): one workaround is to run nosetests
+  multiple times under individual subdirectories.
+  
 
 
 - Install Mercurial. You can download it
@@ -629,61 +685,6 @@ Then
   10) Then run the Theano CUDA test file. In Windows command line (cmd.exe), 
       run the program nosetests inside the Theano repository. 
       nosetests is installed by Python(x,y).
-
-Installing components individually
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-DISCLAIMER: These are old installation instructions (to be revised).
-
-Running Theano under Windows is currently achieved by using the `MinGW
-<http://www.mingw.org>`__ port of the GCC compiler.
-It could probably also run with `Cygwin <http://www.cygwin.com/>`__,
-but this has not been tested yet.
-
-- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
-  download the latest version of the ``Automated MinGW Installer``
-  (``mingw-get-inst``) and install it with all optional components (although
-  you probably do not need them all: if you feel like figuring out exactly
-  which ones are required, let us know!).
-
-- If you do not have them already, install the latest versions of
-  `Python 2.x <http://www.python.org/download/windows>`__ and
-  corresponding `NumPy <http://sourceforge.net/projects/numpy/files/>`__
-  then `SciPy <http://sourceforge.net/projects/scipy/files/>`__
-  packages (simply use the executable installers). Note that we experienced
-  issues with the 64 bit version of Python, and thus recommend using the 32 bit
-  version instead (if you managed to get Theano to work with 64 bit Python under
-  Windows, please let us know!).
-
-- Ensure that the Python installation directory and its ``Scripts``
-  sub-directory are in your system path. This may be done by
-  modifying the global ``PATH`` Windows environment variables, or by creating
-  a ``.profile`` file in your MinGW home, containing a line like
-  ``export PATH=$PATH:/c/Python27:/c/Python27/Scripts``.
-
-- In order to run Theano's test-suite, you will need `nose
-  <http://somethingaboutorange.com/mrl/projects/nose>`__.
-  After unpacking its source code, you can build and install it from within
-  the code directory by:
-
-    .. code-block:: bash
-
-        python setup.py install
-
-- Install Theano using the above :ref:`install_bleeding_edge` installation
-  instructions
-  (using ``easy_install`` and has not been tested yet).
-  In particular, do not forget to make the Theano package accessible from
-  Python, e.g. by adding to your ``.profile`` a line like
-  ``export PYTHONPATH=PYTHONPATH:$HOME/Theano``.
-
-- Please note that at this time, the test suite may be broken under Windows.
-  In particular, many tests may fail while running the test-suite,
-  due to insufficient memory resources (in which case you will probably get an
-  error of the type ``"Not enough storage is available to
-  process this command"``): one workaround is to run nosetests
-  multiple times under individual subdirectories.
-  
 
 Generating the documentation
 ----------------------------
