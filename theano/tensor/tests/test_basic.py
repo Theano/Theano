@@ -1566,6 +1566,20 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in e if isinstance(n, Join)]) == 0
         assert f.maker.env.outputs[0].dtype == 'int64'
 
+    def test_stack_scalar_make_vector_constant(self):
+        '''Test that calling stack() on scalars instantiates MakeVector,
+        event when the scalar are simple int type.'''
+        a = tensor.iscalar('a')
+        b = tensor.lscalar('b')
+        s = stack(a,b,10, numpy.int8(3))
+        f = function([a,b], s)
+        val = f(1,2)
+        self.failUnless(numpy.all(val == [1,2,10,3]))
+        e = f.maker.env.toposort()
+        assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
+        assert len([n for n in e if isinstance(n, Join)]) == 0
+        assert f.maker.env.outputs[0].dtype == 'int64'
+
     def test_join_vector(self):
         a = as_tensor_variable(numpy.array([1, 2, 3]))
         b = as_tensor_variable(numpy.array([7, 8, 9]))

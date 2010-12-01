@@ -3269,12 +3269,15 @@ def stack(*tensors):
         raise Exception('theano.tensor.stack(*tensors) must have at least one parameter')
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
-    if numpy.all([isinstance(t, Variable) and\
-                  isinstance(t.type, TensorType) and\
-                  t.ndim==0 and \
-                  t.type.__class__==tensors[0].type.__class__\
+    if numpy.all([(isinstance(t, Variable) and
+                  isinstance(t.type, TensorType) and
+                  t.ndim==0 and
+                  t.type.__class__==tensors[0].type.__class__)
+                  or isinstance(t, (numpy.number, float, int, complex))#in case their is direct int
                   for t in tensors]):
-        return theano.tensor.opt.MakeVector(scal.upcast(*[i.dtype for i in tensors]))(*tensors)
+        tensors = map(as_tensor_variable,tensors)#in case their is direct int
+        dtype = scal.upcast(*[i.dtype for i in tensors])
+        return theano.tensor.opt.MakeVector(dtype)(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
