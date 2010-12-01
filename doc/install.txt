@@ -67,8 +67,11 @@ The following libraries and software are optional:
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
 
+Linux
+-----
+
 Basic user install instructions
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The easiest way to obtain the released version of Theano is from PyPI using
 pip_ (a replacement for easy_install_ provided by setuptools_/distribute_) 
@@ -118,7 +121,7 @@ directory; see the `virtualenv documentation`_ for details.
 .. _install_bleeding_edge:
 
 Bleeding-edge (developer) install instructions
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
@@ -170,7 +173,9 @@ virtualenvwrapper_ package useful for switching between them.
 Configuring ``PYTHONPATH``
 ##########################
 
-To modify the environment variable ``PYTHONPATH`` in bash, you may do this:
+If ``import theano`` does not work in Python, you may need modify the
+environment variable ``PYTHONPATH`` accordingly.
+In bash, you may do this:
 
 .. code-block:: bash
 
@@ -181,15 +186,27 @@ In csh:
 .. code-block:: csh
 
     setenv PYTHONPATH <new location to add>:$PYTHONPATH
-
-To make this change stick you'll usually need to add the command to one or
-more of your shell's startup scripts, i.e. ``~/.bashrc`` or ``~/.cshrc``.
+To make this change stick you will usually need to add the above command to
+your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
 Consult your shell's documentation for details.
 
-Testing your installation
----------------------------
+Updating
+########
 
-Once you have completed these steps, you should run the Theano test suite. At
+To update your library to the latest revision, change directory (``cd``)
+to your ``Theano`` folder and execute the following command:
+
+.. code-block:: bash
+
+    hg pull -u
+
+You should update frequently, bugs are fixed on a very regular basis.
+
+
+Testing your installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once you have installed Theano, you should run the test suite. At
 a Python (or IPython) interpreter,
 
 .. code-block:: python
@@ -207,7 +224,7 @@ You can also run them in-place from the Mercurial checkout directory by typing
 (:ref:`libdoc_config`).  For Windows users, you can remove it or see the
 documentation to know how to configure them differently.
 
-All tests should pass except the test marked as ``KnownFailureTest``. If some
+All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
 the ``theano-users@googlegroups.com`` mailing list.
 
@@ -219,13 +236,13 @@ the ``theano-users@googlegroups.com`` mailing list.
     :attr:`config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
---------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are many ways to configure BLAS for Theano. This is done with the Theano
 flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
 installation information in NumPy, accessible via
 ``numpy.distutils.__config__.show()``.  You can tell theano to use a different
-version of BLAS, in case you didn't compile numpy with a fast BLAS or if numpy
+version of BLAS, in case you did not compile numpy with a fast BLAS or if numpy
 was compiled with a static library of BLAS (the latter is not supported in
 Theano).
 
@@ -250,42 +267,54 @@ configuration options that you can put there, see :ref:`libdoc_config`.
 
 Here are some different way to configure BLAS:
 
-0) Do nothing and use the default config, which is to link against the same BLAS against which NumPy was built. This doesn't work in the case NumPy was compiled with a static library (e.g. ATLAS is compiled by default only as a static library).
+0) Do nothing and use the default config, which is to link against the same
+BLAS against which NumPy was built. This does not work in the case NumPy was
+compiled with a static library (e.g. ATLAS is compiled by default only as a
+static library).
 
-1) Disable the usage of BLAS and fall back on NumPy for dot products. To do this, set the value of ``blas.ldflags`` as the empty string (ex: ``export THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your Theano code performs, this might slow some things down (vs. linking with BLAS directly).
+1) Disable the usage of BLAS and fall back on NumPy for dot products. To do
+this, set the value of ``blas.ldflags`` as the empty string (ex: ``export
+THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your
+Theano code performs, this might slow some things down (vs. linking with BLAS
+directly).
 
-2) You can install the default (reference) version of BLAS if the NumPy version (against which Theano links) doesn't work. If you have root or sudo access in fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian ``sudo apt-get install libblas-dev``. Then use the Theano flags ``blas.ldflags=-lblas``. Not that the default version of blas is not optimized. Using an optimized version can give up to 10x speedups in the BLAS functions that we use.
+2) You can install the default (reference) version of BLAS if the NumPy version
+(against which Theano links) does not work. If you have root or sudo access in
+fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian
+``sudo apt-get install libblas-dev``. Then use the Theano flags
+``blas.ldflags=-lblas``. Not that the default version of blas is not optimized.
+Using an optimized version can give up to 10x speedups in the BLAS functions
+that we use.
 
-3) Install the ATLAS library. ATLAS is an open source optimized version of BLAS. You can install a precompiled version on most OSes, but if you're willing to invest the time, you can compile it to have a faster version (we have seen speed-ups of up to 3x, especialy on more recent computers, against the precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu, ``sudo apt-get install libatlas-base-dev libatlas-base`` or ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that these flags are sometimes OS dependent.
+3) Install the ATLAS library. ATLAS is an open source optimized version of
+BLAS. You can install a precompiled version on most OSes, but if you're willing
+to invest the time, you can compile it to have a faster version (we have seen
+speed-ups of up to 3x, especialy on more recent computers, against the
+precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
+``sudo apt-get install libatlas-base-dev libatlas-base`` or
+``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
+Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that
+these flags are sometimes OS-dependent.
 
-4) Use a faster version like MKL, GOTO, ... You are on your own to install it. See the doc of that software and set the Theano flags ``blas.ldflags`` correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or ``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc -lpthread``).
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it.
+See the doc of that software and set the Theano flags ``blas.ldflags``
+correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
+``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc
+-lpthread``).
 
 .. note::
 
     Make sure your BLAS
     libraries are available as dynamically-loadable libraries.  
     ATLAS is often installed only as a static library.  Theano is not able to
-    use this static library.  ATLAS might need to be reinstalled or upgraded or
-    something to provide dynamically loadable libraries.  (On Linux this
+    use this static library. Your ATLAS installation might need to be modified
+    to provide dynamically loadable libraries.  (On Linux this
     typically means a library whose name ends with .so. On Windows this will be
-    a .dll, and on OS-X it might be either a .dylib or a .so)
+    a .dll, and on OS-X it might be either a .dylib or a .so.)
 
     This might be just a problem with the way Theano passes compilation
     arguments to gcc, but the problem is not fixed yet.
 
-
-Updating
--------------
-
-
-To update your library to the latest revision, change directory (``cd``)
-to your ``Theano`` folder and execute the following command:
-
-.. code-block:: bash
-
-    hg pull -u
-
-You should update frequently, bugs are fixed on a very regular basis.
 
 Mac
 ---
@@ -382,8 +411,11 @@ that fail on your platform (use the ``theano-users@googlegroups.com`` mailing li
 but note that you must first register to it, by going to `theano-users`_).
 
 
-Windows V1 (Installing from Scratch)
-------------------------------------
+Windows
+-------
+
+Installing from scratch (no existing Python install)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Install `Python(x,y) <http://www.pythonxy.com>`_ in a directory without blank
   spaces in the name (in particular not into ``C:\Program Files``).
@@ -443,8 +475,8 @@ Windows V1 (Installing from Scratch)
   trying to compile any Theano function would result in a compilation error
   due to the system being unable to find 'blas.dll').
 
-Windows: Using a Faster BLAS
-----------------------------
+Compiling a faster BLAS
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If you want a faster and/or multithreaded BLAS library, you can
 compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
@@ -534,8 +566,8 @@ Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
         * The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
         * GotoBLAS2 is even faster, in particular if you can use multiple cores.
 
-Windows: Using the GPU
-----------------------
+Using the GPU
+~~~~~~~~~~~~~
 
 Please note that these are tentative instructions (we have not yet been able to
 get the GPU to work under Windows with Theano).
@@ -594,8 +626,8 @@ Then
       run the program nosetests inside the Theano repository. 
       nosetests is installed by Python(x,y).
 
-Windows V2: Installing Python Components Individually
------------------------------------------------------
+Installing components individually
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 DISCLAIMER: These are old installation instructions (to be revised).
 
