@@ -347,10 +347,10 @@ class test_Prod(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    #unittest.main()
-    suite = unittest.TestSuite([test_Prod('test_verify_grad')])
-    suite.addTest(test_Prod('test_verify_grad_with_zeros'))
-    suite.addTest(test_Prod('test_prod_without_zeros'))
-    suite.addTest(test_Prod('test_other_grad_tests'))
-    unittest.TextTestRunner().run(suite)
+    unittest.main()
+    #suite = unittest.TestSuite([test_Prod('test_verify_grad')])
+    #suite.addTest(test_Prod('test_verify_grad_with_zeros'))
+    #suite.addTest(test_Prod('test_prod_without_zeros'))
+    #suite.addTest(test_Prod('test_other_grad_tests'))
+    #unittest.TextTestRunner().run(suite)
 
