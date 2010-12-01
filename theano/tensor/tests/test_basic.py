@@ -1571,10 +1571,10 @@ class T_Join_and_Split(unittest.TestCase):
         event when the scalar are simple int type.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
-        s = stack(a,b,10, numpy.int8(3))
+        s = stack(10,a,b, numpy.int8(3))
         f = function([a,b], s)
         val = f(1,2)
-        self.failUnless(numpy.all(val == [1,2,10,3]))
+        self.failUnless(numpy.all(val == [10,1,2,3]))
         e = f.maker.env.toposort()
         assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
         assert len([n for n in e if isinstance(n, Join)]) == 0
