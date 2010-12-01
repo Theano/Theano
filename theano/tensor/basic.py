@@ -3440,6 +3440,7 @@ class Reshape(Op):
         return '%s{%s}' %(self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
+        shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int'):
             raise TypeError("Shape must be integers")
@@ -3448,7 +3449,16 @@ class Reshape(Op):
             bcast = [s==1 for s in shp.data]
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
         else:
-            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
+            bcasts = [False] * self.ndim
+            for index in xrange(self.ndim):
+                y = shp_orig[index]
+                # Try to see if we can infer that y has a constant value of 1.
+                # If so, that dimension should be broadcastable.
+                try:
+                    bcasts[index] = (hasattr(y, 'get_constant_value') and y.get_constant_value() == 1)
+                except TypeError:
+                    pass
+            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
