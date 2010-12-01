@@ -213,7 +213,8 @@ class SparseType(gof.Type):
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
                 and scipy.sparse.issparse(b) \
-                and abs(a-b).sum() < (1e-6 * a.nnz)
+                and ((abs(a-b).sum() < (1e-6 * a.nnz))
+                     or (a.nnz==0 and b.nnz==0))#in case a and b are empty
 
     def values_eq(self, a, b):
         #WARNING: equality comparison of sparse matrices is not fast or easy
@@ -248,9 +249,18 @@ class _sparse_py_operators:
     def __dot__(left, right): return structured_dot(left, right)
     def __rdot__(right, left): return structured_dot(left, right)
 
+    #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
+    #     Discussion with Fred & James (at least, and maybe others before) 
+    #     we decided that casting from a sparse to dense should be explicit
+    #     because it's usually something you want to be pretty careful about,
+    #     and not to do by accident.
     #def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
-    shape = property(lambda self: tensor.shape(self))
+
+    shape = property(lambda self: tensor.shape(dense_from_sparse(self))) # don't worry!
+    # ... the plan is that the ShapeFeature in tensor.opt will do shape propagation
+    # ... and remove the dense_from_sparse from the graph.  This will *NOT* actually expand
+    # ... your sparse matrix just to get the shape.
     ndim = property(lambda self: self.type.ndim)
     dtype = property(lambda self: self.type.dtype)
 
@@ -513,6 +523,8 @@ class DenseFromSparse(gof.op.Op):
             return [sp_ones_like(x) * gz]
         else:
             return [SparseFromDense(x.type.format)(gz)]
+    def infer_shape(self, node, (ishape,)):
+        return [ishape]
 dense_from_sparse = DenseFromSparse()
 
 class SparseFromDense(gof.op.Op):
@@ -535,6 +547,8 @@ class SparseFromDense(gof.op.Op):
         out[0] = SparseType.format_cls[self.format](x)
     def grad(self, (x, ), (gz, )):
         return dense_from_sparse(gz),
+    def infer_shape(self, node, (ishape,)):
+        return [ishape]
 csr_from_dense = SparseFromDense('csr')
 csc_from_dense = SparseFromDense('csc')
 
@@ -776,7 +790,11 @@ class StructuredDot(gof.Op):
         dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
         if b.type.ndim != 2:
             raise NotImplementedError('non-matrix b')
-        return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
+
+        if _is_sparse_variable(b):
+            return gof.Apply(self, [a,b], [SparseType(a.type.format,dtype_out)()])
+        else:
+            return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
 
     def perform(self, node, (a,b), (out,)):
         if a.shape[1] != b.shape[0]:
@@ -784,6 +802,11 @@ class StructuredDot(gof.Op):
 
         #variable = a.dot(b)  # deprecated
         variable = a * b
+        if isinstance(node.outputs[0].type,SparseType):
+            assert _is_sparse(variable)
+            out[0] = variable
+            return
+
         assert _is_dense(variable) # scipy 0.7 automatically converts to dense
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix

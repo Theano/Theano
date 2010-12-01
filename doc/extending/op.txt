@@ -138,7 +138,7 @@ following methods:
   other criterion C with respect to the Op's input.
 
   If the outputs of your op are :math:`[ f_1, ... f_n]`, then
-  ``output_derivatives`` gives
+  ``output_gradients`` is
   :math:`[ grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C) ]`.
   If the inputs of your op are :math:`[x_1, ..., x_m]`, then your Op.grad
   should return :math:`[ grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C) ]`,

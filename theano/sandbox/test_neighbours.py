@@ -7,6 +7,8 @@ from neighbours import images2neibs, neibs2images, Images2Neibs, GpuImages2Neibs
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
 
+from theano.tests import unittest_tools
+
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
@@ -328,8 +330,67 @@ def speed_neibs_wrap_centered():
     for i in range(1000):
         f()
         
+def test_neibs_grad():
+    shape = (2,3,4,4)
+    images = T.shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
 
+    cost = T.sum(T.sqr(images2neibs(images, (2,2))), axis=[0,1])
+
+    grad = T.grad(cost, images)
+
+    f = theano.function([], [cost, grad], mode=mode_without_gpu)
+
+    got = f()
+
+    should_get = [numpy.asarray(290320.0, dtype=numpy.float32),
+        numpy.asarray([[[[   0.,    2.,    4.,    6.],
+         [   8.,   10.,   12.,   14.],
+         [  16.,   18.,   20.,   22.],
+         [  24.,   26.,   28.,   30.]],
+
+        [[  32.,   34.,   36.,   38.],
+         [  40.,   42.,   44.,   46.],
+         [  48.,   50.,   52.,   54.],
+         [  56.,   58.,   60.,   62.]],
+
+        [[  64.,   66.,   68.,   70.],
+         [  72.,   74.,   76.,   78.],
+         [  80.,   82.,   84.,   86.],
+         [  88.,   90.,   92.,   94.]]],
+
+
+       [[[  96.,   98.,  100.,  102.],
+         [ 104.,  106.,  108.,  110.],
+         [ 112.,  114.,  116.,  118.],
+         [ 120.,  122.,  124.,  126.]],
+
+        [[ 128.,  130.,  132.,  134.],
+         [ 136.,  138.,  140.,  142.],
+         [ 144.,  146.,  148.,  150.],
+         [ 152.,  154.,  156.,  158.]],
+
+        [[ 160.,  162.,  164.,  166.],
+         [ 168.,  170.,  172.,  174.],
+         [ 176.,  178.,  180.,  182.],
+         [ 184.,  186.,  188.,  190.]]]], dtype=numpy.float32)]
+
+    assert numpy.allclose(got[0], should_get[0])
+    assert numpy.allclose(got[1], should_get[1])
+
+def test_neibs_grad_verify_grad():
+    shape = (2,3,4,4)
+    images = T.dtensor4()
+    images_val = numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+
+    def fn(images):
+        return T.sum(T.sqr(images2neibs(images, (2,2))), axis=[0,1])
+
+    unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+    if cuda.cuda_available:
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
 
 if __name__ == '__main__':
-    test_neibs_gpu()
-    test_neibs()
+    #test_neibs_gpu()
+    #test_neibs()
+    test_neibs_grad_verify_grad()
+

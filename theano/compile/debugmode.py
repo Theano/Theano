@@ -46,7 +46,7 @@ AddConfigVar('DebugMode.check_strides',
         IntParam(1, lambda i: i in (0,1,2)))
 
 AddConfigVar('DebugMode.warn_input_not_reused',
-        ("Generate a warning when the destroy_map tell that an op work inplace, but the op did not reuse the input for its output."
+        ("Generate a warning when the destroy_map or view_map tell that an op work inplace, but the op did not reuse the input for its output."
          ),
         BoolParam(True))
 
@@ -518,6 +518,18 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
         for oo,ii in dmap.iteritems():
             if storage_map[node.outputs[oo]][0] is not storage_map[node.inputs[ii[0]]][0]:
                 warning("input idx %d marked as destroyed was not changed for node '%s'"%(ii[0],str(node)))
+
+    if warn_input_not_reused:
+        vmap=getattr(node.op,'view_map',{})
+        for oo,ii in vmap.iteritems():
+            if hasattr(node.outputs[0].type,"may_share_memory"):
+                if not node.outputs[0].type.may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0]):
+                    #when a subtensor return a tensor ofndim==0, numpy seam to return a copy.
+                    #when have an empty ndarray(happen with output guard) it is not the same. why?
+                    if storage_map[node.outputs[oo]][0].ndim>0 and storage_map[node.outputs[oo]][0].size>0:
+                        warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
+            elif storage_map[node.outputs[oo]][0] is not storage_map[node.inputs[ii[0]]][0]:
+                warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
 
     for r_idx, r in enumerate(node.inputs):
         if not r.type.values_eq(r_vals[r], storage_map[r][0]):

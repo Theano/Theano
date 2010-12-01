@@ -2,7 +2,7 @@ Trunk sin last release
 ------
  * Sparse type is now supported by the shape op and the ShapeFeature optimizer work correctly with them.
  * fuse GpuElemwise more often(in the case where their is too many inputs that fusing all of them would bust the 256 bytes limits of parameter to gpu function)
-
+ * Speed up gemv by a work around scipy gemv slowness when the matrix is in c order(the default)
 
 Theano 0.3 (2010-11-23)
 -----------------------

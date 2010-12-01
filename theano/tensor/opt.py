@@ -317,8 +317,10 @@ class MakeVector(T.Op):
         inputs = map(T.as_tensor_variable, inputs)
         if not all(a.type == inputs[0].type for a in inputs) or (len(inputs)>0 and inputs[0].dtype != self.dtype):
             dtype=theano.scalar.upcast(self.dtype,*[i.dtype for i in inputs])
-            #upcast the input to the determined dtype, but don't upcast downcast anything
-            assert dtype==self.dtype, "Upcast the input of MakeVector to dtype gived in init without precissino loss only."
+            #upcast the input to the determined dtype, but don't downcast anything
+            assert dtype==self.dtype, (
+                    "The upcast of the inputs to MakeVector should match the "
+                    "dtype given in __init__.")
             if not all(self.dtype == T.cast(i,dtype=dtype).dtype for a in inputs):
                 raise TypeError("MakeVector.make_node expected inputs upcastable to %s. got %s"%(
                         self.dtype,
@@ -347,6 +349,9 @@ class MakeVector(T.Op):
         else:
             # assume that out has correct dtype.  there is no cheap way to check
             out[0][...] = inputs
+
+    def grad(self, inputs, output_gradients):
+        return [output_gradients[0][i] for i in xrange(len(inputs))]
 
 make_vector = MakeVector()
 
@@ -407,6 +412,9 @@ class Shape_i(T.Op):
             ((npy_int64*)PyArray_DATA(%(out)s))[0]=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
             """%locals()
         else:
+            #TODO: if your type is not listed here, make a damn registry of shape_i ops for
+            #      various types of variables.
+            #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
     def grad(self, (x,), (gz,)):
         return [None]

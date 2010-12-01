@@ -367,8 +367,27 @@ def get_constant_value(v):
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
-        if isinstance(v.owner.op, Subtensor) and v.ndim==0 and isinstance(v.owner.inputs[0], TensorConstant):
-            return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
+        if isinstance(v.owner.op, Subtensor) and v.ndim==0:
+            if isinstance(v.owner.inputs[0], TensorConstant):
+                return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
+            #Needed to make better graph in this test.
+            #theano/tensor/tests/test_sharedvar.py:test_shared_options.test_specify_shape_partial
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op, Join) and
+                # Ensure the Join is joining only scalar variables (so that
+                # the constant value can be found at the same index as the one
+                # used in the sub-tensor).
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                # Note the '+ 1' is because the first argument to Join is the
+                # axis.
+                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]+1]
+                ret = get_constant_value(ret)
+                #join can cast implicitly its input in some case.
+                return theano._asarray(ret, dtype=v.type.dtype)
     raise TypeError(v)
 
 
@@ -531,7 +550,11 @@ class TensorType(Type):
 
     @staticmethod
     def may_share_memory(a,b):
-        return numpy.may_share_memory(a,b)
+        #when this is called with a an ndarray and b
+        #a sparce matrix, numpy.may_share_memory fail.
+        if a.__class__ is b.__class__:
+            return numpy.may_share_memory(a,b)
+        else: return False
 
     @staticmethod
     def values_eq(a, b):
@@ -1444,11 +1467,13 @@ class Shape(Op):
     def __str__(self):
         return self.__class__.__name__
     def make_node(self, x):
-        if not isinstance(x, Variable):
-            raise TypeError('x must be Variable whose value have a shape attribute', x)
         #Must work for all type that have a shape attribute.
         #This will fail at execution time.
-        #x = as_tensor_variable(x)
+        x = as_tensor_variable(x)
+        #Each type variable should implement their .shape attribute
+        #and have the fct infer_shape() implemented in the op that convert
+        #the type to TensorVariable to have the optimization working
+        #correctly.
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
         out[0] = theano._asarray(x.shape, dtype = 'int64')
@@ -1474,6 +1499,54 @@ def old_shape(a):
 shape = Shape()
 _shape = shape #was used in the past, now use shape directly.
 pprint.assign(_shape, printing.MemberPrinter('shape'))
+
+class SpecifyShape(Op):
+    """
+    L{Op} put into the graph the user provided shape
+
+    In the case where this op stay in the final graph, we assert the shape.
+    For this the output of this op must be used in the graph. This is not 
+    the case most of the time if we only take the shape of the output.
+    Maybe there is other optimization that will mess with this.
+
+    @note:     Maybe in the futur we will never do the assert!
+    @note:     We currently don't support specifying partial shape information.
+    """
+    view_map = {0: [0]}
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __str__(self):
+        return self.__class__.__name__
+    def make_node(self, x, shape):
+        if not isinstance(x,Variable):
+            x = as_tensor_variable(x)
+        shape = as_tensor_variable(shape)
+        return Apply(self, [x, shape], [x.type()])
+    
+    def perform(self, node, (x,shape ), (out, )):
+        assert numpy.all(x.shape==shape), ("got shape", x.shape,
+                                           "expected", shape)
+        out[0] = x
+        
+    def infer_shape(self, node, (xshape, sshape)):
+        new_shape=[]
+        for dim in range(node.inputs[0].ndim):
+            try:
+                s=get_constant_value(node.inputs[1][dim])
+                s=as_tensor_variable(s)
+                new_shape.append(s)
+            except TypeError, e:
+                new_shape.append(node.inputs[1][dim])
+
+        assert len(new_shape)==len(xshape)
+        return [new_shape]
+
+    def grad(self, (x,), (gz,)):
+        return [gz]
+
+specify_shape = SpecifyShape()
 
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis.
@@ -1618,10 +1691,10 @@ def min(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of min when axis==None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The behavior of min when axis is None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
@@ -1889,6 +1962,22 @@ def zeros_like(model):
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
+
+def zeros(shape, dtype=config.floatX):
+    """
+    Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
+    """
+    return alloc(numpy.array(0, dtype=dtype), *shape)
+
+
+def ones(shape, dtype=config.floatX):
+    """
+    Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
+    """
+    return alloc(numpy.array(1, dtype=dtype), *shape)
+
+
+
 class Eye(gof.Op):
     def __init__(self, dtype=config.floatX):
         self.dtype = dtype
@@ -2054,6 +2143,7 @@ class Alloc(gof.Op):
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
+
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
@@ -2140,9 +2230,10 @@ def mean(input, axis = None, op = False):
 
 @constructor
 def var(input, axis = None):
-    """Compute the variance along the given axis of a tensor `input`
+    """Compute the variance along the given axis of a tensor `input`.
 
-    :param axis: compute the variance along this axis of the tensor.  None means trailing axis.
+    :param axis: Compute the variance along this axis of the tensor.
+                 None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
     """
@@ -2176,6 +2267,16 @@ def var(input, axis = None):
     #return the mean sqr
     return mean(centered_input**2, axis)
 
+@constructor
+def std(input, axis=None):
+    """Compute the standard deviation along the given axis of a tensor `input`.
+
+    :param axis: Compute the standard deviation along this axis of the tensor.
+                 None means all axes (like numpy).
+    :type axis: None or int or (list of int) (see `Sum`)
+    """
+    return sqrt(var(input=input, axis=axis))
+ 
 if 0:
     ## COMMENTED OUT FEB 17 2010
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
