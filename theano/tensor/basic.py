@@ -1505,7 +1505,7 @@ class SpecifyShape(Op):
     L{Op} put into the graph the user provided shape
 
     In the case where this op stay in the final graph, we assert the shape.
-    For this the output of this op must be used in the graph. This is not 
+    For this the output of this op must be used in the graph. This is not
     the case most of the time if we only take the shape of the output.
     Maybe there is other optimization that will mess with this.
 
@@ -1524,12 +1524,12 @@ class SpecifyShape(Op):
             x = as_tensor_variable(x)
         shape = as_tensor_variable(shape)
         return Apply(self, [x, shape], [x.type()])
-    
+
     def perform(self, node, (x,shape ), (out, )):
         assert numpy.all(x.shape==shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
-        
+
     def infer_shape(self, node, (xshape, sshape)):
         new_shape=[]
         for dim in range(node.inputs[0].ndim):
@@ -2276,7 +2276,7 @@ def std(input, axis=None):
     :type axis: None or int or (list of int) (see `Sum`)
     """
     return sqrt(var(input=input, axis=axis))
- 
+
 if 0:
     ## COMMENTED OUT FEB 17 2010
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
