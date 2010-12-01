@@ -14,7 +14,8 @@ Requirements
 ------------
 
 In order to use Theano, the following libraries and software will need
-to be installed:
+to be installed (MacOS and Windows users should refer to platform-specific
+instructions below for detailed installation steps):
 
     Linux, Mac OS X or Windows operating system
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
