@@ -27,7 +27,7 @@ Theano (current directory) is the distribution directory.
         * scalar depends upon core
         * tensor depends upon scalar
         * sparse depends upon tensor
-        * sandbox can depends on everything else
+        * sandbox can depend on everything else
     * Theano/examples are copies of the example on the wiki
     * Theano/benchmark, Theano/bin and Theano/examples are in the distribution,
       but not in the python package

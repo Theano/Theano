@@ -344,6 +344,28 @@ class test_structureddot(unittest.TestCase):
         outvals = f(kernvals,imvals)
         print outvals
 
+    def test_dot_sparse_sparse(self):
+        #test dot for 2 input sparse matrix
+        sparse_dtype = 'float64'
+        for sparse_format in ['csc','csr']:
+            a = SparseType(sparse_format, dtype=sparse_dtype)()
+            b = SparseType(sparse_format, dtype=sparse_dtype)()
+            d = theano.dot(a,b)
+            f = theano.function([a,b], theano.Out(d, borrow=True))
+            topo = f.maker.env.toposort()
+            for M,N,K,nnz in [(4,3,2,3),
+                              (40,30,20,3),
+                              (40,30,20,30),
+                              (400,3000,200,6000),
+                              ]:
+                if sparse_format == 'csc':
+                    spmat = sp.csc_matrix(random_lil((M,N), sparse_dtype, nnz))
+                    spmat2 = sp.csc_matrix(random_lil((N,K), sparse_dtype, nnz))
+                elif sparse_format == 'csr':
+                    spmat = sp.csr_matrix(random_lil((M,N), sparse_dtype, nnz))
+                    spmat2 = sp.csr_matrix(random_lil((N,K), sparse_dtype, nnz))
+                f(spmat,spmat2)
+
     def test_csc_correct_output_faster_than_scipy(self):
         sparse_dtype = 'float64'
         dense_dtype = 'float64'

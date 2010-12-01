@@ -240,10 +240,10 @@ class DimShuffle(Op):
 
         shape_statements = ['npy_intp dimensions[%i]'%nd_out]
         for i, o in enumerate(self.new_order):
-          if o != 'x':
-            shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
-          else:
-            shape_statements += [('dimensions['+str(i)+'] = 1')]
+            if o != 'x':
+                shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
+            else:
+                shape_statements += [('dimensions['+str(i)+'] = 1')]
         #backport
         #shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')
         #    if o != 'x' else
@@ -255,10 +255,10 @@ class DimShuffle(Op):
 
         #set the strides of the non-broadcasted dimensions
         for i, o in enumerate(self.new_order):
-          if o != 'x':
-             strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
-          else:
-             strides_statements += [('strides['+str(i)+'] = 0')]
+            if o != 'x':
+                strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
+            else:
+                strides_statements += [('strides['+str(i)+'] = 0')]
         #backport
         #strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')
         #    if o != 'x' else
@@ -276,7 +276,7 @@ class DimShuffle(Op):
         #                       npy_intp* strides, void* data, int itemsize, int flags, PyObject* obj)
         #
         close_bracket = [
-                #create a new array, 
+                #create a new array,
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
                             'PyArray_TYPE(%(basename)s), strides, '
@@ -287,13 +287,13 @@ class DimShuffle(Op):
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
-                '%(res)s->base = (PyObject*)%(basename)s', 
+                '%(res)s->base = (PyObject*)%(basename)s',
                 '}']
 
-        full_code = statements(check_input_nd 
+        full_code = statements(check_input_nd
                 + clear_output
                 + get_base
-                + shape_statements 
+                + shape_statements
                 + strides_statements
                 + close_bracket)
 
@@ -345,7 +345,7 @@ class DimShufflePrinter:
             raise TypeError("Can only print DimShuffle.")
         elif isinstance(r.owner.op, DimShuffle):
             ord = r.owner.op.new_order
-            return self.__p(ord, pstate, r.owner.inputs[0])            
+            return self.__p(ord, pstate, r.owner.inputs[0])
         else:
             raise TypeError("Can only print DimShuffle.")
 
@@ -411,7 +411,7 @@ class Elemwise(Op):
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
-    
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         if self.scalar_op.nin > 0:
@@ -441,7 +441,7 @@ class Elemwise(Op):
             else:
                 # TODO: use LComplete instead
                 args.append(DimShuffle(
-                    input.type.broadcastable, 
+                    input.type.broadcastable,
                     ['x']*difference + range(length),
                     inplace = True)(input))
         inputs = args
@@ -463,7 +463,7 @@ class Elemwise(Op):
                         raise ValueError("Operation cannot be done inplace on an input with broadcasted dimensions.")
         out_dtypes = [o.type.dtype for o in shadow.outputs]
         if any(inputs[i].type.dtype != out_dtypes[o] for o, i in inplace_pattern.items()):
-            raise TypeError("Cannot do an inplace operation on incompatible data types.", 
+            raise TypeError("Cannot do an inplace operation on incompatible data types.",
                     ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern))
         outputs = [TensorType(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         return Apply(self, inputs, outputs)
@@ -484,10 +484,10 @@ class Elemwise(Op):
         first_part = [k for k,v in items]
         second_part = []
         for k,v in items:
-          if isinstance(v, (tuple, list)):
-            second_part += [tuple(v)]
-          else:
-            second_part += [v]
+            if isinstance(v, (tuple, list)):
+                second_part += [tuple(v)]
+            else:
+                second_part += [v]
         tuple_items = tuple(first_part + second_part)
         #backport
         #tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
@@ -511,7 +511,7 @@ class Elemwise(Op):
 
     def grad(self, inputs, ograds):
         # Gradients (especially on the final costs) don't have to be symbolic
-        ograds = map(as_tensor_variable, ograds) 
+        ograds = map(as_tensor_variable, ograds)
         scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
         scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
         scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
@@ -575,7 +575,7 @@ class Elemwise(Op):
                     msg2 = []
                     for d, b in zip(input.shape, sinput.type.broadcastable):
                         if b:
-                            msg2 += ['*'] 
+                            msg2 += ['*']
                         else:
                             msg2 += [str(d)]
                     msg.append('(%s)' % ", ".join(msg2))
@@ -616,7 +616,7 @@ class Elemwise(Op):
         # the first (faster) version leads to segfaults
         ufunc_args = inputs # + output_storage
         ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
-        
+
         try:
             variables = ufunc(*ufunc_args)
         except Exception, e:
@@ -655,7 +655,7 @@ class Elemwise(Op):
                 # b_dim might still be None, if every input's shape was unknown in dimension 'dim'
                 oshp.append(b_dim)
                 # TODO: it would be interesting to return the constraining information that if
-                # one of the inputs shape[dim] is known and another input's shape[dim] is not, 
+                # one of the inputs shape[dim] is known and another input's shape[dim] is not,
                 # that we can now assume that the other input's shape[dim] is the same as the
                 # first.
             rval.append(tuple(oshp))
@@ -841,9 +841,9 @@ class CAReduce(Op):
     Examples:
      CAReduce(add) -> sum
      CAReduce(mul) -> product
-     CAReduce(maximum) -> sum
-     CAReduce(_or) -> any # not lazy
-     CAReduce(_and) -> all # not lazy
+     CAReduce(maximum) -> max
+     CAReduce(or_) -> any # not lazy
+     CAReduce(and_) -> all # not lazy
 
     In order to (eventually) optimize memory usage patterns,
     L{CAReduce} makes zero guarantees on the order in which it
@@ -899,7 +899,7 @@ class CAReduce(Op):
             assert len(axis)==len(axis2)
             axis = tuple(axis2)
             op = self.__class__(self.scalar_op, axis)
-        else: 
+        else:
             op = self
         output = TensorType(dtype = self._output_dtype(input.type.dtype),
                              broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
@@ -910,7 +910,7 @@ class CAReduce(Op):
         d = copy(self.__dict__)
         d.pop('ufunc')
         return d
-    
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         self.ufunc = numpy.frompyfunc(self.scalar_op.impl, 2, 1)

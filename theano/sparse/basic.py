@@ -213,7 +213,8 @@ class SparseType(gof.Type):
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
                 and scipy.sparse.issparse(b) \
-                and abs(a-b).sum() < (1e-6 * a.nnz)
+                and ((abs(a-b).sum() < (1e-6 * a.nnz))
+                     or (a.nnz==0 and b.nnz==0))#in case a and b are empty
 
     def values_eq(self, a, b):
         #WARNING: equality comparison of sparse matrices is not fast or easy
@@ -789,7 +790,11 @@ class StructuredDot(gof.Op):
         dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
         if b.type.ndim != 2:
             raise NotImplementedError('non-matrix b')
-        return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
+
+        if _is_sparse_variable(b):
+            return gof.Apply(self, [a,b], [SparseType(a.type.format,dtype_out)()])
+        else:
+            return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
 
     def perform(self, node, (a,b), (out,)):
         if a.shape[1] != b.shape[0]:
@@ -797,6 +802,11 @@ class StructuredDot(gof.Op):
 
         #variable = a.dot(b)  # deprecated
         variable = a * b
+        if isinstance(node.outputs[0].type,SparseType):
+            assert _is_sparse(variable)
+            out[0] = variable
+            return
+
         assert _is_dense(variable) # scipy 0.7 automatically converts to dense
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix

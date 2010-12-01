@@ -33,6 +33,9 @@ def _info(*msg):
 def _warn(*msg):
     _logger.warn(' '.join(msg))
 
+#This is needed as we will hide it later
+python_complex=complex
+
 def check_equal_numpy(x, y):
     """
     Returns True iff x and y are equal (checks the dtype and
@@ -367,8 +370,41 @@ def get_constant_value(v):
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
-        if isinstance(v.owner.op, Subtensor) and v.ndim==0 and isinstance(v.owner.inputs[0], TensorConstant):
-            return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
+        if isinstance(v.owner.op, Subtensor) and v.ndim==0:
+            if isinstance(v.owner.inputs[0], TensorConstant):
+                return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
+            #Needed to make better graph in this test.
+            #theano/tensor/tests/test_sharedvar.py:test_shared_options.test_specify_shape_partial
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op, Join) and
+                # Ensure the Join is joining only scalar variables (so that
+                # the constant value can be found at the same index as the one
+                # used in the sub-tensor).
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                # Note the '+ 1' is because the first argument to Join is the
+                # axis.
+                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]+1]
+                ret = get_constant_value(ret)
+                #join can cast implicitly its input in some case.
+                return theano._asarray(ret, dtype=v.type.dtype)
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op,
+                           theano.tensor.opt.MakeVector) and
+                # MakeVector normally accept only scalar as input.
+                # We put this check in case there is change in the future
+                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs)):
+
+                # The index list 'idx_list' should have length one
+                # since joining scalar variables results in a 1D vector.
+                assert len(v.owner.op.idx_list) == 1
+                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
+                ret = get_constant_value(ret)
+                #MakeVector can cast implicitly its input in some case.
+                return theano._asarray(ret, dtype=v.type.dtype)
     raise TypeError(v)
 
 
@@ -531,7 +567,11 @@ class TensorType(Type):
 
     @staticmethod
     def may_share_memory(a,b):
-        return numpy.may_share_memory(a,b)
+        #when this is called with a an ndarray and b
+        #a sparce matrix, numpy.may_share_memory fail.
+        if a.__class__ is b.__class__:
+            return numpy.may_share_memory(a,b)
+        else: return False
 
     @staticmethod
     def values_eq(a, b):
@@ -1477,6 +1517,54 @@ shape = Shape()
 _shape = shape #was used in the past, now use shape directly.
 pprint.assign(_shape, printing.MemberPrinter('shape'))
 
+class SpecifyShape(Op):
+    """
+    L{Op} put into the graph the user provided shape
+
+    In the case where this op stay in the final graph, we assert the shape.
+    For this the output of this op must be used in the graph. This is not
+    the case most of the time if we only take the shape of the output.
+    Maybe there is other optimization that will mess with this.
+
+    @note:     Maybe in the futur we will never do the assert!
+    @note:     We currently don't support specifying partial shape information.
+    """
+    view_map = {0: [0]}
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __str__(self):
+        return self.__class__.__name__
+    def make_node(self, x, shape):
+        if not isinstance(x,Variable):
+            x = as_tensor_variable(x)
+        shape = as_tensor_variable(shape)
+        return Apply(self, [x, shape], [x.type()])
+
+    def perform(self, node, (x,shape ), (out, )):
+        assert numpy.all(x.shape==shape), ("got shape", x.shape,
+                                           "expected", shape)
+        out[0] = x
+
+    def infer_shape(self, node, (xshape, sshape)):
+        new_shape=[]
+        for dim in range(node.inputs[0].ndim):
+            try:
+                s=get_constant_value(node.inputs[1][dim])
+                s=as_tensor_variable(s)
+                new_shape.append(s)
+            except TypeError, e:
+                new_shape.append(node.inputs[1][dim])
+
+        assert len(new_shape)==len(xshape)
+        return [new_shape]
+
+    def grad(self, (x,), (gz,)):
+        return [gz]
+
+specify_shape = SpecifyShape()
+
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis.
 
@@ -1620,10 +1708,10 @@ def min(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of min when axis==None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling min().")
+        warnings.warn("The behavior of min when axis is None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().")
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
@@ -2159,9 +2247,10 @@ def mean(input, axis = None, op = False):
 
 @constructor
 def var(input, axis = None):
-    """Compute the variance along the given axis of a tensor `input`
+    """Compute the variance along the given axis of a tensor `input`.
 
-    :param axis: compute the variance along this axis of the tensor.  None means trailing axis.
+    :param axis: Compute the variance along this axis of the tensor.
+                 None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
     """
@@ -2194,6 +2283,16 @@ def var(input, axis = None):
 
     #return the mean sqr
     return mean(centered_input**2, axis)
+
+@constructor
+def std(input, axis=None):
+    """Compute the standard deviation along the given axis of a tensor `input`.
+
+    :param axis: Compute the standard deviation along this axis of the tensor.
+                 None means all axes (like numpy).
+    :type axis: None or int or (list of int) (see `Sum`)
+    """
+    return sqrt(var(input=input, axis=axis))
 
 if 0:
     ## COMMENTED OUT FEB 17 2010
@@ -3187,11 +3286,18 @@ def stack(*tensors):
         raise Exception('theano.tensor.stack(*tensors) must have at least one parameter')
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
-    if numpy.all([isinstance(t, Variable) and\
-                  isinstance(t.type, TensorType) and\
-                  t.ndim==0 and t.type==tensors[0].type\
+    if isinstance(tensors[0], (numpy.number, float, int, python_complex)):
+        tensors=list(tensors)
+        tensors[0]=as_tensor_variable(tensors[0])
+    if numpy.all([isinstance(t, (numpy.number, float, int, python_complex))#in case their is direct int
+                  or (isinstance(t, Variable) and
+                      isinstance(t.type, TensorType) and
+                      t.ndim==0 and
+                      t.type.__class__==tensors[0].type.__class__)
                   for t in tensors]):
-        return theano.tensor.opt.MakeVector(scal.upcast(*[i.dtype for i in tensors]))(*tensors)
+        tensors = map(as_tensor_variable,tensors)#in case their is direct int
+        dtype = scal.upcast(*[i.dtype for i in tensors])
+        return theano.tensor.opt.MakeVector(dtype)(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
@@ -3334,6 +3440,7 @@ class Reshape(Op):
         return '%s{%s}' %(self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
+        shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int'):
             raise TypeError("Shape must be integers")
@@ -3342,7 +3449,16 @@ class Reshape(Op):
             bcast = [s==1 for s in shp.data]
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
         else:
-            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
+            bcasts = [False] * self.ndim
+            for index in xrange(self.ndim):
+                y = shp_orig[index]
+                # Try to see if we can infer that y has a constant value of 1.
+                # If so, that dimension should be broadcastable.
+                try:
+                    bcasts[index] = (hasattr(y, 'get_constant_value') and y.get_constant_value() == 1)
+                except TypeError:
+                    pass
+            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'

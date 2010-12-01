@@ -14,7 +14,8 @@ Requirements
 ------------
 
 In order to use Theano, the following libraries and software will need
-to be installed:
+to be installed (MacOS and Windows users should refer to platform-specific
+instructions below for detailed installation steps):
 
     Linux, Mac OS X or Windows operating system
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
@@ -394,7 +395,7 @@ Windows V1 (Installing from Scratch)
   You can keep the default install options (except for the installation directory).
 
 - Install Mercurial. You can download it
-  `here <http://mercurial.selenic.com/downloads>`_. You may get either the command
+  `here <http://mercurial.selenic.com/downloads>`__. You may get either the command
   line Windows version or the TortoiseHG GUI version: it does not matter as
   far as installing Theano is concerned.
 
@@ -450,7 +451,7 @@ compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
 GotoBLAS2 can be downloaded
-`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`_
+`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`__
 after registering on the website (we tested v1.13).
 To compile it, you will also need to install MSYS and Perl,
 as described below.
@@ -538,8 +539,7 @@ Windows: Using the GPU
 
 Please note that these are tentative instructions (we have not yet been able to
 get the GPU to work under Windows with Theano).
-Please report your own successes / failures on the
-`theano-users <http://groups.google.com/group/theano-users>`_ mailing list.
+Please report your own successes / failures on the `theano-users`_ mailing list.
 
 Those are instructions for the 32-bit version of Python (the one that comes
 with Python(x,y) is 32-bit).
@@ -555,14 +555,15 @@ use a compilation directory located somewhere else:
       [global]
       base_compiledir=path_to_a_directory_without_such_characters
 
-  You also need to add in the configuration file those lines:
+You also need to add in the configuration file those lines (make sure this
+is the correct Python installation path):
 
     .. code-block:: cfg
 
       [cuda]
       nvccflags=-LC:\Python26\libs
 
-  Then
+Then
   
   1) Install CUDA driver (32-bit on 32-bit Windows, idem for 64-bit).
   
