@@ -70,6 +70,8 @@ The following libraries and software are optional:
 Linux
 -----
 
+.. _linux_basic:
+
 Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -427,24 +429,28 @@ You can keep the default install options, except that the installation
 directory should not contain any blank space (in particular, do not install it
 into ``C:\Program Files``).
 
-If you already have either Python or MinGW installed, it is safer to
-install components individually to avoid conflicts:
-
-Installing components individually
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-DISCLAIMER: These are old installation instructions (to be revised).
-
-Running Theano under Windows is currently achieved by using the `MinGW
-<http://www.mingw.org>`__ port of the GCC compiler.
-It could probably also run with `Cygwin <http://www.cygwin.com/>`__,
-but this has not been tested yet.
+If instead you already have either Python or MinGW installed, it is safer to
+install components individually to avoid conflicts. Note that it should be
+possible to run Theano with `Cygwin <http://www.cygwin.com/>`__ instead of
+MinGW, but this has not been tested yet. In order to manually install the same
+components as in Python(x,y) that are required by Theano, follow these steps:
 
 - From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
   download the latest version of the ``Automated MinGW Installer``
   (``mingw-get-inst``) and install it with all optional components (although
   you probably do not need them all: if you feel like figuring out exactly
   which ones are required, let us know!).
+
+- It is recommended to set your MinGW home to be the same as your Windows home
+  directory. This will avoid inconsistent behavior between running Theano
+  in a Windows command prompt vs. a MinGW shell. One way to do this without
+  setting a global Windows ``HOME`` environment variable (which may affect
+  other programs) is to edit your ``msys.bat`` file (found e.g. under
+  ``C:\MinGW\msys\1.0``) and add the following line at the beginning:
+
+    .. code-bloack:: bash
+
+        set HOME=%USERPROFILE%
 
 - If you do not have them already, install the latest versions of
   `Python 2.x <http://www.python.org/download/windows>`__ and
@@ -464,37 +470,30 @@ but this has not been tested yet.
 - In order to run Theano's test-suite, you will need `nose
   <http://somethingaboutorange.com/mrl/projects/nose>`__.
   After unpacking its source code, you can build and install it from within
-  the code directory by:
+  its code directory by running the following command (either from a Windows
+  command prompot or a MinGW shell):
 
     .. code-block:: bash
 
         python setup.py install
 
-- Install Theano using the above :ref:`install_bleeding_edge` installation
-  instructions
-  (using ``easy_install`` and has not been tested yet).
-  In particular, do not forget to make the Theano package accessible from
-  Python, e.g. by adding to your ``.profile`` a line like
-  ``export PYTHONPATH=PYTHONPATH:$HOME/Theano``.
-
-- Please note that at this time, the test suite may be broken under Windows.
-  In particular, many tests may fail while running the test-suite,
-  due to insufficient memory resources (in which case you will probably get an
-  error of the type ``"Not enough storage is available to
-  process this command"``): one workaround is to run nosetests
-  multiple times under individual subdirectories.
-  
-
+At this point, whether you installed Python(x,y) or individual components, you
+should have MinGW, Python, Numpy, Scipy and Nose installed.
+It should be possible to install Theano with ``pip`` as described in
+:ref:`linux_basic`, but this has not been tested yet under Windows. We describe
+here instructions to use the latest code repository version (bleeding-edge).
+Command lines listed below can be run either in a Windows prompt
+(click ``Start`` and type the ``cmd`` command) or a MinGW Shell (not available
+if you only installed Python(x,y)).
 
 - Install Mercurial. You can download it
-  `here <http://mercurial.selenic.com/downloads>`__. You may get either the command
+  `here <http://mercurial.selenic.com/downloads>`__.
+  You may get either the command
   line Windows version or the TortoiseHG GUI version: it does not matter as
   far as installing Theano is concerned.
 
-- Start a shell (hit the Start button and run the ``cmd`` command) and navigate to
-  the directory where you want to install Theano (it is ok to just stay in the
-  default directory, which should be your user profile directory). Then download
-  Theano with:
+- Navigate into the directory you want Theano to be installed in, and download
+  it with
 
     .. code-block:: bash
 
@@ -502,17 +501,18 @@ but this has not been tested yet.
 
 - Add (or edit) the PYTHONPATH environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
-  the full installation directory of Theano. Restart a shell (``cmd``) to verify
+  the full installation directory of Theano. Restart a shell to verify
   that it works:
 
     .. code-block:: none
 
         C:\Users\login>echo %PYTHONPATH%
         C:\Users\login\Theano
-        
+
 - Create a new ``.theanorc`` text file (or ``.theanorc.txt``, which is easier
-  to create under Windows) in your user profile directory, containing the following
-  two lines:
+  to create under Windows) in your user profile directory (the directory you
+  are into when you start a new command prompt with ``cmd``), containing the
+  following two lines:
  
     .. code-block:: cfg
 
@@ -535,6 +535,16 @@ but this has not been tested yet.
   trying to compile any Theano function would result in a compilation error
   due to the system being unable to find 'blas.dll').
 
+- You should be able to run the test-suite by executing ``nosetests`` within
+  the Theano installation directory (if you installed Nose manually as described
+  above, this may only work in a MinGW shell).
+  Please note that at this time, the test suite may be broken under Windows.
+  In particular, many tests may fail while running the test-suite,
+  due to insufficient memory resources (in which case you will probably get an
+  error of the type ``"Not enough storage is available to
+  process this command"``): one workaround is to run nosetests
+  multiple times under individual subdirectories.
+  
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
