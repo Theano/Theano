@@ -316,20 +316,20 @@ def makeSharedTester(shared_constructor_,
 
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
-            theano.printing.debugprint(specify_shape_fct)
+            #theano.printing.debugprint(specify_shape_fct)
             assert numpy.all(self.ref_fct(specify_shape_fct())
                              ==self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.env.toposort()
             if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_specify)==6
+                assert len(topo_specify)==4
 
             #Test that we put the shape info into the graph
             shape_constant_fct = theano.function([],x1_specify_shape.shape)
-            theano.printing.debugprint(shape_constant_fct)
+            #theano.printing.debugprint(shape_constant_fct)
             assert numpy.all(shape_constant_fct()==shape_op_fct())
             topo_cst = shape_constant_fct.maker.env.toposort()
             if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_cst)==6
+                assert len(topo_cst)==2
 
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
