@@ -258,49 +258,99 @@ class test_Prod(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def test_prod_grad(self):
-        x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
-        x = theano.tensor.dmatrix()
-        p = Prod(axis=0)(x)
 
-        # sanity check
-        fn = theano.function([x], [p])
-        assert numpy.allclose(fn(x_val), numpy.array([  28.,  80.,  162.]))
 
-        # very basic case for the product; no broadcasting in x
-        g = theano.tensor.grad(p.sum(), x)
-        g_fn = theano.function([x], g)
-        assert numpy.allclose(g_fn(x_val),
-                numpy.asarray([[28.,40.,54.],[7.,16.,27.],[4.,10.,18.]]))
-
-        # now with some tranposition in input
-        x_bc = x.dimshuffle(1, 0)
-        p_bc = Prod(axis=0)(x_bc)
-        p_bc_sum = p_bc.sum()
-        g_bc = theano.tensor.grad(p_bc_sum, x)
-        g_fn_bc = theano.function([x], [p_bc,g_bc])
-        p_bc_ret, g_bc_ret =  g_fn_bc(x_val)
-
-        assert numpy.allclose(p_bc_ret, numpy.array([  6.,  120.,  504.]))
-        assert numpy.allclose(g_bc_ret,
-                numpy.asarray([[6.,3.,2.],[30.,24.,20.],[72.,63.,56.]]))
 
     def test_verify_grad(self):
+        # including zeros, as the case with zeros is important
+        # (and special cases: 1 zero in the row, more than 1 zero in the row)
         x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
         x = theano.tensor.dmatrix()
         # now with verify_grad
-        unittest_tools.verify_grad(Prod(axis=0), [x_val])
+        unittest_tools.verify_grad(Prod(axis=1), [x_val])
 
         # second time, with some added complexity
         # verify_grad takes the sum of the matrices anyway
         def fn(x2):
-            return theano.tensor.sqr(Prod(axis=0)(x2))
+            return theano.tensor.sqr(Prod(axis=1)(x2))
 
         unittest_tools.verify_grad(fn, [x_val])
 
+
+    def test_verify_grad_with_zeros(self):
+        # including zeros, as the case with zeros is important
+        # (and special cases: 1 zero in the row, more than 1 zero in the row)
+        x_val = numpy.asarray([[1.,2.,3.],[0.,5.,6.],[0.,0.,9.]], dtype='float32')
+        x = theano.tensor.dmatrix()
+
+        # sanity check
+        x2 = theano.tensor.dmatrix()
+        p = Prod(axis=1)(x)
+        p2 = Prod(axis=1)(x2)
+        fn = theano.function([x,x2],[p-p2])
+        #print "hand computed diff for each row"
+        x2_val = numpy.asarray([[1., 2., 3.003], [0.003,5.,6], [0.,0.,9.01]])
+        #print fn(x_val, x2_val)
+        fn2 = theano.function([x],[theano.tensor.grad(p.sum(),x)])
+        #print "real grad"
+        #print fn2(x_val)
+        fn3 = theano.function([x],[p])
+        assert numpy.allclose(fn3(x_val), [6.,0.,0.])
+
+        # now with verify_grad
+        unittest_tools.verify_grad(Prod(axis=1), [x_val])
+
+        # second time, with some added complexity
+        # verify_grad takes the sum of the matrices anyway
+        #def fn5(x5):
+        #    return theano.tensor.sqr(Prod(axis=1)(x5))
+
+        #x4 = theano.tensor.dmatrix()
+        #p4 = theano.tensor.sqr(Prod(axis=1)(x4))
+        #fn4 = theano.function([x4], p4)
+        #print "with sqr"
+        #print fn4(x_val)
+        #print fn4(x2_val)
+
+        #unittest_tools.verify_grad(fn5, [x_val])
+
+    def test_prod_without_zeros(self):
+        x = theano.tensor.dmatrix()
+        x_val = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
+        pwz = ProdWithoutZeros(axis=1)(x)
+        fn = theano.function([x], pwz)
+        assert numpy.allclose(fn(x_val), [6,30,9])
+
+        pwz_a0 = ProdWithoutZeros(axis=0)(x)
+        fn_a0 = theano.function([x], pwz_a0)
+        assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
+
+    def test_other_grad_tests(self):
+        x = theano.tensor.dmatrix()
+        x_val1 = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
+        x_val2 = numpy.array([[1,2,0],[0,5,6],[7,8,9],[9,10,0]], dtype='float32')
+        rng = rng = numpy.random.RandomState(43)
+
+        p = Prod(axis=1)
+        grad_p = theano.tensor.grad(p(x).sum(), x)
+        grad_fn = theano.function([x], grad_p)
+        assert numpy.allclose(grad_fn(x_val1), [[6.,3.,2.],[30.,0.,0.],[0.,0.,0.]])
+        assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30., 0., 0.], [72., 63., 56.], [0., 0., 90.]])
+
+        p_axis0 = Prod(axis=0)
+        grad_p_axis0 = theano.tensor.grad(p_axis0(x).sum(), x)
+        grad_fn_axis0 = theano.function([x], grad_p_axis0)
+        assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400., 0.],[63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
+
+        tensor.verify_grad(p, [x_val1], rng=rng)
+
+        
+
 if __name__ == '__main__':
-    unittest.main()
-    #suite = unittest.TestSuite([test_Prod('test_prod_grad')])
-    #suite.addTest(test_Prod('test_verify_grad'))
-    #unittest.TextTestRunner().run(suite)
+    #unittest.main()
+    suite = unittest.TestSuite([test_Prod('test_verify_grad')])
+    suite.addTest(test_Prod('test_verify_grad_with_zeros'))
+    suite.addTest(test_Prod('test_prod_without_zeros'))
+    suite.addTest(test_Prod('test_other_grad_tests'))
+    unittest.TextTestRunner().run(suite)
 
