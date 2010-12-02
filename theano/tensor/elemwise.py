@@ -1143,6 +1143,11 @@ class Prod(CAReduce):
 
         self.no_zeros_in_input = no_zeros_in_input
 
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        if 'no_zeros_in_input' not in dct:
+            self.no_zeros_in_input = False
+
     def __eq__(self, other):
         return type(self) == type(other) and self.scalar_op == other.scalar_op and self.axis == other.axis and self.no_zeros_in_input == other.no_zeros_in_input
 
@@ -1206,7 +1211,6 @@ class Prod(CAReduce):
             # it'd be even better if we had a lazy if per element
             prod_without_zeros = ProdWithoutZeros(axis=self.axis)(prod_without_zeros_in)
             prod_without_zeros = prod_without_zeros.dimshuffle(new_dims)
-
 
             groups_without_zeros = T.eq(sum_where_zeros, 0.0).dimshuffle(new_dims)
             final_grad = T.switch(groups_without_zeros, grad_case_without_zeros,
