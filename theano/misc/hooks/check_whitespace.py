@@ -159,7 +159,13 @@ def main(argv=None):
                         action="store_const",
                         default=False,
                         const=True,
-                        help="only check indentation if the file was previously correctly indented (or is new)"
+                        help="only block on newly introduced indentation problems; ignore all others"
+                       )
+    parser.add_argument("-p", "--incremental-with-patch",
+                        action="store_const",
+                        default=False,
+                        const=True,
+                        help="only block on newly introduced indentation problems; propose a patch for all others"
                        )
     parser.add_argument("-s", "--skip-after-failure",
                         action="store_const",
@@ -203,16 +209,21 @@ def main(argv=None):
         else:
             # parsing succeeded, it is safe to check indentation
             if not args.no_indentation:
-                if args.incremental and filename in changed_filenames:
-                    # only check it if it was clean before
-                    old_file_contents = get_file_contents(filename, revision=parent_commit())
-                    check_indentation = get_correct_indentation_diff(old_file_contents, "") is None
-                else:
-                    check_indentation = True
+                was_clean = None # unknown
+                # only calculate was_clean if it will matter to us
+                if args.incremental or args.incremental_with_patch:
+                    if filename in changed_filenames:
+                        old_file_contents = get_file_contents(filename, revision=parent_commit())
+                        was_clean = get_correct_indentation_diff(old_file_contents, "") is None
+                    else:
+                        was_clean = True # by default -- it was newly added and thus had no prior problems
+
+                check_indentation = was_clean or not args.incremental
                 if check_indentation:
                     indentation_diff = get_correct_indentation_diff(code, filename)
                     if indentation_diff is not None:
-                        block_commit = True
+                        if was_clean or not args.incremental_with_patch:
+                            block_commit = True
                         diffs.append(indentation_diff)
                         print >> sys.stderr, "%s is not correctly indented" % filename
 
