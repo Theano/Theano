@@ -5,7 +5,7 @@ import numpy as N
 from theano import printing
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags
-
+from theano.misc import strutil
 
 
 #Note: not a true convolution because we don't bother with flipping the kernel

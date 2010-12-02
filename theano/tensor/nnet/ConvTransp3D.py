@@ -1,6 +1,6 @@
 import numpy as N
 from theano.tensor import basic as T
-#from util import strutil
+from theano.misc import strutil
 import theano
 
 class ConvTransp3D(theano.Op):
