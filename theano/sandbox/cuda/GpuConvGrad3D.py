@@ -243,7 +243,7 @@ if(out_contiguous && (version==0||version==-1) && WShape[4]<=512 && !work_comple
         if (cudaSuccess == sts)
         {
             work_complete = true;
-	    if (verbose>1) printf("threads.x=%%i, threads.y=%%i, grid.x=%%i, grid.y=%%i, shared_size=%%i, nb_threads=%%i\\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
+            if (verbose>1) printf("threads.x=%%i, threads.y=%%i, grid.x=%%i, grid.y=%%i, shared_size=%%i, nb_threads=%%i\\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
             if (verbose) printf("INFO: used 'conv_rows_stack' version\\n");
         }
         else
@@ -276,16 +276,16 @@ __global__ void
 //grid block size = (WShape[0]*WShape[1],WShape[2]*WShape[3])
 //
 convgrad_rows_stack( float* img, float* dCdH, float* dCdW,
-		 int img_len, int img_wid, int img_dur,
+                 int img_len, int img_wid, int img_dur,
                  int dCdW_len, int dCdW_wid, int dCdW_dur,
                  int wsh0, int wsh1, int wsh2, int wsh3, int wsh4,
                  int out_len, int out_wid, int out_dur,
-		 int batchSize, int nkern, int nstack,
+                 int batchSize, int nkern, int nstack,
                  int dr, int dc, int dt,
                  int img_stride_frame, int img_stride_col, int img_stride_row,
-		 int img_stride_stack, int img_stride_batch,
+                 int img_stride_stack, int img_stride_batch,
                  int dCdW_stride_frame, int dCdW_stride_col, int dCdW_stride_row,
-		 int dCdW_stride_stack, int dCdW_stride_nkern)
+                 int dCdW_stride_stack, int dCdW_stride_nkern)
 {
   int __shared__ kern_id, stack_id;
   float  __shared__ *d_img, *d_kern;
