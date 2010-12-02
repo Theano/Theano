@@ -1,13 +1,13 @@
+import numpy
+
 import theano
 import theano.tensor as T
-import numpy as N
-from theano.sandbox.cuda import cuda_available, cuda_enabled
-from theano.sandbox.cuda.basic_ops import *
-#from util import strutil
-from .Conv3D import Conv3D
-
-if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType, float32_shared_constructor
+from theano.gof import local_optimizer
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, host_from_gpu, HostFromGpu
+from theano.misc import strutil
+from theano.tensor.nnet.Conv3D import Conv3D
+from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda import CudaNdarrayType
 
 class GpuConv3D(theano.Op):
     """ GPU implementation of Conv3D """
@@ -282,8 +282,8 @@ conv_rows_stack( float* img, float* kern, float* bias, float* out,
 
 gpu_convd = GpuConv3D()
 
-@theano.sandbox.cuda.opt.register_opt()
-@theano.gof.opt.local_optimizer([])
+@register_opt()
+@local_optimizer([])
 def local_gpu_conv3d(node):
     if isinstance(node.op, Conv3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
