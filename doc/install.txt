@@ -448,7 +448,9 @@ components as in Python(x,y) that are required by Theano, follow these steps:
   in a Windows command prompt vs. a MinGW shell. One way to do this without
   setting a global Windows ``HOME`` environment variable (which may affect
   other programs) is to edit your ``msys.bat`` file (found e.g. under
-  ``C:\MinGW\msys\1.0``) and add the following line at the beginning:
+  ``C:\MinGW\msys\1.0``) and add the following line at the beginning (note
+  that you may need to use e.g. Wordpad to edit this file, since Notepad gets
+  confused by Unix-style line breaks):
 
     .. code-block:: bash
 
@@ -489,8 +491,8 @@ You may install either the command
 line Windows version or the TortoiseHG GUI version: it does not matter as
 far as installing Theano is concerned.
 
-Installing Theano.
-~~~~~~~~~~~~~~~~~~~~~~~
+Installing Theano
+~~~~~~~~~~~~~~~~~
 
 It should be possible to install Theano with ``pip`` as described in
 :ref:`linux_basic`, but this has not been tested yet under Windows. We describe
@@ -630,7 +632,7 @@ follows:
      ``lib`` subdirectories of your MinGW installation (which may be under
      ``pythonxy\mingw`` if you used Python(x,y)).
 
-  f) Modify your .theanorc (or .theanorc.txt) with "ldflags = -lgoto2".
+  f) Modify your .theanorc (or .theanorc.txt) with ``ldflags = -lgoto2``.
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
