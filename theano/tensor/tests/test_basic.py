@@ -3484,7 +3484,8 @@ class T_get_constant_value(unittest.TestCase):
         assert get_constant_value(a[1])==2
         assert get_constant_value(a[2])==3
 
-        #For now get_constant_value got throught only MakeVector and Join of scalar.
+        # For now get_constant_value goes through only MakeVector and Join of
+        # scalars.
         v = tensor.ivector()
         a = tensor.stack(v,2,3)
         self.assertRaises(TypeError, get_constant_value, a[0])
