@@ -1,6 +1,6 @@
 import theano
 from theano.tensor import basic as T
-#from util import strutil
+from theano.misc import strutil
 import numpy as N
 
 class ConvGrad3D(theano.Op):
@@ -265,3 +265,6 @@ class ConvGrad3D(theano.Op):
 
 
 convGrad3D = ConvGrad3D()
+
+from Conv3D import conv3D
+from ConvTransp3D import convTransp3D
