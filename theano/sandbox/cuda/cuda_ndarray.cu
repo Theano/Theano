@@ -1577,7 +1577,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
 	  if(CudaNdarray_HOST_DIMS(rval)[i] != ((PyArrayObject*)v)->dimensions[i]){
 	    PyErr_Format(PyExc_ValueError, "CudaNdarray.__setitem__: need same dimensions for dim %d, destination=%d, source=%d",i,
 			    CudaNdarray_HOST_DIMS(rval)[i],
-			    ((PyArrayObject*)v)->dimensions[i]);
+			    int(((PyArrayObject*)v)->dimensions[i]));
 	    Py_XDECREF(rval);
 	    return -1;
 	  }
