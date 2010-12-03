@@ -21,7 +21,9 @@ from theano import pprint, shared
 from theano.tests import unittest_tools as utt
 
 from theano import function, compile
-
+mode_opt = theano.config.mode
+if mode_opt == 'FAST_COMPILE':
+    mode_opt = 'FAST_RUN'
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -2091,6 +2093,45 @@ def test_make_vector():
             raise Exception("Theano should have raised an error")
         except AssertionError:
             pass
+
+def test_local_useless_join():
+    #test for vector
+    a = TT.vector('a')
+    s = stack(a)
+    f = function([a], s, mode=mode_opt)
+    val = f([1])
+    assert numpy.all(val == [1])
+    e = f.maker.env.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 0
+    assert f.maker.env.outputs[0].dtype == config.floatX
+
+    #test for matrix join(0,a)
+    a = TT.matrix('a')
+    s = join(0,a)
+    f = function([a], s, mode=mode_opt)
+    val = f([[1]])
+    assert numpy.all(val == [[1]])
+    e = f.maker.env.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 0
+    assert f.maker.env.outputs[0].dtype == config.floatX
+
+    #test for matrix join(1,a)
+    s = join(1,a)
+    f = function([a], s, mode=mode_opt)
+    val = f([[1]])
+    assert numpy.all(val == [[1]])
+    e = f.maker.env.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 0
+    assert f.maker.env.outputs[0].dtype == config.floatX
+
+    #test we don't apply when their is 2 inputs
+    s = join(1,a,a)
+    f = function([a], s, mode=mode_opt)
+    val = f([[1]])
+    assert numpy.all(val == [[1]])
+    e = f.maker.env.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert f.maker.env.outputs[0].dtype == config.floatX
 
 if __name__ == '__main__':
 #    unittest.main()
