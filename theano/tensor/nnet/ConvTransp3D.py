@@ -37,7 +37,7 @@ class ConvTransp3D(theano.Op):
     def infer_shape(self, node, input_shapes):
         W,b,d,H,RShape = node.inputs
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
-        return [(H_shape[0], W_shape[1], RShape[0], RShape[1], RShape[2])]
+        return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[1])]
 
     def grad(self,inputs, output_gradients):
 		W,b,d,H, RShape = inputs
