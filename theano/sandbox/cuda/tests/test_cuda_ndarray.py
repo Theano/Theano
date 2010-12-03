@@ -7,6 +7,21 @@ if cuda_ndarray.cuda_available == False:
         raise SkipTest('Optional package cuda disabled')
 import numpy
 
+def advantage(cpu_dt, gpu_dt):
+    """
+    Return ratio of cpu_dt / gpu_dt, which must be non-negative numbers.
+
+    If both arguments are zero, return NaN.
+    If only gpu_dt is zero, return Inf.
+    """
+    assert gpu_dt >= 0 and cpu_dt >= 0
+    if gpu_dt == 0 and cpu_dt == 0:
+        return numpy.nan
+    elif gpu_dt == 0:
+        return numpy.inf
+    else:
+        return cpu_dt / gpu_dt
+
 def test_host_to_device():
     print >>sys.stdout, 'starting test_host_to_dev'
     for shape in ((), (3,), (2,3), (3,4,5,6)):
@@ -41,7 +56,7 @@ def test_add_iadd_idiv():
         asum = a0 + a1
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', cpu_dt / gpu_dt
+        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(asum,  numpy.asarray(bsum))
 
         if len(shape)>0:
@@ -89,7 +104,7 @@ def test_exp():
         asum = numpy.exp(a1)
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', cpu_dt / gpu_dt
+        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         #c = numpy.asarray(b0+b1)
         if asum.shape:
             assert numpy.allclose(asum, numpy.asarray(bsum))
