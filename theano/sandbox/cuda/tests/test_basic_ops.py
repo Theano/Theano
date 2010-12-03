@@ -584,6 +584,11 @@ def test_hostfromgpu_shape_i():
 import theano.sandbox.cuda as cuda_ndarray
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuDimShuffle
 
+def test_gpujoin_concatenate_one_element():
+    m = T.fmatrix()
+    c = T.concatenate([m])
+    f = theano.function(inputs=[m], outputs=[c], mode=mode_with_gpu)
+
 def test_gpujoin_twomatrices_joincolumns():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')

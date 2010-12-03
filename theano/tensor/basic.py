@@ -3173,7 +3173,7 @@ class Join(Op):
                 # broadcastable.
                 bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
 
-        inputs = [as_tensor_variable(axis)] + as_tensor_variable_args
+        inputs = [as_tensor_variable(axis)] + list(as_tensor_variable_args)
         if inputs[0].type not in int_types:
             raise TypeError('Axis could not be cast to an integer type', axis, inputs[0].type, int_types)
 
