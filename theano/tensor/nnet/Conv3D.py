@@ -62,7 +62,7 @@ class Conv3D(theano.Op):
         b_ = T.as_tensor_variable(b)
         d_ = T.as_tensor_variable(d)
 
-        node = theano.Apply(self, inputs=[V_, W_,b_,d_], outputs = [ T.TensorType(V_.dtype, (V_.broadcastable[0],W_.broadcastable[0],False,False,False))() ] )
+        node = theano.Apply(self, inputs=[V_, W_,b_,d_], outputs = [ T.TensorType(V_.dtype, (V_.broadcastable[0],False,False,False, W_.broadcastable[0]))() ] )
 
 
         return node
@@ -108,8 +108,10 @@ class Conv3D(theano.Op):
         output_width = T.floor( (vidWidth - filterWidth) / dc )+1
         output_dur = T.floor( (vidDur - filterDur) / dt ) +1
 
+        rval = (batch_size,  output_height, output_width, output_dur, output_channels )
+    
 
-        return [(batch_size,  output_height, output_width, output_dur, output_channels )]
+        return [ rval ]
 
     def c_support_code(self):
         return blas_header_text()
@@ -179,7 +181,7 @@ class Conv3D(theano.Op):
 
             if (%(W)s->dimensions[4] != inputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%li channel image but the image has %%i channels.",%(W)s->dimensions[4],inputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels.",%(W)s->dimensions[4],inputChannels);
                 %(fail)s
             }
 
