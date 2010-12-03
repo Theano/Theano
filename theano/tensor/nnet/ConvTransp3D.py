@@ -37,18 +37,45 @@ class ConvTransp3D(theano.Op):
     def infer_shape(self, node, input_shapes):
         W,b,d,H,RShape = node.inputs
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
-        return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[1])]
+        return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[4])]
 
     def grad(self,inputs, output_gradients):
-		W,b,d,H, RShape = inputs
-		dCdR ,= output_gradients
-		dCdH = conv3D( dCdR, W, T.zeros_like(H[0,0,0,0,:]), d)
-		WShape = W.shape
-		dCdW = convGrad3D(dCdR,d,WShape,H)
-		dCdb = T.sum(dCdR,axis=(0,1,2,3))
-		dCdd = None #not differentiable, since d is not continuous
-		dCdRShape = None #not differentiable, since RShape is not continuous
-		return [ dCdW,  dCdb, dCdd, dCdH, RShape ]
+        W,b,d,H, RShape = inputs
+        dCdR ,= output_gradients
+        dCdH = conv3D( dCdR, W, T.zeros_like(H[0,0,0,0,:]), d)
+        WShape = W.shape
+        dCdW = convGrad3D(dCdR,d,WShape,H)
+        dCdb = T.sum(dCdR,axis=(0,1,2,3))
+        dCdd = None #not differentiable, since d is not continuous
+        dCdRShape = None #not differentiable, since RShape is not continuous
+
+
+        if 'name' in dir(dCdR) and dCdR.name != None:
+            dCdR_name = dCdR.name
+        else:
+            dCdR_name = 'anon'
+
+        if 'name' in dir(H) and H.name != None:
+            H_name = H.name
+        else:
+            H_name = 'anon'
+
+        if 'name' in dir(W) and W.name != None:
+            W_name = W.name
+        else:
+            W_name = 'anon'
+
+        if 'name' in dir(b) and b.name != None:
+            b_name = b.name
+        else:
+            b_name = 'anon'
+
+        
+        dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name
+        dCdb.name = 'ConvTransp3D_dCdb.H='+H_name+',dCdR='+dCdR_name+',W='+W_name+',b='+b_name
+        dCdH.name = 'ConvTransp3D_dCdH.H='+H_name+',dCdR='+dCdR_name
+
+        return [ dCdW,  dCdb, dCdd, dCdH, dCdRShape ]
 
 
     def perform(self, node, inputs, output_storage):

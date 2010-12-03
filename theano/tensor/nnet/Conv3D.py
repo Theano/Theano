@@ -81,6 +81,33 @@ class Conv3D(theano.Op):
         dCdW = ConvGrad3D.convGrad3D(V,d,WShape,dCdH)
         dCdb = T.sum(dCdH, axis=(0,1,2,3))
         dCdd = None #not differentiable, since d is not continuous
+
+        if 'name' in dir(dCdH) and dCdH.name != None:
+            dCdH_name = dCdH.name
+        else:
+            dCdH_name = 'anon'
+
+        if 'name' in dir(V) and V.name != None:
+            V_name = V.name
+        else:
+            V_name = 'anon'
+
+        if 'name' in dir(W) and W.name != None:
+            W_name = W.name
+        else:
+            W_name = 'anon'
+
+        if 'name' in dir(b) and b.name != None:
+            b_name = b.name
+        else:
+            b_name = 'anon'
+
+        dCdV.name = 'Conv3D_dCdV.dCdH='+dCdH_name+',V='+V_name
+        dCdW.name = 'Conv3D_dCdW.dCdH='+dCdH_name+',V='+V_name+',W='+W_name
+        dCdb.name = 'Conv3D_dCdb.dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name
+        
+
+
         return [ dCdV, dCdW, dCdb, dCdd ]
 
     def perform(self, node, inputs, output_storage):
@@ -181,7 +208,7 @@ class Conv3D(theano.Op):
 
             if (%(W)s->dimensions[4] != inputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels.",%(W)s->dimensions[4],inputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)",%(W)s->dimensions[4],inputChannels, %(V)s->dimensions[0], %(V)s->dimensions[1], %(V)s->dimensions[2], %(V)s->dimensions[3], %(V)s->dimensions[4]);
                 %(fail)s
             }
 
