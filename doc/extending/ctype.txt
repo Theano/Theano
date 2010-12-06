@@ -125,6 +125,7 @@ Defining the methods
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 **c_declare**
 
 .. code-block:: python
@@ -225,6 +226,7 @@ API) and we put it in our double variable that we declared previously.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
+
 **c_sync**
 
 .. code-block:: python
