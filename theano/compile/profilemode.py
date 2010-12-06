@@ -104,6 +104,12 @@ class ProfileMode(Mode):
                 dt = time.time() - t0
             size=[]
             for o in th.outputs:
+                if not hasattr(o[0],'size'):
+                    #if the output type don't have a size attribute, set -1
+                    #to signify we can't evaluate it.
+                    #This happen at least for mtrand.RandomState type(in numpy)
+                    size.append(-1)
+                    continue
                 s=o[0].size
                 #can't use o[0].dtype.itemsize as dtype is a str for CudaNdarray
                 dtype = str(o[0].dtype)
