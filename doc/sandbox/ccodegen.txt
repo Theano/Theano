@@ -68,7 +68,7 @@ Failure
 
 Besides cleanup code, all code has access to the %(fail)s template. For three code blocks, the generated C code will pretty much look like this:
 
-.. code-block:: CPP
+.. code-block:: cpp
 
     int failure = 0;
     {
@@ -92,7 +92,7 @@ And %(fail)s in the nth code block will take the value "{failure = n; goto label
 
 When compiling an Op, we want to sync the outputs so we can get the results from Python. In case of failure, we will not necessarily want to sync. Because of that, typical code will look like this:
 
-.. code-block:: CPP
+.. code-block:: cpp
 
     int failure = 0;
     <declare input>
@@ -124,7 +124,7 @@ Example ResultBase
 
 The following ResultBase represents a double (we only care about the C part).
 
-.. code-block:: CPP
+.. code-block:: python
 
     class Double(ResultBase):
       <snip>
@@ -218,7 +218,7 @@ To accelerate processing a tad, a struct can be generated instead of a function.
 
 Here is a sketch of the struct equivalent of the previous function:
 
-.. code-block:: CPP
+.. code-block:: cpp
 
     struct add {
       PyObject* storage_x;
