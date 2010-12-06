@@ -588,6 +588,9 @@ def test_gpujoin_concatenate_one_element():
     m = T.fmatrix()
     c = T.concatenate([m])
     f = theano.function(inputs=[m], outputs=[c], mode=mode_with_gpu)
+    topo = f.maker.env.toposort()
+    assert len(topo)==1
+    assert isinstance(topo[0].op,theano.compile.DeepCopyOp)
 
 def test_gpujoin_twomatrices_joincolumns():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
