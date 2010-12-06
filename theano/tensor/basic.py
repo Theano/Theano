@@ -3450,8 +3450,11 @@ class Reshape(Op):
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
         else:
             bcasts = [False] * self.ndim
+            shp_list = shp_orig
+            if not isinstance(shp_orig,(list,tuple)):
+                shp_list = [shp_orig]
             for index in xrange(self.ndim):
-                y = shp_orig[index]
+                y = shp_list[index]
                 # Try to see if we can infer that y has a constant value of 1.
                 # If so, that dimension should be broadcastable.
                 try:
