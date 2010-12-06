@@ -1,5 +1,5 @@
 
-.. _basictutaliasing:
+.. _aliasing:
 
 =======================================================
 Understanding Memory Aliasing for Speed and Correctness
