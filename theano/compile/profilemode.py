@@ -48,16 +48,16 @@ class ProfileMode(Mode):
         return Profile_Maker(i, o, self, *args, **kwargs)
 
     local_time = property(lambda self: [sum(self.apply_time.values())])
-    
+
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.apply_time,
-                self.op_cimpl, self.compile_time, self.fct_call_time, 
+                self.op_cimpl, self.compile_time, self.fct_call_time,
                 self.fct_call, self.message, self.outputs_size)
 
     def __setstate__(self, (linker, optimizer, apply_time, op_cimpl,
                             compile_time, fct_call_time, fct_call, message, outputs_size)):
-        
+
         self.apply_time = apply_time
         self.op_cimpl = op_cimpl
         self.compile_time = compile_time
@@ -76,7 +76,7 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot' 
+                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot'
                         ' tell you what it was though.  Use a standard mode such as'
                         ' FAST_RUN_NOGC to correct the problem.'))
             else:
@@ -86,7 +86,7 @@ class ProfileMode(Mode):
 
             apply_time[(i,node)] += dt
 
-        
+
         def profile_thunk2(i, node, th):
             """ Profile the execution time and the memory size.
             """
@@ -95,7 +95,7 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot' 
+                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot'
                         ' tell you what it was though.  Use a standard mode such as'
                         ' FAST_RUN_NOGC to correct the problem.'))
             else:
@@ -137,18 +137,18 @@ class ProfileMode(Mode):
             linker = predefined_linkers[linker]
 
         linker = WrapLinker([linker], profile_thunk2)
-            
+
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 
-    def print_summary(self, 
+    def print_summary(self,
                       n_apply_to_print=config.ProfileMode.n_apply_to_print,
                       n_ops_to_print=config.ProfileMode.n_ops_to_print):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
-        The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there). 
+        The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there).
         The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them). If two Op have different hash value, they will be separate.
         The type-Op-wise summary group the result by type of op. So event if two Op have different hash value, they will be merged.
 
@@ -166,7 +166,7 @@ class ProfileMode(Mode):
         op_cimpl = self.op_cimpl
         message = self.message
         outputs_size = self.outputs_size
-        
+
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
                             apply_time, op_cimpl, message, outputs_size,
                             n_apply_to_print, n_ops_to_print)
@@ -176,9 +176,9 @@ class ProfileMode(Mode):
         """ As print_summary, but print the difference on two different profile mode.
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
-        
+
         :param other: the other instance of ProfileMode that we want to be compared to.
-        
+
         :param n_apply_to_print: the number of apply to print. Default 15.
 
         :param n_ops_to_print: the number of ops to print. Default 20.
@@ -191,13 +191,13 @@ class ProfileMode(Mode):
                 r.setdefault(a,0)
                 tb = b_time.pop(a,0)
                 r[a]+=ta-tb
-                
+
             #they are missing in a
             for a,t in b_time.items():
                 r.setdefault(a,0)
                 r[a]+=t
             return r
-        
+
         compile_time = self.compile_time-other.compile_time
         fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
         fct_call = diff_dict(self.fct_call,other.fct_call)
@@ -229,7 +229,7 @@ class ProfileMode(Mode):
         print 'ProfileMode.%s(%s)'%(fct_name,message)
         print '---------------------------'
         print ''
-        
+
         print 'local_time %.3fs (Time spent running thunks)'% local_time
 
         if print_apply:
@@ -272,21 +272,21 @@ class ProfileMode(Mode):
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
-        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0)) 
+        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
         for f,t,a,ci,nb_call,nb_apply in otimes[:n_ops_to_print]:
-            if nb_call == 0: 
+            if nb_call == 0:
                 assert t == 0
                 continue
             tot+=t
             ftot=tot*100/local_time
             if ci:
-              msg = '*'
+                msg = '*'
             else:
-              msg = ' '
+                msg = ' '
             if op_flops:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
             else:
@@ -317,15 +317,15 @@ class ProfileMode(Mode):
         sotimes.reverse()
         tot=0
         for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
-            if nb_call == 0: 
+            if nb_call == 0:
                 assert t == 0
                 continue
             tot+=t
             ftot=tot*100/local_time
             if ci:
-              msg = '*'
+                msg = '*'
             else:
-              msg = ' '
+                msg = ' '
             print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
@@ -333,7 +333,7 @@ class ProfileMode(Mode):
                   sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
-            
+
 
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
@@ -362,7 +362,7 @@ class ProfileMode(Mode):
         print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
-        
+
         print
         print "List of apply that don't have float64 as input but have float64 in outputs. Usefull to know if we forgot some cast when using floatX=float32 or gpu code."
         print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
@@ -370,7 +370,7 @@ class ProfileMode(Mode):
             for idx, node in enumerate(fct.maker.env.toposort()):
                 if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
                     print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
-                        
+
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
             cpu=[]
             gpu=[]
@@ -385,7 +385,7 @@ class ProfileMode(Mode):
             sum_cpu=sum(so[1] for so in cpu)
             sum_gpu=sum(so[1] for so in gpu)
             sum_trans=sum(so[1] for so in trans)
-            print 
+            print
 
             print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
                 sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
@@ -405,8 +405,8 @@ class ProfileMode(Mode):
                 fct_memory[node.env][node]=val
                 for out,v in zip(node.outputs,val):
                     var_mem[out]=v
-            print 
-            print "Profile of Theano functions memory:"            
+            print
+            print "Profile of Theano functions memory:"
             for env,nodes_mem in fct_memory.iteritems():
                 print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
@@ -431,13 +431,13 @@ class ProfileMode(Mode):
                 for node,val in items[:n_apply_to_print]:
                     dmap = getattr(node.op,'destroy_map',None)
                     vmap = getattr(node.op,'view_map',None)
-                    
+
                     for idx,v in enumerate(val):
                         if dmap and idx in dmap:#TODO check the op returned a view
                             node_memory_saved_by_inplace += v
                         elif vmap and idx in vmap:#TODO check the op returned a view
                             node_memory_saved_by_view += v
-                        else: 
+                        else:
                             node_memory_size += v
                             running_memory_size += v
                             if running_memory_size > running_max_memory_size:
@@ -453,10 +453,10 @@ class ProfileMode(Mode):
                 print "    Memory saved by view (KB)", node_memory_saved_by_view/1024
                 print "    Memory saved by inplace (KB)", node_memory_saved_by_inplace/1024
                 print "    Memory saved by GC (KB)", (node_memory_size-running_max_memory_size)/1024
-                
+
                 n_apply_to_print+=10#TODO remove this line
                 print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
-                print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected." 
+                print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected."
                 for key,val in items[:n_apply_to_print]:
                     code = ['c']*len(node.outputs)
                     for out,inp in getattr(key.op,'destroy_map',{}).iteritems():
@@ -464,7 +464,7 @@ class ProfileMode(Mode):
                     for out,inp in getattr(key.op,'view_map',{}).iteritems():
                         code[out] = "v"
                     print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
-                
+
                 print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(nodes_mem)-n_ops_to_print),
                   sum(sum(val) for key, val in items[n_ops_to_print:]),
@@ -491,7 +491,7 @@ class ProfileMode(Mode):
             if isinstance(op.scalar_op, theano.scalar.Composite):
                 return get_scalar_ops(op.scalar_op)
             else: return [op.scalar_op]
-    
+
         def amdlibm_speed_up(op):
             if not isinstance(op, T.Elemwise):
                 return False
@@ -537,7 +537,7 @@ class ProfileMode(Mode):
                 if config.device.startswith("gpu"):
                     print "     - MRG_RandomStreams is the only random number supported on the GPU."
                 break
-                
+
 
 register_mode('PROFILE_MODE',ProfileMode())
 
@@ -546,7 +546,7 @@ prof_mode_instance_to_print=[predefined_modes["PROFILE_MODE"]]
 
 def atexit_print_default_profile_mode():
     """Print the summary of the predefined mode PROFILE_MODE if used.
-    
+
     This all to have the summary printed at exit when
     config.mode=PROFILE_MODE
     """
@@ -557,4 +557,3 @@ def atexit_print_default_profile_mode():
 #Register atexit_print_default_profile_mode to have the summary of the
 #predefined mode PROFILE_MODE if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
-
