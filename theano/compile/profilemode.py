@@ -465,7 +465,7 @@ class ProfileMode(Mode):
                         code[out] = "v"
                     print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
                 
-            print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
+                print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(nodes_mem)-n_ops_to_print),
                   sum(sum(val) for key, val in items[n_ops_to_print:]),
                   sum(sum(val) for key, val in items[n_ops_to_print:])/size_sum)
