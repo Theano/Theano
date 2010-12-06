@@ -246,3 +246,15 @@ Config Attributes
 
     A list of optimizer tags that we require for optimizer in the default Mode.
     If multiple tags, separate them by ':'.
+
+.. attribute:: nocleanup
+
+    Bool value: either True or False
+
+    Default: False
+
+    Remove compiled file when not needed anymore.
+    This mean it remove file that he tried to compile but failed.
+    Set to True to keep the source file that failed to compile to
+    debug them.
+    
