@@ -309,7 +309,8 @@ class SparseValue(gof.Value, _sparse_py_operators):
 class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr"""
 
-    view_map = {0:[0],1:[0],2:[0],3:[0]}
+    #we don't return a view of the shape, we create a new ndarray from the shape tuple.
+    view_map = {0:[0],1:[0],2:[0]}
 
     kmap = None
     """ WRITEME """
