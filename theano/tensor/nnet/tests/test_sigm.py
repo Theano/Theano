@@ -46,14 +46,14 @@ class T_sigmoid_opts(unittest.TestCase):
         f = theano.function([x], T.fill(x,-1.0) / (1+T.exp(-x)), mode=m)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
                 theano.tensor.inplace.neg_inplace]
-        
+
         # tests double inv_1_plus_exp with neg
         # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
         # = (-1)/(1+exp(-x)) * exp(x)/(1+exp(x))
         # = - (sigm(x) * sigm(x))
         f = theano.function([x], (T.fill(x,-1.0)*T.exp(x)) / ((1+T.exp(x))*(1+T.exp(-x))), mode=m)
         theano.printing.debugprint(f)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
+        assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
                 T.mul, theano.tensor.inplace.neg_inplace]
 
     def test_1msigmoid(self):
@@ -74,7 +74,7 @@ class T_sigmoid_opts(unittest.TestCase):
         # tests inv_1_plus_exp
         f = theano.function([x], 1 - T.fill(x,1.0) / (1+T.exp(-x)), mode=m)
         theano.printing.debugprint(f)
-        assert [node.op for node in f.maker.env.toposort()] == [tensor.neg, 
+        assert [node.op for node in f.maker.env.toposort()] == [tensor.neg,
                 sigmoid_inplace]
 
 
@@ -88,7 +88,7 @@ class T_softplus_opts(unittest.TestCase):
         utt.seed_rng()
     def test_logsigm_to_softplus(self):
         x = T.vector()
-    
+
         out = T.log(sigmoid(x))
         f = theano.function([x],out,mode=self.m)
         topo = f.maker.env.toposort()
@@ -101,7 +101,7 @@ class T_softplus_opts(unittest.TestCase):
 
     def test_log1msigm_to_softplus(self):
         x = T.vector()
-    
+
         out = T.log(1-sigmoid(x))
         f = theano.function([x],out,mode=self.m)
         topo = f.maker.env.toposort()
