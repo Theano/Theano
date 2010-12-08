@@ -15,7 +15,7 @@ from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import (FunctionMaker,
         alias_root,
         deep_copy_op,
-        Function, 
+        Function,
         infer_reuse_pattern,
         SymbolicInput,
         SymbolicInputKit,
@@ -114,7 +114,7 @@ class BadCLinkerOutput(DebugModeError):
         print >> sio, "  op      :", self.offending_op()
         try:
             ssio = StringIO()
-            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:", 
+            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:",
             print >> ssio, self.val_py.shape,
             print >> ssio, self.val_py.dtype,
             print >> ssio, self.val_py.strides,
@@ -128,7 +128,7 @@ class BadCLinkerOutput(DebugModeError):
             pass
         try:
             ssio = StringIO()
-            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:", 
+            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:",
             print >> ssio, self.val_c.shape,
             print >> ssio, self.val_c.dtype,
             print >> ssio, self.val_c.strides,
@@ -155,7 +155,7 @@ class BadCLinkerOutput(DebugModeError):
             print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
             print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()                                    
+            print >> sio, ssio.getvalue()
         except:
             pass
         return sio.getvalue()
@@ -207,12 +207,12 @@ class BadOptimization(DebugModeError):
         sio = StringIO()
         val_str_len_limit = 800
         print >> sio, "BadOptimization Error", super(BadOptimization, self).__str__()
-        print >> sio, "  Variable: id", id(self.new_r), self.new_r 
+        print >> sio, "  Variable: id", id(self.new_r), self.new_r
         print >> sio, "  Op", self.new_r.owner
         print >> sio, "  Value Type:", type(self.new_r_val)
         try:
             ssio = StringIO()
-            print >> ssio, "  Old Value shape, dtype, strides:", 
+            print >> ssio, "  Old Value shape, dtype, strides:",
             print >> ssio, self.old_r_val.shape,
             print >> ssio, self.old_r_val.dtype,
             print >> ssio, self.old_r_val.strides
@@ -229,7 +229,7 @@ class BadOptimization(DebugModeError):
 
         try:
             ssio = StringIO()
-            print >> ssio, "  New Value shape, dtype, strides:", 
+            print >> ssio, "  New Value shape, dtype, strides:",
             print >> ssio, self.new_r_val.shape,
             print >> ssio, self.new_r_val.dtype,
             print >> ssio, self.new_r_val.strides
@@ -257,7 +257,7 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
             print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()                                    
+            print >> sio, ssio.getvalue()
         except:
             pass
 
@@ -278,7 +278,7 @@ class BadDestroyMap(DebugModeError):
         self.old_val = old_val
         self.new_val = new_val
         self.perform = perform
-    
+
     def __str__(self):
         sio = StringIO()
         print >> sio, "  node:", self.node
@@ -314,7 +314,7 @@ class BadViewMap(DebugModeError):
         self.out_storage = out_storage
         self.in_alias_idx = in_alias_idx
         self.out_alias_idx = out_alias_idx
-    
+
     def __str__(self):
         sio = StringIO()
         print >> sio, "  node:", self.node
@@ -337,7 +337,7 @@ class StochasticOrder(DebugModeError):
     memory-address-dependent order (such as id() or object.hash()).  If you see this error and
     you think it is related to optimizations within Theano, email theano-dev with the message
     attached to this exception.
-    
+
     """
     pass
 
@@ -434,7 +434,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
             destroy_map_str=str(getattr(r.owner.op,'destroy_map',''))
         else:
             destroy_map_str=''
-            
+
         if print_view_map:
             view_map_str=str(getattr(r.owner.op,'view_map',''))
         else:
@@ -556,7 +556,7 @@ def _check_viewmap(node, storage_map):
     """
 
     for oi, onode in enumerate(node.outputs):
-        
+
         good_alias, bad_alias = {}, {}
         outstorage = storage_map[onode][0]
         instorage_id = [id(storage_map[i][0]) for i in node.inputs]
@@ -564,7 +564,7 @@ def _check_viewmap(node, storage_map):
         # TODO: investigate ways in which other Types may be aliased
         # TODO: consider adding a function to Type to detect aliasing
         danger_flag = id(outstorage) in instorage_id or\
-                      (type(outstorage)==numpy.ndarray and 
+                      (type(outstorage)==numpy.ndarray and
                        outstorage.flags['OWNDATA']==False)
 
         if danger_flag:
@@ -587,15 +587,15 @@ def _check_viewmap(node, storage_map):
                         [ii]==destroy_map.get(oi,None)):
 
                         good_alias[nodeid] = bad_alias.pop(nodeid)
-      
+
             #TODO: make sure this is correct
             # According to OB, duplicate inputs are rejected on build graph time
-            # if they cause problems. So if they are here it should be ok. 
+            # if they cause problems. So if they are here it should be ok.
             for key,val in good_alias.iteritems():
                 bad_alias.pop(key, None)
             if bad_alias:
                 raise BadViewMap(node, oi, outstorage, bad_alias.values())
-            
+
         #if its not aliased to input, check output->output aliasing
         if not good_alias and _is_used_in_graph(onode):
             for other_oi, other_onode in enumerate(node.outputs):
@@ -611,7 +611,7 @@ def _check_viewmap(node, storage_map):
 def _may_share_memory(a, b):
     from theano.misc.may_share_memory import may_share_memory
     return may_share_memory(a,b,False)
-            
+
 def _is_function_output(node):
     """
     Returns True if the node in question is the a final output of the graph
@@ -660,7 +660,7 @@ def _lessbroken_deepcopy(a):
 
 def _find_bad_optimizations0(order, reasons, r_vals):
     """Use a simple algorithm to find broken optimizations.
-    
+
     This algorithm is simple to understand, but sometimes when there's a problem it identifies
     the wrong optimization as the culprit.  The problem stems from the fact that results are
     not evaluated in chronological order (looking at when they were introduced to the graph).
@@ -676,15 +676,15 @@ def _find_bad_optimizations0(order, reasons, r_vals):
                 new_r_val = r_vals[new_r]
                 r_val = r_vals[r]
                 assert r.type == new_r.type
-                
+
                 if hasattr(new_r,'values_eq_approx'):
                     check = new_r.values_eq_approx(r_val, new_r_val)
                 else:
                     check = r.type.values_eq_approx(r_val, new_r_val)
                 if not check:
                     raise BadOptimization(old_r=r,
-                            new_r=new_r, 
-                            old_r_val=r_val, 
+                            new_r=new_r,
+                            old_r_val=r_val,
                             new_r_val=new_r_val,
                             reason=reason,
                             old_graph=old_graph_str,
@@ -739,7 +739,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
 
 def _find_bad_optimizations2(order, reasons, r_vals):
     """Use a simple algorithm to find broken optimizations.
-    
+
     This algorithm is simple to understand, but sometimes when there's a problem it identifies
     the wrong optimization as the culprit.  The problem stems from the fact that results are
     not evaluated in chronological order (looking at when they were introduced to the graph).
@@ -755,8 +755,8 @@ def _find_bad_optimizations2(order, reasons, r_vals):
 
             if (r.type != new_r.type) or (not r.type.values_eq_approx(r_val, new_r_val)):
                 raise BadOptimization(old_r=r,
-                        new_r=new_r, 
-                        old_r_val=r_val, 
+                        new_r=new_r,
+                        old_r_val=r_val,
                         new_r_val=new_r_val,
                         reason=reason,
                         old_graph=old_graph_str,
@@ -770,7 +770,7 @@ def _find_bad_optimizations2(order, reasons, r_vals):
         # (recursively) first check all the variables that could make r look bad:
         list_of_vars = [old_r for (reason, old_r, olds, news) in reasons[r]]
         if (None is not r.owner):
-          list_of_vars += r.owner.inputs
+            list_of_vars += r.owner.inputs
 
         for var_that_could_make_r_look_bad in \
               list_of_vars:
@@ -792,7 +792,7 @@ _find_bad_optimizations = _find_bad_optimizations0
 
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
-    
+
     The __eq__ function is important here, as it is the basis for comparing optimization runs.
     """
 
@@ -825,13 +825,13 @@ class _EnvEvent(object):
     def __str__(self):
         if self.kind == 'change':
             if (self.op != 'output'):
-              msg = str(len(self.node.inputs))
+                msg = str(len(self.node.inputs))
             else:
-              msg = ''
+                msg = ''
 
-            return ' '.join(['change', 
-                self.reason, 
-                str(self.op), 
+            return ' '.join(['change',
+                self.reason,
+                str(self.op),
                 str(self.idx),
                 msg])
                 #backport
@@ -840,7 +840,7 @@ class _EnvEvent(object):
             return str(self.__dict__)
 
     def __eq__(self, other):
-        rval = type(self) == type(other) 
+        rval = type(self) == type(other)
         if rval:
             # nodes are not compared because this comparison is supposed to be true for
             # corresponding events that happen in different Env instances (different graphs)
@@ -995,7 +995,7 @@ class _Linker(gof.link.LocalLinker):
         return self
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
-        
+
         if 1:
             #can't import at toplevel because of circular import
             # TODO: don't do this ugly hacky way of setting the filter_checks_isfinite
@@ -1028,7 +1028,7 @@ class _Linker(gof.link.LocalLinker):
                 if not self.maker.mode.check_c_code:
                     raise utils.MethodNotDefined()
                 e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER 
+                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
                 #  Specifically... e.nodes is a set, but of only 1 element
 
                 cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
@@ -1080,7 +1080,7 @@ class _Linker(gof.link.LocalLinker):
                 # graph has destructive ops in it
                 #
                 # This dictionary is used to populate the storage_map as necessary
-                r_vals = {} 
+                r_vals = {}
 
                 # dr_vals are the values taken by variables after being destroyed
                 dr_vals = {}
@@ -1108,7 +1108,7 @@ class _Linker(gof.link.LocalLinker):
                     if s[0] is not None:
                         print r, s
                     assert s[0] is None
-                
+
                 #try:
                 # compute the value of all variables
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
@@ -1162,7 +1162,7 @@ class _Linker(gof.link.LocalLinker):
                         clobber = True
                         if thunk_py:
                             for r in node.inputs:
-                                # if thunk_py ran, and we still got this far, 
+                                # if thunk_py ran, and we still got this far,
                                 # it means that the destroy_map of the Op (and view_map) are
                                 # accurate
                                 # so we can assume that inputs not marked as destroyed have in
@@ -1303,7 +1303,7 @@ class _Linker(gof.link.LocalLinker):
 
         def run_with_tensortype_filter_check(f):
             def deco():
-                # WARNING: this is a global mechanism... 
+                # WARNING: this is a global mechanism...
                 # so it will screw up if we are trying to use
                 # multiple modes at once.
                 old_filter_checks_isfinite = TensorType.filter_checks_isfinite
@@ -1334,7 +1334,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
 
     def __init__(self, inputs, outputs, optimizer, mode,
-            accept_inplace = False, 
+            accept_inplace = False,
             function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
@@ -1367,12 +1367,12 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
         _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
 
-#TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits 
+#TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
 
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above 
-        
+        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
+
         # make the env
         for i in xrange(mode.stability_patience):
             env, additional_outputs, equivalence_tracker = _optcheck_env(expanded_inputs, outputs, accept_inplace)
@@ -1380,13 +1380,13 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
             # optimize the env
             optimizer(env)
             # This loop was inserted to remove aliasing between outputs when they all
-            # evaluete to the same value. Originally it was OK for outputs to be aliased, 
+            # evaluete to the same value. Originally it was OK for outputs to be aliased,
             # but some of the outputs can be shared variables, and is not good for shared
             # variables to be aliased. It might be possible to optimize this by making sure
             # there is no aliasing only between shared variables.
             #import pdb;pdb.set_trace()
-            assert len(inputs) == len(env.inputs) 
-            updated_env_inputs = [env_i for ii, env_i in zip(inputs, env.inputs) if getattr(ii, 'update', False)] 
+            assert len(inputs) == len(env.inputs)
+            updated_env_inputs = [env_i for ii, env_i in zip(inputs, env.inputs) if getattr(ii, 'update', False)]
 
             for out_i in xrange(len(env.outputs)):
                 views_of_output_i = set()
@@ -1402,7 +1402,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
                 if not copied:
                     for input_j in env.inputs:
-                        # do not allow outputs to be aliased to an inputs (j), unless 
+                        # do not allow outputs to be aliased to an inputs (j), unless
                         # a) that j'th input has been 'destroyed' by e.g. in-place computations
                         # b) that j'th input is a shared variable that is also being updated
                         if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
@@ -1470,7 +1470,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
         else:
             self.linker = linker.accept(env)
-        
+
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = expanded_inputs
@@ -1605,7 +1605,7 @@ class DebugMode(Mode):
     Each of these exceptions inherits from the more generic `DebugModeError`.
 
     If there are no internal errors, this mode behaves like FAST_RUN or FAST_COMPILE, but takes
-    a little longer and uses more memory.  
+    a little longer and uses more memory.
 
     If there are internal errors, this mode will raise an `DebugModeError` exception.
 
@@ -1640,15 +1640,15 @@ class DebugMode(Mode):
     different strides? (This can catch bugs, but is generally overly strict.) 0 no check, 1 warn, 2 err.
     """
 
-    # This function will be used to create a FunctionMaker in 
+    # This function will be used to create a FunctionMaker in
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
         """Return an instance of `_Maker` which handles much of the debugging work"""
         assert m is self
         return _Maker(i, o, self.optimizer, self, *args, **kwargs)
-    
-    def __init__(self, 
-            optimizer='fast_run', 
+
+    def __init__(self,
+            optimizer='fast_run',
             stability_patience=None,
             check_c_code=None,
             check_py_code=None,
@@ -1683,4 +1683,3 @@ class DebugMode(Mode):
             raise ValueError('DebugMode has to check at least one of c and py code')
 
 register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))
-
