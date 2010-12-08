@@ -522,14 +522,13 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
     if warn_input_not_reused:
         vmap=getattr(node.op,'view_map',{})
         for oo,ii in vmap.iteritems():
-            if hasattr(node.outputs[0].type,"may_share_memory"):
-                if not node.outputs[0].type.may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0]):
-                    #when a subtensor return a tensor ofndim==0, numpy seam to return a copy.
-                    #when have an empty ndarray(happen with output guard) it is not the same. why?
-                    if storage_map[node.outputs[oo]][0].ndim>0 and storage_map[node.outputs[oo]][0].size>0:
-                        warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
-            elif storage_map[node.outputs[oo]][0] is not storage_map[node.inputs[ii[0]]][0]:
-                warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
+            if not _may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0]):
+                #when a subtensor return a tensor ofndim==0, numpy seam to return a copy.
+                #when have an empty ndarray(happen with output guard) it is not the same. why?
+                if storage_map[node.outputs[oo]][0].ndim>0 and storage_map[node.outputs[oo]][0].size>0:
+                    import pdb;pdb.set_trace()
+                    _may_share_memory(storage_map[node.outputs[oo]][0],storage_map[node.inputs[ii[0]]][0])
+                    warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
 
     for r_idx, r in enumerate(node.inputs):
         if not r.type.values_eq(r_vals[r], storage_map[r][0]):
@@ -610,13 +609,8 @@ def _check_viewmap(node, storage_map):
                     raise BadViewMap(node, oi, outstorage, out_alias_idx=other_oi)
 
 def _may_share_memory(a, b):
-    try:
-        return numpy.may_share_memory(a, b)
-    except:
-        return False
-    #return (hasattr(a,'__array_interface__') and
-            #hasattr(b,'__array_interface__') and
-            #numpy.may_share_memory(a,b))
+    from theano.misc.may_share_memory import may_share_memory
+    return may_share_memory(a,b,False)
             
 def _is_function_output(node):
     """
