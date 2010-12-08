@@ -2539,6 +2539,13 @@ def test_reshape():
     print f.maker.env.toposort()
     #check that we remove the useless reshape
 
+    #basic to 1 dim(with list)
+    c = reshape(b, (as_tensor_variable(6),), ndim=1)
+    f = inplace_func([b], c)
+    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
+    print f.maker.env.toposort()
+    #check that we remove the useless reshape
+
     #basic to shape object of same ndim
     c = reshape(b,d.shape)
     f = inplace_func([b,d], c)

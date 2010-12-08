@@ -3451,7 +3451,7 @@ class Reshape(Op):
         else:
             bcasts = [False] * self.ndim
             shp_list = shp_orig
-            if shp_orig.ndim==0:
+            if hasattr(shp_orig,"ndim") and shp_orig.ndim==0:
                 shp_list = [shp_orig]
             for index in xrange(self.ndim):
                 y = shp_list[index]
