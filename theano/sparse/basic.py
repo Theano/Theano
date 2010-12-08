@@ -190,7 +190,18 @@ class SparseType(gof.Type):
     def may_share_memory(a,b):
         # This is Fred suggestion for a quick and dirty way of checking
         # aliasing .. this can potentially be further refined (ticket #374)
-        return a is b
+        if _is_sparse(a) and _is_sparse(b):
+            return a is b
+        if _is_sparse(b) and isinstance(a, numpy.ndarray):
+            a,b=b,a
+        if _is_sparse(a) and isinstance(b, numpy.ndarray):
+            if (numpy.may_share_memory(a.data,b) or
+                numpy.may_share_memory(a.indices,b) or
+                numpy.may_share_memory(a.indptr,b)):
+                    #currently we can't share memory with a.shape as it is a tuple
+                return True
+        return False
+
 
     def make_variable(self, name = None):
         return SparseVariable(self, name = name)
@@ -250,7 +261,7 @@ class _sparse_py_operators:
     def __rdot__(right, left): return structured_dot(left, right)
 
     #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
-    #     Discussion with Fred & James (at least, and maybe others before) 
+    #     Discussion with Fred & James (at least, and maybe others before)
     #     we decided that casting from a sparse to dense should be explicit
     #     because it's usually something you want to be pretty careful about,
     #     and not to do by accident.
