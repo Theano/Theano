@@ -1,13 +1,12 @@
 import unittest
-import theano
+
+import numpy
+
+import theano.tensor.inplace
 from theano import tensor as T
 from theano import config
-from theano import gof
-import numpy
 from theano.tests import unittest_tools as utt
-from theano.tensor.tests import test_basic as TT
-
-from theano.tensor.nnet import *
+from theano.tensor.nnet import sigmoid, sigmoid_inplace, softplus, tensor
 from theano.tensor.nnet.sigm import register_local_1msigmoid
 
 
@@ -46,7 +45,7 @@ class T_sigmoid_opts(unittest.TestCase):
         # tests inv_1_plus_exp with neg
         f = theano.function([x], T.fill(x,-1.0) / (1+T.exp(-x)), mode=m)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
-                T.inplace.neg_inplace]
+                theano.tensor.inplace.neg_inplace]
         
         # tests double inv_1_plus_exp with neg
         # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
@@ -55,7 +54,7 @@ class T_sigmoid_opts(unittest.TestCase):
         f = theano.function([x], (T.fill(x,-1.0)*T.exp(x)) / ((1+T.exp(x))*(1+T.exp(-x))), mode=m)
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
-                T.mul, T.inplace.neg_inplace]
+                T.mul, theano.tensor.inplace.neg_inplace]
 
     def test_1msigmoid(self):
         if not register_local_1msigmoid:
