@@ -1,5 +1,5 @@
 """
-Helper function to detect memory sharing for ndarray AND sparse type.
+Function to detect memory sharing for ndarray AND sparse type AND CudaNdarray.
 numpy version support only ndarray.
 """
 
@@ -26,17 +26,30 @@ else:
         b_ndarray = isinstance(b, numpy.ndarray)
         try:
             a_sparse = _is_sparse(a)
+        except NotImplementedError:
+            a_sparse = False
+        try:
             b_sparse = _is_sparse(b)
         except NotImplementedError:
-            if raise_other_type:
-                raise TypeError("may_share_memory support only ndarray and scipy.sparse type")
-            return False
+            b_sparse = False
 
-        if not(a_ndarray or a_sparse) or not(b_ndarray or b_sparse):
+        a_cuda=False
+        b_cuda=False
+        if a.__class__.__name__ == "CudaNdarray":
+            a_cuda = True
+        if b.__class__.__name__ == "CudaNdarray":
+            b_cuda = True
+
+        if not(a_ndarray or a_sparse or a_cuda) or not(b_ndarray or b_sparse or b_cuda):
             if raise_other_type:
-                raise TypeError("may_share_memory support only ndarray and scipy.sparse type")
+                raise TypeError("may_share_memory support only ndarray and scipy.sparse and CudaNdarray type")
             return False
 
         if a_ndarray and b_ndarray:
             return TensorType.may_share_memory(a,b)
+        if a_cuda and b_cuda:
+            from theano.sandbox.cuda.type import CudaNdarrayType
+            return CudaNdarrayType.may_share_memory(a,b)
+        if a_cuda or b_cuda:
+            return False
         return SparseType.may_share_memory(a,b)

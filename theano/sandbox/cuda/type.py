@@ -88,6 +88,36 @@ class CudaNdarrayType(Type):
                         data)
 
     @staticmethod
+    def bound(a):
+        high = a.gpudata
+        low = a.gpudata
+        #stride is in the number of element.
+        #we must convert that to bytes in case we
+        #will view the element as a different type.
+        elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
+        
+        for stri, shp in zip(a._strides,a.shape):
+            if stri<0:
+                low += (stri*elem_size)*(shp-1)
+            else:
+                high += (stri*elem_size)*(shp-1)
+        return low, high
+
+    @staticmethod
+    def may_share_memory(a,b):
+        #when this is called with a an ndarray and b
+        #a sparce matrix, numpy.may_share_memory fail.
+        if a is b:
+            return True
+        if a.__class__ is b.__class__:
+            a_l, a_h = CudaNdarrayType.bound(a)
+            b_l, b_h = CudaNdarrayType.bound(b)
+            if b_l>=a_h or a_l >= b_h:
+                return False
+            return True
+        else: return False
+
+    @staticmethod
     def values_eq(a, b):
         #TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
