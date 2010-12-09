@@ -1,3 +1,7 @@
+"""
+test the tensor and sparse type. The CudaNdarray type is tested in sandbox/cuda/tests/test_tensor_op.py.test_may_share_memory_cuda
+"""
+
 import numpy
 
 import theano
@@ -13,16 +17,31 @@ from theano.misc.may_share_memory import may_share_memory
 def test_may_share_memory():
     a=numpy.random.rand(5,4)
     b=numpy.random.rand(5,4)
-    as_ar = lambda a: theano._asarray(a, dtype='int32')
+    va = a.view()
+    vb = b.view()
+    ra = a.reshape((4,5))
+    rb = b.reshape((4,5))
+    ta = a.T
+    tb = b.T
+
     for a_,b_,rep in [(a,a,True),(b,b,True),(a,b,False),
-                      (a,a[0],True),(a,a[:,0],True),
-                      (a,(0,),False),(a,1,False),
+                      (a,a[0],True),(a,a[:,0],True),(a,a.T,True),
+                      (a,(0,),False),(a,1,False),(a,None,False),
+                      (a,va,True),(b,vb,True),(va,b,False),(a,vb,False),
+                      (a,ra,True),(b,rb,True),(ra,b,False),(a,rb,False),
+                      (a,ta,True),(b,tb,True),(ta,b,False),(a,tb,False),
                       ]:
 
         assert may_share_memory(a_,b_,False)==rep
+        assert may_share_memory(b_,a_,False)==rep
         if rep == False:
             try:
                 may_share_memory(a_,b_)
+                raise Exception("An error was expected")
+            except:
+                pass
+            try:
+                may_share_memory(b_,a_)
                 raise Exception("An error was expected")
             except:
                 pass
@@ -41,9 +60,15 @@ if scipy_imported:
                           ]:
 
             assert may_share_memory(a_,b_)==rep
+            assert may_share_memory(b_,a_)==rep
             if rep == False:
                 try:
                     may_share_memory(a_,b_)
+                    raise Exception("An error was expected")
+                except:
+                    pass
+                try:
+                    may_share_memory(b_,a_)
                     raise Exception("An error was expected")
                 except:
                     pass
