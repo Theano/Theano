@@ -24,7 +24,7 @@ class CudaNdarrayType(Type):
 
     That variable type is `CudaNdarrayVariable` defined in the ``var.py`` file beside this one.
 
-    :note: 
+    :note:
     The var file depends on the file basic_ops.py, which depends on this file.
     A cyclic dependency is avoided by not hardcoding ``Variable = CudaNdarrayVariable``.
     """
@@ -32,17 +32,17 @@ class CudaNdarrayType(Type):
     Constant = None
     """ This will be set to `CudaNdarrayConstant` defined in ``var.py``
 
-    :note: 
+    :note:
     The var file depends on the file basic_ops.py, which depends on this file.
-    A cyclic dependency is avoided by not hardcoding this class. 
+    A cyclic dependency is avoided by not hardcoding this class.
     """
 
     SharedVariable = None
     """ This will be set to `CudaNdarraySharedVariable` defined in ``var.py``
 
-    :note: 
+    :note:
     The var file depends on the file basic_ops.py, which depends on this file.
-    A cyclic dependency is avoided by not hardcoding this class. 
+    A cyclic dependency is avoided by not hardcoding this class.
     """
 
     def __init__(self, broadcastable, name=None, dtype=None):
@@ -95,7 +95,7 @@ class CudaNdarrayType(Type):
         #we must convert that to bytes in case we
         #will view the element as a different type.
         elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
-        
+
         for stri, shp in zip(a._strides,a.shape):
             if stri<0:
                 low += (stri*elem_size)*(shp-1)
@@ -131,7 +131,7 @@ class CudaNdarrayType(Type):
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that corresponds to
         self.dtype.
-        
+
         This function is used internally as part of C code generation.
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
@@ -165,7 +165,7 @@ class CudaNdarrayType(Type):
 
     This read-only property is the preferred way to get the number of dimensions
     of a `CudaNdarrayType`.
-    
+
     """
 
     def make_variable(self, name = None):
@@ -212,7 +212,7 @@ class CudaNdarrayType(Type):
         fail = sub['fail']
         nd = self.ndim
         print >> sio, """
-        assert(py_%(name)s->ob_refcnt >= 2); // There should be at least one ref from the container object, 
+        assert(py_%(name)s->ob_refcnt >= 2); // There should be at least one ref from the container object,
         // and one ref from the local scope.
 
         if (CudaNdarray_Check(py_%(name)s))
@@ -281,7 +281,7 @@ class CudaNdarrayType(Type):
         """Override `CLinkerOp.c_sync` """
         return """
         //std::cerr << "sync\\n";
-        if (NULL == %(name)s) {  
+        if (NULL == %(name)s) {
             // failure: sync None to storage
             Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
@@ -353,4 +353,3 @@ def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
 copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
-
