@@ -169,7 +169,7 @@ class GpuGemm(Op):
     def __setstate__(self, dct):
         inplace = dct.get('inplace', True)
         if inplace:
-            self.destroy_map = {0: [0]} 
+            self.destroy_map = {0: [0]}
         self.inplace = inplace
 
     def __getstate__(self):
@@ -195,7 +195,7 @@ class GpuGemm(Op):
         print >> sio, """
 
         #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
+        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
         ? (REAL)(((float*)%(a)s->data)[0])
         : (REAL)(((double*)%(a)s->data)[0]);
 
@@ -259,9 +259,9 @@ class GpuConv(Op):
             return imshp[0] + kshp[0] - 1, imshp[1] + kshp[1] - 1
         raise ValueError(mode)
 
-    def __init__(self, border_mode, 
-            subsample=(1,1), 
-            logical_img_hw=None, 
+    def __init__(self, border_mode,
+            subsample=(1,1),
+            logical_img_hw=None,
             logical_kern_hw=None,
             logical_kern_align_top=True,
             version=-1,
@@ -269,14 +269,14 @@ class GpuConv(Op):
             kshp=None,
             imshp=None):
         """
-        :param version: each version of c_code implement many kernel for the 
-                        convolution. By default we try to guess the best one. 
-                        You can force one version with this parameter. This 
+        :param version: each version of c_code implement many kernel for the
+                        convolution. By default we try to guess the best one.
+                        You can force one version with this parameter. This
                         parameter is used by the tests.
         :param verbose: for value of 1,2 and 3. Print more information during
-                        the execution of the convolution. Mostly used for 
+                        the execution of the convolution. Mostly used for
                         optimization or debugging.
-        :param kshp:    The size of the kernel. If provided, can genera 
+        :param kshp:    The size of the kernel. If provided, can genera
                         faster code. If the GpuConv op is automatically inserted,
                         we take its value automatically from the Conv op.
         :param imshp:   The size of the image. Not used for code generation but
@@ -322,7 +322,7 @@ class GpuConv(Op):
             self.imshp = None
 
     def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and hash(-2)==-2 in python! 
+        # don't use hash(self.version) as hash(-1)==-2 and hash(-2)==-2 in python!
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
@@ -333,7 +333,7 @@ class GpuConv(Op):
             ^ hash(self.verbose) \
             ^ hash(self.kshp)\
             ^ hash(self.imshp)
-    
+
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
                 self.border_mode,
@@ -355,7 +355,7 @@ class GpuConv(Op):
         nb = 0
         if self.kshp is not None:
             nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID='+str(nb)]
+        return ['-DTHEANO_KERN_WID='+str(nb)]#,'-g','-G']
 
     def c_headers(self):
         return ['cuda_ndarray.cuh','<stdio.h>']
@@ -400,7 +400,7 @@ class GpuConv(Op):
         PyErr_SetString(PyExc_ValueError, "mode must be one of 'full' or 'valid'");
         return NULL;
     }
-    
+
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s, %(out)s,
                      mode, dx, dy, version, verbose);
     if(%(out)s && %(out)s==out2)
@@ -493,7 +493,7 @@ class GpuDownsampleFactorMax(Op):
                 CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kMaxPool_%(nodename)s",
@@ -504,7 +504,7 @@ class GpuDownsampleFactorMax(Op):
                     block.y,
                     block.z);
                 %(fail)s;
-            }                         
+            }
         }
         """ % locals()
 
@@ -514,7 +514,7 @@ class GpuDownsampleFactorMax(Op):
         template<int pf2, int pf3>
         __global__ void kMaxPool_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
-           const float * x, int xS0, int xS1, int xS2, int xS3, 
+           const float * x, int xS0, int xS1, int xS2, int xS3,
            float *z)
         {
             float cur_max, cur_x;
@@ -533,7 +533,7 @@ class GpuDownsampleFactorMax(Op):
                     xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
                 }
                 __syncthreads();
-                 
+
                 // initialize our max if this is the first row we're loading
                 cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
 
@@ -614,9 +614,9 @@ class GpuDownsampleFactorMaxGrad(Op):
         }
         {
             //TODO: supporting more output columns than threads
-            // make sure we cover every x row when ignore border isset and there's a border present to be ignored                                            
-            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);                                                       
-            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0)); 
+            // make sure we cover every x row when ignore border isset and there's a border present to be ignored
+            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
+            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
             dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(%(z)s)[0],
@@ -643,7 +643,7 @@ class GpuDownsampleFactorMaxGrad(Op):
                 CudaNdarray_DEV_DATA(%(gx)s));
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kDownsampleMaxGrad_%(nodename)s",
@@ -654,7 +654,7 @@ class GpuDownsampleFactorMaxGrad(Op):
                     block.y,
                     block.z);
                 %(fail)s;
-            }                         
+            }
         }
         """ % locals()
 
@@ -665,15 +665,15 @@ class GpuDownsampleFactorMaxGrad(Op):
         # running along every x col. This code is not sensitive to the ignore_border flag along
         # the row dimension (since it runs for every position in the output z), but it is sensitive
         # along the col dimension.
-        ignore_border = int(self.ignore_border) 
-        
+        ignore_border = int(self.ignore_border)
+
         return """
         template<int ds0, int ds1> // ds0 is the downsampling factor in rows, ds1 in columns
         __global__ void kDownsampleMaxGrad_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
-           const float * x, int xS0, int xS1, int xS2, int xS3, 
-           const float * z, int zS0, int zS1, int zS2, int zS3, 
-           const float * gz, int gzS0, int gzS1, int gzS2, int gzS3, 
+           const float * x, int xS0, int xS1, int xS2, int xS3,
+           const float * z, int zS0, int zS1, int zS2, int zS3,
+           const float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
            float *gx)
         {
             //  D0: number of image rows
@@ -683,11 +683,11 @@ class GpuDownsampleFactorMaxGrad(Op):
             // xD2: number of x rows
             // xD3: number of x cols
             // various .S. variables are strides
-                
+
             float cur_max, cur_x, my_z, my_gz;
             int i0 = blockIdx.x;       // image row
             int i1 = 0;                // image col
-            int i2 = blockIdx.y;       // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2 (as needed to cover all x rows) 
+            int i2 = blockIdx.y;       // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2 (as needed to cover all x rows)
             int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
             int z_col = x_col/ds1;     // z_col corresponding to this x_col
 
@@ -727,5 +727,3 @@ class GpuDownsampleFactorMaxGrad(Op):
             }
         }
         """ % locals()
-
-
