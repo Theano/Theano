@@ -12,7 +12,7 @@ config = TheanoConfigParser()
 
 AddConfigVar('floatX',
         "Default floating-point precision for python casts",
-        EnumStr('float64', 'float32'), 
+        EnumStr('float64', 'float32'),
         )
 
 #gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
