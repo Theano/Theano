@@ -266,7 +266,8 @@ class GpuConv(Op):
             logical_kern_align_top=True,
             version=-1,
             verbose=0,
-            kshp=None):
+            kshp=None,
+            imshp=None):
         """
         :param version: each version of c_code implement many kernel for the 
                         convolution. By default we try to guess the best one. 
@@ -278,6 +279,8 @@ class GpuConv(Op):
         :param kshp:    The size of the kernel. If provided, can genera 
                         faster code. If the GpuConv op is automatically inserted,
                         we take its value automatically from the Conv op.
+        :param imshp:   The size of the image. Not used for code generation but
+                        allow to select an experimental new version in another repo.
         """
         self.border_mode = border_mode
         self.subsample = subsample
@@ -299,6 +302,7 @@ class GpuConv(Op):
         self.version=version
         self.verbose=verbose
         self.kshp = kshp
+        self.imshp = imshp
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -309,7 +313,13 @@ class GpuConv(Op):
             and self.logical_kern_align_top == other.logical_kern_align_top \
             and self.version == other.version \
             and self.verbose == other.verbose \
-            and self.kshp == other.kshp
+            and self.kshp == other.kshp\
+            and self.imshp == other.imshp
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self,"imshp"):
+            self.imshp = None
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and hash(-2)==-2 in python! 
@@ -321,7 +331,8 @@ class GpuConv(Op):
             ^ hash(self.logical_kern_align_top) \
             ^ self.version \
             ^ hash(self.verbose) \
-            ^ hash(self.kshp)
+            ^ hash(self.kshp)\
+            ^ hash(self.imshp)
     
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,

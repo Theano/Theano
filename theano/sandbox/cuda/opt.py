@@ -606,7 +606,8 @@ def local_gpu_conv(node):
                     logical_kern_align_top=op.kshp_logical_top_aligned,
                     kshp=op.kshp,
                     version=op.version,
-                    verbose=op.verbose
+                    verbose=op.verbose,
+                    imshp=op.imshp,
                     )
         #HACK to print the number of MFlops in the profiler output.
         if hasattr(op,'flops'):
