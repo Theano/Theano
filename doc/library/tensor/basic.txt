@@ -55,7 +55,7 @@ floating-point precision.
 .. function:: row(name=None, dtype=config.floatX)
 
     Return a Variable for a 2-dimensional ndarray
-    in which the number of columns is guaranteed to be 1.
+    in which the number of rows is guaranteed to be 1.
 
 .. function:: col(name=None, dtype=config.floatX)
 
