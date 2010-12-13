@@ -127,7 +127,7 @@ if cuda_available:
 
 
 def use(device, force=False):
-    global cuda_enabled
+    global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
                                "with error:\n%s" % (device, cuda_initialization_error_message))
