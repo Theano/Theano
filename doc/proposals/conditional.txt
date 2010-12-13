@@ -70,7 +70,7 @@ There are two interface items I propose to add.  The first is a Thunk object
 (which we have never had before), and the second is a new function (make_thunk)
 in the PureOp class (a superclass of Op) that will return a Thunk.
 
-..code-block:: python
+.. code-block:: python
 
   class Thunk (object):
     """Abstract class / interface
@@ -98,7 +98,7 @@ in the PureOp class (a superclass of Op) that will return a Thunk.
        None.
        """
 
-..code-block:: python
+.. code-block:: python
 
     class PureOp(object):                       # recall:
                                                 # Op inherits from PureOp

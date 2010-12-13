@@ -24,4 +24,3 @@ deserves broad recognition among the scientific python community.
 -- Olivier Grisel
 
 
--------------------------

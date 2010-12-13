@@ -56,6 +56,7 @@ cluster!).
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_modes.test_modes_1
+
 DebugMode is used as follows:
 
 .. code-block:: python

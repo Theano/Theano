@@ -257,6 +257,7 @@ Trying out our new Op
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
+
 In the following code, we use our new Op:
 
 >>> x, y = double('x'), double('y')

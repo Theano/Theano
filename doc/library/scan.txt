@@ -216,4 +216,5 @@ Reference
 .. autofunction:: theano.foldl
 .. autofunction:: theano.foldr
 .. autofunction:: theano.scan
+    :noindex:
 

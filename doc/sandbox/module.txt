@@ -42,6 +42,7 @@ Components.  Wheras Components are represent symbolic things (ie. Variables), Co
    single: component; Component
 
 .. _component:
+
 ---------
 Component
 ---------
@@ -81,6 +82,7 @@ allocated in phase 1 with sensible values.
    single: component; External
 
 .. _external:
+
 --------
 External
 --------
@@ -94,6 +96,7 @@ WRITEME
    single: component; Member
 
 .. _member:
+
 ------
 Member
 ------
@@ -106,6 +109,7 @@ WRITEME
    single: component; Method
 
 .. _method:
+
 ------
 Method
 ------
@@ -118,6 +122,7 @@ WRITEME
    single: component; Module
 
 .. _module:
+
 ------
 Module
 ------
@@ -140,7 +145,7 @@ In the Module system, the analog of the file is the `Module`, the analog of the 
 `Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
 at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
 be compiled with a call to `make` which will return an isomorphic structure in which Modules
-have become `ModuleInstances`, Members have become `Container`s, and Methods have become
-`Function`s.
+have become `ModuleInstances`, Members have become `Containers`, and Methods have become
+`Functions`.
 This structure contains numbers and functions, and is ready for computation.
 

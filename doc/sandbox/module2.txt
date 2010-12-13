@@ -209,7 +209,7 @@ Here, we make a new ``Module`` and we give it two inner ``Modules`` like
 the one defined in the basic example. Each inner module has methods inc
 and dec as well as a state c and their state is directly accessible from
 the outer module, which means that it can define methods using them. The
-instance(inst) we make from the ``Module``(m) reflects the hierarchy
+instance (inst) we make from the ``Module`` (m) reflects the hierarchy
 that we created. Unlike the method using function, there is no need to
 manipulate any containers directly.
 
@@ -219,7 +219,7 @@ Advanced example
 
 Complex models can be implemented by subclassing ``Module`` (though that is not mandatory). Here is a complete, extensible (and working) regression model implemented using this system:
 
-.. literalinclude:: ../code/regression.py
+.. literalinclude:: ../../benchmark/regression/regression.py
 
 Here is how we use the model:
 

@@ -53,6 +53,7 @@ We can verify that this alternate form produces the same values:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_2
+
 >>> s2 = (1 + T.tanh(x / 2)) / 2
 >>> logistic2 = function([x], s2)
 >>> logistic2([[0, 1], [-1, -2]])
@@ -69,6 +70,7 @@ squared difference between two matrices ``a`` and ``b`` at the same time:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_3
+
 >>> a, b = T.dmatrices('a', 'b')
 >>> diff = a - b
 >>> abs_diff = abs(diff)
