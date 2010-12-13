@@ -4,7 +4,7 @@ Proposal for New Linking Strategy supporting Lazy Evaluation: Op.make_thunk
 =============================================================================
 
 .. note::
-   
+
    Proposal made June 2010.
 
 
@@ -103,17 +103,17 @@ in the PureOp class (a superclass of Op) that will return a Thunk.
     class PureOp(object):                       # recall:
                                                 # Op inherits from PureOp
 
-        def make_node(self, *inputs):           # leave alone 
+        def make_node(self, *inputs):           # leave alone
            ...
 
-        def perform(self, node, 
-              inputs, output_storage):          # move to `Op` class 
+        def perform(self, node,
+              inputs, output_storage):          # move to `Op` class
            ...
 
         def make_thunk(self, node,              # new function
               input_computed, output_computed,
               input_registers, output_registers,
-              ): 
+              ):
            """
            :type node: Apply instance
            :param node: previous rval from make_node(self, *inputs)
@@ -137,7 +137,7 @@ in the PureOp class (a superclass of Op) that will return a Thunk.
            :param input_registers: the i'th input can be read from
            input_registers[i][0] when input_computed[i][0] == 1.
 
-           :param output_registers: the i'th output must be stored to 
+           :param output_registers: the i'th output must be stored to
            output_registers[i][0], at which point the thunk must set output_computed[i][0] == 1.
 
            :returns: a Thunk (subclass) instance

@@ -100,7 +100,7 @@ write an Op:**
             raise NotImplementedError('only floatingpoint is implemented')
     scalar_xlogx  = XlogX(scalar.upgrade_to_float, name='scalar_xlogx')
     xlogx = tensor.Elemwise(scalar_xlogx, name='xlogx')
-    
+
 **It is also necessary to talk about UnaryScalarOp vs. BinaryOp.**
 
 UnaryScalarOp is the same as scalar.ScalarOp with member variable nin=1.

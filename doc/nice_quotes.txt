@@ -2,7 +2,7 @@
 
 "Thank YOU for correcting it so quickly. I wish all packages I worked
 with would have such an active maintenance - this is as good as it
-gets :-)" 
+gets :-)"
 -- Jan Antolik, [theano-users] strange behaviour, Mon, Aug 2, 2010 at 1:36 PM
 
 -------------------------

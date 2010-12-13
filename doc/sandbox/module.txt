@@ -21,7 +21,7 @@ version of your Theano file.
 In the ModuleInstance, your symbolic variables have become containers (containing None),
 and your Methods have become callable functions.
 You should initialize the symbolic variables by calling
-``ModuleInstance.initialize()`` (although make() will call it for you, 
+``ModuleInstance.initialize()`` (although make() will call it for you,
 on the top-level ModuleInstance.)
 
 You can compile a Module several times, to create multiple ModuleInstances.
@@ -51,7 +51,7 @@ All of the elements of what is called the "module system" or "modules" are
 components.
 
 A component subclass is represents a symbolic theano thing, and implements the
-``build`` function. 
+``build`` function.
 The ``build`` function is responsible for converting the symbolic thing into a
 non-symbolic thing.
 
@@ -60,7 +60,7 @@ Compiling with make
 -------------------
 
 Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
-This method traverses the Component graph in multiple passes. 
+This method traverses the Component graph in multiple passes.
 
 In the first pass (the allocate pass), it creates storage for all Variables that are contained in the graph (see
 `Component.allocate`).  These are the module variables.

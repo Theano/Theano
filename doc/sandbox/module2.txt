@@ -73,7 +73,7 @@ Each key in the updates dictionary must be the name of an existing ``Member`` of
 Inner Module
 ------------
 
-To share a ``Member`` between modules, the modules must be linked through the inner module mechanism. 
+To share a ``Member`` between modules, the modules must be linked through the inner module mechanism.
 
 Usage:
 
@@ -140,7 +140,7 @@ Now, using ``Module``:
     #m.dec = M.Method(n, [], updates = {c: m.c - n})#global c don't exist
     #m.plus10 does not update the state
     m.plus10 = M.Method([], m.c + 10) # m.c is always accessible since it is a member of this mlass
-    
+
     inst = m.make(c = 0) # here, we make an "instance" of the module with c initialized to 0
     assert inst.c == 0
     inst.inc(2)
@@ -148,7 +148,7 @@ Now, using ``Module``:
     inst.dec(3)
     assert inst.c == -1
     assert inst.plus10() == 9
-    
+
 Benefits of ``Module`` over ``function`` in this example:
  * There is no need to manipulate the containers directly
  * The fact inc and dec share a state is more obvious syntactically.
@@ -170,8 +170,8 @@ Using function:
            inc = theano.function([n, ((c, c + n), 0)], [])
            dec = theano.function([n, ((c, c - n), inc.container[c])], [])#inc and dec share the same state.
            return inc,dec
-    
-    
+
+
     inc1, dec1 = make_incdec_function()
     inc2, dec2 = make_incdec_function()
     a, b = T.scalars('ab')
@@ -193,7 +193,7 @@ Using Module:
         m.inc = M.Method(n, [], updates = {m.c: m.c + n}) # m.c <= m.c + n
         m.dec = M.Method(n, [], updates = {m.c: m.c - n}) # m.c <= m.c - n
         return m
-    
+
     m = M.Module()
     m.incdec1 = make_incdec_module()
     m.incdec2 = make_incdec_module()
@@ -227,12 +227,12 @@ Here is how we use the model:
 
     data_x = N.random.randn(4, 10)
     data_y = [ [int(x)] for x in N.random.randn(4) > 0]
-    
-    
+
+
     model = SoftmaxXERegression(regularize = False).make(input_size = 10,
                        target_size = 1,
                        stepsize = 0.1)
-    
+
     for i in xrange(1000):
        xe = model.update(data_x, data_y)
        if i % 100 == 0:
@@ -240,7 +240,7 @@ Here is how we use the model:
            pass
        #for inputs, targets in my_training_set():
            #print "cost:", model.update(inputs, targets)
-    
+
     print "final weights:", model.w
     print "final biases:", model.b
 
@@ -255,12 +255,12 @@ Extending ``Methods``
     model_module = SoftmaxXERegression(regularize = False)
     model_module.sum = T.scalar() # we add a module member to hold the sum
     model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
-    
+
     model = model_module.make(input_size = 4,
                              target_size = 2,
                              stepsize = 0.1,
                              sum = 0) # we mustn't forget to initialize the sum
-    
+
     test = model.update([[0,0,1,0]], [[0,1]]) + model.update([[0,1,0,0]], [[1,0]])
     assert model.sum == test
 

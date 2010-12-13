@@ -9,21 +9,21 @@ Mode
 ====
 
 Everytime :func:`theano.function <function.function>` is called
-the symbolic relationships between the input and output Theano *variables* 
-are optimized and compiled. The way this compilation occurs 
+the symbolic relationships between the input and output Theano *variables*
+are optimized and compiled. The way this compilation occurs
 is controlled by the value of the ``mode`` parameter.
 
 Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations, but use C implementations where possible.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
-- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python 
-    implementations. This mode can take much longer than the other modes, 
+- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python
+    implementations. This mode can take much longer than the other modes,
     but can identify many kinds of problems.
 - ``'PROFILE_MODE'``: Same optimization then FAST_RUN, put print some profiling information
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
-the configuration variable :attr:`config.mode`, 
+the configuration variable :attr:`config.mode`,
 which can be overridden by passing the keyword argument to
 :func:`theano.function <function.function>`.
 
@@ -43,14 +43,14 @@ PROFILE_MODE      ``compile.profilemode.ProfileMode()``                         
 Using DebugMode
 ===============
 
-While normally you should use the ``FAST_RUN`` or ``FAST_COMPILE`` mode, 
+While normally you should use the ``FAST_RUN`` or ``FAST_COMPILE`` mode,
 it is useful at first (especially when you are defining new kinds of
-expressions or new optimizations) to run your code using the DebugMode  
-(available via ``mode='DEBUG_MODE'``). The DebugMode is designed to 
-do several self-checks and assertations that can help to diagnose 
-possible programming errors that can lead to incorect output. Note that 
-``DEBUG_MODE`` is much slower then ``FAST_RUN`` or ``FAST_COMPILE`` so 
-use it only during development (not when you launch 1000 process on a 
+expressions or new optimizations) to run your code using the DebugMode
+(available via ``mode='DEBUG_MODE'``). The DebugMode is designed to
+do several self-checks and assertations that can help to diagnose
+possible programming errors that can lead to incorect output. Note that
+``DEBUG_MODE`` is much slower then ``FAST_RUN`` or ``FAST_COMPILE`` so
+use it only during development (not when you launch 1000 process on a
 cluster!).
 
 
@@ -65,9 +65,9 @@ DebugMode is used as follows:
 
     f = theano.function([x], 10*x, mode='DEBUG_MODE')
 
-    f([5]) 
-    f([0]) 
-    f([7]) 
+    f([5])
+    f([0])
+    f([7])
 
 
 If any problem is detected, DebugMode will raise an exception according to
@@ -92,8 +92,8 @@ is quite strict.
 ProfileMode
 ===========
 
-Beside checking for errors, another important task is to profile your 
-code. For this Theano uses a special mode called ProfileMode which has 
+Beside checking for errors, another important task is to profile your
+code. For this Theano uses a special mode called ProfileMode which has
 to be passed as an argument to :func:`theano.function <function.function>`. Using the ProfileMode is a three-step process.
 
 To change the default to it, put the theano flags mode to PROFILE_MODE.
@@ -101,7 +101,7 @@ To change the default to it, put the theano flags mode to PROFILE_MODE.
 Creating a ProfileMode Instance
 -------------------------------
 
-First create a ProfileMode instance. 
+First create a ProfileMode instance.
 
 >>> from theano import ProfileMode
 >>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
@@ -112,7 +112,7 @@ application. For example, a user wanting to profile the Python
 implementation only, should use the gof.PerformLinker (or "py" for
 short). On the other hand, a user wanting to profile his graph using C
 implementations wherever possible should use the ``gof.OpWiseCLinker``
-(or "c|py"). For testing the speed of your code we would recommend 
+(or "c|py"). For testing the speed of your code we would recommend
 using the 'fast_run' optimizer and ``gof.OpWiseCLinker`` linker.
 
 Compiling your Graph with ProfileMode
@@ -138,13 +138,13 @@ of its time.
 This is best shown through an example.
 Lets use the example of logistic
 regression.  (Code for this example is in the file
-``benchmark/regression/regression.py``.) 
+``benchmark/regression/regression.py``.)
 
 Compiling the module with ProfileMode and calling ``profmode.print_summary()``
 generates the following output:
 
 .. code-block:: python
-    
+
     """
     ProfileMode.print_summary()
     ---------------------------

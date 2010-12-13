@@ -318,10 +318,10 @@ is a :ref:`variable` we statically know the value of.
 
 Now the code works the way we want it to.
 
-.. note:: 
-   Most Theano Ops follow this convention of up-casting literal 
+.. note::
+   Most Theano Ops follow this convention of up-casting literal
    make_node arguments to Constants.
-   This makes typing expressions more natural.  If you do 
+   This makes typing expressions more natural.  If you do
    not want a constant somewhere in your graph, you have to pass a Variable
    (like ``double('x')`` here).
 
@@ -343,7 +343,7 @@ arithmetic operators:
    from theano import gof
 
    class BinaryDoubleOp(gof.Op):
-   
+
        def __init__(self, name, fn):
            self.name = name
            self.fn = fn
@@ -353,7 +353,7 @@ arithmetic operators:
 
        def __hash__(self):
            return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
-   
+
        def make_node(self, x, y):
            if isinstance(x, (int, float)):
                x = gof.Constant(double, x)
@@ -362,22 +362,22 @@ arithmetic operators:
            if x.type != double or y.type != double:
                raise TypeError('%s only works on doubles' % self.name)
            return gof.Apply(self, [x, y], [double()])
-   
+
        def perform(self, node, (x, y), (z, )):
            z[0] = self.fn(x, y)
 
        def __str__(self):
            return self.name
-   
+
    add = BinaryDoubleOp(name = 'add',
                         fn = lambda x, y: x + y)
-   
+
    sub = BinaryDoubleOp(name = 'sub',
                         fn = lambda x, y: x - y)
-   
+
    mul = BinaryDoubleOp(name = 'mul',
                         fn = lambda x, y: x * y)
-   
+
    div = BinaryDoubleOp(name = 'div',
                         fn = lambda x, y: x / y)
 
