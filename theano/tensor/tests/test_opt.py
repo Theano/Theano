@@ -2094,7 +2094,7 @@ def test_make_vector():
         except AssertionError:
             pass
 
-def test_local_useless_join():
+def test_local_join_1():
     #test for vector
     a = TT.vector('a')
     s = stack(a)

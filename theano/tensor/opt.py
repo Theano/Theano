@@ -714,13 +714,6 @@ def local_track_shape_i(node):
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T.Join])
-def local_useless_join(node):
-    if  isinstance(node.op, T.Join) and len(node.inputs)==2:
-        return [node.inputs[1]]
-
-@register_specialize
-@register_canonicalize
 @gof.local_optimizer([T.Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
@@ -1203,6 +1196,8 @@ def apply_rebroadcast_opt(rval):
 #############
 # Join opts #
 #############
+@register_specialize
+@register_canonicalize
 @gof.local_optimizer([T.Join])
 def local_join_1(node):
     """Join(i, x) => x
