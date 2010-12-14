@@ -64,3 +64,27 @@ def test_softmax_optimizations():
     assert str(env.outputs[0].owner.op) == 'OutputGuard'
     assert env.outputs[0].owner.inputs[0].owner.op == cuda.host_from_gpu
     assert env.outputs[0].owner.inputs[0].owner.inputs[0].owner.op == cuda.nnet.gpu_crossentropy_softmax_argmax_1hot_with_bias
+
+def test_grad_sqrt_sum():
+    """
+    This trigered a bug in the past.
+    """
+    I = T.ftensor4().reshape((1,1,28,28))
+
+    W = cuda.shared_constructor(numpy.asarray(
+            numpy.random.random((1,1,10,10)),dtype='float32'))
+
+    C = T.sqrt(T.sum(W[:,:,1:1,1:1]**2))# This line was causing a bug.
+    #C = T.sqrt(T.sum(W[:,:,1:2,1:2]**2))# This line work
+
+    g = T.grad(C, W)
+
+    bog = theano.function([I], C,
+                          updates = {W:W-g}, mode=mode_with_gpu)
+
+    theano.printing.debugprint(bog)
+    print bog.maker.env.toposort()
+
+    print "BEFORE"
+    bog(numpy.asarray(numpy.ones((1,1,28,28)),dtype='float32'))
+    print "AFTER"
