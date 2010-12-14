@@ -572,8 +572,10 @@ def test_dot22():
     f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
     topo = f.maker.env.toposort()
     assert _dot22 in [x.op for x in topo]
-    av=numpy.random.rand(5,5).astype(config.floatX)
-    bv=numpy.random.rand(5,5).astype(config.floatX)
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+
+    av=rng.uniform(size=(5,5)).astype(config.floatX)
+    bv=rng.uniform(size=(5,5)).astype(config.floatX)
     f(av,bv)
 
 def test_dot22scalar():
@@ -585,9 +587,11 @@ def test_dot22scalar():
     a=T.matrix()
     b=T.matrix()
     c=T.matrix()
-    av=numpy.random.rand(5,5).astype(config.floatX)
-    bv=numpy.random.rand(5,5).astype(config.floatX)
-    cv=numpy.random.rand(5,5).astype(config.floatX)
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+
+    av=rng.uniform(size=(5,5)).astype(config.floatX)
+    bv=rng.uniform(size=(5,5)).astype(config.floatX)
+    cv=rng.uniform(size=(5,5)).astype(config.floatX)
 
     if True:
         f = theano.function([a,b],0.2*T.dot(a,b),mode=mode_blas_opt)
@@ -660,8 +664,9 @@ def test_dot_w_self():
 
 def test_dot_vm():
     ''' Test vector dot matrix '''
-    v = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-    m = theano.shared(numpy.array(numpy.random.rand(2,2), dtype='float32'))
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+    m = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
     f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
 
     # Assert they produce the same output
@@ -672,8 +677,9 @@ def test_dot_vm():
 
 def test_dot_mv():
     ''' Test matrix dot vector '''
-    v = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-    m = theano.shared(numpy.array(numpy.random.rand(2,2),
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+    m = theano.shared(numpy.array(rng.uniform(size=(2,2)),
                                    dtype='float32'))
     f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
 
@@ -685,10 +691,11 @@ def test_dot_mv():
 
 def test_gemv1():
     ''' test vector1+dot(matrix,vector2) '''
-    v1 = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-    v2_orig = numpy.array(numpy.random.rand(2), dtype='float32')
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+    v2_orig = numpy.array(rng.uniform(size=(2,)), dtype='float32')
     v2 = theano.shared(v2_orig)
-    m  = theano.shared(numpy.array(numpy.random.rand(2,2), dtype='float32'))
+    m  = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
 
     f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
 
@@ -715,10 +722,11 @@ def test_gemv1():
 
 def test_gemv2():
     ''' test vector1+dot(vector2,matrix) '''
-    v1 = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-    v2_orig = numpy.array(numpy.random.rand(2), dtype='float32')
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+    v2_orig = numpy.array(rng.uniform(size=(2,)), dtype='float32')
     v2 = theano.shared(v2_orig )
-    m  = theano.shared(numpy.array(numpy.random.rand(2,2), dtype='float32'))
+    m  = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
 
     f = theano.function([], v2+theano.dot(v1,m), mode = mode_blas_opt)
 
