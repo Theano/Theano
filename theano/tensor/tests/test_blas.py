@@ -718,7 +718,6 @@ def test_gemv1():
     assert isinstance(topo[0].op, Gemv)
     if config.mode != 'FAST_COMPILE':
         assert topo[0].op.inplace==True
-    
 
 def test_gemv2():
     ''' test vector1+dot(vector2,matrix) '''
