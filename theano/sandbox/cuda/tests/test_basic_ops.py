@@ -822,10 +822,16 @@ def test_shared_float32():
 
 import theano.tensor.tests.test_sharedvar
 test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
-    tcn.shared_constructor, 'float32', False, False, False,
-    cuda_ndarray.CudaNdarray,
-    lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
-    theano.tensor.exp, numpy.exp,
+    shared_constructor_ = tcn.shared_constructor,
+    dtype_ = 'float32',
+    get_value_borrow_true_alias_ = False,
+    shared_borrow_true_alias_ = False,
+    set_value_borrow_true_alias_ = False,
+    internal_type_ = cuda_ndarray.CudaNdarray,
+    test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
+    theano_fct_ = theano.tensor.exp,
+    ref_fct_ = numpy.exp,
+    cast_value_ = numpy.asarray,
     add_matrix_ = True)
 
 if __name__ == '__main__':

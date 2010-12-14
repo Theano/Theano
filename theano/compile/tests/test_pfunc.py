@@ -654,7 +654,6 @@ class Test_aliasing_rules(unittest.TestCase):
         # rule #2 reading back from theano-managed memory
         assert not numpy.may_share_memory(A.get_value(borrow=False), data_of(A))
 
-
     def test_sparse_input_aliasing_affecting_inplace_operations(self):
         ##
         ## Note this test will never fail because I am not aware of any
@@ -662,7 +661,8 @@ class Test_aliasing_rules(unittest.TestCase):
         try:
             import scipy.sparse as sp
         except ImportError:
-            pass#the variable enable_sparse will be used to disable the test file.
+            # The variable enable_sparse will be used to disable the test file.
+            pass
 
         from theano.sparse import enable_sparse
         if enable_sparse == False:
@@ -671,9 +671,9 @@ class Test_aliasing_rules(unittest.TestCase):
         from theano import sparse
 
         ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
-        #        you need to make in inputs mutable ( so that inplace
+        #        you need to make in inputs mutable (so that inplace
         #        operations are used) and to break the elemwise composition
-        #        with some non-elemwise op ( here dot )
+        #        with some non-elemwise op (here dot)
 
         x  = sparse.SparseType('csc', dtype = 'float64')()
         y  = sparse.SparseType('csc', dtype = 'float64')()
@@ -702,15 +702,12 @@ class Test_aliasing_rules(unittest.TestCase):
 
         assert numpy.allclose(vals.todense(), bogus_vals.todense())
 
-
-
-
     def test_input_aliasing_affecting_inplace_operations(self):
 
         ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
-        #        you need to make in inputs mutable ( so that inplace
+        #        you need to make in inputs mutable (so that inplace
         #        operations are used) and to break the elemwise composition
-        #        with some non-elemwise op ( here dot )
+        #        with some non-elemwise op (here dot)
         x  = theano.tensor.dvector()
         y  = theano.tensor.dvector()
         m1 = theano.tensor.dmatrix()
