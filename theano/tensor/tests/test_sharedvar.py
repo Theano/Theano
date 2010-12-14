@@ -148,7 +148,9 @@ def makeSharedTester(shared_constructor_,
 
             values_to_add = .5
             if self.add_matrix:
-                values_to_add = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
+                #supported for cudandarray, but not ndarray.
+                values_to_add = self.internal_type(
+                    numpy.ones(x.shape,dtype=dtype)/2)
             x /= values_to_add#supported by ndarray and CudaNdarray
 
             #this is not required by the contract but it is a feature we can
@@ -407,9 +409,15 @@ def makeSharedTester(shared_constructor_,
 
     return SharedTester
 
-test_shared_options=makeSharedTester(tensor.shared, 'float64',
-                                     True, True, True,
-                                     numpy.ndarray,
-                                     lambda a: isinstance(a,numpy.ndarray),
-                                     theano.tensor.sum,
-                                     numpy.sum)
+test_shared_options=makeSharedTester(
+    shared_constructor_ = tensor.shared,
+    dtype_ = 'float64',
+    get_value_borrow_true_alias_ = True,
+    shared_borrow_true_alias_ = True,
+    set_value_borrow_true_alias_ = True,
+    internal_type_ = numpy.ndarray,
+    test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
+    theano_fct_ = theano.tensor.sum,
+    ref_fct_ = numpy.sum,
+    cast_value_ = numpy.asarray,
+    add_matrix_ = False)
