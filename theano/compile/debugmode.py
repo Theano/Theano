@@ -296,8 +296,12 @@ class BadDestroyMap(DebugModeError):
             print >> sio, "  value shape (new <space> old):", npy_new_val.shape, npy_old_val.shape
             print >> sio, "  value min (new <space> old):", npy_new_val.min(), npy_old_val.min()
             print >> sio, "  value max (new <space> old):", npy_new_val.max(), npy_old_val.max()
-            print >> sio, "  value min (new-old):", (npy_new_val-npy_old_val).min()
-            print >> sio, "  value max (new-old):", (npy_new_val-npy_old_val).max()
+            delta = npy_new_val - npy_old_val
+            print >> sio, "  value min (new-old):", delta.min()
+            print >> sio, "  value max (new-old):", delta.max()
+            print >> sio, "  value argmin (new-old):", numpy.unravel_index(delta.argmin(), npy_new_val.shape)
+            print >> sio, "  value argmax (new-old):", numpy.unravel_index(delta.argmax(), npy_new_val.shape)
+            print >> sio, "  location of first 10 mismatches:", numpy.transpose(numpy.nonzero(delta))[:10]
             print >> sio, ""
         except Exception, e:
             print >> sio, "(Numpy-hints failed with: %s)" %str(e)
