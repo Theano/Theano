@@ -27,9 +27,12 @@ AddConfigVar('force_device',
         BoolParam(False)
         )
 
+#Don't add FAST_RUN_NOGC to this list(as well as other ALL CAPS short cut)
+#The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'
+#The old all capital letter way of working is deprecated as it is not scalable.
 AddConfigVar('mode',
         "Default compilation mode",
-        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE', 'FAST_RUN_NOGC'))
+        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
 
 # Test whether or not gcc is present: disable C code if it is not
 try:
