@@ -3027,7 +3027,7 @@ class test_tensordot(unittest.TestCase):
 
     def test0(self):
 
-        # test vector-vector
+        # Test vector-vector
         avec = vector()
         bvec = vector()
         axes = ((0,),(0,))
@@ -3039,7 +3039,7 @@ class test_tensordot(unittest.TestCase):
                         f1(aval,bval))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
-        # test matrix-vector
+        # Test matrix-vector
         bmat = matrix()
         axes = ((0,),(1,))
         c = tensordot(avec, bmat, axes)
@@ -3050,7 +3050,7 @@ class test_tensordot(unittest.TestCase):
                                        f2(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
-        # test matrix-matrix
+        # Test matrix-matrix
         amat = matrix()
         axes = ((1,),(0,))
         c = tensordot(amat, bmat, axes)
@@ -3061,7 +3061,7 @@ class test_tensordot(unittest.TestCase):
                                        f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
-        # test ndarray-matrix, sum over one dim of matrix
+        # Test ndarray-matrix, sum over one dim of matrix
         atens = tensor4()
         axes = ((2,),(1,))
         c = tensordot(atens, bmat, axes)
@@ -3072,7 +3072,7 @@ class test_tensordot(unittest.TestCase):
                                        f4(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
-        # test ndarray-ndarray
+        # Test ndarray-ndarray
         atens = tensor4()
         btens = tensor3()
         axes = ((1,3),(0,2))
@@ -3096,35 +3096,35 @@ class test_tensordot(unittest.TestCase):
         bmat = matrix()
         bvec = vector()
 
-        # test invalid length for axes
+        # Test invalid length for axes
         try:
             c = tensordot(amat, bmat, (0,1,2))
             assert False
         except ValueError:
             pass
 
-        # test axes of uneven length
+        # Test axes of uneven length
         try:
             c = tensordot(amat, bmat, ((0,1),(0)))
             assert False
         except ValueError:
             pass
 
-        # test invalid len(axes) given inputs are matrices
+        # Test invalid len(axes) given inputs are matrices
         try:
             c = tensordot(amat, bmat, ((0,1,2),(0,1,2)))
             assert False
         except ValueError:
             pass
 
-        # test invalid axes[1] given that y is a vector
+        # Test invalid axes[1] given that y is a vector
         try:
             c = tensordot(amat, bvec, (0,1))
             assert False
         except ValueError:
             pass
 
-        # test invalid scalar axes given inputs are matrices
+        # Test invalid scalar axes given inputs are matrices
         try:
             c = tensordot(amat, bvec, 2)
             assert False
@@ -3133,7 +3133,7 @@ class test_tensordot(unittest.TestCase):
 
 
     def test_weird_valid_axes(self):
-        # test matrix-matrix
+        # Test matrix-matrix
         amat = matrix()
         bmat = matrix()
         for axes in 0, (1,0), [1,0], (1,(0,)), ((1,),0), ([1],[0]):
@@ -3146,9 +3146,9 @@ class test_tensordot(unittest.TestCase):
             utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_scalar_axes(self):
-        # test matrix-matrix
+        # Test matrix-matrix
         amat = fmatrix()
-        bmat = dmatrix()#we let at float64 to test mix of float32 and float64.
+        bmat = dmatrix()# We let at float64 to test mix of float32 and float64.
         axes = 1
         aval = self.rand(4,5).astype('float32')
         bval = numpy.random.rand(5,3)
@@ -3158,7 +3158,7 @@ class test_tensordot(unittest.TestCase):
                                        f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
-        # test tensor-tensor
+        # Test tensor-tensor
         amat = tensor3()
         bmat = tensor3()
         axes = 2
@@ -3171,7 +3171,7 @@ class test_tensordot(unittest.TestCase):
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_scalar0(self):
-        # test tensor-tensor
+        # Test tensor-tensor
         amat = matrix()
         bmat = matrix()
         axes = 0
@@ -3184,7 +3184,7 @@ class test_tensordot(unittest.TestCase):
         utt.verify_grad(TensorDot(axes), [aval,bval])
 
     def test_tensordot_grad(self):
-        #We test it manually as we recreate the op in the make_node
+        # We test it manually as we recreate the op in the make_node
 
         amat = matrix()
         bmat = matrix()
@@ -3278,8 +3278,8 @@ def test_default_state():
 def test_autocast():
     orig_autocast = autocast_float.dtypes
 
-    # test that autocast_float_as sets the autocast dtype correctly
-    try: #ghetto 2.4 version of with
+    # Test that autocast_float_as sets the autocast dtype correctly
+    try: # ghetto 2.4 version of with
         ac = autocast_float_as('float32')
         ac.__enter__()
         assert autocast_float.dtypes == ('float32',)
@@ -3293,12 +3293,12 @@ def test_autocast():
     finally:
         ac.__exit__()
     assert autocast_float.dtypes == orig_autocast
-    # test that we can set it back to something, and nest it
-    try: #ghetto 2.4 version of with
+    # Test that we can set it back to something, and nest it
+    try: # ghetto 2.4 version of with
         ac = autocast_float_as('float32')
         ac.__enter__()
         assert autocast_float.dtypes == ('float32',)
-        try: #ghetto 2.4 version of with
+        try: # ghetto 2.4 version of with
             ac2 = autocast_float_as('float64')
             ac2.__enter__()
             assert autocast_float.dtypes == ('float64',)
@@ -3309,8 +3309,8 @@ def test_autocast():
         ac.__exit__()
     assert autocast_float.dtypes == orig_autocast
 
-    # test that the autocasting dtype is used correctly in expression-building
-    try: #ghetto 2.4 version of with
+    # Test that the autocasting dtype is used correctly in expression-building
+    try: # ghetto 2.4 version of with
         ac = autocast_float_as('float32')
         ac.__enter__()
         assert (dvector()+ 1.1).dtype == 'float64'
@@ -3323,8 +3323,8 @@ def test_autocast():
     finally:
         ac.__exit__()
 
-    # test that the autocasting dtype is used correctly in expression-building
-    try: #ghetto 2.4 version of with
+    # Test that the autocasting dtype is used correctly in expression-building
+    try: # ghetto 2.4 version of with
         ac = autocast_float_as('float64')
         ac.__enter__()
         assert (dvector()+ 1.1).dtype == 'float64'
@@ -3338,8 +3338,8 @@ def test_autocast():
     finally:
         ac.__exit__()
 
-    # test that the autocasting dtype is used correctly in expression-building
-    try: #ghetto 2.4 version of with
+    # Test that the autocasting dtype is used correctly in expression-building
+    try: # ghetto 2.4 version of with
         ac = autocast_float_as('float32', 'float64')
         ac.__enter__()
         assert (dvector()+ 1.1).dtype == 'float64'
@@ -3358,7 +3358,7 @@ def test_autocast():
         assert (ivector()+ numpy.int8(1)).dtype == 'int32'
         assert (wvector()+ numpy.int8(1)).dtype == 'int16'
         assert (bvector()+ numpy.int8(1)).dtype == 'int8'
-        try: #ghetto 2.4 version of with
+        try: # ghetto 2.4 version of with
             ac2 = autocast_float_as('float64')
             ac2.__enter__()
             assert (fvector()+ 1.0).dtype == 'float64'
@@ -3406,11 +3406,11 @@ class test_broadcast(unittest.TestCase):
         assert unbroadcast(addbroadcast(x,1),1) is x
         assert addbroadcast(unbroadcast(x,1),1) is not x
 
-        #the first broadcast is remove the broadcast, so the second
-        #should not make one
+        # The first broadcast is remove the broadcast, so the second
+        # should not make one
         assert unbroadcast(unbroadcast(x,0),0).owner.inputs[0] is x
 
-        #test that consecutive Rebroadcast op are fused
+        # Test that consecutive Rebroadcast op are fused
         x=TensorType(dtype = 'float64', broadcastable = (True,True))()
         assert unbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
         assert addbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
@@ -3462,8 +3462,8 @@ def test_unalign():
     av,bv = tensor.vectors('ab')
     f = theano.function([av,bv],2*av+3*bv)
     f.maker.env.toposort()
-    #FAST_COMPILE use the python code that support unaligned data
-    #The DebugMode make a copy of the inputs, so they will be aligned.
+    # FAST_COMPILE use the python code that support unaligned data
+    # The DebugMode make a copy of the inputs, so they will be aligned.
     should_raise = theano.config.mode not in ["FAST_COMPILE","DebugMode", "DEBUG_MODE"]
     try:
         out_theano = f(a,b)
