@@ -34,16 +34,19 @@ def test_may_share_memory():
 
         assert may_share_memory(a_,b_,False)==rep
         assert may_share_memory(b_,a_,False)==rep
+
+    #test that it raise error when needed.
+    for a_,b_,rep in [(a,(0,),False),(a,1,False),(a,None,False),]:
         if rep == False:
             try:
                 may_share_memory(a_,b_)
                 raise Exception("An error was expected")
-            except:
+            except TypeError:
                 pass
             try:
                 may_share_memory(b_,a_)
                 raise Exception("An error was expected")
-            except:
+            except TypeError:
                 pass
 
 if scipy_imported:
