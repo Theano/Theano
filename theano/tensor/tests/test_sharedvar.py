@@ -3,6 +3,9 @@ import unittest
 
 import theano
 from theano import tensor
+from theano.tests import unittest_tools as utt
+
+utt.seed_rng()
 
 def makeSharedTester(shared_constructor_,
                      dtype_,
@@ -39,7 +42,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([3,5,17])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
             x = self.cast_value(x)
 
@@ -85,7 +88,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([3,5,17])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
             x = self.cast_value(x)
 
@@ -108,7 +111,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([3,5,17])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
             x = self.cast_value(x)
 
@@ -129,7 +132,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([3,5,17])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
             x = self.cast_value(x)
 
@@ -165,7 +168,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([3,5,17])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
             x = self.cast_value(x)
 
@@ -211,7 +214,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([2,4,16])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
             x = self.cast_value(x)
             x_ref = self.ref_fct(x)
@@ -239,7 +242,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([2,4,16])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x1_1 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
             x1_1 = self.cast_value(x1_1)
             x1_2 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
@@ -291,7 +294,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([2,4,16])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             x1_1 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
             x1_1 = self.cast_value(x1_1)
             x1_2 = numpy.asarray(rng.uniform(1,2,[4,2]),dtype=dtype)
@@ -349,7 +352,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState([2,4,16])
+            rng = numpy.random.RandomState(utt.fetch_seed())
             a = numpy.asarray(rng.uniform(1,2,[40,40]),dtype=dtype)
             a = self.cast_value(a)
             a_shared = self.shared_constructor(a)
