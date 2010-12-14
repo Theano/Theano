@@ -1,26 +1,19 @@
 """
 This file test tensor op that should also operate on CudaNdaray.
 """
-import sys, time
+import numpy
 
-from theano import shared
-from theano.compile.pfunc import pfunc
 from theano import tensor
 
-import numpy
 import theano
 import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+import theano.sandbox.cuda as cuda
+if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.sandbox.cuda as tcn
-import theano.sandbox.cuda as cuda
-import theano.compile.mode
-from theano.tests import unittest_tools as utt
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -54,7 +47,7 @@ def test_shape():
         assert isinstance(topo[3].op,T.opt.MakeVector)
 
 def test_softmax_optimizations():
-    from theano.tensor.nnet.nnet import softmax, crossentropy_categorical_1hot, crossentropy_softmax_argmax_1hot_with_bias
+    from theano.tensor.nnet.nnet import softmax, crossentropy_categorical_1hot
     x = tensor.fmatrix('x')
     one_of_n = tensor.lvector('one_of_n')
     op = crossentropy_categorical_1hot
