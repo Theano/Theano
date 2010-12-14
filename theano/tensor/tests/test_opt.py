@@ -96,7 +96,7 @@ class test_greedy_distribute(unittest.TestCase):
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
         ##print pprint(g.outputs[0])
-    
+
     def test_kording_bug(self):
         x, y = vectors('xy')
         eps = scalar('eps')
@@ -153,7 +153,7 @@ class test_canonize(unittest.TestCase):
         This part are that case that is done, but don't include case that are not implemented but are suposed to be.
         Test with and without DimShuffle
         """
-        
+
         shp=(5,5)
         fx, fy, fz = fmatrices('xyz')
         dx, dy, dz = dmatrices('xyz')
@@ -219,7 +219,7 @@ class test_canonize(unittest.TestCase):
                 f = compile.function(list(sym_inputs), g,
                                      #we need the optimisation enabled, debug do this.
                                      mode=mode)
-                
+
                 out = f(*val_inputs)
                 assert(len(f.maker.env.toposort())==nb_elemwise)
                 assert(out_dtype==out.dtype)
@@ -233,7 +233,7 @@ class test_canonize(unittest.TestCase):
         Test with and without DimShuffle
         """
         raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
-    
+
         shp=(5,5)
         fx, fy, fz = fmatrices('xyz')
         dx, dy, dz = dmatrices('xyz')
@@ -297,11 +297,11 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  #we need the optimisation enabled, debug do this.
                                  mode=mode)
-            
+
             out = f(*val_inputs)
             assert(len(f.maker.env.toposort())==nb_elemwise)
             assert(out_dtype==out.dtype)
-            
+
     def test_multiple_case(self):
         """ test those case take from the comment in Canonizer
         x / x -> 1
@@ -461,7 +461,7 @@ class test_canonize(unittest.TestCase):
                 assert isinstance(topo[1].op.scalar_op,theano.scalar.basic.TrueDiv)
                 assert len(topo[1].inputs)==2
                 assert(out_dtype==out.dtype)
-                
+
             #test 2 * x / 2 -> x
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            ((2*dx)/2,[dx],[dxv],'float64'),
@@ -477,7 +477,7 @@ class test_canonize(unittest.TestCase):
                 assert len(topo)==1
                 topo[0].op==theano.compile.function_module.deep_copy_op
                 assert(out_dtype==out.dtype)
-                
+
             #test x / abs(x) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (dx/abs(dx),[dx],[0.5-dxv],'float64'),
@@ -516,13 +516,13 @@ class test_canonize(unittest.TestCase):
 
     def test_abs_mul_div(self):
         """
-        test that if we have 
+        test that if we have
         4 * x / abs(2*x) it get simplifier during canonicalisation.
         """
 
         x=T.dscalar()
         a=T.abs_(x)
-        
+
         if theano.config.mode=='FAST_COMPILE':
             mode = theano.compile.mode.get_mode('FAST_RUN').excluding("local_elemwise_fusion")
         else:
@@ -838,9 +838,9 @@ class test_fusion(unittest.TestCase):
         print "Executed",len(cases),"cases", "failed", failed
         if failed>0:
             raise Exception("Failed %d cases"%failed, fail1, fail2, fail3, fail4)
-        
+
         return times
-    
+
     def test_elemwise_fusion(self):
         shp=(5,5)
         mode=copy.copy(compile.mode.get_default_mode())
@@ -867,13 +867,13 @@ class test_fusion(unittest.TestCase):
         param type s: a slice object
         param s: a slice to apply to the case to execute. If None, exec all case.
         """
-        
+
         shp=(3000,3000)
         shp=(1000,1000)
         nb_repeat=50
 #        linker=gof.CLinker
 #        linker=gof.OpWiseCLinker
-        
+
         mode1=copy.copy(compile.get_default_mode())
         mode1._optimizer=mode1._optimizer.including('local_elemwise_fusion')
         #TODO:clinker is much faster... but use to much memory
@@ -890,7 +890,7 @@ class test_fusion(unittest.TestCase):
         print "times2 without local_elemwise_fusion"
         print times2, times2.min(), times2.max(), times2.sum()
         d=times2/times1
-        
+
         print "times2/times1"
         print d
         print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
@@ -912,7 +912,7 @@ class test_fusion(unittest.TestCase):
     def speed_fusion_gpu(self):
         import theano.sandbox.cuda as cuda
         self.speed_fusion(shared_fn=tcn.float32_shared_constructor, gpu=True, s=slice(0,15))
-        
+
     def speed_log_exp(self):
         s=slice(31,36)
 #        linker=gof.CLinker
@@ -968,7 +968,7 @@ class test_fusion(unittest.TestCase):
                             else: print None
                     gc.collect();gc.collect();gc.collect()
                     d=nd
-            
+
 #                pdb.set_trace()
                 if False:
                     gc.collect();gc.collect();gc.collect()
@@ -1000,7 +1000,7 @@ class test_fusion(unittest.TestCase):
 
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
-            
+
 def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
@@ -1034,8 +1034,8 @@ def test_log1p():
     assert [node.op for node in f.maker.env.toposort()][3:] \
             == [T.log1p, alloc]
 
-    f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
-        
+    f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values
+
     if 0:
         # at one point this worked, but it has been broken since
         # the constant up-casting made 1 -> 1.0+0.0j
@@ -1310,7 +1310,7 @@ class test_assert(unittest.TestCase):
 def test_local_mul_specialize():
 
     # test a few cases to make sure that the basics are covered
-    # 
+    #
 
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -1388,11 +1388,11 @@ def speed_local_pow_specialize_range():
 def test_local_pow_specialize():
 
     # test a few cases to make sure that the basics are covered
-    # 
+    #
 
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
-       mode = 'FAST_RUN'
+        mode = 'FAST_RUN'
     mode = compile.mode.get_mode(mode)
     mode = mode.excluding('fusion')
 
@@ -1447,7 +1447,7 @@ def test_local_pow_specialize_device():
 
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
-       mode = 'FAST_RUN'
+        mode = 'FAST_RUN'
     mode = compile.mode.get_mode(mode)
     mode = mode.excluding('fusion').excluding('gpu')
 
@@ -1460,7 +1460,7 @@ def test_local_pow_specialize_device():
     assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==6
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert numpy.allclose(f(val),val**15)
-    
+
     f = function([v], v**(-15), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes)==2
@@ -1468,14 +1468,14 @@ def test_local_pow_specialize_device():
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0),val_no0**(-15))
-    
+
     f = function([v], v**(16), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes) == 1
     assert len(f.maker.env.toposort()[0].op.scalar_op.env.nodes)==4
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert numpy.allclose(f(val),val**16)
-    
+
     f = function([v], v**(-16), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert len(nodes) == 2
@@ -1483,7 +1483,7 @@ def test_local_pow_specialize_device():
     assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0),val_no0**(-16))
-    
+
 class T_Rebroadcast(unittest.TestCase):
 
     def test_local_useless_rebroadcast(self):
@@ -1754,7 +1754,7 @@ class T_local_erfc(unittest.TestCase):
         self.mode_fusion = theano.compile.mode.get_default_mode().including('canonicalize').including('fast_run').excluding('gpu')
         self.mode = self.mode_fusion.excluding('fusion')
         self.mode._optimizer.position_cutoff = 1.50001
-        
+
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """
@@ -1839,7 +1839,7 @@ class T_local_erfc(unittest.TestCase):
         val = [-100,-30,-27,-26.4,-26.2,-26,-11,-10,-9,-3,-2,-1,0,1,2,3,9,10,11,27,26.4,26.2,26,28,30,100]
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
 #python mode don't like the inv(0) in computation, but the switch don't select this value. So it is computed for no good reason.
-            val.remove(0) 
+            val.remove(0)
         if theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.floatX=='float32':
             # In float32 their is a plage of values close to 10 that we stabilize as it give bigger error then the stabilized version.
             # The orig value in float32 -30.0, the stab value -20.1 the orig value in float64 -18.1.
@@ -2069,7 +2069,7 @@ def test_make_vector():
     b = T.bscalar()
     i = T.iscalar()
     d = T.dscalar()
-    
+
     assert opt.MakeVector(dtype="int8")(b,b).dtype=="int8"
     assert opt.MakeVector(dtype="int32")(i,b).dtype=="int32"
     assert opt.MakeVector(dtype="int32")(b,i).dtype=="int32"
