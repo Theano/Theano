@@ -47,7 +47,10 @@ class Images2Neibs(Op):
         return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
     def grad(self, (x, neib_shape, neib_step), (gz,)):
-        return [neibs2images(gz, neib_shape, x.shape), None, None]
+        if self.mode=='valid':
+            return [neibs2images(gz, neib_shape, x.shape), None, None]
+        else:
+            raise NotImplementedError()
 
     def c_code_cache_version(self):
         return (3,)

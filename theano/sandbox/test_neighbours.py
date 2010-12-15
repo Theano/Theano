@@ -389,6 +389,22 @@ def test_neibs_grad_verify_grad():
     if cuda.cuda_available:
         unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
 
+def test_neibs_grad_verify_grad_warp_centered():
+    # It is not implemented for now. So test that we raise an error.
+    shape = (2,3,6,6)
+    images = T.dtensor4()
+    images_val = numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+
+    def fn(images):
+        return T.sum(T.sqr(images2neibs(images, (3,3),mode='wrap_centered')), axis=[0,1])
+    try:
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+        raise Exception("Expected an error")
+        if cuda.cuda_available:
+            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
+    except NotImplementedError:
+        pass
+
 if __name__ == '__main__':
     #test_neibs_gpu()
     #test_neibs()
