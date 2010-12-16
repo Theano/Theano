@@ -1572,7 +1572,9 @@ class Scan(Op):
                 self.go_backwards, self.seqs_taps, self.outs_taps,
                 truncate_gradient)
         g_scan_outs = g_scan(g_args)
-        # We need to add several None's fpr shared vars with updates
+        if not type(g_scan_outs) in (list, tuple):
+            g_scan_outs = [ g_scan_outs ]
+        # We need to add several None's for shared vars with updates
         gradients = [None] + g_scan_outs[:self.n_seqs+self.n_outs_not_shared]
         gradients += [None for i in xrange(self.n_outs-self.n_outs_not_shared)]
         gradients += g_scan_outs[self.n_seqs+self.n_outs_not_shared:]
