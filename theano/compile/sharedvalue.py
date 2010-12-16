@@ -138,7 +138,9 @@ class SharedVariable(Variable):
 
 
     def filter_update(self, update):
-        """When this shared variable is updated by a pfunc, the update value will be run through this function.
+        """
+        When this shared variable is updated by a pfunc, the update value will be run through this function.
+
         This is a good spot to cast or convert the update expression as necessary.
 
         Default behaviour is to return `update` unmodified if it is a Variable, otherwise to create a SharedVariable for it by calling ``shared(update)``.
