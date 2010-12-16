@@ -468,7 +468,7 @@ def test_shape_i():
 
     a = SparseType('csr', dtype=sparse_dtype)()
     f = theano.function([a], a.shape[1], mode='FAST_RUN')
-    assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3)))==(10)
+    assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3))) == 10
 
 def test_shape():
     # Test that getting the shape of a sparse variable
