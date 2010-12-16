@@ -33,8 +33,8 @@ else:
         except NotImplementedError:
             b_sparse = False
 
-        a_cuda=False
-        b_cuda=False
+        a_cuda = False
+        b_cuda = False
         if a.__class__.__name__ == "CudaNdarray":
             a_cuda = True
         if b.__class__.__name__ == "CudaNdarray":

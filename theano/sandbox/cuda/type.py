@@ -112,10 +112,11 @@ class CudaNdarrayType(Type):
         if a.__class__ is b.__class__:
             a_l, a_h = CudaNdarrayType.bound(a)
             b_l, b_h = CudaNdarrayType.bound(b)
-            if b_l>=a_h or a_l >= b_h:
+            if b_l >= a_h or a_l >= b_h:
                 return False
             return True
-        else: return False
+        else:
+            return False
 
     @staticmethod
     def values_eq(a, b):
