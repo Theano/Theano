@@ -258,23 +258,28 @@ class test_Prod(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
+        # we want to allow nans in the matrices, so we disable this DEBUG_MODE check
+        mode = theano.compile.mode.get_default_mode()
+        mode = copy(mode)
+        mode.check_isfinite = False
 
-
+        self.mode = mode
 
     def test_verify_grad(self):
+
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
         x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
         x = theano.tensor.dmatrix()
         # now with verify_grad
-        unittest_tools.verify_grad(Prod(axis=1), [x_val])
+        unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
 
         # second time, with some added complexity
         # verify_grad takes the sum of the matrices anyway
         def fn(x2):
             return theano.tensor.sqr(Prod(axis=1)(x2))
 
-        unittest_tools.verify_grad(fn, [x_val])
+        unittest_tools.verify_grad(fn, [x_val], mode=self.mode)
 
 
     def test_verify_grad_with_zeros(self):
@@ -287,18 +292,18 @@ class test_Prod(unittest.TestCase):
         x2 = theano.tensor.dmatrix()
         p = Prod(axis=1)(x)
         p2 = Prod(axis=1)(x2)
-        fn = theano.function([x,x2],[p-p2])
+        fn = theano.function([x,x2],[p-p2], mode=self.mode)
         #print "hand computed diff for each row"
         x2_val = numpy.asarray([[1., 2., 3.003], [0.003,5.,6], [0.,0.,9.01]])
         #print fn(x_val, x2_val)
-        fn2 = theano.function([x],[theano.tensor.grad(p.sum(),x)])
+        fn2 = theano.function([x],[theano.tensor.grad(p.sum(),x)], mode=self.mode)
         #print "real grad"
         #print fn2(x_val)
-        fn3 = theano.function([x],[p])
+        fn3 = theano.function([x],[p], mode=self.mode)
         assert numpy.allclose(fn3(x_val), [6.,0.,0.])
 
         # now with verify_grad
-        unittest_tools.verify_grad(Prod(axis=1), [x_val])
+        unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
 
         # second time, with some added complexity
         # verify_grad takes the sum of the matrices anyway
@@ -318,11 +323,11 @@ class test_Prod(unittest.TestCase):
         x = theano.tensor.dmatrix()
         x_val = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
         pwz = ProdWithoutZeros(axis=1)(x)
-        fn = theano.function([x], pwz)
+        fn = theano.function([x], pwz, mode=self.mode)
         assert numpy.allclose(fn(x_val), [6,30,9])
 
         pwz_a0 = ProdWithoutZeros(axis=0)(x)
-        fn_a0 = theano.function([x], pwz_a0)
+        fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
 
     def test_other_grad_tests(self):
@@ -333,24 +338,33 @@ class test_Prod(unittest.TestCase):
 
         p = Prod(axis=1)
         grad_p = theano.tensor.grad(p(x).sum(), x)
-        grad_fn = theano.function([x], grad_p)
+        grad_fn = theano.function([x], grad_p, mode=self.mode)
         assert numpy.allclose(grad_fn(x_val1), [[6.,3.,2.],[30.,0.,0.],[0.,0.,0.]])
         assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30., 0., 0.], [72., 63., 56.], [0., 0., 90.]])
 
         p_axis0 = Prod(axis=0)
         grad_p_axis0 = theano.tensor.grad(p_axis0(x).sum(), x)
-        grad_fn_axis0 = theano.function([x], grad_p_axis0)
+        grad_fn_axis0 = theano.function([x], grad_p_axis0, mode=self.mode)
         assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400., 0.],[63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
 
-        tensor.verify_grad(p, [x_val1], rng=rng)
+        tensor.verify_grad(p, [x_val1], rng=rng, mode=self.mode)
 
-        
+    def test_mul_without_zeros_zeros(self):
+        a = numpy.zeros((3,3))
+
+        x = theano.tensor.dmatrix()
+
+        mul1 = ProdWithoutZeros(axis=0)(x)
+
+        fn_debug = theano.function([x], mul1, mode='DEBUG_MODE')
+
+        fn_debug(a)
 
 if __name__ == '__main__':
-    unittest.main()
-    #suite = unittest.TestSuite([test_Prod('test_verify_grad')])
+    #unittest.main()
+    suite = unittest.TestSuite([test_Prod('test_mul_without_zeros_zeros')])
     #suite.addTest(test_Prod('test_verify_grad_with_zeros'))
     #suite.addTest(test_Prod('test_prod_without_zeros'))
     #suite.addTest(test_Prod('test_other_grad_tests'))
-    #unittest.TextTestRunner().run(suite)
+    unittest.TextTestRunner().run(suite)
 
