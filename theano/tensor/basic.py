@@ -3538,8 +3538,15 @@ tilegrad = TileGrad()
 
 
 class Tile(Op):
-    """Tiles its input according to reps. Reps is of same dimension as x
-    and contains the number of times to tile x in each dimension"""
+    """
+    Construct an array by repeating A the number of times given by reps.
+
+    Tiles its input according to reps. Reps is of same dimension as x
+    and contains the number of times to tile x in each dimension
+
+    :see: `numpy.tile http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html`_
+    """
+
     def __init__(self, ndim):
         self.ndim = ndim
     def __eq__(self, other):
