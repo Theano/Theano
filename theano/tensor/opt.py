@@ -764,10 +764,12 @@ def local_subtensor_make_vector(node):
 @gof.local_optimizer([T.Elemwise])
 def local_useless_elemwise(node):
     """
-eq(x,x) -> 1
-neq(x,x) -> 0
-mul(x) -> x
-add(x) -> x
+
+    eq(x,x) -> 1
+    neq(x,x) -> 0
+    mul(x) -> x
+    add(x) -> x
+    identity(x) -> x
 
     """
     if isinstance(node.op, T.Elemwise):
@@ -782,6 +784,8 @@ add(x) -> x
         if node.op.scalar_op == theano.scalar.mul and len(node.inputs)==1:
             return [node.inputs[0]]
         if node.op.scalar_op == theano.scalar.add and len(node.inputs)==1:
+            return [node.inputs[0]]
+        if node.op.scalar_op == theano.scalar.identity and len(node.inputs)==1:
             return [node.inputs[0]]
 
 
