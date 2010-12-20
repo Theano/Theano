@@ -1197,7 +1197,7 @@ class Prod(CAReduce):
         With zeros, things get more complicated. For a given group, we have 3
         cases:
         * No zeros in the group. Use previous trick.
-        * If only one zero is present, then the gradient for that element is 
+        * If only one zero is present, then the gradient for that element is
             non-zero, but is zero for all others.
         * If more than one zero is present, then all the derivatives are zero.
 
@@ -1209,7 +1209,7 @@ class Prod(CAReduce):
         case, there's a special Op that computes the product of the elements
         in the group, minus the zero (see ProdWithoutZero). The trick is then
         to use the division trick for groups with no zero, to use the
-        ProdWithoutZeros op where there's only one zero, and to output a 
+        ProdWithoutZeros op where there's only one zero, and to output a
         derivative of zero for any element part of a group with more than
         one zero.
 
@@ -1230,14 +1230,14 @@ class Prod(CAReduce):
             axis = range(prod_in.type.ndim)
         if axis == ():
             return gz,
-        new_dims = [] 
+        new_dims = []
         i = 0
         for j, _ in enumerate(prod_in.type.broadcastable):
             if j in axis:
                 new_dims.append('x')
             else:
                 new_dims.append(i)
-                i += 1 
+                i += 1
 
         # result of the product, broadcastable over groups
         prod_out = self(prod_in).dimshuffle(new_dims)
@@ -1254,7 +1254,7 @@ class Prod(CAReduce):
         else:
             T = theano.tensor
 
-            where_zeros = T.eq(prod_in, 0.0) 
+            where_zeros = T.eq(prod_in, 0.0)
             sum_where_zeros = T.sum(where_zeros, axis=self.axis)
             groups_with_single_zero = T.eq(sum_where_zeros, 1).dimshuffle(new_dims)
             # tensor with 0 everywhere except for those places where
@@ -1262,7 +1262,7 @@ class Prod(CAReduce):
             where_single_zero = groups_with_single_zero * where_zeros
             # further optimization to avoid computing ProdWithoutZeros
             # if the incoming gradient is 0
-            where_gz_not_zero = T.neq(gz, 0.0) 
+            where_gz_not_zero = T.neq(gz, 0.0)
             # only take ProdWithoutZeros for the groups with single zeros
             # with non-null incoming gradient
             where_to_take_prod_without_zeros = \
@@ -1338,4 +1338,3 @@ class ProdWithoutZeros(CAReduce):
             return "ProdWithoutZeros"
         else:
             return "ProdWithoutZeros{%s}" % ", ".join(map(str, self.axis))
-

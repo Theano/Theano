@@ -104,9 +104,9 @@ class test_Broadcast(unittest.TestCase):
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
                 zv = xv + yv
-                
+
                 f(xv, yv)
-                
+
                 assert xv.shape==zv.shape
 
     def test_perform(self):
@@ -217,11 +217,11 @@ class test_CAReduce(unittest.TestCase):
                     f(xv)
                 except ValueError:
                     pass
-                else: 
+                else:
                     self.fail()
             else:
                 self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
-                
+
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
@@ -248,7 +248,7 @@ class test_CAReduce(unittest.TestCase):
         self.with_linker(gof.CLinker(), maximum)
         self.with_linker(gof.CLinker(), minimum)
 
-        #need other dtype then real        
+        #need other dtype then real
         #no c_code for or_, and_
         #self.with_linker(gof.CLinker(), or_)
         #self.with_linker(gof.CLinker(), and_)
@@ -367,4 +367,3 @@ if __name__ == '__main__':
     #suite.addTest(test_Prod('test_prod_without_zeros'))
     #suite.addTest(test_Prod('test_other_grad_tests'))
     unittest.TextTestRunner().run(suite)
-
