@@ -40,7 +40,7 @@ from theano import scalar as scal
 class MaxAndArgmaxOptimizer(Optimizer):
     """Replace MaxAndArgmax by CAReduce when the argmax is not used
 
-       This is faster as MaxAndArgmax don't have c code and execute it 
+       This is faster as MaxAndArgmax don't have c code and execute it
        in two pass.
     """
 
@@ -80,7 +80,7 @@ def local_max_to_min(node):
 
     This is tested in tensor/tests/test_basic.py:test_min_max
 
-    :note: we don't need an opt that will do the reverse as by default 
+    :note: we don't need an opt that will do the reverse as by default
            the interface put only MaxAndArgmax into the graph.
     """
     if node.op == T.neg and node.inputs[0].owner:
@@ -91,5 +91,3 @@ def local_max_to_min(node):
                 return [CAReduce(scal.minimum,max.owner.op.axis)(neg.owner.inputs[0])]
 
     return False
-
-
