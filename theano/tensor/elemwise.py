@@ -941,12 +941,16 @@ class CAReduce(Op):
                 # If it's a zero-size array, use scalar_op.identity if available
                 if variable.shape[dimension] == 0:
                     if hasattr(self.scalar_op, 'identity'):
-                        variable = self.scalar_op.identity
+                        variable = numpy.array(self.scalar_op.identity)
                         break
                     else:
                         raise ValueError("Input (%s) has zero-size on axis %s, but self.scalar_op (%s) has no attribute 'identity'" % (variable, dimension, self.scalar_op))
                 else:
                     variable = self.ufunc.reduce(variable, dimension)
+            variable = numpy.asarray(variable)
+            if numpy.may_share_memory(variable, input):
+                # perhaps numpy is clever for reductions of size 1?  We don't want this.
+                variable = variable.copy()
             output[0] = theano._asarray(variable, dtype = node.outputs[0].type.dtype)
         else:
             output[0] = numpy.copy(variable)
