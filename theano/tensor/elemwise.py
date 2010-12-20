@@ -1304,7 +1304,6 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
     commutative = True
     associative = True
     def impl(self, x, y):
-        print x,y
         if x == 0:
             return y
         if y == 0:

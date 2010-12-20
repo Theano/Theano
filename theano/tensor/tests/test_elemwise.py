@@ -356,7 +356,7 @@ class test_Prod(unittest.TestCase):
 
         mul1 = ProdWithoutZeros(axis=0)(x)
 
-        fn_debug = theano.function([x], mul1, mode='DEBUG_MODE')
+        fn_debug = theano.function([x], mul1, mode=self.mode)
 
         fn_debug(a)
 
