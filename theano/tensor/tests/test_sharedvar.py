@@ -17,7 +17,7 @@ def makeSharedTester(shared_constructor_,
                      theano_fct_,
                      ref_fct_,
                      cast_value_ = numpy.asarray,
-                     add_matrix_ = False):
+                     op_by_matrix_ = False):
     """
     This is a generic fct to allow reusing the same test function
     for many shared variable of many types.
@@ -35,7 +35,7 @@ def makeSharedTester(shared_constructor_,
         ref_fct = staticmethod(ref_fct_)
         set_value_borrow_true_alias = set_value_borrow_true_alias_
         cast_value = staticmethod(cast_value_)
-        add_matrix = add_matrix_
+        op_by_matrix = op_by_matrix_
 
         def test_shared_dont_alias(self):
             dtype = self.dtype
@@ -146,12 +146,12 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow = True, return_internal_type = True)
             assert self.test_internal_type(x)
 
-            values_to_add = .5
-            if self.add_matrix:
+            values_to_div = .5
+            if self.op_by_matrix:
                 #supported for cudandarray, but not ndarray.
-                values_to_add = self.internal_type(
+                values_to_div = self.internal_type(
                     numpy.ones(x.shape,dtype=dtype)/2)
-            x /= values_to_add#supported by ndarray and CudaNdarray
+            x /= values_to_div#supported by ndarray and CudaNdarray
 
             #this is not required by the contract but it is a feature we can
             #implement for some type of SharedVariable.
@@ -160,7 +160,7 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow = False, return_internal_type = True)
             assert self.test_internal_type(x)
             assert x is not x_shared.container.value
-            x /= values_to_add#supported by ndarray and CudaNdarray
+            x /= values_to_div#supported by ndarray and CudaNdarray
 
             #this is required by the contract
             assert not numpy.allclose(self.ref_fct(x), total_func())
@@ -198,12 +198,12 @@ def makeSharedTester(shared_constructor_,
             get_x = x_shared.get_value(borrow=True, return_internal_type=True)
             assert get_x is not x_orig#borrow=False to shared_constructor
             assert self.test_internal_type(get_x)
-            values_to_add = .5
-            if self.add_matrix:
-                values_to_add = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
-                assert self.test_internal_type(values_to_add)
+            values_to_div = .5
+            if self.op_by_matrix:
+                values_to_div = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
+                assert self.test_internal_type(values_to_div)
 
-            get_x /= values_to_add#supported by ndarray and CudaNdarray
+            get_x /= values_to_div#supported by ndarray and CudaNdarray
             assert self.test_internal_type(get_x)
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True, return_internal_type=True)
@@ -420,4 +420,4 @@ test_shared_options=makeSharedTester(
     theano_fct_ = theano.tensor.sum,
     ref_fct_ = numpy.sum,
     cast_value_ = numpy.asarray,
-    add_matrix_ = False)
+    op_by_matrix_ = False)

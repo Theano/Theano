@@ -832,7 +832,7 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
     cast_value_ = numpy.asarray,
-    add_matrix_ = True)
+    op_by_matrix_ = True)
 
 if __name__ == '__main__':
     test_many_arg_elemwise()

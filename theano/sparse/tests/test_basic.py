@@ -501,11 +501,17 @@ def test_may_share_memory():
 
 import theano.tensor.tests.test_sharedvar
 test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
-    theano.sparse.shared, 'float64',
-    True, True, True, scipy.sparse.csc_matrix, scipy.sparse.issparse,
-    lambda a: dense_from_sparse(a*2.),
-    lambda a: numpy.asarray((a*2).todense()),
-    scipy.sparse.csr_matrix)
+    shared_constructor_ = theano.sparse.shared,
+    dtype_ = 'float64',
+    get_value_borrow_true_alias_ = True,
+    shared_borrow_true_alias_ = True,
+    set_value_borrow_true_alias_ = True,
+    internal_type_ = scipy.sparse.csc_matrix,
+    test_internal_type_ = scipy.sparse.issparse,
+    theano_fct_ = lambda a: dense_from_sparse(a*2.),
+    ref_fct_ = lambda a: numpy.asarray((a*2).todense()),
+    cast_value_ = scipy.sparse.csr_matrix)
+
 
 if __name__ == '__main__':
     unittest.main()
