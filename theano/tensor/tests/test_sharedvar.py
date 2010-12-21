@@ -242,7 +242,11 @@ def makeSharedTester(shared_constructor_,
             else:
                 assert numpy.allclose(x_ref, total_func())
 
-        def test_inplace_shared(self):
+        def test_inplace_set_value(self):
+            """
+            We test that if the SharedVariable implement it we do inplace set_value
+            We also test this for partial inplace modification when accessing the internal of theano.
+            """
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
@@ -264,12 +268,20 @@ def makeSharedTester(shared_constructor_,
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
 
+                nd[0]+=1
+                x_shared.container.value[0] = nd[0]
+                assert (numpy.asarray(x_shared.value[0])==nd[0]).all()
+                assert (numpy.asarray(x_shared.value[1:])==nd[1:]).all()
+                #This should always share value!
+                assert may_share_memory(old_data, x_shared.container.storage[0])
+                assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
+
             if x.__class__.__name__ != 'csr_matrix':
                 #sparse matrix don't support inplace affectation
                 nd += 1
-                #THIS DON't DO WHAT WE EXPECT the contain of a is not updated!
+                #THIS DON't DO WHAT WE EXPECT the contain of a is not updated for CudaNdarray, but it is for ndarray
                 x_shared.value[:] = nd
-                #assert (numpy.asarray(a.value)!=nd).all()
+                #assert (numpy.asarray(x_shared.value)!=nd).all()
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 x_shared.value
 
