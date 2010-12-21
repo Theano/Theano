@@ -4,6 +4,7 @@ import unittest
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
+from theano.misc.may_share_memory import may_share_memory
 
 utt.seed_rng()
 
@@ -12,6 +13,7 @@ def makeSharedTester(shared_constructor_,
                      get_value_borrow_true_alias_,
                      shared_borrow_true_alias_,
                      set_value_borrow_true_alias_,
+                     set_value_inplace_,
                      internal_type_,
                      test_internal_type_,
                      theano_fct_,
@@ -34,6 +36,7 @@ def makeSharedTester(shared_constructor_,
         theano_fct = staticmethod(theano_fct_)
         ref_fct = staticmethod(ref_fct_)
         set_value_borrow_true_alias = set_value_borrow_true_alias_
+        set_value_inplace = set_value_inplace_
         cast_value = staticmethod(cast_value_)
         op_by_matrix = op_by_matrix_
 
@@ -239,6 +242,47 @@ def makeSharedTester(shared_constructor_,
             else:
                 assert numpy.allclose(x_ref, total_func())
 
+        def test_inplace_shared(self):
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            shp = (100/4,1024)#100KB
+
+            x = numpy.zeros(shp, dtype='float32')
+            x = self.cast_value(x)
+            x_shared = self.shared_constructor(x, borrow=True)
+
+            old_data = x_shared.container.storage[0]
+            nd = numpy.ones(shp, dtype='float32')
+
+            if x.__class__.__name__ != 'csr_matrix':
+                #sparse matrix don't support inplace affectation
+                x_shared.container.value[:] = nd
+                assert (numpy.asarray(x_shared.value)==nd).all()
+                #This should always share value!
+                assert may_share_memory(old_data, x_shared.container.storage[0])
+                assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
+
+            if x.__class__.__name__ != 'csr_matrix':
+                #sparse matrix don't support inplace affectation
+                nd += 1
+                #THIS DON't DO WHAT WE EXPECT the contain of a is not updated!
+                x_shared.value[:] = nd
+                #assert (numpy.asarray(a.value)!=nd).all()
+                assert may_share_memory(old_data, x_shared.container.storage[0])
+                x_shared.value
+
+            nd += 1
+            x_shared.value = nd
+            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
+
+            nd += 1
+            x_shared.set_value(nd, borrow=False)
+            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
+
         def test_specify_shape(self):
             dtype = self.dtype
             if dtype is None:
@@ -415,6 +459,7 @@ test_shared_options=makeSharedTester(
     get_value_borrow_true_alias_ = True,
     shared_borrow_true_alias_ = True,
     set_value_borrow_true_alias_ = True,
+    set_value_inplace_ = False,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
     theano_fct_ = theano.tensor.sum,

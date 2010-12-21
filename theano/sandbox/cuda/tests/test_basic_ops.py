@@ -827,6 +827,7 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     get_value_borrow_true_alias_ = False,
     shared_borrow_true_alias_ = False,
     set_value_borrow_true_alias_ = False,
+    set_value_inplace_ = True,
     internal_type_ = cuda_ndarray.CudaNdarray,
     test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
     theano_fct_ = theano.tensor.exp,
