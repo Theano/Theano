@@ -53,14 +53,18 @@ class CudaNdarrayType(Type):
         self.dtype_specs() # error checking is done there
 
     def filter(self, data, strict=False, allow_downcast=None):
+        return self.filter_inplace(data, None, strict=strict, allow_downcast=allow_downcast)
+
+    def filter_inplace(self, data, old_data, strict=False, allow_downcast=None):
         if strict or allow_downcast or isinstance(data, cuda.CudaNdarray):
-            return cuda.filter(data, self.broadcastable, strict, None)
+            return cuda.filter(data, self.broadcastable, strict, old_data)
+
         else: # (not strict) and (not allow_downcast)
             # Check if data.dtype can be accurately casted to self.dtype
             if isinstance(data, numpy.ndarray):
                 up_dtype = scal.upcast(self.dtype, data.dtype)
                 if up_dtype == self.dtype:
-                    return cuda.filter(data, self.broadcastable, strict, None)
+                    return cuda.filter(data, self.broadcastable, strict, old_data)
                 else:
                     raise TypeError(
                         '%s, with dtype %s, cannot store a value of '
@@ -75,10 +79,10 @@ class CudaNdarrayType(Type):
                         type(data) is float and
                         self.dtype==theano.config.floatX):
                     return cuda.filter(converted_data, self.broadcastable,
-                            strict, None)
+                            strict, old_data)
                 elif numpy.all(data == converted_data):
                     return cuda.filter(converted_data, self.broadcastable,
-                            strict, None)
+                            strict, old_data)
                 else:
                     raise TypeError(
                         '%s, with dtype %s, cannot store accurately value %s, '
@@ -86,6 +90,7 @@ class CudaNdarrayType(Type):
                         'you can cast your data to %s.'
                         % (self, self.dtype, data, converted_data, self.dtype),
                         data)
+
 
     @staticmethod
     def bound(a):
