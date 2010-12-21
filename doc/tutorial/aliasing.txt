@@ -182,6 +182,30 @@ This pattern works regardless of the compute device, and when the compute device
 makes it possible to expose Theano's internal variables without a copy, then it
 goes as fast as an in-place update.
 
+Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This meant that sometimes,
+GPU memory for the new value would be allocated before the old memory was released. If you're
+running near the limits of GPU memory, this could cause you to run out of GPU memory.
+
+Beginning with Theano 0.3.1, set_value will work in-place on the GPU, if the following conditions
+are met:
+
+* The destination on the GPU must be c_contiguous.
+* The old value must have the same dtype as the new value (which is a given for now,
+  since only float32 is supported).
+* The old and new value must have the same shape.
+* The old value is being completely replaced by the new value (not partially modified,
+  e.g. by replacing some subtensor of it).
+* You change the value of the shared variable via set_value, not via the .value
+  accessors. You should not use the .value accessors anyway, since they will soon be
+  deprecated and removed.
+
+Fortunately, these conditions are usually straightforwardly met without any additional effort.
+If you are going to swap several chunks of data in and out of a shared variable repeatedly,
+it is worth padding your source data to make sure that every chunk is the same size.
+
+It is also worth mentioning that, for efficient transfer to the GPU, theano will make the new data
+c_contiguous. This could mean making a copy of the data on the host.
+
 Retrieving and assigning via the .value property
 ------------------------------------------------
 

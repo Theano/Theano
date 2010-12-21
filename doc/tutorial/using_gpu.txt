@@ -274,3 +274,10 @@ Tips for improving performance on GPU
   that can tell you if not enought of your graph is on the gpu or if their
   is too much memory transfert.
 
+
+Changing the value of shared variables
+--------------------------------------
+
+To change the value of a shared variable, e.g. to provide new data to process,
+use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
+see :ref:`aliasing`.
