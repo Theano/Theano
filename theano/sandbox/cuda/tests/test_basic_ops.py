@@ -819,6 +819,11 @@ def test_shared_float32():
     # Unregister
     del theano.shared.constructors[-1]
 
+def test_shared_cudandarray():
+    '''Test that we can create a CudaNdarraySharedVariable from a CudaNdarray'''
+    a = cuda.shared_constructor(cuda.CudaNdarray.zeros((2,3)))
+    assert isinstance(a.type, tcn.CudaNdarrayType)
+
 
 import theano.tensor.tests.test_sharedvar
 test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(

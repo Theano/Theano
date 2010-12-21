@@ -84,7 +84,7 @@ CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 def cuda_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for TensorType"""
+    """SharedVariable Constructor for CudaNdarrayType"""
 
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
     # SO INT shared vars, float64 shared vars, etc. all end up on the card.
@@ -115,22 +115,29 @@ def cuda_shared_constructor(value, name=None, strict=False,
 
 def float32_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for TensorType"""
+    """SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or CudaNdarray"""
 
-    # if value isn't a float32 ndarray, then raise
-    if not isinstance(value, numpy.ndarray):
-        raise TypeError('ndarray required')
-    if value.dtype.num != CudaNdarrayType.typenum:
+    # if value isn't a float32 ndarray, or a CudaNdarray then raise
+    
+    if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
+        raise TypeError('ndarray or CudaNdarray required')
+    if isinstance(value, numpy.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
         raise TypeError('float32 ndarray required')
 
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
-    deviceval = type_support_filter(value, broadcastable, False, None)
+    if isinstance(value, theano.sandbox.cuda.CudaNdarray):
+        if borrow:
+            deviceval = value
+        else:
+            deviceval = value.copy()
+    else:
+        deviceval = type_support_filter(value, broadcastable, False, None)
+
     try:
         rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
     except Exception, e:
         print "ERROR", e
         raise
     return rval
-
