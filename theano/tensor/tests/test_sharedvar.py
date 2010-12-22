@@ -316,20 +316,40 @@ def makeSharedTester(shared_constructor_,
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 x_shared.value
 
+            # Test by .value
             nd += 1
+            old_data = x_shared.container.storage[0]
             x_shared.value = nd
             assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
+            # Test by set_value with borrow=False
             nd += 1
+            old_data = x_shared.container.storage[0]
             x_shared.set_value(nd, borrow=False)
             assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
-            # test when the data is already of the same type as the destination
+            # Test by set_value with borrow=False when new data casted.
             # specificaly usefull for gpu data
             nd += 1
+            old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd), borrow=False)
+            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
+
+            # Test by set_value with borrow=True
+            nd += 1
+            old_data = x_shared.container.storage[0]
+            x_shared.set_value(nd.copy(), borrow=True)
+            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
+
+            # Test by set_value with borrow=True when new data casted.
+            print
+            nd += 1
+            old_data = x_shared.container.storage[0]
+            x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
             assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
 
