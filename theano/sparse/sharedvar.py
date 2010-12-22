@@ -24,5 +24,3 @@ def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
         value = copy.deepcopy(value)
     return SparseTensorSharedVariable(type=type, value=value, name=name,
             strict=strict, allow_downcast=allow_downcast)
-
-
