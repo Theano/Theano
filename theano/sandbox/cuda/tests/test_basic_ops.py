@@ -830,14 +830,14 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_ = tcn.shared_constructor,
     dtype_ = 'float32',
     get_value_borrow_true_alias_ = False,
-    shared_borrow_true_alias_ = False,
+    shared_borrow_true_alias_ = True,#True when the original value is already a CudaNdarray!
     set_value_borrow_true_alias_ = False,
     set_value_inplace_ = True,
     internal_type_ = cuda_ndarray.CudaNdarray,
     test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
-    cast_value_ = numpy.asarray,
+    cast_value_ = cuda_ndarray.CudaNdarray,
     op_by_matrix_ = True)
 
 if __name__ == '__main__':

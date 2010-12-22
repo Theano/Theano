@@ -59,8 +59,11 @@ def makeSharedTester(shared_constructor_,
 
             assert numpy.allclose(self.ref_fct(x), total_val)
 
-            x /= .5
-
+            values_to_div = .5
+            if self.op_by_matrix:
+                values_to_div = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
+                assert self.test_internal_type(values_to_div)
+            x /= values_to_div
             total_val_2 = total_func()
 
             #value used to construct should not alias with internal
@@ -195,7 +198,7 @@ def makeSharedTester(shared_constructor_,
                 assert x is get_x
             else:
                 assert x is not get_x
-            assert numpy.allclose(self.ref_fct(x_orig/.5),self.ref_fct(x))
+            assert numpy.allclose(self.ref_fct(numpy.asarray(x_orig)/.5),self.ref_fct(x))
 
             #test optimized get set value on the gpu(don't pass data to the cpu)
             get_x = x_shared.get_value(borrow=True, return_internal_type=True)
@@ -234,7 +237,12 @@ def makeSharedTester(shared_constructor_,
 
             assert numpy.allclose(self.ref_fct(x), total_val)
 
-            x /= .5
+            values_to_div = .5
+            if self.op_by_matrix:
+                #supported for cudandarray, but not ndarray.
+                values_to_div = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)
+                assert self.test_internal_type(values_to_div)
+            x /= values_to_div
 
             #not required by the contract but it is a feature we've implemented
             if self.shared_borrow_true_alias:
