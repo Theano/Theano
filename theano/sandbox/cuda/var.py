@@ -101,6 +101,7 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
             are met:
 
             * The destination on the GPU must be c_contiguous.
+            * The source is on the CPU.
             * The old value must have the same dtype as the new value (which is a given for now,
               since only float32 is supported).
             * The old and new value must have the same shape.
