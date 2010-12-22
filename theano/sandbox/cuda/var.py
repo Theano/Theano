@@ -8,9 +8,12 @@ from theano import tensor
 from theano.compile import SharedVariable
 
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import filter as type_support_filter
-
-from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
+try:
+    # We must do those import to be able to create the full doc when nvcc
+    from theano.sandbox.cuda import filter as type_support_filter
+    from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
+except ImportError:
+    pass
 
 class _operators(tensor.basic._tensor_py_operators):
     """Define a few properties and conversion methods for CudaNdarray Variables.

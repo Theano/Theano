@@ -8,10 +8,13 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, config
 from theano import scalar as scal
 
-import cuda_ndarray.cuda_ndarray as cuda
-import cuda_ndarray
-
-from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
+try:
+    # We must do those import to be able to create the full doc when nvcc
+    import cuda_ndarray.cuda_ndarray as cuda
+    from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
+    import cuda_ndarray
+except ImportError:
+    pass
 
 class CudaNdarrayType(Type):
 
@@ -358,4 +361,8 @@ copy_reg.constructor(CudaNdarray_unpickler)
 def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
-copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+try:
+    # In case cuda is not imported.
+    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+except NameError:
+    pass

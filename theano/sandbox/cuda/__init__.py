@@ -100,6 +100,13 @@ if cuda_available:
         cuda_available = False
         cuda_initialization_error_message = e.message
 
+# We must do those import to be able to create the full doc when nvcc
+from theano.sandbox.cuda.var import (CudaNdarrayVariable,
+                                     CudaNdarrayConstant,
+                                     CudaNdarraySharedVariable,
+                                     float32_shared_constructor)
+from theano.sandbox.cuda.type import CudaNdarrayType
+
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
     import cuda_ndarray.cuda_ndarray
@@ -108,11 +115,6 @@ if cuda_available:
         
         warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
 
-    from theano.sandbox.cuda.type import CudaNdarrayType
-    from theano.sandbox.cuda.var import (CudaNdarrayVariable,
-            CudaNdarrayConstant,
-            CudaNdarraySharedVariable,
-            float32_shared_constructor)
     shared_constructor = float32_shared_constructor
 
     import basic_ops
