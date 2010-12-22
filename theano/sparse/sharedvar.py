@@ -15,7 +15,7 @@ def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
     writeme
     """
     if not isinstance(value, scipy.sparse.spmatrix):
-        raise TypeError()
+        raise TypeError("Expected a sparse matrix in the sparse shared variable constructor. Received: ",value.__class__)
 
     if format is None:
         format = value.format
