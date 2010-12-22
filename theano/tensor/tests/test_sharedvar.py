@@ -14,6 +14,7 @@ def makeSharedTester(shared_constructor_,
                      shared_borrow_true_alias_,
                      set_value_borrow_true_alias_,
                      set_value_inplace_,
+                     set_casted_value_inplace_,
                      internal_type_,
                      test_internal_type_,
                      theano_fct_,
@@ -24,7 +25,28 @@ def makeSharedTester(shared_constructor_,
     This is a generic fct to allow reusing the same test function
     for many shared variable of many types.
 
-    We must use /= as sparse type don't support other inplace operation.
+    :param shared_constructor_: The shared variable constructor to use
+    :param dtype_: The dtype of the data to test
+    :param get_value_borrow_true_alias_: Should a get_value(borrow=True) return the internal object
+    :param shared_borrow_true_alias_: Should shared(val,borrow=True) reuse the val memory space
+    :param set_value_borrow_true_alias_: Should set_value(val,borrow=True) reuse the val memory space
+    :param set_value_inplace_: Should this shared variable overwrite the current
+                               memory when the new value is an ndarray
+    :param set_casted_value_inplace_: Should this shared variable overwrite the
+                               current memory when the new value is of the same
+                               type as the internal type.
+    :param internal_type_: The internal type used.
+    :param test_internal_type_: A function that tell if its input is of the same
+                                type as this shared variable internal type.
+    :param theano_fct_: A theano op that will be used to do some computation on the shared variable
+    :param ref_fct_: A reference function that should return the same value as the theano_fct_
+    :param cast_value_: A callable that cast an ndarray into the internal shared variable representation
+    :param op_by_matrix_: When we do inplace operation on the an internal type object, should we do it with a scalar or a matrix of the same value.
+
+    :note:
+        We must use /= as sparse type don't support other inplace operation.
+
+
     """
     class SharedTester(unittest.TestCase):
         shared_constructor = staticmethod(shared_constructor_)
@@ -37,6 +59,7 @@ def makeSharedTester(shared_constructor_,
         ref_fct = staticmethod(ref_fct_)
         set_value_borrow_true_alias = set_value_borrow_true_alias_
         set_value_inplace = set_value_inplace_
+        set_casted_value_inplace = set_casted_value_inplace_
         cast_value = staticmethod(cast_value_)
         op_by_matrix = op_by_matrix_
 
@@ -303,6 +326,13 @@ def makeSharedTester(shared_constructor_,
             assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
+            # test when the data is already of the same type as the destination
+            # specificaly usefull for gpu data
+            nd += 1
+            x_shared.set_value(self.cast_value(nd), borrow=False)
+            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
+
         def test_specify_shape(self):
             dtype = self.dtype
             if dtype is None:
@@ -480,6 +510,7 @@ test_shared_options=makeSharedTester(
     shared_borrow_true_alias_ = True,
     set_value_borrow_true_alias_ = True,
     set_value_inplace_ = False,
+    set_casted_value_inplace_ = False,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
     theano_fct_ = theano.tensor.sum,
