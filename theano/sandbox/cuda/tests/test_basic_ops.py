@@ -842,6 +842,22 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     cast_value_ = cuda_ndarray.CudaNdarray,
     op_by_matrix_ = True)
 
+#This test the case when the shared constructor view an ndarray as input
+test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
+    shared_constructor_ = tcn.shared_constructor,
+    dtype_ = 'float32',
+    get_value_borrow_true_alias_ = False,
+    shared_borrow_true_alias_ = False,
+    set_value_borrow_true_alias_ = False,
+    set_value_inplace_ = True,
+    set_casted_value_inplace_ = True,
+    internal_type_ = cuda_ndarray.CudaNdarray,
+    test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
+    theano_fct_ = theano.tensor.exp,
+    ref_fct_ = numpy.exp,
+    cast_value_ = numpy.asarray,
+    op_by_matrix_ = True)
+
 if __name__ == '__main__':
     test_many_arg_elemwise()
     test_gpujoin_twomatrices_joincolumns()
