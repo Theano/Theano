@@ -508,6 +508,7 @@ test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
     set_value_borrow_true_alias_ = True,
     set_value_inplace_ = False,
     set_casted_value_inplace_ = False,
+    shared_constructor_accept_ndarray_ = False,
     internal_type_ = scipy.sparse.csc_matrix,
     test_internal_type_ = scipy.sparse.issparse,
     theano_fct_ = lambda a: dense_from_sparse(a*2.),

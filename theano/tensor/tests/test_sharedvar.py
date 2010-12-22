@@ -15,6 +15,7 @@ def makeSharedTester(shared_constructor_,
                      set_value_borrow_true_alias_,
                      set_value_inplace_,
                      set_casted_value_inplace_,
+                     shared_constructor_accept_ndarray_,
                      internal_type_,
                      test_internal_type_,
                      theano_fct_,
@@ -35,6 +36,7 @@ def makeSharedTester(shared_constructor_,
     :param set_casted_value_inplace_: Should this shared variable overwrite the
                                current memory when the new value is of the same
                                type as the internal type.
+    :param shared_constructor_accept_ndarray_: Do the shared_constructor accept an ndarray as input?
     :param internal_type_: The internal type used.
     :param test_internal_type_: A function that tell if its input is of the same
                                 type as this shared variable internal type.
@@ -60,6 +62,7 @@ def makeSharedTester(shared_constructor_,
         set_value_borrow_true_alias = set_value_borrow_true_alias_
         set_value_inplace = set_value_inplace_
         set_casted_value_inplace = set_casted_value_inplace_
+        shared_constructor_accept_ndarray = shared_constructor_accept_ndarray_
         cast_value = staticmethod(cast_value_)
         op_by_matrix = op_by_matrix_
 
@@ -94,7 +97,7 @@ def makeSharedTester(shared_constructor_,
 
             x = x_shared.get_value(borrow = False)
 
-            x /= .5
+            x /= values_to_div
 
             total_val_3 = total_func()
 
@@ -103,7 +106,7 @@ def makeSharedTester(shared_constructor_,
 
             #in this case we can alias
             x = x_shared.get_value(borrow = True)
-            x /= .5
+            x /= values_to_div
 
             #this is not required by the contract but it is a feature we've
             #implemented for some type of SharedVariable.
@@ -194,6 +197,24 @@ def makeSharedTester(shared_constructor_,
             #this is required by the contract
             assert not numpy.allclose(self.ref_fct(x), total_func())
 
+        def test_get_value(self):
+            """
+            Test that get_value return the same type as what was gived when creating the shared variable
+            """
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            rng = numpy.random.RandomState(utt.fetch_seed())
+            x_orig = numpy.asarray(rng.uniform(0,1,[2,4]),dtype=dtype)
+            x_cast = self.cast_value(x_orig)
+            if self.shared_constructor_accept_ndarray:
+                x_shared = self.shared_constructor(x_orig, borrow = False)
+                assert isinstance(x_shared.get_value(), x_orig.__class__)
+
+            x_shared = self.shared_constructor(x_cast, borrow = False)
+            assert isinstance(x_shared.get_value(), x_cast.__class__)
+
         def test_set_value(self):
             dtype = self.dtype
             if dtype is None:
@@ -211,10 +232,16 @@ def makeSharedTester(shared_constructor_,
 
             total_func = theano.function([],total)
 
+            values_to_div = .5
+            if self.op_by_matrix:
+                #supported for cudandarray, but not ndarray.
+                values_to_div = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)
+                assert self.test_internal_type(values_to_div)
+
             #test if that theano shared variable optimize set_value(borrow=True)
             get_x = x_shared.get_value(borrow=True)
             assert get_x is not x_orig#borrow=False to shared_constructor
-            get_x /= .5
+            get_x /= values_to_div
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True)
             if self.set_value_borrow_true_alias:
@@ -227,10 +254,6 @@ def makeSharedTester(shared_constructor_,
             get_x = x_shared.get_value(borrow=True, return_internal_type=True)
             assert get_x is not x_orig#borrow=False to shared_constructor
             assert self.test_internal_type(get_x)
-            values_to_div = .5
-            if self.op_by_matrix:
-                values_to_div = self.internal_type(numpy.ones(x.shape,dtype=dtype)/2)#supported for cudandarray, but not ndarray.
-                assert self.test_internal_type(values_to_div)
 
             get_x /= values_to_div#supported by ndarray and CudaNdarray
             assert self.test_internal_type(get_x)
@@ -531,6 +554,7 @@ test_shared_options=makeSharedTester(
     set_value_borrow_true_alias_ = True,
     set_value_inplace_ = False,
     set_casted_value_inplace_ = False,
+    shared_constructor_accept_ndarray_ = True,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
     theano_fct_ = theano.tensor.sum,

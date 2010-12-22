@@ -56,6 +56,8 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
     Shared Variable interface to CUDA-allocated arrays
     """
 
+    get_value_return_ndarray = True
+
     def get_value(self, borrow=False, return_internal_type=False):
         """
         Return the value of this SharedVariable's internal array.
@@ -76,7 +78,8 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
         copying.
 
         """
-        if return_internal_type: # return a cuda_ndarray
+        if return_internal_type or not self.get_value_return_ndarray:
+            # return a cuda_ndarray
             if borrow:
                 return self.container.value
             else:
@@ -183,7 +186,9 @@ def float32_shared_constructor(value, name=None, strict=False,
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
+    get_value_return_ndarray = True
     if isinstance(value, theano.sandbox.cuda.CudaNdarray):
+        get_value_return_ndarray = False
         if borrow:
             deviceval = value
         else:
@@ -196,4 +201,7 @@ def float32_shared_constructor(value, name=None, strict=False,
     except Exception, e:
         print "ERROR", e
         raise
+
+    rval.get_value_return_ndarray = get_value_return_ndarray
+
     return rval

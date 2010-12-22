@@ -142,7 +142,7 @@ transparent.  But when you are using a GPU (or in future perhaps a remote machin
 is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
-``get_value``.  It will never copy the internal object (always return in
+``get_value``.  It will never cast the internal object (always return in
 constant time), but might return various datatypes depending on contextual
 factors (e.g. the compute device, the dtype of the numpy array).
 
@@ -153,6 +153,12 @@ factors (e.g. the compute device, the dtype of the numpy array).
 It is possible to use ``borrow=False`` in conjunction with
 ``return_internal_type=True``, which will return a deep copy of the internal object.
 This is primarily for internal debugging, not for typical use.
+
+For the transparent use of different type of optimization Theano can make,
+there is the policy that get_value() always return by default the same object type
+it received when the shared variable was created. So if you created manually data on 
+the gpu and create a shared variable on the gpu with this data, get_value will always
+return gpu data event when return_internal_type=False.
 
 *Take home message:*
 
