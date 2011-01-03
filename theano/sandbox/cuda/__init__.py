@@ -50,7 +50,7 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
-cuda_files = ('cuda_ndarray.cuh', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'conv_kernel.cu')
+cuda_files = ('cuda_ndarray.cu', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'conv_kernel.cu')
 stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME] for cuda_file in cuda_files]
 date = max(stat_times)
 
