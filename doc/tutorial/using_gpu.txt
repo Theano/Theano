@@ -21,7 +21,7 @@ Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
 *include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
 program which is the compiler for GPU code.)  This folder is called the *cuda
 root* directory.
-On Linux or OS-X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit
+On Linux or OS X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit Linux
 computer) to your ``$LD_LIBRARY_PATH`` environment variable.
 
 
