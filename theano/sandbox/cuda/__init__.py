@@ -50,10 +50,9 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
-date = os.stat(os.path.join(cuda_path,'cuda_ndarray.cu'))[stat.ST_MTIME]
-date = max(date,os.stat(os.path.join(cuda_path,'cuda_ndarray.cuh'))[stat.ST_MTIME])
-date = max(date,os.stat(os.path.join(cuda_path,'conv_full_kernel.cu'))[stat.ST_MTIME])
-date = max(date,os.stat(os.path.join(cuda_path,'conv_kernel.cu'))[stat.ST_MTIME])
+cuda_files = ('cuda_ndarray.cuh', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'conv_kernel.cu')
+stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME] for cuda_file in cuda_files]
+date = max(stat_times)
 
 cuda_ndarray_loc = os.path.join(config.compiledir,'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,'cuda_ndarray.so')
