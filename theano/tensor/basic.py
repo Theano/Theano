@@ -4280,7 +4280,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     each element of the list.  If an element of `wrt` is not differentiable
     with respect to the output, then a zero variable is returned.
 
-    This function is a wrapper around a the more general function
+    This function is a wrapper around the more general function
     `theano.gradient.grad_sources_inputs``.
 
     """
