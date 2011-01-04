@@ -44,7 +44,7 @@ import tensor
 import misc.safe_asarray as safe_asarray
 from tensor import opt, TensorType
 import gof
-from gof import Optimizer, toolbox, Op, Apply
+from gof import Optimizer, toolbox, Op, Apply, Variable
 from compile import optdb, SharedVariable, function, Param
 import compile
 import gradient
@@ -1559,8 +1559,15 @@ class Scan(Op):
                             theano.config.floatX))
         inner_gfn_ins = inner_g_outs + self.inputs
 
-        g_args = [self.n_steps] + g_outs[:self.n_outs_not_shared] \
-                + scan_outputs + args[1:]
+
+        # Make sure you don't have numbers in here
+        if not isinstance(self.n_steps, Variable):
+            n_steps = tensor.as_tensor(self.n_steps)
+        else:
+            n_steps = self.n_steps
+        g_args = [n_steps] + g_outs[:self.n_outs_not_shared] \
+                            + scan_outputs + args[1:]
+
         truncate_gradient = self.truncate_gradient
         for x in self.store_steps[:self.n_outs_not_shared]:
             if x>0 :
@@ -1571,6 +1578,7 @@ class Scan(Op):
                 self.n_seqs, self.n_outs, self.n_outs_not_shared,
                 self.go_backwards, self.seqs_taps, self.outs_taps,
                 truncate_gradient)
+
         g_scan_outs = g_scan(g_args)
         if not type(g_scan_outs) in (list, tuple):
             g_scan_outs = [ g_scan_outs ]
