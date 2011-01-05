@@ -89,7 +89,7 @@ if __name__ == "__main__":
             * numpy with ATLAS from distribution(FC9) package (1 thread)
             * manually compiled numpy and ATLAS with 2 threads
             * goto with 1, 2, 4 and 8 threads.
-                          Xeon   Xeno   Xeon  Core2 i7
+                          Xeon   Xeon   Xeon  Core2 i7
         lib/nb threads    E5345  E5430  E5450 E8500 930
 
         numpy_FC9_atlas/1 39.2s  35.0s  30.7s 29.6s 21.5s
