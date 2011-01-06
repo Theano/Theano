@@ -3539,10 +3539,11 @@ tilegrad = TileGrad()
 
 class Tile(Op):
     """
-    Construct an array by repeating A the number of times given by reps.
+    Construct an array by repeating the input x according to reps pattern.
 
-    Tiles its input according to reps. Reps is of same dimension as x
-    and contains the number of times to tile x in each dimension
+    Tiles its input according to reps. The len of reps is the number of
+    dimension of x and contains the number of times to tile x in each dimension.
+
 
     :see: `numpy.tile http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html`_
     """
