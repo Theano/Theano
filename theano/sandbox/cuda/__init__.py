@@ -55,7 +55,7 @@ cuda_files = ('cuda_ndarray.cu', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'con
 stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME] for cuda_file in cuda_files]
 date = max(stat_times)
 
-cuda_ndarray_loc = os.path.join(config.compiledir,'cuda_ndarray')
+cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'cuda_ndarray.' + get_lib_extension())
 compile_cuda_ndarray = True
@@ -86,7 +86,7 @@ try:
                     'cuda_ndarray',
                     code,
                     location=cuda_ndarray_loc,
-                                                  include_dirs=[cuda_path], libs=['cublas'])
+                    include_dirs=[cuda_path], libs=['cublas'])
 
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
