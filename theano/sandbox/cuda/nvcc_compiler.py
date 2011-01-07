@@ -53,8 +53,9 @@ def is_nvcc_available():
         else: return False
 is_nvcc_available()#to set nvcc_path correctly and get the version
 
-def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
-        preargs=[]):
+def nvcc_module_compile_str(
+        module_name, src_code,
+        location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[]):
     """
     :param module_name: string (this has been embedded in the src_code
     :param src_code: a complete c or c++ source listing for the module
@@ -71,8 +72,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     """
     
     if sys.platform=="win32":
-        #remove some compilation args that cl.exe don't understand
-        #cl.exe is the compiler used by nvcc on Windows
+        # Remove some compilation args that cl.exe does not understand.
+        # cl.exe is the compiler used by nvcc on Windows.
         for a in ["-Wno-write-strings","-Wno-unused-label",
                   "-Wno-unused-variable", "-fno-math-errno"]:
             if a in preargs:
@@ -185,8 +186,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     orig_dir = os.getcwd()
     try:
         os.chdir(location)
-
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         nvcc_stdout, nvcc_stderr = p.communicate()[:2]
     finally:
         os.chdir(orig_dir)
