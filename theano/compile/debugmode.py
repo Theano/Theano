@@ -60,6 +60,9 @@ def error(*args):
 def warning(*args):
     #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning("WARNING: "+' '.join(str(a) for a in args))
+def opt_warning(*args):
+    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.warning("OPTIMIZATION WARNING: "+' '.join(str(a) for a in args))
 def info(*args):
     #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info("INFO: "+' '.join(str(a) for a in args))
@@ -521,7 +524,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
         dmap=getattr(node.op,'destroy_map',{})
         for oo,ii in dmap.iteritems():
             if storage_map[node.outputs[oo]][0] is not storage_map[node.inputs[ii[0]]][0]:
-                warning("input idx %d marked as destroyed was not changed for node '%s'"%(ii[0],str(node)))
+                opt_warning("input idx %d marked as destroyed was not changed for node '%s'"%(ii[0],str(node)))
 
     if warn_input_not_reused:
         vmap=getattr(node.op,'view_map',{})
@@ -534,7 +537,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
 
                 if hasattr(out_var,'ndim') and (out_var.ndim>0 and out_var.size>0):
                     continue
-                warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
+                opt_warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
 
     for r_idx, r in enumerate(node.inputs):
         if not r.type.values_eq(r_vals[r], storage_map[r][0]):
