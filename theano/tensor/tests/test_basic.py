@@ -233,7 +233,9 @@ _good_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      column = (rand(2, 3), rand(2, 1)),
                                      integers = (randint(2, 3), randint(2, 3)),
                                      dtype_mixup_1 = (rand(2, 3), randint(2, 3)),
-                                     dtype_mixup_2 = (randint(2, 3), rand(2, 3)))
+                                     dtype_mixup_2 = (randint(2, 3), rand(2, 3)),
+                                     empty = (numpy.asarray([]),numpy.asarray([1])),
+                                     )
 
 _bad_build_broadcast_binary_normal = dict()#not_same_dimensions = (rand(2), rand(2, 2)))
 
@@ -243,7 +245,10 @@ _bad_runtime_broadcast_binary_normal = dict(bad_shapes = (rand(2, 3), rand(3, 2)
 _grad_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      scalar = (rand(2, 3), rand(1, 1)),
                                      row = (rand(2, 3), rand(1, 3)),
-                                     column = (rand(2, 3), rand(2, 1)))
+                                     column = (rand(2, 3), rand(2, 1)),
+                                     #This don't work as verify grad don't support that
+                                     #empty = (numpy.asarray([]), numpy.asarray([1]))
+                                     )
 
 
 AddTester = makeBroadcastTester(op = add,
@@ -324,6 +329,29 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          bad_runtime = _bad_runtime_broadcast_binary_normal,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
+
+_good_broadcast_div_mod_normal_float_inplace = dict(same_shapes = (rand(2, 3), rand(2, 3)),
+                                         scalar = (rand(2, 3), rand(1, 1)),
+                                         row = (rand(2, 3), rand(1, 3)),
+                                         column = (rand(2, 3), rand(2, 1)),
+                                         dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
+                                         dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
+                                         #integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
+                                         #integers_known_to_fail = (numpy.array(-1), numpy.array(5))
+                                         empty1 = (numpy.asarray([]), numpy.asarray([1])),
+                                         #empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                         )
+_good_broadcast_div_mod_normal_float = dict(empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                            **_good_broadcast_div_mod_normal_float_inplace
+                                            )
+_grad_broadcast_div_mod_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
+                                   scalar = (rand(2, 3), rand(1, 1)),
+                                   row = (rand(2, 3), rand(1, 3)),
+                                   column = (rand(2, 3), rand(2, 1)),
+                                   #empty1 = (numpy.asarray([]), numpy.asarray([1.])),
+                                   #empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                   )
+
 div_grad_rtol=None
 if config.floatX=='float32':
     #We raise the relative tolerence for the grad as their is error in float32
@@ -331,90 +359,59 @@ if config.floatX=='float32':
     div_grad_rtol=0.025
 DivTester = makeBroadcastTester(op = true_div,
                                   expected = lambda x, y: x / y,
-                                  good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                              scalar = (rand(2, 3), rand(1, 1)),
-                                              row = (rand(2, 3), rand(1, 3)),
-                                              column = (rand(2, 3), rand(2, 1)),
-                                              dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-                                              dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
-#                                               integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
-#                                               integers_known_to_fail = (numpy.array(-1), numpy.array(5))
-                                              ),
+                                  good = _good_broadcast_div_mod_normal_float,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
-                                  grad = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                              scalar = (rand(2, 3), rand(1, 1)),
-                                              row = (rand(2, 3), rand(1, 3)),
-                                              column = (rand(2, 3), rand(2, 1))),
+                                  grad = _grad_broadcast_div_mod_normal,
                                   grad_rtol=div_grad_rtol,
                                 )
 DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          expected = lambda x, y: x / y,
-                                         good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                                     scalar = (rand(2, 3), rand(1, 1)),
-                                                     row = (rand(2, 3), rand(1, 3)),
-                                                     column = (rand(2, 3), rand(2, 1)),
-                                                     dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-                                                     dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))
-                                                     ),
-                                         grad = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                                     scalar = (rand(2, 3), rand(1, 1)),
-                                                     row = (rand(2, 3), rand(1, 3)),
-                                                     column = (rand(2, 3), rand(2, 1))),
+                                         good = _good_broadcast_div_mod_normal_float_inplace,
+                                         grad = _grad_broadcast_div_mod_normal,
                                          grad_rtol=div_grad_rtol,
                                          inplace = True)
 
 ModTester = makeBroadcastTester(op = mod,
                                   expected = lambda x, y: x % y,
-                                  good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                              scalar = (rand(2, 3), rand(1, 1)),
-                                              row = (rand(2, 3), rand(1, 3)),
-                                              column = (rand(2, 3), rand(2, 1)),
-                                              dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-                                              dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
-#                                               integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
-#                                               integers_known_to_fail = (numpy.array(-1), numpy.array(5))
-                                              ),
+                                  good = _good_broadcast_div_mod_normal_float,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   )
 ModInplaceTester = makeBroadcastTester(op = inplace.mod_inplace,
                                          expected = lambda x, y: x % y,
-                                         good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                                     scalar = (rand(2, 3), rand(1, 1)),
-                                                     row = (rand(2, 3), rand(1, 3)),
-                                                     column = (rand(2, 3), rand(2, 1)),
-                                                     dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-                                                     dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))
-                                                     ),
+                                         good = _good_broadcast_div_mod_normal_float_inplace,
                                          inplace = True)
+
+_good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                        scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                        row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
+                                        column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                        dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3))),
+                                        empty1 = (numpy.asarray([]), numpy.asarray([1])),
+                                        empty2 = (numpy.asarray([0]), numpy.asarray([])),)
+_grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                  scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                  row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
+                                  column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                  #empty1 = (numpy.asarray([]), numpy.asarray([1])),
+                                  #empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                  )
+#empty2 case is not supported by numpy.
+_good_broadcast_pow_normal_float_pow = copy(_good_broadcast_pow_normal_float)
+del _good_broadcast_pow_normal_float_pow["empty2"]
 
 PowTester = makeBroadcastTester(op = pow,
                                   expected = lambda x, y: x ** y,
-                                  good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                              scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                              row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                              column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
-                                              dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3)))),
-                                  grad = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                              scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                              row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                              column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))))
-                                  )
+                                  good = _good_broadcast_pow_normal_float,
+                                  grad = _grad_broadcast_pow_normal)
 PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
-                                         expected = lambda x, y: x ** y,
-                                         good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                                     scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                                     row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                                     column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
-                                                     dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3)))),
-                                         grad = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                                     scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                                     row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                                     column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1)))),
-                                         inplace = True)
+                                       expected = lambda x, y: x ** y,
+                                       good = _good_broadcast_pow_normal_float_pow,
+                                       grad = _grad_broadcast_pow_normal,
+                                       inplace = True)
 
 #Those are corner case when rounding. Their is many rounding algo.
 #c round() fct and numpy round are not the same!
@@ -422,14 +419,18 @@ corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.
 #we remove 0 here as the grad is not always computable numerically.
 corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
 _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
-                                    corner_case = (corner_case,))
+                                          corner_case = (corner_case,),
+                                          empty = (numpy.asarray([]),))
 
 _good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     integers = (randint_ranged(-5, 5, (2, 3)),),
-                                    corner_case = (corner_case,))
+                                    corner_case = (corner_case,),
+                                    empty = (numpy.asarray([]),))
 
 _grad_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
-                                    corner_case = (corner_case_grad,))
+                                    corner_case = (corner_case_grad,),
+                                    #empty = (numpy.asarray([]),)
+                                    )
 
 
 
@@ -516,9 +517,13 @@ ExpInplaceTester = makeBroadcastTester(op = inplace.exp_inplace,
 
 
 _good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
-                                      integers = (randint_ranged(1, 5, (2, 3)),))
+                                      integers = (randint_ranged(1, 5, (2, 3)),),
+                                      empty = (numpy.asarray([]),),
+                                      )
 
-_grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),))
+_grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
+                                      #empty = (numpy.asarray([]),),
+                                      )
 
 LogTester = makeBroadcastTester(op = log,
                                   expected = numpy.log,
@@ -574,9 +579,12 @@ SqrtInplaceTester = makeBroadcastTester(op = inplace.sqrt_inplace,
 
 
 _good_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
-                                  integers = (randint_ranged(-1000, 1000, (2, 3)),))
+                                  integers = (randint_ranged(-1000, 1000, (2, 3)),),
+                                  empty = (numpy.asarray([]),),)
 
-_grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),))
+_grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
+                                  #empty = (numpy.asarray([]),),
+                                  )
 
 
 SinTester = makeBroadcastTester(op = sin,
@@ -666,7 +674,8 @@ else:
                                0.96610515,  0.99532227, 0.99959305])
     normal = numpy.array([[-1.        ,  0.99991358,  0.70314729],
                           [ 0.9977147 , -0.99999884,  0.33409098]])
-    expected = dict(integers=integers,corner_case=corner_case,normal = normal)
+    expected = dict(integers=integers, corner_case=corner_case, normal = normal,
+                    empty = (numpy.asarray([]),),)
 ErfTester = makeBroadcastTester(op = erf,
                                 expected = expected,
                                 good = _good_broadcast_unary_normal,
@@ -693,7 +702,8 @@ else:
                                  3.38948535e-02,   4.67773498e-03,   4.06952017e-04])
     normal = numpy.array([[  2.00000000e+00,   8.64228449e-05,   2.96852710e-01],
                           [  2.28530326e-03,   1.99999884e+00,   6.65909025e-01]])
-    expected = dict(integers=integers,corner_case=corner_case,normal = normal)
+    expected = dict(integers=integers, corner_case=corner_case, normal = normal,
+                    empty = (numpy.asarray([]),),)
 ErfcTester = makeBroadcastTester(op = erfc,
                                  expected = expected,
                                  good = _good_broadcast_unary_normal,
@@ -715,7 +725,8 @@ DotTester = makeTester(name = 'DotTester',
                         checks = {},
                         good = dict(correct1 = (rand(5, 7), rand(7, 5)),
                                     correct2 = (rand(5, 7), rand(7, 9)),
-                                    correct3 = (rand(5, 7), rand(7))),
+                                    correct3 = (rand(5, 7), rand(7)),
+                                    empty = (numpy.asarray([]),numpy.asarray([])),),
                         bad_build = dict(),
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))

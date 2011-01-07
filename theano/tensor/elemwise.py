@@ -626,6 +626,8 @@ class Elemwise(Op):
             raise
         if ufunc.nout == 1: variables = [variables]
         for variable, storage in zip(variables, output_storage):
+            if hasattr(variable,'shape') and storage[0].shape != variable.shape:
+                storage[0].resize(variable.shape)
             if storage[0].shape:
                 storage[0][:] = variable
             else:
