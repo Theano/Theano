@@ -227,8 +227,10 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                 # We got the lock, hoorray!
                 return
 
-        except:
+        except Exception, e:
             # If something wrong happened, we try again.
+            warning("Something wrong happened:", type(e), e)
+            time.sleep(random.uniform(min_wait, max_wait))
             continue
 
 def refresh_lock(lock_file):
