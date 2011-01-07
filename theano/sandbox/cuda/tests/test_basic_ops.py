@@ -819,20 +819,46 @@ def test_shared_float32():
     # Unregister
     del theano.shared.constructors[-1]
 
+def test_shared_cudandarray():
+    '''Test that we can create a CudaNdarraySharedVariable from a CudaNdarray'''
+    a = cuda.shared_constructor(cuda.CudaNdarray.zeros((2,3)))
+    assert isinstance(a.type, tcn.CudaNdarrayType)
+
 
 import theano.tensor.tests.test_sharedvar
+#This test the case when the shared constructor view an CudaNdarray as input
 test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
+    shared_constructor_ = tcn.shared_constructor,
+    dtype_ = 'float32',
+    get_value_borrow_true_alias_ = True,
+    shared_borrow_true_alias_ = True,#True when the original value is already a CudaNdarray!
+    set_value_borrow_true_alias_ = True,
+    set_value_inplace_ = True,
+    set_casted_value_inplace_ = False,
+    shared_constructor_accept_ndarray_ = True,
+    internal_type_ = cuda_ndarray.CudaNdarray,
+    test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
+    theano_fct_ = theano.tensor.exp,
+    ref_fct_ = numpy.exp,
+    cast_value_ = cuda_ndarray.CudaNdarray,
+    op_by_matrix_ = True)
+
+#This test the case when the shared constructor view an ndarray as input
+test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_ = tcn.shared_constructor,
     dtype_ = 'float32',
     get_value_borrow_true_alias_ = False,
     shared_borrow_true_alias_ = False,
     set_value_borrow_true_alias_ = False,
+    set_value_inplace_ = True,
+    set_casted_value_inplace_ = True,
+    shared_constructor_accept_ndarray_ = True,
     internal_type_ = cuda_ndarray.CudaNdarray,
     test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
     cast_value_ = numpy.asarray,
-    add_matrix_ = True)
+    op_by_matrix_ = True)
 
 if __name__ == '__main__':
     test_many_arg_elemwise()

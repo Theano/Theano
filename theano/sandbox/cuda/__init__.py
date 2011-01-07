@@ -51,12 +51,11 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
-date = os.stat(os.path.join(cuda_path,'cuda_ndarray.cu'))[stat.ST_MTIME]
-date = max(date,os.stat(os.path.join(cuda_path,'cuda_ndarray.cuh'))[stat.ST_MTIME])
-date = max(date,os.stat(os.path.join(cuda_path,'conv_full_kernel.cu'))[stat.ST_MTIME])
-date = max(date,os.stat(os.path.join(cuda_path,'conv_kernel.cu'))[stat.ST_MTIME])
+cuda_files = ('cuda_ndarray.cu', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'conv_kernel.cu')
+stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME] for cuda_file in cuda_files]
+date = max(stat_times)
 
-cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
+cuda_ndarray_loc = os.path.join(config.compiledir,'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'cuda_ndarray.' + get_lib_extension())
 compile_cuda_ndarray = True
@@ -87,7 +86,7 @@ try:
                     'cuda_ndarray',
                     code,
                     location=cuda_ndarray_loc,
-                    include_dirs=[cuda_path], libs=['cublas'])
+                                                  include_dirs=[cuda_path], libs=['cublas'])
 
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
@@ -105,17 +104,19 @@ if cuda_available:
         cuda_available = False
         cuda_initialization_error_message = e.message
 
+# We must do those import to be able to create the full doc when nvcc
+from theano.sandbox.cuda.var import (CudaNdarrayVariable,
+                                     CudaNdarrayConstant,
+                                     CudaNdarraySharedVariable,
+                                     float32_shared_constructor)
+from theano.sandbox.cuda.type import CudaNdarrayType
+
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
     import cuda_ndarray.cuda_ndarray
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
         warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
 
-    from theano.sandbox.cuda.type import CudaNdarrayType
-    from theano.sandbox.cuda.var import (CudaNdarrayVariable,
-            CudaNdarrayConstant,
-            CudaNdarraySharedVariable,
-            float32_shared_constructor)
     shared_constructor = float32_shared_constructor
 
     import basic_ops

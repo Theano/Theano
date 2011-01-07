@@ -11,6 +11,7 @@ If you're feeling ambitious, go fix some `pylint
 .. toctree::
    :maxdepth: 2
 
+   release
    dev_start_guide
    lisa_labo
    mammouth

@@ -1,4 +1,4 @@
-""" test code snipet in the Theano tutorials.
+""" test code snippet in the Theano tutorials.
 """
 
 import unittest

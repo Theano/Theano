@@ -400,10 +400,15 @@ def test_neibs_grad_verify_grad_warp_centered():
     try:
         unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
         raise Exception("Expected an error")
-        if cuda.cuda_available:
-            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
     except NotImplementedError:
         pass
+
+    if cuda.cuda_available:
+        try:
+            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
+            raise Exception("Expected an error")
+        except NotImplementedError:
+            pass
 
 if __name__ == '__main__':
     #test_neibs_gpu()

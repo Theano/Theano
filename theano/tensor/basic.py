@@ -3538,8 +3538,16 @@ tilegrad = TileGrad()
 
 
 class Tile(Op):
-    """Tiles its input according to reps. Reps is of same dimension as x
-    and contains the number of times to tile x in each dimension"""
+    """
+    Construct an array by repeating the input x according to reps pattern.
+
+    Tiles its input according to reps. The len of reps is the number of
+    dimension of x and contains the number of times to tile x in each dimension.
+
+
+    :see: `numpy.tile http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html`_
+    """
+
     def __init__(self, ndim):
         self.ndim = ndim
     def __eq__(self, other):
@@ -4273,7 +4281,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     each element of the list.  If an element of `wrt` is not differentiable
     with respect to the output, then a zero variable is returned.
 
-    This function is a wrapper around a the more general function
+    This function is a wrapper around the more general function
     `theano.gradient.grad_sources_inputs``.
 
     """

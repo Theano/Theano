@@ -21,7 +21,7 @@ Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
 *include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
 program which is the compiler for GPU code.)  This folder is called the *cuda
 root* directory.
-On Linux or OS-X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit
+On Linux or OS X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit Linux
 computer) to your ``$LD_LIBRARY_PATH`` environment variable.
 
 
@@ -274,3 +274,10 @@ Tips for improving performance on GPU
   that can tell you if not enought of your graph is on the gpu or if their
   is too much memory transfert.
 
+
+Changing the value of shared variables
+--------------------------------------
+
+To change the value of a shared variable, e.g. to provide new data to process,
+use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
+see :ref:`aliasing`.

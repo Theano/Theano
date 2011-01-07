@@ -7,10 +7,12 @@ import re
 from theano.configparser import config, AddConfigVar, StrParam
 
 def default_compiledirname():
-    platform_id = platform.platform() + '-' + platform.processor()
-    platform_id += ('-' + platform.python_version())
+    platform_id = '-'.join([
+        platform.platform(),
+        platform.processor(),
+        platform.python_version()])
     platform_id = re.sub("[\(\)\s]+", "_", platform_id)
-    return 'compiledir_'+platform_id
+    return 'compiledir_' + platform_id
 
 def is_valid_compiledir(path):
     if not os.access(path, os.R_OK | os.W_OK):

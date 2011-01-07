@@ -468,7 +468,7 @@ def test_shape_i():
 
     a = SparseType('csr', dtype=sparse_dtype)()
     f = theano.function([a], a.shape[1], mode='FAST_RUN')
-    assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3)))==(10)
+    assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3))) == 10
 
 def test_shape():
     # Test that getting the shape of a sparse variable
@@ -501,11 +501,20 @@ def test_may_share_memory():
 
 import theano.tensor.tests.test_sharedvar
 test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
-    theano.sparse.shared, 'float64',
-    True, True, True, scipy.sparse.csc_matrix, scipy.sparse.issparse,
-    lambda a: dense_from_sparse(a*2.),
-    lambda a: numpy.asarray((a*2).todense()),
-    scipy.sparse.csr_matrix)
+    shared_constructor_ = theano.sparse.shared,
+    dtype_ = 'float64',
+    get_value_borrow_true_alias_ = True,
+    shared_borrow_true_alias_ = True,
+    set_value_borrow_true_alias_ = True,
+    set_value_inplace_ = False,
+    set_casted_value_inplace_ = False,
+    shared_constructor_accept_ndarray_ = False,
+    internal_type_ = scipy.sparse.csc_matrix,
+    test_internal_type_ = scipy.sparse.issparse,
+    theano_fct_ = lambda a: dense_from_sparse(a*2.),
+    ref_fct_ = lambda a: numpy.asarray((a*2).todense()),
+    cast_value_ = scipy.sparse.csr_matrix)
+
 
 if __name__ == '__main__':
     unittest.main()

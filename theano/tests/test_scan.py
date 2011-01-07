@@ -1039,6 +1039,34 @@ class T_Scan(unittest.TestCase):
         assert updates[b].type.ndim == b.type.ndim
 
 
+    def test_scan_as_tensor_on_gradients(self):
+        """
+        Bug reported by cityhall on scan when computing the gradients
+        """
+        to_scan = theano.tensor.dvector('to_scan')
+        seq     = theano.tensor.dmatrix('seq')
+        f1      = theano.tensor.dscalar('f1')
+
+        def scanStep(prev, seq, f1):
+           return prev + f1 * seq
+
+        scanned, _ = theano.scan(fn = scanStep, \
+                                sequences    = [seq], \
+                                outputs_info = [to_scan], \
+                                non_sequences  = [f1])
+
+        f_scan = theano.function(inputs=[to_scan, seq, f1], outputs=scanned)
+        f_scan([1,2,3], numpy.arange(12).reshape([4,3]), 1.)
+
+        t_grad = theano.tensor.grad(scanned.sum(), wrt=[to_scan, f1],
+        consider_constant=[seq])
+        f_grad = theano.function(inputs=[to_scan, seq, f1], outputs=t_grad)
+
+        f_scan([1,2,3], numpy.arange(12).reshape([4,3]), 1.)
+        f_grad([1,2,3], numpy.arange(12).reshape([4,3]), 1.)
+
+
+
 if __name__ == '__main__':
     unittest.main()
 

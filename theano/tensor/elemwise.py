@@ -941,12 +941,16 @@ class CAReduce(Op):
                 # If it's a zero-size array, use scalar_op.identity if available
                 if variable.shape[dimension] == 0:
                     if hasattr(self.scalar_op, 'identity'):
-                        variable = self.scalar_op.identity
+                        variable = numpy.array(self.scalar_op.identity)
                         break
                     else:
                         raise ValueError("Input (%s) has zero-size on axis %s, but self.scalar_op (%s) has no attribute 'identity'" % (variable, dimension, self.scalar_op))
                 else:
                     variable = self.ufunc.reduce(variable, dimension)
+            variable = numpy.asarray(variable)
+            if numpy.may_share_memory(variable, input):
+                # perhaps numpy is clever for reductions of size 1?  We don't want this.
+                variable = variable.copy()
             output[0] = theano._asarray(variable, dtype = node.outputs[0].type.dtype)
         else:
             output[0] = numpy.copy(variable)
@@ -1169,27 +1173,79 @@ class Prod(CAReduce):
                 ).get(idtype, idtype)
 
     def grad(self, (prod_in, ), (gz, )):
+        '''
+        The grad of this Op could be very easy, it is was not for the case
+        where zeros are present in a given "group" (ie. elements reduced
+        together to form the product).
+
+        If no zeros are found in the elements of the product, then the
+        partial derivative of the product relative to one of the elements
+        (one of the inputs) is simply the product of the other elements.
+        That's easy to see from the chain rule.
+
+        Now the trick (with no zeros) is to take the overall product, then
+        for every original element, the partial derivative is given by
+        this product divided by the element itself (which equals the product
+        of the other terms). This is easy to do by broadcasting the original
+        product.
+
+        (Note that we also need to broadcast-multiply by the "incoming gradient",
+        ie. the gradient of the cost relative to the output/product).
+
+        -----
+
+        With zeros, things get more complicated. For a given group, we have 3
+        cases:
+        * No zeros in the group. Use previous trick.
+        * If only one zero is present, then the gradient for that element is
+            non-zero, but is zero for all others.
+        * If more than one zero is present, then all the derivatives are zero.
+
+        For the last two cases (with 1 or more zeros), we can't use the division
+        trick, as this gives divisions by 0.
+
+        Implementing that case-by-case logic is not as trivial, so a bunch of
+        hacks are piled down here to do it. Notably, for the "only one zero"
+        case, there's a special Op that computes the product of the elements
+        in the group, minus the zero (see ProdWithoutZero). The trick is then
+        to use the division trick for groups with no zero, to use the
+        ProdWithoutZeros op where there's only one zero, and to output a
+        derivative of zero for any element part of a group with more than
+        one zero.
+
+        I do this by first counting the number of zeros in each group (see
+        the "T.eq()" bits), then taking this or that behavior (see T.switch)
+        based on the result of this count.
+        '''
         if prod_in.dtype[0:3] in ('int','uin'):
             return [None]
 
+
+        # Prepare the broadcasting that is used everywhere to broadcast
+        # over the original groups (ie. broadcast over the elements of a given
+        # product)
         gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
             axis = range(prod_in.type.ndim)
         if axis == ():
             return gz,
-        new_dims = [] 
+        new_dims = []
         i = 0
         for j, _ in enumerate(prod_in.type.broadcastable):
             if j in axis:
                 new_dims.append('x')
             else:
                 new_dims.append(i)
-                i += 1 
+                i += 1
 
+        # result of the product, broadcastable over groups
         prod_out = self(prod_in).dimshuffle(new_dims)
+        # incoming gradient, broadcastable over groups
         gz = gz.dimshuffle(new_dims)
 
+        # division trick if we don't have zeros. This will contain
+        # NaNs to be eliminated in the T.switch if we do have zeros.
         grad_case_without_zeros = (gz * prod_out / prod_in)
 
         if self.no_zeros_in_input:
@@ -1198,13 +1254,22 @@ class Prod(CAReduce):
         else:
             T = theano.tensor
 
-            where_zeros = T.eq(prod_in, 0.0) 
+            where_zeros = T.eq(prod_in, 0.0)
             sum_where_zeros = T.sum(where_zeros, axis=self.axis)
-            groups_with_single_zero = T.eq(sum_where_zeros, 1.0).dimshuffle(new_dims)
+            groups_with_single_zero = T.eq(sum_where_zeros, 1).dimshuffle(new_dims)
+            # tensor with 0 everywhere except for those places where
+            # a 0 part of a group with a single zero was to be found
             where_single_zero = groups_with_single_zero * where_zeros
-            where_gz_not_zero = T.neq(gz, 0.0) 
+            # further optimization to avoid computing ProdWithoutZeros
+            # if the incoming gradient is 0
+            where_gz_not_zero = T.neq(gz, 0.0)
+            # only take ProdWithoutZeros for the groups with single zeros
+            # with non-null incoming gradient
             where_to_take_prod_without_zeros = \
                         groups_with_single_zero * where_gz_not_zero
+            # preprocess the original input so that we set 0 everywhere
+            # except for groups that contain a single zero, to avoid computing
+            # multiplications on other groups
             prod_without_zeros_in = where_to_take_prod_without_zeros * prod_in
             # TODO: put lazy switch here, if it'd work
             # this is pretty efficient already (no multiplication if 0), but
@@ -1212,7 +1277,8 @@ class Prod(CAReduce):
             prod_without_zeros = ProdWithoutZeros(axis=self.axis)(prod_without_zeros_in)
             prod_without_zeros = prod_without_zeros.dimshuffle(new_dims)
 
-            groups_without_zeros = T.eq(sum_where_zeros, 0.0).dimshuffle(new_dims)
+            groups_without_zeros = T.eq(sum_where_zeros, 0).dimshuffle(new_dims)
+
             final_grad = T.switch(groups_without_zeros, grad_case_without_zeros,
                             T.switch(where_single_zero, prod_without_zeros, 0.0) * gz)
 
@@ -1228,19 +1294,28 @@ class Prod(CAReduce):
         return ()
 
 class MulWithoutZeros(scalar.BinaryScalarOp):
-    identity = 1.
+    # "identity" here is zero, as in Reduce we don't want to start
+    # with reducing (1, something_else): this leads to the erronous
+    # case where a vector of zeros is reduced by binary reductions
+    # of (1, 0), which always ends up as 1 (ie. the result for
+    # the c version, for the product of [0,0,0], is 1.0)
+
+    identity = 0.
     commutative = True
     associative = True
-    def impl(self, *inputs):
-        if inputs[0] == 0.:
-            return inputs[1]
-        if inputs[1] == 0.:
-            return inputs[0]
-        return inputs[1] * inputs[2]
+    def impl(self, x, y):
+        if x == 0:
+            return y
+        if y == 0:
+            return x
+        return x*y
 
     def c_code(self, node, name, (x,y), (z, ), sub):
         return ("%(z)s = ((%(x)s == 0) ? (%(y)s) : " + \
                     "((%(y)s == 0) ? (%(x)s) : ((%(y)s)*(%(x)s))) );") % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 mul_without_zeros = MulWithoutZeros(scalar.upcast_out, name = 'mul_without_zeros')
 
 class ProdWithoutZeros(CAReduce):
@@ -1263,4 +1338,3 @@ class ProdWithoutZeros(CAReduce):
             return "ProdWithoutZeros"
         else:
             return "ProdWithoutZeros{%s}" % ", ".join(map(str, self.axis))
-

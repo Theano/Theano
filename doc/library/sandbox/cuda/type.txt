@@ -1,0 +1,19 @@
+..  ../../../../theano/sandbox/cuda/type.py
+..  ../../../../theano/sandbox/cuda/var.py
+..  ../../../../theano/sandbox/cuda/
+
+.. _libdoc_cuda_type:
+
+======================================================================
+:mod:`sandbox.cuda.type` --  The Type object for Cuda-allocated arrays
+======================================================================
+
+.. module:: sandbox.cuda.type
+   :platform: Unix, Windows
+   :synopsis: The Type object for CUDA-allocated arrays
+.. moduleauthor:: LISA
+
+API
+===
+
+

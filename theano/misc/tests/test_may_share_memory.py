@@ -37,17 +37,18 @@ def test_may_share_memory():
 
     #test that it raise error when needed.
     for a_,b_,rep in [(a,(0,),False),(a,1,False),(a,None,False),]:
-        if rep == False:
-            try:
-                may_share_memory(a_,b_)
-                raise Exception("An error was expected")
-            except TypeError:
-                pass
-            try:
-                may_share_memory(b_,a_)
-                raise Exception("An error was expected")
-            except TypeError:
-                pass
+        assert may_share_memory(a_,b_,False)==rep
+        assert may_share_memory(b_,a_,False)==rep
+        try:
+            may_share_memory(a_,b_)
+            raise Exception("An error was expected")
+        except TypeError:
+            pass
+        try:
+            may_share_memory(b_,a_)
+            raise Exception("An error was expected")
+        except TypeError:
+            pass
 
 if scipy_imported:
     def test_may_share_memory_scipy():
@@ -64,14 +65,18 @@ if scipy_imported:
 
             assert may_share_memory(a_,b_)==rep
             assert may_share_memory(b_,a_)==rep
-            if rep == False:
-                try:
-                    may_share_memory(a_,b_)
-                    raise Exception("An error was expected")
-                except:
-                    pass
-                try:
-                    may_share_memory(b_,a_)
-                    raise Exception("An error was expected")
-                except:
-                    pass
+
+        #test that it raise error when needed.
+        for a_,b_,rep in [(a,(0,),False),(a,1,False),(a,None,False)]:
+            assert may_share_memory(a_,b_,False)==rep
+            assert may_share_memory(b_,a_,False)==rep
+            try:
+                may_share_memory(a_,b_)
+                raise Exception("An error was expected")
+            except TypeError:
+                pass
+            try:
+                may_share_memory(b_,a_)
+                raise Exception("An error was expected")
+            except TypeError:
+                pass

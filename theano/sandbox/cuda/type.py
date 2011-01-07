@@ -8,10 +8,13 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, config
 from theano import scalar as scal
 
-import cuda_ndarray.cuda_ndarray as cuda
-import cuda_ndarray
-
-from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
+try:
+    # We must do those import to be able to create the full doc when nvcc
+    import cuda_ndarray.cuda_ndarray as cuda
+    from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
+    import cuda_ndarray
+except ImportError:
+    pass
 
 class CudaNdarrayType(Type):
 
@@ -53,14 +56,18 @@ class CudaNdarrayType(Type):
         self.dtype_specs() # error checking is done there
 
     def filter(self, data, strict=False, allow_downcast=None):
+        return self.filter_inplace(data, None, strict=strict, allow_downcast=allow_downcast)
+
+    def filter_inplace(self, data, old_data, strict=False, allow_downcast=None):
         if strict or allow_downcast or isinstance(data, cuda.CudaNdarray):
-            return cuda.filter(data, self.broadcastable, strict, None)
+            return cuda.filter(data, self.broadcastable, strict, old_data)
+
         else: # (not strict) and (not allow_downcast)
             # Check if data.dtype can be accurately casted to self.dtype
             if isinstance(data, numpy.ndarray):
                 up_dtype = scal.upcast(self.dtype, data.dtype)
                 if up_dtype == self.dtype:
-                    return cuda.filter(data, self.broadcastable, strict, None)
+                    return cuda.filter(data, self.broadcastable, strict, old_data)
                 else:
                     raise TypeError(
                         '%s, with dtype %s, cannot store a value of '
@@ -75,10 +82,10 @@ class CudaNdarrayType(Type):
                         type(data) is float and
                         self.dtype==theano.config.floatX):
                     return cuda.filter(converted_data, self.broadcastable,
-                            strict, None)
+                            strict, old_data)
                 elif numpy.all(data == converted_data):
                     return cuda.filter(converted_data, self.broadcastable,
-                            strict, None)
+                            strict, old_data)
                 else:
                     raise TypeError(
                         '%s, with dtype %s, cannot store accurately value %s, '
@@ -86,6 +93,7 @@ class CudaNdarrayType(Type):
                         'you can cast your data to %s.'
                         % (self, self.dtype, data, converted_data, self.dtype),
                         data)
+
 
     @staticmethod
     def bound(a):
@@ -112,10 +120,11 @@ class CudaNdarrayType(Type):
         if a.__class__ is b.__class__:
             a_l, a_h = CudaNdarrayType.bound(a)
             b_l, b_h = CudaNdarrayType.bound(b)
-            if b_l>=a_h or a_l >= b_h:
+            if b_l >= a_h or a_l >= b_h:
                 return False
             return True
-        else: return False
+        else:
+            return False
 
     @staticmethod
     def values_eq(a, b):
@@ -352,4 +361,8 @@ copy_reg.constructor(CudaNdarray_unpickler)
 def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
-copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+try:
+    # In case cuda is not imported.
+    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+except NameError:
+    pass

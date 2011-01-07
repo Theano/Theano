@@ -142,7 +142,7 @@ transparent.  But when you are using a GPU (or in future perhaps a remote machin
 is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
-``get_value``.  It will never copy the internal object (always return in
+``get_value``.  It will never cast the internal object (always return in
 constant time), but might return various datatypes depending on contextual
 factors (e.g. the compute device, the dtype of the numpy array).
 
@@ -153,6 +153,12 @@ factors (e.g. the compute device, the dtype of the numpy array).
 It is possible to use ``borrow=False`` in conjunction with
 ``return_internal_type=True``, which will return a deep copy of the internal object.
 This is primarily for internal debugging, not for typical use.
+
+For the transparent use of different type of optimization Theano can make,
+there is the policy that get_value() always return by default the same object type
+it received when the shared variable was created. So if you created manually data on 
+the gpu and create a shared variable on the gpu with this data, get_value will always
+return gpu data event when return_internal_type=False.
 
 *Take home message:*
 
@@ -181,6 +187,30 @@ follows.
 This pattern works regardless of the compute device, and when the compute device
 makes it possible to expose Theano's internal variables without a copy, then it
 goes as fast as an in-place update.
+
+
+When shared variables are allocated on the GPU, the transfers to and from GPU device memory can
+be costly.  Here are a few tips to ensure fast and efficient use of GPU memory and bandwidth:
+
+* Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This meant that sometimes,
+  GPU memory for the new value would be allocated before the old memory was released. If you're
+  running near the limits of GPU memory, this could cause you to run out of GPU memory
+  unnecessarily.  *Solution*: update to a newer version of Theano.
+
+* If you are going to swap several chunks of data in and out of a shared variable repeatedly,
+  you will want to reuse the memory that you allocated the first time if possible - it is both
+  faster and more memory efficient.
+  *Solution*: upgrade to a recent version of Theano (>0.3.0) and consider padding your source
+  data to make sure that every chunk is the same size.
+
+* It is also worth mentioning that, current GPU copying routines support only contiguous memory.
+  So Theano must make the ``value`` you provide ``c_contiguous`` prior to copying it.
+  This can require an extra copy of the data on the host.  *Solution*: make sure that the value
+  you assign to a CudaNdarraySharedVariable is *already*  ``c_contiguous``.
+
+(Further remarks on the current implementation of the GPU version of set_value() can be found
+here: :ref:`libdoc_cuda_var`)
+
 
 Retrieving and assigning via the .value property
 ------------------------------------------------

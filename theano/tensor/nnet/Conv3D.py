@@ -595,5 +595,5 @@ def computeH(V,W,b,d):
     return H
 
 
-from . import ConvGrad3D
-from . import ConvTransp3D
+import ConvGrad3D
+import ConvTransp3D

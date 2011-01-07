@@ -163,19 +163,16 @@ class Container(object):
             if value is None:
                 self.storage[0] = None
                 return
-            if self.type.__class__.__name__ == "CudaNdarrayType" and isinstance(value,numpy.ndarray):
-                #The filter method of CudaNdarray alloc a new memory region on the gpu.
-                #The ref count will be decremented after that.
-                #That cause 2 region allocated at the same time!
-                #We decrement the memory reference conter now to try to lower the memory usage.
-                self.storage[0] = None
 
             kwargs = {}
             if self.strict:
                 kwargs['strict'] = True
             if self.allow_downcast is not None:
                 kwargs['allow_downcast'] = self.allow_downcast
-            self.storage[0] = self.type.filter(value, **kwargs)
+            if hasattr(self.type,'filter_inplace'):
+                self.storage[0] = self.type.filter_inplace(value, self.storage[0], **kwargs)
+            else:
+                self.storage[0] = self.type.filter(value, **kwargs)
 
         except Exception, e:
             e.args = e.args + (('Container name "%s"' % self.name),)

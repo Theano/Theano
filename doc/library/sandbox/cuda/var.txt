@@ -1,0 +1,21 @@
+..  ../../../../theano/sandbox/cuda/type.py
+..  ../../../../theano/sandbox/cuda/var.py
+..  ../../../../theano/sandbox/cuda/
+
+.. _libdoc_cuda_var:
+
+===================================================================
+:mod:`sandbox.cuda.var` --  The Variables for Cuda-allocated arrays
+===================================================================
+
+.. module:: sandbox.cuda.var
+   :platform: Unix, Windows
+   :synopsis: The Variables object for CUDA-allocated arrays
+.. moduleauthor:: LISA
+
+API
+===
+
+.. autoclass:: theano.sandbox.cuda.var.CudaNdarraySharedVariable
+    :members: get_value, set_value
+

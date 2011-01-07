@@ -1,0 +1,20 @@
+
+.. _libdoc_sandbox_cuda:
+
+===========================================
+:mod:`sandbox.cuda` -- The CUDA GPU backend
+===========================================
+
+.. module:: sandbox.cuda
+   :platform: Unix, Windows
+   :synopsis: Code for GPU programming
+.. moduleauthor:: LISA
+
+.. toctree::
+    :maxdepth: 1
+
+    var
+    type
+
+
+
