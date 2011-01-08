@@ -316,8 +316,14 @@ class ConvOp(Op):
         :param kshp_logical_top_aligned: idem
         """
 
-        assert isinstance(dx,(int,None)),'ConvOp.__init__ param dx must be an int'
-        assert isinstance(dy,(int,None)),'ConvOp.__init__ param dy must be an int'
+        if dx is not None:
+            if  int(dx) != dx:
+                raise TypeError('ConvOp.__init__ param dx must be an int', dx)
+            dx = int(dx)
+        if dy is not None:
+            if  int(dy) != dy:
+                raise TypeError('ConvOp.__init__ param dy must be an int', dy)
+            dy = int(dy)
 
         all_shape = imshp is not None and kshp is not None and \
                     nkern is not None and bsize is not None
