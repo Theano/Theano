@@ -87,12 +87,21 @@ The base class (Op) says two objects are equal if (and only if)
 they are the same object.
 Writing these boilerplate definitions ensures that the logic of the equality comparison is always explicit.
 
-TODO: I think an example of the following, where we want them to compare equal,
-and when we don't, would be very illustrative.  This is a good way to develop
-the OP CONTRACT.
+It is an essential part of the OP CONTRACT (TODO LINK) that if two Ops compare
+equal, then they must compute the same result when presented with the same
+inputs.  Here, if we allocated another instance of ``Fibby`` by typing ``fibby2
+= Fibby()`` then we would have two Ops that behave identically.
 
-Ops constructed from the same class but with different constructors to the
-arguments, these Ops might or might not compare equal.
+When should the implementation of ``__eq__`` be more complicated?
+If ``Fibby.__init__`` had parameters, then we could
+have configured ``fibby2`` differently from ``fibby`` by passing different
+arguments to the constructor. If we had done that, and if that different
+configuration made ``fibby2`` compute different results from ``fibby`` (for the
+same inputs) then we would have to add logic to the ``__eq__`` and ``__hash__``
+function so that he two ``Fibby`` Ops would *not be equal*.  The reason why: Theano's merge
+optimization looks for Ops comparing equal and merges them. If two Ops compare
+equal but don't always produce equal results from equal inputs, then you might
+see wrong calculation.
 
 
 The ``make_node`` method creates a node to be included in the expression graph.
