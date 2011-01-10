@@ -1,4 +1,5 @@
 import numpy
+import numpy.random
 import theano
 from theano import shared, function
 import theano.tensor as T
@@ -410,8 +411,20 @@ def test_neibs_grad_verify_grad_warp_centered():
         except NotImplementedError:
             pass
 
+def test_neibs2images_crash_on_grad():
+    # say we had images of size (2,3,20,20)
+    # then we extracted 2x2 neighbors on this, we get (2*3*10*10, 4)
+    neibs = T.dmatrix()
+    neibs_val = numpy.random.rand(600,4)
+    to_images = T.sum(neibs2images(neibs, (2,2), (2,3,20,20)))
+    g = T.grad(to_images, neibs)
+    fn = theano.function([neibs], to_images)
+    print "Compiled"
+    fn(neibs_val)
+
 if __name__ == '__main__':
     #test_neibs_gpu()
     #test_neibs()
-    test_neibs_grad_verify_grad()
+    #test_neibs_grad_verify_grad()
+    test_neibs2images_crash_on_grad()
 
