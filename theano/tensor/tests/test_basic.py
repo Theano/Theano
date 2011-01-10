@@ -422,6 +422,9 @@ _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),)
                                           corner_case = (corner_case,),
                                           empty = (numpy.asarray([]),))
 
+_good_broadcast_unary_normal_float_no_empty = copy(_good_broadcast_unary_normal_float)
+del _good_broadcast_unary_normal_float_no_empty['empty']
+
 _good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     integers = (randint_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,),
@@ -487,12 +490,15 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_ev
                                          good = _good_broadcast_unary_normal_float,
                                          inplace = True)
 
+#numpy.vectorize don't handle correctly empty ndarray.
+#see in their file numpy/lib/function_base.py in class vectorize.__call__
+#This happen in float32 mode.
 RoundHalfAwayFromZeroTester = makeBroadcastTester(op = round_half_away_from_zero,
                                   expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                  good = _good_broadcast_unary_normal_float)
+                                  good = _good_broadcast_unary_normal_float_no_empty)#_good_broadcast_unary_normal_float)
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half_away_from_zero_inplace,
                                          expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                         good = _good_broadcast_unary_normal_float,
+                                         good = _good_broadcast_unary_normal_float_no_empty,
                                          inplace = True)
 
 SqrTester = makeBroadcastTester(op = sqr,
