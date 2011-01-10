@@ -692,9 +692,15 @@ class test_fusion(unittest.TestCase):
             #ret = theano._asarray(numpy.random.rand(*shp),dtype=dtype)
             ret = numpy.zeros(shp, dtype=dtype)+num
             return ret
-        fw, fx, fy, fz = fmatrices('wxyz')
-        dw, dx, dy, dz = dmatrices('wxyz')
-        ix, iy, iz = imatrices('xyz')
+        fw, fx, fy, fz = [theano.tensor.tensor(dtype='float32',
+                                               broadcastable=[False]*len(shp),
+                                               name=n) for n in 'wxyz']
+        dw, dx, dy, dz = [theano.tensor.tensor(dtype='float64',
+                                               broadcastable=[False]*len(shp),
+                                               name=n) for n in 'wxyz']
+        ix, iy, iz = [theano.tensor.tensor(dtype='int32',
+                                           broadcastable=[False]*len(shp),
+                                           name=n) for n in 'xyz']
         fv = fvector('r')
         fwv = my_init(shp,'float32',1)
         fxv = my_init(shp,'float32',2)
@@ -849,8 +855,29 @@ class test_fusion(unittest.TestCase):
         mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
         self.do(mode, shared, shp)
 
+    def test_elemwise_fusion_4d(self):
+        shp=(5,5,5,5)
+        mode=copy.copy(compile.mode.get_default_mode())
+        #we need the optimisation enabled and the canonicalize.
+        #the canonicalize is needed to merge multiplication/addition by constant.
+        mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
+        self.do(mode, shared, shp)
+
     def test_gpu_fusion(self):
         shp=(5,5)
+        #we need the optimisation enabled, debug do this.
+        if theano.config.mode == "FAST_COMPILE":
+            mode = theano.compile.mode.get_mode("FAST_RUN").including('local_elemwise_fusion','canonicalize','gpu')
+        else:
+            mode = theano.compile.mode.get_default_mode().including('local_elemwise_fusion','canonicalize','gpu')
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
+        self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
+
+    def test_gpu_fusion_4d(self):
+        shp=(5,5,5,5)
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including('local_elemwise_fusion','canonicalize','gpu')
