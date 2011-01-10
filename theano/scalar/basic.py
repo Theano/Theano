@@ -1304,8 +1304,11 @@ def round_half_away_from_zero_(a):
     else:
         return numpy.ceil(a - 0.5)
 
-round_half_away_from_zero_vec64 = numpy.vectorize(round_half_away_from_zero_)
-round_half_away_from_zero_vec32 = numpy.vectorize(round_half_away_from_zero_,otypes=['float32'])
+round_half_away_from_zero_vec64 = numpy.vectorize(round_half_away_from_zero_,
+                                                  doc='round_half_away_from_zero_vec64')
+round_half_away_from_zero_vec32 = numpy.vectorize(round_half_away_from_zero_,
+                                                  doc='round_half_away_from_zero_vec32',
+                                                  otypes=['float32'])
 
 def round_half_away_from_zero_vec(a):
     if getattr(a, 'dtype',None) == numpy.float32:
