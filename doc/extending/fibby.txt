@@ -87,7 +87,7 @@ The base class (Op) says two objects are equal if (and only if)
 they are the same object.
 Writing these boilerplate definitions ensures that the logic of the equality comparison is always explicit.
 
-It is an essential part of the OP CONTRACT (TODO LINK) that if two Ops compare
+It is an essential part of the :ref:`op_contract` that if two Ops compare
 equal, then they must compute the same result when presented with the same
 inputs.  Here, if we allocated another instance of ``Fibby`` by typing ``fibby2
 = Fibby()`` then we would have two Ops that behave identically.
