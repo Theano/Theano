@@ -233,6 +233,7 @@ def neibs2images(neibs, neib_shape, original_shape):
     
     new_neib_shape = T.stack( original_shape[-1]/neib_shape[1], neib_shape[1] )
     return images2neibs(neibs.dimshuffle('x','x',0,1), new_neib_shape).reshape(original_shape)
+    #return images2neibs(neibs.reshape((1,1,neibs.shape[0],neibs.shape[1])), new_neib_shape).reshape(original_shape)
     
    
 # This is work in progress
