@@ -676,7 +676,7 @@ def local_fill_to_alloc(node):
         else:
             # we are broadcasting both v and r,
             # the output shape must be computed
-            # 
+            #
             # TODO: implement this case (including a test!)
             #
             #  I think the strategy should be to extend the shorter shape vector
@@ -2972,10 +2972,10 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                           GPU kernel currently have a limit of 256 bytes for
                           the size of all parameter passed to it. As currently
                           we pass many information only by parameter, we must
-                          limit how many op we fuse together to don't bust that 
+                          limit how many op we fuse together to don't bust that
                           256 limit.
 
-                          On the CPU we limit to 1024 input variable to the 
+                          On the CPU we limit to 1024 input variable to the
                           resulting fused op. This is big enought that
                           if we hit it, I'm not sure it will affect performance.
     """
