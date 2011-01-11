@@ -2968,7 +2968,16 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     :param OP: GpuElemwise or Elemwise class (the one that we want to fuse)
 
     :param max_input_fct: a function that returns the maximum number of inputs
-                          that this elemwise can take (useful for GpuElemwise)
+                          that this elemwise can take (useful for GpuElemwise).
+                          GPU kernel currently have a limit of 256 bytes for
+                          the size of all parameter passed to it. As currently
+                          we pass many information only by parameter, we must
+                          limit how many op we fuse together to don't bust that 
+                          256 limit.
+
+                          On the CPU we limit to 1024 input variable to the 
+                          resulting fused op. This is big enought that
+                          if we hit it, I'm not sure it will affect performance.
     """
     def local_fuse(node):
         """
