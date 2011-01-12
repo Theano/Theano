@@ -3528,6 +3528,10 @@ class T_get_constant_value(unittest.TestCase):
         self.assertRaises(TypeError, get_constant_value, a[1])
         self.assertRaises(TypeError, get_constant_value, a[2])
 
+        # Test the case SubTensor(Shape(v)) when the dimensions
+        # is broadcastable.
+        v = tensor.row()
+        assert get_constant_value(v.shape[0])==1
 
 if __name__ == '__main__':
     if 1:

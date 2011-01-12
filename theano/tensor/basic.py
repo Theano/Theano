@@ -404,6 +404,15 @@ def get_constant_value(v):
                 ret = get_constant_value(ret)
                 #MakeVector can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
+
+            # This is needed when we take the grad as the Shape op
+            # are not already changed into MakeVector
+            if (v.owner.inputs[0].owner and
+                isinstance(v.owner.inputs[0].owner.op,
+                           theano.tensor.Shape)):
+                if v.owner.inputs[0].owner.inputs[0].type.broadcastable[v.owner.op.idx_list[0]]:
+                    return numpy.asarray(1)
+
     raise TypeError(v)
 
 
