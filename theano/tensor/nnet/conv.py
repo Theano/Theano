@@ -238,7 +238,7 @@ class ConvOp(Op):
 
 
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None,
-            dx=None, dy=None,
+            dx=1, dy=1,
             output_mode='valid',
 
             unroll_batch=None,
@@ -316,15 +316,17 @@ class ConvOp(Op):
         :param kshp_logical: idem
         :param kshp_logical_top_aligned: idem
         """
+        # We must continue to consider None as 1 for backward compatibility.
+        if dx is None: dx = 1
+        if dy is None: dy = 1
 
-        if dx is not None:
-            if  int(dx) != dx:
-                raise TypeError('ConvOp.__init__ param dx must be an int', dx)
-            dx = int(dx)
-        if dy is not None:
-            if  int(dy) != dy:
-                raise TypeError('ConvOp.__init__ param dy must be an int', dy)
-            dy = int(dy)
+        if  int(dx) != dx:
+            raise TypeError('ConvOp.__init__ param dx must be an int', dx)
+        dx = int(dx)
+
+        if  int(dy) != dy:
+            raise TypeError('ConvOp.__init__ param dy must be an int', dy)
+        dy = int(dy)
 
         all_shape = imshp is not None and kshp is not None and \
                     nkern is not None and bsize is not None
@@ -355,8 +357,6 @@ class ConvOp(Op):
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
-        if self.dx is None: self.dx=1
-        if self.dy is None: self.dy=1
         self.verbose=verbose
         self.version=version
 
