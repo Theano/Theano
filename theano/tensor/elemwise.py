@@ -1,17 +1,16 @@
-import sys
-import elemwise_cgen as cgen
+from copy import copy
 
-import numpy, theano
-from theano import gof, Variable
+import numpy
+
+import elemwise_cgen as cgen
+import theano
+from theano import gof
 from theano.gof import Op
 from theano import scalar
 from theano.scalar import Scalar
-from theano import printing
 from theano.printing import pprint
 from theano.gof.python25 import all, any
-from copy import copy, deepcopy
-
-from theano.tensor.tsor_apply import Apply
+from theano.gof.apply_shape import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops
