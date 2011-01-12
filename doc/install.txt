@@ -115,6 +115,11 @@ directory; see the `virtualenv documentation`_ for details.
     If you do not have ``pip`` installed but do have ``easy_install``, you can
     get ``pip`` by simply typing ``easy_install pip``.
 
+.. note::
+
+    The tests should be run with the ``THEANO_FLAGS``(defined later)
+    ``device=cpu`` (default). Otherwise, it will generate false errors.
+
 .. _distribute: http://packages.python.org/distribute/
 .. _setuptools: http://pypi.python.org/pypi/setuptools
 .. _easy_install: http://packages.python.org/distribute/easy_install.html
@@ -228,6 +233,11 @@ You can also run them in-place from the Mercurial checkout directory by typing
 ``THEANO_FLAGS`` is an environment variable that define Theano flags
 (:ref:`libdoc_config`).  For Windows users, you can remove it or see the
 documentation to know how to configure them differently.
+
+.. note::
+
+    The tests should be run with the ``THEANO_FLAGS`` ``device=cpu`` (default).
+    Otherwise, it will generate false errors.
 
 All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
