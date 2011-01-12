@@ -77,7 +77,7 @@ class SoftmaxWithBias(gof.Op):
 
     def infer_shape(self, node, shape):
         return [shape[0]]
-    
+
     def c_headers(self):
         return ['<iostream>','<cmath>']
 
@@ -357,7 +357,7 @@ def local_softmax_with_bias(node):
             for x_in in x.owner.inputs:
                 if list(x_in.type.broadcastable) == [True, False]:
                     # print isinstance(x_in.owner.op, tensor.DimShuffle)
-                    #since specialization comes relatively late in optimization, 
+                    #since specialization comes relatively late in optimization,
                     # we don't want to put in extra DimShuffles un-necessarily.
                     if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle)\
                             and list(x_in.owner.inputs[0].type.broadcastable)==[False]:
@@ -380,21 +380,21 @@ def local_softmax_with_bias(node):
             if vectors:
                 #we're in business...
                 if len(vectors)>1:
-                  vector_sum = tensor.add(*vectors)
+                    vector_sum = tensor.add(*vectors)
                 else:
-                  vector_sum = vectors[0]
+                    vector_sum = vectors[0]
 
                 if len(non_vectors)>1:
-                  non_vector_sum = tensor.add(*non_vectors)
+                    non_vector_sum = tensor.add(*non_vectors)
                 else:
-                  non_vector_sum = non_vectors[0]
+                    non_vector_sum = non_vectors[0]
 
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except:
                     #if our arguments have the wrong types, then forget about it
                     return
-                
+
                 if sm_bias.type == node.outputs[0].type:
                     #This condition is not always true. See the test
                     #nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
@@ -552,7 +552,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
     softmax(x[i]) is the i'th distribution over len(x[i]) options
     argmax(x) is the index of x's greatest element
-    y_idx[i] is an integer index, encoding a 1-hot distribution. 
+    y_idx[i] is an integer index, encoding a 1-hot distribution.
 
     In practice, when we are trying to do classification, we have one row in x
     and y_idx per example, and y[i] is the index of the (correct) class of the
@@ -617,14 +617,14 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         am = numpy.zeros_like(y_idx)
         for i in xrange(sm.shape[0]):
             #add the bias vector to the i'th row of x
-            row = x[i] + b 
+            row = x[i] + b
 
             #get the maximum value of i'th row for numerically safe softmax / nll
             am[i] = numpy.argmax(row)
             m = row[am[i]]
 
             #compute the unnormalized softmax, and normalization constant
-            sm[i] = numpy.exp(row - m) 
+            sm[i] = numpy.exp(row - m)
             sum_j = numpy.sum(sm[i]) # sum_j(exp(x[j] - m))
 
             #normalized our softmax
@@ -916,7 +916,7 @@ crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 class CrossentropyCategorical1Hot(gof.Op):
 
-    """Compute the cross entropy between a coding distribution and 
+    """Compute the cross entropy between a coding distribution and
     a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0]
 
     .. math::
@@ -973,7 +973,7 @@ crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 def crossentropy_to_crossentropy_with_softmax_with_bias(env):
     """
     This is a stabilization optimization
-    
+
     ..note: not a local optimization because we are replacing outputs from several nodes at once
     """
 
@@ -1002,7 +1002,7 @@ def crossentropy_to_crossentropy_with_softmax(env):
     This is a stabilization optimization that is more general then crossentropy_to_crossentropy_with_softmax_with_bias
 
     It must be executed after local_softmax_with_bias optimization in specialize
-    
+
     : todo: This is a stabilization optimization! How to make this more cleanly?
 
     ..note: not a local optimization because we are replacing outputs from several nodes at once
@@ -1341,7 +1341,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if incr.type not in (dvector, fvector):
                 return
 
-            # here we know that we are incrementing some part of matrix z by a vector 
+            # here we know that we are incrementing some part of matrix z by a vector
 
             # unless the user has taken care to mark that the data and labels have the
             # same number of rows, we cannot be sure here that
@@ -1401,7 +1401,7 @@ def categorical_crossentropy(coding_dist, true_dist):
     We ultimately don't want the polymorphism, and will move this function to pylearn.algorithms.cost.
     The 1hot version will be removed.
     The length of the documentation here is a form of code smell.
-    
+
     Return the cross-entropy between an approximating distribution and a true distribution
 
     The cross entropy between two probability distributions measures the average number of bits
@@ -1527,4 +1527,3 @@ class Prepend_scalar_to_each_row(gof.Op):
 prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
-
