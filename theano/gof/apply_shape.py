@@ -1,4 +1,7 @@
 """Apply for use with Tensors that implements shape propagation via variable.tag.shape
+
+This is not used currently very used. It appear in some case, but I'm not sure it if work or if it is used by default.
+It could help the current system to make it detect problem earlier when contructing the graph instead of during optimization.
 """
 import sys
 from theano import gof
@@ -37,5 +40,3 @@ class Apply(gof.Apply):
 
         for o, oshp in zip(outputs, oshapes):
             o.tag.shape = oshp
-
-

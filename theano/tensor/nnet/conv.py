@@ -10,12 +10,14 @@ See especially conv2d().
 
 __docformat__ = "restructuredtext en"
 
-import sys, logging
+import logging
+
 import numpy
+
 import theano
 import theano.tensor as tensor
 from theano import gof, Op, tensor, config
-from theano.tensor.tsor_apply import Apply
+from theano.gof.apply_shape import Apply
 from theano.gof.python25 import any
 
 imported_scipy_signal = False

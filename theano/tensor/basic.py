@@ -13,7 +13,7 @@ import numpy, theano
 
 from theano import gof, shared
 from theano.gof import Variable, Op, Type, Constant,  Value
-from theano.tensor.tsor_apply import Apply
+from theano.gof.apply_shape import Apply
 
 from theano import gradient
 
