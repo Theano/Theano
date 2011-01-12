@@ -130,7 +130,7 @@ if cuda_available:
     import cuda_ndarray
 
 
-def use(device, force=False):
+def use(device, force=False, move_to_gpu_automatically = True):
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
@@ -172,9 +172,10 @@ def use(device, force=False):
 
     elif use.device_number != device:
         _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
-    optdb.add_tags('gpu',
-                   'fast_run',
-                   'inplace')
+    if move_to_gpu_automatically:
+        optdb.add_tags('gpu',
+                       'fast_run',
+                       'inplace')
 
     if force:
         try:
@@ -201,3 +202,6 @@ def handle_shared_float32(tf):
 
 if config.device.startswith('gpu'):
     use(config.device, config.force_device)
+elif config.init_gpu_device:
+    print "Will init the gpu to use a specific gpu device. This don't move automatically cpu code to gpu. For that try the theano flags device."
+    use(config.init_gpu_device, config.force_device, False)

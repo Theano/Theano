@@ -78,7 +78,7 @@ import scalar
 import gradient
 import gof
 
-if config.device.startswith('gpu'):
+if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
 
 ## import scalar_opt
