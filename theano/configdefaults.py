@@ -18,17 +18,20 @@ AddConfigVar('floatX',
 #gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
 #gpuX mean use the gpu number X.
 AddConfigVar('device',
-        "Default device for computations. If gpu, try to move computation to it when possible.",
-        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
+        "Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.",
+        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)]),
+        allow_override=False
         )
 
 AddConfigVar('init_gpu_device',
-        "Gpu device to use for computations, but don't automatically try to move the computation to this device. Usefull to run the test on a specific gpu.",
-        EnumStr('', *['gpu%i'%i for i in range(4)])
+        "Initialize the gpu device to use. This don't change the default behavior. We don't default to try to move the computation to it. We don't default to put shared variable of float32 on it. Usefull to run the test on a specific gpu.",
+        EnumStr('', *['gpu%i'%i for i in range(4)]),
+        allow_override=False
         )
 
 AddConfigVar('force_device',
         "Raise an error if we can't use the specified device",
+        allow_override=False,
         BoolParam(False)
         )
 

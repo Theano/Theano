@@ -130,7 +130,8 @@ if cuda_available:
     import cuda_ndarray
 
 
-def use(device, force=False, move_to_gpu_automatically = True):
+def use(device, force=False, default_to_move_computation_to_gpu = True,
+        move_shared_float32_to_gpu = True):
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
@@ -160,7 +161,8 @@ def use(device, force=False, move_to_gpu_automatically = True):
                 #warning To let people see that the gpu will be used.
                 _logger.warn("We let the driver select the gpu device to use")
 
-            handle_shared_float32(True)
+            if move_shared_float32_to_gpu:
+                handle_shared_float32(True)
             use.device_number = device
             cuda_enabled = True
         except (EnvironmentError, ValueError), e:
@@ -172,7 +174,8 @@ def use(device, force=False, move_to_gpu_automatically = True):
 
     elif use.device_number != device:
         _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
-    if move_to_gpu_automatically:
+
+    if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu',
                        'fast_run',
                        'inplace')
@@ -203,5 +206,6 @@ def handle_shared_float32(tf):
 if config.device.startswith('gpu'):
     use(config.device, config.force_device)
 elif config.init_gpu_device:
-    print "Will init the gpu to use a specific gpu device. This don't move automatically cpu code to gpu. For that try the theano flags device."
-    use(config.init_gpu_device, config.force_device, False)
+    assert config.device=="cpu", "We can use the theano flags init_gpu_device only when the theano flags device=='cpu'"
+    print "Will init the gpu to use a specific gpu device. This don't default tomove computation and allocate shared variable of float32 to this device. For that try the theano flags device."
+    use(config.init_gpu_device, config.force_device, False, False)

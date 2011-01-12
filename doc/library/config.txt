@@ -95,13 +95,15 @@ Config Attributes
 
 .. attribute:: device
 
-    String value: either 'cpu', gpu, 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+    String value: either 'cpu', 'gpu', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
 
+    Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.
     Choose the default compute device for theano graphs.  Setting this to a
-    gpu string will make the corresponding graphics device the default storage
-    for shared tensor variables with dtype float32. 'gpu' lets the driver select
-    the gpu to use, while 'gpu?' makes theano try to use a specific device. If we are not
-    able to use the gpu, we fall back to the cpu.
+    gpu* string will make theano to try by default to move computation to it.
+    Also it will make theano put by default shared variable of float32 on it.
+   'gpu' lets the driver select the gpu to use, while 'gpu?' makes theano try
+    to use a specific device. If we are not able to use the gpu, we fall back
+    to the cpu.
 
 .. attribute:: force_device
 
@@ -111,6 +113,16 @@ Config Attributes
 
     If True, we raise an error if we can't use the specified device. If False, we fall back to the cpu.
     Have precedence over the device flag.
+
+.. attribute:: init_gpu_device
+
+    String value: either '', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+
+    Initialize the gpu device to use. This don't change anything other. So by
+    default we continue to do computation on the cpu and we keep shared variable
+    on the cpu memory.
+
+    When its value is gpu*, the theano flag device must be cpu.
 
 .. attribute:: floatX
 
