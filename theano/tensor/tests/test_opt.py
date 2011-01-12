@@ -855,8 +855,8 @@ class test_fusion(unittest.TestCase):
         mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
         self.do(mode, shared, shp)
 
-    def test_elemwise_fusion_3d(self):
-        shp=(3,3,3)
+    def test_elemwise_fusion_4d(self):
+        shp=(3,3,3,3)
         mode=copy.copy(compile.mode.get_default_mode())
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
@@ -876,8 +876,8 @@ class test_fusion(unittest.TestCase):
 
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
-    def test_gpu_fusion_4d(self):
-        shp=(5,5,5,5)
+    def test_gpu_fusion_3d(self):
+        shp=(5,5,5)
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including('local_elemwise_fusion','canonicalize','gpu')
