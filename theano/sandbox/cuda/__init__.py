@@ -120,8 +120,8 @@ if cuda_available:
     shared_constructor = float32_shared_constructor
 
     import basic_ops
-    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
-            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous, 
+    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
+            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
             GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape, GpuAlloc,
             GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
                            , scalar, vector, matrix, row, col, tensor3, tensor4)
@@ -137,7 +137,7 @@ def use(device, force=False, move_to_gpu_automatically = True):
                                "with error:\n%s" % (device, cuda_initialization_error_message))
     if not cuda_available:
         warning('CUDA is installed, but device %s is not available' % device)
-        return 
+        return
 
     if device == 'gpu':
         pass
@@ -159,7 +159,7 @@ def use(device, force=False, move_to_gpu_automatically = True):
             else:
                 #warning To let people see that the gpu will be used.
                 _logger.warn("We let the driver select the gpu device to use")
-                
+
             handle_shared_float32(True)
             use.device_number = device
             cuda_enabled = True
