@@ -323,7 +323,10 @@ class DimShuffle(Op):
         for i, v in enumerate(self.new_order):
             if v != 'x':
                 grad_order[v] = i
-        return [DimShuffle(gz.type.broadcastable, grad_order, inplace=True)(Elemwise(scalar.identity)(gz))]
+        # Do not make the DimShuffle inplace as an optimization at the
+        # canonicalization optimization phase will remove the implace.
+        # The inplace will be reintroduced automatically later in the graph.
+        return [DimShuffle(gz.type.broadcastable, grad_order)(Elemwise(scalar.identity)(gz))]
 
 
 
