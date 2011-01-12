@@ -3036,18 +3036,18 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
 
                 do_fusion=True
                 try:
-                    s_input = []
+                    tmp_s_input = []
                     #we should not put duplicate input into s_inputs and inputs
                     for ii in i.owner.inputs:
                         if ii in inputs:
-                            s_input.append(s_inputs[inputs.index(ii)])
+                            tmp_s_input.append(s_inputs[inputs.index(ii)])
                         elif ii in tmp_input:
-                            s_input.append(tmp_scalar[tmp_input.index(ii)])
+                            tmp_s_input.append(tmp_scalar[tmp_input.index(ii)])
                         else:
-                            s_input.append(scalar.Scalar(ii.dtype).make_variable())
+                            tmp_s_input.append(scalar.Scalar(ii.dtype).make_variable())
                             tmp_input.append(ii)
-                            tmp_scalar.append(s_input[-1])
-                    s_op=i.owner.op.scalar_op(*s_input)
+                            tmp_scalar.append(tmp_s_input[-1])
+                    s_op=i.owner.op.scalar_op(*tmp_s_input)
 
                     #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
                     i.owner.op.scalar_op.c_code(s_op.owner,"test_presence_of_c_code",
