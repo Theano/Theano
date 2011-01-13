@@ -418,7 +418,7 @@ def test_neibs2images_crash_on_grad():
     neibs_val = numpy.random.rand(600,4)
     to_images = T.sum(neibs2images(neibs, (2,2), (2,3,20,20)))
     g = T.grad(to_images, neibs)
-    fn = theano.function([neibs], to_images)
+    fn = theano.function([neibs], to_images, mode=mode_without_gpu)
     print "Compiled"
     fn(neibs_val)
 
