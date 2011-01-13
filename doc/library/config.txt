@@ -88,17 +88,16 @@ Environment Variables
     For example, to override system-wide settings with personal ones,
     set ``THEANORC=/etc/theanorc:~/.theanorc``.
 
-The rest of this page describes some of the more common and important flags
-that you might want to use.  For the complete list (including documentation),
+Config Attributes
+=====================
+
+The list below describes some of the more common and important flags
+that you might want to use. For the complete list (including documentation),
 import theano and print the config variable, as in:
 
 .. code-block:: bash
 
     python -c 'import theano; print theano.config' | less
-
-
-Config Attributes
-=====================
 
 .. attribute:: device
 
@@ -176,7 +175,7 @@ Config Attributes
 
     When the mode is Mode, it sets the default optimizer used.
 
-.. attribute:: warn.ignore_bug_before
+.. attribute:: config.warn.ignore_bug_before
 
     String value: 'None', 'all', '0.3'
 
@@ -223,19 +222,19 @@ Config Attributes
     This directory stores dynamically-compiled modules for a particular
     architecture.
 
-.. attribute:: blas.ldflags
+.. attribute:: config.blas.ldflags
 
     Default: '-lblas'
 
     Link arguments to link against a (Fortran) level-3 blas implementation.
 
-.. attribute:: cuda.root
+.. attribute:: config.cuda.root
 
     Default: $CUDA_ROOT or failing that, "/usr/local/cuda"
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
-.. attribute:: gcc.cxxflags
+.. attribute:: config.gcc.cxxflags
 
     Default: ""
 
