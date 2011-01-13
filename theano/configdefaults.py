@@ -19,20 +19,19 @@ AddConfigVar('floatX',
 #gpuX mean use the gpu number X.
 AddConfigVar('device',
         "Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.",
-        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)]),
-        allow_override=False
+        EnumStr('cpu', 'gpu', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
+                allow_override=False)
         )
 
 AddConfigVar('init_gpu_device',
         "Initialize the gpu device to use. This don't change the default behavior. We don't default to try to move the computation to it. We don't default to put shared variable of float32 on it. Usefull to run the test on a specific gpu.",
-        EnumStr('', *['gpu%i'%i for i in range(4)]),
-        allow_override=False
+        EnumStr('', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
+                allow_override=False)
         )
 
 AddConfigVar('force_device',
         "Raise an error if we can't use the specified device",
-        allow_override=False,
-        BoolParam(False)
+        BoolParam(False, allow_override=False)
         )
 
 #Don't add FAST_RUN_NOGC to this list(as well as other ALL CAPS short cut)
