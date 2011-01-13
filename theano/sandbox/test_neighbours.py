@@ -28,7 +28,7 @@ def test_neibs():
     neibs = f()
     #print neibs
     g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
-    
+
     #print g()
     assert numpy.allclose(images.value,g())
 
@@ -149,7 +149,7 @@ def test_neibs_manual():
        [88, 89, 92, 93],
        [90, 91, 94, 95]])
     g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
-    
+
     #print g()
     assert numpy.allclose(images.value,g())
 
@@ -198,7 +198,7 @@ def test_neibs_step_manual():
        [135, 136, 137, 140, 141, 142, 145, 146, 147],
        [137, 138, 139, 142, 143, 144, 147, 148, 149]])
         #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
-        
+
         #print g()
         #assert numpy.allclose(images.value,g())
 
@@ -243,7 +243,7 @@ def test_neibs_wrap_centered_step_manual():
                  [ 13,  14,  10,  18,  19,  15,  23,  24,  20]]
 
     #TODO test discontinous image
-            
+
     for shp_idx,(shape,neib_shape,neib_step,expected) in enumerate([
         [(7,8,5,5),(3,3),(2,2),expected1],
         [(7,8,5,5),(3,3),(3,3),expected2],
@@ -274,13 +274,13 @@ def test_neibs_wrap_centered_step_manual():
                 assert GpuImages2Neibs in [type(node.op) for node in f.maker.env.toposort()]
 
             #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
-        
+
             #assert numpy.allclose(images.value,g())
 
 
 def test_neibs_gpu():
     if cuda.cuda_available == False:
-       raise SkipTest('Optional package cuda disabled')
+        raise SkipTest('Optional package cuda disabled')
     for shape, pshape in [((100,40,18,18),(2,2)),
                           ((100,40,6,18),(3,2)),
                           ((10,40,66,66),(33,33)),
@@ -315,7 +315,7 @@ def speed_neibs():
     from theano.sandbox.cuda.basic_ops import gpu_from_host
 
     f = function([], images2neibs(images,neib_shape))#, mode=mode_without_gpu)
-  
+
     for i in range(1000):
         f()
 
@@ -327,10 +327,10 @@ def speed_neibs_wrap_centered():
     from theano.sandbox.cuda.basic_ops import gpu_from_host
 
     f = function([], images2neibs(images,neib_shape,mode="wrap_centered"))#, mode=mode_without_gpu)
-  
+
     for i in range(1000):
         f()
-        
+
 def test_neibs_grad():
     shape = (2,3,4,4)
     images = T.shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
@@ -427,4 +427,3 @@ if __name__ == '__main__':
     #test_neibs()
     #test_neibs_grad_verify_grad()
     test_neibs2images_crash_on_grad()
-
