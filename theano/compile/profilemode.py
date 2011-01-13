@@ -472,7 +472,7 @@ class ProfileMode(Mode):
 
 
         print
-        print "We guess some tips to make your code faster. If you think of new one, suggest them on the mailing list. Test them before use as they are not guaranted to always give a speed up."
+        print "Here are tips to potentially make your code run faster (if you think of new ones, suggest them on the mailing list). Test them first as they are not guaranteed to always provide a speedup."
         from theano import tensor as T
         from theano.tensor.raw_random import RandomFunction
         import theano
