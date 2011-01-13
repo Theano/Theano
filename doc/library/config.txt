@@ -74,6 +74,13 @@ Environment Variables
         [nvcc]
         fastmath = True
 
+    Configuration attributes that are available directly in ``config``
+    (e.g. ``config.device``, ``config.mode``) should be defined in the
+    ``[global]`` section.
+    Attributes from a subsection of ``config`` (e.g. ``config.nvcc.fastmath``,
+    ``config.blas.ldflags``) should be defined in their corresponding section
+    (e.g. ``[nvcc]``, ``[blas]``).
+
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
     with later (right-most) files taking priority over earlier files in the
