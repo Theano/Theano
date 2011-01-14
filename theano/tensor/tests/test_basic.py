@@ -617,7 +617,7 @@ tan_grad_rtol = None
 if config.floatX=='float32':
 #We raise the relative tolerence for the grad as their is error in float32
 #This is probably caused by our way of computing the gradient error.
-    tan_grad_rtol = 0.047
+    tan_grad_rtol = 0.052
 TanTester = makeBroadcastTester(op = tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
