@@ -949,6 +949,9 @@ class TrueDiv(BinaryScalarOp):
         else:
             return x / y
     def c_code(self, node, name, (x, y), (z, ), sub):
+        #we generate good c code only when both are complex!
+        if sum([node.inputs[0].type in complex_types, node.inputs[1].type in complex_types])==1:
+            raise NotImplementedError('type not supported', type)
         if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
@@ -1028,6 +1031,8 @@ class Pow(BinaryScalarOp):
     def impl(self, x, y):
         return x ** y
     def c_code(self, node, name, (x, y), (z, ), sub):
+        if node.inputs[0].type in complex_types or node.inputs[1].type in complex_types:
+            raise NotImplementedError('type not supported', type)
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
     def grad(self, (x, y), (gz, )):
         if gz.type in complex_types:
