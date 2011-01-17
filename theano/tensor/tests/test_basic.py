@@ -197,6 +197,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
 
 rand = lambda *shape: 2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1
 randint = lambda *shape: numpy.random.random_integers(-5, 5, shape)
+randcomplex = lambda *shape: numpy.complex128(2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1)
 
 def randint_nonzero(*shape):
     r = numpy.random.random_integers(-5, 4, shape)
@@ -208,6 +209,8 @@ def rand_ranged(min, max, shape):
 def randint_ranged(min, max, shape):
     return numpy.random.random_integers(min, max, shape)
 
+def randc128_ranged(min, max, shape):
+    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype='complex128')
 
 def makeBroadcastTester(op, expected, checks = {}, **kwargs):
     name = str(op) + "Tester"
@@ -234,6 +237,10 @@ _good_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      integers = (randint(2, 3), randint(2, 3)),
                                      dtype_mixup_1 = (rand(2, 3), randint(2, 3)),
                                      dtype_mixup_2 = (randint(2, 3), rand(2, 3)),
+                                     complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                     complex2 = (randcomplex(2,3),rand(2,3)),
+                                     # Disabled as we test the case where we reuse the same output as the first inputs.
+                                     # complex3 = (rand(2,3),randcomplex(2,3)),
                                      empty = (numpy.asarray([]),numpy.asarray([1])),
                                      )
 
@@ -248,6 +255,10 @@ _grad_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      column = (rand(2, 3), rand(2, 1)),
                                      #This don't work as verify grad don't support that
                                      #empty = (numpy.asarray([]), numpy.asarray([1]))
+                                     #complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                     #complex2 = (randcomplex(2,3),rand(2,3)),
+                                     # Disabled as we test the case where we reuse the same output as the first inputs.
+                                     #complex3 = (rand(2,3),randcomplex(2,3)),
                                      )
 
 
@@ -338,6 +349,9 @@ _good_broadcast_div_mod_normal_float_inplace = dict(same_shapes = (rand(2, 3), r
                                          dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
                                          #integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
                                          #integers_known_to_fail = (numpy.array(-1), numpy.array(5))
+                                         complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                         complex2 = (randcomplex(2,3),rand(2,3)),
+                                         #complex3 = (rand(2,3),randcomplex(2,3)),# Inplace on the first element. Must have the same type.
                                          empty1 = (numpy.asarray([]), numpy.asarray([1])),
                                          #empty2 = (numpy.asarray([0]), numpy.asarray([])),
                                          )
@@ -345,11 +359,16 @@ _good_broadcast_div_mod_normal_float = dict(empty2 = (numpy.asarray([0]), numpy.
                                             **_good_broadcast_div_mod_normal_float_inplace
                                             )
 _grad_broadcast_div_mod_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                   scalar = (rand(2, 3), rand(1, 1)),
-                                   row = (rand(2, 3), rand(1, 3)),
-                                   column = (rand(2, 3), rand(2, 1)),
-                                   #empty1 = (numpy.asarray([]), numpy.asarray([1.])),
-                                   #empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                      scalar = (rand(2, 3), rand(1, 1)),
+                                      row = (rand(2, 3), rand(1, 3)),
+                                      column = (rand(2, 3), rand(2, 1)),
+                                      #complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                      #complex2 = (randcomplex(2,3),rand(2,3)),
+                                      #complex3 = (rand(2,3),randcomplex(2,3)),
+                                      #dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
+                                      #dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
+                                      #empty1 = (numpy.asarray([]), numpy.asarray([1.])),
+                                      #empty2 = (numpy.asarray([0]), numpy.asarray([])),
                                    )
 
 div_grad_rtol=None
@@ -374,14 +393,14 @@ DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          inplace = True)
 
 ModTester = makeBroadcastTester(op = mod,
-                                  expected = lambda x, y: x % y,
+                                  expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
                                   good = _good_broadcast_div_mod_normal_float,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   )
 ModInplaceTester = makeBroadcastTester(op = inplace.mod_inplace,
-                                         expected = lambda x, y: x % y,
+                                         expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
                                          good = _good_broadcast_div_mod_normal_float_inplace,
                                          inplace = True)
 
@@ -390,12 +409,18 @@ _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3))
                                         row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                         column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
                                         dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3))),
+                                        complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                        complex2 = (randcomplex(2,3),rand(2,3)),
+                                        #complex3 = (rand(2,3),randcomplex(2,3)), # Inplace on the first element.
                                         empty1 = (numpy.asarray([]), numpy.asarray([1])),
                                         empty2 = (numpy.asarray([0]), numpy.asarray([])),)
 _grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                   scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
                                   row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                   column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                  #complex1 = (randcomplex(2,3),randcomplex(2,3)),
+                                  #complex2 = (randcomplex(2,3),rand(2,3)),
+                                  #complex3 = (rand(2,3),randcomplex(2,3)),
                                   #empty1 = (numpy.asarray([]), numpy.asarray([1])),
                                   #empty2 = (numpy.asarray([0]), numpy.asarray([])),
                                   )
@@ -420,18 +445,31 @@ corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.
 corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
 _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                           corner_case = (corner_case,),
+                                          complex = (randcomplex(2,3),),
                                           empty = (numpy.asarray([]),))
 
 _good_broadcast_unary_normal_float_no_empty = copy(_good_broadcast_unary_normal_float)
 del _good_broadcast_unary_normal_float_no_empty['empty']
+_good_broadcast_unary_normal_float_no_empty_no_complex = copy(_good_broadcast_unary_normal_float_no_empty)
+del _good_broadcast_unary_normal_float_no_empty_no_complex['complex']
+_good_broadcast_unary_normal_float_no_complex = copy(_good_broadcast_unary_normal_float)
+del _good_broadcast_unary_normal_float_no_complex['complex']
 
 _good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     integers = (randint_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,),
+                                    complex = (randcomplex(2,3),),
                                     empty = (numpy.asarray([]),))
+
+_good_broadcast_unary_normal_no_complex = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
+                                               integers = (randint_ranged(-5, 5, (2, 3)),),
+                                               corner_case = (corner_case,),
+                                               #complex = (randcomplex(2,3),),
+                                               empty = (numpy.asarray([]),))
 
 _grad_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
                                     corner_case = (corner_case_grad,),
+                                    #complex = (randcomplex(2,3),),
                                     #empty = (numpy.asarray([]),)
                                     )
 
@@ -441,9 +479,12 @@ AbsTester = makeBroadcastTester(op = tensor.abs_,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
+_good_broadcast_unary_normal_abs = copy(_good_broadcast_unary_normal)
+# Can't do inplace on Abs as the input/output are not of the same type!
+del _good_broadcast_unary_normal_abs['complex']
 AbsInplaceTester = makeBroadcastTester(op = inplace.abs__inplace,
                                          expected = lambda x: numpy.abs(x),
-                                         good = _good_broadcast_unary_normal,
+                                         good = _good_broadcast_unary_normal_abs,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
@@ -458,33 +499,38 @@ NegInplaceTester = makeBroadcastTester(op = inplace.neg_inplace,
                                          inplace = True)
 
 SgnTester = makeBroadcastTester(op = sgn,
-                                  expected = numpy.sign,
-                                  good = _good_broadcast_unary_normal)
+                                expected = numpy.sign,
+                                good = _good_broadcast_unary_normal_no_complex,
+                                grad = _grad_broadcast_unary_normal,)
 SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
-                                         expected = numpy.sign,
-                                         good = _good_broadcast_unary_normal,
-                                         inplace = True)
+                                       expected = numpy.sign,
+                                       good = _good_broadcast_unary_normal_no_complex,
+                                       grad = _grad_broadcast_unary_normal,
+                                       inplace = True)
 CeilTester = makeBroadcastTester(op = ceil,
                                   expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
-                                  good = _good_broadcast_unary_normal)
+                                  good = _good_broadcast_unary_normal_no_complex,
+                                  grad = _grad_broadcast_unary_normal)
 CeilInplaceTester = makeBroadcastTester(op = inplace.ceil_inplace,
                                          expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
-                                         good = _good_broadcast_unary_normal,
+                                         good = _good_broadcast_unary_normal_no_complex,
+                                         grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
 FloorTester = makeBroadcastTester(op = floor,
                                   expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
-                                  good = _good_broadcast_unary_normal,
+                                  good = _good_broadcast_unary_normal_no_complex,
                                   grad = _grad_broadcast_unary_normal)
 FloorInplaceTester = makeBroadcastTester(op = inplace.floor_inplace,
                                          expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
-                                         good = _good_broadcast_unary_normal,
+                                         good = _good_broadcast_unary_normal_no_complex,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
 RoundHalfToEvenTester = makeBroadcastTester(op = round_half_to_even,
                                   expected = numpy.round,
-                                  good = _good_broadcast_unary_normal_float)
+                                  good = _good_broadcast_unary_normal_float_no_complex)
+# TODO: Why complex are accepted in the next one?
 RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_even_inplace,
                                          expected = numpy.round,
                                          good = _good_broadcast_unary_normal_float,
@@ -495,10 +541,10 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_ev
 #This happen in float32 mode.
 RoundHalfAwayFromZeroTester = makeBroadcastTester(op = round_half_away_from_zero,
                                   expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                  good = _good_broadcast_unary_normal_float_no_empty)#_good_broadcast_unary_normal_float)
+                                  good = _good_broadcast_unary_normal_float_no_empty_no_complex)#_good_broadcast_unary_normal_float)
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half_away_from_zero_inplace,
                                          expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                         good = _good_broadcast_unary_normal_float_no_empty,
+                                         good = _good_broadcast_unary_normal_float_no_empty_no_complex,
                                          inplace = True)
 
 SqrTester = makeBroadcastTester(op = sqr,
@@ -524,10 +570,12 @@ ExpInplaceTester = makeBroadcastTester(op = inplace.exp_inplace,
 
 _good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
                                       integers = (randint_ranged(1, 5, (2, 3)),),
+                                      complex = (randc128_ranged(1, 5, (2,3)),),
                                       empty = (numpy.asarray([]),),
                                       )
 
 _grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
+                                      #complex = (randc128_ranged(1, 5, (2,3)),),
                                       #empty = (numpy.asarray([]),),
                                       )
 
@@ -586,9 +634,11 @@ SqrtInplaceTester = makeBroadcastTester(op = inplace.sqrt_inplace,
 
 _good_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
                                   integers = (randint_ranged(-1000, 1000, (2, 3)),),
+                                  complex = (randc128_ranged(-1000, 1000, (2, 3)),),
                                   empty = (numpy.asarray([]),),)
 
 _grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
+                                  #complex = (randc128_ranged(-1000, 1000, (2, 3)),),
                                   #empty = (numpy.asarray([]),),
                                   )
 
@@ -667,6 +717,8 @@ TanhInplaceTester = makeBroadcastTester(op = inplace.tanh_inplace,
 
 #inplace ops when the input is integer and the output is float*
 # don't have a well defined behavior. We don't test that case.
+_good_broadcast_unary_normal_no_int_no_complex = _good_broadcast_unary_normal_no_complex.copy()
+del _good_broadcast_unary_normal_no_int_no_complex['integers']
 _good_broadcast_unary_normal_no_int = _good_broadcast_unary_normal.copy()
 del _good_broadcast_unary_normal_no_int['integers']
 
@@ -712,13 +764,13 @@ else:
                     empty = (numpy.asarray([]),),)
 ErfcTester = makeBroadcastTester(op = erfc,
                                  expected = expected,
-                                 good = _good_broadcast_unary_normal,
+                                 good = _good_broadcast_unary_normal_no_int_no_complex,
                                  grad = _grad_broadcast_unary_normal,
                                  eps = 2e-10,
                                  mode = mode_no_scipy)
 ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         expected = expected,
-                                        good = _good_broadcast_unary_normal_no_int,
+                                        good = _good_broadcast_unary_normal_no_int_no_complex,
                                         grad = _grad_broadcast_unary_normal,
                                         eps = 2e-10,
                                         mode = mode_no_scipy,
@@ -732,6 +784,9 @@ DotTester = makeTester(name = 'DotTester',
                         good = dict(correct1 = (rand(5, 7), rand(7, 5)),
                                     correct2 = (rand(5, 7), rand(7, 9)),
                                     correct3 = (rand(5, 7), rand(7)),
+                                    complex1 = (randcomplex(5, 7), randcomplex(7)),
+                                    complex2 = (rand(5, 7), randcomplex(7)),
+                                    complex3 = (randcomplex(5, 7), rand(7)),
                                     empty = (numpy.asarray([]),numpy.asarray([])),),
                         bad_build = dict(),
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
