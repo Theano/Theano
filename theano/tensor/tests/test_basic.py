@@ -1809,52 +1809,58 @@ class T_Join_and_Split(unittest.TestCase):
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], x > y)
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l > r)), (v, (l>r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x > y)
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l > r)), (v, (l>r)))
 
     def test_lt(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], x < y)
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l < r)), (v, (l<r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x < y)
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l < r)), (v, (l<r)))
 
     def test_le(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], x <= y)
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l <= r)), (v, (l<=r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x <= y)
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l <= r)), (v, (l<=r)))
 
     def test_ge(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], x >= y)
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l >= r)), (v, (l>=r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x >= y)
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l >= r)), (v, (l>=r)))
 
     def test_eq(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], eq(x,y))
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l == r)), (v, (l==r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], eq(x,y))
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l == r)), (v, (l==r)))
 
     def test_neq(self):
-        x, y = fvector(), fvector()
-        fn = inplace_func([x,y], neq(x, y))
-        l = numpy.asarray([0.,-1.,1.], dtype='float32')
-        r = numpy.asarray([0.,1.,-1.], dtype='float32')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], neq(x, y))
+            l = numpy.asarray([0.,-1.,1.], dtype=dtype)
+            r = numpy.asarray([0.,1.,-1.], dtype=dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
 
 class test_bitwise(unittest.TestCase):
     def test_or(self):

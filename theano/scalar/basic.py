@@ -635,8 +635,11 @@ class LT(LogicalComparison):
     commutative = False
     associative = False
     def impl(self, x, y):
-        return x < y
+        # built-in < don't support complex
+        return numpy.less(x, y)
     def c_code(self, node, name, (x, y), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError()
         return "%(z)s = (%(x)s < %(y)s);" % locals()
 lt = LT()
 
@@ -645,7 +648,8 @@ class GT(LogicalComparison):
     commutative = False
     associative = False
     def impl(self, x, y):
-        return x > y
+        # built-in > don't support complex
+        return numpy.greater(x, y)
     def c_code(self, node, name, (x, y), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
@@ -657,7 +661,8 @@ class LE(LogicalComparison):
     commutative = False
     associative = False
     def impl(self, x, y):
-        return x <= y
+        # built-in <= don't support complex
+        return numpy.less_equal(x, y)
     def c_code(self, node, name, (x, y), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
@@ -669,7 +674,8 @@ class GE(LogicalComparison):
     commutative = False
     associative = False
     def impl(self, x, y):
-        return x >= y
+        # built-in >= don't support complex
+        return numpy.greater_equal(x, y)
     def c_code(self, node, name, (x, y), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
@@ -695,6 +701,8 @@ class NEQ(LogicalComparison):
     def impl(self, x, y):
         return x != y
     def c_code(self, node, name, (x, y), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError()
         return "%(z)s = (%(x)s != %(y)s);" % locals()
 neq = NEQ()
 
@@ -772,7 +780,7 @@ class UnaryBitOp(UnaryScalarOp):
     def output_types(self, *input_types):
         for i in input_types[0]:
             if i not in (int8, int32, int64):
-                raise TypeError('input to a BitOp must have type int8, int32 or int 64... not %s' % i)
+                raise TypeError('input to a BitOp must have type int8, int32 or int64... not %s' % i)
         return upcast_out(*input_types[0])
     def grad(self, inputs, output_gradients):
         return [None]
@@ -782,7 +790,7 @@ class BinaryBitOp(BinaryScalarOp):
         t0, t1 = input_types[0]
         for i in input_types[0]:
             if i not in (int8, int32, int64):
-                raise TypeError('input to a BitOp must have type int8, int32 or int 64... not %s' % i)
+                raise TypeError('input to a BitOp must have type int8, int32 or int64... not %s' % i)
         return upcast_out(*input_types[0])
     def grad(self, inputs, output_gradients):
         return [None, None]
