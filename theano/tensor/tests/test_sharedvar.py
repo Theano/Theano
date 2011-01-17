@@ -231,6 +231,7 @@ def makeSharedTester(shared_constructor_,
             total = self.theano_fct(x_shared)
 
             total_func = theano.function([],total)
+            total_func()
 
             values_to_div = .5
             if self.op_by_matrix:
@@ -450,6 +451,7 @@ def makeSharedTester(shared_constructor_,
             assert numpy.allclose(self.ref_fct(x1_shared.value), self.ref_fct( x1_2))
             shape_op_fct = theano.function([],x1_shared.shape)
             topo = shape_op_fct.maker.env.toposort()
+            shape_op_fct()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo)==3
                 assert isinstance(topo[0].op,tensor.opt.Shape_i)
@@ -458,6 +460,7 @@ def makeSharedTester(shared_constructor_,
 
             #Test that we forward the input
             specify_shape_fct = theano.function([],x1_specify_shape)
+            specify_shape_fct()
             #theano.printing.debugprint(specify_shape_fct)
             assert numpy.all(self.ref_fct(specify_shape_fct())
                              ==self.ref_fct(x1_2))
