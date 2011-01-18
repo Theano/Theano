@@ -90,6 +90,8 @@ def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+                if max_inputs_to_GpuElemwise(node)<len(node.inputs):
+                    return False
                 #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
                 new_op = GpuElemwise(node.op.scalar_op)
 
@@ -113,9 +115,10 @@ def local_gpu_elemwise_0(node):
                 else:
                     return False
 
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
-
-                return [host_from_gpu(gpu_elemwise)]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                if not gpu_elemwise:
+                    return False
+                return [host_from_gpu(gpu_elemwise.outputs[0])]
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_1(node):
@@ -130,8 +133,10 @@ def local_gpu_elemwise_1(node):
             new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
-                return [gpu_elemwise]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                if not gpu_elemwise:
+                    return False
+                return [gpu_elemwise.outputs[0]]
     return False
 
 @register_opt()
@@ -762,6 +767,8 @@ def split_huge_add_or_mul(node):
     """
     if node.op.scalar_op in (scal.add, scal.mul):
         max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        if max_nb_inputs<=1 and len(node.inputs)>1:
+            return False
         while len(node.inputs)>max_nb_inputs:
             inner_op = []
             for i in range(0,len(node.inputs),max_nb_inputs):
