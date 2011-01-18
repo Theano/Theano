@@ -2174,3 +2174,15 @@ def test_local_mul_to_neg():
     aval = numpy.random.randint(0,10,(2,2)).astype('int32')
     assert f1(aval).dtype == a.dtype
     assert f2(aval).dtype == 'float64'
+
+def test_local_add_specialize():
+
+    # test of non-zero dimension
+    a = TT.vector()
+    s = TT.add(TT.zeros_like(a))
+    assert local_add_specialize.transform(s.owner)
+
+    # test of 0-d
+    a = TT.scalar()
+    s = TT.add(TT.zeros_like(a))
+    assert local_add_specialize.transform(s.owner)
