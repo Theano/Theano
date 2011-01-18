@@ -88,9 +88,11 @@ int device_free(void *ptr)
     _outstanding_mallocs[0] -= (ptr != NULL);
 #if COMPUTE_GPU_MEM_USED
     int i=0;
+    size_t total_freed = 0;
     for(;i<TABLE_SIZE;i++)
       if(_alloc_size_table[i].ptr==ptr){
 	_allocated_size -= _alloc_size_table[i].size;
+    total_freed += _alloc_size_table[i].size;
 	_alloc_size_table[i].ptr=0;
 	_alloc_size_table[i].size=0;
 	
@@ -98,6 +100,7 @@ int device_free(void *ptr)
       }
     if(i==TABLE_SIZE)
       printf("Unallocated unknow size!\n");
+    //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
 #endif
     return 0;
 }
@@ -842,7 +845,7 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
     //standard elemwise size checks
     if (self->nd != other->nd)
     {
-        PyErr_SetString(PyExc_TypeError, "need same number of dims");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_add: need same number of dims");
         return NULL;
     }
     //standard elemwise dim checks
@@ -1002,7 +1005,7 @@ CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
     //standard elemwise size checks
     if (self->nd != other->nd)
     {
-        PyErr_SetString(PyExc_TypeError, "need same number of dims");
+        PyErr_Format(PyExc_TypeError, "CudaNdarray_inplace_add_div: need same number of dims. Got %d and %d", self->nd, other->nd);
         return NULL;
     }
     //standard elemwise dim checks
