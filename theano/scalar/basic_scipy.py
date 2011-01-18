@@ -1,8 +1,9 @@
 #definition theano.scalar op that have their python implementation taked from scipy
 #as scipy is not always available, we put threat them separatly
-
-from theano.scalar.basic import UnaryScalarOp,exp,upgrade_to_float,upgrade_to_float_no_complex,complex_types,float_types,upcast
 import numpy
+
+from theano.scalar.basic import UnaryScalarOp,exp,upgrade_to_float,float_types
+from theano.scalar.basic import upgrade_to_float_no_complex,complex_types,upcast
 
 imported_scipy_special = False
 try:
