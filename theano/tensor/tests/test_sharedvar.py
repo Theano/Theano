@@ -419,6 +419,7 @@ def makeSharedTester(shared_constructor_,
 
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
+            specify_shape_fct()
             x1_shared.set_value(x2)
             self.assertRaises(AssertionError, specify_shape_fct)
 
