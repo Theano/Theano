@@ -434,7 +434,7 @@ def upcast_out(*types):
     return Scalar(dtype = Scalar.upcast(*types)),
 def upcast_out_no_complex(*types):
     if any([type in complex_types for type in types]):
-        raise TypeError('complex type are notsupported')
+        raise TypeError('complex type are not supported')
     return Scalar(dtype = Scalar.upcast(*types)),
 def same_out(type):
     return type,
