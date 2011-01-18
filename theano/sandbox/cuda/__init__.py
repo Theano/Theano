@@ -210,8 +210,14 @@ def handle_shared_float32(tf):
         raise NotImplementedError('removing our handler')
 
 if config.device.startswith('gpu'):
-    use(config.device, config.force_device)
+    use(device=config.device, force=config.force_device)
 elif config.init_gpu_device:
-    assert config.device=="cpu", "We can use the theano flags init_gpu_device only when the theano flags device=='cpu'"
-    print "Will init the gpu to use a specific gpu device. This don't default tomove computation and allocate shared variable of float32 to this device. For that try the theano flags device."
-    use(config.init_gpu_device, config.force_device, False, False)
+    assert config.device=="cpu", "We can use the Theano flag init_gpu_device only when the Theano flag device=='cpu'"
+    info(("GPU device %s will be initialized, and used if a GPU is needed. "
+          "However, no computation, nor shared variables, will be implicitly "
+          "moved to that device. If you want that behavior, use the 'device' "
+          "flag instead.") % config.init_gpu_device)
+    use(device=config.init_gpu_device,
+        force=config.force_device,
+        default_to_move_computation_to_gpu=False,
+        move_shared_float32_to_gpu=False)
