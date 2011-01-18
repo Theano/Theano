@@ -50,22 +50,22 @@ class ConvTransp3D(theano.Op):
         dCdRShape = None #not differentiable, since RShape is not continuous
 
 
-        if 'name' in dir(dCdR) and dCdR.name != None:
+        if 'name' in dir(dCdR) and dCdR.name is not None:
             dCdR_name = dCdR.name
         else:
             dCdR_name = 'anon'
 
-        if 'name' in dir(H) and H.name != None:
+        if 'name' in dir(H) and H.name is not None:
             H_name = H.name
         else:
             H_name = 'anon'
 
-        if 'name' in dir(W) and W.name != None:
+        if 'name' in dir(W) and W.name is not None:
             W_name = W.name
         else:
             W_name = 'anon'
 
-        if 'name' in dir(b) and b.name != None:
+        if 'name' in dir(b) and b.name is not None:
             b_name = b.name
         else:
             b_name = 'anon'
@@ -79,9 +79,9 @@ class ConvTransp3D(theano.Op):
 
 
     def perform(self, node, inputs, output_storage):
-		W, b, d, H, RShape = inputs
-		print "\t\t\t\tConvTransp3D python code"
-		output_storage[0][0] = computeR(W,b,d,H,RShape)
+        W, b, d, H, RShape = inputs
+        print "\t\t\t\tConvTransp3D python code"
+        output_storage[0][0] = computeR(W,b,d,H,RShape)
 
     def c_code(self, node, nodename, (W, b, d, H, RShape), outputs, sub):
         fail = sub['fail']
@@ -360,7 +360,7 @@ def computeR(W,b,d,H,Rshape = None):
 		videoWidth = (outputWidth-1) * dc + filterWidth
 		videoDur = (outputDur-1) * dt + filterDur
 
-		if Rshape != None and Rshape[0] != -1:
+		if Rshape is not None and Rshape[0] != -1:
 			if Rshape[0] < videoHeight:
 				print (Rshape[0], videoHeight)
 				assert False

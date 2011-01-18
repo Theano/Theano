@@ -51,10 +51,10 @@ class Conv3D(theano.Op):
 
     def make_node(self, V, W, b, d):
         """
-            :param V: Visible unit, input
-            :param W: Weights, filter
+            :param V: Visible unit, input(batch,row,column,time,in channel)
+            :param W: Weights, filter(out channel,row,column,time,in channel)
             :param b: bias, shape == (W.shape[0],)
-            :param d: strides when moving the filter over the input
+            :param d: strides when moving the filter over the input(dx,dy,dt)
         """
 
         V_ = T.as_tensor_variable(V)
@@ -82,22 +82,22 @@ class Conv3D(theano.Op):
         dCdb = T.sum(dCdH, axis=(0,1,2,3))
         dCdd = None #not differentiable, since d is not continuous
 
-        if 'name' in dir(dCdH) and dCdH.name != None:
+        if 'name' in dir(dCdH) and dCdH.name is not None:
             dCdH_name = dCdH.name
         else:
             dCdH_name = 'anon'
 
-        if 'name' in dir(V) and V.name != None:
+        if 'name' in dir(V) and V.name is not None:
             V_name = V.name
         else:
             V_name = 'anon'
 
-        if 'name' in dir(W) and W.name != None:
+        if 'name' in dir(W) and W.name is not None:
             W_name = W.name
         else:
             W_name = 'anon'
 
-        if 'name' in dir(b) and b.name != None:
+        if 'name' in dir(b) and b.name is not None:
             b_name = b.name
         else:
             b_name = 'anon'
