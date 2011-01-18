@@ -10,6 +10,7 @@ from theano.compile import SharedVariable
 from theano.sandbox.cuda.type import CudaNdarrayType
 try:
     # We must do those import to be able to create the full doc when nvcc
+    # is not available
     from theano.sandbox.cuda import filter as type_support_filter
     from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
 except ImportError:
