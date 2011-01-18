@@ -213,7 +213,7 @@ if config.device.startswith('gpu'):
     use(device=config.device, force=config.force_device)
 elif config.init_gpu_device:
     assert config.device=="cpu", "We can use the Theano flag init_gpu_device only when the Theano flag device=='cpu'"
-    info(("GPU device %s will be initialized, and used if a GPU is needed. "
+    warning(("GPU device %s will be initialized, and used if a GPU is needed. "
           "However, no computation, nor shared variables, will be implicitly "
           "moved to that device. If you want that behavior, use the 'device' "
           "flag instead.") % config.init_gpu_device)
