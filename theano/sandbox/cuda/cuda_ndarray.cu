@@ -1217,7 +1217,8 @@ CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
 static PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other){
   CudaNdarray_inplace_add_div(py_self, py_other, 0);
-  Py_INCREF(py_self);
+  //We should not increment the refcount as we are doing inplace operation
+  //And in this syntax, their is no additional reference created!
   return py_self;
 }
 
@@ -1228,7 +1229,8 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other){
 static PyObject *
 CudaNdarray_inplace_div(PyObject* py_self, PyObject * py_other){
   CudaNdarray_inplace_add_div(py_self, py_other, 1);
-  Py_INCREF(py_self);
+  //We should not increment the refcount as we are doing inplace operation
+  //And in this syntax, their is no additional reference created!
   return py_self;
 }
 
