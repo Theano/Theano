@@ -283,7 +283,6 @@ def local_dimshuffle_lift(node):
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
 
-@register_specialize
 @gof.local_optimizer([])
 def dimshuffle_as_view(node):
     op = node.op
@@ -293,6 +292,7 @@ def dimshuffle_as_view(node):
     return [new_op(*node.inputs)]
 
 
+register_specialize(dimshuffle_as_view, 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
