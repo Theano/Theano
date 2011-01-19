@@ -742,9 +742,11 @@ try:
     #RETURN (gpu ptr size, cpu ptr size, int sizes)
     t = cuda_ndarray.cuda_ndarray.ptr_int_size()
     gpu_ptr_size, cpu_ptr_size, int_size = t
-except Exceptin, e:
-    print "OPTIMIZATION WARNING: Got the next error, but we can ignore. This could cause less GpuElemwise fused together."
-    print e
+except Exception, e:
+    _logger.warning(("OPTIMIZATION WARNING: "
+        "Got the following error, but we can ignore it. "
+        "This could cause less GpuElemwise fused together.\n"
+        "%s") % e)
 
 def max_inputs_to_GpuElemwise(node):
     """
