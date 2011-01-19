@@ -342,13 +342,13 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
     if (!rval)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: call to new_null failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to new_null failed");
         return NULL;
     }
 
     if (CudaNdarray_alloc_contiguous(rval, n, dims))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: allocation failed.");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: allocation failed.");
         Py_DECREF(rval);
         return NULL;
     }
@@ -357,14 +357,14 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     //fprintf(stdout, "Sizeof: %d\n", total_size);
     if (cudaSuccess != cudaMemset(rval->devdata, 0, total_size))
     {
-        PyErr_Format(PyExc_MemoryError, "Error memsetting %d bytes of device memory.", total_size);
+        PyErr_Format(PyExc_MemoryError, "CudaNdarray_ZEROS: Error memsetting %d bytes of device memory.", total_size);
         Py_DECREF(rval);
         return NULL;
     }
 
     if (cnda_copy_structure_to_device(rval))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: syncing structure to device failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: syncing structure to device failed");
         Py_DECREF(rval);
         return NULL;
     }
