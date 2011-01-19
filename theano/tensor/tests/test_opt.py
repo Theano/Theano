@@ -876,8 +876,7 @@ class test_fusion(unittest.TestCase):
 
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
-    def test_gpu_fusion_3d(self):
-        shp=(5,5,5)
+    def test_gpu_fusion_Xd(self):
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including('local_elemwise_fusion','canonicalize','gpu')
@@ -886,7 +885,10 @@ class test_fusion(unittest.TestCase):
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
-
+        if cuda.opt.int_size == 4:
+            shp=(5,5,5,5)
+        else:
+            shp=(5,5,5)
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
     def speed_fusion(self, shared_fn = shared, gpu = False, s=None):

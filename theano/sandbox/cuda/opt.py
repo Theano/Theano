@@ -735,24 +735,33 @@ optdb.register('InplaceGpuBlasOpt',
             max_use_ratio=5),
                70.0, 'fast_run', 'inplace')
 
+gpu_ptr_size = 8
+cpu_ptr_size = 8
+int_size = 8
+try:
+    #RETURN (gpu ptr size, cpu ptr size, int sizes)
+    t = cuda_ndarray.cuda_ndarray.ptr_int_size()
+    gpu_ptr_size, cpu_ptr_size, int_size = t
+except Exceptin, e:
+    print "OPTIMIZATION WARNING: Got the next error, but we can ignore. This could cause less GpuElemwise fused together."
+    print e
+
 def max_inputs_to_GpuElemwise(node):
     """
     return the maximum number of input this Apply node to an GpuElemwise can accept.
     This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
     This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
     """
-    #TODO: detect the size of gpu pointeur and c int.
-    int_size = 8
-    ptr_size = 8
 
-    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
+    argument_limit = 232  # some bytes are used for block and thread coords etc.
+    ndim = node.inputs[0].type.ndim
     size_param_mandatory = int_size #for numels
-    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
-    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
+    size_param_mandatory += int_size *  ndim # for the shape
+    size_param_mandatory += sum((gpu_ptr_size + int_size * ndim) for i in node.outputs)
 
-    nb_bytes_avail = argument_limit-size_param_mandatory
-    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
-    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+    nb_bytes_avail = argument_limit - size_param_mandatory
+    nb_bytes_per_inputs = (ndim*int_size) + gpu_ptr_size
+    max_nb_inputs = nb_bytes_avail // nb_bytes_per_inputs
     return max_nb_inputs
 
 def split_huge_add_or_mul(node):

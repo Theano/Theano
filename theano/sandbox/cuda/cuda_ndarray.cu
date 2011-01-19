@@ -1831,6 +1831,33 @@ static PyTypeObject CudaNdarrayType =
     CudaNdarray_new,           /* tp_new */
 };
 
+static __global__ void get_gpu_ptr_size(int* dst)
+{
+  dst[0] = sizeof(float*);
+}
+
+PyObject *
+CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
+{
+  int *gpu_data = (int*)device_malloc(sizeof(int));
+  if(gpu_data == NULL){
+    return PyErr_Format(PyExc_MemoryError,
+			"CudaNdarray_ptr_int_size: Can't allocate memory on the gpu.");
+  }
+  get_gpu_ptr_size<<<1,1>>>(gpu_data);
+  if (cudaSuccess != cublasGetError()){
+    return PyErr_Format(PyExc_RuntimeError,
+			"CudaNdarray_ptr_int_size: error when calling the gpu code.");
+  }
+  int gpu_ptr_size = -1;
+  cublasGetVector(1, sizeof(int), gpu_data, 1, &gpu_ptr_size, 1);
+  device_free(gpu_data);
+  if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
+    PyErr_SetString(PyExc_RuntimeError, "error copying data to from memory");
+    return NULL;
+  }
+  return Py_BuildValue("iii", gpu_ptr_size, sizeof(float*), sizeof(int));
+}
 
 // Initialize the gpu.
 // Takes one optional parameter, the device number.
@@ -2068,6 +2095,7 @@ static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
+    {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
