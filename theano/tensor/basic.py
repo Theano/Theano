@@ -4414,6 +4414,7 @@ class numeric_grad:
 
             x[i] += eps
             f_eps = f(*apt)
+
             gx[i] = numpy.asarray((f_eps - f_x)/eps)
 
         if packed_pt:
@@ -4594,6 +4595,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     for test_num in xrange(n_tests):
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
 
+
         analytic_grad = grad_fn(*[p.copy() for p in pt])
 
         if not isinstance(analytic_grad, (list, tuple)):
@@ -4620,6 +4622,7 @@ class GradientError(Exception):
         self.rel_err = rel_err
         self.abs_tol = abs_tol
         self.rel_tol = rel_tol
+
 
     def __str__(self):
         return """GradientError: numeric gradient and analytic gradient exceed tolerance:

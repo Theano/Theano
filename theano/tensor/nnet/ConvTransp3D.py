@@ -11,6 +11,9 @@ class ConvTransp3D(theano.Op):
     def __hash__(self):
 	    return hash(type(self))
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def make_node(self, W, b, d, H, RShape = None):
         """
         :param W: Weights, filter

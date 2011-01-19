@@ -49,6 +49,10 @@ class Conv3D(theano.Op):
     def __str__(self):
         return "Conv3D"
 
+    def c_code_cache_version(self):
+        return (1,)
+
+
     def make_node(self, V, W, b, d):
         """
             :param V: Visible unit, input(batch,row,column,time,in channel)

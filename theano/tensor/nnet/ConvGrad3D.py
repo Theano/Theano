@@ -3,6 +3,10 @@ from theano.tensor import basic as T
 from theano.misc import strutil
 import numpy as N
 
+
+#TODO: speed up by reordering loops. Should pass through the videos once, incrementing all weight gradients, rather
+# than visiting each weight gradient element once and passing through whole video
+
 class ConvGrad3D(theano.Op):
     """ Gradient of Conv3D with respect to W """
     def __eq__(self,other):
@@ -10,6 +14,9 @@ class ConvGrad3D(theano.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def make_node(self, V, d, WShape, dCdH):
         V_ = T.as_tensor_variable(V)
