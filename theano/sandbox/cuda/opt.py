@@ -90,8 +90,6 @@ def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
-                if max_inputs_to_GpuElemwise(node)<len(node.inputs):
-                    return False
                 #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
                 new_op = GpuElemwise(node.op.scalar_op)
 
@@ -117,6 +115,8 @@ def local_gpu_elemwise_0(node):
 
                 gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
                 if not gpu_elemwise:
+                    return False
+                if max_inputs_to_GpuElemwise(node)<len(gpu_elemwise.inputs):
                     return False
                 return [host_from_gpu(gpu_elemwise.outputs[0])]
 @register_opt()
