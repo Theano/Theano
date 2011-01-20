@@ -122,10 +122,10 @@ must define ``filter`` and shall override ``values_eq_approx``.
         else:
             return float(x)
 
-If ``strict == True`` we need to return ``x``. If ``strict == True`` and ``x`` is not a
+If ``strict is True`` we need to return ``x``. If ``strict is True`` and ``x`` is not a
 ``float`` (for example, ``x`` could easily be an ``int``) then it is
 incompatible with our Type and we must raise an exception. If
-``strict == False`` then we are allowed to cast ``x`` to a ``float``,
+``strict is False`` then we are allowed to cast ``x`` to a ``float``,
 so if ``x`` is an ``int`` it we will return an equivalent ``float``.
 
 
@@ -143,7 +143,7 @@ graph in such a way that it produces slightly different variables, for
 example because of numerical instability like rounding errors at the
 end of the mantissa. For instance, ``a + a + a + a + a + a`` might not
 actually produce the exact same output as ``6 * a`` (try with a=0.1),
-but with ``values_eq_approx`` we don't necessarily mind.
+but with ``values_eq_approx`` we do not necessarily mind.
 
 We added an extra ``tolerance`` argument here. Since this argument is
 not part of the API, it must have a default value, which we
@@ -215,8 +215,9 @@ There are several ways to make sure that equality testing works properly:
  #. Define ``Double.__eq__`` so that instances of type Double
     are equal. For example:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
+    .. If you modify this code, also change :
+    .. theano/tests/test_tutorial.py:T_extending.test_extending_1
+
     .. code-block:: python
 
         def __eq__(self, other):
@@ -225,8 +226,8 @@ There are several ways to make sure that equality testing works properly:
  #. Override ``Double.__new__`` to always return the same instance.
  #. Hide the Double class and only advertise a single instance of it.
 
-Here we will prefer the final option, because it's the simplest.
-Often Ops in the Theano code define the ``__eq__`` function though.
+Here we will prefer the final option, because it is the simplest.
+Ops in the Theano code often define the ``__eq__`` method though.
 
 
 Untangling some concepts
@@ -257,7 +258,7 @@ attempt to clear up the confusion:
   a set of Type instances that share
   structural similarities. In the ``double`` example that we are doing,
   there is actually only one Type in that set, therefore the subclass
-  doesn't represent anything that one of its instances doesn't. In this
+  does not represent anything that one of its instances does not. In this
   case it is a singleton, a set with one element. However, the
   :class:`TensorType`
   class in Theano (which is a subclass of Type)
