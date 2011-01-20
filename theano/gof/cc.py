@@ -513,6 +513,8 @@ class CLinker(link.Linker):
             # type-specific support code
             try: c_support_code_apply.append(op.c_support_code_apply(node, name))
             except utils.MethodNotDefined: pass
+            else:
+                assert isinstance(c_support_code_apply[-1], str), str(node.op)+" didn't returned a string for c_support_code_apply"
 
             # emit c_code 
             try: behavior = op.c_code(node, name, isyms, osyms, sub)
