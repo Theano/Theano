@@ -6,6 +6,7 @@ from StringIO import StringIO
 
 import numpy
 
+import theano
 from theano import gof
 from theano.gof import Env, graph, utils, link
 from theano.gof.link import WrapLinkerMany, raise_with_op
@@ -535,6 +536,9 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
             # This happen at least in Subtensor when the output is a scalar
             # But this depend on the version of numpy!
             if getattr(out_var,'size',2)==1:
+                continue
+            if isinstance(node.op, theano.compile.mode.OutputGuard):
+                # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
                 #when a subtensor return a tensor of ndim==0, numpy seam to return a copy.

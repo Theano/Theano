@@ -10,6 +10,7 @@ from theano import scalar as scal
 
 try:
     # We must do those import to be able to create the full doc when nvcc
+    # is not available
     import cuda_ndarray.cuda_ndarray as cuda
     from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
     import cuda_ndarray

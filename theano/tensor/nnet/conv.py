@@ -290,7 +290,7 @@ class ConvOp(Op):
         :type dx: int
         :param dx: patch stride rows
         :type dy: int
-        :param dx: patch stride cols
+        :param dy: patch stride cols
 
         Params which select the version of code used:
 

@@ -24,27 +24,27 @@ instructions below for detailed installation steps):
 
     Python_ >= 2.4
         The development package (``python-dev`` or ``python-devel``
-	on most Linux distributions) is recommended (see just below).
+        on most Linux distributions) is recommended (see just below).
 
     ``g++``, ``python-dev``
-	Not technically required but *highly* recommended, in order to compile
-	generated C code. Theano `can` fall back on a NumPy-based Python execution
-	model, but a C compiler allows for vastly faster execution.
+        Not technically required but *highly* recommended, in order to compile
+        generated C code. Theano `can` fall back on a NumPy-based Python execution
+        model, but a C compiler allows for vastly faster execution.
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.3.0
         Earlier versions have memory leaks.
 
     `SciPy <http://scipy.org>`_
-	Only currently required for sparse matrix and special functions
-	support, but *highly* recommended. We recommend SciPy
-	>=0.7 if you are using sparse matrices, because ``scipy.sparse``
-	is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
-	bug with singleton dimensions, there may be more bugs).
+        Only currently required for sparse matrix and special functions
+        support, but *highly* recommended. We recommend SciPy
+        >=0.7 if you are using sparse matrices, because ``scipy.sparse``
+        is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
+        bug with singleton dimensions, there may be more bugs).
 
     A `BLAS`_ installation (with Level 3 functionality)
-    	Including the development headers (``-dev``, ``-devel``, depending on
-	your Linux distribution). Mac OS X comes with the `Accelerate
-	framework`_ built in, and various options exist for Windows (see
+        Including the development headers (``-dev``, ``-devel``, depending on
+        your Linux distribution). Mac OS X comes with the `Accelerate
+        framework`_ built in, and various options exist for Windows (see
         below).
 
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
@@ -55,14 +55,17 @@ The following libraries and software are optional:
 
     `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
         Recommended, to run Theano's test-suite.
+
     `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
-	For building the documentation. LaTeX_ and dvipng_ are also necessary
-	for math to show up as images.
+        For building the documentation. LaTeX_ and dvipng_ are also necessary
+        for math to show up as images.
+
     `Mercurial <http://mercurial.selenic.com/>`_
         To download bleeding-edge versions of Theano.
+
     `NVIDIA CUDA drivers and SDK`_
-	Required for GPU code generation/execution. Only NVIDIA GPUs using
-	32-bit floating point numbers are currently supported.
+        Required for GPU code generation/execution. Only NVIDIA GPUs using
+        32-bit floating point numbers are currently supported.
 
 .. _LaTeX: http://www.latex-project.org/
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
@@ -77,7 +80,7 @@ Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The easiest way to obtain the released version of Theano is from PyPI using
-pip_ (a replacement for easy_install_ provided by setuptools_/distribute_) 
+pip_ (a replacement for easy_install_ provided by setuptools_/distribute_)
 by typing
 
 .. code-block:: bash
@@ -111,7 +114,7 @@ directory; see the `virtualenv documentation`_ for details.
     ``easy_install`` such as more intelligent dependency management, better
     error messages and a ``pip uninstall`` command for easily removing
     packages.
-    
+
     If you do not have ``pip`` installed but do have ``easy_install``, you can
     get ``pip`` by simply typing ``easy_install pip``.
 
@@ -320,7 +323,7 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
 .. note::
 
     Make sure your BLAS
-    libraries are available as dynamically-loadable libraries.  
+    libraries are available as dynamically-loadable libraries.
     ATLAS is often installed only as a static library.  Theano is not able to
     use this static library. Your ATLAS installation might need to be modified
     to provide dynamically loadable libraries.  (On Linux this
@@ -334,8 +337,8 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
 Mac
 ---
 
-- If the above required libraries are not already installed on your Mac, one option is first, to
-  install `MacPorts <http://www.macports.org/>`__.
+- If the above required libraries are not already installed on your Mac,
+  one option is first, to install `MacPorts <http://www.macports.org/>`__.
 
 - Then, in order to install one or more of the required libraries, use "port install", e.g. as follows:
 
@@ -359,7 +362,7 @@ Mac
   reason this is necessary is because you might have an Apple-provided python
   (via, for example, an Xcode installation). After performing this step, you
   should check that the symbolic link provided by ``which python`` points to
-  the MacPorts python. For instance, on Snow Leopard with the latest MacPorts, 
+  the MacPorts python. For instance, on Snow Leopard with the latest MacPorts,
   the output of ``which python`` is ``/opt/local/bin/python`` and this symbolic
   link points to ``/opt/local/bin/python2.6``. When executing ``sudo
   python_select python26-apple`` (which you should **not** do), the link
@@ -376,7 +379,7 @@ Mac
 - Please follow the same procedure with ``numpy``.
 
 - Put ``export PYTHONPATH=/opt/local/lib/python2.6/site-packages:$PYTHONPATH``
-  in your ``.bashrc`` in order to include your MacPorts Python packages 
+  in your ``.bashrc`` in order to include your MacPorts Python packages
   (NumPy, SciPy) in Python's path.
 
 - Make sure that the gcc version that you have installed on your system is
@@ -408,7 +411,7 @@ Mac
 
 - An obscure ``Bus error`` can sometimes be caused when linking
   Theano-generated object files against the ``framework`` library in Leopard.
-  For this reason, we've disabled linking with ``-framework Python``, since on 
+  For this reason, we've disabled linking with ``-framework Python``, since on
   most configurations this solves the ``Bus error`` problem. If this default
   configuration causes problems with your Python/Theano installation and you think
   that linking with ``-framework Python`` might help, then either set
@@ -421,9 +424,10 @@ Mac
       mac_framework_link=True
 
 Please infom us if you have trouble installing and running Theano on your mac.
-We would be especially interested in dependencies that we missed listing, as well as tests
-that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list,
-but note that you must first register to it, by going to `theano-users`_).
+We would be especially interested in dependencies that we missed
+listing, as well as tests that fail on your platform (use the
+``theano-users@googlegroups.com`` mailing list, but note that you must
+first register to it, by going to `theano-users`_).
 
 
 Windows
@@ -533,7 +537,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
   to create under Windows) in your user profile directory (the directory you
   are into when you start a new command prompt with ``cmd``), containing the
   following two lines:
- 
+
     .. code-block:: cfg
 
       [blas]
@@ -564,7 +568,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
   error of the type ``"Not enough storage is available to
   process this command"``): one workaround is to run nosetests
   multiple times under individual subdirectories.
-  
+
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -598,7 +602,7 @@ top of the MinGW installation included within Python(x,y), as follows:
 - In a prompt (``cmd``), install MSYS with
 
     .. code-block:: bash
-    
+
         mingw-get install msys-base
 
 - Edit ``pythonxy\mingw\msys\1.0\msys.bat`` (e.g. in Wordpad) and add as first
@@ -619,7 +623,7 @@ follows:
   a) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
      install it (other Perl interpreters should also work, but were not
      tested).
-    
+
   b) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
      a shell with:
 
@@ -633,7 +637,7 @@ follows:
 
     .. code-block:: bash
 
-      quickbuild.win32 1>log.txt 2>err.txt  
+      quickbuild.win32 1>log.txt 2>err.txt
 
     Compilation should take a few minutes. Afterwards, you will probably
     find many error messages in err.txt, but there should be an ``exports``
@@ -695,20 +699,21 @@ use a compilation directory located somewhere else:
       base_compiledir=path_to_a_directory_without_such_characters
 
 Then
-  
+
   1) Install CUDA driver (32-bit on 32-bit Windows, idem for 64-bit).
-  
-  2) Install CUDA toolkit 32-bit (even if you computer is 64-bit, 
+
+  2) Install CUDA toolkit 32-bit (even if you computer is 64-bit,
      must match the Python installation version).
-  
+
   3) Install CUDA SDK 32-bit.
-  
+
   4) Test some pre-compiled example of the sdk.
 
   5) Download Visual Studio 2008 Express (free, VS2010 not supported by nvcc 3.1,
-     VS2005 is not available for download but supported by nvcc, the non free version should work too).
+     VS2005 is not available for download but supported by nvcc, the non
+     free version should work too).
 
-  6) Follow the instruction in the GettingStartedWindows.pdf file from the CUDA web 
+  6) Follow the instruction in the GettingStartedWindows.pdf file from the CUDA web
      site to compile CUDA code with VS2008. If that does not work, you will
      not be able to compile GPU code with Theano.
 
@@ -729,7 +734,7 @@ Then
   9) Then run the Theano CUDA test files with nosetests from the
      ``theano/sandbox/cuda/tests`` subdirectory. In the current version of
      Theano, this should fail with an error like:
-    
+
      .. code-block:: bash
 
         NVCC: nvcc fatal: Don't know what to do with

@@ -56,7 +56,7 @@ class InputToGpuOptimizer(Optimizer):
                     new_input = host_from_gpu(gpu_from_host(input))
 
                     if new_input.type==input.type:
-                        env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
+                        env.replace_validate(input, new_input, "InputToGpuOptimizer")
                 except Exception, e:
                     #as we currently only support float32, this can fail.
                     #Using try except make that we won't need
@@ -113,9 +113,12 @@ def local_gpu_elemwise_0(node):
                 else:
                     return False
 
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
-
-                return [host_from_gpu(gpu_elemwise)]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                if not gpu_elemwise:
+                    return False
+                if max_inputs_to_GpuElemwise(node)<len(gpu_elemwise.inputs):
+                    return False
+                return [host_from_gpu(gpu_elemwise.outputs[0])]
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_1(node):
@@ -130,8 +133,10 @@ def local_gpu_elemwise_1(node):
             new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner).outputs[0]
-                return [gpu_elemwise]
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                if not gpu_elemwise:
+                    return False
+                return [gpu_elemwise.outputs[0]]
     return False
 
 @register_opt()
@@ -730,24 +735,35 @@ optdb.register('InplaceGpuBlasOpt',
             max_use_ratio=5),
                70.0, 'fast_run', 'inplace')
 
+gpu_ptr_size = 8
+cpu_ptr_size = 8
+int_size = 8
+try:
+    #RETURN (gpu ptr size, cpu ptr size, int sizes)
+    t = cuda_ndarray.cuda_ndarray.ptr_int_size()
+    gpu_ptr_size, cpu_ptr_size, int_size = t
+except Exception, e:
+    _logger.warning(("OPTIMIZATION WARNING: "
+        "Got the following error, but we can ignore it. "
+        "This could cause less GpuElemwise fused together.\n"
+        "%s") % e)
+
 def max_inputs_to_GpuElemwise(node):
     """
     return the maximum number of input this Apply node to an GpuElemwise can accept.
     This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
     This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
     """
-    #TODO: detect the size of gpu pointeur and c int.
-    int_size = 8
-    ptr_size = 8
 
-    argument_limit = 256  # if was 240, with this note: 16 bytes are used for block and thread coords etc.
+    argument_limit = 232  # some bytes are used for block and thread coords etc.
+    ndim = node.inputs[0].type.ndim
     size_param_mandatory = int_size #for numels
-    size_param_mandatory += int_size *  node.inputs[0].type.ndim # for the shape#node.outputs[0].ndim+1+node.inputs[0].ndim+1
-    size_param_mandatory += sum((ptr_size + int_size * i.type.ndim) for i in node.outputs)
+    size_param_mandatory += int_size *  ndim # for the shape
+    size_param_mandatory += sum((gpu_ptr_size + int_size * ndim) for i in node.outputs)
 
-    nb_bytes_avail = argument_limit-size_param_mandatory
-    nb_bytes_per_inputs = (node.inputs[0].ndim*int_size)+ptr_size
-    max_nb_inputs = nb_bytes_avail//nb_bytes_per_inputs
+    nb_bytes_avail = argument_limit - size_param_mandatory
+    nb_bytes_per_inputs = (ndim*int_size) + gpu_ptr_size
+    max_nb_inputs = nb_bytes_avail // nb_bytes_per_inputs
     return max_nb_inputs
 
 def split_huge_add_or_mul(node):
@@ -762,6 +778,8 @@ def split_huge_add_or_mul(node):
     """
     if node.op.scalar_op in (scal.add, scal.mul):
         max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        if max_nb_inputs<=1 and len(node.inputs)>1:
+            return False
         while len(node.inputs)>max_nb_inputs:
             inner_op = []
             for i in range(0,len(node.inputs),max_nb_inputs):

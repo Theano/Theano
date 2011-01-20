@@ -335,12 +335,14 @@ class GpuConv(Op):
             ^ hash(self.imshp)
 
     def __str__(self):
-        return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
+        return '%s{%s, %s, %s, %s, %s, %s, %s}' %(self.__class__.__name__,
                 self.border_mode,
                 str(self.subsample),
                 str(self.logical_img_hw),
                 str(self.logical_kern_hw),
-                str(self.logical_kern_align_top))
+                str(self.logical_kern_align_top),
+                str(self.imshp),
+                str(self.kshp))
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:

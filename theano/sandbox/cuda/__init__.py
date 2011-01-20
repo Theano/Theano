@@ -104,7 +104,8 @@ if cuda_available:
         cuda_available = False
         cuda_initialization_error_message = e.message
 
-# We must do those import to be able to create the full doc when nvcc
+# We must do those import to be able to create the full doc when
+# nvcc is not available
 from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      CudaNdarrayConstant,
                                      CudaNdarraySharedVariable,
@@ -115,7 +116,12 @@ if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
     import cuda_ndarray.cuda_ndarray
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
-        warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
+        warning("WARNING: cuda_ndarray was loaded from",
+                cuda_ndarray.cuda_ndarray.__file__,
+                """This is not expected as theano should compile it
+ automatically for you. Do you have a directory called cuda_ndarray in your
+LD_LIBRARY_PATH environment variable? If so, please remove it as it is
+outdated!""")
 
     shared_constructor = float32_shared_constructor
 
@@ -204,8 +210,14 @@ def handle_shared_float32(tf):
         raise NotImplementedError('removing our handler')
 
 if config.device.startswith('gpu'):
-    use(config.device, config.force_device)
+    use(device=config.device, force=config.force_device)
 elif config.init_gpu_device:
-    assert config.device=="cpu", "We can use the theano flags init_gpu_device only when the theano flags device=='cpu'"
-    print "Will init the gpu to use a specific gpu device. This don't default tomove computation and allocate shared variable of float32 to this device. For that try the theano flags device."
-    use(config.init_gpu_device, config.force_device, False, False)
+    assert config.device=="cpu", "We can use the Theano flag init_gpu_device only when the Theano flag device=='cpu'"
+    warning(("GPU device %s will be initialized, and used if a GPU is needed. "
+          "However, no computation, nor shared variables, will be implicitly "
+          "moved to that device. If you want that behavior, use the 'device' "
+          "flag instead.") % config.init_gpu_device)
+    use(device=config.init_gpu_device,
+        force=config.force_device,
+        default_to_move_computation_to_gpu=False,
+        move_shared_float32_to_gpu=False)

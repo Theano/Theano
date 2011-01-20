@@ -1,8 +1,9 @@
 #definition theano.scalar op that have their python implementation taked from scipy
 #as scipy is not always available, we put threat them separatly
-
-from theano.scalar.basic import UnaryScalarOp,exp,sqrt,upgrade_to_float,complex_types,float_types,upcast
 import numpy
+
+from theano.scalar.basic import UnaryScalarOp,exp,upgrade_to_float,float_types
+from theano.scalar.basic import upgrade_to_float_no_complex,complex_types,upcast
 
 imported_scipy_special = False
 try:
@@ -49,4 +50,6 @@ class Erfc(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = erfc(%(x)s);" % locals()
-erfc = Erfc(upgrade_to_float, name = 'erfc')
+
+# scipy.special.erfc don't support complex. Why?
+erfc = Erfc(upgrade_to_float_no_complex, name = 'erfc')

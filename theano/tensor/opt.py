@@ -283,7 +283,6 @@ def local_dimshuffle_lift(node):
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
 
-@register_specialize
 @gof.local_optimizer([])
 def dimshuffle_as_view(node):
     op = node.op
@@ -293,6 +292,7 @@ def dimshuffle_as_view(node):
     return [new_op(*node.inputs)]
 
 
+register_specialize(dimshuffle_as_view, 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
@@ -2313,15 +2313,21 @@ def local_add_specialize(node):
                 y = get_constant_value(input)
             except TypeError:
                 y = input
-            if N.all(y == 0.0):
+            if numpy.all(y == 0.0):
                 continue
             new_inputs.append(input)
 
         if len(new_inputs) < len(node.inputs):
             if len(new_inputs) == 0:
                 #we got rid of the entire expression!
-                return fill_chain(T.TensorConstant(T.TensorType(dtype=node.outputs[0].type.dtype,
-                    broadcastable = [True] * node.outputs[0].ndim), N.asarray(0)))
+                ndim = node.outputs[0].type.ndim
+                dtype = node.outputs[0].type.dtype
+                return fill_chain(
+                        T.TensorConstant(
+                            T.TensorType(
+                                dtype=dtype,
+                                broadcastable = [True] * ndim),
+                            numpy.zeros((1,)*ndim, dtype=dtype)))
 
             if len(new_inputs) == 1:
                 return fill_chain(new_inputs[0])
