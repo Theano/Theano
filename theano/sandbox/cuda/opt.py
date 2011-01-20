@@ -189,7 +189,7 @@ def local_gpu_dot_to_dot22(node):
             # case two: matrix X vector
             elif _is_real_matrix(x) and _is_real_vector(y):
                 new_op = GpuDimShuffle((False,), [0,'x'])
-                shape_out = x.shape[1].dimshuffle(['x'])
+                shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
             else:
@@ -207,7 +207,7 @@ def local_gpu_dot_to_dot22(node):
 
             elif _is_real_matrix(x) and _is_real_vector(y):
                 new_op = GpuDimShuffle((False,), [0,'x'])
-                shape_out = x.shape[1].dimshuffle(['x'])
+                shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
             else:
