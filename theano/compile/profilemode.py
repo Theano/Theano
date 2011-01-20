@@ -364,7 +364,7 @@ class ProfileMode(Mode):
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
 
         print
-        print "List of apply that don't have float64 as input but have float64 in outputs. Usefull to know if we forgot some cast when using floatX=float32 or gpu code."
+        print "List of apply that don't have float64 as input but have float64 in outputs. Useful to know if we forgot some cast when using floatX=float32 or gpu code."
         print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
         for fct in fct_call.keys():
             for idx, node in enumerate(fct.maker.env.toposort()):

@@ -342,7 +342,7 @@ def test_elemwise4():
 
 
 def speed_elemwise_collapse():
-    """ used to time if the collapse of ccontiguous dims are usefull """
+    """ used to time if the collapse of ccontiguous dims are useful """
 
     shape = (30,40,50,600)
     a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))

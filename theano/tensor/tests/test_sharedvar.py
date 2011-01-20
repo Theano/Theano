@@ -354,7 +354,7 @@ def makeSharedTester(shared_constructor_,
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
             # Test by set_value with borrow=False when new data casted.
-            # specificaly usefull for gpu data
+            # specificaly useful for gpu data
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd), borrow=False)

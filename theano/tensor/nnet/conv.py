@@ -496,7 +496,7 @@ class ConvOp(Op):
         return "ConvOp{" +",".join(str((a, getattr(self, a))) for a in self.__attrnames)  + "}"
 
     def set_flops(self):
-        """ Usefull with the hack in profilemode to print the MFlops"""
+        """ Useful with the hack in profilemode to print the MFlops"""
         if self.out_mode=="valid":
             self.flops=self.kshp[0]*self.kshp[1]*2#nb mul and add by output pixed
             self.flops*=self.outshp[0]*self.outshp[1]#nb flops by output image

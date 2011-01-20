@@ -1251,7 +1251,7 @@ def local_mul_switch_sink(node):
       T.grad(y,x) -> grad(f(x),x) * grad(y,f(x)) +  grad(g(x),x) * grad(y,g(x))
       **with the optimization
       T.grad(y,x) -> switch(cond,grad(f(x),x), 0) + switch(cond,0,grad(g(x),x))
-    This will be particularly usefull for the lazyif because we skip
+    This will be particularly useful for the lazyif because we skip
     an entire part of the graph.
     """
     if node.op!=T.mul:

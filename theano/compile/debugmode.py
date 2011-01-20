@@ -1248,7 +1248,7 @@ class _Linker(gof.link.LocalLinker):
                     debug("done with node")
 
                 if False:
-                    #This could be usefull to help finding refcount problem.
+                    #This could be useful to help finding refcount problem.
                     #But it is very slow and it is not sure it will help.
                     gc.collect()
 

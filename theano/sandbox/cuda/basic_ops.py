@@ -1917,7 +1917,7 @@ class GpuContiguous(Op):
 gpu_contiguous = GpuContiguous()
 
 # Those are predifined CudaNdarrayType as done in tensor.basic
-# Usefull mostly for test as the gpu op are inserted automatically...
+# Useful mostly for test as the gpu op are inserted automatically...
 
 fscalar = CudaNdarrayType(dtype='float32', broadcastable=())
 def scalar(name = None, dtype = None):

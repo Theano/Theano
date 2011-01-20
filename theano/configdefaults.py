@@ -24,7 +24,7 @@ AddConfigVar('device',
         )
 
 AddConfigVar('init_gpu_device',
-        "Initialize the gpu device to use. This don't change the default behavior. We don't default to try to move the computation to it. We don't default to put shared variable of float32 on it. Usefull to run the test on a specific gpu.",
+        "Initialize the gpu device to use. This don't change the default behavior. We don't default to try to move the computation to it. We don't default to put shared variable of float32 on it. Useful to run the test on a specific gpu.",
         EnumStr('', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
                 allow_override=False)
         )
