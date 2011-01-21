@@ -285,9 +285,12 @@ class MergeOptimizer(Optimizer):
             # these asserts ensure that the env has set the clients field properly the clients
             # should at least contain `node` itself!
             #
-            assert len(node.inputs[0].clients) > 0 
-            assert (node,0) in node.inputs[0].clients
-            merge_candidates = [(nodes_seen[c],c) for (c,i) in node.inputs[0].clients if c in nodes_seen]
+            if node.inputs:
+                assert len(node.inputs[0].clients) > 0 
+                assert (node,0) in node.inputs[0].clients
+                merge_candidates = [(nodes_seen[c],c) for (c,i) in node.inputs[0].clients if c in nodes_seen]
+            else:
+                merge_candidates = []
             merge_candidates.sort()
             nodes_seen[node] = node_idx
             #print 'NODE', node, merge_candidates, node.inputs[0].clients
