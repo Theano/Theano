@@ -214,9 +214,9 @@ class PureType(object):
         data passed as an argument. If it is False, and allow_downcast
         is True, filter may cast it to an appropriate type. If
         allow_downcast is False, filter may only upcast it, not lose
-        precision. If allow_downcast is None, the behaviour can be
-        Type-dependant, but for now only Python float can be downcasted,
-        and only to a floatX scalar.
+        precision. If allow_downcast is None (default), the behaviour can be
+        Type-dependent, but for now it means only Python floats can be
+        downcasted, and only to floatX scalars.
 
         :Exceptions:
          - `MethodNotDefined`: subclass doesn't implement this function.
