@@ -24,16 +24,23 @@ default values.
 
 .. class:: PureType
 
-    .. method:: filter(value, strict=False)
+    .. method:: filter(value, strict=False, allow_downcast=None)
 
       This casts a value to match the Type and returns the
       casted value. If ``value`` is incompatible with the Type,
       the method must raise an exception. If ``strict`` is True, ``filter`` must return a
-      reference to ``value`` (i.e. casting prohibited)
+      reference to ``value`` (i.e. casting prohibited).
+      If ``strict`` is False, then casting may happen, but downcasting should
+      only be used in two situations:
+          * if ``allow_downcast`` is True
+          * if ``allow_downcast`` is ``None`` and the default behavior for this
+            type allows downcasting for the given ``value`` (this behavior is
+            type-dependent, you may decide what your own type does by default)
 
-      We need to define ``filter`` with two arguments. The second argument
+      We need to define ``filter`` with three arguments. The second argument
       must be called ``strict`` (Theano often calls it by keyword) and must
-      have a default value of ``False``.
+      have a default value of ``False``. The third argument must be called
+      ``allow_downcast`` and must have a default value of ``None``.
 
     .. method:: is_valid_value(value)
 
@@ -41,7 +48,7 @@ default values.
       ``filter(value, strict = True)`` does not raise an exception, the
       value is compatible with the Type.
 
-      *Default:* True iff ``filter(value, strict = True)`` does not raise
+      *Default:* True iff ``filter(value, strict=True)`` does not raise
       an exception.
 
     .. method:: values_eq(a, b)
@@ -119,14 +126,29 @@ must define ``filter`` and shall override ``values_eq_approx``.
                 return x
             else:
                 raise TypeError('Expected a float!')
-        else:
+        elif allow_downcast:
             return float(x)
+        else:   # Covers both the False and None cases.
+            x_float = float(x)
+            if x_float == x:
+                return x_float
+            else:
+                 raise TypeError('The double type cannot accurately represent '
+                                 'value %s (of type %s): you must explicitly '
+                                 'allow downcasting if you want to do this.'
+                                 % (x, type(x)))
 
-If ``strict is True`` we need to return ``x``. If ``strict is True`` and ``x`` is not a
+If ``strict`` is True we need to return ``x``. If ``strict`` is True and ``x`` is not a
 ``float`` (for example, ``x`` could easily be an ``int``) then it is
-incompatible with our Type and we must raise an exception. If
-``strict is False`` then we are allowed to cast ``x`` to a ``float``,
+incompatible with our Type and we must raise an exception.
+
+If ``strict is False`` then we are allowed to cast ``x`` to a ``float``,
 so if ``x`` is an ``int`` it we will return an equivalent ``float``.
+However if this cast triggers a precision loss (``x != float(x)``) and
+``allow_downcast`` is not True, then we also raise an exception.
+Note that here we decided that the default behavior of our type
+(when ``allow_downcast`` is set to ``None``) would be the same as
+when ``allow_downcast`` is False, i.e. no precision loss is allowed.
 
 
 **values_eq_approx**
@@ -184,13 +206,13 @@ and define ``filter`` and ``values_eq_approx`` in the subclass:
 
    class Double(gof.Type):
 
-       def filter(self, x, strict=False):
-           if strict and not isinstance(x, float):
-               raise TypeError('Expected a float!')
-           return float(x)
+       def filter(self, x, strict=False, allow_downcast=None):
+           # See code above.
+           ...
 
        def values_eq_approx(self, x, y, tolerance=1e-4):
-           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+           # See code above.
+           ...
 
    double = Double()
 
@@ -280,9 +302,22 @@ Final version
    class Double(gof.Type):
 
        def filter(self, x, strict=False, allow_downcast=None):
-           if strict and not isinstance(x, float):
-               raise TypeError('Expected a float!')
-           return float(x)
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
 
        def values_eq_approx(self, x, y, tolerance=1e-4):
            return abs(x - y) / (abs(x) + abs(y)) < tolerance
