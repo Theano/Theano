@@ -25,7 +25,7 @@ class MyType(Type):
     def __repr__(self):
         return str(self.thingy)
 
-    def filter(self, x, strict=True, allow_downcast=None):
+    def filter(self, x, strict=False, allow_downcast=None):
         # Dummy filter: we want this type to represent strings that
         # start with `self.thingy`.
         assert isinstance(x, str) and x.startswith(self.thingy)
