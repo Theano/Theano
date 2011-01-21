@@ -340,7 +340,7 @@ class Conv3D(theano.Op):
             codeSource += """
             if (inputChannels > 20 && outputChannels > 20 && ws4 == sizeof(ELEM_AT(%(W)s,0)))
             {
-              std::cout << "lots of channels special case code" << std::endl;
+              //std::cout << "lots of channels special case code" << std::endl;
               #define blas_type dtype_ ## %(V)s
               const blas_type  constant_one = 1.0;
               char N = 'T';

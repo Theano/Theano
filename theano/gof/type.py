@@ -42,15 +42,15 @@ class CLinkerType(CLinkerObject):
 
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
-        
+
         """
         raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
-    
+
     def c_declare(self, name, sub):
         """Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
-        Example: 
+        Example:
         .. code-block: python
 
             return "PyObject ** addr_of_%(name)s;"
@@ -82,7 +82,7 @@ class CLinkerType(CLinkerObject):
         """Required: Return c code to initialize the variables that were declared by
         self.c_declare()
 
-        Example: 
+        Example:
         .. code-block: python
 
             return "addr_of_%(name)s = NULL;"
@@ -110,7 +110,7 @@ class CLinkerType(CLinkerObject):
         by this function. --jpt
 
 
-        Example: 
+        Example:
         .. code-block: python
 
             return "if (py_%(name)s == Py_None)" + \\\
@@ -133,7 +133,7 @@ class CLinkerType(CLinkerObject):
 
         """
         raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
-    
+
     def c_cleanup(self, name, sub):
         """Optional: Return c code to clean up after `c_extract`.
 
@@ -206,7 +206,7 @@ class PureType(object):
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Required: Return data or an appropriately wrapped/converted data.
-        
+
         Subclass implementation should raise a TypeError exception if the data is not of an
         acceptable type.
 
@@ -214,8 +214,9 @@ class PureType(object):
         data passed as an argument. If it is False, and allow_downcast
         is True, filter may cast it to an appropriate type. If
         allow_downcast is False, filter may only upcast it, not lose
-        precision. If allow_downcast is None, only Python float can be
-        downcasted, and only to a floatX scalar.
+        precision. If allow_downcast is None, the behaviour can be
+        Type-dependant, but for now only Python float can be downcasted,
+        and only to a floatX scalar.
 
         :Exceptions:
          - `MethodNotDefined`: subclass doesn't implement this function.
@@ -230,7 +231,7 @@ class PureType(object):
             return True
         except (TypeError, ValueError):
             return False
-    
+
     def value_validity_msg(self, a):
         """Optional: return a message explaining the output of is_valid_value"""
         return "none"
@@ -248,7 +249,7 @@ class PureType(object):
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)
 
-    
+
     def __call__(self, name = None):
         """Return a new `Variable` instance of Type `self`.
 
@@ -330,7 +331,7 @@ class Type(object2, PureType, CLinkerType):
 
 class SingletonType(Type):
     """Convenient Base class for a Type subclass with no attributes
-    
+
     It saves having to implement __eq__ and __hash__
     """
     __instance = None
@@ -347,13 +348,13 @@ class Generic(SingletonType):
     Represents a generic Python object.
 
     This class implements the `PureType` and `CLinkerType` interfaces for generic PyObject
-    instances. 
+    instances.
 
     EXAMPLE of what this means, or when you would use this type.
 
     WRITEME
     """
-    
+
     def filter(self, data, strict=False, allow_downcast=None):
         return data
 
@@ -375,7 +376,7 @@ class Generic(SingletonType):
         Py_INCREF(py_%(name)s);
         %(name)s = py_%(name)s;
         """ % locals()
-    
+
     def c_cleanup(self, name, sub):
         return """
         Py_XDECREF(%(name)s);
@@ -390,4 +391,3 @@ class Generic(SingletonType):
         """ % locals()
 
 generic = Generic()
-

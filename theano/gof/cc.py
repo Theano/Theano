@@ -64,7 +64,7 @@ def get_persistent_module_cache():
     if _persistent_module_cache is None:
         _persistent_module_cache = CallCache(os.path.join(config.compiledir, 'persistent_cache'))
     return _persistent_module_cache
- 
+
 class CodeBlock:
     """WRITEME
     Represents a computation unit composed of declare, behavior, and cleanup.
@@ -511,16 +511,24 @@ class CLinker(link.Linker):
 
             op = node.op
             # type-specific support code
-            try: c_support_code_apply.append(op.c_support_code_apply(node, name))
-            except utils.MethodNotDefined: pass
+            try:
+                c_support_code_apply.append(op.c_support_code_apply(node, name))
+            except utils.MethodNotDefined:
+                pass
+            else:
+                # The following will be executed if the "try" block succeeds
+                assert isinstance(c_support_code_apply[-1], str), (
+                        str(node.op)+" didn't returned a string for c_support_code_apply")
 
-            # emit c_code 
-            try: behavior = op.c_code(node, name, isyms, osyms, sub)
+            # emit c_code
+            try:
+                behavior = op.c_code(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
             assert isinstance(behavior,str), str(node.op)+" didn't returned a string for c_code"
 
-            try: cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
+            try:
+                cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 cleanup = ""
 
@@ -611,11 +619,11 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined: pass
         ret=list(set(ret))#to remove duplicate
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
-            try: 
+            try:
                 for i in x.c_no_compile_args():
                     try:
                         ret.remove(i)
-                    except ValueError: 
+                    except ValueError:
                         pass# in case the value is not there
             except utils.MethodNotDefined: pass
         return ret
@@ -734,7 +742,7 @@ class CLinker(link.Linker):
             if v in self.orphans and isinstance(v, graph.Constant):
                 try:
                     v.type.c_literal(v.data) #constant will be inlined, no need to get
-                    continue 
+                    continue
                 except (utils.MethodNotDefined, NotImplementedError):
                     pass
             init_tasks.append((v, 'init', id))
@@ -742,7 +750,7 @@ class CLinker(link.Linker):
             id += 2
         for node in self.node_order:
             tasks.append((node, 'code', id))
-            id += 1 
+            id += 1
         return init_tasks, tasks
 
     def make_thunk(self, input_storage = None, output_storage = None):
@@ -805,7 +813,7 @@ class CLinker(link.Linker):
         Each element identifies the type of the node input, and the nature of that input in the
         graph.
 
-        The nature of a typical variable is encoded by integer pairs ``((a,b),c)``: 
+        The nature of a typical variable is encoded by integer pairs ``((a,b),c)``:
         ``a`` is the topological position of the input's owner (-1 for graph inputs),
         ``b`` is the index of the variable in the owner's output list.
         ``c`` is a flag indicating whether the variable is in the no_recycling set.
@@ -826,10 +834,10 @@ class CLinker(link.Linker):
         The outputs of a node are entirely determined by the node's Op and the nature of the
         inputs, but the set of outputs that may be re-used by the computation (the elements of
         self.no_recycling) can affect the code that is generated.
-        
+
         The format of each Op's output signature is simply a list of booleans, indicating
         whether each output is in the no_recycling set.
-        
+
         """
         return self.cmodule_key_(self.env, self.no_recycling,
                           compile_args=self.compile_args(),
@@ -844,7 +852,7 @@ class CLinker(link.Linker):
         order = list(env.toposort())
         #set of variables that have been computed by nodes we have
         # seen 'so far' in the loop below
-        env_computed_set = set() 
+        env_computed_set = set()
         env_inputs_dict = dict((i, (-1, pos)) for pos, i in enumerate(env.inputs))
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
@@ -909,13 +917,13 @@ class CLinker(link.Linker):
             #add the signature for this node
             sig.append((
                 node.op,
-                tuple((i.type, in_sig(i, node_pos, ipos)) 
+                tuple((i.type, in_sig(i, node_pos, ipos))
                     for ipos,i in enumerate(node.inputs)),
                 tuple(o in no_recycling for o in node.outputs)))
 
             if error_on_play[0]:
                 # if one of the signatures is not hashable
-                # then bypass the cache mechanism and 
+                # then bypass the cache mechanism and
                 # compile fresh every time
                 return None
 
@@ -926,8 +934,8 @@ class CLinker(link.Linker):
         sig = tuple(sig)
         version = tuple(version)
         for v in version:
-            if not v: 
-                # one of the ops or types here is unversioned, 
+            if not v:
+                # one of the ops or types here is unversioned,
                 # so this env is entirely unversioned
                 return ((), sig)
         return version, sig
@@ -1044,7 +1052,7 @@ class CLinker(link.Linker):
         orphd = [[orphan.data] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-        
+
         return ret
 
     def instantiate_code(self, n_args):
@@ -1119,8 +1127,8 @@ class OpWiseCLinker(link.LocalLinker):
 
     __cache__ = {}
 
-    def __init__(self, 
-            fallback_on_perform = True, 
+    def __init__(self,
+            fallback_on_perform = True,
             allow_gc = True,
             nice_errors = True):
         self.env = None
@@ -1194,7 +1202,7 @@ class OpWiseCLinker(link.LocalLinker):
                         raise
 
                 if self.allow_gc:
-                    post_thunk_old_storage.append([storage_map[input] 
+                    post_thunk_old_storage.append([storage_map[input]
                         for input in node.inputs
                         if (input in computed) and (input not in env.outputs) and node == last_user[input]])
 
@@ -1204,9 +1212,9 @@ class OpWiseCLinker(link.LocalLinker):
             else:
                 no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
-            f = link.streamline(env, thunks, order, 
+            f = link.streamline(env, thunks, order,
                     post_thunk_old_storage,
-                    no_recycling = no_recycling, 
+                    no_recycling = no_recycling,
                     nice_errors = self.nice_errors)
 
             f.allow_gc = self.allow_gc
@@ -1305,4 +1313,3 @@ class DualLinker(link.Linker):
                     link.raise_with_op(node1)
 
         return f, i1, o1
-
