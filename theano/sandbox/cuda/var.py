@@ -118,7 +118,7 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
             It is also worth mentioning that, for efficient transfer to the GPU, Theano will make the new data
             ``c_contiguous``. This can require an extra copy of the data on the host.
 
-            This work what when borrow=True and when borrow=False
+            The inplace on gpu memory work when borrow is either True or False.
         """
         if not borrow:
             #TODO: check for cuda_ndarray type
