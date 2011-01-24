@@ -777,7 +777,10 @@ class T_using_gpu(unittest.TestCase):
             r = f()
         print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
         print 'Result is', r
-        print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
+        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+            print 'Used the cpu'
+        else:
+            print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
         else:
@@ -806,7 +809,10 @@ class T_using_gpu(unittest.TestCase):
             print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
+            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+                print 'Used the cpu'
+            else:
+                print 'Used the gpu'
 
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
 
@@ -837,7 +843,10 @@ class T_using_gpu(unittest.TestCase):
             print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
+            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+                print 'Used the cpu'
+            else:
+                print 'Used the gpu' 
 
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
 
