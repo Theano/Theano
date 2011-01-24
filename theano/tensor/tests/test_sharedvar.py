@@ -2,6 +2,7 @@ import numpy
 import unittest
 
 import theano
+from theano.gof.python25 import all
 from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.misc.may_share_memory import may_share_memory
