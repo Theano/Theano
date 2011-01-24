@@ -1568,8 +1568,13 @@ class SpecifyShape(Op):
         assert len(new_shape)==len(xshape)
         return [new_shape]
 
-    def grad(self, (x,), (gz,)):
-        return [gz]
+    def grad(self, (x, s), (gz,)):
+        # Should I set an SpecifyShape on gz? I think so
+        # But I don't do it now as we need to make an optimization
+        # to remove that op from the graph to don't block other optimization
+        # Should I do an optimizer that will remove the SpecifyShape? I think Yes
+        return [gz, None]
+        return [specify_shape(gz,s), None]
 
 specify_shape = SpecifyShape()
 

@@ -418,6 +418,12 @@ def makeSharedTester(shared_constructor_,
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo_cst)==0
 
+            # Test that we can take the grad.
+            shape_grad = tensor.grad(x1_specify_shape.sum(), x1_shared)
+            shape_constant_fct_grad = theano.function([], shape_grad)
+            theano.printing.debugprint(shape_constant_fct_grad)
+            shape_constant_fct_grad()
+
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
             specify_shape_fct()
