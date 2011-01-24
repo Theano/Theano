@@ -723,58 +723,38 @@ _good_broadcast_unary_normal_no_int = _good_broadcast_unary_normal.copy()
 del _good_broadcast_unary_normal_no_int['integers']
 
 if imported_scipy_special:
+    # We can't test it if scipy is not installed!
+    # Precomputing the result is brittle(it have been broken!)
+    # As if we do any modification to random number here,
+    # The input random number will change and the output!
     expected = scipy.special.erf
-else:
-    integers = numpy.asarray([[-1., 0.99532227, -0.99532227],
-                              [-0.99532227, 1., 0.84270079]])
-    corner_case = numpy.asarray([-0.99959305, -0.99532227, -0.96610515, -0.84270079, -0.52049988, -0.52924362,
-                               -0.51166826,  0.,          0.51166826,  0.52049988,  0.79690821,  0.84270079,
-                               0.96610515,  0.99532227, 0.99959305])
-    normal = numpy.array([[-1.        ,  0.99991358,  0.70314729],
-                          [ 0.9977147 , -0.99999884,  0.33409098]])
-    expected = dict(integers=integers, corner_case=corner_case, normal = normal,
-                    empty = (numpy.asarray([]),),)
-ErfTester = makeBroadcastTester(op = erf,
-                                expected = expected,
-                                good = _good_broadcast_unary_normal,
-                                grad = _grad_broadcast_unary_normal,
-                                eps = 2e-10,
-                                mode = mode_no_scipy)
-ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
-                                       expected = expected,
-                                       good = _good_broadcast_unary_normal_no_int,
-                                       grad = _grad_broadcast_unary_normal,
-                                       mode = mode_no_scipy,
-                                       eps = 2e-10,
-                                       inplace = True)
+    ErfTester = makeBroadcastTester(op = erf,
+                                    expected = scipy.special.erf,
+                                    good = _good_broadcast_unary_normal,
+                                    grad = _grad_broadcast_unary_normal,
+                                    eps = 2e-10,
+                                    mode = mode_no_scipy)
+    ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
+                                           expected = scipy.special.erf,
+                                           good = _good_broadcast_unary_normal_no_int,
+                                           grad = _grad_broadcast_unary_normal,
+                                           mode = mode_no_scipy,
+                                           eps = 2e-10,
+                                           inplace = True)
 
-if imported_scipy_special:
-    expected = scipy.special.erfc
-else:
-    integers = numpy.array([[  2.00000000e+00,   4.67773498e-03,   1.99532227e+00],
-                            [  1.99532227e+00,   1.53745979e-12,   1.57299207e-01]])
-    corner_case = numpy.array([  1.99959305e+00,   1.99532227e+00,   1.96610515e+00,
-                                 1.84270079e+00,   1.52049988e+00,   1.52924362e+00,
-                                 1.51166826e+00,   1.00000000e+00,   4.88331739e-01,
-                                 4.79500122e-01,   2.03091788e-01,   1.57299207e-01,
-                                 3.38948535e-02,   4.67773498e-03,   4.06952017e-04])
-    normal = numpy.array([[  2.00000000e+00,   8.64228449e-05,   2.96852710e-01],
-                          [  2.28530326e-03,   1.99999884e+00,   6.65909025e-01]])
-    expected = dict(integers=integers, corner_case=corner_case, normal = normal,
-                    empty = (numpy.asarray([]),),)
-ErfcTester = makeBroadcastTester(op = erfc,
-                                 expected = expected,
-                                 good = _good_broadcast_unary_normal_no_int_no_complex,
-                                 grad = _grad_broadcast_unary_normal,
-                                 eps = 2e-10,
-                                 mode = mode_no_scipy)
-ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
-                                        expected = expected,
-                                        good = _good_broadcast_unary_normal_no_int_no_complex,
-                                        grad = _grad_broadcast_unary_normal,
-                                        eps = 2e-10,
-                                        mode = mode_no_scipy,
-                                        inplace = True)
+    ErfcTester = makeBroadcastTester(op = erfc,
+                                     expected = scipy.special.erfc,
+                                     good = _good_broadcast_unary_normal_no_int_no_complex,
+                                     grad = _grad_broadcast_unary_normal,
+                                     eps = 2e-10,
+                                     mode = mode_no_scipy)
+    ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
+                                            expected = scipy.special.erfc,
+                                            good = _good_broadcast_unary_normal_no_int_no_complex,
+                                            grad = _grad_broadcast_unary_normal,
+                                            eps = 2e-10,
+                                            mode = mode_no_scipy,
+                                            inplace = True)
 
 
 DotTester = makeTester(name = 'DotTester',
