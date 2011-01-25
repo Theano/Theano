@@ -350,7 +350,7 @@ def test_uniform():
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
         cpu_c_out = f(*input)
-        pickle.dump(cpu_c_out, open('debug_rng_cpu_c.pkl','w'))
+        #pickle.dump(cpu_c_out, open('debug_rng_cpu_c.pkl','w'))
 
         print 'random?[:10]\n'
         print cpu_c_out[0,0:10]
@@ -371,7 +371,7 @@ def test_uniform():
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
-            pickle.dump(gpu_out, open('debug_rng_gpu.pkl','w'))
+            #pickle.dump(gpu_out, open('debug_rng_gpu.pkl','w'))
 
             print 'random?[:10]\n'
             print gpu_out[0,0:10]

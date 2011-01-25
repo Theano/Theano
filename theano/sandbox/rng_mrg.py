@@ -380,7 +380,8 @@ class GPU_mrg_uniform(mrg_uniform_base):
         static __global__ void %(nodename)s_mrg_uniform(
                 %(otype)s*sample_data,
                 npy_int32*state_data,
-                const int Nsamples)
+                const int Nsamples,
+                const int Nstreams_used)
         {
             const npy_int32 i0 = 0;
             const npy_int32 i7 = 7;
@@ -401,6 +402,8 @@ class GPU_mrg_uniform(mrg_uniform_base):
             const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
             npy_int32 y1, y2, x11, x12, x13, x21, x22, x23;
 
+            if (idx < Nstreams_used)
+            {
             x11 = state_data[idx*6+0];
             x12 = state_data[idx*6+1];
             x13 = state_data[idx*6+2];
@@ -408,7 +411,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
             x22 = state_data[idx*6+4];
             x23 = state_data[idx*6+5];
 
-            for (int i = idx; i < Nsamples; i += numThreads)
+            for (int i = idx; i < Nsamples; i += Nstreams_used)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
                 y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
@@ -446,6 +449,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
             state_data[idx*6+3]= x21;
             state_data[idx*6+4]= x22;
             state_data[idx*6+5]= x23;
+            }
         }  
 
         """ %locals()
@@ -467,7 +471,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
 
         int odims[%(ndim)s];
         int n_elements = 1;
-        unsigned int n_streams;
+        int n_streams, n_streams_used_in_this_call;
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
                 || (%(o_sample)s->nd != %(ndim)s));
@@ -530,11 +534,12 @@ class GPU_mrg_uniform(mrg_uniform_base):
             PyErr_Format(PyExc_ValueError, "rstate len must be multiple of 6");
             %(fail)s;
         }
-        n_streams = std::min(CudaNdarray_HOST_DIMS(%(o_rstate)s)[0]/6, n_elements);
+        n_streams = CudaNdarray_HOST_DIMS(%(o_rstate)s)[0]/6;
+        n_streams_used_in_this_call = std::min(n_streams, n_elements);
 
         {
-            unsigned int threads_per_block = std::min(n_streams, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-            unsigned int n_blocks = std::min(ceil_intdiv(n_streams, threads_per_block), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+            unsigned int threads_per_block = std::min((unsigned int)n_streams_used_in_this_call, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+            unsigned int n_blocks = std::min(ceil_intdiv((unsigned int)n_streams_used_in_this_call, threads_per_block), (unsigned int)NUM_VECTOR_OP_BLOCKS);
 
             if (threads_per_block * n_blocks < n_streams)
             {
@@ -543,7 +548,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
             %(nodename)s_mrg_uniform<<<n_blocks,threads_per_block>>>(
                 CudaNdarray_DEV_DATA(%(o_sample)s),
                 (npy_int32*)CudaNdarray_DEV_DATA(%(o_rstate)s),
-                n_elements);
+                n_elements, n_streams_used_in_this_call);
         }
 
         %(SYNC)s;
@@ -632,10 +637,6 @@ class MRG_RandomStreams(object):
                 r *= s
             if r > 6:
                 r = r/6 # chosen as fastest for rbm_benchmark
-
-            # make sure its a multiple of 256 so that CPU and GPU work the same way
-            r = numpy.ceil(r/256.) * 256
-
             return r
 
         print >> sys.stderr, "MRG_RandomStreams Can't determine #streams from size (%s), guessing 30*256"%str(size)
