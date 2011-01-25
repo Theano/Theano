@@ -3102,7 +3102,8 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if not fused:
             return False
 
-        assert new_nb_input == len(inputs)
+        if new_nb_input != len(inputs):
+            raise Exception("Something has gone wrong with the elemwise fusion optimization.")
         assert len(s_inputs) == len(inputs)
 
         otype = node.outputs[0].type
