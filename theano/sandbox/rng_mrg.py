@@ -535,6 +535,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
         {
             unsigned int threads_per_block = std::min(n_streams, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
             unsigned int n_blocks = std::min(ceil_intdiv(n_streams, threads_per_block), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+
             if (threads_per_block * n_blocks < n_streams)
             {
                 fprintf(stderr, "WARNING: unused streams above %%i (Tune GPU_mrg get_n_streams)\\n", threads_per_block * n_blocks );
@@ -630,9 +631,12 @@ class MRG_RandomStreams(object):
             for s in size:
                 r *= s
             if r > 6:
-                return r/6 # chosen as fastest for rbm_benchmark
-            else:
-                return r
+                r = r/6 # chosen as fastest for rbm_benchmark
+
+            # make sure its a multiple of 256 so that CPU and GPU work the same way
+            r = numpy.ceil(r/256.) * 256
+
+            return r
 
         print >> sys.stderr, "MRG_RandomStreams Can't determine #streams from size (%s), guessing 30*256"%str(size)
         return 30*256
@@ -662,6 +666,7 @@ class MRG_RandomStreams(object):
 
         if nstreams is None:
             nstreams = self.n_streams(size)
+
         if self.use_cuda and dtype=='float32':
             rstates = self.get_substream_rstates(nstreams)
             rstates = rstates.flatten()
