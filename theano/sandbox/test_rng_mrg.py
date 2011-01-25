@@ -323,6 +323,9 @@ def test_uniform():
 #TODO: test ndim!=size.ndim
 #TODO: test bad seed
 #TODO: test size=Var, with shape that change from call to call
+
+    import pickle
+
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
         sample_size = (10,100)
         steps = 50
@@ -336,8 +339,9 @@ def test_uniform():
             (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
             ]:
 
+        #### TEST CPU (C) IMPLEMENTATION ####
         print ''
-        print 'ON CPU with size=(%s):'%str(size)
+        print 'ON CPU (C) with size=(%s):'%str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
         u = R.uniform(size=size)
@@ -345,10 +349,32 @@ def test_uniform():
         assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
-        out = f(*input)
-        print 'random?[:10]\n', out[0,0:10]
-        #print 'random?[-1,-10:]\n', out[-1,-10:]
-        basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input)
+        cpu_c_out = f(*input)
+        pickle.dump(cpu_c_out, open('/u/desjagui/temp/debug_rng_cpu_c.pkl','w'))
+
+        print 'random?[:10]\n'
+        print cpu_c_out[0,0:10]
+        print cpu_c_out[-1,0:10]
+        #print 'random?[-1,-10:]\n', cpu_c_out[-1,-10:]
+        basictest(f, steps, sample_size, prefix='mrg cpu (C)', inputs=input)
+
+        #### TEST CPU (PYTHON) IMPLEMENTATION ####
+        print ''
+        print 'ON CPU (Python) with size=(%s):'%str(size)
+        R = MRG_RandomStreams(234, use_cuda=False)
+        u = R.uniform(size=size)
+        f = theano.function(var_input, u, mode=theano.Mode(linker='py'))
+        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
+                    for node in f.maker.env.toposort()])
+        theano.printing.debugprint(f)
+        cpu_py_out = f(*input)
+        pickle.dump(cpu_py_out, open('/u/desjagui/temp/debug_rng_cpu_py.pkl','w'))
+
+        print 'random?[:10]\n'
+        print cpu_py_out[0,0:10]
+        print cpu_py_out[-1,0:10]
+        #print 'random?[-1,-10:]\n', cpu_py_out[-1,-10:]
+        #basictest(f, steps, sample_size, prefix='mrg cpu (Python)', inputs=input)
 
         if mode!='FAST_COMPILE' and cuda_available:
             print ''
@@ -362,10 +388,18 @@ def test_uniform():
             assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform) 
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
-            out = numpy.asarray(f(*input))
-            print 'random?[:10]\n', out[0,0:10]
-            #print 'random?[-1,-10:]\n', out[-1,-10:]
+            gpu_out = numpy.asarray(f(*input))
+            pickle.dump(gpu_out, open('/u/desjagui/temp/debug_rng_gpu.pkl','w'))
+
+            print 'random?[:10]\n'
+            print gpu_out[0,0:10]
+            print gpu_out[-1,0:10]
+            #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
+
+
+        numpy.testing.assert_array_almost_equal(cpu_c_out, cpu_py_out)
+        numpy.testing.assert_array_almost_equal(cpu_c_out, gpu_out)
 
         print ''
         print 'ON CPU w Numpy with size=(%s):'%str(size)
