@@ -258,8 +258,12 @@ class ProfileMode(Mode):
             op_call.setdefault(op,0)
             op_apply.setdefault(op,0)
             op_time[op]+=t
-            op_call[op]+=[v for k,v in fct_call.items() if k.maker.env is a.env][0]
-            op_apply[op]+=1
+            nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
+            if t==0:
+                assert nb_call == 0
+            else:
+                op_call[op] += nb_call
+                op_apply[op] += 1
 
         op_flops = {}
         for a,t in op_time.items():
@@ -270,7 +274,7 @@ class ProfileMode(Mode):
         if op_flops:
             flops_msg=' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
+        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -311,7 +315,7 @@ class ProfileMode(Mode):
             sop_c.setdefault(typ,True)
             sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
             sop_call[typ]=sop_call.get(typ,0)+op_call[a]
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
+        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
         sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
@@ -472,7 +476,9 @@ class ProfileMode(Mode):
 
 
         print
-        print "Here are tips to potentially make your code run faster (if you think of new ones, suggest them on the mailing list). Test them first as they are not guaranteed to always provide a speedup."
+        print """Here are tips to potentially make your code run faster
+(if you think of new ones, suggest them on the mailing list).
+Test them first as they are not guaranteed to always provide a speedup."""
         from theano import tensor as T
         from theano.tensor.raw_random import RandomFunction
         import theano
@@ -501,7 +507,6 @@ class ProfileMode(Mode):
                     if s_op.__class__ in scalar_op_amdlibm_speed_up:
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
-                        import pdb;pdb.set_trace()
                         print "We don't know if amdlibm will accelerate this scalar op.", s_op
                 return False
         def exp_float32_op(op):
@@ -511,33 +516,41 @@ class ProfileMode(Mode):
                 l = list_scalar_op(op)
                 return any([s_op.__class__ in [scal.Exp] for s_op in l])
 
+        gived_tip = False
         #tip 1
         if config.floatX=='float64':
             print "  - Try the Theano flag floatX=float32"
+            gived_tip = True
 
         #tip 2
         if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i,a in apply_time]):
             print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speed up only some Elemwise operation."
+            gived_tip = True
 
         #tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
             print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
+            gived_tip = True
 
         #tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
                 print "  - You have a dot operation that was not optimized to dot22 that is faster. Make sure the inputs are float32 or 64 and are the same for both input. Currently they are:",[i.type for i in node.inputs]
+                gived_tip = True
 
         #tip 5
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, RandomFunction):
+                gived_tip = True
                 print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams' as this is is faster. It is still experimental, but seam to work correctly."
                 if config.device.startswith("gpu"):
                     print "     - MRG_RandomStreams is the only random number supported on the GPU."
                 break
 
+        if not gived_tip:
+            print "  Sorry no tip for today."
 
 register_mode('PROFILE_MODE',ProfileMode())
 
