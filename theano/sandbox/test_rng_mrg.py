@@ -350,7 +350,7 @@ def test_uniform():
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
         cpu_c_out = f(*input)
-        pickle.dump(cpu_c_out, open('/u/desjagui/temp/debug_rng_cpu_c.pkl','w'))
+        #pickle.dump(cpu_c_out, open('debug_rng_cpu_c.pkl','w'))
 
         print 'random?[:10]\n'
         print cpu_c_out[0,0:10]
@@ -368,7 +368,7 @@ def test_uniform():
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
         cpu_py_out = f(*input)
-        pickle.dump(cpu_py_out, open('/u/desjagui/temp/debug_rng_cpu_py.pkl','w'))
+        #pickle.dump(cpu_py_out, open('debug_rng_cpu_py.pkl','w'))
 
         print 'random?[:10]\n'
         print cpu_py_out[0,0:10]
@@ -389,7 +389,7 @@ def test_uniform():
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
-            pickle.dump(gpu_out, open('/u/desjagui/temp/debug_rng_gpu.pkl','w'))
+            #pickle.dump(gpu_out, open('debug_rng_gpu.pkl','w'))
 
             print 'random?[:10]\n'
             print gpu_out[0,0:10]
@@ -398,8 +398,8 @@ def test_uniform():
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
 
-        numpy.testing.assert_array_almost_equal(cpu_c_out, cpu_py_out)
-        numpy.testing.assert_array_almost_equal(cpu_c_out, gpu_out)
+        numpy.testing.assert_array_almost_equal(cpu_c_out, cpu_py_out, decimal=4)
+        numpy.testing.assert_array_almost_equal(cpu_c_out, gpu_out, decimal=4)
 
         print ''
         print 'ON CPU w Numpy with size=(%s):'%str(size)
