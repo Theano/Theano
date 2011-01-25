@@ -258,8 +258,12 @@ class ProfileMode(Mode):
             op_call.setdefault(op,0)
             op_apply.setdefault(op,0)
             op_time[op]+=t
-            op_call[op]+=[v for k,v in fct_call.items() if k.maker.env is a.env][0]
-            op_apply[op]+=1
+            nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
+            if t==0:
+                assert nb_call == 0
+            else:
+                op_call[op] += nb_call
+                op_apply[op] += 1
 
         op_flops = {}
         for a,t in op_time.items():
@@ -270,7 +274,7 @@ class ProfileMode(Mode):
         if op_flops:
             flops_msg=' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
+        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -311,7 +315,7 @@ class ProfileMode(Mode):
             sop_c.setdefault(typ,True)
             sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
             sop_call[typ]=sop_call.get(typ,0)+op_call[a]
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
+        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
         sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
@@ -501,7 +505,6 @@ class ProfileMode(Mode):
                     if s_op.__class__ in scalar_op_amdlibm_speed_up:
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
-                        import pdb;pdb.set_trace()
                         print "We don't know if amdlibm will accelerate this scalar op.", s_op
                 return False
         def exp_float32_op(op):
