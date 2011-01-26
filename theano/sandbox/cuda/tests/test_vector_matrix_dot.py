@@ -26,7 +26,7 @@ else:
 def test_dot_vm():
     ''' Test vector dot matrix '''
     v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
-    m = theano.shared( numpy.array(numpy.random.rand(2,2),
+    m = theano.shared( numpy.array(numpy.random.rand(2,5),
                                    dtype='float32'))
     no_gpu_f = theano.function([], theano.dot(v,m), mode = mode_without_gpu)
     gpu_f    = theano.function([], theano.dot(v,m), mode = mode_with_gpu)
@@ -46,7 +46,7 @@ def test_dot_vm():
 def test_dot_mv():
     ''' Test matrix dot vector '''
     v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
-    m = theano.shared( numpy.array(numpy.random.rand(2,2),
+    m = theano.shared( numpy.array(numpy.random.rand(5,2),
                                    dtype='float32'))
     no_gpu_f = theano.function([], theano.dot(m,v), mode = mode_without_gpu)
     gpu_f    = theano.function([], theano.dot(m,v), mode = mode_with_gpu)
@@ -66,8 +66,8 @@ def test_dot_mv():
 def test_gemv1():
     ''' test vector1+dot(matrix,vector2) '''
     v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
-    v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
-    m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
+    v2 = theano.shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
+    m  = theano.shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
 
     no_gpu_f = theano.function([], v2+theano.dot(m,v1), mode = mode_without_gpu)
     gpu_f    = theano.function([], v2+theano.dot(m,v1), mode = mode_with_gpu)
@@ -87,9 +87,9 @@ def test_gemv1():
 
 def test_gemv2():
     ''' test vector1+dot(vector2,matrix) '''
-    v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    v1 = theano.shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
     v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
-    m  = theano.shared( numpy.array(numpy.random.rand(2,2), dtype='float32'))
+    m  = theano.shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
 
     no_gpu_f = theano.function([], v2+theano.dot(v1,m), mode = mode_without_gpu)
     gpu_f    = theano.function([], v2+theano.dot(v1,m), mode = mode_with_gpu)
