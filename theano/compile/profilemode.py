@@ -478,7 +478,7 @@ class ProfileMode(Mode):
         print
         print """Here are tips to potentially make your code run faster
 (if you think of new ones, suggest them on the mailing list).
-Test them first as they are not guaranteed to always provide a speedup."""
+Test them first, as they are not guaranteed to always provide a speedup."""
         from theano import tensor as T
         from theano.tensor.raw_random import RandomFunction
         import theano
@@ -524,19 +524,19 @@ Test them first as they are not guaranteed to always provide a speedup."""
 
         #tip 2
         if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i,a in apply_time]):
-            print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speed up only some Elemwise operation."
+            print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speeds up only some Elemwise operation."
             printed_tip = True
 
         #tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
+            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
             printed_tip = True
 
         #tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
-                print "  - You have a dot operation that was not optimized to dot22 that is faster. Make sure the inputs are float32 or 64 and are the same for both input. Currently they are:",[i.type for i in node.inputs]
+                print "  - You have a dot operation that was not optimized to dot22 (which is faster). Make sure the inputs are float32 or 64, and are the same for both inputs. Currently they are:",[i.type for i in node.inputs]
                 printed_tip = True
 
         #tip 5
@@ -544,9 +544,9 @@ Test them first as they are not guaranteed to always provide a speedup."""
             node = a[1]
             if isinstance(node.op, RandomFunction):
                 printed_tip = True
-                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams' as this is is faster. It is still experimental, but seam to work correctly."
+                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams', as this is is faster. It is still experimental, but seems to work correctly."
                 if config.device.startswith("gpu"):
-                    print "     - MRG_RandomStreams is the only random number supported on the GPU."
+                    print "     - MRG_RandomStreams is the only random number generator supported on the GPU."
                 break
 
         if not printed_tip:
