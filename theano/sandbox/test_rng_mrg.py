@@ -281,7 +281,7 @@ def test_consistency_GPU_parallel():
     samples = numpy.array(samples).flatten()
     assert(numpy.allclose(samples, java_samples))
 
-def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[], 
+def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
               target_avg=0.5, target_std=None, mean_rtol=0.01):
     dt = 0.0
     avg_std = 0.0
@@ -344,7 +344,7 @@ def test_uniform():
         R = MRG_RandomStreams(234, use_cuda=False)
         u = R.uniform(size=size)
         f = theano.function(var_input, u, mode=mode)
-        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
+        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform)
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
         cpu_out = f(*input)
@@ -364,14 +364,14 @@ def test_uniform():
             f = theano.function(var_input, theano.Out(
                     theano.sandbox.cuda.basic_ops.gpu_from_host(u),
                     borrow=True), mode=mode_with_gpu)
-            assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform) 
+            assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform)
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
 
             print 'random?[:10]\n'
             print gpu_out[0,0:10]
-            print gpu_out[-1,0:10]
+            print gpu_out[-1,-10:]
             #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
@@ -403,7 +403,7 @@ def test_binomial():
         sample_size = (500,50)
         steps = int(1e3)
         rtol=0.01
-    
+
     x = tensor.matrix()
     v = tensor.vector()
     for mean in [0.1, 0.5]:
@@ -507,7 +507,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
 
     dt = 0.0
     avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
-    
+
     for i in xrange(steps):
         t0 = time.time()
         ival = f()
@@ -516,7 +516,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
         #ival = numpy.asarray(ival)
         avg_pvals += ival
     avg_pvals/= steps
-    
+
     print 'random?[:10]\n', f()[:10]
     print prefix, 'mean', avg_pvals
     print numpy.mean(abs(avg_pvals - target_pvals))# < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
@@ -528,7 +528,7 @@ def test_multinomial():
 
     steps = 100
     mode_ = mode
-    if mode == 'FAST_COMPILE': 
+    if mode == 'FAST_COMPILE':
         mode_ = 'FAST_RUN'
 
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
@@ -545,7 +545,7 @@ def test_multinomial():
     m = R.multinomial(pvals=pvals, dtype=config.floatX)
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
-    
+
     basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
