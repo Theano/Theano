@@ -351,7 +351,7 @@ def test_uniform():
 
         print 'random?[:10]\n'
         print cpu_out[0,0:10]
-        print cpu_out[-1,0:10]
+        print cpu_out[-1,-10:]
         #print 'random?[-1,-10:]\n', cpu_out[-1,-10:]
         basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
 
