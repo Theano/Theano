@@ -755,18 +755,26 @@ optdb.register('InplaceGpuBlasOpt',
             max_use_ratio=5),
                70.0, 'fast_run', 'inplace')
 
-gpu_ptr_size = 8
-cpu_ptr_size = 8
-int_size = 8
-try:
-    #RETURN (gpu ptr size, cpu ptr size, int sizes)
-    t = cuda_ndarray.cuda_ndarray.ptr_int_size()
-    gpu_ptr_size, cpu_ptr_size, int_size = t
-except Exception, e:
-    _logger.warning(("OPTIMIZATION WARNING: "
-        "Got the following error, but we can ignore it. "
-        "This could cause less GpuElemwise fused together.\n"
-        "%s") % e)
+def get_device_type_sizes():
+    if hasattr(get_device_type_sizes, 'rval'):
+        return get_device_type_sizes.rval
+    gpu_ptr_size = 8
+    cpu_ptr_size = 8
+    int_size = 8
+    try:
+
+        #RETURN (gpu ptr size, cpu ptr size, int sizes)
+        t = cuda_ndarray.cuda_ndarray.ptr_int_size()
+        gpu_ptr_size, cpu_ptr_size, int_size = t
+        del t
+    except Exception, e:
+        _logger.warning(("OPTIMIZATION WARNING: "
+            "Got the following error, but we can ignore it. "
+            "This could cause less GpuElemwise fused together.\n"
+            "%s") % e)
+    
+    rval = get_device_type_sizes.rval = locals()
+    return rval
 
 def max_inputs_to_GpuElemwise(node):
     """
@@ -774,12 +782,16 @@ def max_inputs_to_GpuElemwise(node):
     This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
     This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
     """
+    type_sizes = get_device_type_sizes()
+    int_size = type_sizes['int_size']
+    gpu_ptr_size = type_sizes['gpu_ptr_size']
 
     argument_limit = 232  # some bytes are used for block and thread coords etc.
     ndim = node.inputs[0].type.ndim
     size_param_mandatory = int_size #for numels
     size_param_mandatory += int_size *  ndim # for the shape
-    size_param_mandatory += sum((gpu_ptr_size + int_size * ndim) for i in node.outputs)
+    size_param_mandatory += sum((gpu_ptr_size + int_size * ndim)
+            for i in node.outputs)
 
     nb_bytes_avail = argument_limit - size_param_mandatory
     nb_bytes_per_inputs = (ndim*int_size) + gpu_ptr_size
@@ -808,7 +820,9 @@ def split_huge_add_or_mul(node):
     return node
 
 #GpuElemwise fusion
-gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(GpuElemwise, max_inputs_to_GpuElemwise)
+gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
+        GpuElemwise,
+        max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
@@ -817,8 +831,10 @@ else:
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
 #GpuElemwise inplace
-gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(GpuElemwise)
-compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75, 'fast_run', 'inplace','gpu_inplace')
+gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(
+        GpuElemwise)
+compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75,
+        'fast_run', 'inplace','gpu_inplace')
 
 @register_opt()
 @local_optimizer([tensor.Alloc])
