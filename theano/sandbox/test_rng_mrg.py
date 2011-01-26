@@ -323,9 +323,6 @@ def test_uniform():
 #TODO: test ndim!=size.ndim
 #TODO: test bad seed
 #TODO: test size=Var, with shape that change from call to call
-
-    import pickle
-
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
         sample_size = (10,100)
         steps = 50
@@ -339,9 +336,10 @@ def test_uniform():
             (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
             ]:
 
-        #### TEST CPU (C) IMPLEMENTATION ####
+        #### TEST CPU IMPLEMENTATION ####
+        # The python and C implementation are tested with DebugMode
         print ''
-        print 'ON CPU (C) with size=(%s):'%str(size)
+        print 'ON CPU with size=(%s):'%str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
         u = R.uniform(size=size)
@@ -349,14 +347,13 @@ def test_uniform():
         assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
-        cpu_c_out = f(*input)
-        #pickle.dump(cpu_c_out, open('debug_rng_cpu_c.pkl','w'))
+        cpu_out = f(*input)
 
         print 'random?[:10]\n'
-        print cpu_c_out[0,0:10]
-        print cpu_c_out[-1,0:10]
-        #print 'random?[-1,-10:]\n', cpu_c_out[-1,-10:]
-        basictest(f, steps, sample_size, prefix='mrg cpu (C)', inputs=input)
+        print cpu_out[0,0:10]
+        print cpu_out[-1,0:10]
+        #print 'random?[-1,-10:]\n', cpu_out[-1,-10:]
+        basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
 
         if mode!='FAST_COMPILE' and cuda_available:
             print ''
@@ -371,7 +368,6 @@ def test_uniform():
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
-            #pickle.dump(gpu_out, open('debug_rng_gpu.pkl','w'))
 
             print 'random?[:10]\n'
             print gpu_out[0,0:10]
@@ -379,7 +375,7 @@ def test_uniform():
             #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
-        numpy.testing.assert_array_almost_equal(cpu_c_out, gpu_out, decimal=6)
+        numpy.testing.assert_array_almost_equal(cpu_out, gpu_out, decimal=6)
 
         print ''
         print 'ON CPU w Numpy with size=(%s):'%str(size)
