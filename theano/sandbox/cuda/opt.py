@@ -604,6 +604,13 @@ def local_gpu_conv(node):
         logical_img_hw=None
         if op.imshp_logical is not None:
             logical_img_hw=op.imshp_logical[1:3]
+            if logical_img_hw != op.imshp[1:3]:
+                # this case is not implemented
+                return None
+        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
+            return None
+        #print op.kshp, op.imshp[1:3]
+        #print op.kshp_logical, logical_img_hw
         ret = GpuConv(border_mode=op.out_mode,
                     subsample=(op.dx, op.dy),
                     logical_img_hw=logical_img_hw,
@@ -619,11 +626,14 @@ def local_gpu_conv(node):
             ret.flops=op.flops
         return ret
 
+
     if node.op == gpu_from_host:
         #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
+            if gpu_conv is None:
+                return
             img, kern = host_input.owner.inputs
             #in some case the ConvOp broadcast the last 2 dimensions differently then the gpu ConvOp
             return [tensor.patternbroadcast(gpu_conv(gpu_from_host(img), gpu_from_host(kern)),
@@ -636,6 +646,8 @@ def local_gpu_conv(node):
         kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
         if img_on_gpu or kern_on_gpu:
             gpu_conv = GpuConvOp_from_ConvOp(node.op)
+            if gpu_conv is None:
+                return
             #in some case the ConvOp broadcast the last 2 dimensions differently then the gpu ConvOp
             return [tensor.patternbroadcast(host_from_gpu(gpu_conv(gpu_from_host(img),
                                                                    gpu_from_host(kern))),
