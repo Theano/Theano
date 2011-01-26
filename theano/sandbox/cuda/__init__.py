@@ -8,13 +8,17 @@ _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
 def error(*msg):
-    _logger.error('ERROR (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.error('ERROR (%s): %s'% (
+        _logger_name, ' '.join(str(m) for m in msg)))
 def warning(*msg):
-    _logger.warning('WARNING (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.warning('WARNING (%s): %s'% ( _logger_name,
+        ' '.join(str(m) for m in msg)))
 def info(*msg):
-    _logger.info('INFO (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.info('INFO (%s): %s'% ( _logger_name,
+        ' '.join(str(m) for m in msg)))
 def debug(*msg):
-    _logger.debug('DEBUG (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.debug('DEBUG (%s): %s'% ( _logger_name,
+        ' '.join(str(m) for m in msg)))
 
 
 # Compile cuda_ndarray.cu
@@ -29,7 +33,7 @@ cuda_available = True
 # Global variable to avoid displaying the same warning multiple times.
 cuda_warning_is_displayed = False
 
-#This variable is set to True when we enable the cuda.(i.e. when use() is called)
+#This variable is set to True when we enable cuda.(i.e. when use() is called)
 cuda_enabled = False
 
 # Code factorized within a function so that it may be called from multiple
@@ -51,8 +55,13 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
-cuda_files = ('cuda_ndarray.cu', 'cuda_ndarray.cuh', 'conv_full_kernel.cu', 'conv_kernel.cu')
-stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME] for cuda_file in cuda_files]
+cuda_files = (
+        'cuda_ndarray.cu', 
+        'cuda_ndarray.cuh',
+        'conv_full_kernel.cu',
+        'conv_kernel.cu')
+stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
+        for cuda_file in cuda_files]
 date = max(stat_times)
 
 cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
@@ -113,7 +122,8 @@ from theano.sandbox.cuda.var import (CudaNdarrayVariable,
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 if cuda_available:
-    #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
+    # check if their is an old cuda_ndarray that was loading instead of the one 
+    # we compiled!
     import cuda_ndarray.cuda_ndarray
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
         warning("WARNING: cuda_ndarray was loaded from",
@@ -172,14 +182,17 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
             use.device_number = device
             cuda_enabled = True
         except (EnvironmentError, ValueError), e:
-            _logger.error("ERROR: Not using GPU. Initialisation of device %i failed:\n%s" % (device, e))
+            _logger.error(("ERROR: Not using GPU."
+                " Initialisation of device %i failed:\n%s") % (device, e))
             cuda_enabled = False
             if force:
-                e.args+=("You asked to force this device and it failed. No fallback to the cpu or other gpu device.",)
+                e.args+=(("You asked to force this device and it failed."
+                        " No fallback to the cpu or other gpu device."),)
                 raise
 
     elif use.device_number != device:
-        _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
+        _logger.warning(("WARNING: ignoring call to use(%s), GPU number %i "
+            "is already in use.") %(str(device), use.device_number))
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu',
@@ -188,10 +201,12 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
 
     if force:
         try:
-            #in case the device if just gpu, we check that the driver init it correctly.
+            #in case the device if just gpu, 
+            # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
-        except (Exception, NameError), e:#NameError when no gpu present as cuda_ndarray is not loaded.
-            e.args+=("ERROR: GPU did not work and we told to don't use the cpu. ",)
+        except (Exception, NameError), e: 
+            # NameError when no gpu present as cuda_ndarray is not loaded.
+            e.args+=("ERROR: GPU forced but failed. ",)
             raise
 
 
@@ -212,7 +227,8 @@ def handle_shared_float32(tf):
 if config.device.startswith('gpu'):
     use(device=config.device, force=config.force_device)
 elif config.init_gpu_device:
-    assert config.device=="cpu", "We can use the Theano flag init_gpu_device only when the Theano flag device=='cpu'"
+    assert config.device=="cpu", ("We can use the Theano flag init_gpu_device"
+            " only when the Theano flag device=='cpu'")
     warning(("GPU device %s will be initialized, and used if a GPU is needed. "
           "However, no computation, nor shared variables, will be implicitly "
           "moved to that device. If you want that behavior, use the 'device' "
