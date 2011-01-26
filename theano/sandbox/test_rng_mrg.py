@@ -329,7 +329,7 @@ def test_uniform():
     else:
         sample_size = (500,50)
         steps = int(1e3)
-    
+
     x = tensor.matrix()
     for size, var_input, input in [
             (sample_size, [], []),
