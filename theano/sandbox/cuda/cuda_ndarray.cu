@@ -1898,7 +1898,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
   }
   if(card_number_provided && (card_nb < 0 || card_nb > (deviceCount - 1))) {
     return PyErr_Format(PyExc_ValueError,
-                        "Bad device number %d. There is only %d device available.",
+                        "Bad device number %d. Only %d devices available.",
                         card_nb,
                         deviceCount);
   }

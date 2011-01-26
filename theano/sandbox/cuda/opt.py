@@ -6,27 +6,32 @@ import theano
 import numpy
 from theano import scalar as scal
 from theano import tensor, compile, gof
-from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler, EquilibriumOptimizer
+from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, Optimizer,
+        toolbox, DestroyHandler, EquilibriumOptimizer)
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace,
-        gpu_gemm_no_inplace, GpuConv)
-from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
+from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar, 
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax, 
+        GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.compile import optdb
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
-#optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
+#optdb.print_summary()  # shows what is currently registered 
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
-gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1, 'fast_run', 'inplace')
-gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2, 'fast_run', 'inplace')
-optdb.register('gpu', gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
+gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1, 
+        'fast_run', 'inplace')
+gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2, 
+        'fast_run', 'inplace')
+optdb.register('gpu', 
+        gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
@@ -35,12 +40,14 @@ def register_opt(*tags, **kwargs):
         return local_opt
     return f
 
-#register local_track_shape_i at this level too to make multi-level lift of shape work.
+#register local_track_shape_i at this level too 
+#to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
 
 class InputToGpuOptimizer(Optimizer):
     """Transfert the input of a graph to the gpu if needed
-    It should make this part of the optimizer faster we will will need only 1 pass on the env.
+    It should make this part of the optimizer faster we will will need only 1
+    pass on the env.
     """
     def __init__(self):
         Optimizer.__init__(self)
@@ -741,7 +748,8 @@ def local_inplace_gemm(node):
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
-# Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
+# Also, need to make the gemm optimisation(step 70) happen before the fusion of
+# elemwise(step 71)
 optdb.register('InplaceGpuBlasOpt',
         EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
             max_use_ratio=5),
