@@ -375,7 +375,7 @@ def test_uniform():
             #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
-        numpy.testing.assert_array_almost_equal(cpu_out, gpu_out, decimal=6)
+            numpy.testing.assert_array_almost_equal(cpu_out, gpu_out, decimal=6)
 
         print ''
         print 'ON CPU w Numpy with size=(%s):'%str(size)
