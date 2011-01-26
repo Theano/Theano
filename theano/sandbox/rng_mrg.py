@@ -630,7 +630,7 @@ class MRG_RandomStreams(object):
         return rval
 
     def n_streams(self, size):
-        # TODO: a smart way of choosing the number of streams
+        # TODO: a smart way of choosing the number of streams, see #612.
         if isinstance(size, (tuple, list)) and all([isinstance(i,int) for i in size]):
             r = 1
             for s in size:
