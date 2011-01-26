@@ -173,9 +173,6 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
         try:
             if device !='gpu':
                 gpu_init(device)
-            else:
-                #warning To let people see that the gpu will be used.
-                _logger.warn("We let the driver select the gpu device to use")
 
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)

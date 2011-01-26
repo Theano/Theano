@@ -1918,7 +1918,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
   }
 
   if(card_number_provided) {
-    fprintf(stderr, "Using gpu device %d: %s\n", card_nb, deviceProp.name);
+      fprintf(stderr, "DEBUG: calling cudaSetDevice %i\n", card_nb);
 
     err = cudaSetDevice(card_nb);
     if(cudaSuccess != err) {
@@ -1928,6 +1928,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                           cudaGetErrorString(cudaGetLastError()));
     }
   }
+  fprintf(stderr, "Using gpu device %d: %s\n", card_nb, deviceProp.name);
 
   Py_INCREF(Py_None);
   return Py_None;
