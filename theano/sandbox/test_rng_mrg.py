@@ -431,10 +431,12 @@ def test_binomial():
                         theano.sandbox.cuda.basic_ops.gpu_from_host(u),
                         borrow=True), mode=mode_with_gpu)
                 theano.printing.debugprint(f)
-                out = numpy.asarray(f(*input))
-                print 'random?[:10]\n', out[0,0:10]
-                print 'random?[-1,-10:]\n', out[-1,-10:]
+                gpu_out = numpy.asarray(f(*input))
+                print 'random?[:10]\n', gpu_out[0,0:10]
+                print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
                 basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, target_avg = mean, mean_rtol=rtol)
+                numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
+
 
             print ''
             print 'ON CPU w NUMPY with size=(%s) and mean(%d):'%(str(size),mean)
@@ -469,7 +471,8 @@ def test_normal0():
         n = R.normal(size=size, avg=-5.0, std=2.0)
         f = theano.function(var_input, n, mode=mode)
         theano.printing.debugprint(f)
-        print 'random?[:10]\n', f(*input)[0,0:10]
+        out  = f(*input)
+        print 'random?[:10]\n', out[0,0:10]
         basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
 
         sys.stdout.flush()
@@ -486,10 +489,14 @@ def test_normal0():
 
             theano.printing.debugprint(f)
             sys.stdout.flush()
-            print 'random?[:10]\n', numpy.asarray(f(*input))[0,0:10]
+            gpu_out = numpy.asarray(f(*input))
+            print 'random?[:10]\n', gpu_out[0,0:10]
             print '----'
             sys.stdout.flush()
             basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+            # Need to allow some rounding error as their is float
+            # computation that are done on the gpu vs cpu
+            numpy.allclose(out, gpu_out, rtol=5e-6, atol=1e-6)
 
 
         print ''
@@ -543,7 +550,7 @@ def test_multinomial():
     m = R.multinomial(pvals=pvals, dtype=config.floatX)
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
-
+    out = f()
     basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
@@ -560,5 +567,7 @@ def test_multinomial():
             borrow=True), mode=mode_.including('gpu'))
 
         theano.printing.debugprint(f)
+        gpu_out = f()
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
+        numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
