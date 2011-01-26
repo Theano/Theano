@@ -1,9 +1,51 @@
 Modification in the trunk since the last release
 ------------------------------------------------
+THIS IS A PARITIAL LIST. WE SHOULD CHECK ALL COMMIT SINCE LAST RELEASE AND ADD WHAT IS MISSING.
 
- * Sparse type is now supported by the shape op and the ShapeFeature optimizer work correctly with them.
+
+bugfix:
+ * The random number generator in theano/sandbox/rng_mrg.py did not always return the same sequence of number on the cpu and gpu.
+    * In that case their was garbadge in the value return, but that garbage looked random. So if you usage did not depend too much
+      on the type of random, you can be ok.
+ * Memory leak on the gpu when doing x+=y and that x and y are cuda_ndarray.
+    * The leak was introduced the 3 December 2010.
+    * This was being used when inc_subtensor is called and moved to the GPU(as an GpuIncSubtensor op)
+ * In python mode(not the default mode) when input of elemwise operation was an empty ndarray. We where not returning an empty ndarray.
+ * Fix some segfault at exit with gpu code.
+ * Add a feature to don't have an exception that make theano crash when taking the gradient on DimShuffle in some particular case.
+ * Fix compilation crash for gpuElemwise with tensor with very high number of dimensions.
+ * Disabled c code generator that make gcc crash on complex type.
+
+optimization:
  * Fuse GpuElemwise more often (in the case where there are so many inputs that fusing them all would bust the 256 bytes limit of parameter to gpu function).
  * Speed up gemv by a work around scipy gemv slowness when the matrix is in C order (the default).
+ * remove join of only 1 element
+ * fix ticket #596:cpu join of only 1 element that was not moved to the gpu.
+ * During optimization consider one more case in get_constant_value
+ * new SpecifyShape op that allow to pass more shape info in the graph.
+
+gpu:
+ * cuda_shared.value = X now work inplace!
+     * cuda_shared_var.set_value(new_ndarray) will overrite the old value inplace in the most common case.
+ * allow to create a CudaNdarraySharedVariable from a CudaNdarray.
+
+other:
+ * compiledir now include the python version to make it easier for people with many python version
+ * tensor.prod now implement the gradient
+ * DebugMode now warn if an op declared itself as returning a view of the input but did not do so.
+    * This can block other op from being inplace on the same inputs. Could lower the reuse of memory.
+ * added theano.tensor.std as a short cut to sqrt(var(input=input, axis=axis)).
+ * Sparse.structured_dot now work with both matrice are sparse
+ * Sparse type is now supported by the shape op and the ShapeFeature optimizer work correctly with them.
+ * new init_gpu_device theano flags.
+
+doc:
+ * Documented lib.amdlibm config variable.
+ * A new page(was done for 0.3 but error hidded it on the web page) on the memory aliasing contract of Theano.
+
+TODO before new version:
+ * shared.value is deprecated, use shared.get_value or shared_set_value!
+ * doc in the installation instruction about the new init_gpu_device
 
 Theano 0.3 (2010-11-23)
 -----------------------
