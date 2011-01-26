@@ -162,7 +162,7 @@ class mrg_uniform_base(Op):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 class mrg_uniform(mrg_uniform_base):
     #CPU VERSION
