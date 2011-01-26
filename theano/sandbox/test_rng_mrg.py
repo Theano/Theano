@@ -349,10 +349,9 @@ def test_uniform():
         theano.printing.debugprint(f)
         cpu_out = f(*input)
 
-        print 'random?[:10]\n'
+        print 'CPU: random?[:10], random?[-10:]'
         print cpu_out[0,0:10]
         print cpu_out[-1,-10:]
-        #print 'random?[-1,-10:]\n', cpu_out[-1,-10:]
         basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
 
         if mode!='FAST_COMPILE' and cuda_available:
@@ -369,10 +368,9 @@ def test_uniform():
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
 
-            print 'random?[:10]\n'
+            print 'GPU: random?[:10], random?[-10:]'
             print gpu_out[0,0:10]
             print gpu_out[-1,-10:]
-            #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
             numpy.testing.assert_array_almost_equal(cpu_out, gpu_out, decimal=6)
