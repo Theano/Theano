@@ -496,7 +496,7 @@ def test_normal0():
             basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
             # Need to allow some rounding error as their is float
             # computation that are done on the gpu vs cpu
-            numpy.allclose(out, gpu_out, rtol=5e-6, atol=1e-6)
+            assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=1e-6)
 
 
         print ''

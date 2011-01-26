@@ -532,20 +532,16 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
         for oo,ii in vmap.iteritems():
             out_var = storage_map[node.outputs[oo]][0]
             in_var = storage_map[node.inputs[ii[0]]][0]
-            # We don't try to optimize simple scalar, as this is not worth our time
-            # This happen at least in Subtensor when the output is a scalar
-            # But this depend on the version of numpy!
-            if getattr(out_var,'size',2)==1:
+            # We don't try to optimize simple scalar and empty ndarray,
+            # as this is not worth our time. This happen at least in
+            # Subtensor when the output is a scalar But this depend on
+            # the version of numpy!
+            if getattr(out_var,'size',2)<=1:
                 continue
             if isinstance(node.op, theano.compile.mode.OutputGuard):
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
-                #when a subtensor return a tensor of ndim==0, numpy seam to return a copy.
-                #when have an empty ndarray(happen with output guard) it is not the same. why?
-
-                if hasattr(out_var,'ndim') and (out_var.ndim>0 and out_var.size>0):
-                    continue
                 opt_warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
 
     for r_idx, r in enumerate(node.inputs):
