@@ -461,7 +461,13 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     var_shape='box'
     for node_idx,node in enumerate(topo):
         astr=apply_name(node)
-        g.add_node(pd.Node(astr,shape=apply_shape))
+
+        if node.op.__class__.__name__ in ('GpuFromHost','HostFromGpu'):
+            # highlight CPU-GPU transfers to simplify optimization
+            g.add_node(pd.Node(astr,color='red',shape=apply_shape))
+        else:
+            g.add_node(pd.Node(astr,shape=apply_shape))
+
         for id,var in enumerate(node.inputs):
             varstr=var_name(var)
             label=''
