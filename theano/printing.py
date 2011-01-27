@@ -71,16 +71,16 @@ def _print_fn(op, xin):
     for attr in op.attrs:
         temp = getattr(xin, attr)
         if callable(temp):
-          pmsg = temp()
+            pmsg = temp()
         else:
-          pmsg = temp
+            pmsg = temp
         print op.message, attr,'=', pmsg
 
 class Print(Op):
     """This identity-like Op has the side effect of printing a message followed by its inputs
-    when it runs. Default behaviour is to print the __str__ representation. Optionally, one 
+    when it runs. Default behaviour is to print the __str__ representation. Optionally, one
     can pass a list of the input member functions to execute, or attributes to print.
-    
+
     @type message: String
     @param message: string to prepend to the output
     @type attrs: list of Strings
@@ -122,7 +122,7 @@ class Print(Op):
         return (1,)
 
 class PrinterState(gof.utils.scratchpad):
-    
+
     def __init__(self, props = {}, **more_props):
         if isinstance(props, gof.utils.scratchpad):
             self.__update__(props)
@@ -311,9 +311,9 @@ class PPrinter:
                     i += 1
                 if output.name is not None or output in outputs:
                     if output.name is None:
-                      name = 'out[%i]' % outputs.index(output)
+                        name = 'out[%i]' % outputs.index(output)
                     else:
-                      name = output.name
+                        name = output.name
                     #backport
                     #name = 'out[%i]' % outputs.index(output) if output.name is None else output.name
                     current = output
@@ -401,14 +401,14 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     except:
         print "failed to import pydot. Yous must install pydot for this function to work."
         return
-    
+
     g=pd.Dot()
     var_str={}
     all_strings = set()
     def var_name(var):
         if var in var_str:
             return var_str[var]
-        
+
         if var.name is not None:
             varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
@@ -483,8 +483,8 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
             else:
                 #no name, so we don't make a var ellipse
                 g.add_edge(pd.Edge(apply_name(var.owner),astr, label=label))
-                
-                
+
+
         for id,var in enumerate(node.outputs):
             varstr=var_name(var)
             out = any([x[0]=='output' for x in var.clients])
@@ -589,8 +589,3 @@ def pydot_var(vars, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     g.write_png(outfile, prog='dot')
 
     print 'The output file is available at',outfile
-
-
-
-
-
