@@ -1179,6 +1179,8 @@ class Scan(Op):
 
     def make_node(self,*inputs):
         assert all(isinstance(i, gof.Variable) for i in inputs)
+
+        self.n_steps = inputs[0]
         return Apply(self, inputs, [t() for t in self.apply_output_types])
 
 
@@ -1309,7 +1311,7 @@ class Scan(Op):
                             'required by the maximal past value %d. Scan will use 0s'
                             ' for missing values')%(i-self.n_iterable-1,req_size))
 
-        self.n_steps = n_steps
+
         y = self.scan(self.fn, args[1:],self.n_seqs, self.n_outs,
                  self.seqs_taps, self.outs_taps, n_steps, go_backwards,
                  inplace_map)
