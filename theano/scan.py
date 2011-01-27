@@ -1141,6 +1141,7 @@ class Scan(Op):
         # scan does is a constant of 1, -1 or 0 then we can remove scan
         # from the graph
         self.mode           = mode
+        self.name           = name
         self.truncate_gradient = truncate_gradient
         self.go_backwards   = go_backwards
         self.slice_to_seqs  = slice_to_seqs
@@ -1157,7 +1158,10 @@ class Scan(Op):
                 linker=mode_instance.provided_linker)
             compile.profilemode.prof_mode_instance_to_print.append(mode_instance)
             self.mode_instance = mode_instance
-            self.mode_instance.message="Scan sub profile"
+            if self.name:
+                self.mode_instance.message=self.name+" sub profile"
+            else:
+                self.mode_instance.message="Scan sub profile"
 
         if name is None: name = 'scan_fn'
         self.fn = function(inputs,outputs, mode = mode_instance, givens = givens,
@@ -1167,7 +1171,11 @@ class Scan(Op):
         assert not numpy.any([isinstance(x.variable,SharedVariable) for x in
             self.fn.maker.inputs])
 
-
+    def __str__(self):
+        if self.name:
+            return self.name
+        else:
+            return 'scan'
 
     def make_node(self,*inputs):
         assert all(isinstance(i, gof.Variable) for i in inputs)
