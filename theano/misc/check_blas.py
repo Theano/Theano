@@ -3,6 +3,7 @@
 #C=a*C+dot(A,B)*b
 #A,B,C matrix
 #a,b scalar
+import os
 
 s="""
 result for shapes=(2000,2000) and iters=100
@@ -32,6 +33,10 @@ def execute(execute=True, verbose=True):
         print '    blas.ldflags=',theano.config.blas.ldflags
         print '    compiledir=',theano.config.compiledir
         print '    floatX=',theano.config.floatX
+        print 'Some env flags:'
+        print '    MKL_NUM_THREADS=',os.getenv('MKL_NUM_THREADS')
+        print '    OMP_NUM_THREADS=',os.getenv('OMP_NUM_THREADS')
+        print '    GOTO_NUM_THREADS=',os.getenv('GOTO_NUM_THREADS')
         print
         print 'Numpy config:(used when the theano flags "blas.ldflags" is empty)'
         numpy.show_config();
