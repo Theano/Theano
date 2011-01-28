@@ -1,9 +1,6 @@
-#For flag of bool type, we consider the string 'False','false' and '0' as False 
+# For flag of bool type, we consider the string 'False','false' and '0' as False 
 # and the string 'True', 'true', '1' as true.
-#We alsoaccept the bool type as its corresponding value!
-#Normally numpy consider only the empty string as false, but this give 
-# impression that it work when it do different people expected.
-
+# We also accept the bool type as its corresponding value!
 
 import os, StringIO, sys
 import ConfigParser
@@ -27,10 +24,11 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # precedence over those in files on the left.
 def config_files_from_theanorc():
     rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(os.pathsep)]
-    if  os.getenv('THEANORC') is None and sys.platform=="win32":
-        #To don't need to change the filename and make it open easily
+    if os.getenv('THEANORC') is None and sys.platform == "win32":
+        # to don't need to change the filename and make it open easily
         rval.append(os.path.expanduser('~/.theanorc.txt'))
     return rval
+
 theano_cfg = ConfigParser.SafeConfigParser({'USER':os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
 theano_cfg.read(config_files_from_theanorc())
 
@@ -51,7 +49,7 @@ def parse_env_flags(flags, name , default_value=None):
 
 def fetch_val_for_key(key):
     """Return the overriding config value for a key.
-    A successful search returs a string value.
+    A successful search returns a string value.
     An unsuccessful search raises a KeyError
 
     The (decreasing) priority order is:
