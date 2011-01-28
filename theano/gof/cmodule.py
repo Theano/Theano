@@ -293,6 +293,8 @@ class ModuleCache(object):
 
         Also, remove malformed cache directories.
         """
+        too_old_to_use = []
+
         compilelock.get_lock()
         try:
             # add entries that are not in the entry_from_key dictionary
@@ -319,7 +321,7 @@ class ModuleCache(object):
                         info("Erasing broken cache directory", key_pkl)
                         shutil.rmtree(root)
                         continue
-                    if (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
+                    if (time_now - last_access_time(entry))<self.age_thresh_use:
                         debug('refresh adding', key_pkl)
                         try:
                             key = cPickle.load(open(key_pkl, 'rb'))
@@ -346,6 +348,9 @@ class ModuleCache(object):
                             # assert that we haven't already got this entry somehow
                             assert entry not in self.module_from_name
                             self.loaded_key_pkl.add(key_pkl)
+                    else:
+                        too_old_to_use.append(entry)
+
 
             # remove entries that are not in the filesystem
             items_copy = list(self.entry_from_key.iteritems())
@@ -378,6 +383,8 @@ class ModuleCache(object):
 
         finally:
             compilelock.release_lock()
+
+        return too_old_to_use
 
     def module_from_key(self, key, fn=None):
         """
@@ -482,19 +489,23 @@ class ModuleCache(object):
         compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
-            self.refresh() 
+            # and get all module that are too old to use.(not loaded in self.entry_from_key)
+            too_old_to_use = self.refresh()
+            too_old_to_use = [(None,entry) for entry in too_old_to_use]
             time_now = time.time()
+
             # the .items() is important here:
             # we need to get a copy of the whole list of keys and entries
             items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy: 
+            for key, entry in items_copy+too_old_to_use: 
                 age = time_now - last_access_time(entry)
                 if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
                     # age_thresh_del are not currently in use by other processes, but that could be
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
-                    del self.entry_from_key[key]
+                    if key is not None:
+                        del self.entry_from_key[key]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     info("clear_old removing cache dir", parent)
