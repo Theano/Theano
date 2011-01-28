@@ -1918,7 +1918,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
   }
 
   if(card_number_provided) {
-      fprintf(stderr, "DEBUG: calling cudaSetDevice %i\n", card_nb);
+    //fprintf(stderr, "DEBUG: calling cudaSetDevice %i\n", card_nb);
 
     err = cudaSetDevice(card_nb);
     if(cudaSuccess != err) {
