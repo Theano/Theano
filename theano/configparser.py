@@ -5,18 +5,47 @@
 import os, StringIO, sys
 import ConfigParser
 import logging
+import warnings
+
 _logger = logging.getLogger('theano.config')
 
+class TheanoConfigWarning(Warning):
+
+    def warn(cls, message, stacklevel=0):
+        warnings.warn(message, cls, stacklevel=stacklevel + 3)
+    warn = classmethod(warn)
+
+# Check for deprecated environment variables
 for key in os.environ:
     if key.startswith("THEANO"):
         if key not in ("THEANO_FLAGS", "THEANORC"):
-            print >> sys.stderr, "ERROR: Ignoring deprecated environment variable", key
+            TheanoConfigWarning.warn("Ignoring deprecated environment variable %s" % key)
 
+THEANO_FLAGS = os.getenv("THEANO_FLAGS", "")
+# The THEANO_FLAGS environment variable should be a list of comma-separated
+# [section.]option=value entries. If the section part is omitted, their should be only one
+# section that contains the given option.
 
-THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
-# The THEANO_FLAGS environement variable should be a list of comma-separated
-# [section.]option[=value] entries. If the section part is omited, their should be only one
-# section with that contain the gived option.
+def parse_config_string(config_string, issue_warnings=True):
+    """
+    Parses a config string composed of comma-separated key=value components into a dict.
+    """
+    config_dict = {}
+    for kv_pair in THEANO_FLAGS.split(','):
+        kv_pair = kv_pair.strip()
+        if not kv_pair:
+            continue
+        kv_tuple = kv_pair.split('=', 1)
+        if len(kv_tuple) == 1:
+            if issue_warnings:
+                TheanoConfigWarning.warn("Config key '%s' has no value, ignoring it" % kv_tuple[0], stacklevel=1)
+        else:
+            k, v = kv_tuple
+            # subsequent values for k will override earlier ones
+            config_dict[k] = v
+    return config_dict
+
+THEANO_FLAGS_DICT = parse_config_string(THEANO_FLAGS, issue_warnings=True)
 
 # THEANORC can contain a colon-delimited list of config files, like
 # THEANORC=~lisa/.theanorc:~/.theanorc
@@ -32,21 +61,6 @@ def config_files_from_theanorc():
 theano_cfg = ConfigParser.SafeConfigParser({'USER':os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
 theano_cfg.read(config_files_from_theanorc())
 
-def parse_env_flags(flags, name , default_value=None):
-    #The value in the env variable THEANO_FLAGS override the previous value
-    val = default_value
-    for flag in flags.split(','):
-        if not flag:
-            continue
-        sp=flag.split('=',1)
-        if sp[0]==name:
-            if len(sp)==1:
-                val=True
-            else:
-                val=sp[1]
-            val=str(val)
-    return val
-
 def fetch_val_for_key(key):
     """Return the overriding config value for a key.
     A successful search returns a string value.
@@ -59,23 +73,10 @@ def fetch_val_for_key(key):
     """
 
     # first try to find it in the FLAGS
-    rval = None
-    for name_val in THEANO_FLAGS.split(','):
-        if not name_val:
-            continue
-        name_val_tuple=name_val.split('=',1)
-        if len(name_val_tuple)==1:
-            name, val = name_val_tuple, str(True)
-        else:
-            name, val = name_val_tuple
-
-        if name == key:
-            # rval might be overriden by a later definition in THEANO_FLAGS
-            rval = val
-
-    # If an rval is found, it should be a string
-    if rval is not None:
-        return rval
+    try:
+        return THEANO_FLAGS_DICT[key]
+    except KeyError:
+        pass
 
     # next try to find it in the config file
 
