@@ -43,9 +43,8 @@ Environment Variables
 
 .. envvar:: THEANO_FLAGS
 
-    This is a list of comma-delimited key[=value] pairs that control
-    Theano's behavior. A key that appears without an '=value' must be
-    for a boolean value, and it acts as setting it to True.
+    This is a list of comma-delimited key=value pairs that control
+    Theano's behavior.
 
     For example, in bash, you can override your :envvar:`THEANORC` defaults
     for <myscript>.py by typing this:
