@@ -28,7 +28,7 @@ AddConfigVar('init_gpu_device',
          "Unlike 'device', setting this option will NOT move computations, "
          "nor shared variables, to the specified GPU. "
          "It can be used to run GPU-specific tests on a particular GPU."),
-        EnumStr('', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
+        EnumStr('', 'gpu', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
                 allow_override=False)
         )
 
