@@ -1,4 +1,4 @@
-import atexit, os, stat
+import atexit, os, stat, sys
 from theano.compile import optdb
 from theano import config
 from theano.gof.cmodule import get_lib_extension
@@ -178,6 +178,7 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
                 handle_shared_float32(True)
             use.device_number = device
             cuda_enabled = True
+            print >> sys.stderr, "Using gpu device %d: %s" % (active_device_number(), active_device_name())
         except (EnvironmentError, ValueError), e:
             _logger.error(("ERROR: Not using GPU."
                 " Initialisation of device %i failed:\n%s") % (device, e))

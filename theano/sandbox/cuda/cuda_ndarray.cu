@@ -1918,8 +1918,6 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
   }
 
   if(card_number_provided) {
-    //fprintf(stderr, "DEBUG: calling cudaSetDevice %i\n", card_nb);
-
     err = cudaSetDevice(card_nb);
     if(cudaSuccess != err) {
       return PyErr_Format(PyExc_EnvironmentError,
@@ -1928,10 +1926,30 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                           cudaGetErrorString(cudaGetLastError()));
     }
   }
-  fprintf(stderr, "Using gpu device %d: %s\n", card_nb, deviceProp.name);
 
   Py_INCREF(Py_None);
   return Py_None;
+}
+
+PyObject *
+CudaNdarray_active_device_number(PyObject* _unused, PyObject* _unused_args) {
+    // NB: No cuda error checking here; keeps things simple, and it's not
+    // really necessary.
+    int currentDevice;
+    cudaGetDevice(&currentDevice);
+    return PyInt_FromLong(currentDevice);
+}
+
+PyObject *
+CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
+    // NB: No cuda error checking here; keeps things simple, and it's not
+    // really necessary.
+    int currentDevice;
+    cudaGetDevice(&currentDevice);
+
+    cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, currentDevice);
+    return PyString_FromString(deviceProp.name);
 }
 
 PyObject *
@@ -2097,6 +2115,8 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
+    {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
+    {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
     {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
