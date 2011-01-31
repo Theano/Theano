@@ -441,7 +441,7 @@ class GpuSum(Op):
 
         j = 0
         for i in xrange(nd_in):
-            if not self.reduce_mask[i]: 
+            if not self.reduce_mask[i]:
                 print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
 
@@ -457,7 +457,7 @@ class GpuSum(Op):
         }
         """ %locals()
 
-        # \begin bracket the reduction in a check that there is actually work to do 
+        # \begin bracket the reduction in a check that there is actually work to do
         print >> sio, """
         if (CudaNdarray_SIZE(%(z)s))
         {
@@ -472,12 +472,10 @@ class GpuSum(Op):
             #TODO: check if we are ccontiguous when we un-dimshuffle
             #TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
-            
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
             print >> sio, "}"
-        
         else:
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
 
@@ -843,7 +841,7 @@ class GpuSum(Op):
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_010_%(name)s",
