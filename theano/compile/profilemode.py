@@ -348,7 +348,7 @@ class ProfileMode(Mode):
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
-        other_time = total_time - total_fct_time - compile_time
+        unknow_time = total_time - total_fct_time - compile_time
         print
         print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
@@ -370,7 +370,7 @@ class ProfileMode(Mode):
         print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
         print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
         print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
-        print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
+        print 'Unknow time since import %.3fs %.1f%%'%(unknow_time,unknow_time/total_time*100)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
 
         print
