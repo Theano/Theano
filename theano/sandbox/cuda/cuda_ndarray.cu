@@ -1852,6 +1852,8 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
   }
   get_gpu_ptr_size<<<1,1>>>(gpu_data);
   if (cudaSuccess != cublasGetError()){
+
+    device_free(gpu_data);
     return PyErr_Format(PyExc_RuntimeError,
                         "CudaNdarray_ptr_int_size: error when calling the gpu code.");
   }
