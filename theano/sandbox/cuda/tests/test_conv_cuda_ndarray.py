@@ -84,14 +84,36 @@ def py_conv_scipy(img, kern, mode, subsample):
 def _params_allgood_header():
     print "ishape kshape #Mflops CPU Mflops GPU Mflops Speedup"
 
-def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None, id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+def test_example():
+    # Test a specific configuration that was failing in one of the big unit-tests
+    # This configuration information was read from one of the 'FAIL' lines printed by
+    # _params_allgood during a nosetest run
+    #
+    # now it can be tested directly by nosetests test_conv_cuda_ndarray.py:test_example
+    assert _params_allgood(
+            (1,1,4,4),
+            (1,1,3,2),
+            'valid',
+            version=13,
+            random=False)
+
+def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
+        kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
+        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+    #
+    # This function is the core of several of the big unit-test drivers,
+    # but it can also be used very directly on its own to test a specific
+    # kind of convolution.
+    #
+    # See `test_example` (above) for an example of how to use this directly.
+    #
     if ones:
         assert not random
         npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
         npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
     elif random:
-        npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-        npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+        npy_img = theano._asarray(numpy.random.rand(*ishape)+1, dtype='float32')
+        npy_kern = theano._asarray(numpy.random.rand(*kshape)-2, dtype='float32')
     else:
         npy_img = theano._asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
         npy_kern = -(theano._asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
@@ -155,8 +177,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
         print "max absolute diff:",diffabs.max(),"avg abs diff:",numpy.average(diffabs)
         print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
         print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
-
-        print rval
     if not rval and print_!=False:
         if npy_img.shape[0]>5:
             print "img",npy_img[0]
@@ -185,9 +205,19 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
         for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
             ret=False
             try:
-                ret = _params_allgood(ishape, kshape, mode,
-                                      subsample=subshape, img_stride=istride, kern_stride=kstride,
-                                      version=ver, verbose=verbose, random=random, id=id,print_=print_,rtol=rtol,ones=ones)
+                ret = _params_allgood(ishape,
+                        kshape,
+                        mode,
+                        subsample=subshape,
+                        img_stride=istride,
+                        kern_stride=kstride,
+                        version=ver,
+                        verbose=verbose,
+                        random=random,
+                        id=id,
+                        print_=print_,
+                        rtol=rtol,
+                        ones=ones)
             except Exception, e:
                 print ver, id,(ishape, kshape, subshape, istride, kstride)
                 print e

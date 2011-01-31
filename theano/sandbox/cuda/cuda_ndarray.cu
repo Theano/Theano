@@ -134,7 +134,9 @@ CudaNdarray_uninit(CudaNdarray*self)
         assert(self->devdata);
         if (device_free(self->devdata))
         {
-            std::cerr << "!!!! error freeing device memory\n";
+            fprintf(stderr,
+                    "!!!! error freeing device memory %p (self=%p)\n",
+                    self->devdata, self);
             rval = -1;
         }
         self->devdata = NULL;
@@ -144,7 +146,9 @@ CudaNdarray_uninit(CudaNdarray*self)
     {
         if (device_free(self->dev_structure))
         {
-            std::cerr << "!!!! error freeing device memory\n";
+            fprintf(stderr,
+                    "!!!! error freeing dev_structure memory %p (self=%p)\n",
+                    self->dev_structure, self);
             rval = -1;
         }
         self->dev_structure = NULL;
@@ -1848,6 +1852,8 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
   }
   get_gpu_ptr_size<<<1,1>>>(gpu_data);
   if (cudaSuccess != cublasGetError()){
+
+    device_free(gpu_data);
     return PyErr_Format(PyExc_RuntimeError,
                         "CudaNdarray_ptr_int_size: error when calling the gpu code.");
   }

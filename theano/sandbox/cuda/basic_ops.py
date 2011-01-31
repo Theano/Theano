@@ -441,7 +441,7 @@ class GpuSum(Op):
 
         j = 0
         for i in xrange(nd_in):
-            if not self.reduce_mask[i]: 
+            if not self.reduce_mask[i]:
                 print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
 
@@ -453,11 +453,10 @@ class GpuSum(Op):
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
             }
-
         }
         """ %locals()
 
-        # \begin bracket the reduction in a check that there is actually work to do 
+        # \begin bracket the reduction in a check that there is actually work to do
         print >> sio, """
         if (CudaNdarray_SIZE(%(z)s))
         {
@@ -472,12 +471,10 @@ class GpuSum(Op):
             #TODO: check if we are ccontiguous when we un-dimshuffle
             #TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
-            
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
             print >> sio, "}"
-        
         else:
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
 
@@ -826,8 +823,16 @@ class GpuSum(Op):
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(1,CudaNdarray_HOST_DIMS(%(x)s)[1]);
-            if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
+            dim3 n_blocks(1,
+                std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    NUM_VECTOR_OP_BLOCKS));
+            if (verbose) {
+              fprintf(stderr,
+                "running kernel_reduce_sum_10_%(name)s n_blocks=(%%i,%%i)\\n",
+                n_blocks.x,
+                n_blocks.y);
+            }
+            assert( CudaNdarray_HOST_DIMS(%(x)s)[1] == CudaNdarray_HOST_DIMS(%(z)s)[0]);
             int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_sum_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                     1,
@@ -843,7 +848,7 @@ class GpuSum(Op):
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_010_%(name)s",
@@ -1175,9 +1180,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        #return ()
-        return (19,)
-
+        return (20,)
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
