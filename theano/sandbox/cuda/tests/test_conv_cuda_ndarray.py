@@ -177,8 +177,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         print "max absolute diff:",diffabs.max(),"avg abs diff:",numpy.average(diffabs)
         print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
         print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
-
-        print rval
     if not rval and print_!=False:
         if npy_img.shape[0]>5:
             print "img",npy_img[0]
@@ -207,9 +205,19 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
         for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
             ret=False
             try:
-                ret = _params_allgood(ishape, kshape, mode,
-                                      subsample=subshape, img_stride=istride, kern_stride=kstride,
-                                      version=ver, verbose=verbose, random=random, id=id,print_=print_,rtol=rtol,ones=ones)
+                ret = _params_allgood(ishape,
+                        kshape,
+                        mode,
+                        subsample=subshape,
+                        img_stride=istride,
+                        kern_stride=kstride,
+                        version=ver,
+                        verbose=verbose,
+                        random=random,
+                        id=id,
+                        print_=print_,
+                        rtol=rtol,
+                        ones=ones)
             except Exception, e:
                 print ver, id,(ishape, kshape, subshape, istride, kstride)
                 print e
