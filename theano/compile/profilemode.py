@@ -489,10 +489,10 @@ class ProfileMode(Mode):
                     print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
                     n_apply_printed += 1
 
-                print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
+                print '   ... (remaining %i Apply account for %.2f%%(%d bytes) of the total intermediate memory used)'\
                 %(max(0, len(nodes_mem)-n_apply_printed),
-                  sum(sum(val) for key, val in items[n_apply_printed:]),
-                  sum(sum(val) for key, val in items[n_apply_printed:])/size_sum)
+                  sum(sum(val) for key, val in items[n_apply_printed:])/float(size_sum),
+                  sum(sum(val) for key, val in items[n_apply_printed:]))
 
 
         print
