@@ -112,8 +112,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
         npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
     elif random:
-        npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-        npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+        npy_img = theano._asarray(numpy.random.rand(*ishape)+1, dtype='float32')
+        npy_kern = theano._asarray(numpy.random.rand(*kshape)-2, dtype='float32')
     else:
         npy_img = theano._asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
         npy_kern = -(theano._asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
