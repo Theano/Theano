@@ -26,7 +26,7 @@ def check_equal(x, y):
     #I put the import here to allow using theano without scipy.
     import scipy.sparse as sp
     x, y = x[0], y[0]
-   
+
     # TODO: bug in current scipy, two sparse matrices are never equal, remove when moving to 0.7
     if sp.issparse(x):
         x = x.todense()
@@ -152,7 +152,7 @@ class PrintCurrentEnv(gof.Optimizer):
         theano.printing.debugprint(env.outputs)
 
 optdb = gof.SequenceDB()
-optdb.register('merge1', gof.MergeOptimizer(), 
+optdb.register('merge1', gof.MergeOptimizer(),
         0, 'fast_run', 'fast_compile')
 optdb.register('canonicalize', gof.EquilibriumDB(),         # rearranges elemwise expressions
         1, 'fast_run', 'fast_compile')
@@ -162,7 +162,7 @@ optdb.register('Print1.21', PrintCurrentEnv('Post-canonicalize'),
         1.21,)# 'fast_run', 'fast_compile')
 
 optdb.register('stabilize', gof.EquilibriumDB(),            # replace unstable subgraphs
-        1.5, 'fast_run')          
+        1.5, 'fast_run')
 optdb.register('Print1.51', PrintCurrentEnv('Post-stabilize'),
         1.51,) #'fast_run', 'fast_compile')
 optdb.register('specialize', gof.EquilibriumDB(),           # misc special cases for speed
@@ -175,7 +175,7 @@ optdb.register('specialize_device', gof.EquilibriumDB(),           # misc specia
         48.6, 'fast_run')#must be after gpu stuff at 48.5
 optdb.register('merge2', gof.MergeOptimizer(),              # especially constant merge
         49, 'fast_run')
-optdb.register('add_destroy_handler', AddDestroyHandler(), 
+optdb.register('add_destroy_handler', AddDestroyHandler(),
         49.5, 'fast_run', 'inplace')
 optdb.register('merge3', gof.MergeOptimizer(),              # final pass just to make sure
         100, 'fast_run')
@@ -196,7 +196,7 @@ class Mode(object):
     See predefined_linkers, predefined_optimizers and also
     predefined_modes.
     """
-    
+
     def __init__(self, linker = config.linker, optimizer = config.optimizer):
         self.__setstate__((linker, optimizer))
         #self.provided_optimizer - typically the `optimizer` arg.  But if the `optimizer` arg is
@@ -239,8 +239,8 @@ class Mode(object):
             linker = predefined_linkers[linker]
         if isinstance(optimizer, str) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
-        return (linker, optimizer)    
-                
+        return (linker, optimizer)
+
     def including(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker, self.provided_optimizer)
         #N.B. opt might be a Query instance, not sure what else it might be...
@@ -285,7 +285,7 @@ def get_mode(orig_string):
         #need to import later to break circular dependency.
         from profilemode import ProfileMode,prof_mode_instance_to_print
         from debugmode import DebugMode
-            
+
         ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
 
     elif not predefined_modes.has_key(string):
@@ -318,4 +318,3 @@ def register_mode(name, mode):
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
-
