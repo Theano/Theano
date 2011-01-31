@@ -19,6 +19,10 @@ AddConfigVar('ProfileMode.n_ops_to_print',
         "Number of ops to print by default",
         IntParam(20, lambda i: i > 0))
 
+AddConfigVar('ProfileMode.min_memory_size',
+        "For the memory profile, don't print apply whose output size is lower then this",
+        IntParam(1024, lambda i: i >= 0))
+
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
         ret = super(Profile_Maker,self).create(input_storage, trustme)
@@ -143,9 +147,7 @@ class ProfileMode(Mode):
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 
-    def print_summary(self,
-                      n_apply_to_print=config.ProfileMode.n_apply_to_print,
-                      n_ops_to_print=config.ProfileMode.n_ops_to_print):
+    def print_summary(self,**kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there).
@@ -154,9 +156,9 @@ class ProfileMode(Mode):
 
         Their is an hack with the Op-wise summary. Go see it if you want to know more.
 
-        :param n_apply_to_print: the number of apply to print. Default 15, or n_ops_to_print flag.
-
-        :param n_ops_to_print: the number of ops to print. Default 20, or n_apply_to_print flag.
+        :param kwargs: They are passed to print_summary_ expanded.
+                       Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
+                       that are accepted.
         """
 
         compile_time = self.compile_time
@@ -168,20 +170,18 @@ class ProfileMode(Mode):
         outputs_size = self.outputs_size
 
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size,
-                            n_apply_to_print, n_ops_to_print)
+                            apply_time, op_cimpl, message, outputs_size, **kwargs)
 
 
-    def print_diff_summary(self, other, n_apply_to_print=15, n_ops_to_print=20):
+    def print_diff_summary(self, other, **kwargs):
         """ As print_summary, but print the difference on two different profile mode.
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
 
         :param other: the other instance of ProfileMode that we want to be compared to.
-
-        :param n_apply_to_print: the number of apply to print. Default 15.
-
-        :param n_ops_to_print: the number of ops to print. Default 20.
+        :param kwargs: They are passed to print_summary_ expanded.
+                       Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
+                       that are accepted.
         """
 
         def diff_dict(a_time,b_time_):
@@ -208,19 +208,25 @@ class ProfileMode(Mode):
 
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
                             apply_time, op_cimpl, message, outputs_size,
-                            n_apply_to_print=n_apply_to_print,
-                            n_ops_to_print=n_ops_to_print, print_apply=False)
+                            print_apply=False,
+                            **kwargs)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
                        apply_time, op_cimpl, message, outputs_size,
-                       n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
+                       n_apply_to_print=config.ProfileMode.n_apply_to_print,
+                       n_ops_to_print=config.ProfileMode.n_ops_to_print,
+                       print_apply=True,
+                       min_memory_size=config.ProfileMode.min_memory_size,
+                      ):
         """
         do the actual printing of print_summary and print_diff_summary.
 
-        param: n_apply_to_print the number of apply to print. Default 15.
+        :param n_apply_to_print: the number of apply to print. Default 15.
 
-        param: n_ops_to_print the number of ops to print. Default 20.
+        :param n_ops_to_print: the number of ops to print. Default 20.
+        :param min_memory_size: Don't print memory profile of apply
+                                whose outputs memory size is lower then that.
         """
 
         local_time = sum(apply_time.values())
@@ -461,18 +467,23 @@ class ProfileMode(Mode):
                 n_apply_to_print+=10#TODO remove this line
                 print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
                 print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected."
+
+                n_apply_printed = 0
                 for key,val in items[:n_apply_to_print]:
+                    if sum(val) < min_memory_size:
+                        break
                     code = ['c']*len(node.outputs)
                     for out,inp in getattr(key.op,'destroy_map',{}).iteritems():
                         code[out] = "i"
                     for out,inp in getattr(key.op,'view_map',{}).iteritems():
                         code[out] = "v"
                     print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
+                    n_apply_printed += 1
 
                 print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(nodes_mem)-n_ops_to_print),
-                  sum(sum(val) for key, val in items[n_ops_to_print:]),
-                  sum(sum(val) for key, val in items[n_ops_to_print:])/size_sum)
+                %(max(0, len(nodes_mem)-n_apply_printed),
+                  sum(sum(val) for key, val in items[n_apply_printed:]),
+                  sum(sum(val) for key, val in items[n_apply_printed:])/size_sum)
 
 
         print
