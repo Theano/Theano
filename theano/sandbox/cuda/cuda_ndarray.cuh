@@ -403,6 +403,11 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
             self->devdata = 0;
             return -1;
         }
+        if (0)
+            fprintf(stderr,
+                "Allocated devdata %p (self=%p)\n",
+                self->devdata,
+                self);
         self->data_allocated = size;
     }
     return 0;
