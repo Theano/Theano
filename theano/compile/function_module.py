@@ -868,9 +868,11 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
-        t0 = time.time()
+        start_optimizer = time.time()
         optimizer(env)
-        _logger.debug('Optimizing took %f seconds' % (time.time() - t0))
+        end_optimizer = time.time()
+        mode.optimizer_time += end_optimizer - start_optimizer
+        _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 
         # This loop was inserted to remove aliasing between outputs when they all
         # evaluete to the same value. Originally it was OK for outputs to be aliased,
@@ -978,9 +980,11 @@ class FunctionMaker(object):
 
 
         # Get a function instance
-        t0 = time.time()
+        start_linker = time.time()
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
-        _logger.debug('Linking took %f seconds' % (time.time() - t0))
+        end_linker = time.time()
+        _logger.debug('Linker took %f seconds' % (end_linker - start_linker))
+        self.mode.linker_time += end_linker - start_linker
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 

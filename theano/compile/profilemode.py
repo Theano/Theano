@@ -69,6 +69,8 @@ class ProfileMode(Mode):
         self.fct_call = fct_call
         self.call_time = 0
         self.fn_time = 0
+        self.optimizer_time = 0
+        self.linker_time = 0
         self.message = ""
         self.outputs_size = outputs_size
 
@@ -168,9 +170,12 @@ class ProfileMode(Mode):
         op_cimpl = self.op_cimpl
         message = self.message
         outputs_size = self.outputs_size
+        other_time = {'linker_time':self.linker_time,
+                      'optimizer_time':self.optimizer_time}
 
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size, **kwargs)
+                            apply_time, op_cimpl, message, outputs_size, other_time,
+                            **kwargs)
 
 
     def print_diff_summary(self, other, **kwargs):
@@ -205,15 +210,17 @@ class ProfileMode(Mode):
         op_cimpl = self.op_cimpl and other.op_cimpl
         message = self.message
         outputs_size = diff_dict(self.outputs_size,other.outputs_size)
-
+        other_time = {'linker_time':self.linker_time-other.linker_time,
+                      'optimizer_time':self.optimizer_time-other.optimizer_time}
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
                             apply_time, op_cimpl, message, outputs_size,
-                            print_apply=False,
+                            print_apply=False, other_time=other_time,
                             **kwargs)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
                        apply_time, op_cimpl, message, outputs_size,
+                       other_time,
                        n_apply_to_print=config.ProfileMode.n_apply_to_print,
                        n_ops_to_print=config.ProfileMode.n_ops_to_print,
                        print_apply=True,
@@ -367,7 +374,9 @@ class ProfileMode(Mode):
 
         print
         print 'Time since import %.3fs'%(total_time)
-        print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
+        print 'Theano compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
+        print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
+        print '    Linker time: %.3fs'%(other_time['linker_time'])
         print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
         print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
         print 'Unknow time since import %.3fs %.1f%%'%(unknow_time,unknow_time/total_time*100)

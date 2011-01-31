@@ -222,6 +222,8 @@ class Mode(object):
         self._optimizer = optimizer
         self.call_time = 0
         self.fn_time = 0
+        self.optimizer_time = 0
+        self.linker_time = 0
 
     def __str__(self):
         return "Mode(linker = %s, optimizer = %s)" % (self.provided_linker, self.provided_optimizer)
