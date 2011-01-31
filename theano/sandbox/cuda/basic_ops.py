@@ -92,7 +92,7 @@ class GpuElemwise(Op):
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
-    
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         self.sync = d.get('sync', True) #old objects defaulted to sync behaviour
@@ -304,7 +304,7 @@ class GpuDimShuffle(Op):
         for i, o in enumerate(self.new_order):
             if o == 'x':
                 #TODO: remove this assertion
-                #      the correct thing to do is to insert a run-time check 
+                #      the correct thing to do is to insert a run-time check
                 #      that the size in this dimension is 1
                 assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
@@ -318,9 +318,9 @@ class GpuDimShuffle(Op):
                 """ %locals()
 
         for i, o in enumerate(self.new_order):
-                print >> sio, """
-        //std::cerr << "GpuDimShuffle " << %(res)s << " str[%(i)s] = " << %(res)s->str[%(i)s] << "\\n";
-                """ %locals()
+            print >> sio, """
+    //std::cerr << "GpuDimShuffle " << %(res)s << " str[%(i)s] = " << %(res)s->str[%(i)s] << "\\n";
+            """ %locals()
 
         # copy the host dims and stride -> device
         if 0:
@@ -352,7 +352,7 @@ class GpuDimShuffle(Op):
                 sys.exit()
 
         return sio.getvalue()
-    
+
     def c_code_cache_version(self):
         return (1,0)
 
@@ -364,7 +364,7 @@ class GpuSum(Op):
     specify for each input dimension, whether to reduce it (1) or not (0).
 
     For example:
-    
+
       - reduce_mask == (1,) sums a vector to a scalar
 
       - reduce_mask == (1,0) computes the sum of each column in a matrix
@@ -423,14 +423,14 @@ class GpuSum(Op):
 
         # check the basics of out output
         print >> sio, """
-        if (  !%(z)s 
+        if (  !%(z)s
            || (%(z)s->nd != %(nd_out)s)
         """ % locals()
 
         #ensure that the output has the right non-reduced dimensions
         j = 0
         for i in xrange(nd_in):
-            if not self.reduce_mask[i]: 
+            if not self.reduce_mask[i]:
                 print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]) " % locals()
                 j += 1
 
@@ -506,7 +506,7 @@ class GpuSum(Op):
                         CudaNdarray_HOST_STRIDES(%(z)s)[0]
                         );
                 CNDA_THREAD_SYNC;
-                if (cudaSuccess != cudaGetLastError()) 
+                if (cudaSuccess != cudaGetLastError())
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: ... );
                     %(fail)s;
@@ -549,7 +549,7 @@ class GpuSum(Op):
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_%(pattern)s_%(name)s",
@@ -574,7 +574,7 @@ class GpuSum(Op):
                     const int d1,
                     const int d2,
                     const float *A,
-                    const int sA0, 
+                    const int sA0,
                     const int sA1,
                     const int sA2,
                     float * Z,
@@ -621,7 +621,7 @@ class GpuSum(Op):
                 float mysum = 0.0f;
 
                 if (warpSize != 32)
-                {  
+                {
                     //TODO: set error code
                     Z[0] = -666;
                     return;
@@ -643,7 +643,7 @@ class GpuSum(Op):
                 mysum += buf[i];
             }
             buf[threadNum] = mysum;
-/*Comment this optimization as it don't work on Fermi GPU. 
+/*Comment this optimization as it don't work on Fermi GPU.
   TODO: find why it don't work or put the GPU compute capability into the version
             // no sync because only one warp is running
             if(threadCount >32)
@@ -675,7 +675,7 @@ class GpuSum(Op):
             }
         }
         """ %locals()
-    
+
     #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
     #nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, nb_reduce):
@@ -694,7 +694,7 @@ class GpuSum(Op):
             %(z_pos)s = mysum;
         }
         """ %locals()
-    
+
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
         print >> sio, """
         {
@@ -715,7 +715,7 @@ class GpuSum(Op):
                     CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_ccontig_%(name)s",
@@ -754,14 +754,14 @@ class GpuSum(Op):
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             while (n_threads.y * n_threads.x <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             n_threads.y -= 1;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0])
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0];
 
             dim3 n_blocks(1);
             %(makecall)s
         }
         """ %locals()
-        
+
     def c_code_reduce_01X(self, sio, node, name, x, z, fail, N):
         """
         :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
@@ -869,7 +869,7 @@ class GpuSum(Op):
         pattern = ''.join(str(i) for i in self.reduce_mask)
         print >> sio, """
         {
-            //int n_summations = CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(x)s)[2]; 
+            //int n_summations = CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(x)s)[2];
 
             //if ((n_summations >= 15 * 32) && (CudaNdarray_HOST_DIMS(%(x)s)[2]>=16))
             if (1) // if the alternative is less buggy, consider not using this branch
@@ -884,7 +884,7 @@ class GpuSum(Op):
                 dim3 n_threads(32,1,1);
 
                 // We kindof reshape the input implicitly to something 4D:
-                //  the shape A,B,C    ->   A, B, D, E  
+                //  the shape A,B,C    ->   A, B, D, E
                 //  where C <= D*E < C+32
                 //  where E==32
 
@@ -913,7 +913,7 @@ class GpuSum(Op):
                         );
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
-                if (cudaSuccess != sts) 
+                if (cudaSuccess != sts)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                         "kernel_reduce_sum_010_%(name)s",
@@ -966,7 +966,7 @@ class GpuSum(Op):
                 }
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
-                if (cudaSuccess != sts) 
+                if (cudaSuccess != sts)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                         "kernel_reduce_sum_%(pattern)s_%(name)s",
@@ -1166,15 +1166,15 @@ class GpuSum(Op):
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
             while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2])
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2];
 
             while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
             if (n_threads.z > 64)
                 n_threads.z = 64;
-            if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
-                n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
-            
+            if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0])
+                n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
+
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
             %(makecall)s
         }
@@ -1187,7 +1187,7 @@ class GpuSum(Op):
         sio = StringIO.StringIO()
         nd_in = len(self.reduce_mask)
         if all(i==1 for i in self.reduce_mask):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1214,7 +1214,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1242,7 +1242,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,1):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1277,7 +1277,7 @@ class GpuSum(Op):
         if 0 == self.reduce_mask[0] and all(self.reduce_mask[1:]) and nd_in in[2,3,4]:
             # this kernel uses one block for each row.
             # threads per block for each element per row.
-            
+
             N_pattern = ''.join(['1']*(nd_in-1))
             if nd_in==2:
                 for_i1 = "for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)"
@@ -1315,7 +1315,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,1,0) or self.reduce_mask == (1,0):
-            # this kernel uses one block for each column, 
+            # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
@@ -1412,7 +1412,7 @@ class GpuSum(Op):
             print >> sio, """
             %(decl)s
             {
-             if(warpSize<blockDim.x){  
+             if(warpSize<blockDim.x){
                //TODO: set error code
                Z[0] = -666;
                return;
@@ -1433,7 +1433,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,1,0):
-            # this kernel uses one block for each column, 
+            # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
@@ -1454,7 +1454,7 @@ class GpuSum(Op):
                 float mysum = 0.0f;
 
                 if (warpSize != 32)
-                {  
+                {
                     //TODO: set error code
                     Z[blockIdx.x * sZ0] = -666;
                     return;
@@ -1517,7 +1517,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,0,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
             print >> sio, """
@@ -1552,7 +1552,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,0,1,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
             decl = self._k_decl(node, nodename)
@@ -1580,7 +1580,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,1,0,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]')
             decl = self._k_decl(node, nodename)
@@ -1741,10 +1741,10 @@ class GpuJoin(tensor.Join):
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
 
-        return tensor.Join._make_node_internal(self, 
-                        axis, tensors, 
+        return tensor.Join._make_node_internal(self,
+                        axis, tensors,
                         as_tensor_variable_args, output_maker)
-       
+
     def perform(self, node, axis_and_tensors, (out, )):
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
         # In case axis is numpy.int8 and has no __index__() method
@@ -1777,7 +1777,7 @@ class GpuJoin(tensor.Join):
             assert not bcastable or final_shape[i] == 1, "Broadcastable dimension but dim != 1, this is invalid"
 
         rval = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(final_shape)
-        
+
         curpos = 0
 
         # we use a [:] (copy all) slice for all dimensions
@@ -1862,7 +1862,7 @@ class GpuAlloc(Op):
     }
 """%locals()
         return str
-    
+
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
