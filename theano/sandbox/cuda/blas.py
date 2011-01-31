@@ -363,9 +363,10 @@ class GpuConv(Op):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,8)
+        return (0,9) # raise this whenever modifying any of the support_code_files
 
     def c_support_code_apply(self, node, nodename):
+        # REMEMBER TO RAISE c_code_cache_version when changing any of these files
         return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\
             open(os.path.join(os.path.split(__file__)[0],'conv_full_kernel.cu')).read()+\
             open(os.path.join(os.path.split(__file__)[0],'conv.cu')).read()
@@ -405,8 +406,7 @@ class GpuConv(Op):
 
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s, %(out)s,
                      mode, dx, dy, version, verbose);
-    if(%(out)s && %(out)s==out2)
-         Py_DECREF(out2);//CudaNdarray_Conv incremented the count to out
+    Py_XDECREF(%(out)s);
     %(out)s = out2;
 """%sub
 

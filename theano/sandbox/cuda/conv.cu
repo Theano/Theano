@@ -1,3 +1,5 @@
+// REMEMBER TO RAISE c_code_cache_version when changing this file
+//
 enum { ConvMode_FULL, ConvMode_VALID };
 PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * out, const int mode, const int subsample_rows, const int subsample_cols, const int version, const int verbose);
 
@@ -425,7 +427,10 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         }
     }
 
-    //version 8 is the same but we force the split. The split is need in case we have too much threads. This happen frequently if the kernel length is big. Big kernel is frequent in the gradient.
+    //version 8 is the same but we force the split.
+    // The split is need in case we have too much threads.
+    // This happen frequently if the kernel length is big.
+    // Big kernel is frequent in the gradient.
     //version 8 need a minimum of kernel length as we force the split.
     //version 8 is needed to test more easily this kernel template parameter.
     //version 13 load only 1 kernel row at a time.
@@ -434,8 +439,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	out_size<512 &&//Maximum of 512 theads by block
 	(version==7||version==8||version==13||version==-1) &&
 	(version!=8||kern_len>1) && //version 8 need a minimal kernel length as big as the split.
-	(version!=13||kern_len>1) && //version 13 need a minimal kernel length as big as the split.
-	(img_size_byte+2*kern_wid*sizeof(float)+out_size_byte*2)<shared_avail && //their is only 16k of shared memory and if we can't have the output at least twice in shared mem, we won't have any reduce!
+        //version 13 need a minimal kernel length as big as the split.
+	(version!=13||kern_len>1) &&
 	!work_complete) //conv_patch_stack_reduce
     {
 	int nb_split=1;
@@ -443,83 +448,99 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
 	if(version==8||version==13) nb_split++;//force the split.
 	if(version==13)full_kern=false;
-	while(ceil_intdiv(kern_len,nb_split)>64)nb_split++;//device 1.3 have a max of 64 thread in z
-	while(out_size*ceil_intdiv(kern_len,nb_split)>512)nb_split++;
-	int shared_size=(img_size + kern_size + out_size*kern_len)*sizeof(float);
-	if(shared_size>=shared_avail){
-	  //if we can't fit the kernel in shared memory, we can split it more.
-	  full_kern=false;	  
-	  assert((img_size+kern_wid*2+out_size*2)*sizeof(float)<=shared_avail);
-	  shared_size=(img_size + kern_wid*ceil_intdiv(kern_len,nb_split) + out_size*ceil_intdiv(kern_len,nb_split))*sizeof(float);
-	  while(shared_size>=shared_avail || ceil_intdiv(kern_len,nb_split)>64){
-	    nb_split++;
-	    shared_size=(img_size + kern_wid*ceil_intdiv(kern_len,nb_split) + out_size*ceil_intdiv(kern_len,nb_split))*sizeof(float);
-	  }
-	}
 
+        //thread_z is going to be ceil_intdiv(kern_len, nb_split)
+        // we need enough splits so that
+        // a) thread_z fits in the 'z' threadIdx (i.e. is less than 64)
+        // b) thread_z * out_len * out_wid fits in the thread count
+        // c) the kernel doesn't need too much shared memory
+
+        // constraint (a)
+        // device 1.3 have a max of 64 thread in z
+	while(ceil_intdiv(kern_len,nb_split)>64) nb_split++;
+
+        // constraint (b)
+        //  (TODO: read the number of threads per block from the device)
+	while(out_size*ceil_intdiv(kern_len,nb_split)>512) nb_split++;
+
+        // tentative estimates (prior to contraint c)
 	int thread_z=ceil_intdiv(kern_len,nb_split);
-        assert(thread_z>0);//should not happen, but in case...
-	assert(shared_size<=shared_avail);
-	if(!full_kern)
-	  assert(thread_z!=kern_len);
+	int shared_size = sizeof(float)*(full_kern
+                ? std::max(img_size + kern_size, out_size*thread_z)
+                : std::max(img_size + thread_z*kern_wid, out_size*thread_z));
 
-        dim3 threads(out_wid, out_len, thread_z);
-        dim3 grid(nbatch,nkern);
-	
-	void (*f)(float*, float*, float*,
-		  int, int, int, int,
-		  int, int, int, int,
-		  int, int,
-		  int, int,
-		  int, int);
-
-	const bool split=thread_z!=kern_len;
-	const bool ccontig=img_contiguous_2d && kern_contiguous_2d_unflipped;
-
-	//printf("kern_flipped=%d, ccontig=%d, split=%d, full_kern=%d\n",kern_flipped,ccontig,split,full_kern);
-	//We will always be split when we don't load the full kernel
-#define CONV_PATCH_STACK_REDUCE_SPECIAL(kern_wid) \
-            if     (kern_flipped  && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, true>;\
-            else if(kern_flipped  && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, true>;\
-            else if(kern_flipped  && ccontig  && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, true>;\
-            else if(kern_flipped  && !ccontig && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, true>;\
-            else if(!kern_flipped && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, true>;\
-            else if(!kern_flipped && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, true>;\
-            else if(!kern_flipped && ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, true>;\
-            else if(!kern_flipped && !ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, true>;\
-	    /*else if(kern_flipped  && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, false>;*/\
-	    /*else if(kern_flipped  && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, false>;*/\
-            else if(kern_flipped  && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, false>;\
-            else if(kern_flipped  && !ccontig && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, false>;\
-            /*else if(!kern_flipped && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, false>;*/\
-            /*else if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, false>;*/\
-            else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, false>;\
-            else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
-	CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
-
-	if (verbose) printf("INFO: using 'conv_patch_stack_reduce' version kern_flipped=%i ccontig=%i nb_split=%d, preload_full_kern=%d\n",
-			    kern_flipped,ccontig,nb_split,full_kern);
-	if (verbose>1) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n",
-			      threads.x, threads.y, threads.z, grid.x, grid.y,
-			      shared_size, threads.x * threads.y * threads.z);
-	f<<< grid, threads, shared_size>>>(img->devdata, kern_data_unflipped, out->devdata,
-					   img_len, img_wid, kern_len, kern_wid,
-					   nkern, nstack, 
-					   img_stride_col, img_stride_row, img_stride_stack, img_stride_batch,
-					   kern_stride_col_unflipped, kern_stride_row_unflipped,
-					   kern_stride_stack, kern_stride_nkern);
-        CNDA_THREAD_SYNC;
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
-        {
-            work_complete = true;
+        // constraint (c)
+        while ((shared_size >= shared_avail) && (nb_split <= kern_len)){
+	    //if we can't fit the kernel in shared memory, we must split it more.
+            nb_split++;
+            thread_z=ceil_intdiv(kern_len,nb_split);
+	    shared_size=sizeof(float)*std::max(
+                    img_size + kern_wid*thread_z,
+                    out_size*thread_z);
         }
-        else
+        if (nb_split <= kern_len)
         {
-            if (verbose) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z);
-            if (verbose) printf("INFO: impl 'conv_patch_stack_reduce' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
-        }                         
+            assert(thread_z>0);//should not happen, but in case...
+            if(!full_kern) assert(thread_z!=kern_len);
+
+            dim3 threads(out_wid, out_len, thread_z);
+            dim3 grid(nbatch,nkern);
+
+            void (*f)(float*, float*, float*,
+                      int, int, int, int,
+                      int, int, int, int,
+                      int, int,
+                      int, int,
+                      int, int);
+
+            const bool split=thread_z!=kern_len;
+            const bool ccontig=img_contiguous_2d && kern_contiguous_2d_unflipped;
+
+            //printf("kern_flipped=%d, ccontig=%d, split=%d, full_kern=%d\n",kern_flipped,ccontig,split,full_kern);
+            //We will always be split when we don't load the full kernel
+#define CONV_PATCH_STACK_REDUCE_SPECIAL(kern_wid) \
+                if     (kern_flipped  && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, true>;\
+                else if(kern_flipped  && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, true>;\
+                else if(kern_flipped  && ccontig  && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, true>;\
+                else if(kern_flipped  && !ccontig && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, true>;\
+                else if(!kern_flipped && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, true>;\
+                else if(!kern_flipped && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, true>;\
+                else if(!kern_flipped && ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, true>;\
+                else if(!kern_flipped && !ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, true>;\
+                /*else if(kern_flipped  && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, false>;*/\
+                /*else if(kern_flipped  && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, false>;*/\
+                else if(kern_flipped  && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, false>;\
+                else if(kern_flipped  && !ccontig && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, false>;\
+                /*else if(!kern_flipped && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, false>;*/\
+                /*else if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, false>;*/\
+                else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, false>;\
+                else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
+            CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
+
+            if (verbose) fprintf(stderr, "INFO: using 'conv_patch_stack_reduce' version kern_flipped=%i ccontig=%i nb_split=%d, preload_full_kern=%d\n",
+                                kern_flipped,ccontig,nb_split,full_kern);
+            if (verbose>1) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n",
+                                  threads.x, threads.y, threads.z, grid.x, grid.y,
+                                  shared_size, threads.x * threads.y * threads.z);
+            f<<< grid, threads, shared_size>>>(img->devdata, kern_data_unflipped, out->devdata,
+                                               img_len, img_wid, kern_len, kern_wid,
+                                               nkern, nstack,
+                                               img_stride_col, img_stride_row, img_stride_stack, img_stride_batch,
+                                               kern_stride_col_unflipped, kern_stride_row_unflipped,
+                                               kern_stride_stack, kern_stride_nkern);
+            CNDA_THREAD_SYNC;
+            cudaError_t sts = cudaGetLastError();
+            if (cudaSuccess == sts)
+            {
+                work_complete = true;
+            }
+            else
+            {
+                if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z);
+                if (verbose) fprintf(stderr, "INFO: impl 'conv_patch_stack_reduce' failed (%s), trying next implementation\n",
+                                    cudaGetErrorString(sts));
+            }
+        } // else no good nb_splits was found
     }
 
     if (1 && (version==6||version==-1) &&
@@ -647,6 +668,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             return -1;
         }
     }
+    assert (work_complete);
     return 0;
 
             //PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "kExp", cudaGetErrorString(err));
@@ -1043,6 +1065,9 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
 		 const int subsample_rows, const int subsample_cols,
 		 const int version, const int verbose)
 {
+    // Re-use the out object if possible.  If the out object it not used, then its refcount is not modified.
+    //  If the out object is re-used then it is returned, and its refcount is incremented by 1.
+    //
     if (img->nd != 4) { PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required"); return NULL;}
     if (kern->nd != 4) { PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required"); return NULL;}
 
@@ -1062,33 +1087,36 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     }
     out_dim[2] = ceil_intdiv(logical_rows, subsample_rows);
     out_dim[3] = ceil_intdiv(logical_cols, subsample_cols);
-    
-    CudaNdarray * rval = out;
-    if(!(out && out->nd==4 && CudaNdarray_is_c_contiguous(out) 
+
+    CudaNdarray * rval = NULL;
+
+    if ( out
+         && out->nd==4
+         && CudaNdarray_is_c_contiguous(out)
 	 && CudaNdarray_HOST_DIMS(out)[0]==out_dim[0]
 	 && CudaNdarray_HOST_DIMS(out)[1]==out_dim[1]
 	 && CudaNdarray_HOST_DIMS(out)[2]==out_dim[2]
-	 && CudaNdarray_HOST_DIMS(out)[3]==out_dim[3])){
-      if (out)
-      {
-          fprintf(stderr, "Warning: Conv is ignoring 'out' argument with wrong structure.\n");
-	  Py_DECREF(out);
-      }
-      rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+	 && CudaNdarray_HOST_DIMS(out)[3]==out_dim[3])
+    {
+      rval = out;
+      Py_INCREF(rval);
     }
-    if ((rval==NULL) 
+    else
+    {
+      if (verbose) fprintf(stderr, "INFO: Conv is ignoring 'out' argument with wrong structure.\n");
+      rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+      //rval might be null
+    }
+    if ((rval==NULL)
             || ((mode==ConvMode_VALID) && CudaNdarray_conv_valid(img, kern, rval, subsample_rows, subsample_cols, version, verbose))
             || ((mode==ConvMode_FULL) && CudaNdarray_conv_full(img, kern, rval, subsample_rows, subsample_cols, version, verbose))
             )
     {
         // if rval is something we just allocated,
         // and there was a problem, then we have to free it.
-        if (rval != out) Py_XDECREF(rval);
+        Py_XDECREF(rval);
         return NULL;
     }
-    //TODO: Get refcount story clearer!
-    //      This function does a weird thing as work-around with Conv_VARARGS
-    if (rval == out) Py_INCREF(rval);
     return (PyObject*)rval;
 }
 
