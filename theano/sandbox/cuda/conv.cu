@@ -5,7 +5,7 @@ PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * 
  * version: -1, autodetect, >=0 a specific version to use.
  *          If it can't be executed, we revert to the reference implementation
  */
-int 
+int
 CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 		       CudaNdarray * out, int subsample_rows, int subsample_cols,
 		       int version = -1, int verbose=0)
@@ -38,8 +38,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
 
     // we now search through a few implementations until one applies to our arguments.
-    
-    //TODO: make separate version as if all fill this is slower. 
+
+    //TODO: make separate version as if all fill this is slower.
     //TODO: Make a switch with power of 2 max size as template
     //TODO: make a parameter the number of division
     //TODO: Should we make them in separate grid block instead?
@@ -149,7 +149,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	      img_len, img_wid, kern_len, kern_wid, nkern, nstack);
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
             if (verbose) printf("INFO: used 'conv_patch' version %s nb_split=%d\n",threads.y==out_len?"no split": "split",nb_split);
             work_complete = true;
@@ -159,7 +159,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i, nb_split=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, nb_split);
             if (verbose) printf("INFO: impl 'conv_patch' failed (%s), trying next implementation\n",
                                 cudaGetErrorString(sts));
-        }                         
+        }
     }
     if (!subsample &&
 	out_contiguous &&
@@ -218,7 +218,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
             if (verbose>1) 
 	      printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
@@ -242,7 +242,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 		     nb_split, preload_full_kernel);
             if (verbose) printf("INFO: impl 'conv_patch_stack' failed (%s), trying next implementation\n",
                                 cudaGetErrorString(sts));
-        }                         
+        }
     }
 
     if (!subsample && out_contiguous &&
@@ -277,7 +277,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
             work_complete = true;
             if (verbose) printf("INFO: used 'conv_rows' version\n");
@@ -287,7 +287,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
             if (verbose) printf("INFO: impl 'conv_rows' failed (%s), trying next implementation\n",
                     cudaGetErrorString(sts));
-        }                         
+        }
     }
     if (!subsample && out_contiguous &&
 	(version==5||version==-1) &&
@@ -306,7 +306,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         dim3 threads(out_wid,nb_row);
         dim3 grid(ceil_intdiv(out_len,nb_row), nbatch*nkern);
-	  
+
         int shared_size=((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
 
 	void (*f)(float*, float*, float*,
@@ -332,7 +332,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
             work_complete = true;
 	    if (verbose>1) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
@@ -343,7 +343,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
             if (verbose) printf("INFO: impl 'conv_rows_stack' failed (%s), trying next implementation\n",
 		     cudaGetErrorString(sts));
-        }                         
+        }
     }
 
     if (!subsample && out_contiguous &&
@@ -420,7 +420,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 				threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,(version==9?2:3));
             if (verbose) printf("INFO: impl 'conv_rows_stack2' failed (%s), trying next implementation\n",
 		     cudaGetErrorString(sts));
-        }                         
+        }
     }
 
     //version 8 is the same but we force the split. The split is need in case we have too much threads. This happen frequently if the kernel length is big. Big kernel is frequent in the gradient.
@@ -633,7 +633,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         CNDA_THREAD_SYNC;
 
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
             work_complete = true;
             if (verbose) printf("INFO: used 'conv_reference_valid' version\n");
@@ -651,7 +651,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             //return -1;
 }
 
-int 
+int
 CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdarray * out, int subsample_rows, int subsample_cols, int version = -1, int verbose=0)
 {
     const int shared_avail = SHARED_SIZE-150;//144 is the biggest static shared size used with compiling this file.
@@ -833,7 +833,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (cudaSuccess == sts)
         {
 	  if (verbose>1) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z, out_len, nb_split, version);
             if (verbose) printf("INFO: used 'conv_full_patch_stack_padded' nb_split=%d low_mem=%s\n",nb_split,(version==5?"true":"false"));
@@ -1035,7 +1035,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
     return 0;
 }
 
-PyObject * 
+PyObject *
 CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
 		 CudaNdarray * out, const int mode,
 		 const int subsample_rows, const int subsample_cols,
