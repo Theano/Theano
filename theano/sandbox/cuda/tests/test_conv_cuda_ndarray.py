@@ -84,7 +84,29 @@ def py_conv_scipy(img, kern, mode, subsample):
 def _params_allgood_header():
     print "ishape kshape #Mflops CPU Mflops GPU Mflops Speedup"
 
-def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None, id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+def test_example():
+    # Test a specific configuration that was failing in one of the big unit-tests
+    # This configuration information was read from one of the 'FAIL' lines printed by
+    # _params_allgood during a nosetest run
+    #
+    # now it can be tested directly by nosetests test_conv_cuda_ndarray.py:test_example
+    assert _params_allgood(
+            (1,1,4,4),
+            (1,1,3,2),
+            'valid',
+            version=13,
+            random=False)
+
+def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
+        kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
+        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+    #
+    # This function is the core of several of the big unit-test drivers,
+    # but it can also be used very directly on its own to test a specific
+    # kind of convolution.
+    #
+    # See `test_example` (above) for an example of how to use this directly.
+    #
     if ones:
         assert not random
         npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
