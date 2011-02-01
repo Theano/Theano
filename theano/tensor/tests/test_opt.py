@@ -892,7 +892,8 @@ class test_fusion(unittest.TestCase):
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
-        if cuda.opt.int_size == 4:
+        sizes = cuda.opt.get_device_type_sizes()
+        if sizes['int_size'] == 4:
             shp=(5,5,5,5)
         else:
             shp=(5,5,5)
