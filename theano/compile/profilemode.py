@@ -426,9 +426,13 @@ class ProfileMode(Mode):
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
+            nb_skipped = 0
             for env,nodes_mem in fct_memory.iteritems():
-                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
+                if size_sum < min_memory_size:
+                    nb_skipped += 1
+                    continue
+                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
                 print "    Max without gc, inplace and view (KB)",size_sum/1024
 
                 node_memory_size = 0
@@ -493,7 +497,8 @@ class ProfileMode(Mode):
                 %(max(0, len(nodes_mem)-n_apply_printed),
                   sum(sum(val) for key, val in items[n_apply_printed:])/float(size_sum),
                   sum(sum(val) for key, val in items[n_apply_printed:]))
-
+            if nb_skipped > 0:
+                print '   We skipped %d theano function that used less then %dB(theano flags ProfileMode.min_memory_size) of total intermediate memory size'%(nb_skipped, min_memory_size)
 
         print
         print """Here are tips to potentially make your code run faster
