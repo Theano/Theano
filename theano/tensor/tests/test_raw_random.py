@@ -175,7 +175,7 @@ class T_random_function(unittest.TestCase):
         def ndim_added_deco(ndim_added):
             def randomfunction(random_state, size=(), low=0.0, high=0.0, ndim=None):
                 ndim, size = raw_random._infer_ndim(ndim, size)
-                op = RandomFunction('uniform', 
+                op = RandomFunction('uniform',
                         tensor.TensorType(dtype = 'float64', broadcastable =
                             (False,)*(ndim+ndim_added)),
                         ndim_added=ndim_added)

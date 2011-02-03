@@ -676,7 +676,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         new_rng = numpy.random.RandomState(234234)
 
-        # Test the borrow contract is respected: 
+        # Test the borrow contract is respected:
         # assigning with borrow=False makes a copy
         s_rng.set_value(new_rng, borrow=False)
         assert new_rng is not s_rng.container.storage[0]
