@@ -498,7 +498,7 @@ class ProfileMode(Mode):
                   sum(sum(val) for key, val in items[n_apply_printed:])/float(size_sum),
                   sum(sum(val) for key, val in items[n_apply_printed:]))
             if nb_skipped > 0:
-                print '   We skipped %d theano function that used less then %dB(theano flags ProfileMode.min_memory_size) of total intermediate memory size'%(nb_skipped, min_memory_size)
+                print '   We skipped %d theano function(s). Each of them used less then %dB(theano flags ProfileMode.min_memory_size) of total intermediate memory size'%(nb_skipped, min_memory_size)
 
         print
         print """Here are tips to potentially make your code run faster
