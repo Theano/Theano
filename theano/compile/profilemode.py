@@ -19,8 +19,8 @@ AddConfigVar('ProfileMode.n_ops_to_print',
         IntParam(20, lambda i: i > 0))
 
 AddConfigVar('ProfileMode.min_memory_size',
-             """For the memory profile, don't print apply when the size in bytes
- of its outputs in lower then this threshold""",
+             """For the memory profile, do not print apply nodes if the size
+ of their outputs (in bytes) is lower then this threshold""",
         IntParam(1024, lambda i: i >= 0))
 
 class Profile_Maker(FunctionMaker):
