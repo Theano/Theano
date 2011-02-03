@@ -164,7 +164,8 @@ def test_dot():
 
     assert numpy.allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
 
-    print >> sys.stderr, 'WARNING TODO test_dot: not testing all 8 transpose cases of dot'
+    ##TODO: #617
+    #print >> sys.stderr, 'WARNING TODO test_dot: not testing all 8 transpose cases of dot'
 
 def test_sum():
     shape = (2,3)
