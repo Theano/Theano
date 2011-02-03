@@ -580,9 +580,10 @@ def test_subsample():
             all_good = False
     assert all_good
 
-def test_logical_shapes():
-    # implement when
-    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
+## See #616
+#def test_logical_shapes():
+#    # implement when
+#    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
 
 
 def _test_dummy():
