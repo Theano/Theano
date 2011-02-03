@@ -2733,7 +2733,7 @@ def setsubtensor(x, y, idx_list, inplace=False):
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=True)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 def incsubtensor(x, y, idx_list, inplace=False):
-    print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
+    print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
@@ -2746,8 +2746,6 @@ def set_subtensor(x, y, inplace=False):
 
     :param x: symbolic variable for the lvalue of = operation
     :param y: symbolic variable for the rvalue of = operation
-
-    :see: theano.tensor.basic.setsubtensor
     """
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True)
 
@@ -2760,8 +2758,6 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False):
     Example: To replicate the numpy expression "r[10:] += 5", type
 
     >>> new_r = inc_subtensor(r[10:], 5)
-
-    :see: theano.tensor.basic.setsubtensor
     """
     # retrieve idx_list from x.owner
     if not isinstance(x.owner.op, Subtensor):
