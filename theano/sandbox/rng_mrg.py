@@ -667,9 +667,9 @@ class MRG_RandomStreams(object):
         """
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
-            assert all([isinstance(i,int) or isinstance(i,Variable) 
+            assert all([isinstance(i,int) or isinstance(i,Variable)
                 for i in size]), msg
-        else: 
+        else:
             msg = "size must be a tuple of int or a Theano variable"
             assert isinstance(size, Variable) and size.ndim==1, msg
 
@@ -689,10 +689,10 @@ class MRG_RandomStreams(object):
             node_rstate = float32_shared_constructor(tmp_float_buf)
             assert isinstance(node_rstate.type, CudaNdarrayType)
 
-            # we can't use the normal mrg_uniform constructor + later 
+            # we can't use the normal mrg_uniform constructor + later
             # optimization
             # because of the tmp_float_buf hack above.  There is
-            # currently no Theano node that will do a frombuffer 
+            # currently no Theano node that will do a frombuffer
             # reinterpretation.
             u = self.pretty_return(node_rstate,
                     *GPU_mrg_uniform.new(node_rstate, ndim, dtype, size))
@@ -717,14 +717,14 @@ class MRG_RandomStreams(object):
 
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64'):
         """
-        Sample `n` (currently `n` needs to be 1) times from a multinomial 
+        Sample `n` (currently `n` needs to be 1) times from a multinomial
         distribution defined by probabilities pvals.
 
         Example : pvals = [[.98,.01, .01], [.01, .98 .01]] will probably result
         in [[1,0,0],[0,1,0]].
 
         .. note::
-            `size` and `ndim` are only there keep the same signature as other 
+            `size` and `ndim` are only there keep the same signature as other
             uniform, binomial, normal, etc.
             todo : adapt multinomial to take that into account
         """
