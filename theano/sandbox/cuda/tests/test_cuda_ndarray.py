@@ -4,7 +4,7 @@ import theano.sandbox.cuda as cuda_ndarray
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 if cuda_ndarray.cuda_available == False:
-        raise SkipTest('Optional package cuda disabled')
+    raise SkipTest('Optional package cuda disabled')
 import numpy
 
 def advantage(cpu_dt, gpu_dt):
@@ -32,16 +32,16 @@ def test_host_to_device():
 
 def test_add_iadd_idiv():
     for shape in ((), (0,), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),
-		  (1000,10000),(10000,1000),
-		  (4100,33,34),(33,4100,34),(33,34,4100),
-		  (4100,33,3,6),(33,4100,3,6),(33,3,4100,6),(33,3,6,4100),
-		  (4100,3,34,6),(3,4100,34,6),(3,34,4100,6),(3,34,6,4100),
-		  (4100,3,4,36),(3,4100,4,36),(3,4,4100,36),(3,4,36,4100),
-		  (3,34,35,36,37),
-		  (33,34,3,36,37),
-		  (33,34,35,36,3),
-		  
-		  ):
+                  (1000,10000),(10000,1000),
+                  (4100,33,34),(33,4100,34),(33,34,4100),
+                  (4100,33,3,6),(33,4100,3,6),(33,3,4100,6),(33,3,6,4100),
+                  (4100,3,34,6),(3,4100,34,6),(3,34,4100,6),(3,34,6,4100),
+                  (4100,3,4,36),(3,4100,4,36),(3,4,4100,36),(3,4,36,4100),
+                  (3,34,35,36,37),
+                  (33,34,3,36,37),
+                  (33,34,35,36,3),
+
+                  ):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
@@ -131,11 +131,11 @@ def test_copy():
     assert numpy.allclose(a+a, numpy.asarray(b))
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
-    
+
 def test_nvcc_bug():
     """
-    The fct k_elemwise_unary_rowmajor_copy(used by cuda.copy()) in cuda_ndarray.cu 
-    is not well compiled with nvcc 3.0 and 3.1 beta. We found a workaround, so it 
+    The fct k_elemwise_unary_rowmajor_copy(used by cuda.copy()) in cuda_ndarray.cu
+    is not well compiled with nvcc 3.0 and 3.1 beta. We found a workaround, so it
     sould work correctly. Without the workaround, this test fail.
     """
     shape = (5,4)
@@ -224,7 +224,7 @@ def test_reshape():
         #print n_bb
 
         assert numpy.all(aa == n_bb)
-   
+
     # test working shapes
     for shape_1, shape_2 in shapelist:
         subtest(shape_1, shape_2)
@@ -305,7 +305,7 @@ def test_mapping_getitem_reverse_some_dims():
     _a = cuda_ndarray.CudaNdarray(a)
 
     _b = _a[:,:,::-1, ::-1]
-    
+
     b = numpy.asarray(_b)
     assert numpy.all(b==a[:,:,::-1,::-1])
 
@@ -375,7 +375,7 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[1:]), a[1:])
     _cmp(numpy.asarray(_a[1:2]), a[1:2])
     _cmp(numpy.asarray(_a[-1:1]), a[-1:1])
-    
+
 
     #test with tuple (mix slice, integer, numpy.int64)
     _cmp(numpy.asarray(_a[:,:,::numpy.int64(-1), ::-1]), a[:,:,::-1,::-1])
@@ -397,11 +397,11 @@ def test_gemm_vector_vector():
     _a = cuda_ndarray.CudaNdarray(a)
     b = theano._asarray(numpy.random.rand(1,5), dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
-    
+
     _c = cuda_ndarray.dot(_a,_b)
     assert _c.shape == (5,5)
     assert numpy.allclose(_c, numpy.dot(a, b))
-    
+
     _c = cuda_ndarray.dot(_b,_a)
     assert _c.shape == (1,1)
     assert numpy.allclose(_c, numpy.dot(b, a))
@@ -416,7 +416,7 @@ def test_setitem_matrixscalar0():
     _b = cuda_ndarray.CudaNdarray(b)
 
     # set an element to 8
-    _a[1,1] = _b    
+    _a[1,1] = _b
     a[1,1] = b
     assert numpy.allclose(a,numpy.asarray(_a))
 
@@ -424,7 +424,7 @@ def test_setitem_matrixscalar0():
     _a[1,1] = theano._asarray(888, dtype='float32')
     a[1,1] = theano._asarray(888, dtype='float32')
     assert numpy.allclose(a,numpy.asarray(_a))
-    
+
 
 def test_setitem_matrixvector1():
     a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
@@ -437,7 +437,7 @@ def test_setitem_matrixvector1():
     _a[:,1] = _b
     a[:,1] = b
     assert numpy.allclose(a,numpy.asarray(_a))
-    
+
     #test direct transfert from numpy
     try:
         _a[:,1] =  b*100
@@ -471,7 +471,7 @@ def test_setitem_matrix_tensor3():
     try:
         _a[:,1,1] = b*100
         a[:,1,1] = b*100
-        raise Exception("CudaNdarray.__setitem__ should have returned an error")  
+        raise Exception("CudaNdarray.__setitem__ should have returned an error")
         assert numpy.allclose(a,numpy.asarray(_a))
     except NotImplementedError:
         pass
@@ -629,7 +629,7 @@ def test_setitem_broadcast_numpy():
         assert False
         assert numpy.allclose(numpy.asarray(_a),a)
     except ValueError:
-	    pass
+        pass
     #test vector to matrice without stride
     a = numpy.arange(9)
     a.resize((3,3))
@@ -708,4 +708,3 @@ if __name__ == '__main__':
     test_setitem_broadcast_must_fail()
     test_setitem_assign_to_slice()
     test_setitem_rightvalue_ndarray_fails()
-
