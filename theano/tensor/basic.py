@@ -575,11 +575,11 @@ class TensorType(Type):
 
     @staticmethod
     def may_share_memory(a,b):
-        #when this is called with a an ndarray and b
-        #a sparce matrix, numpy.may_share_memory fail.
-        if a.__class__ is b.__class__:
+        # This is a method of TensorType, so both a and b should be ndarrays
+        if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
             return numpy.may_share_memory(a,b)
-        else: return False
+        else:
+            return False
 
     @staticmethod
     def values_eq(a, b):
