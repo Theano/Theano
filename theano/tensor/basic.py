@@ -1599,6 +1599,9 @@ class MaxAndArgmax(Op):
 
     def make_node(self, x, axis='DEFAULT'):
         x = _as_tensor_variable(x)
+        if x.type.ndim <= 1 and axis in ('DEFAULT', None):
+            # The old and new behavior are not different.
+            axis = 0
         if axis=='DEFAULT':
             axis=x.type.ndim - 1
             warnings.warn("The default axis of MaxAndArgmax will change! Now we return the max and the armax over the last dimensions. It will change to be the same as numpy: the max and argmax over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. MaxAndArgmax currently support axis over only 1 dimensions, so you must flatten the tensor to have the futur behavior.")
@@ -1676,7 +1679,7 @@ def max(x, axis='DEFAULT'):
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     :note2: see MaxAndArgmax note for a difference between numpy and theano when axis==None
     """
-    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+    if x.type.ndim <= 1 and axis in ('DEFAULT', None):
         # The old and new behavior are not different.
         axis = 0
     elif axis=='DEFAULT':
@@ -1700,7 +1703,7 @@ def argmax(x, axis='DEFAULT'):
 
     Default axis is the last one. This will change.
     """
-    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+    if x.type.ndim <= 1 and axis in ('DEFAULT', None):
         # The old and new behavior are not different.
         axis = 0
     elif axis=='DEFAULT':
@@ -1716,7 +1719,7 @@ def argmax(x, axis='DEFAULT'):
 
 @constructor
 def min(x, axis='DEFAULT'):
-    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+    if x.type.ndim <= 1 and axis in ('DEFAULT', None):
         # The old and new behavior are not different.
         axis = 0
     elif axis=='DEFAULT':
@@ -1734,7 +1737,7 @@ def min(x, axis='DEFAULT'):
 
 @constructor
 def argmin(x, axis='DEFAULT'):
-    if x.type.ndim == 1 and axis in ('DEFAULT', None):
+    if x.type.ndim <= 1 and axis in ('DEFAULT', None):
         # The old and new behavior are not different.
         axis = 0
     elif axis=='DEFAULT':
