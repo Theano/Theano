@@ -46,7 +46,7 @@ class T_function(unittest.TestCase):
         x,s = T.scalars('xs')
         fn = function([x], [x])
         self.failUnlessRaises(TypeError,fn,1,2)
-        
+
     def test_missing_inputs(self):
 
         MissingInputException = TypeError
@@ -185,7 +185,7 @@ class T_function(unittest.TestCase):
 
     def test_weird_names(self):
         a,x,s = T.scalars('xxx')
-        
+
         checkfor(self, lambda:function([In(a,name=[])],[]), TypeError)
 
         def t():
@@ -291,7 +291,7 @@ class T_function(unittest.TestCase):
         """
         a = T.dmatrix()
         aval = numpy.random.rand(3,3)
-     
+
         # when borrow=False, test that a destroy map cannot alias output to input
         f = theano.function([In(a, borrow=False)], Out(a+1, borrow=True))
         assert numpy.all(f(aval) == aval+1)
@@ -448,7 +448,7 @@ class T_picklefunction(unittest.TestCase):
             config.mode = old_default_mode
             config.optimizer = old_default_opt
             config.linker = old_default_link
-        
+
         if g == 'ok':
             return
 
@@ -541,7 +541,7 @@ class T_picklefunction(unittest.TestCase):
     def test_pickle_class_with_functions(self):
 
         blah = SomethingToPickle()
-        assert blah.f2.container[blah.s].storage is blah.f1.container[blah.s].storage 
+        assert blah.f2.container[blah.s].storage is blah.f1.container[blah.s].storage
 
         try:
             blah2 = copy.deepcopy(blah)
@@ -551,7 +551,7 @@ class T_picklefunction(unittest.TestCase):
             else:
                 raise
 
-        assert blah2.f2.container[blah2.s].storage is blah2.f1.container[blah2.s].storage 
+        assert blah2.f2.container[blah2.s].storage is blah2.f1.container[blah2.s].storage
 
         assert blah.f1[blah.s] == blah2.f1[blah2.s]
 
@@ -599,4 +599,3 @@ if __name__ == '__main__':
             assert b
         t.failUnless = fu
         t.test_deepcopy_shared_container()
-
