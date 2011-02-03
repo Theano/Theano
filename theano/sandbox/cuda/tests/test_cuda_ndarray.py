@@ -230,7 +230,8 @@ def test_reshape():
         subtest(shape_1, shape_2)
         subtest(shape_2, shape_1)
 
-    print >> sys.stderr, "WARN: TODO: test shape combinations that should give error"
+    ##TODO: see ticket #618
+    #print >> sys.stderr, "WARN: TODO: test shape combinations that should give error"
 
 
 def test_getshape():
