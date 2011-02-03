@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         Cpu tested: Xeon E5345, Xeon E5430, Xeon E5450(3Ghz), Xeon X5560(2.8Ghz, hyper-threads enabled?)
                     Core 2 E8500, Core i7 930(2.8Ghz, hyper-threads enabled)
-                    
+
 
         Lib tested:
             * numpy with ATLAS from distribution(FC9) package (1 thread)
