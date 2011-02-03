@@ -1604,10 +1604,24 @@ class MaxAndArgmax(Op):
             axis = 0
         if axis=='DEFAULT':
             axis=x.type.ndim - 1
-            warnings.warn("The default axis of MaxAndArgmax will change! Now we return the max and the armax over the last dimensions. It will change to be the same as numpy: the max and argmax over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. MaxAndArgmax currently support axis over only 1 dimensions, so you must flatten the tensor to have the futur behavior.", stacklevel=3)
+            warnings.warn(("The default axis of MaxAndArgmax will change! "
+            "Now we return the max and the armax over the last dimensions. "
+            "It will change to be the same as numpy: the max and argmax over "
+            "all dimensions. To hide this warning and be compatible with the "
+            "future behavior, set axis to -1 to have the current behavior. "
+            "MaxAndArgmax currently support axis over only 1 dimensions, so "
+            "you must flatten the tensor to have the futur behavior."),
+            stacklevel=3)
         elif axis is None:
             axis = x.type.ndim - 1
-            warnings.warn("The behavior of MaxAndArgmax when axis==None will change! Now we return the max and argmax over the last dimensions. It will change to the max and argmax over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. MaxAndArgmax currently support axis over only 1 dimensions, so you must flatten the tensor to have the futur behavior.", stacklevel=3)
+            warnings.warn(("The behavior of MaxAndArgmax when axis==None will "
+            "change! Now we return the max and argmax over the last "
+            "dimensions. It will change to the max and argmax over all "
+            "dimensions as numpy. To hide this warning and be compatible with "
+            "the future behavior, set axis to -1 to have the current behavior. "
+            "MaxAndArgmax currently support axis over only 1 dimensions, so "
+            "you must flatten the tensor to have the futur behavior."),
+            stacklevel=3)
         if isinstance(axis,int):
             axis = [axis]
         elif isinstance(axis,(tuple,list)):
@@ -1684,10 +1698,24 @@ def max(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of max will change! Now we return the max over the last dimensions. It will change to be the same as numpy: the max over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling max().", stacklevel=2)
+        warnings.warn(("The default axis of max will change! Now we return the "
+        "max over the last dimensions. It will change to be the same as numpy: "
+        "the max over all dimensions. To hide this warning and be compatible "
+        "with the future behavior, set axis to -1 to have the current "
+        "behavior. To have the futur behavior set axis to range(nb dim), but "
+        "this don't support the grad. To have the grad, you must flatten the "
+        "tensor before calling max()."),
+        stacklevel=2)
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of max when axis==None will change! Now we return the max over the last dimensions. It will change to the max over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior set axis to range(nb dim), but this don't support the grad. To have the grad, you must flatten the tensor before calling max().", stacklevel=2)
+        warnings.warn(("The behavior of max when axis==None will change! Now "
+        "we return the max over the last dimensions. It will change to the max "
+        "over all dimensions as numpy. To hide this warning and be compatible "
+        "with the future behavior, set axis to -1 to have the current "
+        "behavior. To have the futur behavior set axis to range(nb dim), but "
+        "this don't support the grad. To have the grad, you must flatten the "
+        "tensor before calling max()."),
+        stacklevel=2)
     if isinstance(axis,(list,tuple)) and len(axis)>1:
         return CAReduce(scal.maximum,axis)(x)
     try:
@@ -1708,10 +1736,22 @@ def argmax(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of argmax will change! Now we return the argmax over the last dimensions. It will change to be the same as numpy: the argmax over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the tensor before calling max().", stacklevel=2)
+        warnings.warn(("The default axis of argmax will change! Now we return "
+        "the argmax over the last dimensions. It will change to be the same as "
+        "numpy: the argmax over all dimensions. To hide this warning and be "
+        "compatible with the future behavior, set axis to -1 to have the "
+        "current behavior. To have the futur behavior, you must flatten the "
+        "tensor before calling max()."),
+        stacklevel=2)
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of argmax when axis==None will change! Now we return the argmax over the last dimensions. It will change to the argmax over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the tensor before calling argmax().", stacklevel=2)
+        warnings.warn(("The behavior of argmax when axis==None will change! "
+        "Now we return the argmax over the last dimensions. It will change to "
+        "the argmax over all dimensions as numpy. To hide this warning and be "
+        "compatible with the future behavior, set axis to -1 to have the "
+        "current behavior. To have the futur behavior, you must flatten the "
+        "tensor before calling argmax()."),
+        stacklevel=2)
     # In python (using MaxAndArgmax.perform()) this leads to an wasteful
     # implementation that goes through the data twice instead of once
     # but when Argmax.c_impl() is in place, it should be fine.
@@ -1724,10 +1764,24 @@ def min(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of min will change! Now we return the min over the last dimensions. It will change to be the same as numpy: the min over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().", stacklevel=2)
+        warnings.warn(("The default axis of min will change! Now we return the "
+        "min over the last dimensions. It will change to be the same as numpy: "
+        "the min over all dimensions. To hide this warning and be compatible "
+        "with the future behavior, set axis to -1 to have the current "
+        "behavior. To have the future behavior, set axis to range(x.ndim), but "
+        "this does not support the grad. To be able to get the grad, you must "
+        "flatten the tensor before calling min()."),
+        stacklevel=2)
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of min when axis is None will change! Now we return the min over the last dimensions. It will change to the min over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the future behavior, set axis to range(x.ndim), but this does not support the grad. To be able to get the grad, you must flatten the tensor before calling min().", stacklevel=2)
+        warnings.warn(("The behavior of min when axis is None will change! Now "
+        "we return the min over the last dimensions. It will change to the min "
+        "over all dimensions as numpy. To hide this warning and be compatible "
+        "with the future behavior, set axis to -1 to have the current "
+        "behavior. To have the future behavior, set axis to range(x.ndim), but "
+        "this does not support the grad. To be able to get the grad, you must "
+        "flatten the tensor before calling min()."),
+        stacklevel=2)
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
@@ -1742,10 +1796,22 @@ def argmin(x, axis='DEFAULT'):
         axis = 0
     elif axis=='DEFAULT':
         axis = x.type.ndim - 1
-        warnings.warn("The default axis of argmin will change! Now we return the argmin over the last dimensions. It will change to be the same as numpy: the argmin over all dimensions. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the axis before calling argmin.", stacklevel=2)
+        warnings.warn(("The default axis of argmin will change! Now we return "
+        "the argmin over the last dimensions. It will change to be the same as "
+        "numpy: the argmin over all dimensions. To hide this warning and be "
+        "compatible with the future behavior, set axis to -1 to have the "
+        "current behavior. To have the futur behavior, you must flatten the "
+        "axis before calling argmin."),
+        stacklevel=2)
     elif axis is None:
         axis = x.type.ndim - 1
-        warnings.warn("The behavior of argmin when axis==None will change! Now we return the argmin over the last dimensions. It will change to the argmin over all dimensions as numpy. To hide this warning and be compatible with the future behavior, set axis to -1 to have the current behavior. To have the futur behavior, you must flatten the axis before calling argmin.", stacklevel=2)
+        warnings.warn(("The behavior of argmin when axis==None will change! "
+        "Now we return the argmin over the last dimensions. It will change to "
+        "the argmin over all dimensions as numpy. To hide this warning and be "
+        "compatible with the future behavior, set axis to -1 to have the "
+        "current behavior. To have the futur behavior, you must flatten the "
+        "axis before calling argmin."),
+        stacklevel=2)
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return argmax(-x, axis=axis)
