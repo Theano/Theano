@@ -465,7 +465,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         random = RandomStreams(utt.fetch_seed())
         n = tensor.lvector()
         prob = tensor.vector()
-        out = random.binomial(n=n, prob=prob)
+        out = random.binomial(n=n, p=prob)
         assert out.ndim == 1
         f = function([n, prob], out)
 
@@ -485,7 +485,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
-        g = function([n, prob], random.binomial(n=n, prob=prob, size=(3,)))
+        g = function([n, prob], random.binomial(n=n, p=prob, size=(3,)))
         val2 = g(n_val, prob_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))

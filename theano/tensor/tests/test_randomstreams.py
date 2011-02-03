@@ -515,12 +515,12 @@ class T_RandomStreams(unittest.TestCase):
         m.random = RandomStreams(utt.fetch_seed())
         n = tensor.lvector()
         prob = tensor.vector()
-        out = m.random.binomial(n=n, prob=prob)
+        out = m.random.binomial(n=n, p=prob)
         assert out.ndim == 1
         m.f = Method([n, prob], out)
         # Specifying the size explicitly
         m.g = Method([n, prob],
-                m.random.binomial(n=n, prob=prob, size=(3,)))
+                m.random.binomial(n=n, p=prob, size=(3,)))
         made = m.make()
         made.random.initialize()
 

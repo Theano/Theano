@@ -592,7 +592,7 @@ class T_random_function(unittest.TestCase):
         rng_R = random_state_type()
         n = tensor.lvector()
         prob = tensor.vector()
-        post_r, out = binomial(rng_R, n=n, prob=prob)
+        post_r, out = binomial(rng_R, n=n, p=prob)
         assert out.ndim == 1
         f = compile.function([rng_R, n, prob], [post_r, out], accept_inplace=True)
 
@@ -613,7 +613,7 @@ class T_random_function(unittest.TestCase):
 
         # Specifying the size explicitly
         g = compile.function([rng_R, n, prob],
-                binomial(rng_R, n=n, prob=prob, size=(3,)),
+                binomial(rng_R, n=n, p=prob, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, n_val, prob_val)
         numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
