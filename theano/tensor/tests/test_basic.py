@@ -2732,9 +2732,10 @@ def test_flatten_outdim_invalid():
         pass
 
 # TODO: write test case for Tile Op
-def test_tile():
-    print >> sys.stderr, "WARNING: No testcase for Tile"
-    pass
+# See Ticket #619
+#def test_tile():
+#    print >> sys.stderr, "WARNING: No testcase for Tile"
+#    pass
 
 
 class TestARange(unittest.TestCase):
