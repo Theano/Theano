@@ -3,7 +3,6 @@ import time, atexit, copy
 from theano.gof.link import WrapLinker
 from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
-from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
 from theano.configparser import config, AddConfigVar, IntParam
@@ -20,7 +19,8 @@ AddConfigVar('ProfileMode.n_ops_to_print',
         IntParam(20, lambda i: i > 0))
 
 AddConfigVar('ProfileMode.min_memory_size',
-        "For the memory profile, don't print apply whose output size is lower then this",
+             """For the memory profile, don't print apply when the size in bytes
+ of its outputs in lower then this threshold""",
         IntParam(1024, lambda i: i >= 0))
 
 class Profile_Maker(FunctionMaker):
