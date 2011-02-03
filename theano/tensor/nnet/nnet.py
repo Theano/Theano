@@ -890,7 +890,7 @@ def crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs):
     the appropriate information (i.e. the max probability)?
     """
     (xent, softmax) = crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
-    (max_pr, argmax) = tensor.max_and_argmax(softmax)
+    (max_pr, argmax) = tensor.max_and_argmax(softmax, axis=-1)
     return (xent, softmax, max_pr, argmax)
 def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
     b = tensor.zeros_like(x[0,:])
