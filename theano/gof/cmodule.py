@@ -317,7 +317,10 @@ class ModuleCache(object):
                     try:
                         entry = module_name_from_dir(root)
                     except ValueError: # there is a key but no dll!
-                        warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
+                        if not root.startswith("/tmp"):
+                            # Under /tmp, file are removed periodically by the os.
+                            # So it is normal that this happen from time to time.
+                            warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
                         info("Erasing broken cache directory", key_pkl)
                         shutil.rmtree(root)
                         continue
