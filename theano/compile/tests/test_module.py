@@ -24,7 +24,7 @@ class T_module(unittest.TestCase):
                 super(Blah, self).__init__()
                 self.stepsize = T.value(stepsize)
                 x = T.dscalar()
-            
+
                 self.step = Method([x], x - self.stepsize)
 
         B = Blah(0.0)
@@ -80,27 +80,27 @@ class T_module(unittest.TestCase):
                     m1.ly[0],
                     m1.lly[0][0],
                     m1.tx[0], #8
-                    m1.ty[0], m1.tlx[0][0], 
+                    m1.ty[0], m1.tlx[0][0],
                     m1.tly[0][0], m1.ttx[0][0], m1.tty[0][0], m1.tdx[0]['x'],
-                    m1.tdy[0]['y'], m1.dx['x'], 
+                    m1.tdy[0]['y'], m1.dx['x'],
                     m1.dy['y'], m1.dlx['x'][0], m1.dly['y'][0],
                     m1.dtx['x'][0], m1.dty['y'][0], m1.ddx['x']['x'],
                     m1.ddy['y']['y']]):
                 assert isinstance(obj,(gof.Variable))
-                
+
 
             inst=m1.make()
 
             def get_l():
-                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.dx, inst.dy, inst.llx, inst.lly, inst.ltx, inst.lty, inst.ldx, inst.ldy, inst.tlx, inst.tly, inst.ttx, inst.tty, inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx] 
+                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.dx, inst.dy, inst.llx, inst.lly, inst.ltx, inst.lty, inst.ldx, inst.ldy, inst.tlx, inst.tly, inst.ttx, inst.tty, inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx]
             def get_l2():
-#                return [inst.lx[0], inst.ly[0], inst.tx[0], inst.ty[0], inst.dx['x'], inst.dy['y'], inst.llx[0][0], inst.lly[0][0], inst.ltx[0][0], inst.lty[0][0], inst.ldx[0]['x'], inst.ldy[0]['y'], inst.tlx[0][0], inst.tly[0][0], inst.ttx[0][0], inst.tty[0][0], inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx] 
-                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.llx[0], inst.lly[0], inst.ltx[0], inst.lty[0], inst.ldx[0], inst.ldy[0], inst.tlx[0], inst.tly[0], inst.ttx[0], inst.tty[0], inst.tdx[0], inst.tdy[0], inst.dly['y'], inst.dlx['x'], inst.dty['y'], inst.dtx['x']]#, inst.ddy['y'], inst.ddx['x']] 
+#                return [inst.lx[0], inst.ly[0], inst.tx[0], inst.ty[0], inst.dx['x'], inst.dy['y'], inst.llx[0][0], inst.lly[0][0], inst.ltx[0][0], inst.lty[0][0], inst.ldx[0]['x'], inst.ldy[0]['y'], inst.tlx[0][0], inst.tly[0][0], inst.ttx[0][0], inst.tty[0][0], inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx]
+                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.llx[0], inst.lly[0], inst.ltx[0], inst.lty[0], inst.ldx[0], inst.ldy[0], inst.tlx[0], inst.tly[0], inst.ttx[0], inst.tty[0], inst.tdx[0], inst.tdy[0], inst.dly['y'], inst.dlx['x'], inst.dty['y'], inst.dtx['x']]#, inst.ddy['y'], inst.ddx['x']]
 
 
             #test that we can access the data
             inst.x
-            inst.y 
+            inst.y
             for i in get_l():
                 assert i
 
@@ -194,7 +194,7 @@ class T_module(unittest.TestCase):
         print 'value test'
         local_test(lambda:T.value(1),lambda:T.value(2))
 
-        
+
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
         were a toplevel attribute
@@ -253,7 +253,7 @@ class T_module(unittest.TestCase):
             assert isinstance(f[0][0],theano.compile.function_module.Function)
         for f in inst.dly['y'][0],inst.dty['y'][0], inst.dlz['z'][0],inst.dtz['z'][0], inst.ddy['y']['y'], inst.ddz['z']['z']:
             assert isinstance(f,theano.compile.function_module.Function)
-            
+
     def test_shared_members(self):
         """Test that under a variety of tricky conditions, the shared-ness of Variables and Members
         is respected."""
@@ -302,7 +302,7 @@ class T_module(unittest.TestCase):
             assert f==4
 
     def test_shared_members_N(self):
-        """Test that Members can be shared an arbitrary number of times between 
+        """Test that Members can be shared an arbitrary number of times between
         many submodules and internal data structures."""
         def populate_module(m,x):
             m.x=x
@@ -413,9 +413,9 @@ class T_module(unittest.TestCase):
     def test_member_method_inputs(self):
         """Test that module Members can be named as Method inputs, in which case the function will
         *not* use the storage allocated for the Module's version of that Member.
-        
+
         """
-        
+
         # test that explicit Method inputs don't use shared storage
         M = Module()
         M.x = T.dscalar()
@@ -436,14 +436,14 @@ class T_module(unittest.TestCase):
         Method inputs"""
 
         if config.mode == 'FAST_COMPILE':
-            return 
+            return
 
         M = Module()
         M.x = T.dvector()
         M.y = T.dvector()
         xval= numpy.asarray([0, 0.5])
         M.f = Method([io.In(M.x,
-            mutable=True, 
+            mutable=True,
             update=(M.x - M.y),
             value=xval)], M.x + M.y)
         m = M.make()
@@ -540,52 +540,52 @@ def test_multiple_references():
 
     class A(theano.Module):
 
-       def __init__(self, sub_module):
-           super(A, self).__init__()
-           self.sub_module = sub_module
+        def __init__(self, sub_module):
+            super(A, self).__init__()
+            self.sub_module = sub_module
 
-       def _instance_initialize(self, obj):
-           print 'Initializing A'
+        def _instance_initialize(self, obj):
+            print 'Initializing A'
 
 
     class B(theano.Module):
 
-       def __init__(self, sub_module):
-           super(B, self).__init__()
-           self.sub_module = sub_module
+        def __init__(self, sub_module):
+            super(B, self).__init__()
+            self.sub_module = sub_module
 
-       def _instance_initialize(self, obj):
-           print 'Initializing B'
+        def _instance_initialize(self, obj):
+            print 'Initializing B'
 
 
     class C(theano.Module):
 
-       def __init__(self):
-           super(C, self).__init__()
-           self.value = theano.tensor.scalar()
+        def __init__(self):
+            super(C, self).__init__()
+            self.value = theano.tensor.scalar()
 
-       def _instance_initialize(self, obj):
-           print 'Initializing C'
-           obj.value = 0
+        def _instance_initialize(self, obj):
+            print 'Initializing C'
+            obj.value = 0
 
-       def _instance_set(self, obj, value):
-           print 'Setting C'
-           obj.value = value
+        def _instance_set(self, obj, value):
+            print 'Setting C'
+            obj.value = value
 
 
     class D(theano.Module):
 
-       def __init__(self):
-           super(D, self).__init__()
-           self.c = C()
-           self.a = A(self.c)
-           self.b = B(self.c)
-           # Workaround for bug exhibited in a previous email.
-           self.bug = theano.tensor.scalar()
+        def __init__(self):
+            super(D, self).__init__()
+            self.c = C()
+            self.a = A(self.c)
+            self.b = B(self.c)
+            # Workaround for bug exhibited in a previous email.
+            self.bug = theano.tensor.scalar()
 
-       def _instance_initialize(self, obj):
-           print 'Initializing D'
-           obj.c.set(1)
+        def _instance_initialize(self, obj):
+            print 'Initializing D'
+            obj.c.set(1)
 
 
     d = D()
@@ -775,7 +775,7 @@ def test_default_instance_initialize():
     """
     Testing the default _instance_initialize provided by module.
     """
-    
+
     class M1(Module):
         def __init__(self):
             super(M1, self).__init__()
@@ -833,4 +833,3 @@ if __name__ == '__main__':
 #    t.test_shared_members()
 #    tests = unittest.TestLoader().loadTestsFromModule("T_test_module")
 #    tests.debug()
-
