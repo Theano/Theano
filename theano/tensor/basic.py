@@ -2213,9 +2213,14 @@ class Alloc(gof.Op):
         v = inputs[0]
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
-#            out[0] = numpy.empty(sh, dtype=v.dtype)
-            out[0] = numpy.zeros(sh, dtype=v.dtype)
-        out[0][...] = v # broadcast v to fill us up
+            if v.size == 1 and v.item() == 0:
+                out[0] = numpy.zeros(sh, dtype=v.dtype)
+            else:
+                out[0] = numpy.empty(sh, dtype=v.dtype)
+                out[0][...] = v # broadcast v to fill us up
+        else:
+            #reuse the allocated memory.
+            out[0][...] = v # broadcast v to fill us up
 
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
