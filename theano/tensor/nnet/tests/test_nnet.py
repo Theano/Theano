@@ -12,15 +12,15 @@ from theano.gof.python25 import all
 from theano.tests import unittest_tools as utt
 from theano import printing, pprint
 from theano.tensor.nnet import (categorical_crossentropy,
-                                crossentropy_categorical_1hot, 
-                                crossentropy_softmax_1hot, 
-                                crossentropy_softmax_1hot_with_bias, 
+                                crossentropy_categorical_1hot,
+                                crossentropy_softmax_1hot,
+                                crossentropy_softmax_1hot_with_bias,
                                 crossentropy_softmax_1hot_with_bias_dx,
                                 crossentropy_softmax_argmax_1hot_with_bias,
-                                sigmoid, softplus, 
-                                Softmax, softmax, SoftmaxWithBias, softmax_grad, 
-                                softmax_with_bias, 
-                                Prepend_scalar_constant_to_each_row, 
+                                sigmoid, softplus,
+                                Softmax, softmax, SoftmaxWithBias, softmax_grad,
+                                softmax_with_bias,
+                                Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
 
 class T_sigmoid(unittest.TestCase):
@@ -106,7 +106,7 @@ class T_SoftmaxWithBias(unittest.TestCase):
         vbias=theano.shared(value=0.1, name='vbias') #0.01
         hid=T.vector('hid')
 
-        f = theano.function([hid], 
+        f = theano.function([hid],
                             T.nnet.softmax(T.dot(hid, W.T) + vbias))
         ops = [node.op for node in f.maker.env.toposort()]
         assert softmax_with_bias not in ops

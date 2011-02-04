@@ -46,7 +46,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     yy = numpy.ones((batch_size,),dtype='int32')
     b_values = numpy.zeros((n_out,),dtype='float32')
     W_values = numpy.asarray(numpy.random.rand(n_in,n_out),dtype='float32')
-    
+
     dot_value = numpy.asarray(numpy.dot(xx, W_values),dtype='float32')
 
     p_y_given_x = T.nnet.softmax(dot_result+b)
@@ -59,7 +59,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
                                     mode = mode_with_gpu)
     #theano.printing.debugprint(classify)
     #theano.printing.debugprint(classify_gpu)
-    
+
     assert any([isinstance(node.op,T.nnet.CrossentropySoftmaxArgmax1HotWithBias) for node in classify.maker.env.toposort()])
     assert any([isinstance(node.op,cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias) for node in classify_gpu.maker.env.toposort()])
 
@@ -82,7 +82,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     n_in = 1000
     batch_size = 4097
     n_out = 1250
-    
+
     softmax_output_value = numpy.random.rand(batch_size, n_out).astype('float32')
 
     softmax_output = T.fmatrix()
@@ -91,20 +91,20 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
         numpy.asarray(numpy.random.rand(batch_size),dtype='float32'),
         softmax_output,
         numpy.random.randint(low=0, high=5, size=batch_size))
-    
+
     cpu_f = theano.function([softmax_output],op,mode = mode_without_gpu)
     gpu_f = theano.function([softmax_output],op,mode = mode_with_gpu)
     #theano.printing.debugprint(cpu_f)
     #theano.printing.debugprint(gpu_f)
-    
+
     assert any([isinstance(node.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for node in cpu_f.maker.env.toposort()])
     assert any([isinstance(node.op,cuda.nnet.GpuCrossentropySoftmax1HotWithBiasDx) for node in gpu_f.maker.env.toposort()])
-    
+
     cpu_out = cpu_f(softmax_output_value)
     gpu_out = gpu_f(softmax_output_value)
-    
+
     assert numpy.allclose(cpu_out,gpu_out,rtol=9e-4)
-        
+
 def test_softmax_with_bias():
     """
     This is basic test for GpuSoftmaxWithBias
@@ -125,7 +125,7 @@ def test_softmax_with_bias():
     f_gpu = theano.function([x],z, mode=mode_with_gpu)
     assert f.maker.env.toposort()[-1].op==T.nnet.softmax_with_bias
     assert isinstance(f_gpu.maker.env.toposort()[-2].op,cuda.nnet.GpuSoftmaxWithBias)
-    
+
     out=f(data)
     gout=f_gpu(data)
     assert numpy.allclose(out,gout),numpy.absolute(out-gout)
@@ -150,7 +150,7 @@ def test_softmax():
     f_gpu = theano.function([x],z, mode=mode_with_gpu)
     assert f.maker.env.toposort()[-1].op==T.nnet.softmax
     assert isinstance(f_gpu.maker.env.toposort()[-2].op,cuda.nnet.GpuSoftmax)
-    
+
     out=f(data)
     gout=f_gpu(data)
     assert numpy.allclose(out,gout),numpy.absolute(out-gout)
