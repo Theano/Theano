@@ -808,7 +808,9 @@ def test_argmax_pushdown():
     x = tensor.dmatrix()
 
     #test that the max_and_argmax is pushed down if the max is not used
-    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[1]
+    out = tensor.max_and_argmax(
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            axis=-1)[1]
     env = gof.Env(
             [x],
             [out])
@@ -824,7 +826,9 @@ def test_argmax_pushdown():
     assert str(env.toposort()[1].op) == 'OutputGuard'
     x = tensor.dmatrix()
     #test that the max_and_argmax is not pushed down if the max is used
-    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[0]
+    out = tensor.max_and_argmax(
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            axis=-1)[0]
     env = gof.Env(
             [x],
             [out])
@@ -847,7 +851,7 @@ def test_argmax_pushdown_bias():
     x = tensor.dmatrix()
     b = tensor.dvector()
 
-    out = tensor.argmax(softmax_with_bias(x, b))
+    out = tensor.argmax(softmax_with_bias(x, b), axis=-1)
     env = gof.Env(
             [x,b],
             [out])
@@ -867,7 +871,7 @@ def test_argmax_pushdown_bias():
     x = tensor.dmatrix()
     b = tensor.dvector()
 
-    out = tensor.max_and_argmax(softmax_with_bias(x, b))[0]
+    out = tensor.max_and_argmax(softmax_with_bias(x, b), axis=-1)[0]
     env = gof.Env(
             [x,b],
             [out])

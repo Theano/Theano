@@ -122,7 +122,11 @@ class TestDownsampleFactorMax(unittest.TestCase):
                 c_val = function([images], c)(imval)
 
                 g = tensor.grad(c, images)
-                g_val = function([images], [g.shape, tensor.min(tensor.min(tensor.min(g))), tensor.max(tensor.max(tensor.max(g)))])(imval)
+                g_val = function([images],
+                        [g.shape,
+                            tensor.min(g, axis=(0,1,2)),
+                            tensor.max(g, axis=(0,1,2))]
+                        )(imval)
 
 #removed as already tested in test_max_pool_2d_2D
 #This make test in debug mode too slow.

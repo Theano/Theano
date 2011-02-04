@@ -50,7 +50,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     dot_value = numpy.asarray(numpy.dot(xx, W_values),dtype='float32')
 
     p_y_given_x = T.nnet.softmax(dot_result+b)
-    y_pred = T.argmax(p_y_given_x)
+    y_pred = T.argmax(p_y_given_x, axis=-1)
     loss = -T.mean(T.log(p_y_given_x)[T.arange(y.shape[0]), y])
     dW = T.grad(loss,W)
     classify = theano.function( inputs = [x,y,b,W,dot_result], outputs = [loss,y_pred,dW],
