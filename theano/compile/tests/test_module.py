@@ -735,6 +735,8 @@ def test_pickle_aliased_memory():
     sio = StringIO.StringIO()
     handler = logging.StreamHandler(sio)
     logging.getLogger('theano.compile.function_module').addHandler(handler)
+    # Silence original handler when intentionnally generating warning messages
+    logging.getLogger('theano').removeHandler(theano.logging_default_handler)
     try:
         m.f.pickle_aliased_memory_strategy = 'warn'
         m.g.pickle_aliased_memory_strategy = 'warn'
@@ -742,6 +744,7 @@ def test_pickle_aliased_memory():
         assert sio.getvalue().startswith('aliased relat')
     finally:
         logging.getLogger('theano.compile.function_module').removeHandler(handler)
+        logging.getLogger('theano').addHandler(theano.logging_default_handler)
 
     try:
         m.f.pickle_aliased_memory_strategy = 'raise'
