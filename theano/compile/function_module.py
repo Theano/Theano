@@ -511,7 +511,7 @@ class Function(object):
 
         # Set positional arguments
         i = 0
-        for arg_index, arg in enumerate(args):
+        for arg in args:
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
@@ -523,7 +523,7 @@ class Function(object):
                             allow_downcast=s.allow_downcast)
 
                 except Exception, e:
-                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % arg_index])
+                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % i])
                     raise
             s.provided += 1
             i+=1
