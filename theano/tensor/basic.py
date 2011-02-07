@@ -372,7 +372,7 @@ def get_constant_value(v):
             return ret[0][0]
         if isinstance(v.owner.op, Subtensor) and v.ndim==0:
             if isinstance(v.owner.inputs[0], TensorConstant):
-                return v.owner.inputs[0].data[v.owner.op.idx_list[0]]
+                return v.owner.inputs[0].data.__getitem__(tuple(v.owner.op.idx_list))
 
             # The index list 'idx_list' should have length one
             # since joining scalar variables results in a 1D vector.

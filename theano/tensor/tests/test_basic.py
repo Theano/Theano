@@ -3575,6 +3575,15 @@ class T_get_constant_value(unittest.TestCase):
         v = tensor.row()
         assert get_constant_value(v.shape[0])==1
 
+    def test_subtensor_of_constant(self):
+        c = constant(numpy.random.rand(5))
+        for i in range(c.value.shape[0]):
+            assert get_constant_value(c[i]) == c.value[i]
+        c = constant(numpy.random.rand(5,5))
+        for i in range(c.value.shape[0]):
+            for j in range(c.value.shape[1]):
+                assert get_constant_value(c[i,j]) == c.value[i,j]
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
