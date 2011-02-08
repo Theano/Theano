@@ -798,7 +798,9 @@ class test_fusion(unittest.TestCase):
             (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*fxv*fxv*fxv,'float32'),
             (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),# TODO: This case is not fused!
             (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),# TODO: This case is not fused!
-            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,fyv),3,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),# TODO: This case is not fused!
+            # The next case test when one variable appear as many inputs to an op.
+            # In the past, this was not fused.
+            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,fyv),2,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),# TODO: This case is not fused!
             ]
         if slice:
             cases = cases[slice]
@@ -844,6 +846,14 @@ class test_fusion(unittest.TestCase):
             if assert_len_topo:
                 if not len(topo_)==nb_elemwise:
                     fail3.append((id,topo_,nb_elemwise))
+                if nb_elemwise == 1:
+                    # check that the number of input to the Composite Elemwise is ok
+                    # when there is not variable that appear multiple time the in input
+                    # of g
+                    assert ((numpy.sum([not isinstance(x, theano.gof.Constant)
+                                        for x in topo_[0].inputs]) ==
+                             len(sym_inputs)) or
+                            len(set(g.owner.inputs)) != len(g.owner.inputs))
             if not out_dtype==out.dtype:
                 fail4.append((id,out_dtype,out.dtype))
 

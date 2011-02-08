@@ -3119,7 +3119,9 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                 s_inputs.extend(tmp_scalar)
                 s_g.append(s_op)
             else:
-                if i in inputs:
+                # We must support the case where the same variable appear many
+                # time in the inputs
+                if inputs.count(i)==node.inputs.count(i):
                     s=s_inputs[inputs.index(i)]
                 else:
                     s=scalar.Scalar(i.dtype).make_variable()
