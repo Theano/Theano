@@ -1134,11 +1134,8 @@ class test_local_subtensor_lift(unittest.TestCase):
 
     def test0(self):
         # basic test that the Op works
-        mode = theano.config.mode
-        if mode == 'FAST_COMPILE':
-            mode = 'FAST_RUN'
-        x = TT.matrix()
-        f = function([x], TT.exp(x)[0], mode=mode)
+        x = TT.matrix('x')
+        f = function([x], TT.exp(x)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
         assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
@@ -1206,15 +1203,11 @@ class test_local_subtensor_lift(unittest.TestCase):
         # basic test that the optimization doesn't work with broadcasting
         # ... It *could* be extended to,
         # ... but right now it doesn't, so it shouldn't try.
-        mode = theano.config.mode
-        if mode == 'FAST_COMPILE':
-            mode = 'FAST_RUN'
-        x = TT.matrix()
-        y = TT.vector()
-        f = function([x,y], TT.exp(x+y)[0], mode=mode)
+        x = TT.matrix('x')
+        y = TT.vector('y')
+        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+
         prog=f.maker.env.toposort()
-        # the optimization works through exp() but not add()
-        print prog
         assert isinstance(prog[0].op, TT.DimShuffle)
         assert prog[1].op == TT.add
         assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
