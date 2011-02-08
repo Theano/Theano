@@ -1035,16 +1035,44 @@ def local_upcast_elemwise_constant_inputs(node):
 
 @register_canonicalize
 @gof.local_optimizer([])
-def local_subtensor_unary(node):
+def local_subtensor_lift(node):
     """
-    unary(x)[idx] -> unary(x[idx])
+    unary(x)[idx] -> unary(x[idx])#any broadcast pattern.
+
+    elemwise(x,...)[idx] -> elemwise(x[idx],...)
+    when x,... are broadcasted scalar or not broadcasted at all
     """
     if isinstance(node.op, T.Subtensor):
         u = node.inputs[0]
-        if u.owner and isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
+        if not u.owner or len(u.clients) > 1:
+            return False
+        if isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
             return [u.owner.op(x_idx)]
+
+        if isinstance(u.owner.op, T.Elemwise):
+            new_inputs = []
+            if all([sum(i.type.broadcastable)==0 for i in u.owner.inputs]):
+                # There is no broadcastable in the inputs
+                idx = node.inputs[1:]
+                new_inputs=[node.op(i, *idx) for i in u.owner.inputs]
+                return [u.owner.op(*new_inputs)]
+            elif all([sum(i.type.broadcastable) in [i.ndim,0] for i in u.owner.inputs]):
+                # There is no broadcastable in the inputs or it is scalar
+                idx = node.inputs[1:]
+                new_inputs = []
+                for i in u.owner.inputs:
+                    if sum(i.type.broadcastable) == 0:
+                        new_inputs.append(node.op(i, *idx))
+                    else:
+                        # If the subtensor remove some dims, we must
+                        # lower the number of dimensions of this scalar.
+                        if node.outputs[0].ndim == i.ndim:
+                            new_inputs.append(i)
+                        else:
+                            new_inputs.append(i.dimshuffle('x'*node.outputs[0].ndim))
+                return [u.owner.op(*new_inputs)]
 
 @register_canonicalize
 @gof.local_optimizer([None])
