@@ -1106,6 +1106,26 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose( t_rval, rval)
 
 
+    def only_one_output_of_grad_of_scan(self):
+
+        initial = theano.tensor.scalar('initial')
+
+        floatX = theano.config.floatX
+        def one_step( h_tm1):
+          return h_tm1 + numpy.asarray(1., dtype=floatX)
+
+        h, _ = theano.scan(
+          fn=one_step,
+          outputs_info=[initial],
+          n_steps = 3
+        )
+
+        gh = TT.grad(h[-1], initial)
+
+        f = theano.function([initial], gh)
+        assert numpy.allclose( f(1.), 1.)
+
+
 
 if __name__ == '__main__':
     unittest.main()
