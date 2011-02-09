@@ -4420,9 +4420,9 @@ class numeric_grad:
     # For now, we use a heuristic that catches very bad gradients, but is not perfectly
     # accurate.
     type_eps = {'float64': 1e-7,
-            'float32': 3e-3,
+            'float32': 3e-4,
             numpy.dtype('float64'):1e-7,
-            numpy.dtype('float32'):3e-3}
+            numpy.dtype('float32'):3e-4}
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
