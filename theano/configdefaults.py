@@ -49,14 +49,13 @@ try:
     subprocess.Popen('gcc', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
-            "Default linker. If not None, will use this linker with the Mode "+
-            "object(not ProfileMode or DebugMode)",
-            EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'))
+                 "Default linker used if the theano flags mode is Mode or ProfileMode",
+                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'))
 except OSError:
     # gcc is not present, linker should default to python only
     AddConfigVar('linker',
-            "Default linker. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
-            EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py'))
+                 "Default linker used if the theano flags mode is Mode or ProfileMode",
+                 EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py'))
     warning('GCC not detected ! Theano will be unable to execute optimized '+
             'C-implementations (for both CPU and GPU) and will default to '+
             'Python implementations. Performance will be severely degraded.')

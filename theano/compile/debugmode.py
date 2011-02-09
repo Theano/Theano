@@ -1674,6 +1674,9 @@ class DebugMode(Mode):
         If any of these arguments (except optimizer) is not None, it overrides the class default.
         The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
         """
+        if linker is not None and not isinstance(linker,_Linker):
+            raise Exception("DebugMode can use only its own linker! Don't give him one to use it.")
+
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)
