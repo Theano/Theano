@@ -796,11 +796,13 @@ class test_fusion(unittest.TestCase):
 
             # Cases where the same input is reused many times.
             (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*fxv*fxv*fxv,'float32'),
-            (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),# TODO: This case is not fused!
-            (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),# TODO: This case is not fused!
+            # TODO: This case is not fused!
+            (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),
+            # TODO: This case is not fused!
+            (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),
             # The next case test when one variable appear as many inputs to an op.
-            # In the past, this was not fused.
-            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,fyv),2,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),# TODO: This case is not fused!
+            # In the past, this was not fused. (TODO) Now it is partially fused.
+            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,fyv),2,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),
             ]
         if slice:
             cases = cases[slice]
