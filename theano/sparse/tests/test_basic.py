@@ -324,7 +324,7 @@ class test_structureddot(unittest.TestCase):
         images = tensor.Tensor(dtype='float32', broadcastable=[False, False])('images')
 
         cscmat = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-        f = theano.function([kerns, images], structured_dot(cscmat, images.T), mode='FAST_RUN')
+        f = theano.function([kerns, images], structured_dot(cscmat, images.T))
 
         sdcscpresent = False
         for node in f.maker.env.toposort():
@@ -373,18 +373,7 @@ class test_structureddot(unittest.TestCase):
         a = SparseType('csc', dtype=sparse_dtype)()
         b = tensor.matrix(dtype=dense_dtype)
         d = theano.dot(a,b)
-        #f = theano.function([a,b], theano.Out(d, borrow=True), mode='PROFILE_MODE')
-        f = theano.function([a,b], theano.Out(d, borrow=True), mode='FAST_RUN')
-
-        # technically we could be using DEBUG MODE to verify internal problems.
-        # in fact, if this test fails for correctness, then it would be good to use DEBUG_MODE
-        # to figure out where thigns go wrong.
-        # however, comparing FAST_RUN  with scipy is a quick way of ensuring all's well that
-        # ends well, and also lets us ensure that our speed optimizations are working.
-
-        print f.maker.mode
-
-        #print f.maker.env.toposort()
+        f = theano.function([a,b], theano.Out(d, borrow=True))
 
         for M,N,K,nnz in [(4,3,2,3),
                 (40,30,20,3),
@@ -417,7 +406,8 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.003 # seconds overall
             overhead_rtol = 1.2 # times as long
             self.failUnless(numpy.allclose(theano_result, scipy_result))
-            self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
+            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+                self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
 
     def test_csr_correct_output_faster_than_scipy(self):
 
@@ -429,15 +419,7 @@ class test_structureddot(unittest.TestCase):
         a = SparseType('csr', dtype=sparse_dtype)()
         b = tensor.matrix(dtype=dense_dtype)
         d = theano.dot(a,b)
-        f = theano.function([a,b], d, mode='FAST_RUN')
-
-        # technically we could be using DEBUG MODE to verify internal problems.
-        # in fact, if this test fails for correctness, then it would be good to use DEBUG_MODE
-        # to figure out where thigns go wrong.
-        # however, comparing FAST_RUN  with scipy is a quick way of ensuring all's well that
-        # ends well, and also lets us ensure that our speed optimizations are working.
-
-        print f.maker.env.toposort()
+        f = theano.function([a,b], d)
 
         for M,N,K,nnz in [(4,3,2,3),
                 (40,30,20,3),
@@ -461,13 +443,14 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.002 # seconds
             overhead_rtol = 1.1 # times as long
             self.failUnless(numpy.allclose(theano_result, scipy_result))
-            self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
+            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+                self.failIf(theano_time > overhead_rtol*scipy_time + overhead_tol)
 
 def test_shape_i():
     sparse_dtype = 'float32'
 
     a = SparseType('csr', dtype=sparse_dtype)()
-    f = theano.function([a], a.shape[1], mode='FAST_RUN')
+    f = theano.function([a], a.shape[1])
     assert f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3))) == 10
 
 def test_shape():
@@ -476,7 +459,7 @@ def test_shape():
     sparse_dtype = 'float32'
 
     a = SparseType('csr', dtype=sparse_dtype)()
-    f = theano.function([a], a.shape, mode='FAST_RUN')
+    f = theano.function([a], a.shape)
     assert numpy.all(f(sp.csr_matrix(random_lil((100,10), sparse_dtype, 3)))==(100,10))
     if theano.config.mode!='FAST_COMPILE':
         topo = f.maker.env.toposort()
