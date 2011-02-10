@@ -449,6 +449,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	if(version==8||version==13) nb_split++;//force the split.
 	if(version==13)full_kern=false;
 
+	//check if we can fit the full kernel in the shared memory
+	if(sizeof(float)*std::max(img_size + kern_size, out_size*2) > shared_avail){
+	  full_kern = false;
+	}
+
         //thread_z is going to be ceil_intdiv(kern_len, nb_split)
         // we need enough splits so that
         // a) thread_z fits in the 'z' threadIdx (i.e. is less than 64)
