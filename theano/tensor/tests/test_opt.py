@@ -1136,7 +1136,8 @@ def test_log_add():
         print f([10000], [10000])  # causes overflow if handled incorrectly
         assert numpy.allclose(f([10000], [10000]), 20000)
     except AssertionError:
-        raise KnownFailureTest
+        raise KnownFailureTest(('log(add(exp)) is not stabilized when adding '
+                'more than 2 elements, see #623'))
 
     #TODO: test that the optimization works in the presence of broadcasting.
 
@@ -1710,19 +1711,25 @@ def test_constant_get_stabilized():
     x2 = T.scalar()
     y2 = T.log(1+T.exp(x2))
     f2 = theano.function([x2],y2)
-    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
-    assert len(f2.maker.env.toposort())==1
-    assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
-    assert f2(800)==800
+    try:
+        assert len(f2.maker.env.toposort())==1
+        assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
+        assert f2(800)==800
 
-    x = T.as_tensor_variable(800)
-    y = T.log(1+T.exp(x))
-    f = theano.function([],y)
-    assert len(f.maker.env.toposort())==0
-    assert numpy.isinf(f())
+        x = T.as_tensor_variable(800)
+        y = T.log(1+T.exp(x))
+        f = theano.function([],y)
+        assert len(f.maker.env.toposort())==0
+        assert numpy.isinf(f())
 
-    #When this error is fixed, the following line should be ok.
-    assert f()==800,f()
+        #When this error is fixed, the following line should be ok.
+        assert f()==800,f()
+
+    except (AssertionError, theano.compile.debugmode.InvalidValueError):
+        raise KnownFailureTest((
+            "Theano optimizes constant before stabilization. "
+            "This breaks stabilization optimization in some cases. See #504."))
+
 
 class T_local_switch_sink(unittest.TestCase):
     def setUp(self):

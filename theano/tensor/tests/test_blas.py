@@ -549,13 +549,13 @@ def test_inplace0():
         raise Failure('gemm_inplace in graph')
     assert _dot22 in [n.op for n in f.maker.env.nodes]
 
-    raise KnownFailureTest("gemm not always inserted")
     f = inplace_func([X,Y,Z,a,b, R, S, c],
             [Z * (c*Z + a * T.dot(X,Y) + b * T.dot(R,S).T)], mode='FAST_RUN')
     # gemm_inplace should be inserted here, to work in-place on Z*c
     if (not gemm_inplace in [n.op for n in f.maker.env.nodes]):
         print pp(f.maker.env.outputs[0])
-        raise Failure('no gemm_inplace in graph')
+        #raise Failure('no gemm_inplace in graph')
+        raise KnownFailureTest("gemm not always inserted, see #415")
 
 def test_inplace1():
     X,Y,Z,a,b = XYZab()
