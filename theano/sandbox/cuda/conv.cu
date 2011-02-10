@@ -474,9 +474,9 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	    //if we can't fit the kernel in shared memory, we must split it more.
             nb_split++;
             thread_z=ceil_intdiv(kern_len,nb_split);
-	    shared_size=sizeof(float)*std::max(
-                    img_size + kern_wid*thread_z,
-                    out_size*thread_z);
+	    shared_size = sizeof(float)*(full_kern
+                ? std::max(img_size + kern_size, out_size*thread_z)
+                : std::max(img_size + thread_z*kern_wid, out_size*thread_z));
         }
         if (nb_split <= kern_len)
         {
