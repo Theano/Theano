@@ -60,7 +60,7 @@ def print_diff_mode(a,b):
 def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_train=100):
 
     if config.mode=='DEBUG_MODE': n_train=1
-    
+
     if use_gpu:
         w = tcn.shared_constructor(0.01*(my_rand(n_in,n_hid)-0.5), 'w')
         b = tcn.shared_constructor(my_zeros(n_hid), 'b')
@@ -88,7 +88,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_train=100):
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
-    
+
     if 0:
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
@@ -102,10 +102,10 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_train=100):
     for i in xrange(n_train):
         rval.append(train(xval, yval, lr))
     dt = time.time() - t0
-        
+
     print_mode(mode)
     return numpy.asarray(rval), dt
-    
+
 def test_run_nnet():
     for n_in in 1024, 2048, 4096:
         for n_hid in 1024, 2048, 4096:
@@ -368,8 +368,8 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_train,
     print_mode(mode)
     return rvals, t1-t0, mode
 
-def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize, 
-                               ignore_error=False, 
+def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
+                               ignore_error=False,
                                n_train=10,
                                gpu_only=False,
                                cpu_only=False,
@@ -387,7 +387,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 
     numpy.random.seed(seed)
 
-    orig_float32_atol = theano.tensor.basic.float32_atol    
+    orig_float32_atol = theano.tensor.basic.float32_atol
     try:
         if gpu_only:
             tcn.use()
@@ -403,7 +403,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     if gpu_only:
         print "time gpu: %.3f"%(tg)
         return
-    
+
     try:
         numpy.random.seed(seed)
         rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(False, isize, ksize, bsize, n_train,
@@ -422,7 +422,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         theano.tensor.basic.float32_atol=orig_float32_atol
 
     if not cpu_only:
-        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol): 
+        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol):
             print "cpu:", rval_cpu
             print "gpu:", rval_gpu
             print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
@@ -453,7 +453,7 @@ def test_lenet_32(): #CIFAR10 / Shapeset
                                verbose=verbose, version=version)
 
 def test_lenet_32_long(): #CIFAR10 / Shapeset
-    # this tests the gradient of downsample on the GPU, 
+    # this tests the gradient of downsample on the GPU,
     # which does not recieve specific testing
     cmp_run_conv_nnet2_classif(23485, 32, 5, 30, n_train=50,
                                ignore_error=ignore_error, gpu_only=gpu_only,
