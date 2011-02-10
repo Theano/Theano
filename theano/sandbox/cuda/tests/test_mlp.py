@@ -422,7 +422,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         theano.tensor.basic.float32_atol=orig_float32_atol
 
     if not cpu_only:
-        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol):
+        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-5,atol=float_atol):
             print "cpu:", rval_cpu
             print "gpu:", rval_gpu
             print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
@@ -465,13 +465,13 @@ def test_lenet_64(): # ???
     cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_train=10,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
-                               float_atol=5e-4, check_isfinite=True, version=version)
+                               check_isfinite=True, version=version)
 
 def test_lenet_108(): # NORB
     cmp_run_conv_nnet2_classif(23485, 108, 7, 5, n_train=4,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
-                               check_isfinite=True, version=version, float_atol=7e-2)
+                               check_isfinite=True, version=version)
 
 def test_lenet_256(): # ImageNet
     cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_train=5,
