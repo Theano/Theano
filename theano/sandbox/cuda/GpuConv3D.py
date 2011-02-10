@@ -87,7 +87,7 @@ PyErr_Format(PyExc_ValueError, "GpuConv3D: d must be a vector CudaNdarray");
                         const int inputChannels = CudaNdarray_HOST_DIMS(%(V)s)[4];
                         if (CudaNdarray_HOST_DIMS(%(W)s)[4] != inputChannels)
                         {
-                            PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%i channel image but the image has %%i channels",CudaNdarray_HOST_DIMS(%(W)s)[4],inputChannels);
+                            PyErr_Format(PyExc_ValueError, "GpuConv3D: W operates on a %%i channel image but the image has %%i channels",CudaNdarray_HOST_DIMS(%(W)s)[4],inputChannels);
                             %(fail)s
                         }
 {  //extra scope so error handler jumps don't cause errors
@@ -99,19 +99,19 @@ PyErr_Format(PyExc_ValueError, "GpuConv3D: d must be a vector CudaNdarray");
                         const int vidDur = CudaNdarray_HOST_DIMS(%(V)s)[3];
             if (vidHeight < filterHeight)
             {
-                PyErr_Format(PyExc_ValueError, "W has a height of %%i but V is only %%i pixels tall",filterHeight,vidHeight);
+                PyErr_Format(PyExc_ValueError, "GpuConv3D: W has a height of %%i but V is only %%i pixels tall",filterHeight,vidHeight);
                 %(fail)s
             }
 { // extra scope so fail works
             if (vidWidth < filterWidth)
             {
-                PyErr_Format(PyExc_ValueError, "W has a width of %%i but V is only %%i pixels wide",filterWidth,vidWidth);
+                PyErr_Format(PyExc_ValueError, "GpuConv3D: W has a width of %%i but V is only %%i pixels wide",filterWidth,vidWidth);
                 %(fail)s
             }
 { // extra scope so fail works
             if (vidDur < filterDur)
             {
-                PyErr_Format(PyExc_ValueError, "W has a duration of %%i but V is only %%i pixels long",filterDur,vidDur);
+                PyErr_Format(PyExc_ValueError, "GpuConv3D: W has a duration of %%i but V is only %%i pixels long",filterDur,vidDur);
                 %(fail)s
             }
 { // extra scope so fail works
