@@ -13,6 +13,7 @@ from theano import config
 import theano.tensor.nnet.conv as conv
 import theano.tensor.signal.downsample as downsample
 import theano.sandbox.cuda as tcn
+import theano.tests.unittest_tools as utt
 
 
 if theano.config.mode not in ['FAST_RUN','Mode','ProfileMode']:
@@ -426,6 +427,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             print "cpu:", rval_cpu
             print "gpu:", rval_gpu
             print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
+            print "rel diff:", numpy.absolute((rval_gpu-rval_cpu)/rval_gpu)
         print "time cpu: %.3f, time gpu: %.3f, speed up %f"%(tc, tg, tc/tg)
         print "estimated time for one pass through MNIST with cpu: %f" % (tc * (60000.0 / (n_train*bsize)))
         print "estimated time for one pass through MNIST with gpu: %f" % (tg * (60000.0 / (n_train*bsize)))
@@ -441,54 +443,55 @@ cpu_only=False
 ignore_error=False
 verbose=0
 version=-1
+seed = utt.fetch_seed()
 
 def test_lenet_28(): #MNIST
-    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_train=10,
+    cmp_run_conv_nnet2_classif(seed, 28, 5, 60, n_train=10,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose, version=version)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, n_train=10,
+    cmp_run_conv_nnet2_classif(seed, 32, 5, 60, n_train=10,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                verbose=verbose, version=version)
 
 def test_lenet_32_long(): #CIFAR10 / Shapeset
     # this tests the gradient of downsample on the GPU,
     # which does not recieve specific testing
-    cmp_run_conv_nnet2_classif(23485, 32, 5, 30, n_train=50,
+    cmp_run_conv_nnet2_classif(seed, 32, 5, 30, n_train=50,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose, version=version)
 
 def test_lenet_64(): # ???
     #float_atol need to pass in debug mode
     #needed as cpu use extended precision and gpu don't
-    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_train=10,
+    cmp_run_conv_nnet2_classif(seed, 64, 7, 10, n_train=10,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
 
 def test_lenet_108(): # NORB
-    cmp_run_conv_nnet2_classif(23485, 108, 7, 5, n_train=4,
+    cmp_run_conv_nnet2_classif(seed, 108, 7, 5, n_train=4,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
 
 def test_lenet_256(): # ImageNet
-    cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_train=5,
+    cmp_run_conv_nnet2_classif(seed, 256, 9, 2, n_train=5,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
 def tes_lenet_hd(): #HD 720p: 1280(wid)x720(len)
-    cmp_run_conv_nnet2_classif(23485, (720,1280), 9, 2, n_train=3,
+    cmp_run_conv_nnet2_classif(seed, (720,1280), 9, 2, n_train=3,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
 def tes_lenet_full_hd(): #HD 1080p: 1920(wid)x1080(len)
-    cmp_run_conv_nnet2_classif(23485, (1080,1920), 9, 2, n_train=3,
+    cmp_run_conv_nnet2_classif(seed, (1080,1920), 9, 2, n_train=3,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
