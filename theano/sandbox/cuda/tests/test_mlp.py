@@ -110,9 +110,9 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_train=100):
 def test_run_nnet():
     for n_in in 1024, 2048, 4096:
         for n_hid in 1024, 2048, 4096:
-            numpy.random.seed(23456)
+            utt.seed_rng() # Seeds numpy rng with utt.fetch_seed()
             rval_cpu, tc = run_nnet(False, n_in=n_in, n_hid=n_hid)
-            numpy.random.seed(23456)
+            utt.seed_rng()
             rval_gpu, tg = run_nnet(True, n_in=n_in, n_hid=n_hid)
             #print "cpu:", rval_cpu
             #print "gpu:", rval_gpu
@@ -125,11 +125,11 @@ def test_run_nnet():
                 assert numpy.allclose(rval_cpu, rval_gpu,rtol=rtol,atol=1e-6)
 
 def test_run_nnet_med():
-    numpy.random.seed(23456)
+    utt.seed_rng()
     rval_cpu = run_nnet(False, 10, 128, 50, 4, n_train=10000)
 
 def test_run_nnet_small():
-    numpy.random.seed(23456)
+    utt.seed_rng()
     rval_cpu = run_nnet(False, 10, 10, 4, 4, n_train=100000)
 
 def run_conv_nnet1(use_gpu):
@@ -188,9 +188,9 @@ def run_conv_nnet1(use_gpu):
     return rval
 
 def test_conv_nnet1():
-    numpy.random.seed(23456)
+    utt.seed_rng()
     rval_cpu = run_conv_nnet1(False)
-    numpy.random.seed(23456)
+    utt.seed_rng()
     rval_gpu = run_conv_nnet1(True)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
@@ -274,10 +274,10 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
     return rval
 
 def test_conv_nnet2():
-    numpy.random.seed(23456)
+    utt.seed_rng()
     rval_gpu = run_conv_nnet2(True)
     if True:
-        numpy.random.seed(23456)
+        utt.seed_rng()
         rval_cpu = run_conv_nnet2(False)
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
@@ -386,7 +386,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     """
     if config.mode=='DEBUG_MODE': n_train=1
 
-    numpy.random.seed(seed)
+    utt.seed_rng(seed) # Seeds numpy.random with seed
 
     orig_float32_atol = theano.tensor.basic.float32_atol
     try:
@@ -406,7 +406,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         return
 
     try:
-        numpy.random.seed(seed)
+        utt.seed_rng(seed)
         rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(False, isize, ksize, bsize, n_train,
                                                         verbose=verbose, version=version,
                                                         check_isfinite=check_isfinite)
@@ -438,6 +438,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     if not ignore_error and not cpu_only and not gpu_only:
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol)
 
+# Default parameters for all subsequent tests
 gpu_only=False
 cpu_only=False
 ignore_error=False
