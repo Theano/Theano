@@ -1108,7 +1108,7 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     }
     else
     {
-      if (verbose) fprintf(stderr, "INFO: Conv is ignoring 'out' argument with wrong structure.\n");
+      if (out && verbose) fprintf(stderr, "INFO: Conv is ignoring 'out' argument with wrong structure.\n");
       rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
       //rval might be null
     }
