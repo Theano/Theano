@@ -1,30 +1,28 @@
-import sys, time
-import theano
+import copy
+import logging
+import time
 
+from nose.plugins.skip import SkipTest
+import numpy
+
+import theano
 from theano.compile.sharedvalue import shared
 from theano.compile.pfunc import pfunc
 from theano import tensor
-import theano.tensor.nnet
 from theano import config
-
 import theano.tensor.nnet.conv as conv
 import theano.tensor.signal.downsample as downsample
+import theano.sandbox.cuda as tcn
 
-import numpy
 
-
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
 if theano.config.mode not in ['FAST_RUN','Mode','ProfileMode']:
     raise SkipTest('Skip test_mlp when not in normal optimization mode as otherwise it is too slow!')
 
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+# Skip test if cuda_ndarray is not available.
+if tcn.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.sandbox.cuda as tcn
 
-import logging
 logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 
 
@@ -35,13 +33,16 @@ def my_randn(*shape):
 def my_zeros(*shape):
     return theano._asarray(numpy.zeros(*shape),dtype='float32')
 
-def get_mode(use_gpu):
+def get_mode(use_gpu, check_isfinite=True):
     if theano.config.mode != 'FAST_COMPILE':
         ret = theano.compile.get_default_mode()
     else:
         ret = theano.compile.mode.get_mode('FAST_RUN')
     if isinstance(ret, theano.compile.ProfileMode):
-        ret = theano.compile.ProfileMode()
+        ret = copy.copy(ret)
+    if isinstance(ret, theano.compile.DebugMode):
+        ret = copy.copy(ret)
+        ret.check_isfinite = check_isfinite
     if use_gpu:
         ret = ret.including('gpu')
     else:
@@ -281,7 +282,8 @@ def test_conv_nnet2():
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
 def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_train,
-                           downsample_ops=True, verbose=0, version=-1):
+                           downsample_ops=True, verbose=0, version=-1,
+                           check_isfinite=True):
     if use_gpu:
         shared_fn = tcn.shared_constructor
     else:
@@ -345,7 +347,7 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_train,
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params, warn_type=True)
 
-    mode = get_mode(use_gpu)
+    mode = get_mode(use_gpu, check_isfinite)
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -385,14 +387,8 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 
     numpy.random.seed(seed)
 
-    import theano.tensor.basic
-    import theano.compile.debugmode
-    from theano.compile.mode import predefined_modes
-    orig_float32_atol = theano.tensor.basic.float32_atol
-    orig_check_isfinite = predefined_modes["DEBUG_MODE"].check_isfinite
-    
+    orig_float32_atol = theano.tensor.basic.float32_atol    
     try:
-        predefined_modes["DEBUG_MODE"].check_isfinite = check_isfinite
         if gpu_only:
             tcn.use()
         if float_atol:
@@ -402,7 +398,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             rval_gpu, tg, gpu_mode = run_conv_nnet2_classif(True,
                                                             isize, ksize, bsize, n_train, verbose=verbose, version=version)
     finally:
-        predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
         theano.tensor.basic.float32_atol=orig_float32_atol
 
     if gpu_only:
@@ -410,10 +405,10 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         return
     
     try:
-        predefined_modes["DEBUG_MODE"].check_isfinite = check_isfinite
         numpy.random.seed(seed)
         rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(False, isize, ksize, bsize, n_train,
-                                                        verbose=verbose, version=version)
+                                                        verbose=verbose, version=version,
+                                                        check_isfinite=check_isfinite)
         if pickle and isinstance(cpu_mode,(theano.compile.ProfileMode,)):
             import pickle
             print "BEGIN GPU profile mode dump"
@@ -424,7 +419,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             print "END CPU profile mode dump"
 
     finally:
-        predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
         theano.tensor.basic.float32_atol=orig_float32_atol
 
     if not cpu_only:
