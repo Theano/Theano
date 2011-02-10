@@ -851,7 +851,7 @@ class T_using_gpu(unittest.TestCase):
             if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
                 print 'Used the cpu'
             else:
-                print 'Used the gpu' 
+                print 'Used the gpu'
 
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
 
