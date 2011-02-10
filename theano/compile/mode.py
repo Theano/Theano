@@ -284,13 +284,12 @@ def get_mode(orig_string):
     if string in ['Mode','ProfileMode','DebugMode']:
         if instanciated_default_mode:
             return instanciated_default_mode
-        #need to import later to break circular dependency.
         if string == 'DebugMode':
+            #need to import later to break circular dependency.
             from debugmode import DebugMode
             #DebugMode use its own linker.
-            ret = eval(string+'(optimizer=config.optimizer)')
+            ret = DebugMode(optimizer=config.optimizer)
         else:
-            from profilemode import ProfileMode,prof_mode_instance_to_print
             ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
 
     elif not predefined_modes.has_key(string):
@@ -308,6 +307,8 @@ def get_mode(orig_string):
 
     #must tell python to print the summary at the end.
     if string == 'ProfileMode':
+        #need to import later to break circular dependency.
+        from profilemode import prof_mode_instance_to_print
         prof_mode_instance_to_print.append(ret)
 
     return ret
