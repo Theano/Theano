@@ -116,7 +116,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       if(!subsample &&
 	out_contiguous &&
 	out_size<512 &&//Maximum of 512 theads by block
-	(img_size_byte+2*kern_wid*sizeof(float)+out_size_byte*2)<shared_avail && //their is only 16k of shared memory and if we can't have the output at least twice in shared mem, we won't have any reduce!
+	 std::max(int(img_size_byte+2*kern_wid*sizeof(float)), out_size_byte*2)<shared_avail && //their is only 16k of shared memory and if we can't have the output at least twice in shared mem, we won't have any reduce!
 	!work_complete)
 	version = 7; //conv_patch_stack_reduce, switch to version 8/13 automatically if needed.
     }

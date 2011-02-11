@@ -422,6 +422,8 @@ def test_valid_5():
 
 def test_valid_7_8_13():
     shapes = get_valid_shapes()
+    # This is to test the "new" lower shared memory usage.
+    shapes.append(((10,30,60,60),(20,30,40,40), (1,1), (1,1), (1,1))
     version=[7,8,13]
     verbose=0
 
@@ -437,7 +439,7 @@ def test_valid_7_8_13():
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
         if oshape[2]*oshape[3]>512:
             continue
-        if (numpy.prod(ishape[2:])*4+2*kshape[3]*4+oshape[2]*oshape[3]*4*2)>(16*1024-150):
+        if max(numpy.prod(ishape[2:])*4+2*kshape[3]*4, oshape[2]*oshape[3]*4*2)>(16*1024-150):
             continue
         if subshape==(1,1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
