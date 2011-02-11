@@ -40,8 +40,6 @@ for (int iter_m=0; iter_m < Os[0]; iter_m++) {
 #define BS(i, j) Bs[i][j]
 #endif
 */
-#define MAX(a,b) ((a)>(b)?(a):(b))
-#define MIN(a,b) ((a)<(b)?(a):(b))
 
 const unsigned long int COALESCED_ALIGN = 0xFFFFFFFFFFFFFF00; // zero-out the trailing bits of pointers
 #define MASKED_OFFSET(src) (((int)((unsigned long int)src - (((unsigned long int)src) & COALESCED_ALIGN))) / sizeof(float))
