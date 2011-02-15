@@ -381,7 +381,10 @@ class ModuleCache(object):
                         # printing a warning, removing evidence that we ever saw this mystery
                         # key.
                         pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
-                        warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
+                        if not root.startswith("/tmp"):
+                            # Under /tmp, file are removed periodically by the os.
+                            # So it is normal that this happen from time to time.
+                            warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
                         self.loaded_key_pkl.remove(pkl_file_to_remove)
 
         finally:
