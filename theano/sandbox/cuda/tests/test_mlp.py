@@ -452,7 +452,7 @@ def test_lenet_28(): #MNIST
                                cpu_only=cpu_only, verbose=verbose, version=version)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    cmp_run_conv_nnet2_classif(seed, 32, 5, 60, n_train=10,
+    cmp_run_conv_nnet2_classif(seed, 32, 5, 60, n_train=8,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                verbose=verbose, version=version)
 
