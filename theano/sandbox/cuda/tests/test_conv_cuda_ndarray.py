@@ -423,7 +423,7 @@ def test_valid_5():
 def test_valid_7_8_13():
     shapes = get_valid_shapes()
     # This is to test the "new" lower shared memory usage.
-    shapes.append(((10,30,60,60),(20,30,40,40), (1,1), (1,1), (1,1))
+    shapes.append(((10,30,60,60),(20,30,40,40), (1,1), (1,1), (1,1)))
     version=[7,8,13]
     verbose=0
 
