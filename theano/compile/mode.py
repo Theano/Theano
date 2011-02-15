@@ -290,6 +290,8 @@ def get_mode(orig_string):
             #DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
         else:
+            # The import is needed in case string is ProfileMode
+            from profilemode import ProfileMode
             ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
 
     elif not predefined_modes.has_key(string):
