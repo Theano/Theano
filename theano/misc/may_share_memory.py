@@ -10,7 +10,9 @@ from theano.tensor.basic import TensorType
 
 try:
     import scipy.sparse
-    from theano.sparse.basic import _is_sparse, SparseType
+    from theano.sparse.basic import SparseType
+    def _is_sparse(a):
+        return scipy.sparse.issparse(a)
 except ImportError:
     #scipy not imported, their can be only ndarray and cudandarray
     def _is_sparse(a):
