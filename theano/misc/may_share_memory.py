@@ -22,7 +22,7 @@ import theano.sandbox.cuda as cuda
 if cuda.cuda_available:
     def _is_cuda(a):
         return isinstance(a, cuda.CudaNdarray)
-else:            
+else:
     def _is_cuda(a):
         return False
 
