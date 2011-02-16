@@ -282,9 +282,10 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_train,
-                           downsample_ops=True, verbose=0, version=-1,
-                           check_isfinite=True):
+
+def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
+                             downsample_ops=True, verbose=0, version=-1,
+                             check_isfinite=True):
     if use_gpu:
         shared_fn = tcn.shared_constructor
     else:
@@ -353,21 +354,58 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_train,
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    if False:
+    if verbose:
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
 
-    xval = my_rand(*shape_img)
-    yval = my_rand(n_batch,n_out)
+    shape_target = (n_batch,n_out)
+    return train, params, shape_img, shape_target, mode
+
+def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
+                           n_train=10,
+                           check_isfinite=True,
+                           pickle=False,
+                           verbose=0,
+                           version=-1):
+    """Run the train function returned by build_conv_nnet2_classif on one device.
+    """
+
+    utt.seed_rng(seed) # Seeds numpy.random with seed
+    train, params, x_shape, y_shape, mode = build_conv_nnet2_classif(
+            use_gpu=use_gpu,
+            isize=isize,
+            ksize=ksize,
+            n_batch=bsize,
+            verbose=verbose,
+            version=version,
+            check_isfinite=check_isfinite)
+
+    if use_gpu:
+        tcn.use()
+        device = 'GPU'
+    else:
+        device = 'CPU'
+
+    xval = my_rand(*x_shape)
+    yval = my_rand(*y_shape)
     lr = theano._asarray(0.01, dtype='float32')
 
-    rvals=my_zeros(n_train)
+    rvals = my_zeros(n_train)
     t0 = time.time()
     for i in xrange(n_train):
         rvals[i] = train(xval, yval, lr)[0]
     t1 = time.time()
     print_mode(mode)
-    return rvals, t1-t0, mode
+
+    if pickle and isinstance(mode, theano.compile.ProfileMode):
+        import pickle
+        print "BEGIN %s profile mode dump" % device
+        print pickle.dumps(mode)
+        print "END %s profile mode dump" % device
+
+    print "%s time: %.3f" % (device, t1-t0)
+    print "estimated time for one pass through MNIST with %s: %f" % (
+            device, (t1-t0) * (60000.0 / (n_train*bsize)))
 
 def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                                ignore_error=False,
@@ -379,64 +417,125 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                                pickle=False,
                                verbose=0,
                                version=-1):
-    """
+    """Run the nnet2 function on 1 or 2 devices, and compares the results.
+
        float_atol: None mean use the default value.
        check_isfinite: the debug mode option. We forward this value to debug mode.
                        For some parameter CrossentropyCategorical1Hot op generate inf when not optimized.
     """
-    if config.mode=='DEBUG_MODE': n_train=1
+    if config.mode == 'DEBUG_MODE':
+        n_train = 1
 
-    utt.seed_rng(seed) # Seeds numpy.random with seed
-
+    # Change global tolerance, used in DebugMode for instance
     orig_float32_atol = theano.tensor.basic.float32_atol
     try:
-        if gpu_only:
-            tcn.use()
         if float_atol:
-            print "float_atol",float_atol
-            theano.tensor.basic.float32_atol=float_atol
-        if not cpu_only:
-            rval_gpu, tg, gpu_mode = run_conv_nnet2_classif(True,
-                                                            isize, ksize, bsize, n_train, verbose=verbose, version=version)
+            print "float_atol", float_atol
+            theano.tensor.basic.float32_atol = float_atol
+
+        if gpu_only and cpu_only:
+            raise ValueError("Please use only one of cpu_only and gpu_only")
+        elif cpu_only:
+            use_gpu = False
+            compare = False
+        elif gpu_only:
+            use_gpu = True
+            compare = False
+        else:
+            compare = True
+
+        if not compare:
+            return run_conv_nnet2_classif(use_gpu=use_gpu,
+                    seed=seed, isize=isize, ksize=ksize, n_batch=bsize,
+                    n_train=n_train,
+                    check_isfinite=check_isfinite,
+                    pickle=pickle,
+                    verbose=verbose,
+                    version=version)
+
+        utt.seed_rng(seed) # Seeds numpy.random with seed
+        train_cpu, params_cpu, x_shape, y_shape, mode_cpu = \
+                build_conv_nnet2_classif(
+                        use_gpu=False,
+                        isize=isize,
+                        ksize=ksize,
+                        n_batch=bsize,
+                        verbose=verbose,
+                        version=version,
+                        check_isfinite=check_isfinite)
+
+        utt.seed_rng(seed) # Seeds numpy.random with seed
+        train_gpu, params_gpu, x_shape_gpu, y_shape_gpu, mode_gpu = \
+                build_conv_nnet2_classif(
+                        use_gpu=True,
+                        isize=isize,
+                        ksize=ksize,
+                        n_batch=bsize,
+                        verbose=verbose,
+                        version=version,
+                        check_isfinite=check_isfinite)
+
+        assert x_shape == x_shape_gpu
+        assert y_shape == y_shape_gpu
+
+        xval = my_rand(*x_shape)
+        yval = my_rand(*y_shape)
+        lr = theano._asarray(0.01, dtype='float32')
+
+        time_cpu = 0
+        time_gpu = 0
+
+        for i in range(n_train):
+            # Train one batch on CPU
+            t0 = time.time()
+            rval_cpu = train_cpu(xval, yval, lr)[0]
+            t1 = time.time()
+            time_cpu += (t1-t0)
+
+            # Train one batch on GPU
+            t0 = time.time()
+            rval_gpu = train_gpu(xval, yval, lr)[0]
+            t1 = time.time()
+            time_gpu += (t1-t0)
+
+            # Compare results
+            if (verbose or not
+                    numpy.allclose(rval_cpu, rval_gpu, rtol=1e-5, atol=float_atol)):
+                print "At batch:", i+1
+                print "CPU:", rval_cpu
+                print "GPU:", rval_gpu
+                print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
+                print "rel diff:", numpy.absolute((rval_gpu-rval_cpu)/rval_gpu)
+
+            if not ignore_error:
+                assert numpy.allclose(rval_cpu, rval_gpu, rtol=1e-5, atol=float_atol)
+
+            # Synchronize parameters to start from the same point next time
+            if i < n_train-1:
+                for cpu_p, gpu_p in zip(params_cpu, params_gpu):
+                    cpu_p.set_value(gpu_p.get_value(borrow=False), borrow=True)
+
     finally:
-        theano.tensor.basic.float32_atol=orig_float32_atol
+        theano.tensor.basic.float32_atol = orig_float32_atol
 
-    if gpu_only:
-        print "time gpu: %.3f"%(tg)
-        return
-
-    try:
-        utt.seed_rng(seed)
-        rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(False, isize, ksize, bsize, n_train,
-                                                        verbose=verbose, version=version,
-                                                        check_isfinite=check_isfinite)
-        if pickle and isinstance(cpu_mode,(theano.compile.ProfileMode,)):
+    if pickle:
+        if isinstance(cpu_mode, theano.compile.ProfileMode):
             import pickle
-            print "BEGIN GPU profile mode dump"
-            #print pickle.dumps(gpu_mode)
-            print "END GPU profile mode dump"
             print "BEGIN CPU profile mode dump"
             print pickle.dumps(cpu_mode)
             print "END CPU profile mode dump"
+        if isinstance(gpu_mode, theano.compile.ProfileMode):
+            import pickle
+            print "BEGIN GPU profile mode dump"
+            print pickle.dumps(gpu_mode)
+            print "END GPU profile mode dump"
 
-    finally:
-        theano.tensor.basic.float32_atol=orig_float32_atol
-
-    if not cpu_only:
-        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-5,atol=float_atol):
-            print "cpu:", rval_cpu
-            print "gpu:", rval_gpu
-            print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
-            print "rel diff:", numpy.absolute((rval_gpu-rval_cpu)/rval_gpu)
-        print "time cpu: %.3f, time gpu: %.3f, speed up %f"%(tc, tg, tc/tg)
-        print "estimated time for one pass through MNIST with cpu: %f" % (tc * (60000.0 / (n_train*bsize)))
-        print "estimated time for one pass through MNIST with gpu: %f" % (tg * (60000.0 / (n_train*bsize)))
-    else:
-        print "time cpu: %.3f"%(tc)
-        print "estimated time for one pass through MNIST with cpu: %f" % (tc * (60000.0 / (n_train*bsize)))
-
-    if not ignore_error and not cpu_only and not gpu_only:
-        assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol)
+    print "CPU time: %.3f, GPU time: %.3f, speed up %f" % (
+            (time_cpu, time_gpu, time_cpu/time_gpu))
+    print "Estimated time for one pass through MNIST with CPU: %f" % (
+            (time_cpu * (60000.0 / (n_train*bsize))))
+    print "Estimated time for one pass through MNIST with GPU: %f" % (
+            (time_gpu * (60000.0 / (n_train*bsize))))
 
 # Default parameters for all subsequent tests
 gpu_only=False
