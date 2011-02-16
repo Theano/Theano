@@ -3096,7 +3096,7 @@ class Rebroadcast(Op):
     e.g.: Rebroadcast((0, True), (1, False))(x)
           would make x broadcastable in axis 0
           and not broadcastable in axis 1
-    See also the unbroadcast function.
+    See also the unbroadcast, addbroadcast and patternbroadcast functions.
 
     ..note: work inplace and work for CudaNdarrayType
     """
@@ -3137,7 +3137,7 @@ def addbroadcast(x, *axes):
     """
     Make the input broadcastable in the specified axes.
 
-    We apply the opt here to don't pollute the graph especially during the gpu optimization
+    We apply the opt here not to pollute the graph especially during the gpu optimization
     """
     rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3146,16 +3146,16 @@ def unbroadcast(x, *axes):
     """
     Make the input impossible to broadcast in the specified axes.
 
-    We apply the opt here to don't pollute the graph especially during the gpu optimization
+    We apply the opt here not to pollute the graph especially during the gpu optimization
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
 def patternbroadcast(x, broadcastable):
     """
-    Make the input impossible to broadcast in the specified axes.
+    Make the input adopt a specific broadcasting pattern.
 
-    We apply the opt here to don't pollute the graph especially during the gpu optimization
+    We apply the opt here not to pollute the graph especially during the gpu optimization
     """
     rval = Rebroadcast(*[(i,broadcastable[i]) for i in range(len(broadcastable))])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
