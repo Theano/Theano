@@ -580,7 +580,7 @@ def test_lenet_256(): # ImageNet
     cmp_run_conv_nnet2_classif(seed, 256, 9, 2, n_train=5,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
-                               check_isfinite=True, version=version)
+                               check_isfinite=True, version=version, float_atol=5e-5)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
 def tes_lenet_hd(): #HD 720p: 1280(wid)x720(len)
