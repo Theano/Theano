@@ -15,7 +15,8 @@ import logging
 import numpy
 
 import theano
-from theano.tensor import get_constant_value, blas, as_tensor_variable
+from theano.tensor import (as_tensor_variable, blas, get_constant_value,
+        patternbroadcast)
 from theano import Op, config
 from theano.gof.apply_shape import Apply
 from theano.gof.python25 import any
@@ -840,6 +841,11 @@ class ConvOp(Op):
         assert (din.owner.op.outshp is None and self.imshp is None) or \
                (din.owner.op.outshp is None) or \
                (din.owner.op.outshp==self.imshp[1:]).all()
+
+        # din and dw should have the same broadcasting pattern as the
+        # parameters they are the gradient of (resp. inputs and kerns).
+        din = patternbroadcast(din, inputs.broadcastable)
+        dw = patternbroadcast(dw, kerns.broadcastable)
         return [din, dw]
 
     def c_headers(self):
