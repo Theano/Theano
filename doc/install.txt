@@ -253,10 +253,10 @@ the ``theano-users@googlegroups.com`` mailing list.
 
 .. note::
 
-    `warn.ignore_bug_before=all` removes warnings that you don't need to see
+    ``warn.ignore_bug_before=all`` removes warnings that you don't need to see
     here.  It is also recommended for a new user to set this flag to a
     different value in their ``.theanorc`` file.  See
-    :attr:`config.warn.ignore_bug_before` for more details.
+    :attr:`.config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
