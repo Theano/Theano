@@ -240,7 +240,12 @@ documentation to know how to configure them differently.
 .. note::
 
     The tests should be run with the ``THEANO_FLAGS`` ``device=cpu`` (default).
-    Otherwise, it will generate false errors.
+    Otherwise, it will generate false errors. If you have a GPU, it will
+    automatically be used to run GPU-related tests.
+
+    If you want the GPU-related tests to run on a specific GPU device, and not
+    the default one, you should use :attr:`~config.init_gpu_device`, for
+    instance ``THEANO_FLAGS=init_gpu_device=gpu1``.
 
 All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
