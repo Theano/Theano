@@ -3,8 +3,7 @@ Modification in the trunk since the last release
 THIS IS A PARTIAL LIST. WE SHOULD CHECK ALL COMMITS SINCE LAST RELEASE AND ADD WHAT IS MISSING.
 
 TODO before new version:
- * shared.value is deprecated, use shared.get_value or shared_set_value!
- * doc in the installation instruction about the new init_gpu_device
+ * shared.value is deprecated, use shared.get_value or shared_set_value! (See #558)
 
 
 Theano 0.3.1 (beta)
@@ -54,8 +53,8 @@ New features:
  * New colors in pydotprint.
 
 Documentation:
- * Documented lib.amdlibm config variable.
- * A new page (was done for 0.3 but an error hided it on the web page) on the memory aliasing contract of Theano.
+ * Documented lib.amdlibm and (new) init_gpu_device config variables.
+ * A new page (was done for 0.3 but an error was hiding it on the web page) on the memory aliasing contract of Theano.
  * Revision to the Windows installation instructions.
  * The cuda documentation is now generated on the web server.
  * Better documentation of .theanorc and its sections.
