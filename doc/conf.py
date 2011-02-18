@@ -45,15 +45,15 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'Theano'
-copyright = '2008--2010, LISA lab'
+copyright = '2008--2011, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '0.3'
+version = '0.3.1'
 # The full version, including alpha/beta/rc tags.
-release = '0.3.0'
+release = '0.3.1rc1'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
