@@ -7,18 +7,12 @@ How to make a release
 Clone the code::
 
     ssh projects@pylearn.org
-    hg clone hg/Theano Theano-0.X
+    hg clone http://hg.assembla.com/theano Theano-0.X
 
 Edit ``setup.py`` to contain the newest version number ::
 
     cd Theano-0.X
     vi setup.py     # Edit the MAJOR, MINOR, MICRO and SUFFIX
-
-The homepage must link to the download URL, for PyPI to correctly get the
-code.
-Edit ``doc/index.txt`` to contain a link to what will be the download URL::
-
-    vi doc/index.txt    # Edit the link to downloads/Theano-0.X.tar.gz
 
 ``conf.py`` in the ``doc/`` directory should be updated in the following ways:
 
@@ -27,7 +21,7 @@ Edit ``doc/index.txt`` to contain a link to what will be the download URL::
 
 Tag the release. The syntax is something like the following::
 
-    hg commit -m"setup.py modifications for 0.X release" setup.py
+    hg commit -m"modifications for 0.X release" setup.py doc/conf.py
     hg tag 0.X
     hg push
 
