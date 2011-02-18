@@ -5,6 +5,30 @@
 Release Notes
 =============
 
+Theano 0.3 (2010-11-23)
+=======================
+
+This is the first major release of Theano since 0.1. Version 0.2 development started internally but it was never advertised as a release.
+
+There have been so many changes since 0.1 that we have lost track of many of them. Below is a *partial* list of changes since 0.1.
+
+ * GPU code using NVIDIA's CUDA framework is now generated for many Ops.
+ * Some interface changes since 0.1:
+     * A new "shared variable" system to allow reusing memory space between Theano functions.
+         * A new memory contract has been formally written for Theano, for people who want to minimize memory copies.
+     * The old module system has been deprecated.
+     * By default, inputs to a Theano function will not be silently downcasted (e.g. from float64 to float32).
+     * An error is now raised when using the result of logical operation on Theano variable in an 'if' (i.e. an implicit call to __nonzeros__).
+     * An error is now raised when we receive a non-aligned ndarray as input to a function (this is not supported).
+     * An error is raised when the list of dimensions passed to dimshuffle() contains duplicates or is otherwise not sensible.
+     * Call NumPy BLAS bindings for gemv operations in addition to the already supported gemm.
+     * If gcc is unavailable at import time, Theano now falls back to a Python-based emulation mode after raising a warning.
+     * An error is now raised when tensor.grad is called on a non-scalar Theano variable (in the past we would implicitly do a sum on the tensor to make it a scalar).
+     * Added support for "erf" and "erfc" functions.
+ * The current default value of the parameter axis of theano.{max,min,argmax,argmin,max_and_argmax} is deprecated. We now use the default NumPy behavior of operating on the entire tensor.
+ * Theano is now available from PyPI and installable through "easy_install" or "pip".
+
+
 Theano 0.1
 ==========
 

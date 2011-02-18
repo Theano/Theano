@@ -1,7 +1,15 @@
-Modification in the trunk since the last release
+===========================
+ Announcing Theano 0.3.1rc2
+===========================
 
-Theano 0.3.1rc2 (2011-02-18)
--------------------
+This is a bug/crash fix and small feature release.
+The upgrade is recommended for everybody.
+
+For those using the bleeding edge version in the
+mercurial repository, we encourage you to update to the `0.3.1rc2` tag.
+
+What's New
+----------
 
 Deprecation:
  * The theano shared variable attribute `value` is deprecated, use `get_value()` or `set_value()`!
@@ -73,3 +81,69 @@ Other:
  * Added theano.tensor.std as a shortcut to sqrt(var(input=input, axis=axis)).
  * Whitespace, tabulation and indentation clean-up in the code.
  * Better detection of memory sharing between variables.
+
+Download
+--------
+
+You can download Theano from http://pypi.python.org/pypi/Theano.
+
+Description
+-----------
+
+Theano is a Python library that allows you to define, optimize, and
+efficiently evaluate mathematical expressions involving
+multi-dimensional arrays. It is built on top of NumPy. Theano
+features:
+
+ * tight integration with NumPy: a similar interface to NumPy's.
+  numpy.ndarrays are also used internally in Theano-compiled functions.
+ * transparent use of a GPU: perform data-intensive computations up to
+  140x faster than on a CPU (support for float32 only).
+ * efficient symbolic differentiation: Theano can compute derivatives
+  for functions of one or many inputs.
+ * speed and stability optimizations: avoid nasty bugs when computing
+  expressions such as log(1+ exp(x) ) for large values of x.
+ * dynamic C code generation: evaluate expressions faster.
+ * extensive unit-testing and self-verification: includes tools for
+  detecting and diagnosing bugs and/or potential problems.
+
+Theano has been powering large-scale computationally intensive
+scientific research since 2007, but it is also approachable
+enough to be used in the classroom (IFT6266 at the University of Montreal).
+
+Resources
+---------
+
+About Theano:
+
+http://deeplearning.net/software/theano/
+
+About NumPy:
+
+http://numpy.scipy.org/
+
+About Scipy:
+
+http://www.scipy.org/
+
+Machine Learning Tutorial with Theano on Deep Architectures:
+
+http://deeplearning.net/tutorial/
+
+Acknowledgments
+---------------
+
+I would like to thank all contributors of Theano. For this particular
+release, the people who have helped resolve many outstanding issues:
+(in alphabetical order) Frederic Bastien, Arnaud Bergeron, James
+Bergstra, Josh Bleecher Snyder, Olivier Delalleau, Guillaume
+Desjardins, Dumitru Erhan, Ian Goodfellow, Pascal Lamblin, Razvan
+Pascanu and Francois Savard and David Warde-Farley.
+
+Also, thank you to all NumPy and Scipy developers as Theano builds on
+its strength.
+
+All questions/comments are always welcome on the Theano
+mailing-lists ( http://deeplearning.net/software/theano/ )
+
+
