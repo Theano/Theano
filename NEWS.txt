@@ -1,49 +1,51 @@
 Modification in the trunk since the last release
-------------------------------------------------
-THIS IS A PARTIAL LIST. WE SHOULD CHECK ALL COMMITS SINCE LAST RELEASE AND ADD WHAT IS MISSING.
 
 TODO before new version:
- * shared.value is deprecated, use shared.get_value or shared_set_value! (See #558)
 
 
 Theano 0.3.1 (beta)
 -------------------
 
+Deprecation:
+ * The theano shared variable attribute value is deprecated, use shared.get_value or shared_set_value!
+    http://deeplearning.net/software/theano/tutorial/aliasing.html
+
 Bugs fixed:
  * The random number generator in theano/sandbox/rng_mrg.py did not always return the same sequence of number on the CPU and GPU.
     * In that case, there was garbage in the returned sequence, but that garbage looked random. So if your usage did not depend too much on the random properties, you might be OK.
- * Memory leak on the gpu when doing x+=y and that x and y are cuda_ndarray.
-    * The leak was introduced the 3 December 2010.
-    * This was being used when inc_subtensor is called and moved to the GPU (as an GpuIncSubtensor op).
  * In python mode (not the default mode) when input of elemwise operation was an empty ndarray, we were not returning an empty ndarray.
  * Some segfault at exit with GPU code.
+ * Some bugs in Scan:
+    * Scan was incorrectly caching the number of steps to execute
+    * others: Razvan?
+ * In GpuSum, bug in calculation of n_blocks for the 10 pattern
+ * In GpuConv, errors in conv_patch_stack_reduce when the entire kernel doesn't fit into shared memory.
+   The error was not found before as the impact was less then the relative tolerance of 1e-3. Now the relative tolerance is 1e-5.
+
+Crash fixed:
  * Add a feature to not have an exception that makes Theano crash when taking the gradient on DimShuffle in some particular case.
  * Compilation crash for GpuElemwise with tensor with very high number of dimensions.
  * Disabled C code generator that make gcc crash on complex type.
- * tensor.reshape now makes dimensions of length broadcastable (fixes #434).
- * Some bugs in Scan:
-    * when using numbers as inputs, not symbolic variables
-    * Scan was incorrectly caching the number of steps to execute
-    * others: Razvan?
- * output shape is now computed correctly for matrix-vector multiplication on GPU.
  * Crash in optimization when an Op has no input.
- * In GpuSum, bug in calculation of n_blocks for the 10 pattern
- * In GpuConv, errors in conv_patch_stack_reduce when the entire kernel doesn't fit into shared memory
+ * output shape is now computed correctly for matrix-vector multiplication on GPU.
+ * In Scan, when using numbers as inputs, not symbolic variables
 
 Optimization:
+ * New SpecifyShape op that allow to pass more shape info in the graph.
  * Fuse GpuElemwise more often (in the case where there are so many inputs that fusing them all would bust the 256 bytes limit of parameter to gpu function).
  * Speed up gemv by a work around scipy gemv slowness when the matrix is in C order (the default).
  * Remove join of only 1 element
- * Fix ticket #596: cpu join of only 1 element that was not moved to the gpu.
- * During optimization, consider one more case in get_constant_value
- * New SpecifyShape op that allow to pass more shape info in the graph.
+ * Cpu join of only 1 element that was not moved to the gpu.
+ * During optimization, consider one more case in get_constant_value.
 
 GPU:
  * cuda_shared.value = X now works inplace!
      * cuda_shared_var.set_value(new_ndarray) will overwrite the old value inplace in the most common case.
  * Allow to create a CudaNdarraySharedVariable from a CudaNdarray.
+ * new init_gpu_device theano flags.
 
 New features:
+ * tensor.reshape now makes dimensions of length broadcastable (fixes #434).
  * tensor.prod now implements the gradient
  * DebugMode now warns if an Op declared itself as returning a view of the input but did not do so.
     * This behaviour is a problem, because it can block other Ops from being inplace on the same inputs. This could lower the reuse of memory.
@@ -69,7 +71,6 @@ Unit tests:
 Other:
  * The name of compiledir now includes the Python version to make it easier for people with many Python versions
  * added theano.tensor.std as a shortcut to sqrt(var(input=input, axis=axis)).
- * new init_gpu_device theano flags.
  * Whitespace, tabulation and indentation clean-up in the code.
  * Better detection of memory sharing between variables.
 
