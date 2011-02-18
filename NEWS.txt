@@ -1,7 +1,7 @@
 Modification in the trunk since the last release
 
 Theano 0.3.1rc2 (2011-02-18)
--------------------
+----------------------------
 
 Deprecation:
  * The theano shared variable attribute `value` is deprecated, use `get_value()` or `set_value()`!
