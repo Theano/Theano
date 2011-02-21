@@ -21,7 +21,7 @@ Bugs fixed:
 
 Crash fixed:
  * Add a feature to not have an exception that makes Theano crash when taking the gradient on DimShuffle in some particular case.
- * Compilation crash for GpuElemwise with tensor with high number of dimensions(~6 or more).
+ * Compilation crash for GpuElemwise with tensor with high number of dimensions (~6 or more).
  * Disabled C code generator that make gcc crash on complex type.
  * Crash in optimization when an Op has no input.
  * Output shape is now computed correctly for matrix-vector multiplication on GPU.
