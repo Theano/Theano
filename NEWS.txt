@@ -1,6 +1,6 @@
 Modifications in the trunk since the last release
 
-Theano 0.3.1rc3 (2011-02-21)
+Theano 0.3.1 (2011-02-21)
 ----------------------------
 
 Deprecation:
