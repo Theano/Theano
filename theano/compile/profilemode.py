@@ -390,14 +390,14 @@ class ProfileMode(Mode):
                 if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
                     print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
 
-        if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
+        if any([x[2].__name__.lower().startswith("gpu") for x in sotimes]):
             cpu=[]
             gpu=[]
             trans=[]
             for so in sotimes:
                 if so[2].__name__ in ["HostFromGpu", "GpuFromHost"]:
                     trans.append(so)
-                elif so[2].__name__.startswith("Gpu"):
+                elif so[2].__name__.lower().startswith("gpu"):
                     gpu.append(so)
                 else:
                     cpu.append(so)
