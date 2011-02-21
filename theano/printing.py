@@ -373,7 +373,7 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and pstate.target is n
 pp = pprint
 
 
-def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.png'),
+def pydotprint(fct, outfile=None,
         compact=True, mode=None, format='png', with_ids=False):
     """
     print to a file in png format the graph of op of a compile theano fct.
@@ -397,6 +397,9 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     red ellipses are transfer to/from the gpu.
         op with those name GpuFromHost, HostFromGpu
     """
+    if outfile is None:
+        outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
+                               config.device + '.' + format)
     if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
         mode=None
     try:
