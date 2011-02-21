@@ -403,8 +403,9 @@ class InvalidValueError(DebugModeError):
 ########################
 
 
-
-def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.stdout, print_destroy_map=False, print_view_map=False):
+def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
+               file=sys.stdout, print_destroy_map=False, print_view_map=False,
+               order=[]):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -415,6 +416,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
     :param file: file-like object to which to print
     :param print_destroy_map: wether to print the op destroy_map after ofther info
     :param print_view_map: wether to print the op view_map after ofther info
+    :param order: If not empty will print the index in the toposort.
     """
     if depth==0:
         return
@@ -452,22 +454,28 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
         if view_map_str and view_map_str!='{}':
             view_map_str='v='+view_map_str
 
+        o=''
+        if order:
+            o = str(order.index(r.owner))
         if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]%s \'%s\' %s %s' % (prefix, a.op, id(r),
+            print >> file, '%s%s [@%i]%s \'%s\' %s %s %s' % (prefix, a.op, id(r),
                                                           type_str, r_name,
                                                           destroy_map_str,
-                                                          view_map_str)
+                                                          view_map_str,
+                                                          o)
         else:
-            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s' % (prefix, a.op,
+            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s %s' % (prefix, a.op,
                                                              a.outputs.index(r),
                                                              id(r), type_str,
                                                              r_name,
                                                              destroy_map_str,
-                                                             view_map_str)
+                                                             view_map_str,
+                                                             o)
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                debugprint(i, prefix+' |', depth=depth-1, done=done, print_type=print_type, file=file)
+                debugprint(i, prefix+' |', depth=depth-1, done=done,
+                           print_type=print_type, file=file, order=order)
     else:
         #this is a variable
         print >> file, '%s%s [@%i]%s' % (prefix, r, id(r), type_str)

@@ -47,18 +47,21 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         _file = file
     done = set()
     results_to_print = []
+    order = []
     if isinstance(obj, gof.Variable):
         results_to_print.append(obj)
     elif isinstance(obj, gof.Apply):
         results_to_print.extend(obj.outputs)
     elif isinstance(obj, Function):
         results_to_print.extend(obj.maker.env.outputs)
+        order = obj.maker.env.toposort()
     elif isinstance(obj, (list, tuple)):
         results_to_print.extend(obj)
     else:
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
-        debugmode.debugprint(r, depth=depth, done=done, print_type=print_type, file=_file)
+        debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
+                             file=_file, order=order)
     if file is _file:
         return file
     elif file=='str':
