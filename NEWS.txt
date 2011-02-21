@@ -9,14 +9,14 @@ Deprecation:
 
 Bugs fixed:
  * The random number generator in theano/sandbox/rng_mrg.py did not always return the same sequence of number on the CPU and GPU.
-    * In some cases, there was a small fraction of garbage in the returned sequence, 
-      but that garbage looked random. So if your usage did not depend too much on the random properties, you might be OK.
+    * In some cases, there was a small fraction of garbage in the returned sequence.
+      That garbage wad not random!
  * In python mode (not the default mode) when input of elemwise operation was an empty ndarray, we were not returning an empty ndarray.
- * Some segfault at exit with GPU code.
- * Some bugs in Scan:
-    * Scan was incorrectly caching the number of steps to execute
-      This affect you only if you change the number of step of a compiled scan op. Constant number of step were ok.
-    * others: Razvan?
+ * One bug in Scan:
+    * Scan cached the number of steps. This caused no problem because each time you called scan the number of steps would got refreshed.
+      The problem was when you called ScanGrad which would use the cached number of steps without refreshing it.
+      To reproduce this bug one would have to compile two graph, one that would contain a Scan and the other the corresponding GradScan and
+      call the first function to cache the number of steps, and then call the second function with a different number of steps.
  * In GpuConv, errors in conv_patch_stack_reduce when the entire kernel doesn't fit into shared memory.
    The error was not found before as the impact was less then the relative tolerance of 1e-3. Now the relative tolerance is 1e-5.
 
@@ -26,9 +26,10 @@ Crash fixed:
  * Disabled C code generator that make gcc crash on complex type.
  * Crash in optimization when an Op has no input.
  * output shape is now computed correctly for matrix-vector multiplication on GPU.
- * In Scan, when using numbers as inputs, not symbolic variables
- * In GpuSum, bug in calculation of n_blocks for the 10 pattern
-   (Sum on the row of a matrix)
+ * In Scan, when using numbers as inputs, not symbolic variables.
+ * In GradScan, when there is only 1 inputs in the Scan.
+ * In GpuSum, bug in calculation of n_blocks for the 10 pattern. (Sum on the row of a matrix)
+ * Some segfault at exit with GPU code.
 
 Optimization:
  * New SpecifyShape op that allow to pass more shape info in the graph.
