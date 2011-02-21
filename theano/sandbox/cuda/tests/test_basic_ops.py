@@ -341,6 +341,64 @@ def test_elemwise4():
     f(theano._asarray(numpy.random.rand(4), dtype='float32'), theano._asarray(numpy.random.rand(3), dtype='float32'))
 
 
+def test_elemwise_comparaison_cast():
+    """
+    test if an elemwise comparaison followed by a cast to float32 are pushed to gpu.
+
+    NOW WE TEST THAT THIS IS NOT DONE. CHANGE THE TEST WHEN WE DO IT.
+    """
+
+    a = tensor.fmatrix()
+    b = tensor.fmatrix()
+    av = theano._asarray(numpy.random.rand(4,4), dtype='float32')
+    bv = numpy.ones((4,4), dtype='float32')
+
+    for g,ans in [(tensor.lt, av<bv), (tensor.gt, av>bv),
+                  (tensor.le, av<=bv), (tensor.ge, av>=bv)]:
+
+        f = pfunc([a,b], tensor.cast(g(a,b),'float32'), mode=mode_with_gpu)
+
+        #theano.printing.debugprint(f)
+        out = f(av,bv)
+        assert numpy.all(out == ans)
+        #assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.toposort()])
+        assert any([isinstance(node.op, tensor.Elemwise) for node in f.maker.env.toposort()])
+
+def test_elemwise_composite_float64():
+    # test that we don't fuse composite elemwise with float64 somewhere inside
+    # nvcc by default downcast them to float32. We would need to tell him not to
+    # do so, but that possible only on some device.
+    a = tensor.fmatrix()
+    b = tensor.fmatrix()
+    av = theano._asarray(numpy.random.rand(4,4), dtype='float32')
+    bv = numpy.ones((4,4), dtype='float32')
+
+    for mode in [mode_with_gpu, mode_with_gpu.excluding('gpu_after_fusion'), mode_with_gpu.excluding('elemwise_fusion')]:
+        f = pfunc([a,b], tensor.cast(tensor.lt(tensor.cast(a,'float64')**2,#*numpy.asarray(2, 'float32'),
+                                               b),
+                                     'float32'), mode=mode)
+
+        #theano.printing.debugprint(f, print_type=True)
+        out = f(av,bv)
+        assert numpy.all(out == ((av**2)<bv))
+        for node in f.maker.env.toposort():
+            if isinstance(node.op, cuda.GpuElemwise):
+                if isinstance(node.op.scalar_op, theano.scalar.Composite):
+                    def get_all_basic_scalar(composite_op):
+                        l=[]
+                        for i in composite_op.env.toposort():
+                            if isinstance(i, theano.scalar.Composite):
+                                l += get_all_basic_scalar(i)
+                            else:
+                                l.append(i)
+                        return l
+                    scals = get_all_basic_scalar(node.op.scalar_op)
+                    for s in scals:
+                        assert not any([i.type.dtype=='float64' for i in s.inputs+s.outputs])
+
+
+
+
 def speed_elemwise_collapse():
     """ used to time if the collapse of ccontiguous dims are useful """
 
