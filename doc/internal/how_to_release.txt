@@ -6,7 +6,6 @@ How to make a release
 
 Clone the code::
 
-    ssh projects@pylearn.org
     hg clone http://hg.assembla.com/theano Theano-0.X
 
 Edit ``setup.py`` to contain the newest version number ::
