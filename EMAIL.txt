@@ -1,12 +1,12 @@
 ===========================
- Announcing Theano 0.3.1rc3
+ Announcing Theano 0.3.1
 ===========================
 
 This is a bug/crash fix and small feature release.
 The upgrade is recommended for everybody.
 
 For those using the bleeding edge version in the
-mercurial repository, we encourage you to update to the `0.3.1rc3` tag.
+mercurial repository, we encourage you to update to the `0.3.1` tag.
 
 
 Deleting old cache
