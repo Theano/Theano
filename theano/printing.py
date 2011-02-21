@@ -478,9 +478,9 @@ def pydotprint(fct, outfile=None,
 
         for id,var in enumerate(node.inputs):
             varstr=var_name(var)
-            label=''
+            label=str(var.type)
             if len(node.inputs)>1:
-                label=str(id)
+                label=str(id)+' '+label
             if var.owner is None:
                 g.add_node(pd.Node(varstr,color='green',shape=var_shape))
                 g.add_edge(pd.Edge(varstr,astr, label=label))
@@ -494,9 +494,9 @@ def pydotprint(fct, outfile=None,
         for id,var in enumerate(node.outputs):
             varstr=var_name(var)
             out = any([x[0]=='output' for x in var.clients])
-            label=''
+            label=str(var.type)
             if len(node.outputs)>1:
-                label=str(id)
+                label=str(id)+' '+label
             if out:
                 g.add_edge(pd.Edge(astr, varstr, label=label))
                 g.add_node(pd.Node(varstr,color='blue',shape=var_shape))
