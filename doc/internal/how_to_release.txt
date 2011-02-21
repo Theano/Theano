@@ -37,7 +37,7 @@ push that into the original repository::
 
 Tag the release. The syntax is something like the following::
 
-    hg commit -m"modifications for 0.X release" setup.py doc/conf.py
+    hg commit -m"modifications for 0.X release" setup.py doc/conf.py NEWS.txt
     hg tag 0.X
     hg push
 
@@ -52,11 +52,13 @@ Finally, use setuptools to register and upload the release::
 
     python setup.py register sdist --formats=gztar,zip upload
 
-TODO:
+This command register and uploads the package on pypi.python.org. To be able
+to do that, you must register on PyPI (you can create an new account, or use
+OpenID), and be listed among the "Package Index Owners" of Theano.
 
-* Does that line actually uploads the package on pypi.org?
-* Who can do that?
-* How to upload on mloss.org and freshmeat.net?
+TODO:
+* How to upload to mloss.org? Project page is at http://mloss.org/software/view/241/, James Bergstra is listed as the submitter.
+* How to upload to freshmeat.net? Project page is at http://freshmeat.net/projects/theano, Frederic Bastien is listed as the admin.
 
 Change ``ISRELEASED`` back to ``False``.
 
