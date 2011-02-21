@@ -4,9 +4,17 @@
 How to make a release
 ==================================================
 
+Get a fresh copy of the repository
+==================================
+
 Clone the code::
 
     hg clone http://hg.assembla.com/theano Theano-0.X
+
+It does not have to be in your PYTHONPATH.
+
+Update the version number
+=========================
 
 Edit ``setup.py`` to contain the newest version number ::
 
@@ -18,11 +26,25 @@ Edit ``setup.py`` to contain the newest version number ::
  * Change the ``version`` and ``release`` variables to new version number.
  * Change the upper copyright year to the current year if necessary.
 
+``NEWS.txt`` usually contains the name and date of the release, change them
+too.
+
+Tag the release
+===============
+
+You will need to commit the previous changes, tag the resulting version, and
+push that into the original repository::
+
 Tag the release. The syntax is something like the following::
 
     hg commit -m"modifications for 0.X release" setup.py doc/conf.py
     hg tag 0.X
     hg push
+
+The documentation will be automatically regenerated in the next few hours.
+
+Generate and upload the package
+===============================
 
 Now change ``ISRELEASED`` in setup.py to ``True``.
 
@@ -30,6 +52,21 @@ Finally, use setuptools to register and upload the release::
 
     python setup.py register sdist --formats=gztar,zip upload
 
-Change ``ISRELEASED`` back to ``False``. 
+TODO:
 
-Regenerate the documentation.
+* Does that line actually uploads the package on pypi.org?
+* Who can do that?
+* How to upload on mloss.org and freshmeat.net?
+
+Change ``ISRELEASED`` back to ``False``.
+
+Announce the release
+====================
+
+Generate an e-mail from the template in in ``EMAIL.txt``, including content
+from ``NEWS.txt``, and send it to the following mailing lists:
+
+* theano-users
+* theano-announce
+* numpy-discussion@scipy.org
+* scipy-user@scipy.org
