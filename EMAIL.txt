@@ -1,12 +1,26 @@
 ===========================
- Announcing Theano 0.3.1rc2
+ Announcing Theano 0.3.1rc3
 ===========================
 
 This is a bug/crash fix and small feature release.
 The upgrade is recommended for everybody.
 
 For those using the bleeding edge version in the
-mercurial repository, we encourage you to update to the `0.3.1rc2` tag.
+mercurial repository, we encourage you to update to the `0.3.1rc3` tag.
+
+
+Deleting old cache
+------------------
+
+Since the default path of the cache directory for compiled object
+changed, we encourage you to delete the previous one.
+
+The easiest way to do that is to execute:
+    python -c 'import theano; print theano.config.base_compiledir'
+and then call "rm -rf" on the returned result.
+
+A new cache directory will then be created next time you import theano.
+
 
 What's New
 ----------
