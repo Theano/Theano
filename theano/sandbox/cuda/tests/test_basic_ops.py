@@ -361,8 +361,8 @@ def test_elemwise_comparaison_cast():
         #theano.printing.debugprint(f)
         out = f(av,bv)
         assert numpy.all(out == ans)
-        #assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.toposort()])
-        assert any([isinstance(node.op, tensor.Elemwise) for node in f.maker.env.toposort()])
+        assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.toposort()])
+        #assert any([isinstance(node.op, tensor.Elemwise) for node in f.maker.env.toposort()])
 
 def test_elemwise_composite_float64():
     # test that we don't fuse composite elemwise with float64 somewhere inside

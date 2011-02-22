@@ -32,6 +32,10 @@ gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
         'fast_run', 'inplace')
 optdb.register('gpu', 
         gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
+# This second pass is needed as the fusion can put all the non float32 code
+# inside the elemwise. When it there is no float64 op, this is working.
+optdb.register('gpu_after_fusion',
+        gpu_seqopt, optdb.__position__.get('elemwise_fusion', 71) + .1)
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
@@ -88,13 +92,39 @@ gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_foldin
 #botering with this useless pattern.
 compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_host_gpu, 'fast_run')
 
+def float64_in_elemwise(op):
+    """
+    Return True of the Elemwise op have float64 in it.
+    Return False otherwise.
+
+    :note: This can happen with the Composite Op.
+    """
+    def get_all_basic_scalar(composite_op):
+        l=[]
+        for i in composite_op.env.toposort():
+            if isinstance(i, theano.scalar.Composite):
+                l += get_all_basic_scalar(i)
+            else:
+                l.append(i)
+        return l
+    if isinstance(op, GpuElemwise) or isinstance(op, tensor.Elemwise):
+        if isinstance(op.scalar_op, theano.scalar.Composite):
+            scals = get_all_basic_scalar(op.scalar_op)
+            for s in scals:
+                if any([i.type.dtype=='float64' for i in s.inputs+s.outputs]):
+                    return True
+    return False
+
+        
+
+
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
     """elemwise(..., host_from_gpu, ...)
        -> host_from_gpu(elemwise(gpu_from_host, ..., gpu_from_host)
     """
-    if isinstance(node.op, tensor.Elemwise):
+    if isinstance(node.op, tensor.Elemwise) and not float64_in_elemwise(node.op):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
@@ -134,7 +164,11 @@ def local_gpu_elemwise_1(node):
     """
     if node.op == gpu_from_host:
         host_i, = node.inputs
-        if host_i.owner and isinstance(host_i.owner.op, tensor.Elemwise) and len(host_i.clients)==1:
+        if (host_i.owner and
+            isinstance(host_i.owner.op, tensor.Elemwise) and
+            len(host_i.clients)==1 and
+            not float64_in_elemwise(node.op)):
+
             elemwise_node = host_i.owner
             #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
             new_op = GpuElemwise(elemwise_node.op.scalar_op)

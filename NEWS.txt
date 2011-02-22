@@ -1,5 +1,12 @@
 Modifications in the trunk since the last release
 
+In trunk since 0.3.1 release
+----------------------------
+GPU:
+ * Move to the gpu fused elemwise that have other dtype then float32 in them(except float64) if the input and output are float32.
+   * This allow to move elemwise comparaison to the gpu if we cast it to float32 after that.
+
+
 Theano 0.3.1 (2011-02-21)
 ----------------------------
 
