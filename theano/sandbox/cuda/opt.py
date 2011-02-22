@@ -11,9 +11,9 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, Optimizer,
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar, 
+from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
-from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax, 
+from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
         GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -21,16 +21,17 @@ from theano.sandbox.cuda.nnet import (
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.compile import optdb
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
-#optdb.print_summary()  # shows what is currently registered 
+
+#optdb.print_summary()  # shows what is currently registered
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
-gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1, 
+gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
         'fast_run', 'inplace')
-gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2, 
+gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
         'fast_run', 'inplace')
-optdb.register('gpu', 
+optdb.register('gpu',
         gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
 # This second pass is needed as the fusion can put all the non float32 code
 # inside the elemwise. When it there is no float64 op, this is working.
@@ -44,7 +45,7 @@ def register_opt(*tags, **kwargs):
         return local_opt
     return f
 
-#register local_track_shape_i at this level too 
+#register local_track_shape_i at this level too
 #to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
 
@@ -115,7 +116,7 @@ def float64_in_elemwise(op):
                     return True
     return False
 
-        
+
 
 
 @register_opt()
@@ -806,7 +807,7 @@ def get_device_type_sizes():
             "Got the following error, but we can ignore it. "
             "This could cause less GpuElemwise fused together.\n"
             "%s") % e)
-    
+
     rval = get_device_type_sizes.rval = locals()
     return rval
 
