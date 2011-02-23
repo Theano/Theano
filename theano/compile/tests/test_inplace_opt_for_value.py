@@ -104,9 +104,10 @@ class TanhRnn(Op):
         z = x.type() #make a new symbolic variable with the same type as x
         return Apply(self, [x, z0, A], [z])
 
-    def perform(self, node, (x,z0,A), out):
-        assert x is not None 
-        assert z0 is not None 
+    def perform(self, node, inp, out):
+        x, z0, A = inp
+        assert x is not None
+        assert z0 is not None
         assert A is not None
         T,M = x.shape
         z = N.zeros((T+1, M))
@@ -115,7 +116,9 @@ class TanhRnn(Op):
             z[i+1] = N.tanh(N.dot(z[i], A) + x[i])
         out[0][0] = z
 
-    def grad(self, (x, z0, A), (gz,)):
+    def grad(self, inp, grads):
+        x, z0, A = inp
+        gz, = grads
         z = tanh_rnn(x, z0, A)
         gz_incl_rnn, gx = tanh_rnn_grad(A, z, gz)
         return [gx, gz_incl_rnn[0], (T.dot(z[:-1].T, gx))]
@@ -136,7 +139,8 @@ class TanhRnnGrad(Op):
     def make_node(self, A, z, gz):
         return Apply(self, [A,z,gz], (z.type(), gz.type()))
 
-    def perform(self, node, (A, z, gz), out):
+    def perform(self, node, inp, out):
+        A, z, gz = inp
         Tp1,M = z.shape
         T = Tp1 - 1
         gx = N.zeros((T, M))

@@ -59,9 +59,9 @@ class ProfileMode(Mode):
                 self.op_cimpl, self.compile_time, self.fct_call_time,
                 self.fct_call, self.message, self.outputs_size)
 
-    def __setstate__(self, (linker, optimizer, apply_time, op_cimpl,
-                            compile_time, fct_call_time, fct_call, message, outputs_size)):
-
+    def __setstate__(self, state):
+        linker, optimizer, apply_time, op_cimpl, compile_time, \
+                fct_call_time, fct_call, message, outputs_size = state
         self.apply_time = apply_time
         self.op_cimpl = op_cimpl
         self.compile_time = compile_time

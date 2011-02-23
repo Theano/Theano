@@ -83,8 +83,9 @@ class MyOp(Op):
 
     def __str__(self):
         return self.name
-    
-    def perform(self, node, inputs, (out, )):
+
+    def perform(self, node, inputs, out_):
+        out, = out_
         out[0] = self.impl(*inputs)
     def c_code_cache_version(self):
         return ()
@@ -100,28 +101,36 @@ class Binary(MyOp):
 
 
 class Add(Binary):
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return "%(z)s = %(x)s + %(y)s;" % locals()
     def impl(self, x, y):
         return x + y
 add = Add()
 
 class Sub(Binary):
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def impl(self, x, y):
         return -10 # erroneous (most of the time)
 sub = Sub()
 
 class Mul(Binary):
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return "%(z)s = %(x)s * %(y)s;" % locals()
     def impl(self, x, y):
         return x * y
 mul = Mul()
 
 class Div(Binary):
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def impl(self, x, y):
         return x / y
@@ -256,7 +265,9 @@ def test_duallinker_mismatch():
 ################################
 
 class AddFail(Binary):
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         fail=sub['fail']
         return """%(z)s = %(x)s + %(y)s;
             PyErr_SetString(PyExc_RuntimeError, "failing here");

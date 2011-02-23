@@ -99,11 +99,15 @@ class OutputGuard(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = x
     def __str__(self):
         return '%s' % self.__class__.__name__
-    def c_code(self, node, nodename, (x,), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, = inp
+        z, = out
         return """
         Py_XDECREF(%(z)s);
         %(z)s = %(x)s;
@@ -209,7 +213,8 @@ class Mode(object):
     def __getstate__(self):
         return (self.provided_linker, self.provided_optimizer)
 
-    def __setstate__(self, (linker, optimizer)):
+    def __setstate__(self, state):
+        linker, optimizer = state
         self.provided_linker = linker
         self.provided_optimizer = optimizer
         if isinstance(linker, str) or linker is None:

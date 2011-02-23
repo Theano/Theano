@@ -44,8 +44,9 @@ class MyOp(Op):
 
     def __str__(self):
         return self.name
-    
-    def perform(self, node, inputs, (out, )):
+
+    def perform(self, node, inputs, out_):
+        out, = out_
         out[0] = self.impl(*inputs)
 
 add = MyOp(2, 'Add', lambda x, y: x + y)

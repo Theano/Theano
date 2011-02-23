@@ -2513,7 +2513,9 @@ class test_grad(unittest.TestCase):
             inputs = [scalar('a'),scalar('c')]
             outputs = [scalar('b'),scalar('d')]
             return gof.Apply(self, inputs, outputs)
-        def grad(self, (x0,x1), (gz0,gz1)):
+        def grad(self, inp, grads):
+            x0, x1 = inp
+            gz0, gz1 = grads
             return self.gval0, self.gval1
 
     def test_1param(self):

@@ -1303,7 +1303,9 @@ class test_shapeoptimizer(unittest.TestCase):
             def make_node(self, x):
                 x = as_tensor_variable(x)
                 return Apply(self, [x], [x.type()])
-            def perform(self, node, (x,), (out,)):
+            def perform(self, node, inp, out_):
+                x, = inp
+                out, = out_
                 out[0] = x.copy()
             #def infer_shape(self, node, (xshp,)):
                 #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
@@ -1314,9 +1316,13 @@ class test_shapeoptimizer(unittest.TestCase):
             def make_node(self, x):
                 x = as_tensor_variable(x)
                 return Apply(self, [x], [x.type()])
-            def perform(self, node, (x,), (out,)):
+            def perform(self, node, inp, out_):
+                x, = inp
+                out, = out_
                 out[0] = x.copy()
-            def infer_shape(self, node, (xshp,)):
+            def infer_shape(self, node, xshp_):
+                # Could also just return.
+                xshp, = xshp_
                 return (xshp,)
         identity_shape = IdentityShape()
 

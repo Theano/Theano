@@ -147,7 +147,9 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
@@ -214,7 +216,9 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
@@ -360,13 +364,17 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
                 return self.name
 
-            def c_code(self, node, name, (x, y), (z, ), sub):
+            def c_code(self, node, name, inp, out, sub):
+                x, y = inp
+                z, = out
                 return self.ccode % locals()
 
 
