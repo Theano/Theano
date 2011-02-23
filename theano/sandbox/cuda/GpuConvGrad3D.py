@@ -66,7 +66,8 @@ class GpuConvGrad3D(theano.Op):
 
         output_storage[0][0] = dCdW
 
-    def c_code(self, node, nodename, (V,d,WShape,dCdH), outputs, sub):
+    def c_code(self, node, nodename, inputs, outputs, sub):
+        V, d, WShape, dCdH = inputs
         fail = sub['fail']
 
         dCdW = outputs[0]

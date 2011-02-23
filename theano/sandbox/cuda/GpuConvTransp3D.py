@@ -48,7 +48,8 @@ class GpuConvTransp3D(theano.Op):
     def c_code_cache_version(self):
         return ()
 
-    def c_code(self, node, nodename, (W, b, d, H, RShape), outputs, sub):
+    def c_code(self, node, nodename, inputs, outputs, sub):
+        W, b, d, H, RShape = inputs
         fail = sub['fail']
 
         R = outputs[0]
