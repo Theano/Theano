@@ -221,7 +221,7 @@ class ConvOp(Op):
         else: return []
 
     @staticmethod
-    def getOutputShape(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
+    def getOutputShape(inshp, kshp, stride=(1,1), mode='valid'):
         """
         Computes the output dimensions of convolving an image of shape "inshp"
         with kernels of shape "kshp".
@@ -231,6 +231,7 @@ class ConvOp(Op):
         :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
         :return: (rows,cols) of output image
         """
+        dx, dy = stride
         if mode=='valid': s = -1
         else: s = 1
         inshp, kshp = numpy.array(inshp), numpy.array(kshp)
@@ -583,10 +584,12 @@ class ConvOp(Op):
             # we simply let the default function do its work.
             raise NotImplementedError()
 
-    def perform(self,node, (img2d, filtersflipped), (z,)):
+    def perform(self,node, inp, out):
         """
         By default if len(img2d.shape)==3, we
         """
+        img2d, filtersflipped = inp
+        z, = out
         if not imported_scipy_signal:
             raise theano.gof.utils.MethodNotDefined(
                 "c_headers", type(self), self.__class__.__name__,
@@ -696,7 +699,9 @@ class ConvOp(Op):
         z[0]=zz
 
 
-    def grad(self, (inputs, kerns), (gz,)):
+    def grad(self, inp, grads):
+        inputs, kerns = inp
+        gz, = grads
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
@@ -897,7 +902,9 @@ using namespace std;
             return blas.ldflags(libs=False, include_dir=True)
         return []
 
-    def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        img2d, filtersflipped = inp
+        z, = out
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
         assert node.inputs[0].type.dtype == node.inputs[1].type.dtype

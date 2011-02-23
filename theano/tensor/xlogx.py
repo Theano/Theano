@@ -16,9 +16,13 @@ class XlogX(scalar.UnaryScalarOp):
         return x * numpy.log(x)
     def impl(self, x):
         return XlogX.st_impl(x)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, grads):
+        x, = inputs
+        gz, = grads
         return [gz * (1 + scalar.log(x))]
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, = inputs
+        z, = outputs
         if node.inputs[0].type in [scalar.float32, scalar.float64]:
             return """%(z)s =
                 %(x)s == 0.0
@@ -40,9 +44,13 @@ class XlogY0(scalar.BinaryScalarOp):
         return x * numpy.log(y)
     def impl(self, x, y):
         return XlogY0.st_impl(x, y)
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, grads):
+        x, y = inputs
+        gz, = grads
         return [gz * scalar.log(y), gz * x / y]
-    def c_code(self, node, name, (x, y), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, y = inputs
+        z, = outputs
         if node.inputs[0].type in [scalar.float32, scalar.float64]:
             return """%(z)s =
                 %(x)s == 0.0

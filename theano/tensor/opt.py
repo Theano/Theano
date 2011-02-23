@@ -349,7 +349,8 @@ class MakeVector(T.Op):
         return T.Apply(self, inputs, [otype()])
     def __str__(self):
         return self.__class__.__name__
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         # not calling theano._asarray as optimization
         if out[0] is None:
             out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
@@ -395,14 +396,18 @@ class Shape_i(T.Op):
         if x.ndim <= self.i:
             raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
         return T.Apply(self, [x], [T.lscalar()])
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inp, out_):
+        x, = inp
+        out, = out_
         if out[0] is None:
             out[0] = theano._asarray(x.shape[self.i], dtype='int64')
         else:
             out[0][...] = x.shape[self.i]
     def c_code_cache_version(self):
         return (0,1)
-    def c_code(self, node, name, (x, ), (out, ), sub):
+    def c_code(self, node, name, inp, out_, sub):
+        x, = inp
+        out, = out_
         i = self.i
         if isinstance(node.inputs[0].type,T.TensorType):
             return """
@@ -423,7 +428,7 @@ class Shape_i(T.Op):
             #      various types of variables.
             #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
         return [None]
 
 class ShapeFeature(object):
@@ -824,7 +829,8 @@ class Assert(T.Op):
 
     def __str__(self):
         return self.__class__.__name__
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         v = inputs[0]
         out[0]=v
         assert numpy.all(inputs[1:])

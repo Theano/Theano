@@ -86,7 +86,8 @@ class ConvTransp3D(theano.Op):
         print "\t\t\t\tConvTransp3D python code"
         output_storage[0][0] = computeR(W,b,d,H,RShape)
 
-    def c_code(self, node, nodename, (W, b, d, H, RShape), outputs, sub):
+    def c_code(self, node, nodename, inputs, outputs, sub):
+        W, b, d, H, RShape = inputs
         fail = sub['fail']
 
         R = outputs[0]

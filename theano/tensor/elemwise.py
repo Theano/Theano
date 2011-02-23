@@ -179,7 +179,9 @@ class DimShuffle(Op):
         else:
             return "DimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
-    def perform(self, node, (input, ), (storage, )):
+    def perform(self, node, inp, out):
+        input, = inp
+        storage, = out
         # drop
         res = input
         if type(res) != numpy.ndarray:
@@ -204,7 +206,8 @@ class DimShuffle(Op):
 
         storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
-    def infer_shape(self, node, (ishp,)):
+    def infer_shape(self, node, shapes):
+        ishp, = shapes
         ishp = list(ishp)
         for drop in reversed(self.drop):
             del ishp[drop]
@@ -216,7 +219,9 @@ class DimShuffle(Op):
             rval.insert(augm, 1)
         return [rval]
 
-    def c_code(self, node, name, (input,), (res,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        res, = out
         basename = input + '__view_or_copy'
 
         def statements(lst):
@@ -317,7 +322,9 @@ class DimShuffle(Op):
     def c_code_cache_version(self):
         return (1,)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
@@ -934,7 +941,9 @@ class CAReduce(Op):
         else:
             return "Reduce{%s}" % self.scalar_op
 
-    def perform(self, node, (input, ), (output, )):
+    def perform(self, node, inp, out):
+        input, = inp
+        output, = out
         axis = self.axis
         if axis is None:
             axis = range(input.ndim)
@@ -959,7 +968,8 @@ class CAReduce(Op):
         else:
             output[0] = numpy.copy(variable)
 
-    def infer_shape(self, node, (ishape,)):
+    def infer_shape(self, node, shapes):
+        ishape, = shapes
         axis = self.axis
         if axis is None:
             return (),
@@ -1115,7 +1125,9 @@ class Sum(CAReduce):
                 uint32='uint64',
                 ).get(idtype, idtype)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
@@ -1176,7 +1188,7 @@ class Prod(CAReduce):
                 uint32='uint64',
                 ).get(idtype, idtype)
 
-    def grad(self, (prod_in, ), (gz, )):
+    def grad(self, inp, grads):
         '''
         The grad of this Op could be very easy, it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
@@ -1221,6 +1233,8 @@ class Prod(CAReduce):
         the "T.eq()" bits), then taking this or that behavior (see T.switch)
         based on the result of this count.
         '''
+        prod_in, = inp
+        gz, = grads
         if prod_in.dtype[0:3] in ('int','uin'):
             return [None]
 
@@ -1314,7 +1328,9 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
             return x
         return x*y
 
-    def c_code(self, node, name, (x,y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return ("%(z)s = ((%(x)s == 0) ? (%(y)s) : " + \
                     "((%(y)s == 0) ? (%(x)s) : ((%(y)s)*(%(x)s))) );") % locals()
 

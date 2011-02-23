@@ -181,7 +181,8 @@ class RandomFunction(gof.Op):
 
         return [None, [sample_shp[i] for i in xrange(node.outputs[1].ndim)]]
 
-    def perform(self, node, inputs, (rout, out)):
+    def perform(self, node, inputs, out_):
+        out, rout = out_
         # Use self.fn to draw shape worth of random numbers.
         # Numbers are drawn from r if self.inplace is True, and from a copy of r if
         # self.inplace is False

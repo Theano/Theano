@@ -119,9 +119,11 @@ class DownsampleFactorMax(Op):
         # TODO: consider restrucing the dtype?
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
         """
         """
+        x, = inp
+        z, = out
         if len(x.shape)!=4:
             raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
         if z[0] is None:
@@ -143,11 +145,15 @@ class DownsampleFactorMax(Op):
                         zj = j / ds1
                         zz[n,k,zi,zj] = __builtin__.max(zz[n,k,zi,zj], x[n,k,i,j])
 
-    def grad(self,(x,), (gz,)):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         maxout = self(x)
         return [DownsampleFactorMaxGrad(self.ds, ignore_border=self.ignore_border)(x, maxout, gz)]
 
-    def c_code(self, node, name, (x,), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         fail=sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
@@ -244,7 +250,9 @@ class DownsampleFactorMaxGrad(Op):
 
         return Apply(self, [x, maxout, gz], [x.type()])
 
-    def perform(self, node, (x, maxout, gz), (gx_stg,)):
+    def perform(self, node, inp, out):
+        x, maxout, gz = inp
+        gx_stg, = out
         gx = numpy.zeros_like(x)
 
         ds0, ds1 = self.ds
@@ -263,7 +271,9 @@ class DownsampleFactorMaxGrad(Op):
                         else: gx[n,k,i,j] = 0
         gx_stg[0] = gx
 
-    def c_code(self, node, name, (x, z, gz), (gx,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, z, gz = inp
+        gx, = out
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds

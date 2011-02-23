@@ -29,10 +29,14 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         return 1.0 / (1.0 + numpy.exp(-x))
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         y = scalar_sigmoid(x)
         return [gz * y * (1.0 - y)]
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
@@ -71,9 +75,13 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         return numpy.log1p(numpy.exp(x))
     def impl(self, x):
         return ScalarSoftplus.static_impl(x)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         return [gz * scalar_sigmoid(x)]
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
