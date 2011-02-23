@@ -7,9 +7,9 @@ The PycudaElemwiseSourceModuleOp is a Theano op use pycuda code generated with p
 
 The PycudaElemwiseKernelOp op use pycuda code generated with pycuda.elementwise.ElementwiseKernel. It must be wrapper by TheanoElementwiseKernel.
 
-Their is a test in test_pycuda.py. 
+Their is a test in test_pycuda.py.
 
-This don't work with broadcast and non-contiguous memory as pycuda don't support that, but we make sure we don't introduce problem. 
+This don't work with broadcast and non-contiguous memory as pycuda don't support that, but we make sure we don't introduce problem.
   If the memory is non-contiguous, we create a new copy that is contiguous.
   If their is broadcasted dimensions, we raise an error.
 """
@@ -47,7 +47,7 @@ class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
         if isinstance(arguments, str):
             arguments = [theano_parse_c_arg(arg) for arg in arguments.split(",")]
             pycuda.elementwise.ElementwiseKernel.__init__(self, arguments, operation, name, keep, options, **kwargs)
-            
+
     def __call__(self, *args):
         vectors = []
 
@@ -183,7 +183,7 @@ class PycudaElemwiseKernelOp(Op):
         in_name = ["i"+str(id) for id in range(len(inputs))]
         out_name = ["o"+str(id) for id in range(self.nout)]
         c_code = self.scalar_op.c_code(out_node, "some_name", tuple([n+"[i]"for n in in_name]), tuple(n+"[i]"for n in out_name), {})
-        
+
         self.pycuda_fct = TheanoElementwiseKernel(
             ", ".join([var.type.dtype_specs()[1]+" *"+name for var,name in zip(inputs,in_name) + zip(out_node.outputs,out_name)]),
             c_code,
