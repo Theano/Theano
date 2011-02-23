@@ -1062,7 +1062,7 @@ class Scan(Op):
     # OLD DOCUMENTATION CAN BE FOUND NEAR REVISION 2581
     #
 
-    def __init__(self,(inputs, outputs, givens, slice_to_seqs),n_seqs,  n_outs,
+    def __init__(self, ins, n_seqs,  n_outs,
                  inplace_map={}, seqs_taps={}, outs_taps={},
                  n_steps = gof.Constant(gof.generic, 'unknown', '?_steps'),
                  truncate_gradient = -1, n_outs_not_shared =0,
@@ -1093,6 +1093,7 @@ class Scan(Op):
         :param name: see scan fct
         :param mode: see scan fct
         '''
+        inputs, outputs, givens, slice_to_seqs = ins
         # build a list of output types for any Apply node using this op.
         self.apply_output_types = []
         for i, o in enumerate(outputs):
@@ -1601,7 +1602,7 @@ class Scan(Op):
 
 class ScanGrad(Op):
     """Gradient Op for Scan"""
-    def __init__(self,(g_ins, g_outs) , n_seqs, n_outs,
+    def __init__(self, grads, n_seqs, n_outs,
             n_outs_not_shared,
             go_backwards = False, seqs_taps = {}, outs_taps= {},
             truncate_gradient = -1, mode = None, name = None):
@@ -1609,7 +1610,7 @@ class ScanGrad(Op):
         :param mode: see scan fct
         :param name: see scan fct
         """
-
+        g_ins, g_outs = grads
 
         self.inputs = g_ins
         self.outputs = g_outs

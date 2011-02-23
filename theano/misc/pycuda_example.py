@@ -124,9 +124,10 @@ class PycudaElemwiseSourceModuleOp(Op):
         self.pycuda_fct = mod.get_function(fct_name)
         return out_node
 
-    def perform(self, node, inputs, (z,)):
+    def perform(self, node, inputs, out):
         #TODO support broadcast!
         #TODO assert all input have the same shape
+        z, = out
         if z[0] is None or z[0].shape!=inputs[0].shape:
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         self.pycuda_fct(inputs[0],inputs[1],z[0], block=(inputs[0].shape[0],inputs[0].shape[1],1))
@@ -191,8 +192,9 @@ class PycudaElemwiseKernelOp(Op):
 #include <numpy/arrayobject.h>""")
         return out_node
 
-    def perform(self, node, inputs, (z,)):
+    def perform(self, node, inputs, out):
         #TODO assert all input have the same shape
+        z, = out
         if z[0] is None or z[0].shape!=inputs[0].shape:
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         i = inputs + z
