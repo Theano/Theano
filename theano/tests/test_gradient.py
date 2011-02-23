@@ -15,7 +15,7 @@ def _grad_sources_inputs(*args):
     return grad_sources_inputs(warn_type=False, *args)
 
 class test_grad_sources_inputs(unittest.TestCase):
-    def test_retNone1(self): 
+    def test_retNone1(self):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self):
@@ -31,7 +31,7 @@ class test_grad_sources_inputs(unittest.TestCase):
             self.failUnless(e[0] is gradient._msg_retType)
             return
         self.fail()
-    def test_retNone1_b(self): 
+    def test_retNone1_b(self):
         """Test that it is ok to return [None] from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
@@ -44,7 +44,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         g = _grad_sources_inputs([(a.out, 1)], None)
         self.failUnless(not i in g)
 
-    def test_wrong_rval_len1(self): 
+    def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradients"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):

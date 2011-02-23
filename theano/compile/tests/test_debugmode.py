@@ -36,7 +36,7 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         #ERROR TO ADD THIS CRAPPY OFFSET
         if self.py_offset:
             out[0] = z+0.5
-        else: out[0] = z 
+        else: out[0] = z
 
     def c_code(self, node, name, (a, b), (z,), sub):
         return """
@@ -75,7 +75,7 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
 # inconsistent is a invalid op, whose perform and c_code do not match
 inconsistent = BROKEN_ON_PURPOSE_Add(False)
 # off_by_half is a good op, that is different from theano.sparse.sd_csc
-off_by_half = BROKEN_ON_PURPOSE_Add(True) 
+off_by_half = BROKEN_ON_PURPOSE_Add(True)
 
 class WeirdBrokenOp(gof.Op):
     """
@@ -172,11 +172,11 @@ def test_badclinkeroutput():
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
-    f_good = theano.function([a, b], 
-            off_by_half(a, b), 
+    f_good = theano.function([a, b],
+            off_by_half(a, b),
             mode=debugmode.DebugMode(check_c_code=True))
-    f_inconsistent = theano.function([a,b], 
-            inconsistent(a, b), 
+    f_inconsistent = theano.function([a,b],
+            inconsistent(a, b),
             mode=debugmode.DebugMode(check_c_code=True))
 
     #this should evaluate with no error
@@ -189,7 +189,7 @@ def test_badclinkeroutput():
         return #TEST PASS
 
     assert False  #an error should have been detected
-        
+
 
 def test_badoptimization():
     @gof.local_optimizer([theano.tensor.add])
@@ -204,7 +204,7 @@ def test_badoptimization():
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
-    f = theano.function([a, b], a+b, 
+    f = theano.function([a, b], a+b,
             mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
 
     try:
@@ -235,8 +235,8 @@ def test_stochasticoptimization():
     b = theano.tensor.dvector()
 
     try:
-        f = theano.function([a, b], 
-                theano.tensor.add(a, b), 
+        f = theano.function([a, b],
+                theano.tensor.add(a, b),
                 mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
     except debugmode.StochasticOrder:
         return #TEST PASS

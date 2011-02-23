@@ -24,7 +24,7 @@ class TDouble(Type):
         return """
         %(name)s = 0;
         %(name)s_bad_thing = malloc(100000);
-        //printf("Initializing %(name)s\\n"); 
+        //printf("Initializing %(name)s\\n");
         """ % locals()
 
     def c_literal(self, data):
@@ -40,7 +40,7 @@ class TDouble(Type):
         %(name)s_bad_thing = NULL;
         //printf("Extracting %(name)s\\n");
         """ % dict(locals(), **sub)
-    
+
     def c_sync(self, name, sub):
         return """
         Py_XDECREF(py_%(name)s);
@@ -71,7 +71,7 @@ class MyOp(Op):
     def __init__(self, nin, name):
         self.nin = nin
         self.name = name
-    
+
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
         inputs = map(as_variable, inputs)
@@ -98,28 +98,28 @@ class Binary(MyOp):
     def __init__(self):
         MyOp.__init__(self, 2, self.__class__.__name__)
 
-        
+
 class Add(Binary):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s + %(y)s;" % locals()
     def impl(self, x, y):
         return x + y
 add = Add()
-        
+
 class Sub(Binary):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def impl(self, x, y):
         return -10 # erroneous (most of the time)
 sub = Sub()
-        
+
 class Mul(Binary):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s * %(y)s;" % locals()
     def impl(self, x, y):
         return x * y
 mul = Mul()
-        
+
 class Div(Binary):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s / %(y)s;" % locals()
@@ -185,7 +185,7 @@ def test_clinker_dups_inner():
     lnk = CLinker().accept(Env([x, y, z], [e]))
     fn = lnk.make_function()
     assert fn(1.0, 2.0, 3.0) == 8.0
-    
+
 
 
 ######################
@@ -254,7 +254,7 @@ def test_duallinker_mismatch():
 ################################
 # Test that failure code works #
 ################################
-        
+
 class AddFail(Binary):
     def c_code(self, node, name, (x, y), (z, ), sub):
         fail=sub['fail']

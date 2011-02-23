@@ -73,7 +73,7 @@ class TanhRnn(Op):
     This class implements the recurrent part of a recurrent neural network.
 
     There is not a neat way to include this in a more fine-grained way in Theano at the moment,
-    so to get something working, I'm implementing a relatively complicated Op that could be 
+    so to get something working, I'm implementing a relatively complicated Op that could be
     broken down later into constituents.
 
     Anyway, this Op implements recursive computation of the form:
@@ -81,7 +81,7 @@ class TanhRnn(Op):
     .. latex-eqn:
         z_t &= \tanh( z_{t-1} A + x_{t-1})
 
-    For z0 a vector, and x a TxM matrix, it returns a matrix z of shape (T+1, M), 
+    For z0 a vector, and x a TxM matrix, it returns a matrix z of shape (T+1, M),
     in which z[0] = z0.
 
     """
@@ -275,7 +275,7 @@ def test_WEIRD_STUFF():
     print rnn1.minimizer.step.maker.inputs
     print rnn2.minimizer.step.maker.inputs
 
-    
+
 
 #    for i in range(1,len(rnn1.minimizer.step.maker.inputs)):
 #        print "valid update:",theano.printing.pp(rnn1.minimizer.step.maker.inputs[i].update),
@@ -284,7 +284,7 @@ def test_WEIRD_STUFF():
 #        print rnn2.minimizer.step.maker.inputs[i].update.name
 #    print dir(rnn1.minimizer.step.maker.inputs[5].update)
 #    print dir(rnn2.minimizer.step.maker.inputs[5].update)
-    
+
 
 
     niter=3

@@ -32,7 +32,7 @@ class MyOp(Op):
         self.name = name
         if impl:
             self.impl = impl
-    
+
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
         inputs = map(as_variable, inputs)
@@ -85,7 +85,7 @@ class TestPerformLinker:
         i[1].data = 2
         fn()
         assert o[0].data == 1.5
-        
+
     def test_function(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
@@ -130,7 +130,7 @@ class TestWrapLinker:
         nodes = []
         def wrap(i, node, th):
             nodes.append(node.op)
-            
+
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker(allow_gc=False)], wrap).make_thunk()
@@ -154,8 +154,8 @@ class TestWrapLinker:
         fn()
         assert nodes == [div, add, mul]
         assert o[0].data == 1.5
-        
 
 
 
-        
+
+
