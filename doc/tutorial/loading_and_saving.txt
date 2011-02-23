@@ -133,7 +133,8 @@ matrix ``W`` and a bias ``b``, you can define:
     def __getstate__(self):
         return (W, b)
 
-    def __setstate__(self, (W,b)):
+    def __setstate__(self, state):
+        W, b = state
         self.W = W
         self.b = b
 
@@ -146,7 +147,8 @@ functions to reflect the change in name:
     def __getstate__(self):
         return (weights, bias)
 
-    def __setstate__(self, (W,b)):
+    def __setstate__(self, state):
+        W, b = state
         self.weights = W
         self.bias = b
 

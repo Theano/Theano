@@ -89,9 +89,13 @@ write an Op:**
             return x * numpy.log(x)
         def impl(self, x):
             return XlogX.st_impl(x)
-        def grad(self, (x,), (gz,)):
+        def grad(self, inp, grads):
+            x, = inp
+            gz, = grads
             return [gz * (1 + scalar.log(x))]
-        def c_code(self, node, name, (x,), (z,), sub):
+        def c_code(self, node, name, inp, out, sub):
+            x, = inp
+            z, = out
             if node.inputs[0].type in [scalar.float32, scalar.float64]:
                 return """%(z)s =
                     %(x)s == 0.0
