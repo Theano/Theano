@@ -25,7 +25,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if x < -30.0:
             return 0.0
         if x > 30.0:
-            return 1.0 
+            return 1.0
         return 1.0 / (1.0 + numpy.exp(-x))
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
@@ -125,7 +125,7 @@ def _is_1(expr):
         return False
 
 log1msigm_to_softplus = gof.PatternSub(
-    (tensor.log, 
+    (tensor.log,
         (tensor.sub,
             dict(pattern='y', constraint = _is_1),
             (sigmoid, 'x'))),
@@ -134,7 +134,7 @@ log1msigm_to_softplus = gof.PatternSub(
     skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
-    (tensor.log1p, 
+    (tensor.log1p,
      (tensor.exp, 'x')),
     (softplus, 'x'),
     allow_multiple_clients = True)
@@ -289,7 +289,7 @@ def local_sigm_times_exp(node):
                 rval = tensor.mul(*terms)
             else:
                 rval = terms[0]
-            
+
             if neg:
                 return [-rval]
             else:
@@ -336,13 +336,13 @@ def local_1msigmoid(node):
                 return [sigmoid(-sub_r.owner.inputs[0])]
 
 register_local_1msigmoid = False
-# This is False because the Stabilize pattern above 
-# is looking for 1-sigm.  Also Canonizer turns neg into *(-1) and so 
+# This is False because the Stabilize pattern above
+# is looking for 1-sigm.  Also Canonizer turns neg into *(-1) and so
 # this optimization might set off an unwanted chain of things.
 # OTH - this transformation can be seen as pushing normal arithmetic either  below or above the
 # sigmoidal nonlinearity... so if the canonicalized form had anything to say about that then it
 # would be a consideration... anyway leaving False for now.
-              
+
 if register_local_1msigmoid:
     opt.register_canonicalize(local_1msigmoid)
 

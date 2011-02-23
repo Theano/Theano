@@ -109,7 +109,7 @@ class Conv3D(theano.Op):
         dCdV.name = 'Conv3D_dCdV.dCdH='+dCdH_name+',V='+V_name
         dCdW.name = 'Conv3D_dCdW.dCdH='+dCdH_name+',V='+V_name+',W='+W_name
         dCdb.name = 'Conv3D_dCdb.dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name
-        
+
 
 
         return [ dCdV, dCdW, dCdb, dCdd ]
@@ -140,7 +140,7 @@ class Conv3D(theano.Op):
         output_dur = T.floor( (vidDur - filterDur) / dt ) +1
 
         rval = (batch_size,  output_height, output_width, output_dur, output_channels )
-    
+
 
         return [ rval ]
 

@@ -155,7 +155,7 @@ class RandomFunction(gof.Op):
                 raise TypeError('r must be RandomStateType instance', r)
         # the following doesn't work because we want to ignore the broadcastable flags in
         # shape.type
-        # assert shape.type == tensor.lvector 
+        # assert shape.type == tensor.lvector
 
         # convert args to TensorType instances
         # and append enough None's to match the length of self.args

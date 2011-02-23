@@ -73,7 +73,7 @@ class ConvTransp3D(theano.Op):
         else:
             b_name = 'anon'
 
-        
+
         dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name
         dCdb.name = 'ConvTransp3D_dCdb.H='+H_name+',dCdR='+dCdR_name+',W='+W_name+',b='+b_name
         dCdH.name = 'ConvTransp3D_dCdH.H='+H_name+',dCdR='+dCdR_name

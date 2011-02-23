@@ -1,6 +1,6 @@
 """ Ops for downsampling images.
 
-Planned: 
+Planned:
 DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 """
@@ -21,7 +21,7 @@ def max_pool_2d(input, ds, ignore_border=False):
     the specified factor, by keeping only the maximum value of non-overlapping
     patches of size (ds[0],ds[1])
 
-    :type input: N-D theano tensor of input images. 
+    :type input: N-D theano tensor of input images.
     :param input: input images. Max pooling will be done over the 2 last dimensions.
     :type ds: tuple of length 2
     :param ds: factor by which to downscale. (2,2) will halve the image in each dimension.
@@ -39,7 +39,7 @@ def max_pool_2d(input, ds, ignore_border=False):
     batch_size = tensor.shape_padright(batch_size,1)
 
     # store as 4D tensor with shape: (batch_size,1,height,width)
-    new_shape = tensor.cast(tensor.join(0, batch_size, 
+    new_shape = tensor.cast(tensor.join(0, batch_size,
         tensor.as_tensor([1,]), img_shape), 'int64')
     input_4D = tensor.reshape(input, new_shape, ndim=4)
 
@@ -54,7 +54,7 @@ def max_pool_2d(input, ds, ignore_border=False):
 
 class DownsampleFactorMax(Op):
     """
-    For N-dimensional tensors, consider that the last two dimensions span images.  
+    For N-dimensional tensors, consider that the last two dimensions span images.
     This Op downsamples these images by a factor ds, by taking the max over non-
     overlapping rectangular regions.
     """
@@ -77,7 +77,7 @@ class DownsampleFactorMax(Op):
         :rtype: list
         :returns: the shape of the output from this op, for input of given shape.  This will
         have the same length as imgshape, but with last two elements reduced as per the
-        downsampling & ignore_border flags.  
+        downsampling & ignore_border flags.
         """
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements (rows, cols)')
@@ -162,7 +162,7 @@ class DownsampleFactorMax(Op):
         int x_shp0_usable;
         int x_shp1_usable;
         int z_shp0, z_shp1;
-        if(%(x)s->nd!=4) 
+        if(%(x)s->nd!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
@@ -289,17 +289,17 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "input types must all match");
             %(fail)s;
         }
-        if(%(x)s->nd!=4) 
+        if(%(x)s->nd!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(z)s->nd!=4) 
+        if(%(z)s->nd!=4)
         {
             PyErr_SetString(PyExc_ValueError, "z must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(gz)s->nd!=4) 
+        if(%(gz)s->nd!=4)
         {
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
