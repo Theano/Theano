@@ -373,6 +373,14 @@ def test_elemwise_composite_float64():
     av = theano._asarray(numpy.random.rand(4,4), dtype='float32')
     bv = numpy.ones((4,4), dtype='float32')
 
+    def get_all_basic_scalar(composite_op):
+        l=[]
+        for i in composite_op.env.toposort():
+            if isinstance(i, theano.scalar.Composite):
+                l += get_all_basic_scalar(i)
+            else:
+                l.append(i)
+        return l
     for mode in [mode_with_gpu, mode_with_gpu.excluding('gpu_after_fusion'), mode_with_gpu.excluding('elemwise_fusion')]:
         f = pfunc([a,b], tensor.cast(tensor.lt(tensor.cast(a,'float64')**2,#*numpy.asarray(2, 'float32'),
                                                b),
@@ -384,14 +392,6 @@ def test_elemwise_composite_float64():
         for node in f.maker.env.toposort():
             if isinstance(node.op, cuda.GpuElemwise):
                 if isinstance(node.op.scalar_op, theano.scalar.Composite):
-                    def get_all_basic_scalar(composite_op):
-                        l=[]
-                        for i in composite_op.env.toposort():
-                            if isinstance(i, theano.scalar.Composite):
-                                l += get_all_basic_scalar(i)
-                            else:
-                                l.append(i)
-                        return l
                     scals = get_all_basic_scalar(node.op.scalar_op)
                     for s in scals:
                         assert not any([i.type.dtype=='float64' for i in s.inputs+s.outputs])
