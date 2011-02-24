@@ -106,7 +106,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 outputs = [gof.generic(),gof.generic()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
-                inp, = x
+                x, = inp
                 gz1, gz2 = grads
                 return gval,
         a1 = O().make_node()
