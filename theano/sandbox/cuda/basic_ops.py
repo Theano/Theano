@@ -42,9 +42,12 @@ class HostFromGpu(Op):
         if not isinstance(x.type, CudaNdarrayType):
             raise TypeError(x)
         return Apply(self, [x], [tensor.TensorType(dtype=x.dtype, broadcastable=x.broadcastable)()])
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = numpy.asarray(x)
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, grads):
+        gz, = grads
         return [gpu_from_host(gz)]
     def infer_shape(self, node, xshp):
         return xshp
@@ -61,9 +64,12 @@ class GpuFromHost(Op):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable, dtype=x.dtype)()])
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, grads):
+        gz, = grads
         return [host_from_gpu(gz)]
     def infer_shape(self, node, xshp):
         return xshp
@@ -245,7 +251,9 @@ class GpuDimShuffle(Op):
     def __str__(self):
         return "GpuDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
-    def c_code(self, node, name, (input,), (res,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        res, = out
         basename = input + '__view_or_copy'
 
         nd_in = len(self.input_broadcastable)
@@ -395,10 +403,14 @@ class GpuSum(Op):
         o_broadcast = [x.type.broadcastable[i] for i in xrange(x.type.ndim) if not self.reduce_mask[i]]
         return Apply(self, [x], [CudaNdarrayType(o_broadcast)()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = x.reduce_sum(self.reduce_mask)
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
 
         nd_in = node.inputs[0].type.ndim
         nd_out = node.outputs[0].type.ndim
@@ -1672,7 +1684,9 @@ class GpuReshape(tensor.Reshape):
     def make_node(self, x, shp):
         host_reshaped = host_from_gpu(x).reshape(shp,ndim=self.ndim)
         return Apply(self, [x, shp], [CudaNdarrayType(host_reshaped.broadcastable)()])
-    def perform(self, node, (x, shp), (out,)):
+    def perform(self, node, inp, out_):
+        x, shp = inp
+        out, = out_
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
                     ', should be %i' % (len(shp), self.ndim), shp)
@@ -1686,7 +1700,8 @@ class GpuSubtensor(tensor.Subtensor):
         otype = CudaNdarrayType(rval.outputs[0].type.broadcastable)
         return Apply(self, [x]+rval.inputs[1:], [otype()])
 
-    def perform(self, node, inputs, (out, )):
+    def perform(self, node, inputs, out_):
+        out, = out_
         x = inputs[0]
         indices = list(reversed(inputs[1:]))
 
@@ -1745,7 +1760,8 @@ class GpuJoin(tensor.Join):
                         axis, tensors,
                         as_tensor_variable_args, output_maker)
 
-    def perform(self, node, axis_and_tensors, (out, )):
+    def perform(self, node, axis_and_tensors, out_):
+        out, = out_
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
         # In case axis is numpy.int8 and has no __index__() method
         axis = int(axis)
@@ -1832,14 +1848,16 @@ class GpuAlloc(Op):
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
         return Apply(self, [v]+sh, [otype()])
 
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         v = inputs[0]
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
             out[0] = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(sh)
         out[0][...] = v # broadcast v to fill us up
 
-    def c_code(self, node, name, inputs, (out,), sub):
+    def c_code(self, node, name, inputs, out_, sub):
+        out, = out_
         fail = sub['fail']
         value = inputs[0]
         shps = inputs[1:]
@@ -1866,7 +1884,8 @@ class GpuAlloc(Op):
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
-    def grad(self, inputs, (gout,)):
+    def grad(self, inputs, grads):
+        gout, = grads
         return [None for i in inputs]
 
     def c_code_cache_version(self):
@@ -1888,7 +1907,9 @@ class GpuContiguous(Op):
         input = as_cuda_ndarray_variable(input)
         return Apply(self, [input], [input.type()])
 
-    def c_code(self, node, name, (input,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        z, = out
         fail = sub['fail']
         str = """
         {

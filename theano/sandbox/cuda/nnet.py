@@ -77,7 +77,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 
         """
 
-    def c_code(self, node, nodename, (x, b, y_idx), (nll, sm, am), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, b, y_idx = inp
+        nll, sm, am = out
         classname=self.__class__.__name__
         fail = sub['fail']
         sio = StringIO.StringIO()
@@ -191,7 +193,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     def c_code_cache_version(self):
         return (3,)
         #return ()
-    def c_code(self, node, nodename, (dnll, sm, y_idx), (dx,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        dnll, sm, y_idx = inp
+        dx, = out
         fail = sub['fail']
         return """
         if ((%(dnll)s->nd != 1)
@@ -306,7 +310,9 @@ class GpuSoftmax (Op):
     def c_code_cache_version(self):
         #return ()
         return (2,) + inline_softmax.code_version
-    def c_code(self, node, nodename, (x,), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, = inp
+        z, = out
         fail = sub['fail']
         return """
         if (%(x)s->nd != 2)
@@ -394,7 +400,9 @@ class GpuSoftmaxWithBias (Op):
         #return ()
         return (2,) + inline_softmax.code_version
 
-    def c_code(self, node, nodename, (x,b), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, b = inp
+        z, = out
         fail = sub['fail']
         return """
         if (%(x)s->nd != 2)

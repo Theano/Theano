@@ -23,13 +23,17 @@ class Multinomial(Op):
         #assert unis.dtype == 'float32'
         return Apply(self, [pvals, unis], [pvals.type()])
 
-    def grad(self, (pvals, unis), (gz,)):
+    def grad(self, inp, grads):
+        pvals, unis = inp
+        gz, = grads
         return [None, None]
 
     def c_code_cache_version(self):
         return (3,)
-                
-    def c_code(self, node, name, (pvals, unis), (z,), sub):
+
+    def c_code(self, node, name, inp, out, sub):
+        pvals, unis = inp
+        z, = out
 
         fail = sub['fail']
         return """
@@ -154,7 +158,9 @@ class GpuMultinomial(Multinomial):
         """ % locals()
 
 
-    def c_code(self, node, name, (pvals, unis), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        pvals, unis = inp
+        z, = out
         fail = sub['fail']
         return """
 

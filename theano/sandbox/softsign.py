@@ -9,13 +9,17 @@ class ScalarSoftsign(theano.scalar.UnaryScalarOp):
         return x / (1.0 + abs(x))
     def impl(self, x):
         return ScalarSoftsign.static_impl(x)
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         if 'float' in x.type.dtype:
             d = (1.0 + abs(x))
             return [gz / (d * d)]
         else:
             return NotImplemented
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type in [theano.scalar.float32, theano.scalar.float64]:
             return "%(z)s = %(x)s / (1.0+fabs(%(x)s));" % locals()
         raise NotImplementedError('only floating point x is implemented')

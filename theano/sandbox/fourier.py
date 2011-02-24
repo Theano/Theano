@@ -67,7 +67,9 @@ class FFT(Op):
         rval = Apply(self, [_frames, _n, _axis], [spectrogram, buf])
         return rval
 
-    def perform(self, node, (frames, n, axis), (spectrogram, buf)):
+    def perform(self, node, inp, out):
+        frames, n, axis = inp
+        spectrogram, buf = out
         if self.inverse:
             fft_fn = numpy.fft.ifft
         else:
@@ -88,7 +90,9 @@ class FFT(Op):
                 raise NotImplementedError()
         else:
             spectrogram[0] = fft
-    def grad(self, (frames, n, axis), (g_spectrogram, g_buf)):
+    def grad(self, inp, out):
+        frames, n, axis = inp
+        g_spectrogram, g_buf = out
         return [grad_todo(frames), None, None]
 
 fft = FFT(half=False, inverse=False)

@@ -28,8 +28,9 @@ class Minimal(gof.Op):
         # HERE `args` must be THEANO VARIABLES
         return gof.Apply(op=self, inputs=args, outputs=[tensor.lscalar()])
 
-    def perform(self, node, inputs, (output, )):
-        # HERE `inputs` are PYTHON OBJECTS 
+    def perform(self, node, inputs, out_):
+        output, = out_
+        # HERE `inputs` are PYTHON OBJECTS
 
         # do what you want here,
         # but do not modify any of the arguments [inplace].

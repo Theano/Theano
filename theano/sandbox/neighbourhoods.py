@@ -161,7 +161,9 @@ class NeighbourhoodsFromImages(Op):
                 raise TypeError()
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         if self.inverse:
             # +1 in the inverse case
             if len(x.shape) != (self.n_dims_before + \

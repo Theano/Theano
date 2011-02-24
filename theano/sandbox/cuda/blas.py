@@ -371,7 +371,9 @@ class GpuConv(Op):
             open(os.path.join(os.path.split(__file__)[0],'conv_full_kernel.cu')).read()+\
             open(os.path.join(os.path.split(__file__)[0],'conv.cu')).read()
 
-    def c_code(self, node, nodename, (img, kern), (out,), sub):
+    def c_code(self, node, nodename, inp, out_, sub):
+        img, kern = inp
+        out, = out_
         dx = self.subsample[0]
         dy = self.subsample[1]
         border_mode = self.border_mode
@@ -435,7 +437,9 @@ class GpuDownsampleFactorMax(Op):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
         return (1)
-    def c_code(self, node, nodename, (x,), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, = inp
+        z, = out
         fail = sub['fail']
         ds0, ds1 = self.ds
         ignore_border = int(self.ignore_border)
@@ -586,7 +590,9 @@ class GpuDownsampleFactorMaxGrad(Op):
         #return ()
         return (3,)
 
-    def c_code(self, node, nodename, (x, z, gz), (gx,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, z, gz = inp
+        gx, = out
         fail = sub['fail']
         ds0, ds1 = self.ds
         ignore_border = int(self.ignore_border)

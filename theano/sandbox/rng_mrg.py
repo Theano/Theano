@@ -173,7 +173,9 @@ class mrg_uniform(mrg_uniform_base):
         op = cls(TensorType(dtype, (False,)*ndim))
         return op(rstate, cast(v_size, 'int32'))
 
-    def perform(self, node, (rstate, size), (o_rstate, o_sample)):
+    def perform(self, node, inp, out):
+        rstate, size = inp
+        o_rstate, o_sample = out
         numpy_version=numpy.__version__.split('.')
         if not self.warned_numpy_version and int(numpy_version[0])<=1 and int(numpy_version[1])<3:
             print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
@@ -199,7 +201,9 @@ class mrg_uniform(mrg_uniform_base):
         o_rstate[0] = node.outputs[0].type.filter(rstate) # send to GPU if necessary
         o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))# send to GPU if necessary
 
-    def c_code(self, node, name, (rstate, size), (o_rstate, o_sample), sub):
+    def c_code(self, node, name, inp, out, sub):
+        rstate, size = inp
+        o_rstate, o_sample = out
         if self.inplace:
             o_rstate_requirement = 'NPY_C_CONTIGUOUS|NPY_ALIGNED'
         else:
@@ -455,7 +459,9 @@ class GPU_mrg_uniform(mrg_uniform_base):
 
         """ %locals()
 
-    def c_code(self, node, nodename, (rstate, size), (o_rstate, o_sample), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        rstate, size = inp
+        o_rstate, o_sample = out
         inplace = int(self.inplace)
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num

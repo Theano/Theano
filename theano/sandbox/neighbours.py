@@ -46,7 +46,9 @@ class Images2Neibs(Op):
 
         return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
 
-    def grad(self, (x, neib_shape, neib_step), (gz,)):
+    def grad(self, inp, grads):
+        x, neib_shape, neib_step = inp
+        gz, = grads
         if self.mode=='valid':
             return [neibs2images(gz, neib_shape, x.shape), None, None]
         else:
@@ -54,8 +56,10 @@ class Images2Neibs(Op):
 
     def c_code_cache_version(self):
         return (3,)
-                
-    def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
+
+    def c_code(self, node, name, inp, out, sub):
+        ten4, neib_shape, neib_step = inp
+        z, = out
 
         fail = sub['fail']
         mode=self.mode
@@ -388,7 +392,9 @@ class GpuImages2Neibs(Images2Neibs):
 
         """ % locals()
 
-    def c_code(self, node, name, (ten4, neib_shape, neib_step), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        ten4, neib_shape, neib_step = inp
+        z, = out
         fail = sub['fail']
         mode = self.mode
         return """
