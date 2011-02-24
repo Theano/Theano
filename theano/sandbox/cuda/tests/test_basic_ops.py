@@ -344,8 +344,6 @@ def test_elemwise4():
 def test_elemwise_comparaison_cast():
     """
     test if an elemwise comparaison followed by a cast to float32 are pushed to gpu.
-
-    NOW WE TEST THAT THIS IS NOT DONE. CHANGE THE TEST WHEN WE DO IT.
     """
 
     a = tensor.fmatrix()
