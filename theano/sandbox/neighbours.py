@@ -88,7 +88,7 @@ class Images2Neibs(Op):
             PyErr_Format(PyExc_TypeError, "neib_step wrong step ; has to contain 2 elements");
             %(fail)s;
         }
-        
+
         // (c,d) = neib_shape
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
         const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
@@ -137,7 +137,7 @@ class Images2Neibs(Op):
                             * grid_d
                             * (%(ten4)s->dimensions)[1]
                             * (%(ten4)s->dimensions)[0];
-        
+
         if ((NULL == %(z)s)
             || ((%(z)s->dimensions)[0] != z_dim0 )
             || ((%(z)s->dimensions)[1] != z_dim1 )
@@ -147,12 +147,12 @@ class Images2Neibs(Op):
             npy_intp dims[2];
             dims[0] = z_dim0;
             dims[1] = z_dim1;
-            
+
             %(z)s = (PyArrayObject*) PyArray_EMPTY(2,
                 dims,
                 type_num_%(ten4)s,
                 0);
-                       
+
             if (!%(z)s)
             {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc z output");
@@ -162,12 +162,12 @@ class Images2Neibs(Op):
         }
 
         { // NESTED SCOPE
-        
+
         const int nb_batch = (%(ten4)s->dimensions)[0];
         const int nb_stack = (%(ten4)s->dimensions)[1];
         const int height = (%(ten4)s->dimensions)[2];
         const int width = (%(ten4)s->dimensions)[3];
-        
+
         // (c,d) = neib_shape
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
         const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
@@ -177,7 +177,7 @@ class Images2Neibs(Op):
 
         const int wrap_centered_idx_shift_x = c/2;
         const int wrap_centered_idx_shift_y = d/2;
-        // Oh this is messed up...      
+        // Oh this is messed up...
         for (int n = 0; n < nb_batch; n++)              // loop over batches
             for (int s = 0; s < nb_stack; s++)          // loop over stacks
                 for (int a = 0; a < grid_c; a++)        // loop over the number of patch in height
@@ -194,18 +194,18 @@ class Images2Neibs(Op):
                             }
                             for (int j = 0; j < d; j++)  // loop over d
                             {
-                                
-                                int ten4_3 = j + b * step_y;     
+
+                                int ten4_3 = j + b * step_y;
                                 if ( "%(mode)s" == "wrap_centered" ){
                                     ten4_3 -= wrap_centered_idx_shift_y;
                                     if ( ten4_3 < 0 ) ten4_3 += width;
                                     else if (ten4_3 >= width) ten4_3 -= width;
                                 }
                                 int z_col = j + d * i;
-                                
+
                                 dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
                                 *curr_z = *( (dtype_%(ten4)s*) PyArray_GETPTR4(%(ten4)s, n, s, ten4_2, ten4_3));
-                                
+
                                 //printf("\\n(%%i,%%i,%%i,%%i) --> (%%i,%%i)",n,s, ten4_2, ten4_3, z_row, z_col);
                                 //printf("%%f ", *curr_z);
                             }
@@ -220,22 +220,22 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
 def neibs2images(neibs, neib_shape, original_shape):
     """
     Inverse of images2neib.
-    
+
     neibs : matrix like the one obtained by images2neib
     neib_shape : neib_shape that was used in images2neib
     original_shape : original shape of the 4d tensor given to images2neib
-    
+
     Return a 4d tensor of shape `original_shape`.
     """
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
-    
+
     new_neib_shape = T.stack( original_shape[-1]/neib_shape[1], neib_shape[1] )
     return images2neibs(neibs.dimshuffle('x','x',0,1), new_neib_shape).reshape(original_shape)
     #return images2neibs(neibs.reshape((1,1,neibs.shape[0],neibs.shape[1])), new_neib_shape).reshape(original_shape)
-    
-   
+
+
 # This is work in progress
 class GpuImages2Neibs(Images2Neibs):
     def __init__(self, mode='valid'):
@@ -251,7 +251,7 @@ class GpuImages2Neibs(Images2Neibs):
         assert ten4.ndim==4
         assert neib_shape.ndim==1
         assert neib_step.ndim==1
-        
+
         return Apply(self, [ten4, neib_shape, neib_step], [CudaNdarrayType(broadcastable=(False,False),
                                                                 dtype=ten4.type.dtype)()])
 
@@ -313,8 +313,8 @@ class GpuImages2Neibs(Images2Neibs):
                                     }
 
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
-                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
-                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
+                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n));
+                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n;
 
                                     int z_col = j + d * i;
                                     int z_idx = z_col + c*d*z_row;
@@ -375,8 +375,8 @@ class GpuImages2Neibs(Images2Neibs):
                                     }
 
                                     //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
-                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
-                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
+                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n));
+                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n;
 
                                     int z_col = j + d * i;
                                     int z_idx = z_col + c*d*z_row;
@@ -406,7 +406,7 @@ class GpuImages2Neibs(Images2Neibs):
                 PyErr_Format(PyExc_TypeError, "unis wrong rank");
                 %(fail)s;
             }
-            
+
             if (%(neib_shape)s->dimensions[0] != 2)
             {
                 PyErr_Format(PyExc_ValueError, "neib_shape has to contain two elements");
@@ -459,7 +459,7 @@ class GpuImages2Neibs(Images2Neibs):
                                 * grid_d
                                 * CudaNdarray_HOST_DIMS(%(ten4)s)[1]
                                 * CudaNdarray_HOST_DIMS(%(ten4)s)[0];
-            
+
             if ((NULL == %(z)s)
                 || (CudaNdarray_HOST_DIMS(%(z)s)[0] != z_dim0)
                 || (CudaNdarray_HOST_DIMS(%(z)s)[1] != z_dim1))
@@ -475,11 +475,11 @@ class GpuImages2Neibs(Images2Neibs):
                     %(fail)s;
                 }
             }
-        
+
         }
 
         { // NESTED SCOPE
-        
+
             const int nb_batch = CudaNdarray_HOST_DIMS(%(ten4)s)[0];
             const int nb_stack = CudaNdarray_HOST_DIMS(%(ten4)s)[1];
             const int height = CudaNdarray_HOST_DIMS(%(ten4)s)[2];
@@ -489,11 +489,11 @@ class GpuImages2Neibs(Images2Neibs):
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
             const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
             const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
-            
+
             dim3 n_threads(d,c,1);
             //Their is a max of 512 threads per blocks
-            while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--; 
-            while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--; 
+            while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--;
+            while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--;
 
             //Make bigger block to have better memory access pattern and a higher core utilisation.
             //for smaller patch size
@@ -519,7 +519,7 @@ class GpuImages2Neibs(Images2Neibs):
                 f = k_multi_warp_%(name)s;
             }
 
-            f<<<n_blocks, n_threads, n_shared>>>(                
+            f<<<n_blocks, n_threads, n_shared>>>(
                 nb_batch,
                 nb_stack,
                 height, width,
@@ -534,7 +534,7 @@ class GpuImages2Neibs(Images2Neibs):
             );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i; shared: %%i)\\n",
                     "k_multi_warp_%(name)s",
@@ -560,4 +560,4 @@ def use_gpu_images2neibs(node):
 
 if cuda_available:
     register_gpu_opt()(use_gpu_images2neibs)
-    
+

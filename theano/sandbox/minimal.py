@@ -25,13 +25,13 @@ class Minimal(gof.Op):
         return hash(type(self))
 
     def make_node(self, *args):
-        # HERE `args` must be THEANO VARIABLES 
+        # HERE `args` must be THEANO VARIABLES
         return gof.Apply(op=self, inputs=args, outputs=[tensor.lscalar()])
 
     def perform(self, node, inputs, (output, )):
         # HERE `inputs` are PYTHON OBJECTS 
 
-        # do what you want here, 
+        # do what you want here,
         # but do not modify any of the arguments [inplace].
         print "perform got %i arguments" % len(inputs)
 

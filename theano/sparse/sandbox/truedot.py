@@ -60,7 +60,7 @@ class TrueDot(gof.op.Op):
             if self.grad_preserves_dense:
                 rval[1] = dense_from_sparse(rval[1])
         return rval
-    
+
 def true_dot(x, y, grad_preserves_dense=True):
     """
     @todo: Maybe the triple-transposition formulation (when x is dense)

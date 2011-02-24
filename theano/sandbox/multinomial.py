@@ -59,12 +59,12 @@ class Multinomial(Op):
             npy_intp dims[2];
             dims[0] = (%(pvals)s->dimensions)[0];
             dims[1] = (%(pvals)s->dimensions)[1];
-            
+
             %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
                 dims,
                 type_num_%(pvals)s,
                 0);
-                       
+
             if (!%(z)s)
             {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc z output");
@@ -96,7 +96,7 @@ class Multinomial(Op):
                 }
             }
         }
-        
+
         } // END NESTED SCOPE
         """ % locals()
 multinomial = Multinomial()
@@ -128,24 +128,24 @@ class GpuMultinomial(Multinomial):
             float * global_unis,
             float * global_outs
         )
-        {            
+        {
             int n = blockDim.x*blockIdx.x + threadIdx.x;
             if (n < nb_multi)
-            {    
-            
+            {
+
             float cummul = 0.;
             bool done = false;
             for (int m = 0; m < nb_outcomes; ++m)
             {
                 cummul += global_pvals[n * pvals_col_strides + m * pvals_row_strides];
-                
+
                 float current_out = 0.;
 
                 if (!done && global_unis[n] < cummul)
                 {
                     current_out = 1.;
                     done = true;
-                }  
+                }
                 global_outs[n + m * nb_multi] = current_out;
             }
             }
@@ -157,7 +157,7 @@ class GpuMultinomial(Multinomial):
     def c_code(self, node, name, (pvals, unis), (z,), sub):
         fail = sub['fail']
         return """
-        
+
         if (%(pvals)s->nd != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
@@ -168,7 +168,7 @@ class GpuMultinomial(Multinomial):
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
         }
-        
+
         if (CudaNdarray_HOST_DIMS(%(unis)s)[0] != CudaNdarray_HOST_DIMS(%(pvals)s)[1])
         {
             PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[1]");
@@ -201,7 +201,7 @@ class GpuMultinomial(Multinomial):
         { // NESTED SCOPE
             int nb_outcomes = CudaNdarray_HOST_DIMS(%(z)s)[0];
             int nb_multi = CudaNdarray_HOST_DIMS(%(z)s)[1];
-            
+
             //TODO : change this for a beautiful constant
             int max_nb_blocks = 2<<15 - 1;
             int nb_blocks = max_nb_blocks + 1;
@@ -212,7 +212,7 @@ class GpuMultinomial(Multinomial):
                 if (nb_multi %% nb_threads == 0)
                     nb_blocks = nb_multi/nb_threads;
                 else
-                    nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.); 
+                    nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.);
             } while (nb_blocks > max_nb_blocks);
 
             //printf("\\nN=%%i b=%%i t=%%i t*b=%%i", nb_multi, nb_blocks, nb_threads, nb_blocks*nb_threads);
@@ -224,7 +224,7 @@ class GpuMultinomial(Multinomial):
                 %(fail)s;
             }
 
-                
+
             dim3 n_blocks(nb_blocks,1,1);
             dim3 n_threads(nb_threads,1,1);
             int n_shared = 0;
@@ -240,7 +240,7 @@ class GpuMultinomial(Multinomial):
             );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i; shared: %%i)\\n",
                     "k_multi_warp_%(name)s",
@@ -264,4 +264,4 @@ def use_gpu_multinomial(node):
         return [host_from_gpu(gpu_multinomial(*[gpu_from_host(i) for i in node.inputs]))]
 if cuda_enabled:#theano.config.device.startswith('gpu'):
     register_specialize(use_gpu_multinomial)
-    
+

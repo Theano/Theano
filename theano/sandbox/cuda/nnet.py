@@ -150,15 +150,15 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 CudaNdarray_HOST_DIMS(%(x)s)[0],
                 CudaNdarray_HOST_DIMS(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1], 
-                CudaNdarray_DEV_DATA(%(b)s), CudaNdarray_HOST_STRIDES(%(b)s)[0], 
-                CudaNdarray_DEV_DATA(%(y_idx)s), CudaNdarray_HOST_STRIDES(%(y_idx)s)[0], 
-                CudaNdarray_DEV_DATA(%(nll)s), CudaNdarray_HOST_STRIDES(%(nll)s)[0], 
-                CudaNdarray_DEV_DATA(%(sm)s), CudaNdarray_HOST_STRIDES(%(sm)s)[0], CudaNdarray_HOST_STRIDES(%(sm)s)[1], 
+                CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_DEV_DATA(%(b)s), CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                CudaNdarray_DEV_DATA(%(y_idx)s), CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
+                CudaNdarray_DEV_DATA(%(nll)s), CudaNdarray_HOST_STRIDES(%(nll)s)[0],
+                CudaNdarray_DEV_DATA(%(sm)s), CudaNdarray_HOST_STRIDES(%(sm)s)[0], CudaNdarray_HOST_STRIDES(%(sm)s)[1],
                 CudaNdarray_DEV_DATA(%(am)s), CudaNdarray_HOST_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if (cudaSuccess != err) 
+            if (cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %(classname)s %(nodename)s: %%s.\\n", cudaGetErrorString(err));
                 // no need to decref output vars the cleanup code should pick them up.
@@ -233,7 +233,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
                     std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(dx)s)[0],
-                        CudaNdarray_HOST_DIMS(%(dx)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(dx)s)[1],
 
                         CudaNdarray_DEV_DATA(%(dnll)s),
                         CudaNdarray_HOST_STRIDES(%(dnll)s)[0],
@@ -249,11 +249,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(dx)s);
         """ % locals()
@@ -337,7 +337,7 @@ class GpuSoftmax (Op):
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -347,18 +347,18 @@ class GpuSoftmax (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return nvcc_kernel("kSoftmax_%s"%nodename,
-                params=['int M', 'int N', 
+                params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'float * sm'],
                 body=[
@@ -436,7 +436,7 @@ class GpuSoftmaxWithBias (Op):
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -449,18 +449,18 @@ class GpuSoftmaxWithBias (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
-                params=['int M', 'int N', 
+                params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'const float * b', 'const int sb0',
                     'float * sm'],
