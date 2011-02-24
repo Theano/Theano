@@ -101,7 +101,7 @@ compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_h
 
 #'float64', 'complex128' and 'complex64' are not supported in elemwise on the gpu.
 elemwise_cuda_dtype_supported=['float32','uint8','int8','uint16','int16',
-                      'uint32','int32''uint64','int64']
+                               'uint32','int32','uint64','int64']
 
 def dtype_in_elemwise_supported(op):
     """
