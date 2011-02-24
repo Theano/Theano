@@ -158,7 +158,7 @@ from opt import (Optimizer, optimizer, SeqOptimizer,
 
 from optdb import \
     DB, Query, \
-    EquilibriumDB, SequenceDB
+    EquilibriumDB, SequenceDB, ProxyDB
 
 from toolbox import \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder, PrintListener
