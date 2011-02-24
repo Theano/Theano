@@ -193,7 +193,10 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
             "is already in use.") %(str(device), use.device_number))
 
     if default_to_move_computation_to_gpu:
-        optdb.add_tags('gpu',
+        optdb.add_tags('gpu_opt',
+                       'fast_run',
+                       'inplace')
+        optdb.add_tags('gpu_after_fusion',
                        'fast_run',
                        'inplace')
 

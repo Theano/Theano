@@ -6,8 +6,10 @@ import theano
 import numpy
 from theano import scalar as scal
 from theano import tensor, compile, gof
-from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, Optimizer,
-        toolbox, DestroyHandler, EquilibriumOptimizer)
+
+from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
+                        Optimizer, toolbox, DestroyHandler,
+                        EquilibriumOptimizer)
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -31,12 +33,16 @@ gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
         'fast_run', 'inplace')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
         'fast_run', 'inplace')
-optdb.register('gpu',
-        gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
+optdb.register('gpu_opt',
+               gpu_seqopt,
+               optdb.__position__.get('add_destroy_handler', 49.5) - 1,
+               'gpu')
 # This second pass is needed as the fusion can put all the non float32 code
 # inside the elemwise. When it there is no float64 op, this is working.
 optdb.register('gpu_after_fusion',
-        gpu_seqopt, optdb.__position__.get('elemwise_fusion', 71) + .1)
+               ProxyDB(gpu_seqopt),
+               optdb.__position__.get('elemwise_fusion', 71) + .1,
+               'gpu')
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
