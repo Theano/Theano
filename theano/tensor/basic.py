@@ -2605,7 +2605,7 @@ class Subtensor(Op):
     @staticmethod
     def convert(entry, slice_ok=True):
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
-        tensor_types = [bscalar, iscalar, lscalar]
+        tensor_types = [lscalar, iscalar, wscalar, bscalar]
         if isinstance(entry, gof.Variable) and entry.type in scal_types:
             return entry.type
         elif isinstance(entry, gof.Type) and entry in scal_types:
