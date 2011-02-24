@@ -229,3 +229,15 @@ class SequenceDB(DB):
         return sio.getvalue()
 
 
+class ProxyDB(DB):
+    """
+    This is needed as we can't register the same DB mutiple time in different position
+    in a SequentialDB
+    """
+    def __init__(self, db):
+        assert isinstance(db, DB), ""
+        self.db = db
+
+    def query(self, *tags, **kwtags):
+        return self.db.query(*tags, **kwtags)
+
