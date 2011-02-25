@@ -237,31 +237,47 @@ class ProfileMode(Mode):
         """
 
         local_time = sum(apply_time.values())
+        total_time = time.time() - import_time
+        total_fct_time = sum(fct_call_time.values())
+        total_fct_call = sum(fct_call.values())
+        unknown_time = total_time - total_fct_time - compile_time
+        overhead_time = total_fct_time - local_time
+        if total_fct_time>0:
+            time_pr_in_fct = local_time/total_fct_time*100
+            overhead_time_pourcent_fct_time = overhead_time/total_fct_time*100
+            time_per_call = total_fct_time/total_fct_call
+        else:
+            time_pr_in_fct = 0
+            overhead_time_pourcent_fct_time = 0
+            time_per_call = 0
 
-        print ''
+        print
         print 'ProfileMode.%s(%s)'%(fct_name,message)
         print '---------------------------'
-        print ''
+        print
+        print 'Time since import %.3fs'%(total_time)
+        print 'Theano compile time: %.3fs (%.1f%% since import)'%(compile_time, compile_time/total_time*100)
+        print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
+        print '    Linker time: %.3fs'%(other_time['linker_time'])
+        print 'Theano fct call %.3fs (%.1f%% since import)'%(total_fct_time, total_fct_time/total_time*100)
+        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+            local_time, local_time/total_time*100, time_pr_in_fct)
+        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+            overhead_time, overhead_time/total_time*100, overhead_time_pourcent_fct_time)
+        print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
+        print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time, unknown_time/total_time*100)
 
-        print 'local_time %.3fs (Time spent running thunks)'% local_time
+        print
+        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
+        for key in fct_call.keys():
+            if fct_call[key]>0:
+                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
+            else:
+                print '   NOT CALLED',key.name
 
-        if print_apply:
-            print 'Apply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
-            atimes.sort()
-            atimes.reverse()
-            tot=0
-            for f,t,a,nb_call in atimes[:n_apply_to_print]:
-                tot+=t
-                ftot=tot*100/local_time
-                if nb_call==0:
-                    continue
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
-            print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                    %(max(0, len(atimes)-n_apply_to_print),
-                      sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
-                      sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
 
+        # Compute stats per op.
         op_time = {}
         op_call = {}
         op_apply = {}
@@ -278,11 +294,52 @@ class ProfileMode(Mode):
                 op_call[op] += nb_call
                 op_apply[op] += 1
 
+        # Compute stats per op class
+        sop_time={}
+        sop_call={}
+        sop_op = {}
+        sop_c={} #map each op class to Bool. True iff all applies were done in c.
+        for a,t in op_time.items():
+            typ = type(a)
+            sop_time.setdefault(typ,0)
+            sop_time[typ]+=t
+            sop_op.setdefault(typ,0)
+            sop_op[typ]+=1
+            sop_c.setdefault(typ,True)
+            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
+            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
+
+
+        # Print the summary per op class.
+        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
+        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
+        sotimes.sort()
+        sotimes.reverse()
+        tot=0
+        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
+            if nb_call == 0:
+                assert t == 0
+                continue
+            tot+=t
+            ftot=tot*100/local_time
+            if ci:
+                msg = '*'
+            else:
+                msg = ' '
+            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
+        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(sotimes)-n_ops_to_print),
+                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
+                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
+
+        print '(*) Op is running a c implementation'
+
+
+        # The summary per op
         op_flops = {}
         for a,t in op_time.items():
             if hasattr(a,'flops'):
                 op_flops[a]=a.flops*op_call[a]/t/1e6
-
         flops_msg=''
         if op_flops:
             flops_msg=' <MFlops/s>'
@@ -315,82 +372,26 @@ class ProfileMode(Mode):
         print '(*) Op is running a c implementation'
 
 
-        sop_time={}
-        sop_call={}
-        sop_op = {}
-        sop_c={} #map each op class to Bool. True iff all applies were done in c.
-        for a,t in op_time.items():
-            typ = type(a)
-            sop_time.setdefault(typ,0)
-            sop_time[typ]+=t
-            sop_op.setdefault(typ,0)
-            sop_op[typ]+=1
-            sop_c.setdefault(typ,True)
-            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
-        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
-        sotimes.sort()
-        sotimes.reverse()
-        tot=0
-        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
-            if nb_call == 0:
-                assert t == 0
-                continue
-            tot+=t
-            ftot=tot*100/local_time
-            if ci:
-                msg = '*'
-            else:
-                msg = ' '
-            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
-        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(sotimes)-n_ops_to_print),
-                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
-                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
-
-        print '(*) Op is running a c implementation'
-
-
-        total_time = time.time() - import_time
-        total_fct_time = sum(fct_call_time.values())
-        total_fct_call = sum(fct_call.values())
-        unknown_time = total_time - total_fct_time - compile_time
-        print
-        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
-        for key in fct_call.keys():
-            if fct_call[key]>0:
-                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
-                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
-            else:
-                print '   NOT CALLED',key.name
-
-        if total_fct_time>0:
-            time_pr_in_fct=local_time/total_fct_time*100
-            time_per_call=total_fct_time/total_fct_call
-        else:
-            time_pr_in_fct=0
-            time_per_call=0
-
-        print
-        print 'Time since import %.3fs'%(total_time)
-        print 'Theano compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
-        print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
-        print '    Linker time: %.3fs'%(other_time['linker_time'])
-        print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
-        print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time,unknown_time/total_time*100)
-        print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
-
-        print
-        print "List of apply that don't have float64 as input but have float64 in outputs. Useful to know if we forgot some cast when using floatX=float32 or gpu code."
-        print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
-        for fct in fct_call.keys():
-            for idx, node in enumerate(fct.maker.env.toposort()):
-                if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
-                    print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
+        if print_apply:
+            print '\nApply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
+            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
+            atimes.sort()
+            atimes.reverse()
+            tot=0
+            for f,t,a,nb_call in atimes[:n_apply_to_print]:
+                tot+=t
+                ftot=tot*100/local_time
+                if nb_call==0:
+                    continue
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
+            print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
+                    %(max(0, len(atimes)-n_apply_to_print),
+                      sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
+                      sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
 
         if any([x[2].__name__.lower().startswith("gpu") for x in sotimes]):
+            print 'Some info usefull for gpu:'
+
             cpu=[]
             gpu=[]
             trans=[]
@@ -405,16 +406,24 @@ class ProfileMode(Mode):
             sum_gpu=sum(so[1] for so in gpu)
             sum_trans=sum(so[1] for so in trans)
             print
-
             print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
                 sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
 
+            print
             print "Theano function input that are float64"
             print "<fct name> <input name> <input type> <str input>"
             for fct in fct_call.keys():
                 for i in fct.input_storage:
                     if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
                         print fct.name, i.name, i.type, i
+
+            print
+            print "List of apply that don't have float64 as input but have float64 in outputs. Useful to know if we forgot some cast when using floatX=float32 or gpu code."
+            print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
+            for fct in fct_call.keys():
+                for idx, node in enumerate(fct.maker.env.toposort()):
+                    if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
+                        print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
 
         if outputs_size:
             fct_memory={}#env->dict(node->(outputs size))
