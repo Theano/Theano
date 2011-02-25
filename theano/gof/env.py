@@ -77,7 +77,7 @@ class Env(utils.object2):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets.
-        
+
         This class keeps a pointer to the inputs and outputs, and also modifies them.
 
         #TODO: document what variables are[not] set in the env when a feature is added via the
@@ -86,10 +86,10 @@ class Env(utils.object2):
         """
 
         self._features = []
-        
+
         # All nodes in the subgraph defined by inputs and outputs are cached in nodes
         self.nodes = set()
-        
+
         # Ditto for variables
         self.variables = set()
 
@@ -136,7 +136,7 @@ class Env(utils.object2):
         """ WRITEME
         Cleans up all of this Env's nodes and variables so they are not
         associated with this Env anymore.
-        
+
         The Env should not be used anymore after disown is called.
 
         This may not clean everything this Env's features set in the
@@ -232,7 +232,7 @@ class Env(utils.object2):
                         raise Exception("%s is already owned by another env" % r)
                     if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
                         raise TypeError("An input of the graph was not provided and not given a value", r)
-        
+
         for node in new_nodes:
             assert node not in self.nodes
             self.__setup_node__(node)
@@ -274,7 +274,7 @@ class Env(utils.object2):
         self.nodes.remove(node)
         self.variables.difference_update(node.outputs)
         self.execute_callbacks('on_prune', node)
-        
+
         for i, input in enumerate(node.inputs):
             self.__remove_clients__(input, [(node, i)])
         #self.__prune_r__(node.inputs)
@@ -306,7 +306,7 @@ class Env(utils.object2):
             if not r.type == new_r.type:
                 raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r)
             node.inputs[i] = new_r
-        
+
         self.__import_r__([new_r])
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
@@ -348,7 +348,7 @@ class Env(utils.object2):
 
 
     ### features ###
-    
+
     def extend(self, feature):
         """WRITEME
         Adds a feature to this env. The feature may define one
@@ -358,7 +358,7 @@ class Env(utils.object2):
         if feature in self._features:
             return # the feature is already present
         attach = getattr(feature, 'on_attach', None)
-        if attach is not None:    
+        if attach is not None:
             try:
                 attach(self)
             except toolbox.AlreadyThere:
@@ -381,7 +381,7 @@ class Env(utils.object2):
 
 
     ### callback utils ###
-    
+
     def execute_callbacks(self, name, *args, **kwargs):
         """WRITEME
         Calls
@@ -446,7 +446,7 @@ class Env(utils.object2):
                     ords.setdefault(op, []).extend(prereqs)
         order = graph.io_toposort(env.inputs, env.outputs, ords)
         return order
-    
+
     def nclients(self, r):
         """WRITEME Same as len(self.clients(r))."""
         return len(self.clients(r))
@@ -523,10 +523,3 @@ class Env(utils.object2):
         for feature in self._features:
             e.extend(feature)
         return e, equiv
-
-
-
-
-
-
-
