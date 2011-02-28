@@ -3,6 +3,7 @@ import StringIO
 import sys
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec
 
@@ -61,12 +62,13 @@ def safe_make_node(op, *inputs):
         return node[0].owner
     else:
         return node.owner
-
-def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}, mode = None, grad_rtol=None, eps = 1e-10):
+def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
+               bad_runtime = {}, grad = {}, mode = None, grad_rtol=None,
+               eps = 1e-10, skip = False):
     if grad is True:
         grad = good
 
-    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol, _eps = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol, eps
+    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol, _eps, skip_ = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol, eps, skip
 
     class Checker(unittest.TestCase):
 
@@ -78,8 +80,11 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
         bad_runtime = _bad_runtime
         grad = _grad
         mode = _mode
+        skip = skip_
 
         def test_good(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -138,6 +143,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                                   % (self.op, testname, description, inputs, variables))
 
         def test_bad_build(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -149,6 +156,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                           % (self.op, testname, node, inputs))
 
         def test_bad_runtime(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.bad_runtime.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -179,6 +188,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                           % (self.op, testname, inputs))
 
         def test_grad(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.grad.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -722,39 +733,47 @@ del _good_broadcast_unary_normal_no_int_no_complex['integers']
 _good_broadcast_unary_normal_no_int = _good_broadcast_unary_normal.copy()
 del _good_broadcast_unary_normal_no_int['integers']
 
+# We can't test it if scipy is not installed!
+# Precomputing the result is brittle(it have been broken!)
+# As if we do any modification to random number here,
+# The input random number will change and the output!
 if imported_scipy_special:
-    # We can't test it if scipy is not installed!
-    # Precomputing the result is brittle(it have been broken!)
-    # As if we do any modification to random number here,
-    # The input random number will change and the output!
-    expected = scipy.special.erf
-    ErfTester = makeBroadcastTester(op = erf,
-                                    expected = scipy.special.erf,
-                                    good = _good_broadcast_unary_normal,
-                                    grad = _grad_broadcast_unary_normal,
-                                    eps = 2e-10,
-                                    mode = mode_no_scipy)
-    ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
-                                           expected = scipy.special.erf,
-                                           good = _good_broadcast_unary_normal_no_int,
-                                           grad = _grad_broadcast_unary_normal,
-                                           mode = mode_no_scipy,
-                                           eps = 2e-10,
-                                           inplace = True)
+    expected_erf = scipy.special.erf
+    expected_erfc = scipy.special.erfc
+else:
+    expected_erf = []
+    expected_erfc = []
+ErfTester = makeBroadcastTester(op = erf,
+                                expected = expected_erf,
+                                good = _good_broadcast_unary_normal,
+                                grad = _grad_broadcast_unary_normal,
+                                eps = 2e-10,
+                                mode = mode_no_scipy,
+                                skip = False if imported_scipy_special else "scipy not present")
+ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
+                                       expected = expected_erf,
+                                       good = _good_broadcast_unary_normal_no_int,
+                                       grad = _grad_broadcast_unary_normal,
+                                       mode = mode_no_scipy,
+                                       eps = 2e-10,
+                                       inplace = True,
+                                       skip = False if imported_scipy_special else "scipy not present")
 
-    ErfcTester = makeBroadcastTester(op = erfc,
-                                     expected = scipy.special.erfc,
-                                     good = _good_broadcast_unary_normal_no_int_no_complex,
-                                     grad = _grad_broadcast_unary_normal,
-                                     eps = 2e-10,
-                                     mode = mode_no_scipy)
-    ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
-                                            expected = scipy.special.erfc,
-                                            good = _good_broadcast_unary_normal_no_int_no_complex,
-                                            grad = _grad_broadcast_unary_normal,
-                                            eps = 2e-10,
-                                            mode = mode_no_scipy,
-                                            inplace = True)
+ErfcTester = makeBroadcastTester(op = erfc,
+                                 expected = expected_erfc,
+                                 good = _good_broadcast_unary_normal_no_int_no_complex,
+                                 grad = _grad_broadcast_unary_normal,
+                                 eps = 2e-10,
+                                 mode = mode_no_scipy,
+                                 skip = False if imported_scipy_special else "scipy not present")
+ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
+                                        expected = expected_erfc,
+                                        good = _good_broadcast_unary_normal_no_int_no_complex,
+                                        grad = _grad_broadcast_unary_normal,
+                                        eps = 2e-10,
+                                        mode = mode_no_scipy,
+                                        inplace = True,
+                                        skip = False if imported_scipy_special else "scipy not present")
 
 
 DotTester = makeTester(name = 'DotTester',
