@@ -1813,7 +1813,7 @@ class ScanGrad(Op):
                             else:
                                 k = i + seed_sz  + tap_value
                                 if k < 0 :
-                        #past value not provided .. issue a warning and use 0
+                                    #past value not provided .. issue a warning and use 0
                                     _outs += [numpy.zeros(outInfo[j][0].shape)]
                                     warning('Past value %d for output $d not given' \
                                           %(j,tap_value))
@@ -1886,7 +1886,7 @@ class ScanSpaceOptimizer(Optimizer):
                 # check the outputs
                 for i,out in enumerate(node.outputs):
                     if op.store_steps[i] == 0 :
-                                # if we do not have a range for this output
+                        # if we do not have a range for this output
                         req_steps = numpy.max(numpy.abs(op.outs_taps.get(i,1)))
                         # look at all its clients
                         for cl,_dx in out.clients:
