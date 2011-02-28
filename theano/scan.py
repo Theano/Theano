@@ -1971,3 +1971,27 @@ optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
 
 
 
+@theano.compile.profilemode.register_profiler_printer
+def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
+                    apply_time, op_cimpl, message, outputs_size,
+                    other_time):
+    # Scan overhead profile
+    if any([isinstance(node.op, (Scan, ScanGrad)) for (_,node) in apply_time.keys()]):
+        print
+        print 'Scan overhead:'
+        print '<Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time(% scan op time)> <sub scan op time(% scan op time)> <node>'
+        total_super_scan_time = 0
+        total_scan_fct_time = 0
+        total_scan_op_time = 0
+        for (_,node),v in apply_time.items():
+            if isinstance(node.op, (Scan, ScanGrad)):
+                scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
+                scan_op_time = sum(node.op.mode_instance.local_time)
+                total_super_scan_time += v
+                total_scan_fct_time += scan_fct_time
+                total_scan_op_time += scan_op_time
+                print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
+                    v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
+                    scan_op_time/v*100), node
+        print '    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
+            total_super_scan_time, total_scan_fct_time, total_scan_op_time, total_scan_fct_time/total_super_scan_time*100, total_scan_op_time/total_super_scan_time*100)
