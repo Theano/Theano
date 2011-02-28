@@ -269,7 +269,8 @@ class ProfileMode(Mode):
         print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time, unknown_time/total_time*100)
 
         print
-        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
+        print 'Theano fct summary:'
+        print '<% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
             if fct_call[key]>0:
                 print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
@@ -312,7 +313,9 @@ class ProfileMode(Mode):
 
 
         # Print the summary per op class.
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
+        print
+        print 'Single Op-wise summary:'
+        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
         sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
@@ -345,7 +348,9 @@ class ProfileMode(Mode):
         if op_flops:
             flops_msg=' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
+        print
+        print 'Op-wise summary:'
+        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -374,7 +379,9 @@ class ProfileMode(Mode):
 
 
         if print_apply:
-            print '\nApply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
+            print
+            print 'Apply-wise summary:'
+            print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
             atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
@@ -394,7 +401,8 @@ class ProfileMode(Mode):
         import theano # Why we need to re-import theano here? Otherwise is crash
         if any([isinstance(node.op, (theano.Scan, theano.ScanGrad)) for (_,node) in apply_time.keys()]):
             print
-            print "Scan overhead: <Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time(% scan op time)> <sub scan op time(% scan op time)> <node>"
+            print 'Scan overhead:'
+            print '<Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time(% scan op time)> <sub scan op time(% scan op time)> <node>'
             for (_,node),v in apply_time.items():
                 if isinstance(node.op, (theano.Scan, theano.ScanGrad)):
                     scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
@@ -419,24 +427,25 @@ class ProfileMode(Mode):
             sum_gpu=sum(so[1] for so in gpu)
             sum_trans=sum(so[1] for so in trans)
             print
-            print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
+            print "    Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
                 sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
 
             print
-            print "Theano function input that are float64"
-            print "<fct name> <input name> <input type> <str input>"
+            print "    Theano function input that are float64"
+            print "    <fct name> <input name> <input type> <str input>"
             for fct in fct_call.keys():
                 for i in fct.input_storage:
                     if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
-                        print fct.name, i.name, i.type, i
+                        print '        ', fct.name, i.name, i.type, i
 
             print
-            print "List of apply that don't have float64 as input but have float64 in outputs. Useful to know if we forgot some cast when using floatX=float32 or gpu code."
-            print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
+            print "    List of apply that don't have float64 as input but have float64 in outputs"
+            print "    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)"
+            print '    <Apply> <Apply position> <fct name> <inputs type> <outputs type>'
             for fct in fct_call.keys():
                 for idx, node in enumerate(fct.maker.env.toposort()):
                     if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
-                        print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
+                        print '        ', str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
 
         if outputs_size:
             fct_memory={}#env->dict(node->(outputs size))
