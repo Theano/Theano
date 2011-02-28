@@ -2020,3 +2020,44 @@ def tensor4(name=None, dtype=None):
         dtype = config.floatX
     type = CudaNdarrayType(dtype=dtype, broadcastable=(False, False, False, False))
     return type(name)
+
+
+@theano.compile.profilemode.register_profiler_printer
+def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
+                    apply_time, op_cimpl, message, outputs_size,
+                    other_time):
+    if any([x[1].op.__class__.__name__.lower().startswith("gpu") for x in apply_time.keys()]):
+        local_time = sum(apply_time.values())
+        print
+        print 'Some info usefull for gpu:'
+
+        cpu=0
+        gpu=0
+        trans=0
+        for (_,node),t  in apply_time.items():
+            if isinstance(node.op.__class__.__name__,(HostFromGpu, GpuFromHost)):
+                trans += t
+            elif node.op.__class__.__name__.lower().startswith("gpu"):
+                gpu += t
+            else:
+                cpu += t
+        print
+        print "    Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
+            cpu, cpu/local_time*100, gpu, gpu/local_time*100, trans, trans/local_time*100)
+
+        print
+        print "    Theano function input that are float64"
+        print "    <fct name> <input name> <input type> <str input>"
+        for fct in fct_call.keys():
+            for i in fct.input_storage:
+                if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
+                    print '        ', fct.name, i.name, i.type, i
+
+        print
+        print "    List of apply that don't have float64 as input but have float64 in outputs"
+        print "    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)"
+        print '    <Apply> <Apply position> <fct name> <inputs type> <outputs type>'
+        for fct in fct_call.keys():
+            for idx, node in enumerate(fct.maker.env.toposort()):
+                if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
+                    print '        ', str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])

@@ -400,44 +400,6 @@ class ProfileMode(Mode):
                     apply_time, op_cimpl, message, outputs_size,
                     other_time)
 
-        if any([x[2].__name__.lower().startswith("gpu") for x in sotimes]):
-            print
-            print 'Some info usefull for gpu:'
-
-            cpu=[]
-            gpu=[]
-            trans=[]
-            for so in sotimes:
-                if so[2].__name__ in ["HostFromGpu", "GpuFromHost"]:
-                    trans.append(so)
-                elif so[2].__name__.lower().startswith("gpu"):
-                    gpu.append(so)
-                else:
-                    cpu.append(so)
-            sum_cpu=sum(so[1] for so in cpu)
-            sum_gpu=sum(so[1] for so in gpu)
-            sum_trans=sum(so[1] for so in trans)
-            print
-            print "    Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
-                sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
-
-            print
-            print "    Theano function input that are float64"
-            print "    <fct name> <input name> <input type> <str input>"
-            for fct in fct_call.keys():
-                for i in fct.input_storage:
-                    if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
-                        print '        ', fct.name, i.name, i.type, i
-
-            print
-            print "    List of apply that don't have float64 as input but have float64 in outputs"
-            print "    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)"
-            print '    <Apply> <Apply position> <fct name> <inputs type> <outputs type>'
-            for fct in fct_call.keys():
-                for idx, node in enumerate(fct.maker.env.toposort()):
-                    if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
-                        print '        ', str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
-
         if outputs_size:
             fct_memory={}#env->dict(node->(outputs size))
             var_mem = {}
