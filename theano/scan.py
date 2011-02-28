@@ -956,14 +956,14 @@ def scan( fn
     for input in dummy_f.maker.expanded_inputs[fromIdx:] :
         # make sure that we do not add the same shared variable twice
         if isinstance(input.variable, SharedVariable) and not input.update:
-           shared_non_seqs += [input.variable]
-           new_var = input.variable.type()
-           if input.variable.name:
-               new_var.name = input.variable.name + '_copy'
-           inner_fn_inputs += [new_var]
-           slice_to_seqs += [ n_extended_outs]
-           givens[input.variable] = inner_fn_inputs[-1]
-           copy_map[inner_fn_inputs[-1]] = input.variable
+            shared_non_seqs += [input.variable]
+            new_var = input.variable.type()
+            if input.variable.name:
+                new_var.name = input.variable.name + '_copy'
+            inner_fn_inputs += [new_var]
+            slice_to_seqs += [ n_extended_outs]
+            givens[input.variable] = inner_fn_inputs[-1]
+            copy_map[inner_fn_inputs[-1]] = input.variable
         elif not isinstance(input.variable, SharedVariable):
             # also add the normal tensor that are non sequences at the
             # end of the inputs intertwingled with the shared variables
@@ -998,7 +998,7 @@ def scan( fn
         # and non sequences
         for seq in seqs :
             if not seq.get('input', None):
-                    raiseValue('All input sequences should provide')
+                raiseValue('All input sequences should provide')
         unwrapped_seqs = [ seq.get('input',tensor.as_tensor(0.)) for seq in seqs ]
         unwrapped_outs = [ out.get('initial',tensor.as_tensor(0.)) for out in outs_info ]
 
@@ -1644,16 +1644,16 @@ class ScanGrad(Op):
     def __eq__(self,other):
         rval = type(self) == type(other)
         if rval:
-           rval = (self.inputs == other.inputs) and \
-                  (self.outputs == other.outputs) and \
-                  (self.n_seqs == other.n_seqs) and \
-                  (self.n_outs == other.n_outs) and \
-                  (self.go_backwards == other.go_backwards) and \
-                  (self.n_outs_not_shared == other.n_outs_not_shared) and\
-                  (self.truncate_gradient == other.truncate_gradient) and\
-                  (self.mode == other.mode) and \
-                  (self.seqs_taps == other.seqs_taps) and \
-                  (self.outs_taps == other.outs_taps)
+            rval = (self.inputs == other.inputs) and \
+                   (self.outputs == other.outputs) and \
+                   (self.n_seqs == other.n_seqs) and \
+                   (self.n_outs == other.n_outs) and \
+                   (self.go_backwards == other.go_backwards) and \
+                   (self.n_outs_not_shared == other.n_outs_not_shared) and\
+                   (self.truncate_gradient == other.truncate_gradient) and\
+                   (self.mode == other.mode) and \
+                   (self.seqs_taps == other.seqs_taps) and \
+                   (self.outs_taps == other.outs_taps)
         return rval
 
     def __hash__(self):
@@ -1786,79 +1786,79 @@ class ScanGrad(Op):
                     initOuts_size.update({j:0})
 
         for i in the_range:
-          # time slice of inputs
-          _ins = []
-          _i = i
-          if go_backwards:
-              _i = n_steps -1 -i
+            # time slice of inputs
+            _ins = []
+            _i = i
+            if go_backwards:
+                _i = n_steps -1 -i
 
-          for j in xrange(self.n_seqs):
-            if self.seqs_taps.has_key(j):
-              ls_taps = self.seqs_taps[j]
-              min_tap =      seqs_mins[j]
-              for tap_value in ls_taps:
-                k = _i - min_tap + tap_value
-                _ins += [seqs[j][k]]
-          # time slice of outputs + taps
-          _outs = []
-          for j in xrange(self.n_outs):
-            if self.outs_taps.has_key(j):
-              ls_taps = self.outs_taps[j]
-              min_tap =      outs_mins[j]
-              seed_sz =      initOuts_size[j]
-              for tap_value in ls_taps:
-                if i + tap_value < 0:
-                  if seed_sz < 1:
-                      _outs += [outInfo[j]]
-                  else:
-                      k = i + seed_sz  + tap_value
-                      if k < 0 :
+            for j in xrange(self.n_seqs):
+                if self.seqs_taps.has_key(j):
+                    ls_taps = self.seqs_taps[j]
+                    min_tap =      seqs_mins[j]
+                    for tap_value in ls_taps:
+                        k = _i - min_tap + tap_value
+                        _ins += [seqs[j][k]]
+            # time slice of outputs + taps
+            _outs = []
+            for j in xrange(self.n_outs):
+                if self.outs_taps.has_key(j):
+                    ls_taps = self.outs_taps[j]
+                    min_tap =      outs_mins[j]
+                    seed_sz =      initOuts_size[j]
+                    for tap_value in ls_taps:
+                        if i + tap_value < 0:
+                            if seed_sz < 1:
+                                _outs += [outInfo[j]]
+                            else:
+                                k = i + seed_sz  + tap_value
+                                if k < 0 :
                         #past value not provided .. issue a warning and use 0
-                        _outs += [numpy.zeros(outInfo[j][0].shape)]
-                        warning('Past value %d for output $d not given' \
-                              %(j,tap_value))
-                      else:
-                        _outs += [outInfo[j][k]]
-                else:
-                    if j>= self.n_outs_not_shared:
-                        _outs += [outs[j] ]
-                    else:
-                        _outs += [outs[j][i + tap_value]]
-          g_out = []
-          g_out = [ arg[i] for arg in g_outs]
-          grad_args = g_out + _ins + _outs + non_seqs
-          grads=self.grad_fn(*grad_args)
-          # get gradient for inputs
-          pos = 0
-          for j in xrange(self.n_seqs):
-              if self.seqs_taps.has_key(j):
-                  ls_taps = self.seqs_taps[j]
-                  min_tap =      seqs_mins[j]
-                  for tap_value in ls_taps :
-                      k = _i - min_tap + tap_value
-                      g_seqs[j][k-lower_limit] += grads[pos]
-                      pos += 1
+                                    _outs += [numpy.zeros(outInfo[j][0].shape)]
+                                    warning('Past value %d for output $d not given' \
+                                          %(j,tap_value))
+                                else:
+                                    _outs += [outInfo[j][k]]
+                        else:
+                            if j>= self.n_outs_not_shared:
+                                _outs += [outs[j] ]
+                            else:
+                                _outs += [outs[j][i + tap_value]]
+            g_out = []
+            g_out = [ arg[i] for arg in g_outs]
+            grad_args = g_out + _ins + _outs + non_seqs
+            grads=self.grad_fn(*grad_args)
+            # get gradient for inputs
+            pos = 0
+            for j in xrange(self.n_seqs):
+                if self.seqs_taps.has_key(j):
+                    ls_taps = self.seqs_taps[j]
+                    min_tap =      seqs_mins[j]
+                    for tap_value in ls_taps :
+                        k = _i - min_tap + tap_value
+                        g_seqs[j][k-lower_limit] += grads[pos]
+                        pos += 1
 
 
-          # get gradient for outputs
-          for j in xrange(self.n_outs_not_shared):
-            if self.outs_taps.has_key(j):
-              ls_taps = self.outs_taps[j]
-              min_tap =      outs_mins[j]
-              seed_sz =      initOuts_size[j]
-              for tap_value in ls_taps:
-                if i+tap_value < 0 :
-                    k = i + seed_sz + tap_value
-                    if  k >= 0 :
-                        g_outInfo[j][k] += grads[pos]
-                    else:
-                        g_outInfo[j] += grads[pos]
+            # get gradient for outputs
+            for j in xrange(self.n_outs_not_shared):
+                if self.outs_taps.has_key(j):
+                    ls_taps = self.outs_taps[j]
+                    min_tap =      outs_mins[j]
+                    seed_sz =      initOuts_size[j]
+                    for tap_value in ls_taps:
+                        if i+tap_value < 0 :
+                            k = i + seed_sz + tap_value
+                            if  k >= 0 :
+                                g_outInfo[j][k] += grads[pos]
+                            else:
+                                g_outInfo[j] += grads[pos]
 
-                else:
-                    g_outs[j][i+tap_value] += grads[pos]
-                pos += 1
-          for j in xrange(len(g_non_seqs)):
-            g_non_seqs[j] += grads[j+pos]
+                        else:
+                            g_outs[j][i+tap_value] += grads[pos]
+                        pos += 1
+            for j in xrange(len(g_non_seqs)):
+                g_non_seqs[j] += grads[j+pos]
 
 
         # return the gradient
@@ -1886,7 +1886,7 @@ class ScanSpaceOptimizer(Optimizer):
                 # check the outputs
                 for i,out in enumerate(node.outputs):
                     if op.store_steps[i] == 0 :
-                        # if we do not have a range for this output
+                                # if we do not have a range for this output
                         req_steps = numpy.max(numpy.abs(op.outs_taps.get(i,1)))
                         # look at all its clients
                         for cl,_dx in out.clients:
@@ -1906,7 +1906,7 @@ class ScanSpaceOptimizer(Optimizer):
                                     # if it is a tensor, and the first
                                     # dimension is just -1
                                     if cl.op.idx_list[0] == -1 and req_steps != None:
-                                                req_steps = numpy.max([1, req_steps])
+                                        req_steps = numpy.max([1, req_steps])
                                     else:
                                         # or a constant that evaluates to
                                         # -1
