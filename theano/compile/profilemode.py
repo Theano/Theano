@@ -1,5 +1,6 @@
 import time, atexit, copy
 
+import theano
 from theano.gof.link import WrapLinker
 from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
@@ -389,7 +390,19 @@ class ProfileMode(Mode):
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
                       sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
 
+        # Scan overhead profile
+        import theano # Why we need to re-import theano here? Otherwise is crash
+        if any([isinstance(node.op, (theano.Scan, theano.ScanGrad)) for (_,node) in apply_time.keys()]):
+            print
+            print "Scan overhead: <Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time(% scan op time)> <sub scan op time(% scan op time)> <node>"
+            for (_,node),v in apply_time.items():
+                if isinstance(node.op, (theano.Scan, theano.ScanGrad)):
+                    scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
+                    scan_op_time = sum(node.op.mode_instance.local_time)
+                    print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(v, scan_fct_time, scan_op_time, scan_fct_time/v*100, scan_op_time/v*100), node
+
         if any([x[2].__name__.lower().startswith("gpu") for x in sotimes]):
+            print
             print 'Some info usefull for gpu:'
 
             cpu=[]
