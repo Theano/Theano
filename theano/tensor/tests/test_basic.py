@@ -740,16 +740,19 @@ del _good_broadcast_unary_normal_no_int['integers']
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
+    skip_scipy = False
 else:
     expected_erf = []
     expected_erfc = []
+    skip_scipy = "scipy is not present"
+
 ErfTester = makeBroadcastTester(op = erf,
                                 expected = expected_erf,
                                 good = _good_broadcast_unary_normal,
                                 grad = _grad_broadcast_unary_normal,
                                 eps = 2e-10,
                                 mode = mode_no_scipy,
-                                skip = False if imported_scipy_special else "scipy not present")
+                                skip = skip_scipy)
 ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
                                        expected = expected_erf,
                                        good = _good_broadcast_unary_normal_no_int,
@@ -757,7 +760,7 @@ ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
                                        mode = mode_no_scipy,
                                        eps = 2e-10,
                                        inplace = True,
-                                       skip = False if imported_scipy_special else "scipy not present")
+                                       skip = skip_scipy)
 
 ErfcTester = makeBroadcastTester(op = erfc,
                                  expected = expected_erfc,
@@ -765,7 +768,7 @@ ErfcTester = makeBroadcastTester(op = erfc,
                                  grad = _grad_broadcast_unary_normal,
                                  eps = 2e-10,
                                  mode = mode_no_scipy,
-                                 skip = False if imported_scipy_special else "scipy not present")
+                                 skip = skip_scipy)
 ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         expected = expected_erfc,
                                         good = _good_broadcast_unary_normal_no_int_no_complex,
@@ -773,7 +776,7 @@ ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         eps = 2e-10,
                                         mode = mode_no_scipy,
                                         inplace = True,
-                                        skip = False if imported_scipy_special else "scipy not present")
+                                        skip = skip_scipy)
 
 
 DotTester = makeTester(name = 'DotTester',
