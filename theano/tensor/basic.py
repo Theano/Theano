@@ -1160,11 +1160,8 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            if config.experimental.advanced_indexing:
-                if len(args) == 1:
-                    return AdvancedSubtensor1()(self, *args)
-                else:
-                    return AdvancedSubtensor(args)(self, *args)
+            if len(args) == 1:
+                return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor(args)(self, *args)
         else:
@@ -3973,18 +3970,13 @@ def inverse_permutation(perm):
 # Should reproduce numpy's behaviour:
 # http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing
 
-AddConfigVar('experimental.advanced_indexing',
-        "enable not-well-tested advanced indexing functionality",
-        BoolParam(False))
-
-
 class AdvancedSubtensor1(Op):
     """Implement x[ilist] where ilist is a vector of integers."""
 
     def __hash__(self):
         return hash(type(self))
     def __eq__(self, other):
-        type(self) == type(other)
+        return type(self) == type(other)
 
     def make_node(self, x, ilist):
         x_ = as_tensor_variable(x)
@@ -4004,18 +3996,60 @@ class AdvancedSubtensor1(Op):
     def perform(self, node, inp, out_):
         x, i = inp
         out, = out_
+        # Copy always implied by numpy advanced indexing semantic.
         out[0] = x[i]
 
     def grad(self, inputs, grads):
         gz, = grads
-        class NotImplementedOp(Op):
-            # This op should be pruned from the graph.
-            # This Op can be created in a graph,
-            # but it will cause problems if one of your parameters actually depends on it!
-            def make_node(self, *args):
-                return Apply(self, args, [inputs[0].type()])
-        return [NotImplementedOp()(gz)]+[None]*(len(inputs)-1)
+        assert len(inputs)==2
+        return [advanced_inc_subtensor(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
 
+    def infer_shape(self, node, ishapes):
+        x, ilist = ishapes
+        return [ilist+x[1:]]
+
+advanced_subtensor1 = AdvancedSubtensor1()
+
+class AdvancedIncSubtensor1(Op):
+    """Increments a subtensor using advanced slicing (list of index)"""
+
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def make_node(self, x, y, ilist):
+        x_ = as_tensor_variable(x)
+        y_ = as_tensor_variable(y)
+        ilist_ = as_tensor_variable(ilist)
+
+        assert x_.type.dtype == y_.type.dtype
+        assert x_.type.ndim == y_.type.ndim
+
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
+
+    def perform(self, node, inp, out_):
+        # TODO opt to make this inplace
+        x, y, idx = inp
+        out, = out_
+        x = x.copy()
+        # x[idx] += y don't work if the same index is present many times.
+        # It do it only once
+        for (j,i) in enumerate(idx):
+            x[i] += y[j]
+        out[0] = x
+
+advanced_inc_subtensor = AdvancedIncSubtensor1()
 
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.

@@ -1576,6 +1576,92 @@ class T_subtensor(unittest.TestCase):
         good[1,0] = numpy.exp(data[1,0])
         self.failUnless(numpy.allclose(gval, good), (gval, good))
 
+    def test_ok_list(self):
+        for data, idx in [(numpy.random.rand(4), [1,0]),
+                          (numpy.random.rand(4,5), [2,3]),
+                          (numpy.random.rand(4,2,3), [0,3]),
+                          (numpy.random.rand(4,2,3), [3,3]),
+                          ]:
+            n = shared(data)
+            t = n[idx]
+            f = function([], t, mode=None)
+            topo = f.maker.env.toposort()
+            assert len(topo) == 1
+            assert isinstance(topo[0].op, theano.tensor.basic.AdvancedSubtensor1)
+            val = f()
+            good = data[idx]
+            self.failUnless(numpy.allclose(val, good), (val, good))
+
+    def test_err_invalid_list(self):
+        n = shared(numpy.asarray(5))
+        self.assertRaises(TypeError, n.__getitem__, [0,0])
+
+    def test_err_invalid_2list(self):
+        # TODO the error message is not clear
+        n = shared(numpy.ones((3,3))*5)
+        self.assertRaises(TypeError, n.__getitem__, ([0,0],[1,1]))
+
+    def test_err_bound_list(self):
+        n = shared(numpy.ones((2,3))*5)
+        t = n[0,4]
+        self.failUnless(isinstance(t.owner.op, Subtensor))
+        self.assertRaises(IndexError, eval_outputs, [t])
+
+    def grad_list_(self, idxs, data):
+        n = shared(data)
+
+        for idx in idxs:
+            idx_ = shared(numpy.asarray(idx))
+            t = n[idx_]
+            gn = grad(sum(exp(t)), n)
+            f = function([], gn, mode=None)
+            topo = f.maker.env.toposort()
+            assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
+            assert any([isinstance(node.op, AdvancedSubtensor1) for node in topo])
+            gval = f()
+            good = numpy.zeros_like(data)
+            # good[idx] += numpy.exp(data[idx]) don't work when the same index is used many time
+            for i in idx:
+                good[i] += numpy.exp(data[i])
+            self.failUnless(numpy.allclose(gval, good), (gval, good))
+            def fct(t):
+                return sum(exp(t[idx_]))
+            utt.verify_grad(fct, [data])
+
+    def test_grad_list(self):
+        data = numpy.random.rand(3)
+        idxs = [[i] for i in range(data.shape[0])]
+        debug_mode = isinstance(theano.compile.mode.get_default_mode(),
+                                theano.compile.DebugMode)
+        for i in range(data.shape[0]):
+            for j in range(data.shape[0]):
+                idxs.append([i,j])
+        for i in range(data.shape[0]):
+            for j in range(data.shape[0]):
+                for k in range(data.shape[0]):
+                    idxs.append([i,j,k])
+        self.grad_list_(idxs, data)
+
+        data = numpy.random.rand(4,3)
+        self.grad_list_(idxs, data)
+
+        data = numpy.random.rand(5,3,7)
+
+    def test_shape_list(self):
+        #TODO for all type of subtensor shape
+        for data, idx in [(numpy.random.rand(4), [1,0]),
+                          (numpy.random.rand(4,2), [2,3]),
+                          (numpy.random.rand(4,2,3), [0,3]),
+                          (numpy.random.rand(4,2,3), [3,3,1,2,2,]),
+                          ]:
+            n = shared(data)
+            t = n[idx]
+            f = function([], t.shape, mode=None)
+            topo = f.maker.env.toposort()
+            #assert len(topo) == 1
+            #assert isinstance(topo[0].op, theano.tensor.basic.AdvancedSubtensor1)
+            val = f()
+            self.failUnless(numpy.allclose(val, data[idx].shape))
 
 class T_Join_and_Split(unittest.TestCase):
     """
