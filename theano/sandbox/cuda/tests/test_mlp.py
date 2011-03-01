@@ -116,13 +116,16 @@ def test_run_nnet():
             rval_gpu, tg = run_nnet(True, n_in=n_in, n_hid=n_hid)
             #print "cpu:", rval_cpu
             #print "gpu:", rval_gpu
-            print "max abs diff:", numpy.max(numpy.absolute(rval_gpu-rval_cpu))
+            abs_diff, rel_diff = theano.tensor.basic.numeric_grad.abs_rel_err(rval_gpu,rval_cpu)
+            max_abs_diff = abs_diff.max()
+            print "max abs diff=%e max rel diff=%e n_in=%d n_hid=%d"%(
+                max_abs_diff, rel_diff.max(), n_in, n_hid)
             print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
             rtol = 1e-4
             if n_in*n_hid>=2048*4096:
                 rtol = 7e-4
-            if not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6):
-                assert numpy.allclose(rval_cpu, rval_gpu,rtol=rtol,atol=1e-6)
+            assert numpy.allclose(rval_cpu, rval_gpu,rtol=rtol,atol=1e-6), ("max_abs_diff, max_rel_diff, n_in, n_hid",
+                                                                            max_abs_diff, rel_diff.max(), n_in, n_hid)
 
 def test_run_nnet_med():
     utt.seed_rng()
