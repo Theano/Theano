@@ -1603,12 +1603,13 @@ class T_subtensor(unittest.TestCase):
 
     def test_err_bound_list(self):
         n = shared(numpy.ones((2,3))*5)
-        t = n[0,4]
-        self.failUnless(isinstance(t.owner.op, Subtensor))
+        t = n[[0,4]]
+        self.failUnless(isinstance(t.owner.op, AdvancedSubtensor1))
         self.assertRaises(IndexError, eval_outputs, [t])
 
     def grad_list_(self, idxs, data):
         n = shared(data)
+        fast_compile = theano.config.mode == 'FAST_COMPILE'
 
         for idx in idxs:
             idx_ = shared(numpy.asarray(idx))
@@ -1616,7 +1617,10 @@ class T_subtensor(unittest.TestCase):
             gn = grad(sum(exp(t)), n)
             f = function([], gn, mode=None)
             topo = f.maker.env.toposort()
-            assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
+            if not fast_compile:
+                assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
+            else:
+                assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
             assert any([isinstance(node.op, AdvancedSubtensor1) for node in topo])
             gval = f()
             good = numpy.zeros_like(data)
