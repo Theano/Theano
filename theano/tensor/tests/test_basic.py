@@ -1644,23 +1644,20 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_grad_list(self):
-        data = numpy.random.rand(3)
+        data = numpy.random.rand(4)
         idxs = [[i] for i in range(data.shape[0])]
         debug_mode = isinstance(theano.compile.mode.get_default_mode(),
                                 theano.compile.DebugMode)
         for i in range(data.shape[0]):
             for j in range(data.shape[0]):
-                idxs.append([i,j])
-        for i in range(data.shape[0]):
-            for j in range(data.shape[0]):
-                for k in range(data.shape[0]):
-                    idxs.append([i,j,k])
+                idxs.append([i,j,(i+1)%data.shape[0]])
         self.grad_list_(idxs, data)
 
         data = numpy.random.rand(4,3)
         self.grad_list_(idxs, data)
 
-        data = numpy.random.rand(5,3,7)
+        data = numpy.random.rand(4,3,2)
+        self.grad_list_(idxs, data)
 
     def test_shape_list(self):
         #TODO for all type of subtensor shape
