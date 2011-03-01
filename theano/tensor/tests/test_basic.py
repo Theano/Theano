@@ -1616,7 +1616,7 @@ class T_subtensor(unittest.TestCase):
             gn = grad(sum(exp(t)), n)
             f = function([], gn, mode=None)
             topo = f.maker.env.toposort()
-            assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
+            assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
             assert any([isinstance(node.op, AdvancedSubtensor1) for node in topo])
             gval = f()
             good = numpy.zeros_like(data)

@@ -4012,6 +4012,10 @@ advanced_subtensor1 = AdvancedSubtensor1()
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if inplace:
+            self.destroy_map = {0: [0]}
 
     def __hash__(self):
         return hash(type(self))
@@ -4042,7 +4046,8 @@ class AdvancedIncSubtensor1(Op):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
-        x = x.copy()
+        if not self.inplace:
+            x = x.copy()
         # x[idx] += y don't work if the same index is present many times.
         # It do it only once
         for (j,i) in enumerate(idx):

@@ -1158,6 +1158,18 @@ def local_inplace_setsubtensor(node):
 compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
+@gof.local_optimizer([None])
+def local_inplace_incsubtensor1(node):
+    """
+    Also work for GpuIncSubtensor
+    """
+    if isinstance(node.op, T.AdvancedIncSubtensor1) and not node.op.inplace:
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(*node.inputs)
+        return [new_node]
+    return False
+compile.optdb.register('local_inplace_incsubtensor1', TopoOptimizer(local_inplace_incsubtensor1,
+    failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
 ####################
 # Rebroadcast opts #
