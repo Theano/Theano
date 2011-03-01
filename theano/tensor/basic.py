@@ -4054,6 +4054,10 @@ class AdvancedIncSubtensor1(Op):
             x[i] += y[j]
         out[0] = x
 
+    def infer_shape(self, node, ishapes):
+        x, y, ilist = ishapes
+        return [x]
+
 advanced_inc_subtensor = AdvancedIncSubtensor1()
 
 class AdvancedSubtensor(Op):

@@ -1615,22 +1615,33 @@ class T_subtensor(unittest.TestCase):
             idx_ = shared(numpy.asarray(idx))
             t = n[idx_]
             gn = grad(sum(exp(t)), n)
-            f = function([], gn, mode=None)
+            f = function([], [gn, gn.shape], mode=None)
             topo = f.maker.env.toposort()
             if not fast_compile:
                 assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
             else:
                 assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
             assert any([isinstance(node.op, AdvancedSubtensor1) for node in topo])
-            gval = f()
+            gval, gshape = f()
             good = numpy.zeros_like(data)
             # good[idx] += numpy.exp(data[idx]) don't work when the same index is used many time
             for i in idx:
                 good[i] += numpy.exp(data[i])
             self.failUnless(numpy.allclose(gval, good), (gval, good))
+            self.failUnless(numpy.allclose(gshape, data.shape))
+
             def fct(t):
                 return sum(exp(t[idx_]))
             utt.verify_grad(fct, [data])
+
+            if idx is idxs[0]:
+                f = function([], [gn.shape, n[idx_].shape], mode=None)
+                topo = f.maker.env.toposort()
+                if not fast_compile:
+                    self.failUnless(not any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo]))
+                    self.failUnless(not any([isinstance(node.op, AdvancedSubtensor1) for node in topo]))
+                f()
+
 
     def test_grad_list(self):
         data = numpy.random.rand(3)
