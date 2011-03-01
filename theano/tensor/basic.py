@@ -3418,12 +3418,13 @@ def stack(*tensors):
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
 
-    # Why this is not an optimization?
-    # This make the graph less canonicalized(more type need to be understood by all optimization)
-    # DebugMode can't detect error in this code as it is not in an optimization.
+    # This should be an optimization!
+    # Doing it here make the graph less canonicalized
+    # (more type need to be understood by all optimization)
+    # And DebugMode can't detect error in this code as it is not in an optimization.
     if numpy.all([isinstance(t, (numpy.number, float, int, python_complex)) or #in case their is direct int
                   (isinstance(t, Variable) and
-                      isinstance(t.type, TensorType) and
+                   isinstance(t.type, TensorType) and
                    t.ndim==0)
                   for t in tensors]):
         tensors = map(as_tensor_variable,tensors)#in case their is direct int
