@@ -1590,6 +1590,7 @@ class T_subtensor(unittest.TestCase):
             assert isinstance(topo[0].op, theano.tensor.basic.AdvancedSubtensor1)
             val = f()
             good = data[idx]
+            self.failUnless(val.ndim == data.ndim)
             self.failUnless(numpy.allclose(val, good), (val, good))
 
     def test_err_invalid_list(self):
@@ -1627,6 +1628,7 @@ class T_subtensor(unittest.TestCase):
             # good[idx] += numpy.exp(data[idx]) don't work when the same index is used many time
             for i in idx:
                 good[i] += numpy.exp(data[i])
+            self.failUnless(gval.ndim == data.ndim)
             self.failUnless(numpy.allclose(gval, good), (gval, good))
             self.failUnless(numpy.allclose(gshape, data.shape))
 
