@@ -4058,6 +4058,16 @@ class AdvancedIncSubtensor1(Op):
         x, y, ilist = ishapes
         return [x]
 
+    def grad(self, inputs, grads):
+        g_output, = grads
+        x, y = inputs[:2]
+        idx_list = inputs[2:]
+
+        gx = g_output
+        gy = advanced_subtensor1(g_output, *idx_list)
+
+        return [gx, gy] + [None]*len(idx_list)
+
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
 class AdvancedSubtensor(Op):

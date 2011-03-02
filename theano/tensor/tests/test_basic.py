@@ -1634,6 +1634,12 @@ class T_subtensor(unittest.TestCase):
                 return sum(t[idx_])
             utt.verify_grad(fct, [data])
 
+            # Test the grad of the grad (e.i. AdvancedIncSubtensor1.grad)
+            def fct(t):
+                return grad(sum(t[idx_]),t)
+            utt.verify_grad(fct, [data])
+
+            # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
             if idx is idxs[0]:
                 f = function([], [gn.shape, n[idx_].shape], mode=None)
                 topo = f.maker.env.toposort()
