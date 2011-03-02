@@ -1580,7 +1580,7 @@ class T_subtensor(unittest.TestCase):
         for data, idx in [(numpy.random.rand(4), [1,0]),
                           (numpy.random.rand(4,5), [2,3]),
                           (numpy.random.rand(4,2,3), [0,3]),
-                          (numpy.random.rand(4,2,3), [3,3]),
+                          (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
                           ]:
             n = shared(data)
             t = n[idx]
