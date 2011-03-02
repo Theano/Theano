@@ -4002,7 +4002,7 @@ class AdvancedSubtensor1(Op):
     def grad(self, inputs, grads):
         gz, = grads
         assert len(inputs)==2
-        return [advanced_inc_subtensor(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
+        return [advanced_inc_subtensor1(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
 
     def infer_shape(self, node, ishapes):
         x, ilist = ishapes
@@ -4058,7 +4058,7 @@ class AdvancedIncSubtensor1(Op):
         x, y, ilist = ishapes
         return [x]
 
-advanced_inc_subtensor = AdvancedIncSubtensor1()
+advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
