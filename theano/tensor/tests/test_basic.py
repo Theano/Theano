@@ -1631,7 +1631,7 @@ class T_subtensor(unittest.TestCase):
             self.failUnless(numpy.allclose(gshape, data.shape))
 
             def fct(t):
-                return sum(exp(t[idx_]))
+                return sum(t[idx_])
             utt.verify_grad(fct, [data])
 
             if idx is idxs[0]:
@@ -1649,7 +1649,7 @@ class T_subtensor(unittest.TestCase):
         debug_mode = isinstance(theano.compile.mode.get_default_mode(),
                                 theano.compile.DebugMode)
         for i in range(data.shape[0]):
-            for j in range(data.shape[0]):
+            for j in range(0,data.shape[0],2):
                 idxs.append([i,j,(i+1)%data.shape[0]])
         self.grad_list_(idxs, data)
 
