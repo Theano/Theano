@@ -1048,6 +1048,31 @@ CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
 
     switch(self->nd)
     {
+        case 0:
+            {
+                dim3 n_blocks(1, 1, 1);
+                dim3 n_threads(1);
+                k_iop_3<<<n_blocks, n_threads>>>(1,
+                        1, //CudaNdarray_HOST_DIMS(self)[0],
+			1, //CudaNdarray_HOST_DIMS(self)[0],
+                        CudaNdarray_DEV_DATA(self),
+                        1,
+                        1, //CudaNdarray_HOST_STRIDES(self)[0],
+                        CudaNdarray_HOST_STRIDES(self)[0],
+                        CudaNdarray_DEV_DATA(other),
+                        1,
+                        1, //CudaNdarray_HOST_STRIDES(other)[0],
+                        CudaNdarray_HOST_STRIDES(other)[0]);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iop_3", cudaGetErrorString(err));
+                    return NULL;
+                }
+                Py_INCREF(py_self);
+                return py_self;
+            }
         case 1:
             {
                 dim3 n_blocks(1, 1, 1);

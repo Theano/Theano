@@ -59,17 +59,16 @@ def test_add_iadd_idiv():
         print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(asum,  numpy.asarray(bsum))
 
-        if len(shape)>0:
-            #test inplace version, not implemented with 0 dims
-            b0 += b1
-            a0 += a1
-            assert numpy.allclose(a0, numpy.asarray(b0))
-            assert numpy.allclose(a0,a1*2)
+        # test inplace version
+        b0 += b1
+        a0 += a1
+        assert numpy.allclose(a0, numpy.asarray(b0))
+        assert numpy.allclose(a0,a1*2)
 
-            b0 /= b1
-            a0 /= a1
-            assert numpy.allclose(a0, numpy.asarray(b0))
-            assert numpy.allclose(a0,numpy.ones(a0.shape)*2)
+        b0 /= b1
+        a0 /= a1
+        assert numpy.allclose(a0, numpy.asarray(b0))
+        assert numpy.allclose(a0,numpy.ones(a0.shape)*2)
 
         if len(shape)==2:
             #test not contiguous version.
