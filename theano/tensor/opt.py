@@ -1160,6 +1160,7 @@ compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsu
 
 @gof.local_optimizer([None])
 def local_inplace_incsubtensor1(node):
+    """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, T.AdvancedIncSubtensor1) and not node.op.inplace:
         new_op = node.op.__class__(inplace=True)
         new_node = new_op(*node.inputs)

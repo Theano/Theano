@@ -1376,16 +1376,18 @@ class T_subtensor(unittest.TestCase):
     This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
     def __init__(self, name, shared=shared,
-                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1,
                  sub=theano.tensor.basic.Subtensor,
                  inc_sub=theano.tensor.basic.IncSubtensor,
+                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1,
+                 adv_incsub1=theano.tensor.basic.AdvancedIncSubtensor1,
                  mode=None,
                  dtype=theano.config.floatX,
                  ignore_topo=(theano.compile.function_module.DeepCopyOp)):
         self.shared = shared
-        self.adv_sub1 = adv_sub1
         self.sub = sub
         self.inc_sub = inc_sub
+        self.adv_sub1 = adv_sub1
+        self.adv_incsub1 = adv_incsub1
         self.mode = mode
         self.dtype = dtype
         self.ignore_topo = ignore_topo
@@ -1696,9 +1698,9 @@ class T_subtensor(unittest.TestCase):
             f = function([], [gn, gn.shape], mode=self.mode)
             topo = f.maker.env.toposort()
             if not fast_compile:
-                assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
+                assert any([isinstance(node.op, self.adv_incsub1) and node.op.inplace for node in topo])
             else:
-                assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
+                assert any([isinstance(node.op, self.adv_incsub1) for node in topo])
             assert any([isinstance(node.op, self.adv_sub1) for node in topo])
             gval, gshape = f()
             good = numpy.zeros_like(data)
@@ -1723,7 +1725,7 @@ class T_subtensor(unittest.TestCase):
                 f = function([], [gn.shape, n[idx_].shape], mode=self.mode)
                 topo = f.maker.env.toposort()
                 if not fast_compile:
-                    self.failUnless(not any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo]))
+                    self.failUnless(not any([isinstance(node.op, self.adv_incsub1) for node in topo]))
                     self.failUnless(not any([isinstance(node.op, self.adv_sub1) for node in topo]))
                 f()
 

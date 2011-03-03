@@ -519,6 +519,38 @@ def local_gpu_advanced_subtensor1(node):
 
 @register_opt()
 @local_optimizer([])
+def local_gpu_advanced_incsubtensor1(node):
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        # Should not execute for GpuAdvancedIncSubtensor1
+        if host_input.owner and host_input.owner.op.__class__ is tensor.AdvancedIncSubtensor1:
+            x, y = host_input.owner.inputs[0:2]
+            coords = host_input.owner.inputs[2:]
+            return [GpuAdvancedIncSubtensor1()(gpu_from_host(x),
+                                               gpu_from_host(y), *coords)]
+
+    # Should not execute for GpuAdvancedIncSubtensor1
+    if node.op.__class__ is tensor.AdvancedSubtensor1:
+        import pdb;pdb.set_trace()
+        x, y  = node.inputs[0:2]
+        coords = node.inputs[2:]
+        go_gpu = False
+        if x.owner and x.owner.op == host_from_gpu:
+            go_gpu = True
+            gpu_x, = x.owner.inputs
+        else:
+            gpu_x = gpu_from_host(x)
+        if y.owner and y.owner.op == host_from_gpu:
+            go_gpu = True
+            gpu_y, = y.owner.inputs
+        else:
+            gpu_y = gpu_from_host(y)
+        if go_gpu:
+            return [host_from_gpu(GpuAdvancedIncSubtensor1()(gpu_x, gpu_y, *coords))]
+    return False
+
+@register_opt()
+@local_optimizer([])
 def local_gpu_incsubtensor(node):
     if node.op == gpu_from_host:
         host_output = node.inputs[0]

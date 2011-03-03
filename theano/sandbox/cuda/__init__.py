@@ -138,7 +138,8 @@ outdated!""")
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
                            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
-                           GpuSubtensor, GpuAdvancedSubtensor1, GpuIncSubtensor,
+                           GpuSubtensor, GpuIncSubtensor,
+                           GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
                            GpuFlatten, GpuShape, GpuAlloc,
                            GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol,
                            ftensor3, ftensor4, scalar, vector, matrix, row, col,

@@ -787,9 +787,10 @@ import theano.tensor.tests.test_basic
 # This is to don't duplicate test.
 class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     shared=staticmethod(cuda.shared_constructor)
+    sub=cuda.GpuSubtensor
+    inc_sub=cuda.GpuIncSubtensor
     adv_sub1=cuda.GpuAdvancedSubtensor1
-    sub=cuda.GpuSubtensor,
-    inc_sub=cuda.GpuIncSubtensor,
+    adv_incsub1=cuda.GpuAdvancedIncSubtensor1
     mode=mode_with_gpu
     dtype='float32'
     ignore_topo=(B.HostFromGpu, B.GpuFromHost)
