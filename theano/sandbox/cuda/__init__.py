@@ -137,10 +137,12 @@ outdated!""")
 
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
-            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
-            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape, GpuAlloc,
-            GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
-                           , scalar, vector, matrix, row, col, tensor3, tensor4)
+                           GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
+                           GpuSubtensor, GpuAdvancedSubtensor1, GpuIncSubtensor,
+                           GpuFlatten, GpuShape, GpuAlloc,
+                           GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol,
+                           ftensor3, ftensor4, scalar, vector, matrix, row, col,
+                           tensor3, tensor4)
     from basic_ops import host_from_gpu, gpu_from_host
     import opt
     import cuda_ndarray

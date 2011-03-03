@@ -1720,6 +1720,32 @@ class GpuSubtensor(tensor.Subtensor):
             cdata = cdata[0]
         out[0] = x.__getitem__(cdata)
 
+class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
+    def make_node(self, x, ilist):
+        x_ = as_cuda_ndarray_variable(x)
+        ilist_ = tensor.as_tensor_variable(ilist)
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return Apply(self, [x_, ilist_], [x_.type()])
+
+    def perform(self, node, inp, out_):
+        # This don't work as CudaNdarray_Subscript() don't support it.
+        #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
+        x, idx = inp
+        out, = out_
+        o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),)+x.shape[1:])
+        for (j,i) in enumerate(idx):
+            o[j] = x[i]
+        out[0] = o
+
 class GpuIncSubtensor(tensor.IncSubtensor):
     def make_node(self, x, y, *inputs):
         assert isinstance(x.type, CudaNdarrayType)

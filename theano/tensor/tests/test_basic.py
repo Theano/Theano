@@ -1372,6 +1372,17 @@ class T_min_max(unittest.TestCase):
         #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
 
 class T_subtensor(unittest.TestCase):
+    def __init__(self, name, shared=shared,
+                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1, mode=None,
+                 dtype=theano.config.floatX,
+                 ignore_topo=()):
+        self.shared = shared
+        self.adv_sub1 = adv_sub1
+        self.mode = mode
+        self.dtype=dtype
+        self.ignore_topo=ignore_topo
+        return super(T_subtensor, self).__init__(name)
+
     def setUp(self):
         Subtensor.debug = False
         utt.seed_rng()
@@ -1582,47 +1593,56 @@ class T_subtensor(unittest.TestCase):
                           (numpy.random.rand(4,2,3), [0,3]),
                           (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
                           ]:
-            n = shared(data)
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
             t = n[idx]
-            f = function([], t, mode=None)
+            f = function([], t, mode=self.mode)
             topo = f.maker.env.toposort()
-            assert len(topo) == 1
-            assert isinstance(topo[0].op, theano.tensor.basic.AdvancedSubtensor1)
+            topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+            assert len(topo_) == 1
+            assert isinstance(topo_[0].op, self.adv_sub1)
             val = f()
             good = data[idx]
             self.failUnless(val.ndim == data.ndim)
             self.failUnless(numpy.allclose(val, good), (val, good))
 
     def test_err_invalid_list(self):
-        n = shared(numpy.asarray(5))
+        n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0,0])
 
     def test_err_invalid_2list(self):
         # TODO the error message is not clear
-        n = shared(numpy.ones((3,3))*5)
+        n = self.shared(numpy.ones((3,3), dtype=self.dtype)*5)
         self.assertRaises(TypeError, n.__getitem__, ([0,0],[1,1]))
 
     def test_err_bound_list(self):
-        n = shared(numpy.ones((2,3))*5)
+        n = self.shared(numpy.ones((2,3),dtype=self.dtype)*5)
         t = n[[0,4]]
-        self.failUnless(isinstance(t.owner.op, AdvancedSubtensor1))
-        self.assertRaises(IndexError, eval_outputs, [t])
+        # We test again AdvancedSubtensor1 as we transfer data to the cpu.
+        self.failUnless(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+        f = function([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        self.failUnless(isinstance(topo_[0].op, self.adv_sub1))
+        self.assertRaises(IndexError, f)
 
     def grad_list_(self, idxs, data):
-        n = shared(data)
+        n = self.shared(data)
         fast_compile = theano.config.mode == 'FAST_COMPILE'
 
         for idx in idxs:
+            # Should stay on the cpu.
             idx_ = shared(numpy.asarray(idx))
             t = n[idx_]
             gn = grad(sum(exp(t)), n)
-            f = function([], [gn, gn.shape], mode=None)
+            f = function([], [gn, gn.shape], mode=self.mode)
             topo = f.maker.env.toposort()
             if not fast_compile:
                 assert any([isinstance(node.op, AdvancedIncSubtensor1) and node.op.inplace for node in topo])
             else:
                 assert any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo])
-            assert any([isinstance(node.op, AdvancedSubtensor1) for node in topo])
+            assert any([isinstance(node.op, self.adv_sub1) for node in topo])
             gval, gshape = f()
             good = numpy.zeros_like(data)
             # good[idx] += numpy.exp(data[idx]) don't work when the same index is used many time
@@ -1643,28 +1663,29 @@ class T_subtensor(unittest.TestCase):
 
             # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
             if idx is idxs[0]:
-                f = function([], [gn.shape, n[idx_].shape], mode=None)
+                f = function([], [gn.shape, n[idx_].shape], mode=self.mode)
                 topo = f.maker.env.toposort()
                 if not fast_compile:
                     self.failUnless(not any([isinstance(node.op, AdvancedIncSubtensor1) for node in topo]))
-                    self.failUnless(not any([isinstance(node.op, AdvancedSubtensor1) for node in topo]))
+                    self.failUnless(not any([isinstance(node.op, self.adv_sub1) for node in topo]))
                 f()
 
 
     def test_grad_list(self):
         data = numpy.random.rand(4)
+        data = numpy.asarray(data, dtype=self.dtype)
         idxs = [[i] for i in range(data.shape[0])]
-        debug_mode = isinstance(theano.compile.mode.get_default_mode(),
-                                theano.compile.DebugMode)
         for i in range(data.shape[0]):
             for j in range(0,data.shape[0],2):
                 idxs.append([i,j,(i+1)%data.shape[0]])
         self.grad_list_(idxs, data)
 
         data = numpy.random.rand(4,3)
+        data = numpy.asarray(data, dtype=self.dtype)
         self.grad_list_(idxs, data)
 
         data = numpy.random.rand(4,3,2)
+        data = numpy.asarray(data, dtype=self.dtype)
         self.grad_list_(idxs, data)
 
     def test_shape_list(self):
@@ -1674,7 +1695,8 @@ class T_subtensor(unittest.TestCase):
                           (numpy.random.rand(4,2,3), [0,3]),
                           (numpy.random.rand(4,2,3), [3,3,1,2,2,]),
                           ]:
-            n = shared(data)
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
             t = n[idx]
             f = function([], t.shape, mode=None)
             topo = f.maker.env.toposort()
