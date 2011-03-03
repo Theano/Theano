@@ -1812,18 +1812,18 @@ static PyGetSetDef CudaNdarray_getset[] = {
     {"size",
         (getter)CudaNdarray_SIZE_Object,
         NULL,
-        "Return the number of element in this objects.",
+        "The number of elements in this object.",
         NULL},
     //mem_size is neede for pycuda.elementwise.ElementwiseKernel Why do they use size and mem_size of the same value?
     {"mem_size",
         (getter)CudaNdarray_SIZE_Object,
         NULL,
-        "Return the number of element in this objects.",
+        "The number of elements in this object.",
         NULL},
     {"ndim",
         (getter)CudaNdarray_get_ndim,
         NULL,
-        "The number of dimensions in this objects",
+        "The number of dimensions in this object.",
         NULL},
 
     {NULL, NULL, NULL, NULL}  /* Sentinel */
