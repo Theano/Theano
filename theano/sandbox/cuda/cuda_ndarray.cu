@@ -1751,6 +1751,12 @@ CudaNdarray_get_dtype(CudaNdarray *self, void *closure)
     return PyString_FromString("float32");
 }
 
+static PyObject *
+CudaNdarray_get_ndim(CudaNdarray *self, void *closure)
+{
+    return PyInt_FromLong(self->nd);
+}
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape",
         (getter)CudaNdarray_get_shape,
@@ -1765,7 +1771,7 @@ static PyGetSetDef CudaNdarray_getset[] = {
     //gpudata is needed to allow calling pycuda fct with CudaNdarray input.
     {"gpudata",
         (getter)CudaNdarray_get_dev_data,
-        NULL,//setter)CudaNdarray_set_dev_data,
+        NULL,
         "device data pointer",
         NULL},
     {"_dev_data",
@@ -1788,6 +1794,11 @@ static PyGetSetDef CudaNdarray_getset[] = {
         (getter)CudaNdarray_SIZE_Object,
         NULL,
         "Return the number of element in this objects.",
+        NULL},
+    {"ndim",
+        (getter)CudaNdarray_get_ndim,
+        NULL,
+        "The number of dimensions in this objects",
         NULL},
 
     {NULL, NULL, NULL, NULL}  /* Sentinel */
