@@ -109,6 +109,7 @@ if __name__ == "__main__":
         mkl 10.2.2.025/2                                 7.6s
         mkl 10.2.2.025/4                                 4.0s
         mkl 10.2.2.025/8                                 2.0s
+        mkl 11.0.083/1           7.97s
 
         Test time in float32 with cuda 3.0.14
         (cuda version 3.2RC and up are supposed to have faster gemm on the GTX4?? card)
