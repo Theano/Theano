@@ -531,7 +531,6 @@ def local_gpu_advanced_incsubtensor1(node):
 
     # Should not execute for GpuAdvancedIncSubtensor1
     if node.op.__class__ is tensor.AdvancedSubtensor1:
-        import pdb;pdb.set_trace()
         x, y  = node.inputs[0:2]
         coords = node.inputs[2:]
         go_gpu = False
