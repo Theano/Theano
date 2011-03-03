@@ -1004,7 +1004,8 @@ CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
     CudaNdarray * self = (CudaNdarray *)py_self;
     CudaNdarray * other = (CudaNdarray *)py_other;
 
-    if (verbose) fprintf(stderr, "INPLACE ADD/DIV for nd=%d\n",self->nd);
+    if (verbose) fprintf(stderr, "INPLACE ADD/DIV for self->nd=%d other->nd=%d\n",
+			 self->nd, other->nd);
 
     //standard elemwise size checks
     if (self->nd != other->nd)
@@ -1220,10 +1221,10 @@ CudaNdarray_inplace_add_div(PyObject* py_self, PyObject * py_other, int fct_nb)
 // Will be called by __iadd__ in Python
 static PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other){
-  CudaNdarray_inplace_add_div(py_self, py_other, 0);
+  PyObject * rval = CudaNdarray_inplace_add_div(py_self, py_other, 0);
   //We should not increment the refcount as we are doing inplace operation
   //And in this syntax, their is no additional reference created!
-  return py_self;
+  return rval;
 }
 
 /*
@@ -1232,10 +1233,10 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other){
 // Will be called by __idiv__ in Python
 static PyObject *
 CudaNdarray_inplace_div(PyObject* py_self, PyObject * py_other){
-  CudaNdarray_inplace_add_div(py_self, py_other, 1);
+  PyObject * rval = CudaNdarray_inplace_add_div(py_self, py_other, 1);
   //We should not increment the refcount as we are doing inplace operation
   //And in this syntax, their is no additional reference created!
-  return py_self;
+  return rval;
 }
 
 static PyNumberMethods CudaNdarrayNumberMethods =
