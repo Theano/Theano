@@ -785,10 +785,11 @@ def test_gpualloc_output_to_gpu():
 
 import theano.tensor.tests.test_basic
 # This is to don't duplicate test.
-# TODO: the source class test only Adv_subtensor1 test on gpu. All other are tested only on the cpu!
-class T_Adv_subtensor1(theano.tensor.tests.test_basic.T_subtensor):
+class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     shared=staticmethod(cuda.shared_constructor)
     adv_sub1=cuda.GpuAdvancedSubtensor1
+    sub=cuda.GpuSubtensor,
+    inc_sub=cuda.GpuIncSubtensor,
     mode=mode_with_gpu
     dtype='float32'
     ignore_topo=(B.HostFromGpu, B.GpuFromHost)

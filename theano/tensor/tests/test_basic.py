@@ -1372,24 +1372,44 @@ class T_min_max(unittest.TestCase):
         #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
 
 class T_subtensor(unittest.TestCase):
+    """
+    This is build in a way that allow to reuse it to test the equivalent gpu op.
+    """
     def __init__(self, name, shared=shared,
-                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1, mode=None,
+                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1,
+                 sub=theano.tensor.basic.Subtensor,
+                 inc_sub=theano.tensor.basic.IncSubtensor,
+                 mode=None,
                  dtype=theano.config.floatX,
-                 ignore_topo=()):
+                 ignore_topo=(theano.compile.function_module.DeepCopyOp)):
         self.shared = shared
         self.adv_sub1 = adv_sub1
+        self.sub = sub
+        self.inc_sub = inc_sub
         self.mode = mode
-        self.dtype=dtype
-        self.ignore_topo=ignore_topo
+        self.dtype = dtype
+        self.ignore_topo = ignore_topo
         return super(T_subtensor, self).__init__(name)
 
     def setUp(self):
         Subtensor.debug = False
         utt.seed_rng()
 
+    def eval_output_and_check(self, t, list=False):
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        if not list:
+            assert isinstance(topo_[0].op, self.sub)
+        else:
+            assert isinstance(topo_[0].op, self.adv_sub1)
+        tval = f()
+        return tval
+
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
-        n = as_tensor_variable(numpy.ones(()))
+        n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
             t = n[0]
         except ValueError, e:
@@ -1398,7 +1418,7 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_err_bounds(self):
-        n = as_tensor_variable(numpy.ones(3))
+        n = self.shared(numpy.ones(3, dtype=self.dtype))
         t = n[7]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
@@ -1407,7 +1427,7 @@ class T_subtensor(unittest.TestCase):
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
-                tval = eval_outputs([t])
+                self.eval_output_and_check(t)
                 assert 0
             except Exception, e:
                 if e[0] != 'index out of bounds':
@@ -1415,7 +1435,7 @@ class T_subtensor(unittest.TestCase):
         finally:
             _logger.setLevel(oldlevel)
     def test1_err_subslice(self):
-        n = as_tensor_variable(numpy.ones(3))
+        n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
             t = n[slice(0,slice(1,2,None),None)]
         except Exception, e:
@@ -1427,56 +1447,81 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_ok_range_finite(self):
-        n = as_tensor_variable(numpy.ones(3)*5)
+        n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[0:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
+
     def test2_ok_range_finite(self):
-        n = as_tensor_variable(numpy.ones((3,4))*5)
+        n = self.shared(numpy.ones((3,4), dtype=self.dtype)*5)
         t = n[0:2,3]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
+
     def test1_err_invalid(self):
-        n = as_tensor_variable(numpy.ones(1))
+        n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
             t = n[0,0]
         except ValueError, e:
             self.failUnless(hasattr(e,'subtensor_invalid'))
             return
         self.fail()
+
     def test1_ok_elem(self):
-        n = as_tensor_variable(numpy.ones(1)*5)
+        n = self.shared(numpy.ones(1, dtype=self.dtype)*5)
         t = n[0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == ())
         self.failUnless(tval == 5.0)
     def test1_ok_range_infinite(self):
         #Subtensor.debug = True
-        n = as_tensor_variable(numpy.ones(3)*5)
+        n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[1:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
-    def test1_ok_strided(self):
-        n = as_tensor_variable(numpy.ones(5)*5)
-        t = n[1::2]
-        self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
 
-        tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
+    def test1_ok_strided(self):
+        n = self.shared(numpy.ones(5, dtype=self.dtype)*5)
+        t = n[1::2]
+        self.failUnless(isinstance(t.owner.op, Subtensor))
+        tval = self.eval_output_and_check(t)
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+
+        t = n[0:-1:2] #0 to 1 from the end stepping by 2
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
 
     def test2_err_bounds0(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
         t = n[0,4]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         # Silence expected warnings
@@ -1485,104 +1530,116 @@ class T_subtensor(unittest.TestCase):
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
-                tval = eval_outputs([t])
+                tval = self.eval_output_and_check([t])
                 assert 0
             except IndexError, e:
                 pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_err_bounds1(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared((numpy.ones((2,3), dtype=self.dtype)*5))
         t = n[4:5,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
             try:
-                tval = eval_outputs([t])
+                tval = self.eval_output_and_check([t])
             except Exception, e:
                 if e[0] != 'index out of bounds':
                     raise
         finally:
             sys.stderr = old_stderr
     def test2_ok_elem(self):
-        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
+        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[0,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 2))
     def test2_ok_row(self):
-        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
+        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[1]
         self.failIf(any(n.type.broadcastable))
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (3,))
         self.failUnless(numpy.all(tval == [3,4,5]))
 
     def test2_ok_col(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
         t = n[:,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         self.failIf(any(n.type.broadcastable))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_rows_finite(self):
-        n = as_tensor_variable(numpy.ones((4,3))*5)
+        n = self.shared(numpy.ones((4,3), dtype=self.dtype)*5)
         t = n[1:3,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_cols_infinite(self):
-        n = as_tensor_variable(numpy.asarray(range(12)).reshape((4,3)))
+        n = self.shared(numpy.asarray(range(12), dtype=self.dtype).reshape((4,3)))
         t = n[1,2:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (1,))
         self.failUnless(numpy.all(tval == 5))
 
     def test2_ok_strided(self):
-        n = as_tensor_variable(numpy.asarray(range(20)).reshape((4,5)))
+        n = self.shared(numpy.asarray(range(20), dtype=self.dtype).reshape((4,5)))
         t = n[1:4:2,1:5:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,2))
         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
 
     def test3_ok_mat(self):
-        n = as_tensor_variable(numpy.asarray(range(24)).reshape((2,3,4)))
+        n = self.shared(numpy.asarray(range(24), dtype=self.dtype).reshape((2,3,4)))
         t = n[0,0,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 0))
 
     def test_grad_1d(self):
         subi = 0
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
+        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        n = self.shared(data)
         z = scal.constant(subi)
         t = n[z:,z]
         gn = grad(sum(exp(t)), n)
-        gval = eval_outputs([gn])
+
+        f = inplace_func([], gn, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==6
+        assert numpy.sum([isinstance(node.op, self.inc_sub) for node in topo_])==1
+        assert numpy.sum([isinstance(node.op, self.sub) for node in topo_])==1
+        gval = f()
+
         good = numpy.zeros_like(data)
         good[subi:,subi] = numpy.exp(data[subi:,subi])
         self.failUnless(numpy.all(gval == good), (gval, good))
 
     def test_grad_0d(self):
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
+        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        n = self.shared(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
-        f = function([], gn, mode=None)
-        print 'toposort', f.maker.env.toposort()
+        f = function([], gn, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==6
+        assert numpy.sum([isinstance(node.op, self.inc_sub) for node in topo_])==1
+        assert numpy.sum([isinstance(node.op, self.sub) for node in topo_])==1
+
         gval = f()
-        print gval
         good = numpy.zeros_like(data)
         good[1,0] = numpy.exp(data[1,0])
         self.failUnless(numpy.allclose(gval, good), (gval, good))
@@ -1596,12 +1653,11 @@ class T_subtensor(unittest.TestCase):
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data)
             t = n[idx]
-            f = function([], t, mode=self.mode)
-            topo = f.maker.env.toposort()
-            topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-            assert len(topo_) == 1
-            assert isinstance(topo_[0].op, self.adv_sub1)
-            val = f()
+
+            # We test again AdvancedSubtensor1 as we transfer data to the cpu.
+            self.failUnless(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+
+            val = self.eval_output_and_check(t, list=True)
             good = data[idx]
             self.failUnless(val.ndim == data.ndim)
             self.failUnless(numpy.allclose(val, good), (val, good))
@@ -1620,6 +1676,7 @@ class T_subtensor(unittest.TestCase):
         t = n[[0,4]]
         # We test again AdvancedSubtensor1 as we transfer data to the cpu.
         self.failUnless(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+
         f = function([], t, mode=self.mode)
         topo = f.maker.env.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
@@ -1699,9 +1756,6 @@ class T_subtensor(unittest.TestCase):
             n = self.shared(data)
             t = n[idx]
             f = function([], t.shape, mode=None)
-            topo = f.maker.env.toposort()
-            #assert len(topo) == 1
-            #assert isinstance(topo[0].op, theano.tensor.basic.AdvancedSubtensor1)
             val = f()
             self.failUnless(numpy.allclose(val, data[idx].shape))
 
