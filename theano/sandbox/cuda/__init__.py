@@ -141,7 +141,7 @@ outdated!""")
                            GpuSubtensor, GpuIncSubtensor,
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
                            GpuFlatten, GpuShape, GpuAlloc,
-                           GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol,
+                           GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
                            ftensor3, ftensor4, scalar, vector, matrix, row, col,
                            tensor3, tensor4)
     from basic_ops import host_from_gpu, gpu_from_host
