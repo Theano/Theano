@@ -1555,12 +1555,12 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 // Can only be assigned from a CudaNdarray on the right side
 // Or a ndarray when the left side part is c contiguous.
 static int
-CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
+CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 {
-    if(CudaNdarray_Check(o)  && PyArray_Check(v)){
+    if(CudaNdarray_Check(o)  && PyArray_Check(value)){
         // We try to copy directly into this CudaNdarray from the ndarray
         CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
-        int typenum = PyArray_TYPE(v);
+        int typenum = PyArray_TYPE(value);
 
         if(!rval){
             // CudaNdarray_Subscript failed and set the error msg.
@@ -1577,23 +1577,23 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
             Py_XDECREF(rval);
             return -1;
         }
-        if(rval->nd != ((PyArrayObject*)v)->nd){
+        if(rval->nd != ((PyArrayObject*)value)->nd){
             PyErr_Format(PyExc_NotImplementedError, "CudaNdarray.__setitem__: need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.",
-                         rval->nd,((PyArrayObject*)v)->nd);
+                         rval->nd,((PyArrayObject*)value)->nd);
             Py_XDECREF(rval);
             return -1;
         }
         for(int i=0 ; i<rval->nd ; i++){
-          if(CudaNdarray_HOST_DIMS(rval)[i] != ((PyArrayObject*)v)->dimensions[i]){
+          if(CudaNdarray_HOST_DIMS(rval)[i] != ((PyArrayObject*)value)->dimensions[i]){
             PyErr_Format(PyExc_ValueError, "CudaNdarray.__setitem__: need same dimensions for dim %d, destination=%d, source=%ld",
                 i,
                 CudaNdarray_HOST_DIMS(rval)[i],
-                (long int)(((PyArrayObject*)v)->dimensions[i]));
+                (long int)(((PyArrayObject*)value)->dimensions[i]));
             Py_XDECREF(rval);
             return -1;
           }
         }
-        PyArrayObject * py_v = (PyArrayObject*)PyArray_ContiguousFromAny((PyObject*)v, typenum,
+        PyArrayObject * py_v = (PyArrayObject*)PyArray_ContiguousFromAny((PyObject*)value, typenum,
                                 rval->nd, rval->nd);
         cublasSetVector(PyArray_SIZE(py_v),
                         sizeof(real),
@@ -1610,7 +1610,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
     }
 
 
-    if(!CudaNdarray_Check(o) || !CudaNdarray_Check(v))
+    if(!CudaNdarray_Check(o) || !CudaNdarray_Check(value))
     {
         PyErr_SetString(PyExc_TypeError, "CudaNdarray.__setitem__: left must be a CudaNdarrays and right must be a CudaNdarrays or ndarray");
         return -1;
@@ -1643,7 +1643,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
 
     PyObject *baseSavedForComparison = rval->base;
 
-    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v, true))
+    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
     {
         Py_DECREF((PyObject*)rval);
         return -1;
