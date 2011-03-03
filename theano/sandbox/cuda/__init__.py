@@ -56,7 +56,7 @@ def set_cuda_disabled():
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
 cuda_files = (
-        'cuda_ndarray.cu', 
+        'cuda_ndarray.cu',
         'cuda_ndarray.cuh',
         'conv_full_kernel.cu',
         'conv_kernel.cu')
@@ -122,7 +122,7 @@ from theano.sandbox.cuda.var import (CudaNdarrayVariable,
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 if cuda_available:
-    # check if their is an old cuda_ndarray that was loading instead of the one 
+    # check if their is an old cuda_ndarray that was loading instead of the one
     # we compiled!
     import cuda_ndarray.cuda_ndarray
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
@@ -205,10 +205,10 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
 
     if force:
         try:
-            #in case the device if just gpu, 
+            #in case the device if just gpu,
             # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
-        except (Exception, NameError), e: 
+        except (Exception, NameError), e:
             # NameError when no gpu present as cuda_ndarray is not loaded.
             e.args+=("ERROR: GPU forced but failed. ",)
             raise
