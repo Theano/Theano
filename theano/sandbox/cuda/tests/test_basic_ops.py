@@ -794,6 +794,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     mode=mode_with_gpu
     dtype='float32'
     ignore_topo=(B.HostFromGpu, B.GpuFromHost)
+    fast_compile = theano.config.mode == 'FAST_COMPILE'
     def __init__(self, name):
         return super(theano.tensor.tests.test_basic.T_subtensor, self).__init__(name)
 
