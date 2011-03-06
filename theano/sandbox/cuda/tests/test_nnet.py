@@ -1,5 +1,6 @@
 import theano, numpy
 import theano.tensor as T
+import theano.tests.unittest_tools as utt
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -40,6 +41,9 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
     #we precompute the dot with big shape before to allow the test of GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error (the launch timed out and was terminated) on GPU card not powerfull enought. We need the big shape to check for corner case.
     dot_result = T.fmatrix('dot_result')
+
+    # Seed numpy.random with config.unittests.rseed
+    utt.seed_rng()
 
     xx = numpy.asarray(numpy.random.rand(batch_size,n_in),dtype=numpy.float32)
     #?????yy = numpy.ones((batch_size,),dtype='float32')
@@ -83,14 +87,19 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     batch_size = 4097
     n_out = 1250
 
+    # Seed numpy.random with config.unittests.rseed
+    utt.seed_rng()
+
     softmax_output_value = numpy.random.rand(batch_size, n_out).astype('float32')
+    dnll_value = numpy.asarray(numpy.random.rand(batch_size),dtype='float32')
+    y_idx_value = numpy.random.randint(low=0, high=5, size=batch_size)
 
     softmax_output = T.fmatrix()
     softmax_output /= softmax_output.sum(axis=1).reshape(softmax_output.shape[1],1)
     op = theano.tensor.nnet.crossentropy_softmax_1hot_with_bias_dx(
-        numpy.asarray(numpy.random.rand(batch_size),dtype='float32'),
+        dnll_value,
         softmax_output,
-        numpy.random.randint(low=0, high=5, size=batch_size))
+        y_idx_value)
 
     cpu_f = theano.function([softmax_output],op,mode = mode_without_gpu)
     gpu_f = theano.function([softmax_output],op,mode = mode_with_gpu)
