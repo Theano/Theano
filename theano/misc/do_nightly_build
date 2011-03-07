@@ -3,7 +3,6 @@
 date
 ROOT_CWD=/Tmp/nightly_build
 
-source /u/lisa/local/export.soft.lisa.master/.local.bashrc
 echo "nb element in the compiledir:"
 ls /Tmp/lisa_theano_compile_dir_theano|wc -l
 FLAGS=warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,compiledir=/Tmp/lisa_theano_compile_dir_theano,seed=0
