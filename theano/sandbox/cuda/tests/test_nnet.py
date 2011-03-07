@@ -112,7 +112,27 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     cpu_out = cpu_f(softmax_output_value)
     gpu_out = gpu_f(softmax_output_value)
 
-    assert numpy.allclose(cpu_out,gpu_out,rtol=9e-4)
+    rtol = 1e-5
+    atol = 1e-6
+    if not numpy.allclose(cpu_out, gpu_out, rtol=rtol, atol=atol):
+        abs_err, rel_err = T.numeric_grad.abs_rel_err(cpu_out, gpu_out)
+        scaled_err = numpy.minimum(abs_err/atol, rel_err/rtol)
+        max_i = scaled_err.argmax()
+
+        print 'max err index:', max_i, max_i / batch_size, max_i % batch_size, max_i / n_out, max_i & n_out
+        print 'At that index:'
+        print 'err:', scaled_err.flatten()[max_i]
+        print 'absolute error:', abs_err.flatten()[max_i]
+        print 'relative error:', rel_err.flatten()[max_i]
+        print 'cpu_out:', cpu_out.flatten()[max_i]
+        print 'gpu_out:', gpu_out.flatten()[max_i]
+        print 'softmax_output_value:', softmax_output_value.flatten()[max_i]
+        print 'dnll_value:', dnll_value[max_i / n_out]
+        print 'y_idx_value:', y_idx_value[max_i / n_out]
+
+        assert False, "numpy.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
+                rtol, atol)
+
 
 def test_softmax_with_bias():
     """
