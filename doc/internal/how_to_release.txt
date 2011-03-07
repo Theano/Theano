@@ -74,7 +74,24 @@ pointing them to `the "roles" page
 On mloss.org
 ------------
 
-TODO: figure it out. Project page is at http://mloss.org/software/view/241/, James Bergstra is listed as the submitter.
+Project page is at http://mloss.org/software/view/241/.
+Account jaberg is listed as submitter.
+
+1. log in as jaberg to mloss
+2. search for theano and click the logo
+3. press 'update this project' on the left and change
+  - the version number
+  - the download link
+  - the description of what has changed 
+4. press save
+
+Make sure the "what's changed" text isn't too long because it will show up on
+the front page of mloss.  You have to indent bullet lines by 4 spaces I think in
+the description.
+
+You can "update this project" and save lots of times to get the revision text
+right. Just do not change the version number.
+
 
 Finally
 -------
