@@ -310,11 +310,13 @@ else:
     #If you change those value in test don't forget to put them back when the test end.
     #Don't forget the case when the test fail.
     float32_atol = 1e-5
-    float32_rtol = 1e-3
+    float32_rtol = 1e-5
 
     # defaults in numpy.allclose
     float64_rtol = 1.0000000000000001e-05
     float64_atol = 1e-8
+    #more strict. Atleast float32 precision.
+    float64_rtol = 1.0000000000000001e-06
 
 def _allclose(a, b):
     narrow = 'float32', 'complex64'
