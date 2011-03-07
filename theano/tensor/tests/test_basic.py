@@ -1629,7 +1629,7 @@ class T_subtensor(unittest.TestCase):
 
         good = numpy.zeros_like(data)
         good[subi:,subi] = numpy.exp(data[subi:,subi])
-        self.failUnless(numpy.all(gval == good), (gval, good))
+        self.failUnless(numpy.allclose(gval, good), (gval, good))
 
     def test_grad_0d(self):
         data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
