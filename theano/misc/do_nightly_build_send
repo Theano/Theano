@@ -6,10 +6,10 @@ import sys
 from theano.misc.buildbot_filter import filter_output
 # me == the sender's email address
 # family = the list of all recipients' email addresses
-family=['theano-buildbot@googlegroups.com']#, 'theano-dev@googlegroups.com']
-#family=['nouiz@nouiz.org']
+family=['theano-buildbot@googlegroups.com']
 me='lisa@iro.umontreal.ca'
 
+#Those file contain the output of the do_nightly_build script.
 files=["/tmp/do_nightly_build_theano", "/tmp/do_nightly_build_pylearn", "/tmp/do_nightly_build_deeplearning"]
 
 print files
