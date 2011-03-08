@@ -97,7 +97,15 @@ def test_sum():
         if val.size==0:
             assert f2(val)==f(val), ('shape', shape, 'pattern', pattern)
         else:
-            assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
+            try:
+                #We raise the error threashold as we sum big matrix
+                #and this cause small rounding difference with some seed
+                #example in debug mode with unittests.rseed=9275
+                orig_rtol = theano.tensor.basic.float32_rtol
+                theano.tensor.basic.float32_rtol = 2e-5
+                assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
+            finally:
+                theano.tensor.basic.float32_rtol = orig_rtol
 
 
         #test with dimshuffle
