@@ -352,7 +352,7 @@ class ProfileMode(Mode):
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print
         print 'Op-wise summary:'
-        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
+        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -393,7 +393,7 @@ class ProfileMode(Mode):
                 ftot=tot*100/local_time
                 if nb_call==0:
                     continue
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %2i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
             print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                     %(max(0, len(atimes)-n_apply_to_print),
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
