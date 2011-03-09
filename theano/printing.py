@@ -374,15 +374,13 @@ pp = pprint
 
 
 def pydotprint(fct, outfile=None,
-        compact=True, mode=None, format='png', with_ids=False):
+        compact=True, format='png', with_ids=False):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
     :param compact: if True, will remove intermediate var that don't have name.
-    :param mode: if a ProfileMode, add to each Apply label (s in apply,% in apply in total op time, % in fct time)
-                         Otherwise ignore it
     :param format: the file format of the output.
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
@@ -400,10 +398,9 @@ def pydotprint(fct, outfile=None,
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
                                config.device + '.' + format)
-    if mode is None:
-        mode = fct.maker.mode
+    mode = fct.maker.mode
     if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
-        mode=None
+        mode = None
     try:
         import pydot as pd
     except:
