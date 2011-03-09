@@ -180,7 +180,19 @@ def nvcc_module_compile_str(
                 cmd.extend(newarg)
             except ValueError, e:
                 done = True
-    
+
+    # Remove "-u Symbol" arguments, since they are usually not relevant
+    # for the new compilation, even if they were used for compiling python.
+    # If they are necessary, the nvcc syntax is "-U Symbol" with a capital U.
+    done = False
+    while not done:
+        try:
+            indexof = cmd.index('-u')
+            cmd.pop(indexof) # Remove -u
+            cmd.pop(indexof) # Remove argument to -u
+        except ValueError, e:
+            done = True
+
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
     debug('Running cmd', ' '.join(cmd))
     orig_dir = os.getcwd()
