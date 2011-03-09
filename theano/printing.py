@@ -400,6 +400,8 @@ def pydotprint(fct, outfile=None,
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
                                config.device + '.' + format)
+    if mode is None:
+        mode = fct.maker.mode
     if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
         mode=None
     try:
