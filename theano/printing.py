@@ -455,7 +455,8 @@ def pydotprint(fct, outfile=None,
             prof_str='   (%.3fs,%.3f%%,%.3f%%)'%(time,pt,pf)
         applystr = str(node.op).replace(':','_')
         if (applystr in all_strings) or with_ids:
-            applystr = applystr+'    id='+str(topo.index(node))+prof_str
+            applystr = applystr+'    id='+str(topo.index(node))
+        applystr += prof_str
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
         return applystr
