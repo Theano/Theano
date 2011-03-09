@@ -282,11 +282,13 @@ class ProfileMode(Mode):
         op_time = {}
         op_call = {}
         op_apply = {}
+        sop_apply = {}
         for (i,a),t in apply_time.items():
             op=a.op
             op_time.setdefault(op,0)
             op_call.setdefault(op,0)
             op_apply.setdefault(op,0)
+            sop_apply.setdefault(type(a.op),0)
             op_time[op]+=t
             nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
             if t==0:
@@ -294,6 +296,7 @@ class ProfileMode(Mode):
             else:
                 op_call[op] += nb_call
                 op_apply[op] += 1
+                sop_apply[type(a.op)] += 1
 
         # Compute stats per op class
         sop_time={}
@@ -314,12 +317,12 @@ class ProfileMode(Mode):
         # Print the summary per op class.
         print
         print 'Single Op-wise summary:'
-        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
-        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
+        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_apply> <Op name>'
+        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
         tot=0
-        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
+        for f,t,a,ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
@@ -329,7 +332,7 @@ class ProfileMode(Mode):
                 msg = '*'
             else:
                 msg = ' '
-            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
+            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, nb_apply, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
