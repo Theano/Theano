@@ -1243,6 +1243,48 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog)==4
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
 
+class test_local_subtensor_merge(unittest.TestCase):
+
+    def test_const(self):
+        # var[const::][-1] -> var[-1]
+        x = TT.matrix('x')
+        for idx in [-2,-1,1]:
+            f = function([x], x[idx::][-1], mode=mode_opt)
+
+            #theano.printing.debugprint(f)
+            topo=f.maker.env.toposort()
+            assert len(topo)==2
+            assert isinstance(topo[0].op, TT.Subtensor)
+            assert isinstance(topo[1].op, theano.compile.function_module.DeepCopyOp)
+            f([[0,1],[2,3]]) # let debugmode test something
+
+    def test_scalar(self):
+        # var[int::][-1] -> var[-1]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        f = function([x,y], x[y::][-1], mode=mode_opt)
+        #theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==2
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, theano.compile.function_module.DeepCopyOp)
+        for idx in range(-10,2):
+            f([[0,1],[2,3]], idx) # let debugmode test something
+
+    def test_dont_opt(self):
+        # Test that we don't optimize some case
+        x = TT.matrix('x')
+        f = function([x], x[1::][0], mode=mode_opt)
+        #theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
+
 def test_local_fill_useless():
     m = theano.config.mode
     if m == 'FAST_COMPILE':

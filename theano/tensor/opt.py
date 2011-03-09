@@ -1081,6 +1081,35 @@ def local_subtensor_lift(node):
                 return [u.owner.op(*new_inputs)]
 
 @register_canonicalize
+@register_specialize
+@gof.local_optimizer([])
+def local_subtensor_merge(node):
+    """
+    var[int:][-1] -> var[-1]
+
+    The optimization is valid for any int be it constant or not.
+    """
+    if (isinstance(node.op, T.Subtensor) and
+        len(node.inputs)==1 and
+        len(node.op.idx_list)==1 and
+        node.op.idx_list[0]==-1):
+
+        u = node.inputs[0]
+        if not u.owner or len(u.clients) > 1:
+            return False
+
+        if (isinstance(u.owner.op, T.Subtensor) and
+            len(u.owner.inputs) in [1,2] and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            isinstance(u.owner.op.idx_list[0].start, (int, scalar.basic.Scalar)) and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step is None
+            ):
+            return [u.owner.inputs[0][-1]]
+
+
+@register_canonicalize
 @gof.local_optimizer([None])
 def local_IncSubtensor_serialize(node):
     """
