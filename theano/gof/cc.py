@@ -961,8 +961,8 @@ class CLinker(link.Linker):
                     preargs.remove('-DREPLACE_WITH_AMDLIBM')
                 if 'amdlibm' in libs:
                     libs.remove('amdlibm')
-
-            module = c_compiler(
+            try:
+                module = c_compiler(
                     module_name=mod.name,
                     src_code = mod.code(),
                     location=location,
@@ -970,6 +970,9 @@ class CLinker(link.Linker):
                     lib_dirs=self.lib_dirs(),
                     libs=libs,
                     preargs=preargs)
+            except Exception, e:
+                e.args += (str(self.env),)
+                raise
         finally:
             release_lock()
 
