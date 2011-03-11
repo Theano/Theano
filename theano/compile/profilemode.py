@@ -5,7 +5,7 @@ from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
 from theano.gof.python25 import any
 from theano import gof
-from theano.configparser import config, AddConfigVar, IntParam
+from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
 
 import_time = time.time()
@@ -22,6 +22,10 @@ AddConfigVar('ProfileMode.min_memory_size',
              """For the memory profile, do not print apply nodes if the size
  of their outputs (in bytes) is lower then this threshold""",
         IntParam(1024, lambda i: i >= 0))
+
+AddConfigVar('ProfileMode.profile_memory',
+             """Enable profiling of memory used by Theano functions""",
+        BoolParam(True))
 
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
@@ -142,7 +146,11 @@ class ProfileMode(Mode):
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        linker = WrapLinker([linker], profile_thunk2)
+        if config.ProfileMode.profile_memory:
+            p_thunk = profile_thunk
+        else:
+            p_thunk = profile_thunk2
+        linker = WrapLinker([linker], p_thunk)
 
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
