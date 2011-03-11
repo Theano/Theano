@@ -308,7 +308,7 @@ def local_dimshuffle_no_inplace_at_canonicalize(node):
 ######################
 
 @register_canonicalize
-#@register_specialize
+@register_specialize
 @gof.local_optimizer([T.TensorFromScalar])
 def local_tensor_scalar_tensor(node):
     '''tensor_from_scalar(scalar_from_tensor(x)) -> x'''
@@ -319,7 +319,7 @@ def local_tensor_scalar_tensor(node):
             return [t]
 
 @register_canonicalize
-#@register_specialize
+@register_specialize
 @gof.local_optimizer([T.ScalarFromTensor])
 def local_scalar_tensor_scalar(node):
     '''scalar_from_tensor(tensor_from_scalar(x)) -> x'''
