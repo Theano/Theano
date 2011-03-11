@@ -1135,11 +1135,9 @@ def local_subtensor_merge(node):
             u_start = u.owner.op.idx_list[0].start
 
             if len(u.owner.inputs) == 1 and isinstance(u_start, int):
-                print 'int'
                 start0 = u_start
             elif (len(u.owner.inputs) == 2 and
                     isinstance (u_start, scalar.basic.Scalar)):
-                print 'scalar'
                 start0 = T.tensor_from_scalar(u.owner.inputs[1])
             else:
                 return False
