@@ -303,6 +303,34 @@ def local_dimshuffle_no_inplace_at_canonicalize(node):
         return [T.DimShuffle(node.op.input_broadcastable, node.op.new_order, inplace=False)(node.inputs[0])]
 
 
+######################
+# Casting operations #
+######################
+
+@register_canonicalize
+#@register_specialize
+@gof.local_optimizer([T.TensorFromScalar])
+def local_tensor_scalar_tensor(node):
+    '''tensor_from_scalar(scalar_from_tensor(x)) -> x'''
+    if isinstance(node.op, T.TensorFromScalar):
+        s = node.inputs[0]
+        if s.owner and isinstance(s.owner.op, T.ScalarFromTensor):
+            t = s.owner.inputs[0]
+            return [t]
+
+@register_canonicalize
+#@register_specialize
+@gof.local_optimizer([T.ScalarFromTensor])
+def local_scalar_tensor_scalar(node):
+    '''scalar_from_tensor(tensor_from_scalar(x)) -> x'''
+    if isinstance(node.op, T.ScalarFromTensor):
+        t = node.inputs[0]
+        if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
+            s = t.owner.inputs[0]
+            return [s]
+
+
+
 #####################################
 # ShapeFeature, Shape optimizations
 #####################################
