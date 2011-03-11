@@ -2301,10 +2301,6 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 1
     assert f.maker.env.outputs[0].dtype == config.floatX
 
-if __name__ == '__main__':
-#    unittest.main()
-    test_fusion().tes_memory_leak()
-
 def test_local_mul_to_neg():
     """
     Test that a multiplication by -1 or -1.0 yields the appropriate data type
@@ -2327,3 +2323,8 @@ def test_local_add_specialize():
     a = TT.scalar()
     s = TT.add(TT.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
+
+
+if __name__ == '__main__':
+#    unittest.main()
+    test_fusion().tes_memory_leak()
