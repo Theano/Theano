@@ -1386,6 +1386,8 @@ class TensorFromScalar(Op):
         s, = inp
         dt, = grads
         return [scalar_from_tensor(dt)]
+    def __str__(self):
+        return self.__class__.__name__
 tensor_from_scalar = TensorFromScalar()
 
 class ScalarFromTensor(Op):
