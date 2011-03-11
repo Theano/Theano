@@ -223,6 +223,8 @@ class DeepCopyOp(theano.gof.Op):
         }
 
         """%locals()
+        else:
+            super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
 deep_copy_op = DeepCopyOp()
 
