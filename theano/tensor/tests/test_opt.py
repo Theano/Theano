@@ -1249,29 +1249,43 @@ class test_local_subtensor_merge(unittest.TestCase):
     def test_const(self):
         # var[const::][-1] -> var[-1]
         x = TT.matrix('x')
-        for idx in [-2,-1,1]:
+        for idx in [-2,-1,1,2]:
             f = function([x], x[idx::][-1], mode=mode_opt)
 
-            #theano.printing.debugprint(f)
+            #theano.printing.debugprint(f, print_type=True)
             topo=f.maker.env.toposort()
-            assert len(topo)==2
-            assert isinstance(topo[0].op, TT.Subtensor)
-            assert isinstance(topo[1].op, theano.compile.function_module.DeepCopyOp)
-            f([[0,1],[2,3]]) # let debugmode test something
+            print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            print topo[-1].op
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            x_val = [[0,1],[2,3]]
+            if idx<2:
+                # The first subtensor is non-empty, so it makes sense
+                f(x_val) # let debugmode test something
+            else:
+                # A non-empty subtensor of an empty one should be an IndexError
+                self.assertRaises(IndexError, f, x_val)
+
 
     def test_scalar(self):
         # var[int::][-1] -> var[-1]
         x = TT.matrix('x')
         y = TT.iscalar('y')
         f = function([x,y], x[y::][-1], mode=mode_opt)
-        #theano.printing.debugprint(f)
+        #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        assert len(topo)==2
-        assert isinstance(topo[0].op, TT.Subtensor)
-        assert isinstance(topo[1].op, theano.compile.function_module.DeepCopyOp)
+        print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
         for idx in range(-10,2):
-            f([[0,1],[2,3]], idx) # let debugmode test something
+            f(x_val, idx) # let debugmode test something
+        for idx in range(2,4):
+            self.assertRaises(IndexError, f, x_val, idx)
 
     def test_dont_opt(self):
         # Test that we don't optimize some case

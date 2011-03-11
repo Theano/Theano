@@ -1127,14 +1127,41 @@ def local_subtensor_merge(node):
             return False
 
         if (isinstance(u.owner.op, T.Subtensor) and
-            len(u.owner.inputs) in [1,2] and
-            len(u.owner.op.idx_list)==1 and
-            isinstance(u.owner.op.idx_list[0], slice) and
-            isinstance(u.owner.op.idx_list[0].start, (int, scalar.basic.Scalar)) and
-            u.owner.op.idx_list[0].stop is None and
-            u.owner.op.idx_list[0].step is None
-            ):
-            return [u.owner.inputs[0][-1]]
+                len(u.owner.op.idx_list)==1 and
+                isinstance(u.owner.op.idx_list[0], slice) and
+                u.owner.op.idx_list[0].stop is None and
+                u.owner.op.idx_list[0].step is None
+                ):
+            u_start = u.owner.op.idx_list[0].start
+
+            if len(u.owner.inputs) == 1 and isinstance(u_start, int):
+                print 'int'
+                start0 = u_start
+            elif (len(u.owner.inputs) == 2 and
+                    isinstance (u_start, scalar.basic.Scalar)):
+                print 'scalar'
+                start0 = T.tensor_from_scalar(u.owner.inputs[1])
+            else:
+                return False
+
+            len0 = u.owner.inputs[0].shape[0]
+            # The following is equivalent to:
+            # if start0 <= -u.shape[0]:
+            #     actual_start0 = 0
+            # elif start0 < 0:
+            #     actual_start0 = start0 + u.shape[0]
+            # else:
+            #     actual_start0 = start0
+            actual_start0 = (start0 > -len0) * (start0 + ((start0 < 0) * len0))
+
+            # if actual_start < u.shape[0]:
+            #     new_index = -1
+            # else: # Will give an IndexError
+            #     new_index = actual_start
+            new_index = -1 + (actual_start0 >= len0) * (actual_start0 + 1)
+
+            new_index = T.scalar_from_tensor(new_index)
+            return [u.owner.inputs[0][new_index]]
 
 
 @register_canonicalize
