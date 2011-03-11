@@ -1098,7 +1098,10 @@ def _check_chain(r, chain):
             r = r.owner.inputs[chain.pop()]
     #print 'check_chain', _check_chain.n_calls
     #_check_chain.n_calls += 1
-    return r
+
+    # The return value will be used as a Boolean, but some Variables cannot
+    # be used as Booleans (the results of comparisons, for instance)
+    return (r is not None)
 #_check_chain.n_calls = 0
 
 def check_chain(r, *chain):
