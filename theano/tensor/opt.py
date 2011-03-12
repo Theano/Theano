@@ -1105,7 +1105,7 @@ def local_subtensor_lift(node):
                         if node.outputs[0].ndim == i.ndim:
                             new_inputs.append(i)
                         else:
-                            new_inputs.append(i.dimshuffle('x'*node.outputs[0].ndim))
+                            new_inputs.append(i.dimshuffle(['x']*node.outputs[0].ndim))
                 return [u.owner.op(*new_inputs)]
 
 @register_canonicalize

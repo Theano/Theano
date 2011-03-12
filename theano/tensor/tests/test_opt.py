@@ -1244,6 +1244,22 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog)==4
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
 
+    def test6(self):
+        # basic test that the optimization works with a scalar as input,
+        # and a scalar as output (no broadcasting of the scalar needed).
+        # The optimization used to fail and display an ERROR message.
+
+        x = TT.vector('x')
+        y = TT.scalar('y')
+        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[0].op, TT.Subtensor)
+        # Composite{add,exp}
+        assert isinstance(prog[1].op.scalar_op, theano.scalar.Composite)
+        assert len(prog)==2
+        f([1,2,3], 4) # let debugmode test something
+
 class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const(self):
