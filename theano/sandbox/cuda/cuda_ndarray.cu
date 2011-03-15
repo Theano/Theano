@@ -2427,6 +2427,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && size == size_source)
     {
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
+        CNDA_THREAD_SYNC;
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
         {
             PyErr_SetString(PyExc_RuntimeError, "Error copying memory");
@@ -2442,14 +2443,6 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
             {
                 // THIS CASE SHOULD NEVER HAPPEN BECAUSE SCALARS ARE ALWAYS C CONTIGUOUS
                 assert(0);
-                assert (size==1);
-                cublasScopy(1, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
-                CNDA_THREAD_SYNC;
-                if (CUBLAS_STATUS_SUCCESS != cublasGetError())
-                {
-                    PyErr_SetString(PyExc_RuntimeError, "Error copying memory");
-                    return -1;
-                }
             }; break;
         case 1: // vector
             {
