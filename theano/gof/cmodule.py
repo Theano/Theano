@@ -4,6 +4,7 @@ import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, 
 import distutils.sysconfig
 from theano.configparser import config
 import numpy.distutils #TODO: TensorType should handle this
+import sys
 
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
 

@@ -50,7 +50,7 @@ class Conv3D(theano.Op):
         return "Conv3D"
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
     def make_node(self, V, W, b, d):
@@ -109,7 +109,7 @@ class Conv3D(theano.Op):
         dCdV.name = 'Conv3D_dCdV.dCdH='+dCdH_name+',V='+V_name
         dCdW.name = 'Conv3D_dCdW.dCdH='+dCdH_name+',V='+V_name+',W='+W_name
         dCdb.name = 'Conv3D_dCdb.dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name
-        
+
 
 
         return [ dCdV, dCdW, dCdb, dCdd ]
@@ -140,7 +140,7 @@ class Conv3D(theano.Op):
         output_dur = T.floor( (vidDur - filterDur) / dt ) +1
 
         rval = (batch_size,  output_height, output_width, output_dur, output_channels )
-    
+
 
         return [ rval ]
 
@@ -218,7 +218,7 @@ class Conv3D(theano.Op):
 
             if (%(b)s->dimensions[0] != outputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%li channel output image but the output has %%i channels",%(b)s->dimensions[0],outputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels",%(b)s->dimensions[0],outputChannels);
                 %(fail)s
             }
 
