@@ -2808,14 +2808,14 @@ def test_reshape():
     c = reshape(b, as_tensor_variable(6), ndim=1)
     f = inplace_func([b], c)
     assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    print f.maker.env.toposort()
+    #print f.maker.env.toposort()
     #check that we remove the useless reshape
 
     #basic to 1 dim(with list)
     c = reshape(b, (as_tensor_variable(6),), ndim=1)
     f = inplace_func([b], c)
     assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    print f.maker.env.toposort()
+    #print f.maker.env.toposort()
     #check that we remove the useless reshape
 
     #basic to shape object of same ndim
@@ -2859,6 +2859,13 @@ def test_reshape():
         assert len(f_sub.maker.env.toposort())==0
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
+
+    # test broadcast flag for constant value of 1
+    c = reshape(b, (b.shape[0],b.shape[1],1))
+    f = inplace_func([b], c)
+    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
+    assert f.maker.env.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
+
 
     assert numpy.all(f_sub(a_val,b_val)==[2,3])
 

@@ -3592,6 +3592,7 @@ class Reshape(Op):
                 shp_list = [shp_orig]
             for index in xrange(self.ndim):
                 y = shp_list[index]
+                y = as_tensor_variable(y)
                 # Try to see if we can infer that y has a constant value of 1.
                 # If so, that dimension should be broadcastable.
                 try:
