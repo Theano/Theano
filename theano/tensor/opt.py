@@ -1115,6 +1115,7 @@ def local_subtensor_merge(node):
     """
     1) var[int:][-1] -> var[-1]
     2) var[::-1][int] -> var[-int-1]
+    3) var[::-1][:int] -> var[:-int-1:-1]
 
     """
     if (isinstance(node.op, T.Subtensor) and
@@ -1164,6 +1165,7 @@ def local_subtensor_merge(node):
 
         # var[::-1][int] -> var[-int-1]
         if (len(node.inputs) in [1,2] and
+            isinstance(node.op.idx_list[0], (int, scalar.basic.Scalar)) and
             len(u.owner.op.idx_list)==1 and
             isinstance(u.owner.op.idx_list[0], slice) and
             u.owner.op.idx_list[0].start is None and
@@ -1180,6 +1182,30 @@ def local_subtensor_merge(node):
                 return False
 
             return [u.owner.inputs[0][-idx-1]]
+
+        # var[::-1][:int] -> var[:-int-1:-1]
+        if (len(node.inputs) in [1,2] and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(node.op.idx_list[0], slice) and
+            node.op.idx_list[0].start in [0, None] and
+            #node.op.idx_list[0].stop is None and
+            node.op.idx_list[0].step is None and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].start is None and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step == -1
+            ):
+            slice_idx = node.op.idx_list[0]
+            idx = slice_idx.stop
+            if len(node.inputs) == 1 and isinstance(idx, int):
+                pass
+            elif (len(node.inputs) == 2 and
+                  isinstance (idx, scalar.basic.Scalar)):
+                idx = T.tensor_from_scalar(node.inputs[1])
+            else:
+                return False
+
+            return [u.owner.inputs[0][:-idx-1:-1]]
 
 
 @register_canonicalize
