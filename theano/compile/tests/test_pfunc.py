@@ -945,4 +945,3 @@ class Test_aliasing_rules(unittest.TestCase):
 if __name__ == '__main__':
     theano.config.mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
-

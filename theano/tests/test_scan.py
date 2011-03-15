@@ -61,7 +61,7 @@ class multiple_outputs_numeric_grad:
         # something else ( a random state ? ) with which we shouldn't really
         # mess up
         if not ndarray_mask:
-                ndarray_mask = [True for x in pt ]
+            ndarray_mask = [True for x in pt ]
 
         dtype_eps = multiple_outputs_numeric_grad.type_eps['float64']
 
@@ -70,7 +70,7 @@ class multiple_outputs_numeric_grad:
                 pt[i] = numpy.array(p)
                 _eps = multiple_outputs_numeric_grad.type_eps[str(pt[i].dtype)]
                 if _eps > dtype_eps:
-                        dtype_eps = _eps
+                    dtype_eps = _eps
 
 
         # Compute clean output:
@@ -1050,7 +1050,7 @@ class T_Scan(unittest.TestCase):
         f1      = theano.tensor.dscalar('f1')
 
         def scanStep(prev, seq, f1):
-           return prev + f1 * seq
+            return prev + f1 * seq
 
         scanned, _ = theano.scan(fn = scanStep, \
                                 sequences    = [seq], \
@@ -1074,8 +1074,8 @@ class T_Scan(unittest.TestCase):
         inpt    = theano.tensor.matrix('inpt')
 
         def one_step(x_t, h_tm1, W):
-          expr = T.dot(h_tm1, W) + x_t
-          return expr
+            expr = T.dot(h_tm1, W) + x_t
+            return expr
 
         expr, _ = theano.scan(
           fn=one_step,
@@ -1114,7 +1114,7 @@ class T_Scan(unittest.TestCase):
 
         floatX = theano.config.floatX
         def one_step( h_tm1):
-          return h_tm1 + numpy.asarray(1., dtype=floatX)
+            return h_tm1 + numpy.asarray(1., dtype=floatX)
 
         h, _ = theano.scan(
           fn=one_step,
@@ -1131,4 +1131,3 @@ class T_Scan(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

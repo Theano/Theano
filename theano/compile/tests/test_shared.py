@@ -42,7 +42,7 @@ class Test_SharedVariable(unittest.TestCase):
         # generic can hold anything even when strict=True
 
         u = shared('asdf', strict=False)
-        v = shared('asdf', strict=True) 
+        v = shared('asdf', strict=True)
 
         u.set_value(88)
         v.set_value(88)
@@ -102,7 +102,7 @@ class Test_SharedVariable(unittest.TestCase):
         assert numpy.all(u.get_value() == [3,4])
 
         # check that assignments of nonsense fail
-        try: 
+        try:
             u.set_value('adsf')
             assert 0
         except ValueError:
@@ -124,7 +124,7 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.int32(7), strict=True)
         assert b.type == theano.tensor.iscalar
         self.failUnlessRaises(TypeError, f, b, 8.23)
-        
+
         b = shared(numpy.int16(7), strict=True)
         assert b.type == theano.tensor.wscalar
         self.failUnlessRaises(TypeError, f, b, 8.23)
@@ -235,7 +235,7 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.type == theano.tensor.dscalar
         f(b,8)
         assert b.get_value()==8
-        
+
         b = shared(numpy.float32(7.234), allow_downcast=True)
         assert b.type == theano.tensor.fscalar
         f(b,8)
@@ -307,6 +307,3 @@ class Test_SharedVariable(unittest.TestCase):
 
         c = shared(numpy.zeros((5,5), dtype='float32'), allow_downcast=True)
         self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
-
-
-

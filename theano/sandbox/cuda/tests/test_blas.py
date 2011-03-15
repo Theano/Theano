@@ -133,7 +133,7 @@ if 0:
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
                 f = pfunc([b], [a(b)], mode=mode_with_gpu)
-                
+
                 bval = numpy.arange(0,d0*d1).reshape(1,1,d0,d1)
                 r = f(bval)[0]
     #            print bval, bval.shape, border
@@ -143,7 +143,7 @@ if 0:
 def test_downsample():
     import random
     shps = [ (1, 1, 1, 12),
-            (1, 1, 2, 2), 
+            (1, 1, 2, 2),
             (1, 1, 1, 1),
             (1,1,4,4),
             (1, 1, 10, 11),
@@ -181,7 +181,7 @@ def test_downsample():
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMax) for node in
                             f.maker.env.toposort()])
                 assert numpy.allclose(f(),f2())
-                
+
                 g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_with_gpu)
                 g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
@@ -190,6 +190,3 @@ def test_downsample():
 
                 #We already check that the gpu version return the same value as the gpu version
                 #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
-
-
-
