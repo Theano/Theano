@@ -381,6 +381,7 @@ class InvalidValueError(DebugModeError):
         client_node = self.client_node
         hint = self.hint
         specific_hint = self.specific_hint
+        context = debugprint(r, prefix='  ', depth=12, file=StringIO()).getvalue()
         return """InvalidValueError
         type(variable) = %(type_r)s
         variable       = %(r)s
@@ -393,7 +394,8 @@ class InvalidValueError(DebugModeError):
         isfinite       = %(v_isfinite)s
         client_node    = %(client_node)s
         hint           = %(hint)s
-        specific_hint   = %(specific_hint)s
+        specific_hint  = %(specific_hint)s
+        context        = ...\n%(context)s
         """ % locals()
 
 ########################
