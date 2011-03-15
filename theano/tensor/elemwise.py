@@ -361,6 +361,21 @@ class DimShufflePrinter:
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle), DimShufflePrinter())
 
 
+def _make_nfunc(name, nin, nout):
+    f = getattr(numpy, name)
+    return f
+
+    # if name.endswith("*"):
+    #     name = name[:-1]
+    #     f = getattr(numpy, name)
+    #     def fn(*args):
+    #         args[-1][:] = f(*(args[:-1]))
+    #     return fn
+    # else:
+    #     f = getattr(numpy, name)
+    #     return f
+
+
 ################
 ### Elemwise ###
 ################
@@ -392,7 +407,7 @@ class Elemwise(Op):
       Elemwise(log)(rand(3, 4, 5))
     """
 
-    def __init__(self, scalar_op, inplace_pattern = {}, name = None):
+    def __init__(self, scalar_op, inplace_pattern = {}, name = None, nfunc_spec = None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -406,10 +421,14 @@ class Elemwise(Op):
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
-        if scalar_op.nin > 0:
+
+        self.ufunc = None
+        self.nfunc = None
+        self.nfunc_spec = nfunc_spec
+        if nfunc_spec:
+            self.nfunc = _make_nfunc(*nfunc_spec)
+        elif scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
-        else:
-            self.ufunc = None
 
         #precompute the hash of this node
         self._rehash()
@@ -417,16 +436,19 @@ class Elemwise(Op):
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
+        d.pop('nfunc')
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if self.scalar_op.nin > 0:
+        self.ufunc = None
+        self.nfunc = None
+        if getattr(self, 'nfunc_spec', None):
+            self.nfunc = _make_nfunc(*self.nfunc_spec)
+        elif self.scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
-        else:
-            self.ufunc = None
         self._rehash()
 
     def make_node(self, *inputs):
@@ -621,10 +643,16 @@ class Elemwise(Op):
                     else:
                         odat = numpy.ndarray(shape, dtype = output.type.dtype)
                 storage[0] = odat
-        # the second calling form is used because in certain versions of numpy
-        # the first (faster) version leads to segfaults
+
         ufunc_args = inputs # + output_storage
-        ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+        if self.nfunc and len(inputs) == self.nfunc_spec[1]:
+            ufunc = self.nfunc
+            nout = 1
+        else:
+            # the second calling form is used because in certain versions of numpy
+            # the first (faster) version leads to segfaults
+            ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+            nout = ufunc.nout
 
         try:
             variables = ufunc(*ufunc_args)
@@ -633,7 +661,7 @@ class Elemwise(Op):
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
             raise
-        if ufunc.nout == 1: variables = [variables]
+        if nout == 1: variables = [variables]
         for variable, storage in zip(variables, output_storage):
             if hasattr(variable,'shape') and storage[0].shape != variable.shape:
                 storage[0].resize(variable.shape)

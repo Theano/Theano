@@ -417,7 +417,7 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
         raise ValueError('mode should be bfs or dfs', mode)
     rval_set = set()
     rval_list = list()
-    if mode is 'bfs': start_pop = start.popleft
+    if mode == 'bfs': start_pop = start.popleft
     else: start_pop = start.pop
     expand_inv = {}
     while start:
