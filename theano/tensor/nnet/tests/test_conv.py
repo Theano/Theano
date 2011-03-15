@@ -270,3 +270,13 @@ class TestConv2D(unittest.TestCase):
             self.fail()
         except: 
             pass
+
+
+    def test_gcc_crash(self):
+        """
+        gcc 4.3.0 20080428 (Red Hat 4.3.0-8)
+        
+        crashed in this following case. I changed the c code to don't hit
+        gcc bug. So it should not crash anymore
+        """
+        self.validate((1,10,213,129), (46,10,212,1), 'valid', verify_grad=False)

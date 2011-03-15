@@ -1744,7 +1744,11 @@ int type_im=PyArray_TYPE(%(img2d)s);
 int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
 const npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+//The following line caused gcc 4.3.0 20080428 (Red Hat 4.3.0-8) to crash
+//const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+// The next line had gcc don't crash.
+const npy_intp dim_ker0=%(self_kshp0)s;
+const npy_intp dim_ker1=%(self_kshp1)s;
 %(dim_zz_const)s npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
 
 %(dim_zz_affect)s
@@ -1893,7 +1897,7 @@ for(int b=0;b< %(self_bsize)s;b++){
         // Reposition index into input image based on requested output size
         int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
         if (mode == FULL) new_m = pos_m ;
-        else new_m = (pos_m+dim_ker[0]-1);
+        else new_m = (pos_m+dim_ker0-1);
 
         for (int iter_n=0; iter_n < dim_zz[1]; iter_n++) {  // loop over columns
           int pos_n=iter_n*%(self_dy)s;
@@ -1904,14 +1908,14 @@ for(int b=0;b< %(self_bsize)s;b++){
           int nb_sum=0;
           // Sum over kernel, if index into image is out of bounds
           // fill with the value
-          for (int j=0; j < dim_ker[0]; j++) {
+          for (int j=0; j < dim_ker0; j++) {
             int ind0 = (new_m-j);
 
             if(mode==FULL){
-              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
+              const %(type)s * idx_hvals=&hvals[j*dim_ker1];
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
-                  for (int k=0; k < dim_ker[1]; k++) {
+                  for (int k=0; k < dim_ker1; k++) {
                     sum+= idx_hvals[k] * fill_value;
                   }
               }else{
@@ -1925,12 +1929,12 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }else {k=max_k;}
 
                 //do the part where the kernel is on the img
-                max_k=min(pos_n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker1);
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
 
                 if(iter_n + 4*%(self_dy)s < dim_zz[1]
-                         && iter_n>dim_ker[1]-1
-                         && iter_n<dim_im[1]-dim_ker[1]+1-3){
+                         && iter_n>dim_ker1-1
+                         && iter_n<dim_im[1]-dim_ker1+1-3){
                   nb_sum=4;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
@@ -1939,8 +1943,8 @@ for(int b=0;b< %(self_bsize)s;b++){
                     sum4+=idx_hvals[k]*idx_in[ind1+3*%(self_dy)s];
                   }
                 }else if(iter_n + 2*%(self_dy)s < dim_zz[1]
-                         && iter_n>dim_ker[1]-1
-                         && iter_n<dim_im[1]-dim_ker[1]+1){
+                         && iter_n>dim_ker1-1
+                         && iter_n<dim_im[1]-dim_ker1+1){
                   nb_sum=2;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
@@ -1965,14 +1969,14 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
-                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
+                  for(;k<dim_ker1;k++) sum+= idx_hvals[k]*fill_value;
               }
             }else{//valid mode
               const %(type)s* idx_in=&in[ind0*dim_im[1]];
-              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
+              const %(type)s* idx_hvals=&hvals[j*dim_ker1];
               if(iter_n + 4*%(self_dy)s < dim_zz[1]){
                 nb_sum=4;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                   sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
                   sum3+=idx_hvals[k]*idx_in[im_idx+2*%(self_dy)s];
@@ -1980,13 +1984,13 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }
               }else if(iter_n + 2*%(self_dy)s < dim_zz[1]){
                 nb_sum=2;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                   sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
                 }
               }else{
                 nb_sum=1;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                 }
               }
