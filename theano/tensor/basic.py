@@ -1336,35 +1336,39 @@ def _redefine_asRoutine(real_symbol_value):
         return real_symbol_value
     return decorator
 
-def _scal_elemwise(symbol):
+def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
-    symbolname = symbol.__name__
-    inplace = symbolname.endswith('_inplace')
-    if inplace:
-        msg = "inplace"
-    else:
-        msg = "no_inplace"
-    n="Elemwise{%s,%s}"%(symbolname,msg)
+    def construct(symbol):
+        symbolname = symbol.__name__
+        inplace = symbolname.endswith('_inplace')
+        if inplace:
+            msg = "inplace"
+        else:
+            msg = "no_inplace"
+        n="Elemwise{%s,%s}"%(symbolname,msg)
 
-    if inplace:
-        scalar_op = getattr(scal, symbolname[:-len('_inplace')])
-        inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n)
-    else:
-        scalar_op = getattr(scal, symbolname)
-        rval = elemwise.Elemwise(scalar_op, name=n)
+        if inplace:
+            scalar_op = getattr(scal, symbolname[:-len('_inplace')])
+            inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+            rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n, nfunc_spec=((nfunc, nin, nout) if nfunc else None))
+        else:
+            scalar_op = getattr(scal, symbolname)
+            rval = elemwise.Elemwise(scalar_op, name=n, nfunc_spec=((nfunc, nin, nout) if nfunc else None))
 
-    if getattr(symbol, '__doc__', False):
-        rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
+        if getattr(symbol, '__doc__', False):
+            rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
 
-    #for the meaning of this see the ./epydoc script
-    # it makes epydoc display rval as if it were a function, not an object
-    rval.__epydoc_asRoutine = symbol
-    rval.__module__ = 'tensor'
+        #for the meaning of this see the ./epydoc script
+        # it makes epydoc display rval as if it were a function, not an object
+        rval.__epydoc_asRoutine = symbol
+        rval.__module__ = 'tensor'
 
-    pprint.assign(rval, printing.FunctionPrinter(symbolname))
+        pprint.assign(rval, printing.FunctionPrinter(symbolname))
 
-    return rval
+        return rval
+    return construct
+
+_scal_elemwise = _scal_elemwise_with_nfunc(None, None, None)
 
 
 #########################
@@ -1865,27 +1869,27 @@ def largest(*args):
 # Comparison
 ##########################
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('less', 2, 1)
 def lt(a, b):
     """a < b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('greater', 2, 1)
 def gt(a, b):
     """a > b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('less_equal', 2, 1)
 def le(a, b):
     """a <= b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('greater_equal', 2, 1)
 def ge(a, b):
     """a >= b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('equal', 2, 1)
 def eq(a, b):
     """a == b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('not_equal', 2, 1)
 def neq(a, b):
     """a != b"""
 
@@ -1903,19 +1907,19 @@ def switch(cond, ift, iff):
 # Bit-wise
 ##########################
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('bitwise_and', 2, 1)
 def and_(a,b):
     """bitwise a & b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('bitwise_or', 2, 1)
 def or_(a,b):
     """bitwise a | b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('bitwise_xor', 2, 1)
 def xor(a,b):
     """bitwise a ^ b"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('invert', 1, 1)
 def invert(a):
     """bitwise ~a"""
 
@@ -1923,7 +1927,7 @@ def invert(a):
 # Math
 ##########################
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('abs', 1, 1)
 def abs_(a):
     """|`a`|
 
@@ -1934,43 +1938,43 @@ def abs_(a):
 
 pprint.assign(abs_, printing.PatternPrinter(('|%(0)s|', -1000)))
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('exp', 1, 1)
 def exp(a):
     """e^`a`"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('negative', 1, 1)
 def neg(a):
     """-a"""
 
-@_scal_elemwise
+@_scal_elemwise # numpy.reciprocal does integer division on integer inputs (which is not very interesting)
 def inv(a):
     """1.0/a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('log', 1, 1)
 def log(a):
     """base e logarithm of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('log2', 1, 1)
 def log2(a):
     """base 2 logarithm of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('log10', 1, 1)
 def log10(a):
     """base 10 logarithm of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('log1p', 1, 1)
 def log1p(a):
     """log(1+a)"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('sign', 1, 1)
 def sgn(a):
     """sign of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('ceil', 1, 1)
 def ceil(a):
     """ceiling of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('floor', 1, 1)
 def floor(a):
     """floor of a"""
 
@@ -1989,7 +1993,10 @@ def round(a, mode="half_away_from_zero"):
     else:
         raise Exception("round mode %s is not implemented."%mode)
 
-@_scal_elemwise
+# def __round_half_to_even(a, dest):
+#     dest[:] = numpy.around(a)
+
+@_scal_elemwise_with_nfunc('around', 1, 0)
 def round_half_to_even(a):
     """round_half_to_even(a)"""
 
@@ -1997,35 +2004,35 @@ def round_half_to_even(a):
 def round_half_away_from_zero(a):
     """round_half_away_from_zero(a)"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('square', 1, 1)
 def sqr(a):
     """square of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('sqrt', 1, 1)
 def sqrt(a):
     """square root of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('cos', 1, 1)
 def cos(a):
     """cosine of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('sin', 1, 1)
 def sin(a):
     """sine of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('tan', 1, 1)
 def tan(a):
     """tangent of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('cosh', 1, 1)
 def cosh(a):
     """hyperbolic cosine of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('sinh', 1, 1)
 def sinh(a):
     """hyperbolic sine of a"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('tanh', 1, 1)
 def tanh(a):
     """hyperbolic tangent of a"""
 
@@ -2037,19 +2044,19 @@ def erf(a):
 def erfc(a):
     """complementary error function"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('real', 1, 0)
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('imag', 1, 0)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('angle', 1, 0)
 def angle(z):
     """Return polar-coordinate angle of complex-valued tensor `z`"""
 
-@_scal_elemwise
+@_scal_elemwise # numpy.complex cannot build tensors
 def complex(real, imag):
     """Return complex-valued tensor with `real` and `imag` components"""
 
@@ -2475,13 +2482,13 @@ setdefault = default # legacy
 ##########################
 # Arithmetics
 ##########################
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('maximum', 2, 1)
 def maximum(x,y):
     """elemwise maximum. See max for the maximum in one tensor
     """
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('minimum', 2, 1)
 def minimum(x,y):
     """elemwise minimum. See min for the minimum in one tensor
     """
@@ -2495,47 +2502,47 @@ def div_proxy(x, y):
     else:
         return true_div(x, y)
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('add', 2, 1)
 def add(a, *other_terms):
     """elementwise addition"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('subtract', 2, 1)
 def sub(a, b):
     """elementwise subtraction"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('multiply', 2, 1)
 def mul(a, *other_terms):
     """elementwise multiplication"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('true_divide', 2, 1)
 def true_div(a, b):
     """elementwise [true] division (inverse of multiplication)"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('floor_divide', 2, 1)
 def floor_div(a, b):
     """elementwise [floor] division (inverse of multiplication)"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('floor_divide', 2, 1) # not a c/p error, floor_div and int_div are the same thing
 def int_div(a, b):
     """elementwise integer-division"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('mod', 2, 1)
 def mod(a, b):
     """elementwise modulo"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('power', 2, 1)
 def pow(a, b):
     """elementwise power"""
     # see decorator for function body
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('clip', 3, 1)
 def clip(x, min, max):
     """clip x to be between min and max"""
     # see decorator for function body

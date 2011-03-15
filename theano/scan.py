@@ -106,7 +106,7 @@ def map( fn
 
     :param go_backwards: Boolean value that decides the direction of
                          iteration. True means that sequences are parsed
-                         from the end towards the begining, while False
+                         from the end towards the beginning, while False
                          is the other way around.
 
     :param mode: See ``scan``.
@@ -301,7 +301,7 @@ def scan( fn
             scan)
 
         The order of the sequences is the same as the one in the list
-        `sequences` given to scan. The order of the outputs is the sane
+        `sequences` given to scan. The order of the outputs is the same
         as the order of ``output_info``. For any sequence or output the
         order of the time slices is the same as the order of the time
         taps provided. For example if one writes the following :
@@ -314,7 +314,7 @@ def scan( fn
                    , outputs_info = [ dict( Output1, taps = [-3,-5])
                                     , dict( Output2, taps = None)
                                     , Output3 ]
-                   , non_sequences = [ Argument1, Argument 2])
+                   , non_sequences = [ Argument1, Argument2])
 
         ``fn`` should expect the following arguments in this given order:
 
@@ -341,7 +341,7 @@ def scan( fn
         `fn` should return an update dictionary ( that tells how to
         update any shared variable after each iteration ste). The
         dictionary can optionally be given as a list of tuples. There is
-        no constraint on the order of these two list, ``fn`` can return
+        no constraint on the order of these two lists, ``fn`` can return
         either ``(outputs_list, update_dictionary)`` or ``(update_dictionary,
         outputs_list)`` or just one of the two (in case the other is
         empty).
@@ -369,7 +369,7 @@ def scan( fn
     :param outputs_info:
         ``outputs_info`` is the list of Theano variables or dictionaries
         describing the initial state of the outputs computed
-        recurrently. When this initial states are given as dictionary
+        recurrently. When this initial state is given as a dictionary,
         optional information can be provided about the output corresponding
         to these initial states. The dictionary should have the following
         keys:
@@ -388,11 +388,11 @@ def scan( fn
           the initial state, which in this case should have the shape
           (5,)+output.shape. If this variable containing the initial
           state is called ``init_y`` then ``init_y[0]`` *corresponds to*
-          ``output[-5]``; ``init_y[1]`` *correponds to* ``output[-4]``;
+          ``output[-5]``; ``init_y[1]`` *corresponds to* ``output[-4]``;
           ``init_y[2]`` corresponds to ``output[-3]``; ``init_y[3]``
           coresponds to ``output[-2]``; ``init_y[4]`` corresponds to
           ``output[-1]``. While this order might seem strange, it comes
-          natural from splitting an array at a given point. Assume that
+          naturally from splitting an array at a given point. Assume that
           we have a array ``x``, and we choose ``k`` to be time step
           ``0``. Then our initial state would be ``x[:k]``, while the
           output will be ``x[k:]``. Looking at this split, elements in
@@ -401,17 +401,10 @@ def scan( fn
           ``fn``. They are provided as a list of *negative* integers,
           where a value ``k`` implies that at iteration step ``t`` scan will
           pass to ``fn`` the slice ``t+k``.
-        * ``inplace`` -- One of the Theano variables provided as
-          ``sequences``. ``scan`` will try to compute this output *in
-          place* of the provided input *iff* it respects the following
-          constraints:
-
-            * There is no other output that is denied to be computed in
-              place for whatever reason.
-
-            * ``fn`` is not using past taps of the input sequence that
-              will get overwritten by the output
-
+        * ``inplace`` -- DEPRECATED. Previously, one could specify with this
+          option whether the output should overwrite some particular input,
+          but it is now inferred automatically. If you specify this option
+          it will be ignored.
         * ``return_steps`` -- Integer representing the number of steps
           to return for the current steps. For example, if ``k`` is
           provided, ``scan`` will return ``output[-k:]``. This is meant as a
@@ -422,7 +415,7 @@ def scan( fn
         * ``store_steps`` -- Integer representing the number of
           intermediate steps ``scan`` should use for a given output. Use
           this key only if you really know what you are doing. In general
-          it is recommended to let scan decide for you the ammount of memory
+          it is recommended to let scan decide for you the amount of memory
           it should use.
 
         ``scan`` will follow this logic if partial information is given:
@@ -437,12 +430,12 @@ def scan( fn
         * If you wrap an output in a dictionary but you do not provide any
           initial state, it assumes that you are not using any form of
           taps.
-        * If you provide a ``None`` instead of a variable or a dictionary
+        * If you provide ``None`` instead of a variable or a dictionary
           ``scan`` assumes that you will not use any taps for this output
           (like for example in case of a map)
 
         If ``outputs_info`` is an empty list or None, ``scan`` assumes
-        that no tap is used for any of the otuputs. If information is
+        that no tap is used for any of the outputs. If information is
         provided just for a subset of the outputs an exception is
         raised (because there is no convention on how scan should map
         the provided information to the outputs of ``fn``)
@@ -450,8 +443,8 @@ def scan( fn
 
     :param non_sequences:
         ``non_sequences`` is the list of arguments that are passed to
-        ``fn`` at each steps. One can opt to exclude shared variables
-        used in ``fn`` from this list.
+        ``fn`` at each step. It is not necessary to list shared variables
+        used in ``fn`` here, since they will be identified automatically.
 
 
     :param n_steps:
@@ -469,9 +462,10 @@ def scan( fn
 
     :param truncate_gradient:
         ``truncate_gradient`` is the number of steps to use in truncated
-        BPTT.  If you compute gradients through a scan op, they are
+        BPTT (backpropagation through time).  If you compute gradients
+        through a scan op, they are
         computed using backpropagation through time. By providing a
-        different value then -1, you choose to use truncated BPTT instead
+        different value than -1, you choose to use truncated BPTT instead
         of classical BPTT, where you go for only ``truncate_gradient``
         number of steps back in time.
 
@@ -512,33 +506,32 @@ def scan( fn
     """
     # General observation : this code is executed only once, at creation
     # of the computational graph, so we don't yet need to be smart about
-    # anything ( to speed things up)
+    # anything (to speed things up)
 
     # check if inputs are just single variables instead of lists
-    if not (type(sequences) in (list, tuple)) and sequences != None:
-        seqs = [sequences]
-    elif sequences == None:
+    if sequences == None:
         seqs = []
+    elif not (type(sequences) in (list, tuple)):
+        seqs = [sequences]
     else:
         seqs = sequences
 
-    if not (type(outputs_info) in (list,tuple)) and outputs_info != None:
-        outs_info = [outputs_info]
-    elif outputs_info == None:
+    if outputs_info == None:
         outs_info = []
+    elif not (type(outputs_info) in (list,tuple)):
+        outs_info = [outputs_info]
     else:
         outs_info = outputs_info
 
-    if ( not (type(non_sequences) in (list,tuple))
-        and non_sequences != None):
-        non_seqs = [non_sequences]
-    elif non_sequences == None:
+    if non_sequences == None:
         non_seqs = []
+    elif not (type(non_sequences) in (list,tuple)):
+        non_seqs = [non_sequences]
     else:
         non_seqs = non_sequences
 
 
-    # If we provided a known number of steps ( before compilation)
+    # If we provided a known number of steps (before compilation)
     # and if that number is 1 or -1, then we can skip the Scan Op,
     # and just apply the inner function once
     # To do that we check here to see the nature of n_steps
@@ -570,7 +563,7 @@ def scan( fn
     sequences_taps = {}
     outputs_taps   = {}
 
-    # Assume that for any output we want to store everythin that it produces
+    # Assume that for any output we want to store everything that it produces
     store_steps = []
     return_steps = {}
 
@@ -591,8 +584,8 @@ def scan( fn
             # See if the user actually provided the None value to taps,
             # which would indicate that the sequence was provided but
             # not used by the internal function; Only if the user has
-            # not provided anything add the defaul [0]
-            # Possible reason to provide a squence and not use it  is
+            # not provided anything add the default [0]
+            # A possible reason to provide a sequence and not use it is
             # if you want to compute the output
             # inplace of this input; it is a very unlikely behaviour but
             # we do want to cover it for completeness
@@ -635,7 +628,7 @@ def scan( fn
                 raise ValueError('If you are using slices of an output you need to '\
                         'provide an initial state for it', outs_info[i])
                 # if there is an intial state but no tap, we will add the default value
-                # for taps, namely [-1] ( previous value); not that this will happen
+                # for taps, namely [-1] ( previous value); note that this will happen
                 # even though you have provided for taps the value None, which is a bit
                 # strange (why would one provide an initial state but tell scan not to
                 # use it ? ), just that in that case we will throw in a warning message
@@ -658,9 +651,14 @@ def scan( fn
 
         if outs_info[i].get('taps', None):
             # Create a separate outputs_taps dictionary with all the outputs taps; This
-            # is how the Scan Op expects this information, separeted from the variables
+            # is how the Scan Op expects this information, separated from the variables
             outputs_taps[i] = outs_info[i]['taps']
         if outs_info[i].get('inplace', None):
+
+            warning("DEPRECATED: you should not set the inplace parameter for an output in scan(...). "
+                    "This can cause problems for the early stages of the optimizer "
+                    "and there is a late optimization which automatically figures it out.")
+
             # The same is true for the inplace info; it has to go into a separate
             # dictionary based on index; Note that the input we're replacing should also
             # come as an index, therefore we have to look for it at this point
