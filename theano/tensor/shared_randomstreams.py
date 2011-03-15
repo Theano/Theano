@@ -72,7 +72,8 @@ class RandomStreams(raw_random.RandomStreamsBase):
         seedgen = numpy.random.RandomState(seed)
         for old_r, new_r in self.state_updates:
             old_r_seed = seedgen.randint(2**30)
-            old_r.value = numpy.random.RandomState(int(old_r_seed))
+            old_r.set_value(numpy.random.RandomState(int(old_r_seed)),
+                    borrow=True)
 
     def __getitem__(self, item):
         """Retrieve the numpy RandomState instance associated with a particular stream
@@ -82,10 +83,10 @@ class RandomStreams(raw_random.RandomStreamsBase):
         :rtype: numpy RandomState (or None, before initialize)
 
         :note: This is kept for compatibility with `tensor.randomstreams.RandomStreams`.  The
-        simpler syntax ``item.rng.value`` is also valid.
+        simpler syntax ``item.rng.get_value()`` is also valid.
 
         """
-        return item.value
+        return item.get_value()
 
     def __setitem__(self, item, val):
         """Set the numpy RandomState instance associated with a particular stream
@@ -98,10 +99,10 @@ class RandomStreams(raw_random.RandomStreamsBase):
         :rtype:  None
 
         :note: This is kept for compatibility with `tensor.randomstreams.RandomStreams`.  The
-        simpler syntax ``item.rng.value = val`` is also valid.
+        simpler syntax ``item.rng.set_value(val)`` is also valid.
 
         """
-        item.value = val
+        item.set_value(val)
 
     def gen(self, op, *args, **kwargs):
         """Create a new random stream in this container.

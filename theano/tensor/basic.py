@@ -4838,7 +4838,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
 
         #get new random projection for next test
         if test_num < n_tests - 1:
-            t_r.value = random_projection()
+            t_r.set_value(random_projection(), borrow=True)
 
 
 class GradientError(Exception):
