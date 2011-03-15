@@ -1429,6 +1429,57 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
         f([[0,1],[2,3]]) # let debugmode test something
 
+    def test_const4(self):
+        # var[const1::][:const2]
+        x = TT.matrix('x')
+        x_val = [[0,1],[2,3]]
+        for idx1 in range(-3,3):
+            for idx2 in range(-3,3):
+                f = function([x], x[idx1:][:idx2], mode=mode_opt)
+
+                #theano.printing.debugprint(f, print_type=True)
+                topo=f.maker.env.toposort()
+                #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+                assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+                #print topo[-1].op
+                assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+                f(x_val) # let debugmode test something
+
+    def test_scalar4(self):
+        # var[int1:][:int2]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        z = TT.iscalar('y')
+        f = function([x,y,z], x[y:][:z], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
+        for idx1 in range(-5,5):
+            for idx2 in range(-5,5):
+                f(x_val, idx1, idx2) # let debugmode test something
+
+    def test_dont_opt4(self):
+        # Test that we don't optimize some case
+        # var[int1:][:int2] should be optimized but not
+        # x[::other int][const]
+        x = TT.matrix('x')
+        f = function([x], x[-2:0][:0], mode=mode_opt)
+        theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
+
 def test_local_fill_useless():
     m = theano.config.mode
     if m == 'FAST_COMPILE':

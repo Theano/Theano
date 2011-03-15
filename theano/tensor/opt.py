@@ -1113,9 +1113,13 @@ def local_subtensor_lift(node):
 @gof.local_optimizer([])
 def local_subtensor_merge(node):
     """
-    1) var[int:][-1] -> var[-1]
+    1) var[int:][-1] -> var[-1] # a little different for when the first subtensor is empty.
     2) var[::-1][int] -> var[-int-1]
     3) var[::-1][:int] -> var[:-int-1:-1]
+    4) var[int1::][:int2] -> var[int1:switch(idx1>=0,
+                                             idx1,
+                                             maximum(u.owner.inputs[0].shape[0]+idx1, 0)
+                                             ) + idx2]
 
     """
     if (isinstance(node.op, T.Subtensor) and
@@ -1188,7 +1192,7 @@ def local_subtensor_merge(node):
             len(u.owner.op.idx_list)==1 and
             isinstance(node.op.idx_list[0], slice) and
             node.op.idx_list[0].start in [0, None] and
-            #node.op.idx_list[0].stop is None and
+            isinstance(node.op.idx_list[0].stop, (int, scalar.basic.Scalar)) and
             node.op.idx_list[0].step is None and
             isinstance(u.owner.op.idx_list[0], slice) and
             u.owner.op.idx_list[0].start is None and
@@ -1207,6 +1211,30 @@ def local_subtensor_merge(node):
 
             return [u.owner.inputs[0][:-idx-1:-1]]
 
+        # var[int1::][:int2]
+        if (len(node.inputs) in [1, 2] and
+            isinstance(node.op.idx_list[0], slice) and
+            node.op.idx_list[0].start in [0, None] and
+            isinstance(node.op.idx_list[0].stop,(int, scalar.basic.Scalar)) and
+            node.op.idx_list[0].step is None and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            isinstance(u.owner.op.idx_list[0].start,(int, scalar.basic.Scalar)) and
+            u.owner.op.idx_list[0].stop in [sys.maxint, None] and
+            u.owner.op.idx_list[0].step is None
+            ):
+            idx1 = u.owner.op.idx_list[0].start
+            idx2 = node.op.idx_list[0].stop
+            if isinstance(idx1, scalar.basic.Scalar):
+                idx1 = T.tensor_from_scalar(u.owner.inputs[1])
+            if isinstance(idx2, scalar.basic.Scalar):
+                idx2 = T.tensor_from_scalar(node.inputs[1])
+
+            # The maximum is needed to don't have shape[0] - idx1 < 0
+            idx2_neg = T.maximum(u.owner.inputs[0].shape[0]+idx1, 0)
+            new_idx2 = T.switch(idx1>=0, idx1, idx2_neg)+idx2
+
+            return [u.owner.inputs[0][idx1:new_idx2]]
 
 @register_canonicalize
 @gof.local_optimizer([None])
