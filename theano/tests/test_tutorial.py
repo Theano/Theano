@@ -595,19 +595,19 @@ class T_examples(unittest.TestCase):
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
 
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
         assert accumulator(1)          == array(0)
-        assert state.value             == array(1)
+        assert state.get_value()       == array(1)
         assert accumulator(300)        == array(1)
-        assert state.value             == array(301)
+        assert state.get_value()       == array(301)
 
-        state.value = -1
-        assert  accumulator(3)         == array(-1)
-        assert state.value             == array(2)
+        state.set_value(-1)
+        assert accumulator(3)          == array(-1)
+        assert state.get_value()       == array(2)
 
         decrementor = function([inc], state, updates=[(state, state-inc)])
         assert decrementor(2)          == array(2)
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
 
         fn_of_state = state * 2 + inc
         foo = T.lscalar()    # the type (lscalar) must match the shared variable we
@@ -615,7 +615,7 @@ class T_examples(unittest.TestCase):
         skip_shared = function([inc, foo], fn_of_state,
                                                 givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
 
 
     def test_examples_9(self):
@@ -643,13 +643,17 @@ class T_examples(unittest.TestCase):
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
         assert numpy.allclose(nearly_zeros(), [[0.,0.],[0.,0.]])
 
-        rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
+        rng_val = rv_u.rng.get_value(borrow=True)   # Get the rng for rv_u
+        rng_val.seed(89234)                         # seeds the generator
+        rv_u.rng.set_value(rng_val, borrow=True)    # Assign back seeded rng
 
         srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
-        state_after_v0 = rv_u.rng.value.get_state()
+        state_after_v0 = rv_u.rng.get_value().get_state()
         nearly_zeros()       # this affects rv_u's generator
         v1 = f()
-        rv_u.rng.value.set_state(state_after_v0)
+        rng = rv_u.rng.get_value(borrow=True)
+        rng.set_state(state_after_v0)
+        rv_u.rng.set_value(rng, borrow=True)
         v2 = f()             # v2 != v1
         assert numpy.all(v1 != v2)
 
@@ -671,9 +675,9 @@ class T_aliasing(unittest.TestCase):
 
         np_array += 1 # now it is an array of 2.0 s
 
-        assert numpy.all(s_default.value == array([1.0, 1.0]))
-        assert numpy.all(s_false.value   == array([1.0, 1.0]))
-        assert numpy.all(s_true.value    == array([2.0, 2.0]))
+        assert numpy.all(s_default.get_value() == array([1.0, 1.0]))
+        assert numpy.all(s_false.get_value()   == array([1.0, 1.0]))
+        assert numpy.all(s_true.get_value()    == array([2.0, 2.0]))
 
 
     def test_aliasing_2(self):
