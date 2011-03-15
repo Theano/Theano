@@ -58,7 +58,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
 
     def seed(self, seed=None):
         """Re-initialize each random stream
-        
+
         :param seed: each random stream will be assigned a unique state that depends
         deterministically on this value.
 
@@ -107,7 +107,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
     def gen(self, op, *args, **kwargs):
         """Create a new random stream in this container.
 
-        :param op: a RandomFunction instance to 
+        :param op: a RandomFunction instance to
 
         :param args: interpreted by `op`
 
@@ -126,4 +126,3 @@ class RandomStreams(raw_random.RandomStreamsBase):
         self.state_updates.append(out.update)
         random_state_variable.default_update = new_r
         return out
-
