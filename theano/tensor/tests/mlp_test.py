@@ -257,9 +257,9 @@ def test_mlp():
     batch_size = 100    # size of the minibatch
 
     # compute number of minibatches for training, validation and testing
-    n_train_batches = train_set_x.value.shape[0] / batch_size
-    n_valid_batches = valid_set_x.value.shape[0] / batch_size
-    n_test_batches  = test_set_x.value.shape[0]  / batch_size
+    n_train_batches = train_set_x.get_value(borrow=True).shape[0] / batch_size
+    n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] / batch_size
+    n_test_batches  = test_set_x.get_value(borrow=True).shape[0]  / batch_size
 
     ######################
     # BUILD ACTUAL MODEL #

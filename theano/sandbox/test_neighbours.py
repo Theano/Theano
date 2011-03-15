@@ -24,13 +24,13 @@ def test_neibs():
 
     f = function([], images2neibs(images, neib_shape), mode=mode_without_gpu)
 
-    #print images.value
+    #print images.get_value(borrow=True)
     neibs = f()
     #print neibs
     g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
 
     #print g()
-    assert numpy.allclose(images.value,g())
+    assert numpy.allclose(images.get_value(borrow=True),g())
 
 def test_neibs_bad_shape():
     shape = (2,3,10,10)
@@ -121,7 +121,7 @@ def test_neibs_manual():
 
     f = function([], images2neibs(images, neib_shape), mode=mode_without_gpu)
 
-    #print images.value
+    #print images.get_value(borrow=True)
     neibs = f()
     print neibs
     assert numpy.allclose(neibs,[[ 0,  1,  4,  5],
@@ -151,7 +151,7 @@ def test_neibs_manual():
     g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
 
     #print g()
-    assert numpy.allclose(images.value,g())
+    assert numpy.allclose(images.get_value(borrow=True), g())
 
 
 def test_neibs_step_manual():
@@ -165,7 +165,7 @@ def test_neibs_step_manual():
     for mode_idx,mode in enumerate(modes):
         f = function([], images2neibs(images, neib_shape, neib_step), mode=mode)
 
-    #print images.value
+    #print images.get_value(borrow=True)
         neibs = f()
         if mode_idx==0:
             assert Images2Neibs in [type(node.op) for node in f.maker.env.toposort()]
@@ -200,7 +200,7 @@ def test_neibs_step_manual():
         #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
 
         #print g()
-        #assert numpy.allclose(images.value,g())
+        #assert numpy.allclose(images.get_value(borrow=True),g())
 
 def test_neibs_wrap_centered_step_manual():
 
@@ -275,7 +275,7 @@ def test_neibs_wrap_centered_step_manual():
 
             #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
 
-            #assert numpy.allclose(images.value,g())
+            #assert numpy.allclose(images.get_value(borrow=True), g())
 
 
 def test_neibs_gpu():
@@ -297,14 +297,14 @@ def test_neibs_gpu():
         f_gpu = function([], images2neibs(images,neib_shape),
                      mode=mode_with_gpu)
         assert any([isinstance(node.op,GpuImages2Neibs) for node in f_gpu.maker.env.toposort()])
-        #print images.value
+        #print images.get_value(borrow=True)
         neibs = numpy.asarray(f_gpu())
         assert numpy.allclose(neibs,f())
         #print neibs
         g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_with_gpu)
         assert any([isinstance(node.op,GpuImages2Neibs) for node in f.maker.env.toposort()])
         #print numpy.asarray(g())
-        assert numpy.allclose(images.value,g())
+        assert numpy.allclose(images.get_value(borrow=True), g())
 
 
 def speed_neibs():

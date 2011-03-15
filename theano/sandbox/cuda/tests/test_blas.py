@@ -35,15 +35,15 @@ def test_dot22():
 
     f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     bval = my_rand(4,4)
     f(bval)
-    print a.value
+    print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval), a.value)
+    assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
 
 def test_dot22scalar():
     a = tensor.fmatrix()
@@ -82,16 +82,16 @@ def test_gemm():
     f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
     assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     bval = my_rand(4,4)
     cval = my_rand(4,4)
     f(bval,cval)
-    print a.value
+    print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.value)
+    assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
 
 def test_gemm_no_inplace():
 
@@ -104,7 +104,7 @@ def test_gemm_no_inplace():
 
     f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     #print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
@@ -112,9 +112,9 @@ def test_gemm_no_inplace():
     bval = my_rand(4,4)
     bval2 = my_rand(4,4)
     rval = f(bval,bval2)
-    #print a.value
+    #print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.value)
+    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
     assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
 
 if 0:

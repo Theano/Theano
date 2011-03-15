@@ -206,20 +206,20 @@ class t_gemm(TestCase):
             #f(z, a, x, y, b)
             f = inplace_func([], gemm_inplace(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f()
-            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, tz.value), (z_orig, z_after, z, z_after - z))
+            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
 
             #tz.value *= 0 # clear z's value
-            y_T = ty.value.T
-            ty.value = tx.value.T
-            tx.value = y_T
+            y_T = ty.get_value(borrow=True).T
+            ty.set_value(tx.get_value(borrow=True).T, borrow=True)
+            tx.set_value(y_T, borrow=True)
 
             f()
             # test that the transposed version of multiplication gives same answer
-            self.failUnless(_approx_eq(z_after, tz.value.T))
+            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True).T))
 
         t(C,A,B)
         t(C.T, A, B)
@@ -670,7 +670,7 @@ def test_dot_vm():
     f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
 
     # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(v.value,m.value))
+    assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
 
     assert sum([isinstance(node.op, T.Dot) for node in
                 f.maker.env.toposort() ]) == 1
@@ -684,7 +684,7 @@ def test_dot_mv():
     f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
 
     # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(m.value,v.value))
+    assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
 
     assert sum([isinstance(node.op, T.Dot) for node in
                 f.maker.env.toposort() ]) == 1
@@ -700,7 +700,8 @@ def test_gemv1():
     f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
 
     # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(m.value,v1.value)+v2_orig)
+    assert numpy.allclose(f(),
+            numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
     topo = f.maker.env.toposort()
     assert len(topo)==1
     assert isinstance(topo[0].op, Gemv)
@@ -712,7 +713,8 @@ def test_gemv1():
 
     # Assert they produce the same output
     f()
-    assert numpy.allclose(v2.value, numpy.dot(m.value,v1.value)+v2_orig)
+    assert numpy.allclose(v2.get_value(),
+            numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
     topo = f.maker.env.toposort()
     assert len(topo)==1
     assert isinstance(topo[0].op, Gemv)
@@ -730,7 +732,8 @@ def test_gemv2():
     f = theano.function([], v2+theano.dot(v1,m), mode = mode_blas_opt)
 
     # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(v1.value,m.value)+v2.value)
+    assert numpy.allclose(f(),
+            numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
     topo = f.maker.env.toposort()
     assert sum(isinstance(node.op, Gemv) for node in topo)==1
     assert topo[-1].op.inplace==False
@@ -741,7 +744,8 @@ def test_gemv2():
 
     # Assert they produce the same output
     f()
-    assert numpy.allclose(v2.value, numpy.dot(v1.value, m.value)+v2_orig)
+    assert numpy.allclose(v2.get_value(),
+            numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
     topo = f.maker.env.toposort()
     assert sum(isinstance(node.op, Gemv) for node in topo)==1
     if config.mode != 'FAST_COMPILE':

@@ -322,9 +322,9 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     v = shared_fn(0.01*my_randn(n_hid, n_out), 'v')
     c = shared_fn(my_zeros(n_out), 'c')
 
-    print 'ALLOCATING ARCH: w0 shape', w0.value.shape
-    print 'ALLOCATING ARCH: w1 shape', w1.value.shape
-    print 'ALLOCATING ARCH: v shape', v.value.shape
+    print 'ALLOCATING ARCH: w0 shape', w0.get_value(borrow=True).shape
+    print 'ALLOCATING ARCH: w1 shape', w1.get_value(borrow=True).shape
+    print 'ALLOCATING ARCH: v shape', v.get_value(borrow=True).shape
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')

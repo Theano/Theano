@@ -29,7 +29,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(g() == g())
         assert numpy.all(abs(nearly_zeros()) < 1e-5)
 
-        assert isinstance(rv_u.rng.value, numpy.random.RandomState)
+        assert isinstance(rv_u.rng.get_value(borrow=True),
+                numpy.random.RandomState)
 
     def test_basics(self):
         random = RandomStreams(utt.fetch_seed())

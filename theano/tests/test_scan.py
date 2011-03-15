@@ -225,9 +225,11 @@ class T_Scan(unittest.TestCase):
         v_x0  = asarrayX(rng.uniform())
         # compute the output i numpy
         v_out = numpy.zeros((4,))
-        v_out[0] = v_u[0]*W_in.value + v_x0*W.value
+        v_out[0] = (v_u[0] * W_in.get_value(borrow=True) +
+                v_x0*W.get_value(borrow=True))
         for step in xrange(1,4):
-            v_out[step] = v_u[step]*W_in.value + v_out[step-1]*W.value
+            v_out[step] = (v_u[step] * W_in.get_value(borrow=True) +
+                    v_out[step-1] * W.get_value(borrow=True))
 
         theano_values = f3(v_u, v_x0)
         assert  numpy.allclose(theano_values, v_out)
@@ -539,8 +541,8 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose( theano_y0 , numpy_y0[3:])
         assert numpy.allclose( theano_y1 , numpy_y1[1:])
         assert numpy.allclose( theano_y2 , numpy_y2    )
-        assert numpy.allclose( W1.value  , numpy_W1    )
-        assert numpy.allclose( W2.value  , numpy_W2    )
+        assert numpy.allclose(W1.get_value(borrow=True), numpy_W1)
+        assert numpy.allclose(W2.get_value(borrow=True), numpy_W2)
 
 
 
@@ -622,7 +624,7 @@ class T_Scan(unittest.TestCase):
         n_steps = 3
         this_f(n_steps)
         numpy_state = v_state* (2**(n_steps))
-        assert numpy.allclose(state.value, numpy_state)
+        assert numpy.allclose(state.get_value(borrow=True), numpy_state)
 
     def test_map_functionality(self):
         def f_rnn(u_t):
@@ -1005,7 +1007,7 @@ class T_Scan(unittest.TestCase):
 
         f()
 
-        print X.value
+        print X.get_value(borrow=True)
     '''
 
     def test_scan_output_padding(self):

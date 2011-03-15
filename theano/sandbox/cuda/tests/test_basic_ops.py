@@ -212,10 +212,10 @@ def test_elemwise_empty():
     f = pfunc([b], [], updates=[(a, a+b)], mode=mode_with_gpu)
     f2 = pfunc([b], [], updates=[(a, a+b)], mode=mode_without_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     f(numpy.ones((0,0), dtype='float32'))
 
-    assert numpy.all(a0 + 1.0 == a.value)
+    assert numpy.all(a0 + 1.0 == a.get_value())
 
 def test_elemwise0():
 
@@ -228,14 +228,14 @@ def test_elemwise0():
     #check that we work inplace.
     assert f.maker.env.toposort()[1].op.destroy_map.items()==[(0,[0])]
 
-    a0 = a.value * 1.0
-    print 'BEFORE ADD', a.value
+    a0 = a.get_value() * 1.0
+    print 'BEFORE ADD', a.get_value()
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.ones((4,4), dtype='float32'))
-    print 'AFTER ADD', a.value
+    print 'AFTER ADD', a.get_value()
 
-    assert numpy.all(a0 + 1.0 == a.value)
+    assert numpy.all(a0 + 1.0 == a.get_value())
 
 def test_elemwise_bad_broadcast():
     x = cuda.fmatrix('x')
@@ -751,7 +751,7 @@ def test_gpualloc_input_on_gpu():
     assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
     assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
 
-    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
 
 def test_gpujoin_gpualloc():
@@ -788,7 +788,7 @@ def test_gpualloc_output_to_gpu():
     assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
     assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
 
-    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
 
 import theano.tensor.tests.test_basic

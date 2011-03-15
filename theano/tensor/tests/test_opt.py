@@ -832,7 +832,7 @@ class test_fusion(unittest.TestCase):
                 for x in range(nb_repeat):
                     f(*val_inputs)
                 t1=time.time()
-                out=out.value
+                out=out.get_value()
 
             times[id]=t1-t0
             atol=1e-8
