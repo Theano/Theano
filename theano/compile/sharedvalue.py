@@ -1,11 +1,18 @@
 """Provide a simple user friendly API to Theano-managed memory"""
 __docformat__ = 'restructuredtext en'
 
-import traceback
+# Standard imports
 import copy
+import logging
+import traceback
+import warnings
+
+# Theano imports
+from theano import config
+from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
+        StrParam, IntParam, FloatParam, BoolParam)
 from theano.gof import Container, Variable, generic
 
-import logging
 _logger = logging.getLogger('theano.compile.sharedvalue')
 _logger.setLevel(logging.DEBUG)
 def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
@@ -13,9 +20,6 @@ def info(*msg): _logger.info(' '.join(str(m) for m in msg))
 def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
 def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
-
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
-from theano import config
 
 AddConfigVar('shared.value_borrows',
         ("False: shared variables 'value' property is guaranteed to not" 
