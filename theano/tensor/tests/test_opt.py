@@ -25,6 +25,7 @@ from theano import function, compile
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
     mode_opt = 'FAST_RUN'
+mode_opt = theano.compile.mode.get_mode(mode_opt)
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -1282,7 +1283,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             else:
                 # A non-empty subtensor of an empty one should be an IndexError
                 self.assertRaises(IndexError, f, x_val)
-
+                f = function([x], x[::-1][idx], mode=mode_opt.excluding('local_subtensor_merge'))
+                self.assertRaises(IndexError, f, x_val)
 
     def test_scalar(self):
         # var[int::][-1] -> var[-1]
@@ -1302,9 +1304,13 @@ class test_local_subtensor_merge(unittest.TestCase):
             f(x_val, idx) # let debugmode test something
         for idx in range(2,5):
             self.assertRaises(IndexError, f, x_val, idx)
+            f = function([x,y], x[::-1][y], mode=mode_opt.excluding('local_subtensor_merge'))
+            self.assertRaises(IndexError, f, x_val, idx)
 
     def test_dont_opt(self):
         # Test that we don't optimize some case
+        # var[int::][-1]] should be optimized but not
+        # var[int::][other int]
         x = TT.matrix('x')
         f = function([x], x[1::][0], mode=mode_opt)
         #theano.printing.debugprint(f)
