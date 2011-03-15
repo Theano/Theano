@@ -22,9 +22,10 @@ def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 AddConfigVar('shared.value_borrows',
-        ("False: shared variables 'value' property is guaranteed to not"
-            " alias theano-managed memory. True: no guarantee, but faster."
-            " For more control consider using shared.get_value() instead."),
+        ("DEPRECATED. You should not use the 'value' property of shared"
+            " variables, but use the .get_value() and .set_value() methods."
+            " False: shared variables 'value' property is guaranteed to not"
+            " alias theano-managed memory. True: no guarantee, but faster."),
         BoolParam(True))
 
 class SharedVariable(Variable):
@@ -127,8 +128,14 @@ class SharedVariable(Variable):
         return cp
 
     def _value_get(self):
+        warnings.warn(("The .value property of shared variables is deprecated."
+            " You should use the .get_value() method instead."),
+            stacklevel=2)
         return self.get_value(borrow=config.shared.value_borrows, return_internal_type=False)
     def _value_set(self, new_value):
+        warnings.warn(("The .value property of shared variables is deprecated."
+            " You should use the .set_value() method instead."),
+            stacklevel=2)
         return self.set_value(new_value, borrow=config.shared.value_borrows)
 
     #TODO: USE A CONFIG VARIABLE TO set these get/set methods to the non-borrowing versions
@@ -136,9 +143,11 @@ class SharedVariable(Variable):
     #      default.  The default support transparently (if slowly) when the 'raw' value is in a
     #      different memory space (e.g. GPU or other machine).
     value = property(_value_get, _value_set,
-            doc=("shortcut for self.get_value() and self.set_value()."
-                "The `borrow` argument to these methods is read from "
-                "`theano.config.shared.value_borrows`"))
+            doc=("DEPRECATED. Shortcut for self.get_value() and "
+                 "self.set_value(). "
+                 "The `borrow` argument to these methods is read from "
+                 "`theano.config.shared.value_borrows`. "
+                 "You should call get_value() and set_value() directly."))
 
 
     def filter_update(self, update):
