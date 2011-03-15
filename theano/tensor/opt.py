@@ -1113,25 +1113,26 @@ def local_subtensor_lift(node):
 @gof.local_optimizer([])
 def local_subtensor_merge(node):
     """
-    var[int:][-1] -> var[-1]
+    1) var[int:][-1] -> var[-1]
+    2) var[::-1][int] -> var[-int-1]
 
-    The optimization is valid for any int be it constant or not.
     """
     if (isinstance(node.op, T.Subtensor) and
-        len(node.inputs)==1 and
-        len(node.op.idx_list)==1 and
-        node.op.idx_list[0]==-1):
+        len(node.op.idx_list)==1):
 
         u = node.inputs[0]
-        if not u.owner or len(u.clients) > 1:
+        if (not u.owner or len(u.clients) > 1 or
+            not isinstance(u.owner.op, T.Subtensor)):
             return False
 
-        if (isinstance(u.owner.op, T.Subtensor) and
-                len(u.owner.op.idx_list)==1 and
-                isinstance(u.owner.op.idx_list[0], slice) and
-                u.owner.op.idx_list[0].stop is None and
-                u.owner.op.idx_list[0].step is None
-                ):
+        # var[int:][-1] -> var[-1]
+        if (len(node.inputs)==1 and
+            node.op.idx_list[0]==-1 and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step is None
+            ):
             u_start = u.owner.op.idx_list[0].start
 
             if len(u.owner.inputs) == 1 and isinstance(u_start, int):
@@ -1160,6 +1161,25 @@ def local_subtensor_merge(node):
 
             new_index = T.scalar_from_tensor(new_index)
             return [u.owner.inputs[0][new_index]]
+
+        # var[::-1][int] -> var[-int-1]
+        if (len(node.inputs) in [1,2] and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].start is None and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step == -1
+            ):
+            idx = node.op.idx_list[0]
+            if len(node.inputs) == 1 and isinstance(idx, int):
+                pass
+            elif (len(node.inputs) == 2 and
+                  isinstance (idx, scalar.basic.Scalar)):
+                idx = T.tensor_from_scalar(node.inputs[1])
+            else:
+                return False
+
+            return [u.owner.inputs[0][-idx-1]]
 
 
 @register_canonicalize
