@@ -694,8 +694,8 @@ class T_aliasing(unittest.TestCase):
 
 
         s.set_value(
-            ## some_inplace_fn !? -- an actual example
-            s.get_value(borrow=True)*2,
+            ## some_inplace_fn
+            s.get_value(borrow=True).__imul__(2),
             borrow=True)
 
 
