@@ -9,13 +9,14 @@ import sys
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
-from theano.tensor import raw_random, TensorType, as_tensor_variable, get_vector_length, cast, opt
+from theano.tensor import (raw_random, TensorType, as_tensor_variable,
+        get_vector_length, cast, opt)
 from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
 from theano.gof.python25 import all
 
-from multinomial import multinomial
+import multinomial
 
 from theano.sandbox.cuda import cuda_available, cuda_enabled
 if cuda_available:
@@ -83,10 +84,12 @@ def mrg_next_value(rstate, new_rstate):
     x11, x12, x13, x21, x22, x23 = rstate
     assert type(x11) == numpy.int32
 
-    i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i) for i in (0,7, 9, 15, 16, 22, 24)]
+    i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i)
+            for i in (0,7, 9, 15, 16, 22, 24)]
 
     #first component
-    y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
+    y1 = (((x12 & MASK12) << i22) + (x12 >> i9)
+        + ((x13 & MASK13) << i7) + (x13 >> i24))
 
     assert type(y1) == numpy.int32
     if (y1 < 0 or y1 >= M1):     #must also check overflow
@@ -741,10 +744,15 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
         if n == 1 and pvals.ndim == 2:
-            unis = self.uniform(size=pvals.shape[0:1], ndim=1)
-            return cast(multinomial(pvals.T, unis).T, dtype)
+            ndim, size, bcast = raw_random._infer_ndim_bcast(
+                    ndim, size, n, pvals[:,0])
+            bcast = bcast+(pvals.type.broadcastable[-1],)
+            unis = self.uniform(size=size, ndim=1)
+            op = multinomial.Multinomial(dtype)
+            return op(pvals, unis)
         else:
-            raise NotImplementedError("MRG_RandomStreams.multinomial only implemented with n == 1 and pvals.ndim = 2")
+            raise NotImplementedError(("MRG_RandomStreams.multinomial only"
+                " implemented with n == 1 and pvals.ndim = 2"))
 
     def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
         """

@@ -236,6 +236,10 @@ class RandomFunction(gof.Op):
 
 
 def _infer_ndim(ndim, shape, *args):
+    ndim, ivec, bcast = _infer_ndim_bcast(ndim, shape, *args)
+    return ndim, ivec
+
+def _infer_ndim_bcast(ndim, shape, *args):
     """
     Infer the number of dimensions from the shape or the other arguments.
 
@@ -255,7 +259,11 @@ def _infer_ndim(ndim, shape, *args):
     else:
         args_ndim = 0
 
-    if isinstance(shape, (tuple, list)):
+    # there is a convention that -1 means the corresponding shape of a
+    # potentially-broadcasted symbolic arg
+    if (isinstance(shape, (tuple, list))
+            and numpy.all(numpy.asarray(shape)>=0)):
+        bcast = [(s==1) for s in shape]
         v_shape = tensor.TensorConstant(type=tensor.lvector, data=theano._asarray(shape, dtype='int64'))
         shape_ndim = len(shape)
         if ndim is None:
@@ -265,6 +273,53 @@ def _infer_ndim(ndim, shape, *args):
                 raise ValueError('ndim should be equal to len(shape), but\n',
                             'ndim = %s, len(shape) = %s, shape = %s'
                             % (ndim, shape_ndim, shape))
+    elif isinstance(shape, (tuple, list)):
+        # there is a convention that -1 means the corresponding shape of a
+        # potentially-broadcasted symbolic arg
+        #
+        # This case combines together symbolic and non-symbolic shape
+        # information
+        if ndim is None:
+            ndim=args_ndim
+        else:
+            ndim = max(args_ndim, ndim)
+        ndim = max(args_ndim, len(shape))
+        shape = [-1]*(ndim - len(shape))+list(shape)
+        bcast = []
+        pre_v_shape = []
+        for i,s in enumerate(shape):
+            if hasattr(s, 'type'): # s is symbolic
+                bcast.append(False) # todo - introspect further
+                pre_v_shape.append(s)
+            else:
+                if s >= 0:
+                    pre_v_shape.append(tensor.as_tensor_variable(s))
+                    bcast.append((s==1))
+                elif s == -1:
+                    n_a_i = 0
+                    for a in args:
+                        # ndim: _   _   _   _   _   _
+                        # ashp:         s0  s1  s2  s3
+                        #           i
+                        if i >= ndim - a.ndim:
+                            n_a_i += 1
+                            a_i = i + a.ndim -ndim
+                            if not a.broadcastable[a_i]:
+                                pre_v_shape.append(a.shape[a_i])
+                                bcast.append(False)
+                                break
+                    else:
+                        if n_a_i == 0:
+                            raise ValueError(('Auto-shape of -1 must overlap'
+                                'with the shape of one of the broadcastable'
+                                'inputs'))
+                        else:
+                            pre_v_shape.append(tensor.as_tensor_variable(1))
+                            bcast.append(True)
+                else:
+                    ValueError('negative shape', s)
+        # post-condition: shape may still contain both symbolic and non-symbolic things
+        v_shape = tensor.stack(*pre_v_shape)
 
     elif shape is None:
         # The number of drawn samples will be determined automatically,
@@ -272,20 +327,23 @@ def _infer_ndim(ndim, shape, *args):
         v_shape = tensor.constant([], dtype='int64')
         if ndim is None:
             ndim = args_ndim
+        bcast = [False]*ndim #TODO: retrieve broadcasting patterns of arguments
 
     else:
         v_shape = tensor.as_tensor_variable(shape)
         if ndim is None:
             ndim = tensor.get_vector_length(v_shape)
+        bcast = [False]*ndim
 
     if not (v_shape.dtype.startswith('int') or v_shape.dtype.startswith('uint')):
-        raise TypeError('shape must be an integer vector or list')
+        raise TypeError('shape must be an integer vector or list', v_shape.dtype)
 
     if args_ndim > ndim:
         raise ValueError('ndim should be at least as big as required by args value',
                     (ndim, args_ndim), args)
 
-    return ndim, v_shape
+    assert ndim == len(bcast)
+    return ndim, tensor.cast(v_shape, 'int32'), tuple(bcast)
 
 def _generate_broadcasting_indices(out_shape, *shapes):
     '''
@@ -549,29 +607,89 @@ def multinomial_helper(random_state, n, pvals, size):
     out = numpy.ndarray(out_size)
     broadcast_ind = _generate_broadcasting_indices(size, n.shape, pvals.shape[:-1])
     # Iterate over these indices, drawing from one multinomial at a time from numpy
+    assert pvals.min() >= 0
     for mi, ni, pi in zip(*broadcast_ind):
-        out[mi] = random_state.multinomial(n=n[ni], pvals=pvals[pi])
+        pvi = pvals[pi]
+
+        # This might someday be fixed upstream
+        # Currently numpy raises an exception in this method if the sum
+        # of probabilities meets or exceeds 1.0.
+        # In  perfect arithmetic this would be correct, but in float32 or
+        # float64 it is too strict.
+        pisum = numpy.sum(pvi)
+        if 1.0 < pisum < 1.0+1e-5:#correct if we went a little over
+            # because mtrand.pyx has a ValueError that will trigger if
+            # sum(pvals[:-1]) > 1.0
+            pvi = pvi * (1.0 - 5e-5)
+            #pvi = pvi * .9
+            pisum = numpy.sum(pvi)
+        elif pvi[-1]<5e-5: #will this even work?
+            pvi = pvi * (1.0 - 5e-5)
+            pisum = numpy.sum(pvi)
+        assert pisum<=1.0, pisum
+        out[mi] = random_state.multinomial(n=n[ni],
+                pvals=pvi.astype('float64'))
     return out
 
-def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5], ndim=None, dtype='int64'):
+def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
+        ndim=None, dtype='int64'):
     """
-    Sample n times from a multinomial distribution defined by
-    probabilities pvals, as many times as required by size. For
-    instance, if size=(p,q), p*q samples will be drawn, and the output
-    shape will be (p,q,len(pvals)).
+    Sample from one or more multinomial distributions defined by
+    one-dimensional slices in pvals.
 
-    Theano tries to infer the number of dimensions from the length of
-    the size argument and the shapes of n and pvals, but you may always
-    specify it with the `ndim` parameter.
+    :param pvals: a tensor of shape "nmulti+(L,)" describing each multinomial
+        distribution.  This tensor must have the property that
+        numpy.allclose(pvals.sum(axis=-1), 1) is true.
 
-    .. note::
-        Note that the output will then be of dimension ndim+1.
+    :param size: a vector of shape information for the output; this can also
+        specify the "nmulti" part of pvals' shape.  A -1 in the k'th position
+        from the right means to borrow the k'th position from the
+        right in nmulti. (See examples below.)
+        Default ``None`` means size=nmulti.
+
+    :param n: the number of experiments to simulate for each multinomial. This
+        can be a scalar, or tensor, it will be broadcasted to have shape "nmulti".
+
+    :param dtype: the dtype of the return value (which will represent counts)
+
+    :returns: tensor of len(size)+1 dimensions, and shape[-1]==L, with the specified ``dtype``,
+        with the experiment counts.  See examples to understand the shape of the
+        return value, which is derived from both size and pvals.shape.
+        In return value rval, "numpy.allclose(rval.sum(axis=-1), n)" will be true.
+
+    For example, to simulate n experiments from each multinomial in a batch of
+    size B:
+
+        size=None, pvals.shape=(B,L) --> rval.shape=[B,L]
+
+        rval[i,j] is the count of possibility j in the i'th distribution (row)
+        in pvals.
+
+    Using size:
+
+        size=(1,-1), pvals.shape=(A,B,L)
+        --> rval.shape=[1,B,L], and requires that A==1.
+
+        rval[k,i,j] is the count of possibility j in the distribution specified
+        by pvals[k,i].
+
+    Using size for broadcasting of pvals:
+
+        size=(10,1,-1), pvals.shape=(A,B,L)
+        --> rval.shape=[10,1,B,L], and requires that A==1.
+
+        rval[l,k,i,j] is the count of possibility j in the distribution specified
+        by pvals[k,i], in the l'th of 10 draws.
+
     """
     n = tensor.as_tensor_variable(n)
     pvals = tensor.as_tensor_variable(pvals)
-    ndim, size = _infer_ndim(ndim, size, n, pvals[0])
+    # until ellipsis is implemented (argh)
+    tmp = pvals.T[0].T
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, tmp)
+    bcast = bcast+(pvals.type.broadcastable[-1],)
     op = RandomFunction(multinomial_helper,
-            tensor.TensorType(dtype = 'int64', broadcastable = (False,)*(ndim+1)),
+            tensor.TensorType(dtype = dtype, broadcastable = bcast),
             ndim_added=1)
     return op(random_state, size, n, pvals)
 

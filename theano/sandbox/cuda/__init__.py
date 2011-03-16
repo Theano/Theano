@@ -156,7 +156,11 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
                                "with error:\n%s" % (device, cuda_initialization_error_message))
     if not cuda_available:
-        warning('CUDA is installed, but device %s is not available' % device)
+        if cuda_initialization_error_message:
+            error_addendum = " (error: %s)" % cuda_initialization_error_message
+        else:
+            error_addendum = ""
+        warning('CUDA is installed, but device %s is not available%s' % (device, error_addendum))
         return
 
     if device == 'gpu':
