@@ -6,10 +6,10 @@ import theano
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
     def __eq__(self,other):
-	    return type(self) == type(other)
+        return type(self) == type(other)
 
     def __hash__(self):
-	    return hash(type(self))
+        return hash(type(self))
 
     def c_code_cache_version(self):
         return (1,)
@@ -73,7 +73,7 @@ class ConvTransp3D(theano.Op):
         else:
             b_name = 'anon'
 
-        
+
         dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name
         dCdb.name = 'ConvTransp3D_dCdb.H='+H_name+',dCdR='+dCdR_name+',W='+W_name+',b='+b_name
         dCdH.name = 'ConvTransp3D_dCdH.H='+H_name+',dCdR='+dCdR_name
