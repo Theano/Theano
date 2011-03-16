@@ -2004,7 +2004,7 @@ def round(a, mode="half_away_from_zero"):
     else:
         raise Exception("round mode %s is not implemented."%mode)
 
-@_scal_elemwise_with_nfunc('around', 1, 0)
+@_scal_elemwise_with_nfunc('around', 1, -1)
 def round_half_to_even(a):
     """round_half_to_even(a)"""
 
@@ -2052,15 +2052,15 @@ def erf(a):
 def erfc(a):
     """complementary error function"""
 
-@_scal_elemwise_with_nfunc('real', 1, 0)
+@_scal_elemwise_with_nfunc('real', 1, -1)
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 
-@_scal_elemwise_with_nfunc('imag', 1, 0)
+@_scal_elemwise_with_nfunc('imag', 1, -1)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
 
-@_scal_elemwise_with_nfunc('angle', 1, 0)
+@_scal_elemwise_with_nfunc('angle', 1, -1)
 def angle(z):
     """Return polar-coordinate angle of complex-valued tensor `z`"""
 
