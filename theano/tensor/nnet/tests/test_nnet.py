@@ -12,15 +12,15 @@ from theano.gof.python25 import all
 from theano.tests import unittest_tools as utt
 from theano import printing, pprint
 from theano.tensor.nnet import (categorical_crossentropy,
-                                crossentropy_categorical_1hot, 
-                                crossentropy_softmax_1hot, 
-                                crossentropy_softmax_1hot_with_bias, 
+                                crossentropy_categorical_1hot,
+                                crossentropy_softmax_1hot,
+                                crossentropy_softmax_1hot_with_bias,
                                 crossentropy_softmax_1hot_with_bias_dx,
                                 crossentropy_softmax_argmax_1hot_with_bias,
-                                sigmoid, softplus, 
-                                Softmax, softmax, SoftmaxWithBias, softmax_grad, 
-                                softmax_with_bias, 
-                                Prepend_scalar_constant_to_each_row, 
+                                sigmoid, softplus,
+                                Softmax, softmax, SoftmaxWithBias, softmax_grad,
+                                softmax_with_bias,
+                                Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
 
 class T_sigmoid(unittest.TestCase):
@@ -106,7 +106,7 @@ class T_SoftmaxWithBias(unittest.TestCase):
         vbias=theano.shared(value=0.1, name='vbias') #0.01
         hid=T.vector('hid')
 
-        f = theano.function([hid], 
+        f = theano.function([hid],
                             T.nnet.softmax(T.dot(hid, W.T) + vbias))
         ops = [node.op for node in f.maker.env.toposort()]
         assert softmax_with_bias not in ops
@@ -808,7 +808,9 @@ def test_argmax_pushdown():
     x = tensor.dmatrix()
 
     #test that the max_and_argmax is pushed down if the max is not used
-    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[1]
+    out = tensor.max_and_argmax(
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            axis=-1)[1]
     env = gof.Env(
             [x],
             [out])
@@ -824,7 +826,9 @@ def test_argmax_pushdown():
     assert str(env.toposort()[1].op) == 'OutputGuard'
     x = tensor.dmatrix()
     #test that the max_and_argmax is not pushed down if the max is used
-    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[0]
+    out = tensor.max_and_argmax(
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            axis=-1)[0]
     env = gof.Env(
             [x],
             [out])
@@ -847,7 +851,7 @@ def test_argmax_pushdown_bias():
     x = tensor.dmatrix()
     b = tensor.dvector()
 
-    out = tensor.argmax(softmax_with_bias(x, b))
+    out = tensor.argmax(softmax_with_bias(x, b), axis=-1)
     env = gof.Env(
             [x,b],
             [out])
@@ -867,7 +871,7 @@ def test_argmax_pushdown_bias():
     x = tensor.dmatrix()
     b = tensor.dvector()
 
-    out = tensor.max_and_argmax(softmax_with_bias(x, b))[0]
+    out = tensor.max_and_argmax(softmax_with_bias(x, b), axis=-1)[0]
     env = gof.Env(
             [x,b],
             [out])

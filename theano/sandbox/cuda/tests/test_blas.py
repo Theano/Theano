@@ -35,15 +35,15 @@ def test_dot22():
 
     f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     bval = my_rand(4,4)
     f(bval)
-    print a.value
+    print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval), a.value)
+    assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
 
 def test_dot22scalar():
     a = tensor.fmatrix()
@@ -82,16 +82,16 @@ def test_gemm():
     f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
     assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     bval = my_rand(4,4)
     cval = my_rand(4,4)
     f(bval,cval)
-    print a.value
+    print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.value)
+    assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
 
 def test_gemm_no_inplace():
 
@@ -104,7 +104,7 @@ def test_gemm_no_inplace():
 
     f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     #print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
@@ -112,9 +112,9 @@ def test_gemm_no_inplace():
     bval = my_rand(4,4)
     bval2 = my_rand(4,4)
     rval = f(bval,bval2)
-    #print a.value
+    #print a.get_value()
 
-    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.value)
+    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
     assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
 
 if 0:
@@ -133,7 +133,7 @@ if 0:
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
                 f = pfunc([b], [a(b)], mode=mode_with_gpu)
-                
+
                 bval = numpy.arange(0,d0*d1).reshape(1,1,d0,d1)
                 r = f(bval)[0]
     #            print bval, bval.shape, border
@@ -143,7 +143,7 @@ if 0:
 def test_downsample():
     import random
     shps = [ (1, 1, 1, 12),
-            (1, 1, 2, 2), 
+            (1, 1, 2, 2),
             (1, 1, 1, 1),
             (1,1,4,4),
             (1, 1, 10, 11),
@@ -181,7 +181,7 @@ def test_downsample():
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMax) for node in
                             f.maker.env.toposort()])
                 assert numpy.allclose(f(),f2())
-                
+
                 g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_with_gpu)
                 g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
@@ -190,6 +190,3 @@ def test_downsample():
 
                 #We already check that the gpu version return the same value as the gpu version
                 #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
-
-
-

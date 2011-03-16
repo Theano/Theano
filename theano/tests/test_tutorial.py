@@ -147,7 +147,9 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
@@ -166,8 +168,11 @@ class T_extending(unittest.TestCase):
                             fn = lambda x, y: x / y)
 
 
-    @dec.knownfailureif(isinstance(theano.compile.mode.get_default_mode(),theano.compile.debugmode.DebugMode),
-                        "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble with DEBUG_MODE")
+    @dec.knownfailureif(
+            isinstance(theano.compile.mode.get_default_mode(),
+                theano.compile.debugmode.DebugMode),
+            ("This test fails in DEBUG_MODE, but the generated code is OK. "
+             "It is actually a problem of DEBUG_MODE, see #625"))
     def test_extending_2(self):
         '''
          This test fails in DebugMode for the same reasons the test in
@@ -211,7 +216,9 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
@@ -357,13 +364,17 @@ class T_extending(unittest.TestCase):
                     raise TypeError('%s only works on doubles' % self.name)
                 return gof.Apply(self, [x, y], [double()])
 
-            def perform(self, node, (x, y), (z, )):
+            def perform(self, node, inp, out):
+                x, y = inp
+                z, = out
                 z[0] = self.fn(x, y)
 
             def __str__(self):
                 return self.name
 
-            def c_code(self, node, name, (x, y), (z, ), sub):
+            def c_code(self, node, name, inp, out, sub):
+                x, y = inp
+                z, = out
                 return self.ccode % locals()
 
 
@@ -584,19 +595,19 @@ class T_examples(unittest.TestCase):
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
 
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
         assert accumulator(1)          == array(0)
-        assert state.value             == array(1)
+        assert state.get_value()       == array(1)
         assert accumulator(300)        == array(1)
-        assert state.value             == array(301)
+        assert state.get_value()       == array(301)
 
-        state.value = -1
-        assert  accumulator(3)         == array(-1)
-        assert state.value             == array(2)
+        state.set_value(-1)
+        assert accumulator(3)          == array(-1)
+        assert state.get_value()       == array(2)
 
         decrementor = function([inc], state, updates=[(state, state-inc)])
         assert decrementor(2)          == array(2)
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
 
         fn_of_state = state * 2 + inc
         foo = T.lscalar()    # the type (lscalar) must match the shared variable we
@@ -604,7 +615,7 @@ class T_examples(unittest.TestCase):
         skip_shared = function([inc, foo], fn_of_state,
                                                 givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
-        assert state.value             == array(0)
+        assert state.get_value()       == array(0)
 
 
     def test_examples_9(self):
@@ -632,13 +643,17 @@ class T_examples(unittest.TestCase):
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
         assert numpy.allclose(nearly_zeros(), [[0.,0.],[0.,0.]])
 
-        rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
+        rng_val = rv_u.rng.get_value(borrow=True)   # Get the rng for rv_u
+        rng_val.seed(89234)                         # seeds the generator
+        rv_u.rng.set_value(rng_val, borrow=True)    # Assign back seeded rng
 
         srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
-        state_after_v0 = rv_u.rng.value.get_state()
+        state_after_v0 = rv_u.rng.get_value().get_state()
         nearly_zeros()       # this affects rv_u's generator
         v1 = f()
-        rv_u.rng.value.set_state(state_after_v0)
+        rng = rv_u.rng.get_value(borrow=True)
+        rng.set_state(state_after_v0)
+        rv_u.rng.set_value(rng, borrow=True)
         v2 = f()             # v2 != v1
         assert numpy.all(v1 != v2)
 
@@ -660,9 +675,9 @@ class T_aliasing(unittest.TestCase):
 
         np_array += 1 # now it is an array of 2.0 s
 
-        assert numpy.all(s_default.value == array([1.0, 1.0]))
-        assert numpy.all(s_false.value   == array([1.0, 1.0]))
-        assert numpy.all(s_true.value    == array([2.0, 2.0]))
+        assert numpy.all(s_default.get_value() == array([1.0, 1.0]))
+        assert numpy.all(s_false.get_value()   == array([1.0, 1.0]))
+        assert numpy.all(s_true.get_value()    == array([2.0, 2.0]))
 
 
     def test_aliasing_2(self):
@@ -679,8 +694,8 @@ class T_aliasing(unittest.TestCase):
 
 
         s.set_value(
-            ## some_inplace_fn !? -- an actual example
-            s.get_value(borrow=True)*2,
+            ## some_inplace_fn
+            s.get_value(borrow=True).__imul__(2),
             borrow=True)
 
 
@@ -848,7 +863,7 @@ class T_using_gpu(unittest.TestCase):
             if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
                 print 'Used the cpu'
             else:
-                print 'Used the gpu' 
+                print 'Used the gpu'
 
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
 

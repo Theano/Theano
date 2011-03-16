@@ -6,6 +6,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
@@ -24,6 +25,7 @@ from theano import function, compile
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
     mode_opt = 'FAST_RUN'
+mode_opt = theano.compile.mode.get_mode(mode_opt)
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -712,6 +714,7 @@ class test_fusion(unittest.TestCase):
         iyv = theano._asarray(my_init(shp,num=70),dtype='int32')
         izv = theano._asarray(my_init(shp,num=70),dtype='int32')
         fwx=fw+fx
+        ftanx = theano.tensor.tan(fx)
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#0
             (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),#1
@@ -792,6 +795,16 @@ class test_fusion(unittest.TestCase):
             (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
             (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle
             (fv-fy+tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
+
+            # Cases where the same input is reused many times.
+            (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*fxv*fxv*fxv,'float32'),
+            # TODO: This case is not fused!
+            (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),
+            # TODO: This case is not fused!
+            (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),2,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),
+            # The next case test when one variable appear as many inputs to an op.
+            # In the past, this was not fused. (TODO) Now it is partially fused.
+            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,fyv),2,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),
             ]
         if slice:
             cases = cases[slice]
@@ -814,12 +827,12 @@ class test_fusion(unittest.TestCase):
                 t1=time.time()
             else:
                 out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
-                f = function(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+                f = function(sym_inputs,[],updates=[(out, g)],mode=mode)
                 t0=time.time()
                 for x in range(nb_repeat):
                     f(*val_inputs)
                 t1=time.time()
-                out=out.value
+                out=out.get_value()
 
             times[id]=t1-t0
             atol=1e-8
@@ -837,6 +850,14 @@ class test_fusion(unittest.TestCase):
             if assert_len_topo:
                 if not len(topo_)==nb_elemwise:
                     fail3.append((id,topo_,nb_elemwise))
+                if nb_elemwise == 1:
+                    # check that the number of input to the Composite Elemwise is ok
+                    # when there is not variable that appear multiple time the in input
+                    # of g
+                    assert ((numpy.sum([not isinstance(x, theano.gof.Constant)
+                                        for x in topo_[0].inputs]) ==
+                             len(sym_inputs)) or
+                            len(set(g.owner.inputs)) != len(g.owner.inputs))
             if not out_dtype==out.dtype:
                 fail4.append((id,out_dtype,out.dtype))
 
@@ -885,7 +906,8 @@ class test_fusion(unittest.TestCase):
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
-        if cuda.opt.int_size == 4:
+        sizes = cuda.opt.get_device_type_sizes()
+        if sizes['int_size'] == 4:
             shp=(5,5,5,5)
         else:
             shp=(5,5,5)
@@ -1116,47 +1138,347 @@ def test_log_add():
         print f([10000], [10000])  # causes overflow if handled incorrectly
         assert numpy.allclose(f([10000], [10000]), 20000)
     except AssertionError:
-        raise KnownFailureTest
+        raise KnownFailureTest(('log(add(exp)) is not stabilized when adding '
+                'more than 2 elements, see #623'))
 
     #TODO: test that the optimization works in the presence of broadcasting.
 
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
-class test_local_subtensor_unary(unittest.TestCase):
+class test_local_subtensor_lift(unittest.TestCase):
 
     def test0(self):
         # basic test that the Op works
-        mode = theano.config.mode
-        if mode == 'FAST_COMPILE':
-            mode = 'FAST_RUN'
-        x = TT.matrix()
-        f = function([x], TT.exp(x)[0], mode=mode)
+        x = TT.matrix('x')
+        f = function([x], TT.exp(x)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
         assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
         assert prog[1].op == TT.exp
+        assert len(prog)==2
+        f([[0,1],[2,3]]) # let debugmode test something
 
+    def test0b(self):
+        # as test0, but we reuse the output of the elemwise
+        # So we should not lift the subtensor
+        x = TT.matrix('x')
+        f = function([x], [TT.exp(x)[0], TT.exp(x)], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert prog[0].op == TT.exp
+        assert isinstance(prog[1].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[2].op, theano.compile.function_module.DeepCopyOp)
+        assert len(prog)==3
         f([[0,1],[2,3]]) # let debugmode test something
 
     def test1(self):
+        # basic test that the optimization work with scalar broadcasted
+        x = TT.matrix('x')
+        y = TT.scalar('y')
+        z = TT.matrix('z')
+        f = function([x,y,z], TT.exp(x+y+z)[0], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[1].op, TT.DimShuffle)
+        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[3].op.scalar_op, theano.scalar.Composite)#Composite{add,add}
+        assert len(prog)==4
+        f([[0,1],[2,3]], 4, [[4,5],[6,7]]) # let debugmode test something
+
+    def test2(self):
+        # as 1, but take a slice
+        x = TT.matrix('x')
+        y = TT.scalar('y')
+        z = TT.matrix('z')
+        f = function([x,y,z], TT.exp(x+y+z)[0:2], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[1].op, TT.DimShuffle)
+        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[3].op.scalar_op, theano.scalar.Composite)#Composite{add,add}
+        assert len(prog)==4
+        f([[0,1],[2,3]], 4, [[4,5],[6,7]]) # let debugmode test something
+
+    def test3(self):
+        # basic test that the optimization does work with broadcasting
+        # for unary elemwise.
+        y = TT.vector('y')
+        f = function([y], TT.exp(y.dimshuffle(0,'x'))[0], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[0].op, TT.DimShuffle)
+        assert isinstance(prog[1].op, TT.Subtensor)
+        assert prog[2].op == TT.exp
+        assert len(prog)==3
+        f([4,5]) # let debugmode test something
+
+    def test4(self):
         # basic test that the optimization doesn't work with broadcasting
         # ... It *could* be extended to,
         # ... but right now it doesn't, so it shouldn't try.
-        mode = theano.config.mode
-        if mode == 'FAST_COMPILE':
-            mode = 'FAST_RUN'
-        x = TT.matrix()
-        y = TT.vector()
-        f = function([x,y], TT.exp(x+y)[0], mode=mode)
+        x = TT.matrix('x')
+        y = TT.vector('y')
+        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+
         prog=f.maker.env.toposort()
-        # the optimization works through exp() but not add()
-        print prog
         assert isinstance(prog[0].op, TT.DimShuffle)
         assert prog[1].op == TT.add
         assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
         assert prog[3].op == inplace.exp_inplace
-
+        assert len(prog)==4
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
+
+    def test5(self):
+        # test that we don't lift when we reuse the output of the
+        # elemwise for other computation.
+        x = TT.matrix('x')
+        y = TT.vector('y')
+        f = function([x,y], [TT.exp(x+y)[0],TT.exp(x+y)+x], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[0].op, TT.DimShuffle)
+        assert isinstance(prog[1].op.scalar_op, theano.scalar.Composite)#Composite{add,exp}
+        assert prog[2].op == TT.add
+        assert isinstance(prog[3].op, TT.Subtensor) #first subtensor
+        assert len(prog)==4
+        f([[0,1],[2,3]], [4,5]) # let debugmode test something
+
+    def test6(self):
+        # basic test that the optimization works with a scalar as input,
+        # and a scalar as output (no broadcasting of the scalar needed).
+        # The optimization used to fail and display an ERROR message.
+
+        x = TT.vector('x')
+        y = TT.scalar('y')
+        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[0].op, TT.Subtensor)
+        # Composite{add,exp}
+        assert isinstance(prog[1].op.scalar_op, theano.scalar.Composite)
+        assert len(prog)==2
+        f([1,2,3], 4) # let debugmode test something
+
+class test_local_subtensor_merge(unittest.TestCase):
+
+    def test_const(self):
+        # var[const::][-1] -> var[-1]
+        x = TT.matrix('x')
+        x_val = [[0,1],[2,3]]
+        for idx in range(-5,4):
+            f = function([x], x[idx::][-1], mode=mode_opt)
+
+            #theano.printing.debugprint(f, print_type=True)
+            topo=f.maker.env.toposort()
+            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            #print topo[-1].op
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            if idx<2:
+                # The first subtensor is non-empty, so it makes sense
+                f(x_val) # let debugmode test something
+            else:
+                # A non-empty subtensor of an empty one should be an IndexError
+                self.assertRaises(IndexError, f, x_val)
+                f = function([x], x[::-1][idx], mode=mode_opt.excluding('local_subtensor_merge'))
+                self.assertRaises(IndexError, f, x_val)
+
+    def test_scalar(self):
+        # var[int::][-1] -> var[-1]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        f = function([x,y], x[y::][-1], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
+        for idx in range(-10,2):
+            f(x_val, idx) # let debugmode test something
+        for idx in range(2,5):
+            self.assertRaises(IndexError, f, x_val, idx)
+            f = function([x,y], x[::-1][y], mode=mode_opt.excluding('local_subtensor_merge'))
+            self.assertRaises(IndexError, f, x_val, idx)
+
+    def test_dont_opt(self):
+        # Test that we don't optimize some case
+        # var[int::][-1]] should be optimized but not
+        # var[int::][other int]
+        x = TT.matrix('x')
+        f = function([x], x[1::][0], mode=mode_opt)
+        #theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
+
+    def test_const2(self):
+        # var[::-1][const] -> var[-1]
+        x = TT.matrix('x')
+        x_val = [[0,1],[2,3]]
+        for idx in range(-5,4):
+            f = function([x], x[::-1][idx], mode=mode_opt)
+
+            #theano.printing.debugprint(f, print_type=True)
+            topo=f.maker.env.toposort()
+            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            #print topo[-1].op
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            if idx<2 and idx>=-2:
+                # The first subtensor is non-empty, so it makes sense
+                f(x_val) # let debugmode test something
+            else:
+                # A non-empty subtensor of an empty one should be an IndexError
+                self.assertRaises(IndexError, f, x_val)
+                f2 = function([x], x[::-1][idx], mode=mode_opt.excluding('local_subtensor_merge'))
+                self.assertRaises(IndexError, f2, x_val)
+
+    def test_scalar2(self):
+        # var[::-1][int] -> var[-1]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        f = function([x,y], x[::-1][y], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
+        for idx in range(-2,2):
+            f(x_val, idx) # let debugmode test something
+        for idx in range(2,5)+range(-5,-2):
+            self.assertRaises(IndexError, f, x_val, idx)
+            f = function([x,y], x[::-1][y], mode=mode_opt.excluding('local_subtensor_merge'))
+            self.assertRaises(IndexError, f, x_val, idx)
+
+    def test_dont_opt2(self):
+        # Test that we don't optimize some case
+        # var[::-1][const] should be optimized but not
+        # x[::other int][const]
+        x = TT.matrix('x')
+        f = function([x], x[::-2][0], mode=mode_opt)
+        #theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
+
+    def test_const3(self):
+        # var[::-1][:const] -> var[-1]
+        x = TT.matrix('x')
+        x_val = [[0,1],[2,3]]
+        for idx in range(-5,4):
+            f = function([x], x[::-1][:idx], mode=mode_opt)
+
+            #theano.printing.debugprint(f, print_type=True)
+            topo=f.maker.env.toposort()
+            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            #print topo[-1].op
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            f(x_val) # let debugmode test something
+
+    def test_scalar3(self):
+        # var[::-1][:int] -> var[-1]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        f = function([x,y], x[::-1][:y], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
+        for idx in range(-5,5):
+            f(x_val, idx) # let debugmode test something
+
+    def test_dont_opt3(self):
+        # Test that we don't optimize some case
+        # var[::-1][:const] should be optimized but not
+        # x[::other int][const]
+        x = TT.matrix('x')
+        f = function([x], x[::-2][:0], mode=mode_opt)
+        #theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
+
+    def test_const4(self):
+        # var[const1::][:const2]
+        x = TT.matrix('x')
+        x_val = [[0,1],[2,3]]
+        for idx1 in range(-3,3):
+            for idx2 in range(-3,3):
+                f = function([x], x[idx1:][:idx2], mode=mode_opt)
+
+                #theano.printing.debugprint(f, print_type=True)
+                topo=f.maker.env.toposort()
+                #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+                assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+                #print topo[-1].op
+                assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+                f(x_val) # let debugmode test something
+
+    def test_scalar4(self):
+        # var[int1:][:int2]
+        x = TT.matrix('x')
+        y = TT.iscalar('y')
+        z = TT.iscalar('y')
+        f = function([x,y,z], x[y:][:z], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        x_val = [[0,1],[2,3]]
+        for idx1 in range(-5,5):
+            for idx2 in range(-5,5):
+                f(x_val, idx1, idx2) # let debugmode test something
+
+    def test_dont_opt4(self):
+        # Test that we don't optimize some case
+        # var[int1:][:int2] should be optimized but not
+        # x[::other int][const]
+        x = TT.matrix('x')
+        f = function([x], x[-2:0][:0], mode=mode_opt)
+        theano.printing.debugprint(f)
+
+        topo=f.maker.env.toposort()
+        assert len(topo)==3
+        assert isinstance(topo[0].op, TT.Subtensor)
+        assert isinstance(topo[1].op, TT.Subtensor)
+        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
+        f([[0,1],[2,3]]) # let debugmode test something
 
 def test_local_fill_useless():
     m = theano.config.mode
@@ -1218,7 +1540,9 @@ class test_shapeoptimizer(unittest.TestCase):
             def make_node(self, x):
                 x = as_tensor_variable(x)
                 return Apply(self, [x], [x.type()])
-            def perform(self, node, (x,), (out,)):
+            def perform(self, node, inp, out_):
+                x, = inp
+                out, = out_
                 out[0] = x.copy()
             #def infer_shape(self, node, (xshp,)):
                 #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
@@ -1229,9 +1553,13 @@ class test_shapeoptimizer(unittest.TestCase):
             def make_node(self, x):
                 x = as_tensor_variable(x)
                 return Apply(self, [x], [x.type()])
-            def perform(self, node, (x,), (out,)):
+            def perform(self, node, inp, out_):
+                x, = inp
+                out, = out_
                 out[0] = x.copy()
-            def infer_shape(self, node, (xshp,)):
+            def infer_shape(self, node, xshp_):
+                # Could also just return.
+                xshp, = xshp_
                 return (xshp,)
         identity_shape = IdentityShape()
 
@@ -1626,19 +1954,25 @@ def test_constant_get_stabilized():
     x2 = T.scalar()
     y2 = T.log(1+T.exp(x2))
     f2 = theano.function([x2],y2)
-    raise KnownFailureTest("Theano optimize constant before stabilization! This break stabilization optimization is some case!")
-    assert len(f2.maker.env.toposort())==1
-    assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
-    assert f2(800)==800
+    try:
+        assert len(f2.maker.env.toposort())==1
+        assert f2.maker.env.toposort()[0].op==theano.tensor.nnet.sigm.softplus
+        assert f2(800)==800
 
-    x = T.as_tensor_variable(800)
-    y = T.log(1+T.exp(x))
-    f = theano.function([],y)
-    assert len(f.maker.env.toposort())==0
-    assert numpy.isinf(f())
+        x = T.as_tensor_variable(800)
+        y = T.log(1+T.exp(x))
+        f = theano.function([],y)
+        assert len(f.maker.env.toposort())==0
+        assert numpy.isinf(f())
 
-    #When this error is fixed, the following line should be ok.
-    assert f()==800,f()
+        #When this error is fixed, the following line should be ok.
+        assert f()==800,f()
+
+    except (AssertionError, theano.compile.debugmode.InvalidValueError):
+        raise KnownFailureTest((
+            "Theano optimizes constant before stabilization. "
+            "This breaks stabilization optimization in some cases. See #504."))
+
 
 class T_local_switch_sink(unittest.TestCase):
     def setUp(self):
@@ -2162,10 +2496,6 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 1
     assert f.maker.env.outputs[0].dtype == config.floatX
 
-if __name__ == '__main__':
-#    unittest.main()
-    test_fusion().tes_memory_leak()
-
 def test_local_mul_to_neg():
     """
     Test that a multiplication by -1 or -1.0 yields the appropriate data type
@@ -2188,3 +2518,54 @@ def test_local_add_specialize():
     a = TT.scalar()
     s = TT.add(TT.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
+
+def test_local_tensor_scalar_tensor():
+    dtypes = ['int8', 'int16', 'int32', 'int64',
+            'uint8', 'uint16', 'uint32', 'uint64',
+            'float32', 'float64',
+            'complex64', 'complex128'
+            ]
+
+    for dtype in dtypes:
+        t_type = TensorType(dtype=dtype, broadcastable=())
+        t = t_type()
+        s = TT.scalar_from_tensor(t)
+        t2 = TT.tensor_from_scalar(s)
+
+        f = function([t], t2, mode=mode_opt)
+        e = f.maker.env.toposort()
+        cast_nodes = [n for n in e
+                if isinstance(n.op, (TT.TensorFromScalar,
+                                     TT.ScalarFromTensor))]
+        assert len(cast_nodes) == 0
+        f(0)
+
+@dec.knownfailureif(
+        isinstance(theano.compile.mode.get_default_mode(),
+            theano.compile.debugmode.DebugMode),
+        ("This test fails in DEBUG_MODE, but the generated code is OK. "
+         "It is actually a problem of DEBUG_MODE, see #624."))
+def test_local_scalar_tensor_scalar():
+    dtypes = ['int8', 'int16', 'int32', 'int64',
+            'uint8', 'uint16', 'uint32', 'uint64',
+            'float32', 'float64',
+            'complex64', 'complex128'
+            ]
+
+    for dtype in dtypes:
+        s_type = theano.scalar.Scalar(dtype=dtype)
+        s = s_type()
+        t = TT.tensor_from_scalar(s)
+        s2 = TT.scalar_from_tensor(t)
+
+        f = function([s], s2, mode=mode_opt)
+        e = f.maker.env.toposort()
+        cast_nodes = [n for n in e
+                if isinstance(n.op, (TT.TensorFromScalar,
+                                     TT.ScalarFromTensor))]
+        assert len(cast_nodes) == 0
+        f(0)
+
+if __name__ == '__main__':
+#    unittest.main()
+    test_fusion().tes_memory_leak()

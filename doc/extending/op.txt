@@ -363,7 +363,9 @@ arithmetic operators:
                raise TypeError('%s only works on doubles' % self.name)
            return gof.Apply(self, [x, y], [double()])
 
-       def perform(self, node, (x, y), (z, )):
+       def perform(self, node, inp, out):
+           x, y = inp
+           z, = out
            z[0] = self.fn(x, y)
 
        def __str__(self):

@@ -179,7 +179,9 @@ class DimShuffle(Op):
         else:
             return "DimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
-    def perform(self, node, (input, ), (storage, )):
+    def perform(self, node, inp, out):
+        input, = inp
+        storage, = out
         # drop
         res = input
         if type(res) != numpy.ndarray:
@@ -204,7 +206,8 @@ class DimShuffle(Op):
 
         storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
-    def infer_shape(self, node, (ishp,)):
+    def infer_shape(self, node, shapes):
+        ishp, = shapes
         ishp = list(ishp)
         for drop in reversed(self.drop):
             del ishp[drop]
@@ -216,7 +219,9 @@ class DimShuffle(Op):
             rval.insert(augm, 1)
         return [rval]
 
-    def c_code(self, node, name, (input,), (res,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        res, = out
         basename = input + '__view_or_copy'
 
         def statements(lst):
@@ -317,7 +322,9 @@ class DimShuffle(Op):
     def c_code_cache_version(self):
         return (1,)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
@@ -354,6 +361,7 @@ class DimShufflePrinter:
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle), DimShufflePrinter())
 
 
+
 ################
 ### Elemwise ###
 ################
@@ -385,7 +393,7 @@ class Elemwise(Op):
       Elemwise(log)(rand(3, 4, 5))
     """
 
-    def __init__(self, scalar_op, inplace_pattern = {}, name = None):
+    def __init__(self, scalar_op, inplace_pattern = {}, name = None, nfunc_spec = None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -394,15 +402,28 @@ class Elemwise(Op):
         * inplace_pattern: a dictionary that maps the index of an output to the
                            index of an input so the output is calculated inplace using
                            the input's storage. (Just like destroymap, but without the lists.)
+        * nfunc_spec: either None or a tuple of three elements, (nfunc_name, nin, nout) such
+                      that getattr(numpy, nfunc_name) implements this operation, takes nin
+                      inputs and abs(nout) outputs (nout < 0 if the numpy function
+                      does not provide the option of providing a numpy array to store the
+                      results in). Note that nin cannot always be inferred from the scalar op's
+                      own nin field because that value is sometimes 0 (meaning a variable number
+                      of inputs), whereas the numpy function may not have varargs. NOTE: as of
+                      now, the sign of the nout field is ignored (some work needs to be done
+                      to resize the destinations when needed).
         """
         self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
-        if scalar_op.nin > 0:
+
+        self.ufunc = None
+        self.nfunc = None
+        self.nfunc_spec = nfunc_spec
+        if nfunc_spec:
+            self.nfunc = getattr(numpy, nfunc_spec[0])
+        elif scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
-        else:
-            self.ufunc = None
 
         #precompute the hash of this node
         self._rehash()
@@ -410,16 +431,19 @@ class Elemwise(Op):
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
+        d.pop('nfunc')
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if self.scalar_op.nin > 0:
+        self.ufunc = None
+        self.nfunc = None
+        if getattr(self, 'nfunc_spec', None):
+            self.nfunc = getattr(numpy, self.nfunc_spec[0])
+        elif self.scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
-        else:
-            self.ufunc = None
         self._rehash()
 
     def make_node(self, *inputs):
@@ -614,10 +638,23 @@ class Elemwise(Op):
                     else:
                         odat = numpy.ndarray(shape, dtype = output.type.dtype)
                 storage[0] = odat
-        # the second calling form is used because in certain versions of numpy
-        # the first (faster) version leads to segfaults
+
         ufunc_args = inputs # + output_storage
-        ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+        if self.nfunc and len(inputs) == self.nfunc_spec[1]:
+            ufunc = self.nfunc
+            nout = self.nfunc_spec[2]
+            if nout < 0:
+                nout = -nout
+            # Unfortunately, the else case does not allow us to
+            # directly feed the destination arguments to the nfunc
+            # since it sometimes requires resizing. Doing this
+            # optimization is probably not worth the effort, since we
+            # should normally run the C version of the Op.
+        else:
+            # the second calling form is used because in certain versions of numpy
+            # the first (faster) version leads to segfaults
+            ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+            nout = ufunc.nout
 
         try:
             variables = ufunc(*ufunc_args)
@@ -626,7 +663,8 @@ class Elemwise(Op):
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
             raise
-        if ufunc.nout == 1: variables = [variables]
+        if nout == 1:
+            variables = [variables]
         for variable, storage in zip(variables, output_storage):
             if hasattr(variable,'shape') and storage[0].shape != variable.shape:
                 storage[0].resize(variable.shape)
@@ -934,7 +972,9 @@ class CAReduce(Op):
         else:
             return "Reduce{%s}" % self.scalar_op
 
-    def perform(self, node, (input, ), (output, )):
+    def perform(self, node, inp, out):
+        input, = inp
+        output, = out
         axis = self.axis
         if axis is None:
             axis = range(input.ndim)
@@ -959,7 +999,8 @@ class CAReduce(Op):
         else:
             output[0] = numpy.copy(variable)
 
-    def infer_shape(self, node, (ishape,)):
+    def infer_shape(self, node, shapes):
+        ishape, = shapes
         axis = self.axis
         if axis is None:
             return (),
@@ -1115,7 +1156,9 @@ class Sum(CAReduce):
                 uint32='uint64',
                 ).get(idtype, idtype)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
@@ -1176,7 +1219,7 @@ class Prod(CAReduce):
                 uint32='uint64',
                 ).get(idtype, idtype)
 
-    def grad(self, (prod_in, ), (gz, )):
+    def grad(self, inp, grads):
         '''
         The grad of this Op could be very easy, it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
@@ -1221,6 +1264,8 @@ class Prod(CAReduce):
         the "T.eq()" bits), then taking this or that behavior (see T.switch)
         based on the result of this count.
         '''
+        prod_in, = inp
+        gz, = grads
         if prod_in.dtype[0:3] in ('int','uin'):
             return [None]
 
@@ -1314,7 +1359,9 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
             return x
         return x*y
 
-    def c_code(self, node, name, (x,y), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, y = inp
+        z, = out
         return ("%(z)s = ((%(x)s == 0) ? (%(y)s) : " + \
                     "((%(y)s == 0) ? (%(x)s) : ((%(y)s)*(%(x)s))) );") % locals()
 

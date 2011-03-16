@@ -97,7 +97,15 @@ def test_sum():
         if val.size==0:
             assert f2(val)==f(val), ('shape', shape, 'pattern', pattern)
         else:
-            assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
+            try:
+                #We raise the error threashold as we sum big matrix
+                #and this cause small rounding difference with some seed
+                #example in debug mode with unittests.rseed=9275
+                orig_rtol = theano.tensor.basic.float32_rtol
+                theano.tensor.basic.float32_rtol = 2e-5
+                assert _allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern, sum([shape[i] for i in pattern]))
+            finally:
+                theano.tensor.basic.float32_rtol = orig_rtol
 
 
         #test with dimshuffle
@@ -204,10 +212,10 @@ def test_elemwise_empty():
     f = pfunc([b], [], updates=[(a, a+b)], mode=mode_with_gpu)
     f2 = pfunc([b], [], updates=[(a, a+b)], mode=mode_without_gpu)
 
-    a0 = a.value * 1.0
+    a0 = a.get_value() * 1.0
     f(numpy.ones((0,0), dtype='float32'))
 
-    assert numpy.all(a0 + 1.0 == a.value)
+    assert numpy.all(a0 + 1.0 == a.get_value())
 
 def test_elemwise0():
 
@@ -220,14 +228,14 @@ def test_elemwise0():
     #check that we work inplace.
     assert f.maker.env.toposort()[1].op.destroy_map.items()==[(0,[0])]
 
-    a0 = a.value * 1.0
-    print 'BEFORE ADD', a.value
+    a0 = a.get_value() * 1.0
+    print 'BEFORE ADD', a.get_value()
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.ones((4,4), dtype='float32'))
-    print 'AFTER ADD', a.value
+    print 'AFTER ADD', a.get_value()
 
-    assert numpy.all(a0 + 1.0 == a.value)
+    assert numpy.all(a0 + 1.0 == a.get_value())
 
 def test_elemwise_bad_broadcast():
     x = cuda.fmatrix('x')
@@ -339,6 +347,62 @@ def test_elemwise4():
     assert not has_elemwise
     #let debugmode catch errors
     f(theano._asarray(numpy.random.rand(4), dtype='float32'), theano._asarray(numpy.random.rand(3), dtype='float32'))
+
+
+def test_elemwise_comparaison_cast():
+    """
+    test if an elemwise comparaison followed by a cast to float32 are pushed to gpu.
+    """
+
+    a = tensor.fmatrix()
+    b = tensor.fmatrix()
+    av = theano._asarray(numpy.random.rand(4,4), dtype='float32')
+    bv = numpy.ones((4,4), dtype='float32')
+
+    for g,ans in [(tensor.lt, av<bv), (tensor.gt, av>bv),
+                  (tensor.le, av<=bv), (tensor.ge, av>=bv)]:
+
+        f = pfunc([a,b], tensor.cast(g(a,b),'float32'), mode=mode_with_gpu)
+
+        #theano.printing.debugprint(f)
+        out = f(av,bv)
+        assert numpy.all(out == ans)
+        assert any([isinstance(node.op, cuda.GpuElemwise) for node in f.maker.env.toposort()])
+        #assert any([isinstance(node.op, tensor.Elemwise) for node in f.maker.env.toposort()])
+
+def test_elemwise_composite_float64():
+    # test that we don't fuse composite elemwise with float64 somewhere inside
+    # nvcc by default downcast them to float32. We would need to tell him not to
+    # do so, but that possible only on some device.
+    a = tensor.fmatrix()
+    b = tensor.fmatrix()
+    av = theano._asarray(numpy.random.rand(4,4), dtype='float32')
+    bv = numpy.ones((4,4), dtype='float32')
+
+    def get_all_basic_scalar(composite_op):
+        l=[]
+        for i in composite_op.env.toposort():
+            if isinstance(i, theano.scalar.Composite):
+                l += get_all_basic_scalar(i)
+            else:
+                l.append(i)
+        return l
+    for mode in [mode_with_gpu, mode_with_gpu.excluding('gpu_after_fusion'), mode_with_gpu.excluding('elemwise_fusion')]:
+        f = pfunc([a,b], tensor.cast(tensor.lt(tensor.cast(a,'float64')**2,#*numpy.asarray(2, 'float32'),
+                                               b),
+                                     'float32'), mode=mode)
+
+        #theano.printing.debugprint(f, print_type=True)
+        out = f(av,bv)
+        assert numpy.all(out == ((av**2)<bv))
+        for node in f.maker.env.toposort():
+            if isinstance(node.op, cuda.GpuElemwise):
+                if isinstance(node.op.scalar_op, theano.scalar.Composite):
+                    scals = get_all_basic_scalar(node.op.scalar_op)
+                    for s in scals:
+                        assert not any([i.type.dtype=='float64' for i in s.inputs+s.outputs])
+
+
 
 
 def speed_elemwise_collapse():
@@ -687,7 +751,7 @@ def test_gpualloc_input_on_gpu():
     assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
     assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
 
-    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
 
 def test_gpujoin_gpualloc():
@@ -724,8 +788,23 @@ def test_gpualloc_output_to_gpu():
     assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
     assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
 
-    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
+
+import theano.tensor.tests.test_basic
+# This is to don't duplicate test.
+class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
+    shared=staticmethod(cuda.shared_constructor)
+    sub=cuda.GpuSubtensor
+    inc_sub=cuda.GpuIncSubtensor
+    adv_sub1=cuda.GpuAdvancedSubtensor1
+    adv_incsub1=cuda.GpuAdvancedIncSubtensor1
+    mode=mode_with_gpu
+    dtype='float32'
+    ignore_topo=(B.HostFromGpu, B.GpuFromHost)
+    fast_compile = theano.config.mode == 'FAST_COMPILE'
+    def __init__(self, name):
+        return super(theano.tensor.tests.test_basic.T_subtensor, self).__init__(name)
 
 def test_inc_subtensor():
     shared = cuda.shared_constructor

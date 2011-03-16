@@ -240,7 +240,12 @@ documentation to know how to configure them differently.
 .. note::
 
     The tests should be run with the ``THEANO_FLAGS`` ``device=cpu`` (default).
-    Otherwise, it will generate false errors.
+    Otherwise, it will generate false errors. If you have a GPU, it will
+    automatically be used to run GPU-related tests.
+
+    If you want the GPU-related tests to run on a specific GPU device, and not
+    the default one, you should use :attr:`~config.init_gpu_device`, for
+    instance ``THEANO_FLAGS=init_gpu_device=gpu1``.
 
 All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
@@ -248,10 +253,10 @@ the ``theano-users@googlegroups.com`` mailing list.
 
 .. note::
 
-    `warn.ignore_bug_before=all` removes warnings that you don't need to see
+    ``warn.ignore_bug_before=all`` removes warnings that you don't need to see
     here.  It is also recommended for a new user to set this flag to a
     different value in their ``.theanorc`` file.  See
-    :attr:`config.warn.ignore_bug_before` for more details.
+    :attr:`.config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -533,8 +538,8 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
         C:\Users\login>echo %PYTHONPATH%
         C:\Users\login\Theano
 
-- Create a new ``.theanorc`` text file (or ``.theanorc.txt``, which is easier
-  to create under Windows) in your user profile directory (the directory you
+- Create a new ``.theanorc`` text file (or ``.theanorc.txt``, whichever is easier
+  for you to create under Windows) in your user profile directory (the directory you
   are into when you start a new command prompt with ``cmd``), containing the
   following two lines:
 
@@ -542,6 +547,16 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
       [blas]
       ldflags =
+
+  You do not need to do the following now, because it is not usually needed, but if
+  later on, when running Theano, you see an error message that looks like:
+    *error: 'assert' was not declared in this scope*
+  then you will have to add another section:
+
+    .. code-block:: cfg
+
+      [gcc]
+      cxxflags = -IC:\MinGW\include
 
 - You are now ready to run Theano.
   It will use NumPy for dot products, which is still pretty fast (see below for

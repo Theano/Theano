@@ -175,7 +175,7 @@ class T_random_function(unittest.TestCase):
         def ndim_added_deco(ndim_added):
             def randomfunction(random_state, size=(), low=0.0, high=0.0, ndim=None):
                 ndim, size = raw_random._infer_ndim(ndim, size)
-                op = RandomFunction('uniform', 
+                op = RandomFunction('uniform',
                         tensor.TensorType(dtype = 'float64', broadcastable =
                             (False,)*(ndim+ndim_added)),
                         ndim_added=ndim_added)
@@ -592,7 +592,7 @@ class T_random_function(unittest.TestCase):
         rng_R = random_state_type()
         n = tensor.lvector()
         prob = tensor.vector()
-        post_r, out = binomial(rng_R, n=n, prob=prob)
+        post_r, out = binomial(rng_R, n=n, p=prob)
         assert out.ndim == 1
         f = compile.function([rng_R, n, prob], [post_r, out], accept_inplace=True)
 
@@ -613,7 +613,7 @@ class T_random_function(unittest.TestCase):
 
         # Specifying the size explicitly
         g = compile.function([rng_R, n, prob],
-                binomial(rng_R, n=n, prob=prob, size=(3,)),
+                binomial(rng_R, n=n, p=prob, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, n_val, prob_val)
         numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
@@ -731,6 +731,52 @@ class T_random_function(unittest.TestCase):
             for nv, pv in zip(n_val, pvals_val)])
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, n_val[:-1], pvals_val[:-1])
+
+
+    def test_multinomial_tensor3_a(self):
+        # Test the examples given in the multinomial documentation regarding
+        # tensor3 objects
+        rng_R = random_state_type()
+        n = 9
+        pvals = tensor.dtensor3()
+        post_r, out = multinomial(rng_R, n=n, pvals=pvals, size=(1,-1))
+        assert out.ndim == 3
+        assert out.broadcastable==(True, False, False)
+
+        f = compile.function([rng_R, pvals], [post_r, out], accept_inplace=True)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+
+        pvals_val = numpy.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
+        assert pvals_val.shape == (1, 3, 2)
+
+        new_rng, draw = f(rng, pvals_val)
+        assert draw.shape==(1,3,2)
+        assert numpy.allclose(draw.sum(axis=2), 9)
+
+    def test_multinomial_tensor3_b(self):
+        # Test the examples given in the multinomial documentation regarding
+        # tensor3 objects
+        rng_R = random_state_type()
+        n = 9
+        pvals = tensor.dtensor3()
+        post_r, out = multinomial(rng_R, n=n, pvals=pvals, size=(10, 1,-1))
+        assert out.ndim == 4
+        assert out.broadcastable==(False, True, False, False)
+
+        f = compile.function([rng_R, pvals], [post_r, out], accept_inplace=True)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+
+        pvals_val = numpy.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
+        assert pvals_val.shape == (1, 3, 2)
+
+        out_rng, draw = f(rng, pvals_val)
+        assert draw.shape==(10,1,3,2)
+        assert numpy.allclose(draw.sum(axis=3), 9)
+
 
     def test_dtype(self):
         rng_R = random_state_type()

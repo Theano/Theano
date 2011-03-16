@@ -1,7 +1,7 @@
 """WRITEME"""
 import sys
 if sys.version_info[:2] >= (2,5):
-  from collections import defaultdict
+    from collections import defaultdict
 
 # otherwise it's implemented in python25.py
 
@@ -12,7 +12,7 @@ from theano.gof import deque
 
 from env import InconsistencyError
 
-class ProtocolError(Exception): 
+class ProtocolError(Exception):
     """WRITEME"""
     pass
 
@@ -35,7 +35,7 @@ class DestroyHandler(object):
 
     def on_prune(self, env, op):
         self.map[env].on_prune(env, op)
-    
+
     def on_change_input(self, env, node, i, r, new_r):
         self.map[env].on_change_input(env, node, i, r, new_r)
 
@@ -65,10 +65,10 @@ def _dfs_toposort(i, r_out, orderings):
     iset = set(i)
 
     if 0:
-        def expand(obj): 
+        def expand(obj):
             rval = []
             if obj not in iset:
-                if isinstance(obj, graph.Variable): 
+                if isinstance(obj, graph.Variable):
                     if obj.owner:
                         rval = [obj.owner]
                 if isinstance(obj, graph.Apply):
@@ -137,7 +137,7 @@ def getroot(r, view_i):
     For views: Return non-view variable which is ultimatly viewed by r.
     For non-views: return self.
     """
-    try: 
+    try:
         return getroot(view_i[r], view_i)
     except KeyError:
         return r
@@ -170,7 +170,7 @@ def fast_inplace_check(inputs):
     protected_inputs = sum(protected_inputs,[])#flatten the list
     protected_inputs.extend(env.outputs)
 
-    inputs = [i for i in inputs if 
+    inputs = [i for i in inputs if
               not isinstance(i,graph.Constant)
               and not env.destroyers(i)
               and i not in protected_inputs]
@@ -185,7 +185,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
     When an Op uses its view_map property to declare that an output may be aliased
     to an input, then if that output is destroyed, the input is also considering to be
-    destroyed.  The view_maps of several Ops can feed into one another and form a directed graph. 
+    destroyed.  The view_maps of several Ops can feed into one another and form a directed graph.
     The consequence of destroying any variable in such a graph is that all variables in the graph
     must be considered to be destroyed, because they could all be refering to the same
     underlying storage.  In the current implementation, that graph is a tree, and the root of
@@ -195,7 +195,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
     the foundation of that variable as being destroyed, with the `root_destroyer` property.
     """
 
-    droot = {} 
+    droot = {}
     """
     destroyed view + nonview variables -> foundation
     """
@@ -237,7 +237,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         self.view_i = {}  # variable -> variable used in calculation
         self.view_o = {}  # variable -> set of variables that use this one as a direct input
         #clients: how many times does an apply use a given variable
-        self.clients = {} # variable -> apply -> ninputs  
+        self.clients = {} # variable -> apply -> ninputs
         self.stale_droot = True
 
         self.debug_all_apps = set()
@@ -290,7 +290,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         delattr(self.env, 'destroyers')
         delattr(self.env, 'destroy_handler')
         self.env = None
-        
+
     def on_import(self, env, app):
         """Add Apply instance to set which must be computed"""
 
@@ -318,7 +318,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         for i, output in enumerate(app.outputs):
             self.clients.setdefault(output, {})
-        
+
         self.stale_droot = True
 
     def on_prune(self, env, app):
@@ -350,18 +350,18 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             self.view_o[i].remove(o)
             if not self.view_o[i]:
                 del self.view_o[i]
-        
+
         self.stale_droot = True
 
     def on_change_input(self, env, app, i, old_r, new_r):
         """app.inputs[i] changed from old_r to new_r """
-        if app == 'output': 
+        if app == 'output':
             # app == 'output' is special key that means Env is redefining which nodes are being
             # considered 'outputs' of the graph.
             pass
         else:
             if app not in self.debug_all_apps: raise ProtocolError("change without import")
-        
+
             #UPDATE self.clients
             self.clients[old_r][app] -= 1
             if self.clients[old_r][app] == 0:
@@ -388,7 +388,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                         del self.view_o[old_r]
 
                     self.view_o.setdefault(new_r,set()).add(output)
-        
+
         self.stale_droot = True
 
     def validate(self, env):
@@ -400,7 +400,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         """
         #print '\nVALIDATE'
-        if self.destroyers: 
+        if self.destroyers:
             try:
                 ords = self.orderings(env)
             except Exception, e:
@@ -423,18 +423,18 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             pass
         return True
 
-    def orderings(self, env): 
+    def orderings(self, env):
         """Return orderings induced by destructive operations.
 
         Raise InconsistencyError when
         a) attempting to destroy indestructable variable, or
         b) attempting to destroy a value multiple times, or
         c) an Apply destroys (illegally) one of its own inputs by aliasing
-        
+
         """
         rval = {}
 
-        if self.destroyers: 
+        if self.destroyers:
             # BUILD DATA STRUCTURES
             # CHECK for multiple destructions during construction of variables
 
@@ -444,7 +444,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             #print "view_i", self.view_i
             #print "view_o", self.view_o
 
-            # check for destruction of constants 
+            # check for destruction of constants
             illegal_destroy = [r for r in droot if \
                     getattr(r.tag,'indestructible', False) or \
                     isinstance(r, graph.Constant)]
@@ -472,7 +472,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     # add_inplace(x, x).  An Op that can still work in this case should declare
                     # so via the 'tolerate_same' attribute
                     #
-                    # tolerate_same should be a list of pairs of the form 
+                    # tolerate_same should be a list of pairs of the form
                     # [(idx0, idx1), (idx0, idx2), ...]
                     # The first element of each pair is the index of a destroyed
                     # variable.
@@ -491,7 +491,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     for i, input in enumerate(app.inputs):
                         if input in root_impact \
                                 and (i not in tolerated or input is not destroyed_variable):
-                            raise InconsistencyError("Input aliasing: %s (%i, %i)" 
+                            raise InconsistencyError("Input aliasing: %s (%i, %i)"
                                     % (app, destroyed_idx, i))
 
                     # add the rule: app must be preceded by all other Apply instances that
@@ -505,4 +505,3 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                         rval[app] = root_clients
 
         return rval
-

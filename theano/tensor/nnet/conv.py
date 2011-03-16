@@ -15,7 +15,8 @@ import logging
 import numpy
 
 import theano
-from theano.tensor import get_constant_value, blas, as_tensor_variable
+from theano.tensor import (as_tensor_variable, blas, get_constant_value,
+        patternbroadcast)
 from theano import Op, config
 from theano.gof.apply_shape import Apply
 from theano.gof.python25 import any
@@ -220,7 +221,7 @@ class ConvOp(Op):
         else: return []
 
     @staticmethod
-    def getOutputShape(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
+    def getOutputShape(inshp, kshp, stride=(1,1), mode='valid'):
         """
         Computes the output dimensions of convolving an image of shape "inshp"
         with kernels of shape "kshp".
@@ -230,6 +231,7 @@ class ConvOp(Op):
         :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
         :return: (rows,cols) of output image
         """
+        dx, dy = stride
         if mode=='valid': s = -1
         else: s = 1
         inshp, kshp = numpy.array(inshp), numpy.array(kshp)
@@ -582,10 +584,12 @@ class ConvOp(Op):
             # we simply let the default function do its work.
             raise NotImplementedError()
 
-    def perform(self,node, (img2d, filtersflipped), (z,)):
+    def perform(self,node, inp, out):
         """
         By default if len(img2d.shape)==3, we
         """
+        img2d, filtersflipped = inp
+        z, = out
         if not imported_scipy_signal:
             raise theano.gof.utils.MethodNotDefined(
                 "c_headers", type(self), self.__class__.__name__,
@@ -695,7 +699,9 @@ class ConvOp(Op):
         z[0]=zz
 
 
-    def grad(self, (inputs, kerns), (gz,)):
+    def grad(self, inp, grads):
+        inputs, kerns = inp
+        gz, = grads
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
@@ -840,6 +846,11 @@ class ConvOp(Op):
         assert (din.owner.op.outshp is None and self.imshp is None) or \
                (din.owner.op.outshp is None) or \
                (din.owner.op.outshp==self.imshp[1:]).all()
+
+        # din and dw should have the same broadcasting pattern as the
+        # parameters they are the gradient of (resp. inputs and kerns).
+        din = patternbroadcast(din, inputs.broadcastable)
+        dw = patternbroadcast(dw, kerns.broadcastable)
         return [din, dw]
 
     def c_headers(self):
@@ -891,7 +902,9 @@ using namespace std;
             return blas.ldflags(libs=False, include_dir=True)
         return []
 
-    def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        img2d, filtersflipped = inp
+        z, = out
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
         assert node.inputs[0].type.dtype == node.inputs[1].type.dtype
@@ -1731,7 +1744,11 @@ int type_im=PyArray_TYPE(%(img2d)s);
 int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
 const npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+//The following line caused gcc 4.3.0 20080428 (Red Hat 4.3.0-8) to crash
+//const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+// The next line had gcc don't crash.
+const npy_intp dim_ker0=%(self_kshp0)s;
+const npy_intp dim_ker1=%(self_kshp1)s;
 %(dim_zz_const)s npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
 
 %(dim_zz_affect)s
@@ -1880,7 +1897,7 @@ for(int b=0;b< %(self_bsize)s;b++){
         // Reposition index into input image based on requested output size
         int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
         if (mode == FULL) new_m = pos_m ;
-        else new_m = (pos_m+dim_ker[0]-1);
+        else new_m = (pos_m+dim_ker0-1);
 
         for (int iter_n=0; iter_n < dim_zz[1]; iter_n++) {  // loop over columns
           int pos_n=iter_n*%(self_dy)s;
@@ -1891,14 +1908,14 @@ for(int b=0;b< %(self_bsize)s;b++){
           int nb_sum=0;
           // Sum over kernel, if index into image is out of bounds
           // fill with the value
-          for (int j=0; j < dim_ker[0]; j++) {
+          for (int j=0; j < dim_ker0; j++) {
             int ind0 = (new_m-j);
 
             if(mode==FULL){
-              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
+              const %(type)s * idx_hvals=&hvals[j*dim_ker1];
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
-                  for (int k=0; k < dim_ker[1]; k++) {
+                  for (int k=0; k < dim_ker1; k++) {
                     sum+= idx_hvals[k] * fill_value;
                   }
               }else{
@@ -1912,12 +1929,12 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }else {k=max_k;}
 
                 //do the part where the kernel is on the img
-                max_k=min(pos_n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker1);
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
 
                 if(iter_n + 4*%(self_dy)s < dim_zz[1]
-                         && iter_n>dim_ker[1]-1
-                         && iter_n<dim_im[1]-dim_ker[1]+1-3){
+                         && iter_n>dim_ker1-1
+                         && iter_n<dim_im[1]-dim_ker1+1-3){
                   nb_sum=4;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
@@ -1926,8 +1943,8 @@ for(int b=0;b< %(self_bsize)s;b++){
                     sum4+=idx_hvals[k]*idx_in[ind1+3*%(self_dy)s];
                   }
                 }else if(iter_n + 2*%(self_dy)s < dim_zz[1]
-                         && iter_n>dim_ker[1]-1
-                         && iter_n<dim_im[1]-dim_ker[1]+1){
+                         && iter_n>dim_ker1-1
+                         && iter_n<dim_im[1]-dim_ker1+1){
                   nb_sum=2;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
@@ -1952,14 +1969,14 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
-                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
+                  for(;k<dim_ker1;k++) sum+= idx_hvals[k]*fill_value;
               }
             }else{//valid mode
               const %(type)s* idx_in=&in[ind0*dim_im[1]];
-              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
+              const %(type)s* idx_hvals=&hvals[j*dim_ker1];
               if(iter_n + 4*%(self_dy)s < dim_zz[1]){
                 nb_sum=4;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                   sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
                   sum3+=idx_hvals[k]*idx_in[im_idx+2*%(self_dy)s];
@@ -1967,13 +1984,13 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }
               }else if(iter_n + 2*%(self_dy)s < dim_zz[1]){
                 nb_sum=2;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                   sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
                 }
               }else{
                 nb_sum=1;
-                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                for (int k=dim_ker1-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
                 }
               }

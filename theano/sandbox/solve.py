@@ -33,7 +33,9 @@ class Solve(gof.Op):
         otype = tensor.TensorType(broadcastable=b_.broadcastable, dtype=odtype)
         return gof.Apply(op=self, inputs=[A, B], outputs=[otype()])
 
-    def perform(self, node, (A, b), (output, )):
+    def perform(self, node, inp, out):
+        A, b = inp
+        output, = out
         ret=scipy.linalg.solve(A,b)
         if ret.dtype != node.outputs[0].dtype:
             print >> sys.stderr, "WARNING: Solve.perform() required cast."

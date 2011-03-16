@@ -3,10 +3,9 @@ import time, atexit, copy
 from theano.gof.link import WrapLinker
 from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
-from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
-from theano.configparser import config, AddConfigVar, IntParam
+from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
 
 import_time = time.time()
@@ -18,6 +17,15 @@ AddConfigVar('ProfileMode.n_apply_to_print',
 AddConfigVar('ProfileMode.n_ops_to_print',
         "Number of ops to print by default",
         IntParam(20, lambda i: i > 0))
+
+AddConfigVar('ProfileMode.min_memory_size',
+             """For the memory profile, do not print apply nodes if the size
+ of their outputs (in bytes) is lower then this threshold""",
+        IntParam(1024, lambda i: i >= 0))
+
+AddConfigVar('ProfileMode.profile_memory',
+             """Enable profiling of memory used by Theano functions""",
+        BoolParam(True))
 
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
@@ -55,9 +63,9 @@ class ProfileMode(Mode):
                 self.op_cimpl, self.compile_time, self.fct_call_time,
                 self.fct_call, self.message, self.outputs_size)
 
-    def __setstate__(self, (linker, optimizer, apply_time, op_cimpl,
-                            compile_time, fct_call_time, fct_call, message, outputs_size)):
-
+    def __setstate__(self, state):
+        linker, optimizer, apply_time, op_cimpl, compile_time, \
+                fct_call_time, fct_call, message, outputs_size = state
         self.apply_time = apply_time
         self.op_cimpl = op_cimpl
         self.compile_time = compile_time
@@ -65,6 +73,8 @@ class ProfileMode(Mode):
         self.fct_call = fct_call
         self.call_time = 0
         self.fn_time = 0
+        self.optimizer_time = 0
+        self.linker_time = 0
         self.message = ""
         self.outputs_size = outputs_size
 
@@ -136,16 +146,18 @@ class ProfileMode(Mode):
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        linker = WrapLinker([linker], profile_thunk2)
+        if config.ProfileMode.profile_memory:
+            p_thunk = profile_thunk
+        else:
+            p_thunk = profile_thunk2
+        linker = WrapLinker([linker], p_thunk)
 
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 
-    def print_summary(self,
-                      n_apply_to_print=config.ProfileMode.n_apply_to_print,
-                      n_ops_to_print=config.ProfileMode.n_ops_to_print):
+    def print_summary(self,**kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there).
@@ -154,9 +166,9 @@ class ProfileMode(Mode):
 
         Their is an hack with the Op-wise summary. Go see it if you want to know more.
 
-        :param n_apply_to_print: the number of apply to print. Default 15, or n_ops_to_print flag.
-
-        :param n_ops_to_print: the number of ops to print. Default 20, or n_apply_to_print flag.
+        :param kwargs: They are passed to print_summary_ expanded.
+                       Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
+                       that are accepted.
         """
 
         compile_time = self.compile_time
@@ -166,22 +178,23 @@ class ProfileMode(Mode):
         op_cimpl = self.op_cimpl
         message = self.message
         outputs_size = self.outputs_size
+        other_time = {'linker_time':self.linker_time,
+                      'optimizer_time':self.optimizer_time}
 
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size,
-                            n_apply_to_print, n_ops_to_print)
+                            apply_time, op_cimpl, message, outputs_size, other_time,
+                            **kwargs)
 
 
-    def print_diff_summary(self, other, n_apply_to_print=15, n_ops_to_print=20):
+    def print_diff_summary(self, other, **kwargs):
         """ As print_summary, but print the difference on two different profile mode.
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
 
         :param other: the other instance of ProfileMode that we want to be compared to.
-
-        :param n_apply_to_print: the number of apply to print. Default 15.
-
-        :param n_ops_to_print: the number of ops to print. Default 20.
+        :param kwargs: They are passed to print_summary_ expanded.
+                       Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
+                       that are accepted.
         """
 
         def diff_dict(a_time,b_time_):
@@ -205,58 +218,85 @@ class ProfileMode(Mode):
         op_cimpl = self.op_cimpl and other.op_cimpl
         message = self.message
         outputs_size = diff_dict(self.outputs_size,other.outputs_size)
-
+        other_time = {'linker_time':self.linker_time-other.linker_time,
+                      'optimizer_time':self.optimizer_time-other.optimizer_time}
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
                             apply_time, op_cimpl, message, outputs_size,
-                            n_apply_to_print=n_apply_to_print,
-                            n_ops_to_print=n_ops_to_print, print_apply=False)
+                            print_apply=False, other_time=other_time,
+                            **kwargs)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
                        apply_time, op_cimpl, message, outputs_size,
-                       n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
+                       other_time,
+                       n_apply_to_print=config.ProfileMode.n_apply_to_print,
+                       n_ops_to_print=config.ProfileMode.n_ops_to_print,
+                       print_apply=True,
+                       min_memory_size=config.ProfileMode.min_memory_size,
+                      ):
         """
         do the actual printing of print_summary and print_diff_summary.
 
-        param: n_apply_to_print the number of apply to print. Default 15.
+        :param n_apply_to_print: the number of apply to print. Default 15.
 
-        param: n_ops_to_print the number of ops to print. Default 20.
+        :param n_ops_to_print: the number of ops to print. Default 20.
+        :param min_memory_size: Don't print memory profile of apply
+                                whose outputs memory size is lower then that.
         """
 
         local_time = sum(apply_time.values())
+        total_time = time.time() - import_time
+        total_fct_time = sum(fct_call_time.values())
+        total_fct_call = sum(fct_call.values())
+        unknown_time = total_time - total_fct_time - compile_time
+        overhead_time = total_fct_time - local_time
+        if total_fct_time>0:
+            time_pr_in_fct = local_time/total_fct_time*100
+            overhead_time_pourcent_fct_time = overhead_time/total_fct_time*100
+            time_per_call = total_fct_time/total_fct_call
+        else:
+            time_pr_in_fct = 0
+            overhead_time_pourcent_fct_time = 0
+            time_per_call = 0
 
-        print ''
+        print
         print 'ProfileMode.%s(%s)'%(fct_name,message)
         print '---------------------------'
-        print ''
+        print
+        print 'Time since import %.3fs'%(total_time)
+        print 'Theano compile time: %.3fs (%.1f%% since import)'%(compile_time, compile_time/total_time*100)
+        print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
+        print '    Linker time: %.3fs'%(other_time['linker_time'])
+        print 'Theano fct call %.3fs (%.1f%% since import)'%(total_fct_time, total_fct_time/total_time*100)
+        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+            local_time, local_time/total_time*100, time_pr_in_fct)
+        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+            overhead_time, overhead_time/total_time*100, overhead_time_pourcent_fct_time)
+        print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
+        print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time, unknown_time/total_time*100)
 
-        print 'local_time %.3fs (Time spent running thunks)'% local_time
+        print
+        print 'Theano fct summary:'
+        print '<% total fct time> <total time> <time per call> <nb call> <fct name>'
+        for key in fct_call.keys():
+            if fct_call[key]>0:
+                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
+            else:
+                print '   NOT CALLED',key.name
 
-        if print_apply:
-            print 'Apply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
-            atimes.sort()
-            atimes.reverse()
-            tot=0
-            for f,t,a,nb_call in atimes[:n_apply_to_print]:
-                tot+=t
-                ftot=tot*100/local_time
-                if nb_call==0:
-                    continue
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
-            print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                    %(max(0, len(atimes)-n_apply_to_print),
-                      sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
-                      sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
 
+        # Compute stats per op.
         op_time = {}
         op_call = {}
         op_apply = {}
+        sop_apply = {}
         for (i,a),t in apply_time.items():
             op=a.op
             op_time.setdefault(op,0)
             op_call.setdefault(op,0)
             op_apply.setdefault(op,0)
+            sop_apply.setdefault(type(a.op),0)
             op_time[op]+=t
             nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
             if t==0:
@@ -264,17 +304,63 @@ class ProfileMode(Mode):
             else:
                 op_call[op] += nb_call
                 op_apply[op] += 1
+                sop_apply[type(a.op)] += 1
 
+        # Compute stats per op class
+        sop_time={}
+        sop_call={}
+        sop_op = {}
+        sop_c={} #map each op class to Bool. True iff all applies were done in c.
+        for a,t in op_time.items():
+            typ = type(a)
+            sop_time.setdefault(typ,0)
+            sop_time[typ]+=t
+            sop_op.setdefault(typ,0)
+            sop_op[typ]+=1
+            sop_c.setdefault(typ,True)
+            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
+            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
+
+
+        # Print the summary per op class.
+        print
+        print 'Single Op-wise summary:'
+        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_apply> <Op name>'
+        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
+        sotimes.sort()
+        sotimes.reverse()
+        tot=0
+        for f,t,a,ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
+            if nb_call == 0:
+                assert t == 0
+                continue
+            tot+=t
+            ftot=tot*100/local_time
+            if ci:
+                msg = '*'
+            else:
+                msg = ' '
+            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, nb_apply, a)
+        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(sotimes)-n_ops_to_print),
+                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
+                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
+
+        print '(*) Op is running a c implementation'
+
+
+        # The summary per op
         op_flops = {}
         for a,t in op_time.items():
             if hasattr(a,'flops'):
                 op_flops[a]=a.flops*op_call[a]/t/1e6
-
         flops_msg=''
         if op_flops:
             flops_msg=' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb called apply> <Op name>'%(flops_msg)
+        print
+        print 'Op-wise summary:'
+        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -302,104 +388,28 @@ class ProfileMode(Mode):
         print '(*) Op is running a c implementation'
 
 
-        sop_time={}
-        sop_call={}
-        sop_op = {}
-        sop_c={} #map each op class to Bool. True iff all applies were done in c.
-        for a,t in op_time.items():
-            typ = type(a)
-            sop_time.setdefault(typ,0)
-            sop_time[typ]+=t
-            sop_op.setdefault(typ,0)
-            sop_op[typ]+=1
-            sop_c.setdefault(typ,True)
-            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <Op name>'
-        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
-        sotimes.sort()
-        sotimes.reverse()
-        tot=0
-        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
-            if nb_call == 0:
-                assert t == 0
-                continue
-            tot+=t
-            ftot=tot*100/local_time
-            if ci:
-                msg = '*'
-            else:
-                msg = ' '
-            print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
-        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(sotimes)-n_ops_to_print),
-                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
-                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
-
-        print '(*) Op is running a c implementation'
-
-
-        total_time = time.time() - import_time
-        total_fct_time = sum(fct_call_time.values())
-        total_fct_call = sum(fct_call.values())
-        other_time = total_time - total_fct_time - compile_time
-        print
-        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
-        for key in fct_call.keys():
-            if fct_call[key]>0:
-                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
-                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
-            else:
-                print '   NOT CALLED',key.name
-
-        if total_fct_time>0:
-            time_pr_in_fct=local_time/total_fct_time*100
-            time_per_call=total_fct_time/total_fct_call
-        else:
-            time_pr_in_fct=0
-            time_per_call=0
-
-        print
-        print 'Time since import %.3fs'%(total_time)
-        print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
-        print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
-        print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
-        print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
-
-        print
-        print "List of apply that don't have float64 as input but have float64 in outputs. Useful to know if we forgot some cast when using floatX=float32 or gpu code."
-        print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
-        for fct in fct_call.keys():
-            for idx, node in enumerate(fct.maker.env.toposort()):
-                if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
-                    print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
-
-        if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
-            cpu=[]
-            gpu=[]
-            trans=[]
-            for so in sotimes:
-                if so[2].__name__ in ["HostFromGpu", "GpuFromHost"]:
-                    trans.append(so)
-                elif so[2].__name__.startswith("Gpu"):
-                    gpu.append(so)
-                else:
-                    cpu.append(so)
-            sum_cpu=sum(so[1] for so in cpu)
-            sum_gpu=sum(so[1] for so in gpu)
-            sum_trans=sum(so[1] for so in trans)
+        if print_apply:
             print
-
-            print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
-                sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
-
-            print "Theano function input that are float64"
-            print "<fct name> <input name> <input type> <str input>"
-            for fct in fct_call.keys():
-                for i in fct.input_storage:
-                    if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
-                        print fct.name, i.name, i.type, i
+            print 'Apply-wise summary:'
+            print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
+            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
+            atimes.sort()
+            atimes.reverse()
+            tot=0
+            for f,t,a,nb_call in atimes[:n_apply_to_print]:
+                tot+=t
+                ftot=tot*100/local_time
+                if nb_call==0:
+                    continue
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %2i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
+            print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
+                    %(max(0, len(atimes)-n_apply_to_print),
+                      sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
+                      sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
+        for printer in profiler_printers:
+            printer(fct_name, compile_time, fct_call_time, fct_call,
+                    apply_time, op_cimpl, message, outputs_size,
+                    other_time)
 
         if outputs_size:
             fct_memory={}#env->dict(node->(outputs size))
@@ -411,9 +421,13 @@ class ProfileMode(Mode):
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
+            nb_skipped = 0
             for env,nodes_mem in fct_memory.iteritems():
-                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
+                if size_sum < min_memory_size:
+                    nb_skipped += 1
+                    continue
+                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
                 print "    Max without gc, inplace and view (KB)",size_sum/1024
 
                 node_memory_size = 0
@@ -461,24 +475,30 @@ class ProfileMode(Mode):
                 n_apply_to_print+=10#TODO remove this line
                 print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
                 print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected."
+
+                n_apply_printed = 0
                 for key,val in items[:n_apply_to_print]:
+                    if sum(val) < min_memory_size:
+                        break
                     code = ['c']*len(node.outputs)
                     for out,inp in getattr(key.op,'destroy_map',{}).iteritems():
                         code[out] = "i"
                     for out,inp in getattr(key.op,'view_map',{}).iteritems():
                         code[out] = "v"
                     print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
+                    n_apply_printed += 1
 
-                print '   ... (remaining %i Apply account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(nodes_mem)-n_ops_to_print),
-                  sum(sum(val) for key, val in items[n_ops_to_print:]),
-                  sum(sum(val) for key, val in items[n_ops_to_print:])/size_sum)
-
+                print '   ... (remaining %i Apply account for %.2f%%(%d bytes) of the total intermediate memory used)'\
+                %(max(0, len(nodes_mem)-n_apply_printed),
+                  sum(sum(val) for key, val in items[n_apply_printed:])/float(size_sum),
+                  sum(sum(val) for key, val in items[n_apply_printed:]))
+            if nb_skipped > 0:
+                print '   We skipped %d theano function(s). Each of them used less then %dB(theano flags ProfileMode.min_memory_size) of total intermediate memory size'%(nb_skipped, min_memory_size)
 
         print
         print """Here are tips to potentially make your code run faster
 (if you think of new ones, suggest them on the mailing list).
-Test them first as they are not guaranteed to always provide a speedup."""
+Test them first, as they are not guaranteed to always provide a speedup."""
         from theano import tensor as T
         from theano.tensor.raw_random import RandomFunction
         import theano
@@ -516,41 +536,41 @@ Test them first as they are not guaranteed to always provide a speedup."""
                 l = list_scalar_op(op)
                 return any([s_op.__class__ in [scal.Exp] for s_op in l])
 
-        gived_tip = False
+        printed_tip = False
         #tip 1
         if config.floatX=='float64':
             print "  - Try the Theano flag floatX=float32"
-            gived_tip = True
+            printed_tip = True
 
         #tip 2
         if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i,a in apply_time]):
-            print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speed up only some Elemwise operation."
-            gived_tip = True
+            print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speeds up only some Elemwise operation."
+            printed_tip = True
 
         #tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
-            gived_tip = True
+            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
+            printed_tip = True
 
         #tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
-                print "  - You have a dot operation that was not optimized to dot22 that is faster. Make sure the inputs are float32 or 64 and are the same for both input. Currently they are:",[i.type for i in node.inputs]
-                gived_tip = True
+                print "  - You have a dot operation that was not optimized to dot22 (which is faster). Make sure the inputs are float32 or 64, and are the same for both inputs. Currently they are:",[i.type for i in node.inputs]
+                printed_tip = True
 
         #tip 5
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, RandomFunction):
-                gived_tip = True
-                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams' as this is is faster. It is still experimental, but seam to work correctly."
+                printed_tip = True
+                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams', as this is is faster. It is still experimental, but seems to work correctly."
                 if config.device.startswith("gpu"):
-                    print "     - MRG_RandomStreams is the only random number supported on the GPU."
+                    print "     - MRG_RandomStreams is the only random number generator supported on the GPU."
                 break
 
-        if not gived_tip:
-            print "  Sorry no tip for today."
+        if not printed_tip:
+            print "  Sorry, no tip for today."
 
 register_mode('PROFILE_MODE',ProfileMode())
 
@@ -570,3 +590,10 @@ def atexit_print_default_profile_mode():
 #Register atexit_print_default_profile_mode to have the summary of the
 #predefined mode PROFILE_MODE if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
+
+
+# Here we define an hook that allow to print extra profiling information
+profiler_printers = []
+def register_profiler_printer(fct):
+    profiler_printers.append(fct)
+    return fct

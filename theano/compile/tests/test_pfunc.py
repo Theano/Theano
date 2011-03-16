@@ -27,12 +27,12 @@ class Test_pfunc(unittest.TestCase):
         b = shared(1)
         f1 = pfunc([a], a+b)
         f2 = pfunc([Param(a, default=44)], a + b, updates={b: b + 1})
-        self.failUnless(b.value == 1)
+        self.failUnless(b.get_value() == 1)
         self.failUnless(f1(3) == 4)
         self.failUnless(f2(3) == 4)
-        self.failUnless(b.value == 2)
+        self.failUnless(b.get_value() == 2)
         self.failUnless(f1(3) == 5)
-        b.value = 0
+        b.set_value(0)
         self.failUnless(f1(3) == 3)
 
         # Example #2.
@@ -41,7 +41,7 @@ class Test_pfunc(unittest.TestCase):
         f1 = pfunc([a], a + b)
         f2 = pfunc([a], a * b)
         self.failUnless(f1(5) == 12)
-        b.value = 8
+        b.set_value(8)
         self.failUnless(f1(5) == 13)
         self.failUnless(f2(4) == 32)
 
@@ -49,7 +49,7 @@ class Test_pfunc(unittest.TestCase):
 
         # CHECK: two functions (f1 and f2) can share w
         w = shared(numpy.random.rand(2,2), 'w')
-        wval = copy.copy(w.value)
+        wval = w.get_value(borrow=False)
 
         x = dmatrix()
         out1 = w + x
@@ -65,8 +65,9 @@ class Test_pfunc(unittest.TestCase):
         assert numpy.all(f3(xval) == xval + wval) # f3 changes the value of w
         assert numpy.all(f1(xval) == xval + (wval-1)) # this same value is read by f1
 
-        w.value *= 10
-        assert numpy.all(f1(xval) == xval + w.value) # this same value is read by f1
+        w.set_value(w.get_value(borrow=True) * 10, borrow=True)
+        # this same value is read by f1
+        assert numpy.all(f1(xval) == xval + w.get_value(borrow=True))
 
     def test_no_shared_as_input(self):
         """Test that shared variables cannot be used as function inputs."""
@@ -92,7 +93,7 @@ class Test_pfunc(unittest.TestCase):
 
         assert f() == numpy.sum(w_init * w_init)
         # Change the value of w and ensure the output changes accordingly.
-        w.value += 1.0
+        w.set_value(w.get_value(borrow=True) + 1.0, borrow=True)
         assert f() == numpy.sum((w_init+1)**2)
 
     def test_default_scalar_container(self):
@@ -101,7 +102,7 @@ class Test_pfunc(unittest.TestCase):
         x = shared(0.0, 'x')
         f = pfunc([], x)
         assert f() == 0
-        x.value += 1
+        x.set_value(x.get_value(borrow=True) + 1, borrow=True)
         assert f() == 1
 
     def test_param_strict(self):
@@ -146,31 +147,33 @@ class Test_pfunc(unittest.TestCase):
         b = shared(bval)
         b_out = b * 2
 
-        assert b.value is not bval # shared vars copy args.
+        assert b.get_value(borrow=True) is not bval # shared vars copy args.
         bval = data_of(b)          # so we do this to get at the underlying data
 
         # by default, shared are not mutable unless doing an explicit update
         f = pfunc([], [b_out], mode='FAST_RUN')
         assert (f() ==  numpy.arange(5) * 2).all()
-        assert numpy.all( b.value == numpy.arange(5))
+        assert numpy.all(b.get_value(borrow=True) == numpy.arange(5))
 
         # using updates, b is now a mutable parameter
         f = pfunc([], [b_out], updates=[(b, b_out)], mode='FAST_RUN')
         assert (f() == numpy.arange(5)*2 ).all()
-        assert ( b.value == numpy.arange(5)*2).all() # because of the update
-        assert ( bval == numpy.arange(5)*2).all() # because of mutable=True
+        # because of the update
+        assert (b.get_value(borrow=True) == numpy.arange(5)*2).all()
+        assert (bval == numpy.arange(5)*2).all() # because of mutable=True
 
         # do not depend on updates being in-place though!
         bval = numpy.arange(5)
-        b.value = bval
+        b.set_value(bval, borrow=True)
         bval = data_of(b)
         f = pfunc([], [b_out], updates=[(b, b_out+3)], mode='FAST_RUN')
-        assert ( f() == numpy.arange(5)*2 ).all()
-        assert (b.value == ((numpy.arange(5)*2)+3)).all() # because of the update
+        assert (f() == numpy.arange(5)*2 ).all()
+        # because of the update
+        assert (b.get_value(borrow=True) == ((numpy.arange(5)*2)+3)).all()
         # bval got modified to something...
         assert not (bval == numpy.arange(5)).all()
         # ... but not to b.value !
-        assert not (bval == b.value).all()
+        assert not (bval == b.get_value(borrow=True)).all()
 
     def test_param_allow_downcast_int(self):
         a = tensor.wvector('a') # int16
@@ -314,20 +317,20 @@ class Test_pfunc(unittest.TestCase):
         x = shared(0)
         assign = pfunc([], [], updates = {x: 3})
         assign()
-        self.failUnless(x.value == 3)
+        self.failUnless(x.get_value() == 3)
 
         # Basic increment function.
-        x.value = 0
+        x.set_value(0)
         inc = pfunc([], [], updates = {x: x + 1})
         inc()
-        self.failUnless(x.value == 1)
+        self.failUnless(x.get_value() == 1)
 
         # Increment by a constant value.
-        x.value = -1
+        x.set_value(-1)
         y = shared(2)
         inc_by_y = pfunc([], [], updates = {x: x + y})
         inc_by_y()
-        self.failUnless(x.value == 1)
+        self.failUnless(x.get_value() == 1)
 
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
@@ -338,18 +341,18 @@ class Test_pfunc(unittest.TestCase):
         x = shared(0)
         assign = pfunc([], x, givens = {x: 3})
         assert assign() == 3
-        assert x.value == 0
+        assert x.get_value(borrow=True) == 0
 
         y = tensor.ivector()
         f = pfunc([y], y*x, givens = {x : 6})
         assert numpy.all(f([1,1,1]) == [6,6,6])
-        assert x.value == 0
+        assert x.get_value() == 0
 
         z = tensor.ivector()
         c = z*y
         f = pfunc([y], c+7, givens = {z : theano._asarray([4,4,4], dtype='int32')})
         assert numpy.all(f([1,1,1]) == [11,11,11])
-        assert x.value == 0
+        assert x.get_value() == 0
 
     def test_clone0(self):
         x = shared(numpy.asarray([4,4,4]))
@@ -358,10 +361,10 @@ class Test_pfunc(unittest.TestCase):
         up = pfunc([], [], updates = {x: (x*5), y:(x*5)+y, z: ((x*5)+y)**z})
 
         up()
-        print x.value
-        assert numpy.all(x.value==20)
-        assert numpy.all(y.value==24)
-        assert numpy.all(z.value==24**2)
+        print x.get_value(borrow=True)
+        assert numpy.all(x.get_value()==20)
+        assert numpy.all(y.get_value()==24)
+        assert numpy.all(z.get_value()==24**2)
 
     def test_default_updates(self):
         x = shared(0)
@@ -369,16 +372,16 @@ class Test_pfunc(unittest.TestCase):
 
         f = pfunc([], [x])
         f()
-        print x.value
-        assert x.value == 1
+        print x.get_value()
+        assert x.get_value() == 1
 
         del x.default_update
         f()
-        assert x.value == 2
+        assert x.get_value() == 2
 
         g = pfunc([], [x])
         g()
-        assert x.value == 2
+        assert x.get_value() == 2
 
     def test_no_default_updates(self):
         x = shared(0)
@@ -388,33 +391,33 @@ class Test_pfunc(unittest.TestCase):
         # Test that the default update is taken into account in the right cases
         f1 = pfunc([], [x], no_default_updates=True)
         f1()
-        print x.value
-        assert x.value == 0
+        print x.get_value()
+        assert x.get_value() == 0
 
         f2 = pfunc([], [x], no_default_updates=[x])
         f2()
-        print x.value
-        assert x.value == 0
+        print x.get_value()
+        assert x.get_value() == 0
 
         f3 = pfunc([], [x], no_default_updates=[x, y])
         f3()
-        print x.value
-        assert x.value == 0
+        print x.get_value()
+        assert x.get_value() == 0
 
         f4 = pfunc([], [x], no_default_updates=[y])
         f4()
-        print x.value
-        assert x.value == 2
+        print x.get_value()
+        assert x.get_value() == 2
 
         f5 = pfunc([], [x], no_default_updates=[])
         f5()
-        print x.value
-        assert x.value == 4
+        print x.get_value()
+        assert x.get_value() == 4
 
         f5 = pfunc([], [x], no_default_updates=False)
         f5()
-        print x.value
-        assert x.value == 6
+        print x.get_value()
+        assert x.get_value() == 6
 
         self.failUnlessRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
         self.failUnlessRaises(TypeError, pfunc, [], [x], no_default_updates=x)
@@ -423,33 +426,33 @@ class Test_pfunc(unittest.TestCase):
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=True)
         g1()
-        print x.value
-        assert x.value == 5
+        print x.get_value()
+        assert x.get_value() == 5
 
         g2 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=[x])
         g2()
-        print x.value
-        assert x.value == 4
+        print x.get_value()
+        assert x.get_value() == 4
 
         g3 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=[x, y])
         g3()
-        print x.value
-        assert x.value == 3
+        print x.get_value()
+        assert x.get_value() == 3
 
         g4 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=[y])
         g4()
-        print x.value
-        assert x.value == 2
+        print x.get_value()
+        assert x.get_value() == 2
 
         g5 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=[])
         g5()
-        print x.value
-        assert x.value == 1
+        print x.get_value()
+        assert x.get_value() == 1
 
         g5 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=False)
         g5()
-        print x.value
-        assert x.value == 0
+        print x.get_value()
+        assert x.get_value() == 0
 
     def test_default_updates_expressions(self):
         x = shared(0)
@@ -462,17 +465,17 @@ class Test_pfunc(unittest.TestCase):
         f1 = pfunc([a], z)
         f1(12)
         print x
-        assert x.value == 1
+        assert x.get_value() == 1
 
         f2 = pfunc([a], z, no_default_updates=True)
         assert f2(7) == 7
         print x
-        assert x.value == 1
+        assert x.get_value() == 1
 
         f3 = pfunc([a], z, no_default_updates=[x])
         assert f3(9) == 9
         print x
-        assert x.value == 1
+        assert x.get_value() == 1
 
     def test_default_updates_multiple(self):
         x = shared(0)
@@ -483,23 +486,23 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([], [x,y])
         f1()
-        assert x.value == -1
-        assert y.value == 2
+        assert x.get_value() == -1
+        assert y.get_value() == 2
 
         f2 = pfunc([], [x,y], updates=[(x, x-2)], no_default_updates=[y])
         f2()
-        assert x.value == -3
-        assert y.value == 2
+        assert x.get_value() == -3
+        assert y.get_value() == 2
 
         f3 = pfunc([], [x,y], updates=[(x, x-2)], no_default_updates=True)
         f3()
-        assert x.value == -5
-        assert y.value == 2
+        assert x.get_value() == -5
+        assert y.get_value() == 2
 
         f4 = pfunc([], [x,y], updates=[(y, y-2)])
         f4()
-        assert x.value == -6
-        assert y.value == 0
+        assert x.get_value() == -6
+        assert y.get_value() == 0
 
     def test_default_updates_chained(self):
         x = shared(2)
@@ -512,34 +515,34 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([], [x])
         f1()
-        print x.value, y.value, z.value
-        assert x.value == 1
-        assert y.value == -1
-        assert z.value == -2
+        print x.get_value(), y.get_value(), z.get_value()
+        assert x.get_value() == 1
+        assert y.get_value() == -1
+        assert z.get_value() == -2
 
         f2 = pfunc([], [x, y])
         f2()
-        assert x.value == 2
-        assert y.value == -2
-        assert z.value == -3
+        assert x.get_value() == 2
+        assert y.get_value() == -2
+        assert z.get_value() == -3
 
         f3 = pfunc([], [y])
         f3()
-        assert x.value == 2
-        assert y.value == -3
-        assert z.value == -4
+        assert x.get_value() == 2
+        assert y.get_value() == -3
+        assert z.get_value() == -4
 
         f4 = pfunc([], [x,y], no_default_updates=[x])
         f4()
-        assert x.value == 2
-        assert y.value == -4
-        assert z.value == -5
+        assert x.get_value() == 2
+        assert y.get_value() == -4
+        assert z.get_value() == -5
 
         f5 = pfunc([], [x,y,z], no_default_updates=[z])
         f5()
-        assert x.value == 6
-        assert y.value == -5
-        assert z.value == -5
+        assert x.get_value() == 6
+        assert y.get_value() == -5
+        assert z.get_value() == -5
 
 
     def test_default_updates_input(self):
@@ -555,28 +558,28 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([], x, no_default_updates=True)
         f1()
-        assert x.value == 0
-        assert y.value == 1
+        assert x.get_value() == 0
+        assert y.get_value() == 1
 
         f2 = pfunc([], x, no_default_updates=[x])
         f2()
-        assert x.value == 0
-        assert y.value == 1
+        assert x.get_value() == 0
+        assert y.get_value() == 1
 
         f3 = pfunc([], x, no_default_updates=[y])
         f3()
-        assert x.value == 1
-        assert y.value == 1
+        assert x.get_value() == 1
+        assert y.get_value() == 1
 
         f4 = pfunc([a], x)
         f4(2)
-        assert x.value == 1
-        assert y.value == 3
+        assert x.get_value() == 1
+        assert y.get_value() == 3
 
         f5 = pfunc([], x, updates={y:y-1})
         f5()
-        assert x.value == 3
-        assert y.value == 2
+        assert x.get_value() == 3
+        assert y.get_value() == 2
 
         # a is needed as input if y.default_update is used
         self.failUnlessRaises(TypeError, pfunc, [], x)
@@ -587,11 +590,11 @@ class Test_pfunc(unittest.TestCase):
         b = 2*a
         # Use only the tip of the graph, a is not used
         f = pfunc([b], b)
-        print 'a.value =', a.value
-        assert a.value == 0
+        print 'a.get_value() =', a.get_value()
+        assert a.get_value() == 0
         f(21)
-        print 'a.value =', a.value
-        assert a.value == 0
+        print 'a.get_value() =', a.get_value()
+        assert a.get_value() == 0
 
 
     def test_givens_replaces_shared_variable(self):
@@ -942,4 +945,3 @@ class Test_aliasing_rules(unittest.TestCase):
 if __name__ == '__main__':
     theano.config.mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
-

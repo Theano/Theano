@@ -15,14 +15,16 @@ def _grad_sources_inputs(*args):
     return grad_sources_inputs(warn_type=False, *args)
 
 class test_grad_sources_inputs(unittest.TestCase):
-    def test_retNone1(self): 
+    def test_retNone1(self):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self):
                 inputs = [gof.generic()]
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x, ), (gz, )):
+            def grad(self, inp, grads):
+                x, = inp
+                gz, = grads
                 pass
         a = retNone().make_node()
         try:
@@ -31,26 +33,26 @@ class test_grad_sources_inputs(unittest.TestCase):
             self.failUnless(e[0] is gradient._msg_retType)
             return
         self.fail()
-    def test_retNone1_b(self): 
+    def test_retNone1_b(self):
         """Test that it is ok to return [None] from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x, ), (gz, )):
+            def grad(self, inp, grads):
                 return [None]
         i = gof.generic()
         a = retNone().make_node(i)
         g = _grad_sources_inputs([(a.out, 1)], None)
         self.failUnless(not i in g)
 
-    def test_wrong_rval_len1(self): 
+    def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradients"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, (gz, )):
+            def grad(self, inputs, grads):
                 return [None]
 
         i = gof.generic()
@@ -74,7 +76,7 @@ class test_grad_sources_inputs(unittest.TestCase):
             def make_node(self, *inputs):
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, (gz, )):
+            def grad(self, inputs, grads):
                 self.tst.fail()
 
         i = gof.generic()
@@ -89,7 +91,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 inputs = [gof.generic()]
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x, ), (gz, )):
+            def grad(self, inp, grads):
                 return gval,
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
@@ -103,7 +105,9 @@ class test_grad_sources_inputs(unittest.TestCase):
                 inputs = [gof.generic()]
                 outputs = [gof.generic(),gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x, ), (gz1, gz2)):
+            def grad(self, inp, grads):
+                x, = inp
+                gz1, gz2 = grads
                 return gval,
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
@@ -117,7 +121,9 @@ class test_grad_sources_inputs(unittest.TestCase):
                 inputs = [gof.generic(),gof.generic()]
                 outputs = [gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x0,x1), (gz, )):
+            def grad(self, inp, grads):
+                x0, x1 = inp
+                gz, = grads
                 return (gval0, gval1)
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
@@ -132,7 +138,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 inputs = [gof.generic(),gof.generic()]
                 outputs = [gof.generic(),gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, (x0,x1), (gz0,gz1)):
+            def grad(self, inp, grads):
                 return gval0, gval1
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
@@ -189,7 +195,8 @@ class test_grad_sources_inputs(unittest.TestCase):
             def make_node(self, *inputs):
                 outputs = [gof.generic(),gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, (g0,g1)):
+            def grad(self, inputs, grads):
+                g0, g1 = grads
                 if not self.grad_ok:
                     self.tst.fail()
                 else:
@@ -220,7 +227,8 @@ class test_grad_sources_inputs(unittest.TestCase):
             def make_node(self, *inputs):
                 outputs = [gof.generic(),gof.generic()]
                 return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, (g0,g1)):
+            def grad(self, inputs, grads):
+                g0, g1 = grads
                 if not self.grad_ok:
                     self.tst.fail()
                 else:

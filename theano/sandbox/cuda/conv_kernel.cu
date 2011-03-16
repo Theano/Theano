@@ -1,3 +1,5 @@
+// REMEMBER TO RAISE c_code_cache_version when changing this file
+//
 //implement the valid convolution only
 
 /*
@@ -45,8 +47,9 @@ const unsigned long int COALESCED_ALIGN = 0xFFFFFFFFFFFFFF00; // zero-out the tr
 __device__ void load_to_shared(float * dst, const float * src, const int thread_id, int nb_thread, const int N, const bool flipped=false){
   if (nb_thread < 64)
     {
-      if(flipped) 
-        //TODO very slow on device before 1.3. make access to kern sequential and access to d_kern flipped.
+      if(flipped)
+        //TODO very slow on device before 1.3.
+        //     make access to kern sequential and access to d_kern flipped.
         for(int i=thread_id;i<N;i+=nb_thread)
           dst[i]=src[N - 1 - i];
         //dst[N-1-i]=src[i];
@@ -88,10 +91,9 @@ __device__ void load_to_shared(float * dst, const float * src, const int thread_
 			       const bool flipped=false, const bool c_contiguous=true){
   if(flipped && ! c_contiguous){
     for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
-      dst[nb_row*nb_col-1-i]=src[i/nb_col*stride_row+i%nb_col*stride_col];
+      dst[nb_row*nb_col-1-i]=src[(i/nb_col)*stride_row+(i%nb_col)*stride_col];
   }else if(c_contiguous){
     load_to_shared(dst, src, thread_id, nb_thread, nb_col*nb_row, flipped);
-  
   }else if(flipped){//c_contiguous==true
     //TODO very slow on device before 1.3. make access to kern sequential and access to d_kern flipped.
     int N=nb_col*nb_row;
@@ -440,10 +442,12 @@ conv_patch_stack_reduce( float* img, float* kern, float* out,
 		  int kern_stride_col, int kern_stride_row,
 		  int kern_stride_stack, int kern_stride_nkern)
 {
-  int __shared__ out_len, out_wid, nb_thread_id;
-  out_len = img_len - kern_len + 1;
-  out_wid = img_wid - kern_wid + 1;
-  nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
+  //int __shared__ out_len, out_wid, nb_thread_id;
+  //out_len = img_len - kern_len + 1;
+  //out_wid = img_wid - kern_wid + 1;
+  const int out_wid = blockDim.x;
+  const int out_len = blockDim.y;
+  const int nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
 
   extern __shared__ float s_data[];
 
@@ -458,9 +462,16 @@ conv_patch_stack_reduce( float* img, float* kern, float* out,
     int out_row = ty;//output row
     const int thread_id  = tz*blockDim.y*blockDim.x+ty*blockDim.x+tx;
 
-    float * d_img=&s_data[0];//size of [IMAGE_LEN * IMAGE_WID];
-    float * d_kern=&s_data[img_len * img_wid];//size of [(preload_full_kern?KERNEL_LEN:blockDim.z) * KERNEL_WID];
-    float * d_reduce=&s_data[img_len*img_wid+(preload_full_kern?kern_len:blockDim.z)*kern_wid];
+    //d_img size [IMAGE_LEN * IMAGE_WID];
+    float * d_img=&s_data[0];
+
+    //d_kern size[(preload_full_kern?KERNEL_LEN:blockDim.z) * KERNEL_WID]
+    float * d_kern=&s_data[img_len * img_wid];
+
+    //d_reduce size [n_threads]
+    //N.B. this overlaps with d_img and d_kern!
+    float * d_reduce=&s_data[0];
+
     float sum = 0.0f;
 
     kern+=kern_stride_nkern*blockIdx.y;//the good nkern
@@ -471,30 +482,31 @@ conv_patch_stack_reduce( float* img, float* kern, float* out,
       __syncthreads();
       load_to_shared(d_img, img, thread_id, nb_thread_id, img_wid, img_len,
 		     img_stride_col, img_stride_row, false, c_contiguous);
-      if(!(split && ! preload_full_kern))
-	load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid, kern_len,
-		       kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
-      __syncthreads();
       if(split && ! preload_full_kern){
-	for(int first_row=0, row=tz;first_row<kern_len;row+=blockDim.z, first_row+=blockDim.z){
-	  int idx3;
-	  //TODO: test/check for flipped_kern
-	  if(flipped_kern)
-	    idx3=(kern_len-(first_row)-blockDim.z);//the current last row flipped
-	  else
-	    idx3=first_row;
+	for(int first_row=0;first_row<kern_len;first_row+=blockDim.z){
+            //N.B. - Jan 30, 2011 with CUDA 3.2 I found that without the explicit cast to
+            // (int)blockDim.z, idx3 would sometimes be negative. I'm rusty on my signed vs. unsigned
+            // details, but that seemed really weird. tricky bug to find too.
+          int idx3 = flipped_kern
+              ? max((kern_len - (int)blockDim.z - first_row),0)
+              : first_row;
+          int len3 = min(blockDim.z, kern_len - first_row);
+
 	  __syncthreads();
-	  load_to_shared(d_kern, kern+idx3*kern_stride_row, thread_id, nb_thread_id, kern_wid, blockDim.z,
+	  load_to_shared(d_kern, kern+idx3*kern_stride_row, thread_id, nb_thread_id, kern_wid, len3,
 			 kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
 	  __syncthreads();
-	  const float* idx_kern=&d_kern[tz*kern_stride_row];
-	  const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
+	  const float* idx_kern=&d_kern[tz*kern_wid];
+	  const float* idx_in=&d_img[(first_row+tz+out_row)*img_wid+out_col];
 	  float sum2 = 0;
-	  if(row<kern_len)
+	  if(tz<len3)
 	    convolutionRowNoFlip<KERN_WIDTH>(sum2,idx_in,idx_kern,kern_wid);
 	  sum+=sum2;
 	}
       }else if(split){
+	load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid, kern_len,
+		       kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
+        __syncthreads();
 	for(int row=tz;row<kern_len;row+=blockDim.z){
 	  const float* idx_kern=&d_kern[row*kern_wid];
 	  const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
@@ -504,18 +516,21 @@ conv_patch_stack_reduce( float* img, float* kern, float* out,
 	int row = tz;//The row of the kernel.
 	const float* idx_kern=&d_kern[row*kern_wid];
 	const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
+	load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid, kern_len,
+		       kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
+        __syncthreads();
 	convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
       }
 	__syncthreads(); // ensure calculations have completed before any thread starts changing the shared memory
     }
 
-    //reduce
+    //reduce no sync because previous loop ends with sync
     d_reduce[thread_id]=sum;
     __syncthreads();
-    if(thread_id<out_len*out_wid){
-      sum=0;
-      for(int i=0;i<blockDim.z;i++){
-	sum+=d_reduce[thread_id+i*blockDim.x*blockDim.y];
+    if(thread_id<out_len*out_wid){ // blockDim.x==out_wid, blockDim.y==out_len
+      //sum=0;
+      for(int i=1;i<blockDim.z;i++){
+	sum+=d_reduce[thread_id+i*out_wid*out_len];
       }
       out[batch_id*out_wid*out_len*nkern+//the good batch
 	  out_wid*out_len*blockIdx.y+//the output image

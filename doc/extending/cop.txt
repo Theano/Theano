@@ -57,7 +57,7 @@ There are less methods to define for an Op than for a Type:
 
     .. method:: infer_shape(node, (i0_shapes,i1_shapes,...))
 
-      Allow optimization to lift the Shape op over this op. 
+      Allow optimization to lift the Shape op over this op.
       Example of why this is good is that we compute an op only to take its shape,
       we will be able to have the shape without its computation.
       must return a tuple with one tuple with the shape of each output.
@@ -160,13 +160,17 @@ version that it produces in the code I gave above.
                raise TypeError('%s only works on doubles' % self.name)
            return gof.Apply(self, [x, y], [double()])
 
-       def perform(self, node, (x, y), (z, )):
+       def perform(self, node, inp, out):
+           x, y = inp
+           z, = out
            z[0] = self.fn(x, y)
 
        def __str__(self):
            return self.name
 
-       def c_code(self, node, name, (x, y), (z, ), sub):
+       def c_code(self, node, name, inp, out, sub):
+           x, y = inp
+           z, = out
            return self.ccode % locals()
 
 

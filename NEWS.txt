@@ -1,29 +1,82 @@
-Modification in the trunk since the last release
-------------------------------------------------
+Modifications in the trunk since the last release
 
- * Sparse type is now supported by the shape op and the ShapeFeature optimizer work correctly with them.
- * Fuse GpuElemwise more often (in the case where there are so many inputs that fusing them all would bust the 256 bytes limit of parameter to gpu function).
+In trunk since 0.3.1 release
+----------------------------
+GPU:
+ * Move to the gpu fused elemwise that have other dtype then float32 in them(except float64) if the input and output are float32.
+   * This allow to move elemwise comparaison to the gpu if we cast it to float32 after that.
+
+
+Theano 0.3.1 (2011-02-21)
+----------------------------
+
+Deprecation:
+ * The theano shared variable attribute `value` is deprecated, use `get_value()` or `set_value()`!
+    See http://deeplearning.net/software/theano/tutorial/aliasing.html
+
+Bugs fixed:
+ * The random number generator in theano/sandbox/rng_mrg.py did not always return the same sequence of number on the CPU and GPU.
+    * In some cases, there was a (possibly large) fraction of non-random garbage in the returned sequence.
+
+ * In python mode (not the default mode) when input of elemwise operation was an empty ndarray, we were not returning an empty ndarray.
+ * Scan cached the number of steps. This caused no problem because each time you called scan the number of steps would got refreshed.
+   The problem was when you called ScanGrad which would use the cached number of steps without refreshing it.
+   To be affected by this bug, one would have to compile two graph, one that would contain a Scan and the other the corresponding GradScan, and
+   call the first function to cache the number of steps, and then call the second function with a different number of steps.
+ * In GpuConv, errors in conv_patch_stack_reduce when the entire kernel doesn't fit into shared memory.
+   The error was not found before as the impact was less then the relative tolerance of 1e-3. Now the relative tolerance is 1e-5.
+
+Crash fixed:
+ * Add a feature to not have an exception that makes Theano crash when taking the gradient on DimShuffle in some particular case.
+ * Compilation crash for GpuElemwise with tensor with high number of dimensions (~6 or more).
+ * Disabled C code generator that make gcc crash on complex type.
+ * Crash in optimization when an Op has no input.
+ * Output shape is now computed correctly for matrix-vector multiplication on GPU.
+ * In Scan, when using numbers as inputs, not symbolic variables.
+ * In GradScan, when there is only 1 inputs in the Scan.
+ * In GpuSum, bug in calculation of n_blocks for the 10 pattern. (Sum on the row of a matrix)
+ * Some segfault at exit with GPU code.
+
+Optimization:
+ * New SpecifyShape op that allow to pass more shape info in the graph.
  * Speed up gemv by a work around scipy gemv slowness when the matrix is in C order (the default).
+ * Remove join of only 1 element.
+ * During optimization, consider one more case in get_constant_value.
 
-Theano 0.3 (2010-11-23)
------------------------
+GPU:
+ * cuda_shared.value = X now works inplace!
+     * cuda_shared_var.set_value(new_ndarray) will overwrite the old value inplace in the most common case.
+ * Allow to create a CudaNdarraySharedVariable from a CudaNdarray.
+ * New init_gpu_device theano flags.
+ * Fuse GpuElemwise more often (in the case where there are so many inputs that fusing them all would bust the 256 bytes limit of parameter to gpu function).
+ * CPU join of only 1 element that was not moved to the GPU.
 
-This is the first major release of Theano since 0.1. Version 0.2 development started internally but it was never advertised as a release.
+New features:
+ * tensor.reshape now makes dimensions of length 1 broadcastable.
+ * tensor.prod now implements the gradient.
+ * DebugMode now warns if an Op declared itself as returning a view of the input but did not do so.
+    * This behaviour is a problem, because it can block other Ops from being inplace on the same inputs. This could lower the reuse of memory.
+ * Sparse.structured_dot now works when both matrices are sparse
+ * Sparse type is now supported by the shape op, and the ShapeFeature optimizer works correctly with them.
+ * New 3D convolution ops, with CPU and GPU implementations.
+ * New colors in pydotprint.
 
-There have been so many changes since 0.1 that we have lost track of many of them. Below is a *partial* list of changes since 0.1.
+Documentation:
+ * Documented lib.amdlibm and (new) init_gpu_device config variables.
+ * A new page (was done for 0.3 but an error was hiding it on the web page) on the memory aliasing contract of Theano.
+ * Revision to the Windows installation instructions.
+ * The cuda documentation is now generated on the web server.
+ * Better documentation of .theanorc and its sections.
 
- * GPU code using NVIDIA's CUDA framework is now generated for many Ops.
- * Some interface changes since 0.1:
-     * A new "shared variable" system to allow reusing memory space between Theano functions.
-         * A new memory contract has been formally written for Theano, for people who want to minimize memory copies.
-     * The old module system has been deprecated.
-     * By default, inputs to a Theano function will not be silently downcasted (e.g. from float64 to float32).
-     * An error is now raised when using the result of logical operation on Theano variable in an 'if' (i.e. an implicit call to __nonzeros__).
-     * An error is now raised when we receive a non-aligned ndarray as input to a function (this is not supported).
-     * An error is raised when the list of dimensions passed to dimshuffle() contains duplicates or is otherwise not sensible.
-     * Call NumPy BLAS bindings for gemv operations in addition to the already supported gemm.
-     * If gcc is unavailable at import time, Theano now falls back to a Python-based emulation mode after raising a warning.
-     * An error is now raised when tensor.grad is called on a non-scalar Theano variable (in the past we would implicitly do a sum on the tensor to make it a scalar).
-     * Added support for "erf" and "erfc" functions.
- * The current default value of the parameter axis of theano.{max,min,argmax,argmin,max_and_argmax} is deprecated. We now use the default NumPy behavior of operating on the entire tensor.
- * Theano is now available from PyPI and installable through "easy_install" or "pip".
+Unit tests:
+ * Stop usage of deprecated functions or syntax in the unit tests.
+ * Better testing of GPU convolution nets.
+ * Make more tests able to use different random seeds.
+ * Tests of sparse now use default mode, not a hard-coded one.
+ * Remove some tests of unimplemented features.
+
+Other:
+ * The name of compiledir now includes the Python version to make it easier for people with many Python versions
+ * Added theano.tensor.std as a shortcut to sqrt(var(input=input, axis=axis)).
+ * Whitespace, tabulation and indentation clean-up in the code.
+ * Better detection of memory sharing between variables.

@@ -7,7 +7,7 @@ import numpy
 import __builtin__
 
 class NeighbourhoodsFromImages(Op):
-    def __init__(self, n_dims_before, dims_neighbourhoods, 
+    def __init__(self, n_dims_before, dims_neighbourhoods,
                     strides=None, ignore_border=False, inverse=False):
         """
         This extracts neighbourhoods from "images", but in a
@@ -65,10 +65,10 @@ class NeighbourhoodsFromImages(Op):
         """
         self.n_dims_before = n_dims_before
         self.dims_neighbourhoods = dims_neighbourhoods
-        if not strides is None:                                                               
-            self.strides = strides                                                            
-        else:                                                                                 
-            self.strides = dims_neighbourhoods                                                
+        if not strides is None:
+            self.strides = strides
+        else:
+            self.strides = dims_neighbourhoods
         self.ignore_border = ignore_border
 
         self.inverse = inverse
@@ -99,7 +99,7 @@ class NeighbourhoodsFromImages(Op):
 
     def __str__(self):
         return '%s{%s,%s,%s,%s}' % \
-                (self.__class__.__name__, 
+                (self.__class__.__name__,
                  self.n_dims_before,
                  self.dims_neighbourhoods,
                  self.strides,
@@ -135,7 +135,7 @@ class NeighbourhoodsFromImages(Op):
             # the number of strides performed by NeighFromImg is
             # directly given by this shape
             num_strides.append(output_shape[self.n_dims_before + i])
-            
+
             # our Op's output image must be at least this wide
             at_least_width = num_strides[i] * self.strides[i]
 
@@ -161,7 +161,9 @@ class NeighbourhoodsFromImages(Op):
                 raise TypeError()
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         if self.inverse:
             # +1 in the inverse case
             if len(x.shape) != (self.n_dims_before + \
@@ -231,7 +233,7 @@ class NeighbourhoodsFromImages(Op):
                 ("for neigh_idx_%d in xrange(min(max_neigh_idx_%d,"\
                 +" self.dims_neighbourhoods[%d])):\n") % \
                     (inner_dim_no, inner_dim_no, inner_dim_no)
-        
+
         return code_before
 
     def _py_flattened_idx(self):
@@ -268,8 +270,8 @@ class NeighbourhoodsFromImages(Op):
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
     def __init__(self, n_dims_before, dims_neighbourhoods,
                         strides=None, ignore_border=False):
-        NeighbourhoodsFromImages.__init__(self,n_dims_before, dims_neighbourhoods, 
-                                strides=strides, ignore_border=ignore_border, 
+        NeighbourhoodsFromImages.__init__(self,n_dims_before, dims_neighbourhoods,
+                                strides=strides, ignore_border=ignore_border,
                                 inverse=True)
         # and that's all there is to it
 

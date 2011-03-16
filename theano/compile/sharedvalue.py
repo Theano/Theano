@@ -1,11 +1,18 @@
 """Provide a simple user friendly API to Theano-managed memory"""
 __docformat__ = 'restructuredtext en'
 
-import traceback
+# Standard imports
 import copy
+import logging
+import traceback
+import warnings
+
+# Theano imports
+from theano import config
+from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
+        StrParam, IntParam, FloatParam, BoolParam)
 from theano.gof import Container, Variable, generic
 
-import logging
 _logger = logging.getLogger('theano.compile.sharedvalue')
 _logger.setLevel(logging.DEBUG)
 def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
@@ -14,13 +21,11 @@ def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
 def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
-from theano import config
-
 AddConfigVar('shared.value_borrows',
-        ("False: shared variables 'value' property is guaranteed to not" 
-            " alias theano-managed memory. True: no guarantee, but faster." 
-            " For more control consider using shared.get_value() instead."),
+        ("DEPRECATED. You should not use the 'value' property of shared"
+            " variables, but use the .get_value() and .set_value() methods."
+            " False: shared variables 'value' property is guaranteed to not"
+            " alias theano-managed memory. True: no guarantee, but faster."),
         BoolParam(True))
 
 class SharedVariable(Variable):
@@ -82,7 +87,7 @@ class SharedVariable(Variable):
     def get_value(self, borrow=False, return_internal_type=False):
         """Get the non-symbolic value associated with this SharedVariable.
 
-        :param borrow: 
+        :param borrow:
             True to permit returning of an object aliased to internal memory.
         :param return_internal_type:
             True to permit the returning of an arbitrary type object used internally to store
@@ -91,7 +96,7 @@ class SharedVariable(Variable):
         Only with borrow=False and return_internal_type=True does this function guarantee that
         you actually get the internal object.  But in that case, you may get different return
         types when using different compute devices.
-        
+
         """
         if borrow:
             return self.container.value
@@ -101,10 +106,10 @@ class SharedVariable(Variable):
     def set_value(self,new_value, borrow=False):
         """Set the non-symbolic value associated with this SharedVariable.
 
-        :param borrow: 
+        :param borrow:
             True to use the new_value directly, potentially creating problems
             related to aliased memory.
-        
+
         Changes to this value will be visible to all functions using this SharedVariable.
         """
         if borrow:
@@ -115,7 +120,7 @@ class SharedVariable(Variable):
     def clone(self):
         cp = self.__class__(
                 name=self.name,
-                type=self.type, 
+                type=self.type,
                 value=None,
                 strict=None,
                 container=self.container)
@@ -123,18 +128,26 @@ class SharedVariable(Variable):
         return cp
 
     def _value_get(self):
+        warnings.warn(("The .value property of shared variables is deprecated."
+            " You should use the .get_value() method instead."),
+            stacklevel=2)
         return self.get_value(borrow=config.shared.value_borrows, return_internal_type=False)
     def _value_set(self, new_value):
+        warnings.warn(("The .value property of shared variables is deprecated."
+            " You should use the .set_value() method instead."),
+            stacklevel=2)
         return self.set_value(new_value, borrow=config.shared.value_borrows)
 
     #TODO: USE A CONFIG VARIABLE TO set these get/set methods to the non-borrowing versions
     #      Semantically things are clearer when using non-borrow versions.  That should be the
     #      default.  The default support transparently (if slowly) when the 'raw' value is in a
     #      different memory space (e.g. GPU or other machine).
-    value = property(_value_get, _value_set, 
-            doc=("shortcut for self.get_value() and self.set_value()." 
-                "The `borrow` argument to these methods is read from "
-                "`theano.config.shared.value_borrows`"))
+    value = property(_value_get, _value_set,
+            doc=("DEPRECATED. Shortcut for self.get_value() and "
+                 "self.set_value(). "
+                 "The `borrow` argument to these methods is read from "
+                 "`theano.config.shared.value_borrows`. "
+                 "You should call get_value() and set_value() directly."))
 
 
     def filter_update(self, update):
@@ -170,10 +183,10 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     This function iterates over constructor functions (see `shared_constructor`) to find a
     suitable SharedVariable subclass.
 
-    :note: 
+    :note:
     By passing kwargs, you effectively limit the set of potential constructors to those that
     can accept those kwargs.
-    
+
     """
     for ctor in reversed(shared.constructors):
         try:
@@ -194,4 +207,3 @@ def generic_constructor(value, name=None, strict=False, allow_downcast=None):
     """SharedVariable Constructor"""
     return SharedVariable(type=generic, value=value, name=name, strict=strict,
             allow_downcast=allow_downcast)
-

@@ -281,7 +281,7 @@ def test_consistency_GPU_parallel():
     samples = numpy.array(samples).flatten()
     assert(numpy.allclose(samples, java_samples))
 
-def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[], 
+def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
               target_avg=0.5, target_std=None, mean_rtol=0.01):
     dt = 0.0
     avg_std = 0.0
@@ -323,58 +323,36 @@ def test_uniform():
 #TODO: test ndim!=size.ndim
 #TODO: test bad seed
 #TODO: test size=Var, with shape that change from call to call
-
-    import pickle
-
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
         sample_size = (10,100)
         steps = 50
     else:
         sample_size = (500,50)
         steps = int(1e3)
-    
+
     x = tensor.matrix()
     for size, var_input, input in [
             (sample_size, [], []),
             (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
             ]:
 
-        #### TEST CPU (C) IMPLEMENTATION ####
+        #### TEST CPU IMPLEMENTATION ####
+        # The python and C implementation are tested with DebugMode
         print ''
-        print 'ON CPU (C) with size=(%s):'%str(size)
+        print 'ON CPU with size=(%s):'%str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
         u = R.uniform(size=size)
         f = theano.function(var_input, u, mode=mode)
-        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
+        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform)
                     for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
-        cpu_c_out = f(*input)
-        #pickle.dump(cpu_c_out, open('debug_rng_cpu_c.pkl','w'))
+        cpu_out = f(*input)
 
-        print 'random?[:10]\n'
-        print cpu_c_out[0,0:10]
-        print cpu_c_out[-1,0:10]
-        #print 'random?[-1,-10:]\n', cpu_c_out[-1,-10:]
-        basictest(f, steps, sample_size, prefix='mrg cpu (C)', inputs=input)
-
-        #### TEST CPU (PYTHON) IMPLEMENTATION ####
-        print ''
-        print 'ON CPU (Python) with size=(%s):'%str(size)
-        R = MRG_RandomStreams(234, use_cuda=False)
-        u = R.uniform(size=size)
-        f = theano.function(var_input, u, mode=theano.Mode(linker='py'))
-        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
-                    for node in f.maker.env.toposort()])
-        theano.printing.debugprint(f)
-        cpu_py_out = f(*input)
-        #pickle.dump(cpu_py_out, open('debug_rng_cpu_py.pkl','w'))
-
-        print 'random?[:10]\n'
-        print cpu_py_out[0,0:10]
-        print cpu_py_out[-1,0:10]
-        #print 'random?[-1,-10:]\n', cpu_py_out[-1,-10:]
-        #basictest(f, steps, sample_size, prefix='mrg cpu (Python)', inputs=input)
+        print 'CPU: random?[:10], random?[-10:]'
+        print cpu_out[0,0:10]
+        print cpu_out[-1,-10:]
+        basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
 
         if mode!='FAST_COMPILE' and cuda_available:
             print ''
@@ -385,21 +363,17 @@ def test_uniform():
             f = theano.function(var_input, theano.Out(
                     theano.sandbox.cuda.basic_ops.gpu_from_host(u),
                     borrow=True), mode=mode_with_gpu)
-            assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform) 
+            assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform)
                         for node in f.maker.env.toposort()])
             theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
-            #pickle.dump(gpu_out, open('debug_rng_gpu.pkl','w'))
 
-            print 'random?[:10]\n'
+            print 'GPU: random?[:10], random?[-10:]'
             print gpu_out[0,0:10]
-            print gpu_out[-1,0:10]
-            #print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
+            print gpu_out[-1,-10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
-
-        numpy.testing.assert_array_almost_equal(cpu_c_out, cpu_py_out, decimal=4)
-        numpy.testing.assert_array_almost_equal(cpu_c_out, gpu_out, decimal=4)
+            numpy.testing.assert_array_almost_equal(cpu_out, gpu_out, decimal=6)
 
         print ''
         print 'ON CPU w Numpy with size=(%s):'%str(size)
@@ -427,7 +401,7 @@ def test_binomial():
         sample_size = (500,50)
         steps = int(1e3)
         rtol=0.01
-    
+
     x = tensor.matrix()
     v = tensor.vector()
     for mean in [0.1, 0.5]:
@@ -457,10 +431,12 @@ def test_binomial():
                         theano.sandbox.cuda.basic_ops.gpu_from_host(u),
                         borrow=True), mode=mode_with_gpu)
                 theano.printing.debugprint(f)
-                out = numpy.asarray(f(*input))
-                print 'random?[:10]\n', out[0,0:10]
-                print 'random?[-1,-10:]\n', out[-1,-10:]
+                gpu_out = numpy.asarray(f(*input))
+                print 'random?[:10]\n', gpu_out[0,0:10]
+                print 'random?[-1,-10:]\n', gpu_out[-1,-10:]
                 basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, target_avg = mean, mean_rtol=rtol)
+                numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
+
 
             print ''
             print 'ON CPU w NUMPY with size=(%s) and mean(%d):'%(str(size),mean)
@@ -495,7 +471,8 @@ def test_normal0():
         n = R.normal(size=size, avg=-5.0, std=2.0)
         f = theano.function(var_input, n, mode=mode)
         theano.printing.debugprint(f)
-        print 'random?[:10]\n', f(*input)[0,0:10]
+        out  = f(*input)
+        print 'random?[:10]\n', out[0,0:10]
         basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
 
         sys.stdout.flush()
@@ -512,10 +489,14 @@ def test_normal0():
 
             theano.printing.debugprint(f)
             sys.stdout.flush()
-            print 'random?[:10]\n', numpy.asarray(f(*input))[0,0:10]
+            gpu_out = numpy.asarray(f(*input))
+            print 'random?[:10]\n', gpu_out[0,0:10]
             print '----'
             sys.stdout.flush()
             basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+            # Need to allow some rounding error as their is float
+            # computation that are done on the gpu vs cpu
+            assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
 
 
         print ''
@@ -531,7 +512,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
 
     dt = 0.0
     avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
-    
+
     for i in xrange(steps):
         t0 = time.time()
         ival = f()
@@ -540,7 +521,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
         #ival = numpy.asarray(ival)
         avg_pvals += ival
     avg_pvals/= steps
-    
+
     print 'random?[:10]\n', f()[:10]
     print prefix, 'mean', avg_pvals
     print numpy.mean(abs(avg_pvals - target_pvals))# < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
@@ -552,7 +533,7 @@ def test_multinomial():
 
     steps = 100
     mode_ = mode
-    if mode == 'FAST_COMPILE': 
+    if mode == 'FAST_COMPILE':
         mode_ = 'FAST_RUN'
 
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
@@ -569,7 +550,7 @@ def test_multinomial():
     m = R.multinomial(pvals=pvals, dtype=config.floatX)
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
-    
+    out = f()
     basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
@@ -586,5 +567,7 @@ def test_multinomial():
             borrow=True), mode=mode_.including('gpu'))
 
         theano.printing.debugprint(f)
+        gpu_out = f()
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
+        numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)

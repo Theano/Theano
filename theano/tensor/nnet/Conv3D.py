@@ -161,7 +161,8 @@ class Conv3D(theano.Op):
     def c_header_dirs(self):
         return ldflags(libs=False, include_dir=True)
 
-    def c_code(self, node, nodename, (V,W,b,d), outputs, sub):
+    def c_code(self, node, nodename, inputs, outputs, sub):
+        V, W, b, d = inputs
         fail = sub['fail']
 
         H = outputs[0]

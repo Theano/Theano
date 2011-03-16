@@ -77,12 +77,13 @@ subsequently make to ``np_array`` have no effect on our shared variable.
 
     np_array += 1 # now it is an array of 2.0 s
 
-    s_default.value  # -> array([1.0, 1.0])
-    s_false.value    # -> array([1.0, 1.0])
-    s_true.value    # -> array([2.0, 2.0])
+    s_default.get_value()  # -> array([1.0, 1.0])
+    s_false.get_value()    # -> array([1.0, 1.0])
+    s_true.get_value()     # -> array([2.0, 2.0])
 
-If we are running this with the CPU as the device, 
-then changes we make to np_array *right away* will show up in ``s_true.value``
+If we are running this with the CPU as the device,
+then changes we make to np_array *right away* will show up in
+``s_true.get_value()``
 because numpy arrays are mutable, and ``s_true`` is using the ``np_array``
 object as it's internal buffer.
 
@@ -101,8 +102,8 @@ will terminate the aliasing).
 
 It is safe practice (and a good idea) to use ``borrow=True`` in a shared
 variable constructor when the shared variable stands for a large object (in
-terms of memory footprint) and you do not want to create copies of it in memory
-.
+terms of memory footprint) and you do not want to create copies of it in
+memory.
 
 It is not a reliable technique to use ``borrow=True`` to modify shared variables
 by side-effect, because with some devices (e.g. GPU devices) this technique will

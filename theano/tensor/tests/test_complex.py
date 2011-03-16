@@ -55,7 +55,7 @@ class TestRealImag(unittest.TestCase):
         mval = numpy.asarray(rng.randn(2,5))
         utt.verify_grad(f, [mval])
 
-    @dec.knownfailureif(True,"Complex grads not enabled")
+    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
     def test_mul_mixed0(self):
 
         def f(a):
@@ -71,7 +71,7 @@ class TestRealImag(unittest.TestCase):
             print e.analytic_grad
             raise
 
-    @dec.knownfailureif(True,"Complex grads not enabled")
+    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
     def test_mul_mixed1(self):
 
         def f(a):
@@ -86,7 +86,7 @@ class TestRealImag(unittest.TestCase):
             print e.num_grad.gf
             print e.analytic_grad
             raise
-    @dec.knownfailureif(True,"Complex grads not enabled")
+    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
     def test_mul_mixed(self):
 
         def f(a,b):

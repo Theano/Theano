@@ -1,5 +1,6 @@
 import numpy
 import unittest
+import warnings
 
 import theano
 from theano.gof.python25 import all
@@ -319,15 +320,15 @@ def makeSharedTester(shared_constructor_,
             if x.__class__.__name__ != 'csr_matrix':
                 #sparse matrix don't support inplace affectation
                 x_shared.container.value[:] = nd
-                assert (numpy.asarray(x_shared.value)==nd).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True))==nd).all()
                 #This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
 
                 nd[0]+=1
                 x_shared.container.value[0] = nd[0]
-                assert (numpy.asarray(x_shared.value[0])==nd[0]).all()
-                assert (numpy.asarray(x_shared.value[1:])==nd[1:]).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True)[0])==nd[0]).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True)[1:])==nd[1:]).all()
                 #This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
@@ -336,23 +337,31 @@ def makeSharedTester(shared_constructor_,
                 #sparse matrix don't support inplace affectation
                 nd += 1
                 #THIS DON't DO WHAT WE EXPECT the contain of a is not updated for CudaNdarray, but it is for ndarray
-                x_shared.value[:] = nd
-                #assert (numpy.asarray(x_shared.value)!=nd).all()
+                x_shared.get_value(borrow=True)[:] = nd
+                #assert (numpy.asarray(x_shared.get_value(borrow=True))!=nd).all()
                 assert may_share_memory(old_data, x_shared.container.storage[0])
-                x_shared.value
+                x_shared.get_value(borrow=True)
 
             # Test by .value
+            # As we know that .value is deprecated, we filter out the warning
+            warnings.filterwarnings(
+                    action='ignore',
+                    message='The .value property of shared variables is deprecated.'
+                    )
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.value = nd
             assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
+            # restore the warning filters
+            warnings.resetwarnings()
 
             # Test by set_value with borrow=False
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(nd, borrow=False)
-            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+                    self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
             # Test by set_value with borrow=False when new data casted.
@@ -360,14 +369,16 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd), borrow=False)
-            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+                    self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
 
             # Test by set_value with borrow=True
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(nd.copy(), borrow=True)
-            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+                    self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
             # Test by set_value with borrow=True when new data casted.
@@ -375,7 +386,7 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
-            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
 
         def test_specify_shape(self):
@@ -395,7 +406,8 @@ def makeSharedTester(shared_constructor_,
             x1_shared = self.shared_constructor(x1_1)
             x1_specify_shape = tensor.specify_shape(x1_shared,x1_1.shape)
             x1_shared.set_value(x1_2)
-            assert numpy.allclose(self.ref_fct(x1_shared.value), self.ref_fct( x1_2))
+            assert numpy.allclose(self.ref_fct(x1_shared.get_value(borrow=True)),
+                    self.ref_fct( x1_2))
             shape_op_fct = theano.function([],x1_shared.shape)
             topo = shape_op_fct.maker.env.toposort()
             if theano.config.mode!='FAST_COMPILE':
@@ -419,10 +431,14 @@ def makeSharedTester(shared_constructor_,
                 assert len(topo_cst)==0
 
             # Test that we can take the grad.
-            shape_grad = tensor.grad(x1_specify_shape.sum(), x1_shared)
-            shape_constant_fct_grad = theano.function([], shape_grad)
-            theano.printing.debugprint(shape_constant_fct_grad)
-            shape_constant_fct_grad()
+            if isinstance(x1_specify_shape.type, theano.sparse.SparseType):
+                #SparseVariable don't support sum for now.
+                assert not hasattr(x1_specify_shape, 'sum')
+            else:
+                shape_grad = tensor.grad(x1_specify_shape.sum(), x1_shared)
+                shape_constant_fct_grad = theano.function([], shape_grad)
+                theano.printing.debugprint(shape_constant_fct_grad)
+                shape_constant_fct_grad()
 
             #Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
@@ -456,7 +472,9 @@ def makeSharedTester(shared_constructor_,
                                                     (tensor.as_tensor_variable(x1_1.shape[0]),
                                                      x1_shared.shape[1]))
             x1_shared.set_value(x1_2)
-            assert numpy.allclose(self.ref_fct(x1_shared.value), self.ref_fct( x1_2))
+            assert numpy.allclose(
+                    self.ref_fct(x1_shared.get_value(borrow=True)),
+                    self.ref_fct( x1_2))
             shape_op_fct = theano.function([],x1_shared.shape)
             topo = shape_op_fct.maker.env.toposort()
             shape_op_fct()
@@ -525,7 +543,7 @@ def makeSharedTester(shared_constructor_,
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             #Their is no inplace gemm for sparse
             #assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "StructuredDot")
-            s_shared_specify = tensor.specify_shape(s_shared,s_shared.value.shape)
+            s_shared_specify = tensor.specify_shape(s_shared, s_shared.get_value(borrow=True).shape)
 
             #now test with the specify shape op in the output
             f = theano.function([], s_shared.shape,
@@ -540,8 +558,10 @@ def makeSharedTester(shared_constructor_,
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             #now test with the specify shape op in the inputs and outputs
-            a_shared = tensor.specify_shape(a_shared,a_shared.value.shape)
-            b_shared = tensor.specify_shape(b_shared,b_shared.value.shape)
+            a_shared = tensor.specify_shape(a_shared,
+                    a_shared.get_value(borrow=True).shape)
+            b_shared = tensor.specify_shape(b_shared,
+                    b_shared.get_value(borrow=True).shape)
 
             f = theano.function([], s_shared.shape,
                                 updates={s_shared:theano.dot(a_shared,b_shared)

@@ -106,7 +106,7 @@ def map( fn
 
     :param go_backwards: Boolean value that decides the direction of
                          iteration. True means that sequences are parsed
-                         from the end towards the begining, while False
+                         from the end towards the beginning, while False
                          is the other way around.
 
     :param mode: See ``scan``.
@@ -301,7 +301,7 @@ def scan( fn
             scan)
 
         The order of the sequences is the same as the one in the list
-        `sequences` given to scan. The order of the outputs is the sane
+        `sequences` given to scan. The order of the outputs is the same
         as the order of ``output_info``. For any sequence or output the
         order of the time slices is the same as the order of the time
         taps provided. For example if one writes the following :
@@ -314,7 +314,7 @@ def scan( fn
                    , outputs_info = [ dict( Output1, taps = [-3,-5])
                                     , dict( Output2, taps = None)
                                     , Output3 ]
-                   , non_sequences = [ Argument1, Argument 2])
+                   , non_sequences = [ Argument1, Argument2])
 
         ``fn`` should expect the following arguments in this given order:
 
@@ -341,7 +341,7 @@ def scan( fn
         `fn` should return an update dictionary ( that tells how to
         update any shared variable after each iteration ste). The
         dictionary can optionally be given as a list of tuples. There is
-        no constraint on the order of these two list, ``fn`` can return
+        no constraint on the order of these two lists, ``fn`` can return
         either ``(outputs_list, update_dictionary)`` or ``(update_dictionary,
         outputs_list)`` or just one of the two (in case the other is
         empty).
@@ -369,7 +369,7 @@ def scan( fn
     :param outputs_info:
         ``outputs_info`` is the list of Theano variables or dictionaries
         describing the initial state of the outputs computed
-        recurrently. When this initial states are given as dictionary
+        recurrently. When this initial state is given as a dictionary,
         optional information can be provided about the output corresponding
         to these initial states. The dictionary should have the following
         keys:
@@ -388,11 +388,11 @@ def scan( fn
           the initial state, which in this case should have the shape
           (5,)+output.shape. If this variable containing the initial
           state is called ``init_y`` then ``init_y[0]`` *corresponds to*
-          ``output[-5]``; ``init_y[1]`` *correponds to* ``output[-4]``;
+          ``output[-5]``; ``init_y[1]`` *corresponds to* ``output[-4]``;
           ``init_y[2]`` corresponds to ``output[-3]``; ``init_y[3]``
           coresponds to ``output[-2]``; ``init_y[4]`` corresponds to
           ``output[-1]``. While this order might seem strange, it comes
-          natural from splitting an array at a given point. Assume that
+          naturally from splitting an array at a given point. Assume that
           we have a array ``x``, and we choose ``k`` to be time step
           ``0``. Then our initial state would be ``x[:k]``, while the
           output will be ``x[k:]``. Looking at this split, elements in
@@ -401,17 +401,10 @@ def scan( fn
           ``fn``. They are provided as a list of *negative* integers,
           where a value ``k`` implies that at iteration step ``t`` scan will
           pass to ``fn`` the slice ``t+k``.
-        * ``inplace`` -- One of the Theano variables provided as
-          ``sequences``. ``scan`` will try to compute this output *in
-          place* of the provided input *iff* it respects the following
-          constraints:
-
-            * There is no other output that is denied to be computed in
-              place for whatever reason.
-
-            * ``fn`` is not using past taps of the input sequence that
-              will get overwritten by the output
-
+        * ``inplace`` -- DEPRECATED. Previously, one could specify with this
+          option whether the output should overwrite some particular input,
+          but it is now inferred automatically. If you specify this option
+          it will be ignored.
         * ``return_steps`` -- Integer representing the number of steps
           to return for the current steps. For example, if ``k`` is
           provided, ``scan`` will return ``output[-k:]``. This is meant as a
@@ -422,7 +415,7 @@ def scan( fn
         * ``store_steps`` -- Integer representing the number of
           intermediate steps ``scan`` should use for a given output. Use
           this key only if you really know what you are doing. In general
-          it is recommended to let scan decide for you the ammount of memory
+          it is recommended to let scan decide for you the amount of memory
           it should use.
 
         ``scan`` will follow this logic if partial information is given:
@@ -437,12 +430,12 @@ def scan( fn
         * If you wrap an output in a dictionary but you do not provide any
           initial state, it assumes that you are not using any form of
           taps.
-        * If you provide a ``None`` instead of a variable or a dictionary
+        * If you provide ``None`` instead of a variable or a dictionary
           ``scan`` assumes that you will not use any taps for this output
           (like for example in case of a map)
 
         If ``outputs_info`` is an empty list or None, ``scan`` assumes
-        that no tap is used for any of the otuputs. If information is
+        that no tap is used for any of the outputs. If information is
         provided just for a subset of the outputs an exception is
         raised (because there is no convention on how scan should map
         the provided information to the outputs of ``fn``)
@@ -450,8 +443,8 @@ def scan( fn
 
     :param non_sequences:
         ``non_sequences`` is the list of arguments that are passed to
-        ``fn`` at each steps. One can opt to exclude shared variables
-        used in ``fn`` from this list.
+        ``fn`` at each step. It is not necessary to list shared variables
+        used in ``fn`` here, since they will be identified automatically.
 
 
     :param n_steps:
@@ -469,9 +462,10 @@ def scan( fn
 
     :param truncate_gradient:
         ``truncate_gradient`` is the number of steps to use in truncated
-        BPTT.  If you compute gradients through a scan op, they are
+        BPTT (backpropagation through time).  If you compute gradients
+        through a scan op, they are
         computed using backpropagation through time. By providing a
-        different value then -1, you choose to use truncated BPTT instead
+        different value than -1, you choose to use truncated BPTT instead
         of classical BPTT, where you go for only ``truncate_gradient``
         number of steps back in time.
 
@@ -512,33 +506,32 @@ def scan( fn
     """
     # General observation : this code is executed only once, at creation
     # of the computational graph, so we don't yet need to be smart about
-    # anything ( to speed things up)
+    # anything (to speed things up)
 
     # check if inputs are just single variables instead of lists
-    if not (type(sequences) in (list, tuple)) and sequences != None:
-        seqs = [sequences]
-    elif sequences == None:
+    if sequences == None:
         seqs = []
+    elif not (type(sequences) in (list, tuple)):
+        seqs = [sequences]
     else:
         seqs = sequences
 
-    if not (type(outputs_info) in (list,tuple)) and outputs_info != None:
-        outs_info = [outputs_info]
-    elif outputs_info == None:
+    if outputs_info == None:
         outs_info = []
+    elif not (type(outputs_info) in (list,tuple)):
+        outs_info = [outputs_info]
     else:
         outs_info = outputs_info
 
-    if ( not (type(non_sequences) in (list,tuple))
-        and non_sequences != None):
-        non_seqs = [non_sequences]
-    elif non_sequences == None:
+    if non_sequences == None:
         non_seqs = []
+    elif not (type(non_sequences) in (list,tuple)):
+        non_seqs = [non_sequences]
     else:
         non_seqs = non_sequences
 
 
-    # If we provided a known number of steps ( before compilation)
+    # If we provided a known number of steps (before compilation)
     # and if that number is 1 or -1, then we can skip the Scan Op,
     # and just apply the inner function once
     # To do that we check here to see the nature of n_steps
@@ -570,7 +563,7 @@ def scan( fn
     sequences_taps = {}
     outputs_taps   = {}
 
-    # Assume that for any output we want to store everythin that it produces
+    # Assume that for any output we want to store everything that it produces
     store_steps = []
     return_steps = {}
 
@@ -591,8 +584,8 @@ def scan( fn
             # See if the user actually provided the None value to taps,
             # which would indicate that the sequence was provided but
             # not used by the internal function; Only if the user has
-            # not provided anything add the defaul [0]
-            # Possible reason to provide a squence and not use it  is
+            # not provided anything add the default [0]
+            # A possible reason to provide a sequence and not use it is
             # if you want to compute the output
             # inplace of this input; it is a very unlikely behaviour but
             # we do want to cover it for completeness
@@ -635,7 +628,7 @@ def scan( fn
                 raise ValueError('If you are using slices of an output you need to '\
                         'provide an initial state for it', outs_info[i])
                 # if there is an intial state but no tap, we will add the default value
-                # for taps, namely [-1] ( previous value); not that this will happen
+                # for taps, namely [-1] ( previous value); note that this will happen
                 # even though you have provided for taps the value None, which is a bit
                 # strange (why would one provide an initial state but tell scan not to
                 # use it ? ), just that in that case we will throw in a warning message
@@ -658,9 +651,14 @@ def scan( fn
 
         if outs_info[i].get('taps', None):
             # Create a separate outputs_taps dictionary with all the outputs taps; This
-            # is how the Scan Op expects this information, separeted from the variables
+            # is how the Scan Op expects this information, separated from the variables
             outputs_taps[i] = outs_info[i]['taps']
         if outs_info[i].get('inplace', None):
+
+            warning("DEPRECATED: you should not set the inplace parameter for an output in scan(...). "
+                    "This can cause problems for the early stages of the optimizer "
+                    "and there is a late optimization which automatically figures it out.")
+
             # The same is true for the inplace info; it has to go into a separate
             # dictionary based on index; Note that the input we're replacing should also
             # come as an index, therefore we have to look for it at this point
@@ -956,14 +954,14 @@ def scan( fn
     for input in dummy_f.maker.expanded_inputs[fromIdx:] :
         # make sure that we do not add the same shared variable twice
         if isinstance(input.variable, SharedVariable) and not input.update:
-           shared_non_seqs += [input.variable]
-           new_var = input.variable.type()
-           if input.variable.name:
-               new_var.name = input.variable.name + '_copy'
-           inner_fn_inputs += [new_var]
-           slice_to_seqs += [ n_extended_outs]
-           givens[input.variable] = inner_fn_inputs[-1]
-           copy_map[inner_fn_inputs[-1]] = input.variable
+            shared_non_seqs += [input.variable]
+            new_var = input.variable.type()
+            if input.variable.name:
+                new_var.name = input.variable.name + '_copy'
+            inner_fn_inputs += [new_var]
+            slice_to_seqs += [ n_extended_outs]
+            givens[input.variable] = inner_fn_inputs[-1]
+            copy_map[inner_fn_inputs[-1]] = input.variable
         elif not isinstance(input.variable, SharedVariable):
             # also add the normal tensor that are non sequences at the
             # end of the inputs intertwingled with the shared variables
@@ -998,7 +996,7 @@ def scan( fn
         # and non sequences
         for seq in seqs :
             if not seq.get('input', None):
-                    raiseValue('All input sequences should provide')
+                raiseValue('All input sequences should provide')
         unwrapped_seqs = [ seq.get('input',tensor.as_tensor(0.)) for seq in seqs ]
         unwrapped_outs = [ out.get('initial',tensor.as_tensor(0.)) for out in outs_info ]
 
@@ -1062,7 +1060,7 @@ class Scan(Op):
     # OLD DOCUMENTATION CAN BE FOUND NEAR REVISION 2581
     #
 
-    def __init__(self,(inputs, outputs, givens, slice_to_seqs),n_seqs,  n_outs,
+    def __init__(self, ins, n_seqs,  n_outs,
                  inplace_map={}, seqs_taps={}, outs_taps={},
                  n_steps = gof.Constant(gof.generic, 'unknown', '?_steps'),
                  truncate_gradient = -1, n_outs_not_shared =0,
@@ -1093,6 +1091,7 @@ class Scan(Op):
         :param name: see scan fct
         :param mode: see scan fct
         '''
+        inputs, outputs, givens, slice_to_seqs = ins
         # build a list of output types for any Apply node using this op.
         self.apply_output_types = []
         for i, o in enumerate(outputs):
@@ -1141,6 +1140,7 @@ class Scan(Op):
         # scan does is a constant of 1, -1 or 0 then we can remove scan
         # from the graph
         self.mode           = mode
+        self.name           = name
         self.truncate_gradient = truncate_gradient
         self.go_backwards   = go_backwards
         self.slice_to_seqs  = slice_to_seqs
@@ -1157,7 +1157,10 @@ class Scan(Op):
                 linker=mode_instance.provided_linker)
             compile.profilemode.prof_mode_instance_to_print.append(mode_instance)
             self.mode_instance = mode_instance
-            self.mode_instance.message="Scan sub profile"
+            if self.name:
+                self.mode_instance.message=self.name+" sub profile"
+            else:
+                self.mode_instance.message="Scan sub profile"
 
         if name is None: name = 'scan_fn'
         self.fn = function(inputs,outputs, mode = mode_instance, givens = givens,
@@ -1167,10 +1170,16 @@ class Scan(Op):
         assert not numpy.any([isinstance(x.variable,SharedVariable) for x in
             self.fn.maker.inputs])
 
-
+    def __str__(self):
+        if self.name:
+            return self.name
+        else:
+            return 'scan'
 
     def make_node(self,*inputs):
         assert all(isinstance(i, gof.Variable) for i in inputs)
+
+        self.n_steps = inputs[0]
         return Apply(self, inputs, [t() for t in self.apply_output_types])
 
 
@@ -1301,7 +1310,7 @@ class Scan(Op):
                             'required by the maximal past value %d. Scan will use 0s'
                             ' for missing values')%(i-self.n_iterable-1,req_size))
 
-        self.n_steps = n_steps
+
         y = self.scan(self.fn, args[1:],self.n_seqs, self.n_outs,
                  self.seqs_taps, self.outs_taps, n_steps, go_backwards,
                  inplace_map)
@@ -1591,7 +1600,7 @@ class Scan(Op):
 
 class ScanGrad(Op):
     """Gradient Op for Scan"""
-    def __init__(self,(g_ins, g_outs) , n_seqs, n_outs,
+    def __init__(self, grads, n_seqs, n_outs,
             n_outs_not_shared,
             go_backwards = False, seqs_taps = {}, outs_taps= {},
             truncate_gradient = -1, mode = None, name = None):
@@ -1599,7 +1608,7 @@ class ScanGrad(Op):
         :param mode: see scan fct
         :param name: see scan fct
         """
-
+        g_ins, g_outs = grads
 
         self.inputs = g_ins
         self.outputs = g_outs
@@ -1633,16 +1642,16 @@ class ScanGrad(Op):
     def __eq__(self,other):
         rval = type(self) == type(other)
         if rval:
-           rval = (self.inputs == other.inputs) and \
-                  (self.outputs == other.outputs) and \
-                  (self.n_seqs == other.n_seqs) and \
-                  (self.n_outs == other.n_outs) and \
-                  (self.go_backwards == other.go_backwards) and \
-                  (self.n_outs_not_shared == other.n_outs_not_shared) and\
-                  (self.truncate_gradient == other.truncate_gradient) and\
-                  (self.mode == other.mode) and \
-                  (self.seqs_taps == other.seqs_taps) and \
-                  (self.outs_taps == other.outs_taps)
+            rval = (self.inputs == other.inputs) and \
+                   (self.outputs == other.outputs) and \
+                   (self.n_seqs == other.n_seqs) and \
+                   (self.n_outs == other.n_outs) and \
+                   (self.go_backwards == other.go_backwards) and \
+                   (self.n_outs_not_shared == other.n_outs_not_shared) and\
+                   (self.truncate_gradient == other.truncate_gradient) and\
+                   (self.mode == other.mode) and \
+                   (self.seqs_taps == other.seqs_taps) and \
+                   (self.outs_taps == other.outs_taps)
         return rval
 
     def __hash__(self):
@@ -1775,79 +1784,79 @@ class ScanGrad(Op):
                     initOuts_size.update({j:0})
 
         for i in the_range:
-          # time slice of inputs
-          _ins = []
-          _i = i
-          if go_backwards:
-              _i = n_steps -1 -i
+            # time slice of inputs
+            _ins = []
+            _i = i
+            if go_backwards:
+                _i = n_steps -1 -i
 
-          for j in xrange(self.n_seqs):
-            if self.seqs_taps.has_key(j):
-              ls_taps = self.seqs_taps[j]
-              min_tap =      seqs_mins[j]
-              for tap_value in ls_taps:
-                k = _i - min_tap + tap_value
-                _ins += [seqs[j][k]]
-          # time slice of outputs + taps
-          _outs = []
-          for j in xrange(self.n_outs):
-            if self.outs_taps.has_key(j):
-              ls_taps = self.outs_taps[j]
-              min_tap =      outs_mins[j]
-              seed_sz =      initOuts_size[j]
-              for tap_value in ls_taps:
-                if i + tap_value < 0:
-                  if seed_sz < 1:
-                      _outs += [outInfo[j]]
-                  else:
-                      k = i + seed_sz  + tap_value
-                      if k < 0 :
-                        #past value not provided .. issue a warning and use 0
-                        _outs += [numpy.zeros(outInfo[j][0].shape)]
-                        warning('Past value %d for output $d not given' \
-                              %(j,tap_value))
-                      else:
-                        _outs += [outInfo[j][k]]
-                else:
-                    if j>= self.n_outs_not_shared:
-                        _outs += [outs[j] ]
-                    else:
-                        _outs += [outs[j][i + tap_value]]
-          g_out = []
-          g_out = [ arg[i] for arg in g_outs]
-          grad_args = g_out + _ins + _outs + non_seqs
-          grads=self.grad_fn(*grad_args)
-          # get gradient for inputs
-          pos = 0
-          for j in xrange(self.n_seqs):
-              if self.seqs_taps.has_key(j):
-                  ls_taps = self.seqs_taps[j]
-                  min_tap =      seqs_mins[j]
-                  for tap_value in ls_taps :
-                      k = _i - min_tap + tap_value
-                      g_seqs[j][k-lower_limit] += grads[pos]
-                      pos += 1
+            for j in xrange(self.n_seqs):
+                if self.seqs_taps.has_key(j):
+                    ls_taps = self.seqs_taps[j]
+                    min_tap =      seqs_mins[j]
+                    for tap_value in ls_taps:
+                        k = _i - min_tap + tap_value
+                        _ins += [seqs[j][k]]
+            # time slice of outputs + taps
+            _outs = []
+            for j in xrange(self.n_outs):
+                if self.outs_taps.has_key(j):
+                    ls_taps = self.outs_taps[j]
+                    min_tap =      outs_mins[j]
+                    seed_sz =      initOuts_size[j]
+                    for tap_value in ls_taps:
+                        if i + tap_value < 0:
+                            if seed_sz < 1:
+                                _outs += [outInfo[j]]
+                            else:
+                                k = i + seed_sz  + tap_value
+                                if k < 0 :
+                                    #past value not provided .. issue a warning and use 0
+                                    _outs += [numpy.zeros(outInfo[j][0].shape)]
+                                    warning('Past value %d for output $d not given' \
+                                          %(j,tap_value))
+                                else:
+                                    _outs += [outInfo[j][k]]
+                        else:
+                            if j>= self.n_outs_not_shared:
+                                _outs += [outs[j] ]
+                            else:
+                                _outs += [outs[j][i + tap_value]]
+            g_out = []
+            g_out = [ arg[i] for arg in g_outs]
+            grad_args = g_out + _ins + _outs + non_seqs
+            grads=self.grad_fn(*grad_args)
+            # get gradient for inputs
+            pos = 0
+            for j in xrange(self.n_seqs):
+                if self.seqs_taps.has_key(j):
+                    ls_taps = self.seqs_taps[j]
+                    min_tap =      seqs_mins[j]
+                    for tap_value in ls_taps :
+                        k = _i - min_tap + tap_value
+                        g_seqs[j][k-lower_limit] += grads[pos]
+                        pos += 1
 
 
-          # get gradient for outputs
-          for j in xrange(self.n_outs_not_shared):
-            if self.outs_taps.has_key(j):
-              ls_taps = self.outs_taps[j]
-              min_tap =      outs_mins[j]
-              seed_sz =      initOuts_size[j]
-              for tap_value in ls_taps:
-                if i+tap_value < 0 :
-                    k = i + seed_sz + tap_value
-                    if  k >= 0 :
-                        g_outInfo[j][k] += grads[pos]
-                    else:
-                        g_outInfo[j] += grads[pos]
+            # get gradient for outputs
+            for j in xrange(self.n_outs_not_shared):
+                if self.outs_taps.has_key(j):
+                    ls_taps = self.outs_taps[j]
+                    min_tap =      outs_mins[j]
+                    seed_sz =      initOuts_size[j]
+                    for tap_value in ls_taps:
+                        if i+tap_value < 0 :
+                            k = i + seed_sz + tap_value
+                            if  k >= 0 :
+                                g_outInfo[j][k] += grads[pos]
+                            else:
+                                g_outInfo[j] += grads[pos]
 
-                else:
-                    g_outs[j][i+tap_value] += grads[pos]
-                pos += 1
-          for j in xrange(len(g_non_seqs)):
-            g_non_seqs[j] += grads[j+pos]
+                        else:
+                            g_outs[j][i+tap_value] += grads[pos]
+                        pos += 1
+            for j in xrange(len(g_non_seqs)):
+                g_non_seqs[j] += grads[j+pos]
 
 
         # return the gradient
@@ -1895,7 +1904,7 @@ class ScanSpaceOptimizer(Optimizer):
                                     # if it is a tensor, and the first
                                     # dimension is just -1
                                     if cl.op.idx_list[0] == -1 and req_steps != None:
-                                                req_steps = numpy.max([1, req_steps])
+                                        req_steps = numpy.max([1, req_steps])
                                     else:
                                         # or a constant that evaluates to
                                         # -1
@@ -1960,3 +1969,27 @@ optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
 
 
 
+@theano.compile.profilemode.register_profiler_printer
+def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
+                    apply_time, op_cimpl, message, outputs_size,
+                    other_time):
+    # Scan overhead profile
+    if any([isinstance(node.op, (Scan, ScanGrad)) for (_,node) in apply_time.keys()]):
+        print
+        print 'Scan overhead:'
+        print '<Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time/scan op time(%)> <sub scan op time/scan op time(%)> <node>'
+        total_super_scan_time = 0
+        total_scan_fct_time = 0
+        total_scan_op_time = 0
+        for (_,node),v in apply_time.items():
+            if isinstance(node.op, (Scan, ScanGrad)):
+                scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
+                scan_op_time = sum(node.op.mode_instance.local_time)
+                total_super_scan_time += v
+                total_scan_fct_time += scan_fct_time
+                total_scan_op_time += scan_op_time
+                print '    %5.1es  %5.1es  %5.1es  %5.1f%%  %5.1f%%'%(
+                    v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
+                    scan_op_time/v*100), node
+        print '    total %5.1es  %5.1es  %5.1es  %5.1f%%  %5.1f%%'%(
+            total_super_scan_time, total_scan_fct_time, total_scan_op_time, total_scan_fct_time/total_super_scan_time*100, total_scan_op_time/total_super_scan_time*100)

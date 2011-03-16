@@ -132,9 +132,9 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
             return other._as_CudaNdarrayVariable()
 
         if not isinstance(other.type, tensor.TensorType):
-            raise TypeError('Incompatible type', other.type)
+            raise TypeError('Incompatible type', (self, (self.type, other.type)))
         if (other.type.dtype != self.dtype):
-            raise TypeError('Incompatible dtype', (self.dtype, other.type.dtype))
+            raise TypeError('Incompatible dtype', (self, (self.dtype, other.type.dtype)))
         if (other.type.broadcastable != self.broadcastable):
             raise TypeError('Incompatible broadcastable', (self, (self.broadcastable,
                 other.type.broadcastable)))

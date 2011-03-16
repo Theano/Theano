@@ -18,7 +18,7 @@ grad_todo = GradTodo()
 
 class FFT(Op):
     """Fast Fourier Transform
-    
+
     .. TODO:
         The current implementation just works for matrix inputs, and permits taking a 1D FFT over
         either rows or columns.  Add support for N-D FFTs as provided by either numpy or FFTW
@@ -29,7 +29,7 @@ class FFT(Op):
 
     .. TODO:
         unit tests.
-    
+
     """
 
     default_output = 0
@@ -61,13 +61,15 @@ class FFT(Op):
             raise TypeError('Argument to HalfFFT must not be complex', frames)
         spectrogram = tensor.zmatrix()
         buf = generic()
-        # The `buf` output is present for future work 
+        # The `buf` output is present for future work
         # when we call FFTW directly and re-use the 'plan' that FFTW creates.
         # In that case, buf would store a CObject encapsulating the plan.
         rval = Apply(self, [_frames, _n, _axis], [spectrogram, buf])
         return rval
 
-    def perform(self, node, (frames, n, axis), (spectrogram, buf)):
+    def perform(self, node, inp, out):
+        frames, n, axis = inp
+        spectrogram, buf = out
         if self.inverse:
             fft_fn = numpy.fft.ifft
         else:
@@ -88,7 +90,9 @@ class FFT(Op):
                 raise NotImplementedError()
         else:
             spectrogram[0] = fft
-    def grad(self, (frames, n, axis), (g_spectrogram, g_buf)):
+    def grad(self, inp, out):
+        frames, n, axis = inp
+        g_spectrogram, g_buf = out
         return [grad_todo(frames), None, None]
 
 fft = FFT(half=False, inverse=False)

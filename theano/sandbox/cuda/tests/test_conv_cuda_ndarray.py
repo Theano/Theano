@@ -84,14 +84,23 @@ def py_conv_scipy(img, kern, mode, subsample):
 def _params_allgood_header():
     print "ishape kshape #Mflops CPU Mflops GPU Mflops Speedup"
 
-def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None, id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
+        kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
+        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+    #
+    # This function is the core of several of the big unit-test drivers,
+    # but it can also be used very directly on its own to test a specific
+    # kind of convolution.
+    #
+    # See `test_example` (above) for an example of how to use this directly.
+    #
     if ones:
         assert not random
         npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
         npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
     elif random:
-        npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-        npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+        npy_img = theano._asarray(numpy.random.rand(*ishape)+1, dtype='float32')
+        npy_kern = theano._asarray(numpy.random.rand(*kshape)-2, dtype='float32')
     else:
         npy_img = theano._asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
         npy_kern = -(theano._asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
@@ -155,8 +164,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
         print "max absolute diff:",diffabs.max(),"avg abs diff:",numpy.average(diffabs)
         print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
         print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
-
-        print rval
     if not rval and print_!=False:
         if npy_img.shape[0]>5:
             print "img",npy_img[0]
@@ -185,9 +192,19 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
         for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
             ret=False
             try:
-                ret = _params_allgood(ishape, kshape, mode,
-                                      subsample=subshape, img_stride=istride, kern_stride=kstride,
-                                      version=ver, verbose=verbose, random=random, id=id,print_=print_,rtol=rtol,ones=ones)
+                ret = _params_allgood(ishape,
+                        kshape,
+                        mode,
+                        subsample=subshape,
+                        img_stride=istride,
+                        kern_stride=kstride,
+                        version=ver,
+                        verbose=verbose,
+                        random=random,
+                        id=id,
+                        print_=print_,
+                        rtol=rtol,
+                        ones=ones)
             except Exception, e:
                 print ver, id,(ishape, kshape, subshape, istride, kstride)
                 print e
@@ -315,7 +332,7 @@ def test_valid_0_2():
 
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[3]> 512:
             continue
         if ishape[1]>1:
             continue
@@ -341,7 +358,7 @@ def test_valid_1_3_11_12():
 
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[3]> 512:
             continue
         if (numpy.prod(ishape[2:])+numpy.prod(kshape[2:]))*4>(16*1024-150):
             continue
@@ -365,7 +382,7 @@ def test_valid_4():
 
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[3]> 512:
             continue
         if ishape[1]>1:
             continue
@@ -392,7 +409,7 @@ def test_valid_5():
     print len(shapes)
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[3]> 512:
             continue
         if (kshape[2]*ishape[3]*4+numpy.prod(kshape[2:])*4)>(16*1024-150):
             continue
@@ -405,6 +422,8 @@ def test_valid_5():
 
 def test_valid_7_8_13():
     shapes = get_valid_shapes()
+    # This is to test the "new" lower shared memory usage.
+    shapes.append(((10,30,60,60),(20,30,40,40), (1,1), (1,1), (1,1)))
     version=[7,8,13]
     verbose=0
 
@@ -418,9 +437,9 @@ def test_valid_7_8_13():
     print len(shapes)
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[2]*oshape[3]>512:
             continue
-        if (numpy.prod(ishape[2:])*4+2*kshape[3]*4+oshape[2]*oshape[3]*4*2)>(16*1024-150):
+        if max(numpy.prod(ishape[2:])*4+2*kshape[3]*4, oshape[2]*oshape[3]*4*2)>(16*1024-150):
             continue
         if subshape==(1,1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
@@ -444,7 +463,7 @@ def test_valid_9_10():
     print len(shapes)
     for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[1]> 512:
+        if oshape[3]> 512:
             continue
         if (kshape[3]*4+ishape[3])>(16*1024-150):
             continue
@@ -550,9 +569,10 @@ def test_subsample():
             all_good = False
     assert all_good
 
-def test_logical_shapes():
-    # implement when
-    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
+## See #616
+#def test_logical_shapes():
+#    # implement when
+#    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
 
 
 def _test_dummy():

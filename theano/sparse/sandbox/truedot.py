@@ -45,14 +45,18 @@ class TrueDot(gof.op.Op):
         inputs = [x, y]    # Need to convert? e.g. assparse
         outputs = [Sparse(dtype = x.type.dtype, format = myformat).make_variable()]
         return gof.Apply(self, inputs, outputs)
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inp, out_):
         """
         @todo: Verify that output is sufficiently sparse, and raise a warning if it is not
         @todo: Also determine that we are storing the output in the best storage format?
         """
+        x, y = inp
+        out, = out_
         rval = x.dot(y)
         out[0] = rval
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inp, grads):
+        x, y = inp
+        gz, = grads
         assert _is_sparse_variable(gz)
         assert _is_sparse_variable(x)
         rval = [true_dot(gz, y.T), true_dot(x.T, gz)]
@@ -60,7 +64,7 @@ class TrueDot(gof.op.Op):
             if self.grad_preserves_dense:
                 rval[1] = dense_from_sparse(rval[1])
         return rval
-    
+
 def true_dot(x, y, grad_preserves_dense=True):
     """
     @todo: Maybe the triple-transposition formulation (when x is dense)

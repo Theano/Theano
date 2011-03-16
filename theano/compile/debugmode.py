@@ -381,6 +381,7 @@ class InvalidValueError(DebugModeError):
         client_node = self.client_node
         hint = self.hint
         specific_hint = self.specific_hint
+        context = debugprint(r, prefix='  ', depth=12, file=StringIO()).getvalue()
         return """InvalidValueError
         type(variable) = %(type_r)s
         variable       = %(r)s
@@ -393,7 +394,8 @@ class InvalidValueError(DebugModeError):
         isfinite       = %(v_isfinite)s
         client_node    = %(client_node)s
         hint           = %(hint)s
-        specific_hint   = %(specific_hint)s
+        specific_hint  = %(specific_hint)s
+        context        = ...\n%(context)s
         """ % locals()
 
 ########################
@@ -403,8 +405,9 @@ class InvalidValueError(DebugModeError):
 ########################
 
 
-
-def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.stdout, print_destroy_map=False, print_view_map=False):
+def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
+               file=sys.stdout, print_destroy_map=False, print_view_map=False,
+               order=[]):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -415,6 +418,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
     :param file: file-like object to which to print
     :param print_destroy_map: wether to print the op destroy_map after ofther info
     :param print_view_map: wether to print the op view_map after ofther info
+    :param order: If not empty will print the index in the toposort.
     """
     if depth==0:
         return
@@ -452,22 +456,28 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.std
         if view_map_str and view_map_str!='{}':
             view_map_str='v='+view_map_str
 
+        o=''
+        if order:
+            o = str(order.index(r.owner))
         if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]%s \'%s\' %s %s' % (prefix, a.op, id(r),
+            print >> file, '%s%s [@%i]%s \'%s\' %s %s %s' % (prefix, a.op, id(r),
                                                           type_str, r_name,
                                                           destroy_map_str,
-                                                          view_map_str)
+                                                          view_map_str,
+                                                          o)
         else:
-            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s' % (prefix, a.op,
+            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s %s' % (prefix, a.op,
                                                              a.outputs.index(r),
                                                              id(r), type_str,
                                                              r_name,
                                                              destroy_map_str,
-                                                             view_map_str)
+                                                             view_map_str,
+                                                             o)
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                debugprint(i, prefix+' |', depth=depth-1, done=done, print_type=print_type, file=file)
+                debugprint(i, prefix+' |', depth=depth-1, done=done,
+                           print_type=print_type, file=file, order=order)
     else:
         #this is a variable
         print >> file, '%s%s [@%i]%s' % (prefix, r, id(r), type_str)
@@ -532,20 +542,16 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
         for oo,ii in vmap.iteritems():
             out_var = storage_map[node.outputs[oo]][0]
             in_var = storage_map[node.inputs[ii[0]]][0]
-            # We don't try to optimize simple scalar, as this is not worth our time
-            # This happen at least in Subtensor when the output is a scalar
-            # But this depend on the version of numpy!
-            if getattr(out_var,'size',2)==1:
+            # We don't try to optimize simple scalar and empty ndarray,
+            # as this is not worth our time. This happen at least in
+            # Subtensor when the output is a scalar But this depend on
+            # the version of numpy!
+            if getattr(out_var,'size',2)<=1:
                 continue
             if isinstance(node.op, theano.compile.mode.OutputGuard):
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
-                #when a subtensor return a tensor of ndim==0, numpy seam to return a copy.
-                #when have an empty ndarray(happen with output guard) it is not the same. why?
-
-                if hasattr(out_var,'ndim') and (out_var.ndim>0 and out_var.size>0):
-                    continue
                 opt_warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
 
     for r_idx, r in enumerate(node.inputs):
@@ -1678,6 +1684,9 @@ class DebugMode(Mode):
         If any of these arguments (except optimizer) is not None, it overrides the class default.
         The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
         """
+        if linker is not None and not issubclass(linker, _Linker):
+            raise Exception("DebugMode can use only its own linker! Don't give him one to use it.", linker)
+
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)

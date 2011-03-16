@@ -69,7 +69,9 @@ class SoftmaxWithBias(gof.Op):
             sm[i] *= 1.0 / numpy.sum(sm[i])
         output_storage[0][0] = sm
 
-    def grad(self, (x, b), (g_sm,)):
+    def grad(self, inp, grads):
+        x, b = inp
+        g_sm, = grads
         sm = softmax_with_bias(x, b)
         dx = softmax_grad(g_sm, sm)
         db = tensor.sum(dx, axis = 0)
@@ -190,7 +192,9 @@ class SoftmaxWithBias(gof.Op):
         return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
 
-    def c_code(self, node, name, (x, b), (sm,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, b = inp
+        sm, = out
         code_template = ''.join(self.c_code_template())
         return code_template % dict(locals(), **sub)
 
@@ -241,7 +245,9 @@ class SoftmaxGrad(gof.Op):
 
     def c_code_cache_version(self):
         return (3,)
-    def c_code(self, node, name, (dy, sm), (dx,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        dy, sm = inp
+        dx, = out
         return '''
         if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && (%(dy)s->descr->type_num != PyArray_FLOAT))
         {
@@ -335,7 +341,9 @@ class Softmax(gof.Op):
             sm[i] /= numpy.sum(sm[i])
         output_storage[0][0] = sm
 
-    def grad(self, (x,), (g_sm,)):
+    def grad(self, inp, grads):
+        x, = inp
+        g_sm, = grads
         sm = softmax(x)
         return [softmax_grad(g_sm, sm)]
 
@@ -637,13 +645,16 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         output_storage[1][0] = sm
         output_storage[2][0] = am
 
-    def infer_shape(self, node, (x_shp, b_shp, idx_shp)):
+    def infer_shape(self, node, shapes):
+        x_shp, b_shp, idx_shp = shapes
         nll_shp = (x_shp[0],)
         sm_shp = x_shp
         am_shp = idx_shp
         return [nll_shp, sm_shp, am_shp]
 
-    def grad(self, (x, b, y_idx), (g_nll, g_sm, g_am)):
+    def grad(self, inp, grads):
+        x, b, y_idx = inp
+        g_nll, g_sm, g_am = grads
         if g_am is not None:
             raise NotImplementedError()
         elif g_sm is not None:
@@ -745,7 +756,9 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
     def c_code_cache_version(self):
         return (5,) + SoftmaxWithBias.c_code_cache_version()
-    def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, b, y_idx = inp
+        nll, sm, am = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
         code_template = ''.join(self.c_code_template())
@@ -775,7 +788,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             dx[i] = dy[i] * sm[i] #vector scale
             dx[i, y_idx[i]] -= dy[i] #scalar decrement
         output_storage[0][0] = dx
-    def grad(self, (dy, sm, y_idx), (g_dx, )):
+    def grad(self, inp, grads):
+        dy, sm, y_idx = inp
+        g_dx, = grads
         # TODO: currently we do not compute the gradient w.r.t. dy, because
         # advanced indexing is not working yet. When it works, do it to avoid
         # potentially misleading behavior in gradient computations! (although
@@ -790,7 +805,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return [g_dy, g_sm, g_y_idx]
     def c_code_cache_version(self):
         return (2,)
-    def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        dnll, sm, y_idx = inp
+        dx, = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
 
@@ -890,7 +907,7 @@ def crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs):
     the appropriate information (i.e. the max probability)?
     """
     (xent, softmax) = crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
-    (max_pr, argmax) = tensor.max_and_argmax(softmax)
+    (max_pr, argmax) = tensor.max_and_argmax(softmax, axis=-1)
     return (xent, softmax, max_pr, argmax)
 def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
     b = tensor.zeros_like(x[0,:])
@@ -906,7 +923,9 @@ class CrossentropyCategorical1HotGrad(gof.Op):
         return self.__class__.__name__
     def make_node(self, g_y, coding_dist, true_one_of_n):
         return Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
-    def perform(self, node, (g_y, coding_dist, true_one_of_n), (g_coding_strg,)):
+    def perform(self, node, inp, out):
+        g_y, coding_dist, true_one_of_n = inp
+        g_coding_strg, = out
         g_coding = numpy.zeros_like(coding_dist)
         for i in xrange(len(g_y)):
             g_coding[i, true_one_of_n[i]] = -g_y[i]/coding_dist[i, true_one_of_n[i]]
@@ -956,13 +975,17 @@ class CrossentropyCategorical1Hot(gof.Op):
         return Apply(self, [_coding_dist, _true_one_of_n],
                 [tensor.Tensor(dtype=_coding_dist.dtype, broadcastable=[False])()])
 
-    def perform(self, node, (coding, one_of_n), (y_out,)):
+    def perform(self, node, inp, out):
+        coding, one_of_n = inp
+        y_out, = out
         y = numpy.zeros_like(coding[:,0])
         for i in xrange(len(y)):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
-    def grad(self, (coding, one_of_n), (g_y,)):
+    def grad(self, inp, grads):
+        coding, one_of_n = inp
+        g_y, = grads
         return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n), None]
 
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
@@ -1465,7 +1488,9 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         node = Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
         return node
 
-    def perform(self, node, (mat, ), (output, )):
+    def perform(self, node, inp, out):
+        mat, = inp
+        output, = out
         new_shape=(mat.shape[0],mat.shape[1]+1)
         if output[0] == None:
             output[0]=numpy.empty(new_shape,dtype=mat.dtype)
@@ -1481,7 +1506,9 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         out[:,0].fill(self.val.data)
         out[:,1:]=mat
 
-    def grad(self, (mat,), (goutput,)):
+    def grad(self, inp, grads):
+        mat, = inp
+        goutput, = grads
         return goutput[:,1:]
 
 class Prepend_scalar_to_each_row(gof.Op):
@@ -1506,7 +1533,9 @@ class Prepend_scalar_to_each_row(gof.Op):
         node = Apply(op=self, inputs=[val,mat], outputs=[tensor.matrix()])
         return node
 
-    def perform(self, node, (val,mat), (output, )):
+    def perform(self, node, inp, out):
+        val, mat = inp
+        output, = out
         new_shape=(mat.shape[0],mat.shape[1]+1)
         if output[0] == None:
             output[0]=numpy.empty(new_shape,dtype=mat.dtype)
@@ -1521,7 +1550,9 @@ class Prepend_scalar_to_each_row(gof.Op):
         out[:,0].fill(val)
         out[:,1:]=mat
 
-    def grad(self, (val, mat), (goutput,)):
+    def grad(self, inp, grads):
+        val, mat = inp
+        goutput, = grads
         return goutput[:,0], goutput[:,1:]
 
 prepend_scalar_to_each_row = Prepend_scalar_to_each_row()

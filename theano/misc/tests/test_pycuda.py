@@ -56,8 +56,8 @@ def test_pycuda_elemwise_kernel():
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
     assert any([ isinstance(node.op, PycudaElemwiseKernelOp) for node in f2.maker.env.toposort()])
 
-    val1 = numpy.random.rand(5,5)
-    val2 = numpy.random.rand(5,5)
+    val1 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
+    val2 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
     #val1 = numpy.ones((5,5))
     #val2 = numpy.arange(25).reshape(5,5)
     assert (f(val1,val2) == f2(val1,val2)).all()

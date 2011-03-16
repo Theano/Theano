@@ -477,7 +477,9 @@ class Gemm(GemmRelated):
         if len(bb): raise ValueError(Gemm.E_scalar, bb)
         output = z.type()
         return Apply(self, inputs, [output])
-    def perform(self, node, (z, a, x, y, b), (zout, )):
+    def perform(self, node, inp, out):
+        z, a, x, y, b = inp
+        zout, = out
         assert a.shape == ()
         assert b.shape == ()
         if not self.inplace:
@@ -596,7 +598,9 @@ class Gemm(GemmRelated):
         #undef REAL
         """
 
-    def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub): #DEBUG
+    def c_code(self, node, name, inp, out, sub): #DEBUG
+        _z, _a, _x, _y, _b = inp
+        _zout, = out
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code' \
                     % self.__class__.__name__)
@@ -949,7 +953,9 @@ class Dot22(GemmRelated):
         outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y], outputs)
 
-    def perform(self, node, (x, y), (z, )):
+    def perform(self, node, inp, out):
+        x, y = inp
+        z, = out
         try:
             z[0] = numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
@@ -988,7 +994,9 @@ class Dot22(GemmRelated):
                 double a = 1.0;
                 double b = 0.0;
         """
-    def c_code(self, node, name, (_x, _y), (_zout, ), sub): #DEBUG
+    def c_code(self, node, name, inp, out, sub): #DEBUG
+        _x, _y = inp
+        _zout, = out
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code' \
                     % self.__class__.__name__)
@@ -1083,7 +1091,9 @@ class Dot22Scalar(GemmRelated):
         outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y,scalar], outputs)
 
-    def perform(self, node, (x, y, scalar), (z, )):
+    def perform(self, node, inp, out):
+        x, y, scalar = inp
+        z, = out
         try:
             z[0] = scalar * numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
@@ -1117,7 +1127,9 @@ class Dot22Scalar(GemmRelated):
         #undef REAL
         double b = 0.0;
         """
-    def c_code(self, node, name, (_x, _y, _a), (_zout, ), sub): #DEBUG
+    def c_code(self, node, name, inp, out, sub): #DEBUG
+        _x, _y, _a = inp
+        _zout, = out
         if len(self.c_libraries())<=0:
             return super(Dot22Scalar, self).c_code(node, name, (_x, _y), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)

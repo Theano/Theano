@@ -303,6 +303,34 @@ def local_dimshuffle_no_inplace_at_canonicalize(node):
         return [T.DimShuffle(node.op.input_broadcastable, node.op.new_order, inplace=False)(node.inputs[0])]
 
 
+######################
+# Casting operations #
+######################
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.TensorFromScalar])
+def local_tensor_scalar_tensor(node):
+    '''tensor_from_scalar(scalar_from_tensor(x)) -> x'''
+    if isinstance(node.op, T.TensorFromScalar):
+        s = node.inputs[0]
+        if s.owner and isinstance(s.owner.op, T.ScalarFromTensor):
+            t = s.owner.inputs[0]
+            return [t]
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.ScalarFromTensor])
+def local_scalar_tensor_scalar(node):
+    '''scalar_from_tensor(tensor_from_scalar(x)) -> x'''
+    if isinstance(node.op, T.ScalarFromTensor):
+        t = node.inputs[0]
+        if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
+            s = t.owner.inputs[0]
+            return [s]
+
+
+
 #####################################
 # ShapeFeature, Shape optimizations
 #####################################
@@ -349,7 +377,8 @@ class MakeVector(T.Op):
         return T.Apply(self, inputs, [otype()])
     def __str__(self):
         return self.__class__.__name__
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         # not calling theano._asarray as optimization
         if out[0] is None:
             out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
@@ -395,14 +424,18 @@ class Shape_i(T.Op):
         if x.ndim <= self.i:
             raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
         return T.Apply(self, [x], [T.lscalar()])
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inp, out_):
+        x, = inp
+        out, = out_
         if out[0] is None:
             out[0] = theano._asarray(x.shape[self.i], dtype='int64')
         else:
             out[0][...] = x.shape[self.i]
     def c_code_cache_version(self):
         return (0,1)
-    def c_code(self, node, name, (x, ), (out, ), sub):
+    def c_code(self, node, name, inp, out_, sub):
+        x, = inp
+        out, = out_
         i = self.i
         if isinstance(node.inputs[0].type,T.TensorType):
             return """
@@ -423,7 +456,7 @@ class Shape_i(T.Op):
             #      various types of variables.
             #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
         return [None]
 
 class ShapeFeature(object):
@@ -824,7 +857,8 @@ class Assert(T.Op):
 
     def __str__(self):
         return self.__class__.__name__
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         v = inputs[0]
         out[0]=v
         assert numpy.all(inputs[1:])
@@ -1035,16 +1069,176 @@ def local_upcast_elemwise_constant_inputs(node):
 
 @register_canonicalize
 @gof.local_optimizer([])
-def local_subtensor_unary(node):
+def local_subtensor_lift(node):
     """
-    unary(x)[idx] -> unary(x[idx])
+    unary(x)[idx] -> unary(x[idx])#any broadcast pattern.
+
+    elemwise(x,...)[idx] -> elemwise(x[idx],...)
+    when x,... are broadcasted scalar or not broadcasted at all
     """
     if isinstance(node.op, T.Subtensor):
         u = node.inputs[0]
-        if u.owner and isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
+        if not u.owner or len(u.clients) > 1:
+            return False
+        if isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
             return [u.owner.op(x_idx)]
+
+        if isinstance(u.owner.op, T.Elemwise):
+            new_inputs = []
+            if all([sum(i.type.broadcastable)==0 for i in u.owner.inputs]):
+                # There is no broadcastable in the inputs
+                idx = node.inputs[1:]
+                new_inputs=[node.op(i, *idx) for i in u.owner.inputs]
+                return [u.owner.op(*new_inputs)]
+            elif all([sum(i.type.broadcastable) in [i.ndim,0] for i in u.owner.inputs]):
+                # There is no broadcastable in the inputs or it is scalar
+                idx = node.inputs[1:]
+                new_inputs = []
+                for i in u.owner.inputs:
+                    if sum(i.type.broadcastable) == 0:
+                        new_inputs.append(node.op(i, *idx))
+                    else:
+                        # If the subtensor remove some dims, we must
+                        # lower the number of dimensions of this scalar.
+                        if node.outputs[0].ndim == i.ndim:
+                            new_inputs.append(i)
+                        else:
+                            new_inputs.append(i.dimshuffle(['x']*node.outputs[0].ndim))
+                return [u.owner.op(*new_inputs)]
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([])
+def local_subtensor_merge(node):
+    """
+    1) var[int:][-1] -> var[-1] # a little different for when the first subtensor is empty.
+    2) var[::-1][int] -> var[-int-1]
+    3) var[::-1][:int] -> var[:-int-1:-1]
+    4) var[int1::][:int2] -> var[int1:switch(idx1>=0,
+                                             idx1,
+                                             maximum(u.owner.inputs[0].shape[0]+idx1, 0)
+                                             ) + idx2]
+
+    """
+    if (isinstance(node.op, T.Subtensor) and
+        len(node.op.idx_list)==1):
+
+        u = node.inputs[0]
+        if (not u.owner or len(u.clients) > 1 or
+            not isinstance(u.owner.op, T.Subtensor)):
+            return False
+
+        # var[int:][-1] -> var[-1]
+        if (len(node.inputs)==1 and
+            node.op.idx_list[0]==-1 and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step is None
+            ):
+            u_start = u.owner.op.idx_list[0].start
+
+            if len(u.owner.inputs) == 1 and isinstance(u_start, int):
+                start0 = T.as_tensor_variable(u_start)
+            elif (len(u.owner.inputs) == 2 and
+                    isinstance (u_start, scalar.basic.Scalar)):
+                start0 = T.tensor_from_scalar(u.owner.inputs[1])
+            else:
+                return False
+
+            len0 = u.owner.inputs[0].shape[0]
+            # The following is equivalent to:
+            # if start0 <= -u.shape[0]:
+            #     actual_start0 = 0
+            # elif start0 < 0:
+            #     actual_start0 = start0 + u.shape[0]
+            # else:
+            #     actual_start0 = start0
+            actual_start0 = (start0 > -len0) * (start0 + ((start0 < 0) * len0))
+
+            # if actual_start < u.shape[0]:
+            #     new_index = -1
+            # else: # Will give an IndexError
+            #     new_index = actual_start
+            new_index = -1 + (actual_start0 >= len0) * (actual_start0 + 1)
+
+            new_index = T.scalar_from_tensor(new_index)
+            return [u.owner.inputs[0][new_index]]
+
+        # var[::-1][int] -> var[-int-1]
+        if (len(node.inputs) in [1,2] and
+            isinstance(node.op.idx_list[0], (int, scalar.basic.Scalar)) and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].start is None and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step == -1
+            ):
+            idx = node.op.idx_list[0]
+            if len(node.inputs) == 1 and isinstance(idx, int):
+                idx = T.as_tensor_variable(idx)
+            elif (len(node.inputs) == 2 and
+                  isinstance (idx, scalar.basic.Scalar)):
+                idx = T.tensor_from_scalar(node.inputs[1])
+            else:
+                return False
+
+            return [u.owner.inputs[0][-idx-1]]
+
+        # var[::-1][:int] -> var[:-int-1:-1]
+        if (len(node.inputs) in [1,2] and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(node.op.idx_list[0], slice) and
+            node.op.idx_list[0].start in [0, None] and
+            isinstance(node.op.idx_list[0].stop, (int, scalar.basic.Scalar)) and
+            node.op.idx_list[0].step is None and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            u.owner.op.idx_list[0].start is None and
+            u.owner.op.idx_list[0].stop is None and
+            u.owner.op.idx_list[0].step == -1
+            ):
+            slice_idx = node.op.idx_list[0]
+            idx = slice_idx.stop
+            if len(node.inputs) == 1 and isinstance(idx, int):
+                idx = T.as_tensor_variable(idx)
+            elif (len(node.inputs) == 2 and
+                  isinstance (idx, scalar.basic.Scalar)):
+                idx = T.tensor_from_scalar(node.inputs[1])
+            else:
+                return False
+
+            return [u.owner.inputs[0][:-idx-1:-1]]
+
+        # var[int1::][:int2]
+        if (len(node.inputs) in [1, 2] and
+            isinstance(node.op.idx_list[0], slice) and
+            node.op.idx_list[0].start in [0, None] and
+            isinstance(node.op.idx_list[0].stop,(int, scalar.basic.Scalar)) and
+            node.op.idx_list[0].step is None and
+            len(u.owner.op.idx_list)==1 and
+            isinstance(u.owner.op.idx_list[0], slice) and
+            isinstance(u.owner.op.idx_list[0].start,(int, scalar.basic.Scalar)) and
+            u.owner.op.idx_list[0].stop in [sys.maxint, None] and
+            u.owner.op.idx_list[0].step is None
+            ):
+            idx1 = u.owner.op.idx_list[0].start
+            idx2 = node.op.idx_list[0].stop
+            if isinstance(idx1, scalar.basic.Scalar):
+                idx1 = T.tensor_from_scalar(u.owner.inputs[1])
+            elif isinstance(idx1, int):
+                idx1 = T.as_tensor_variable(idx1)
+            if isinstance(idx2, scalar.basic.Scalar):
+                idx2 = T.tensor_from_scalar(node.inputs[1])
+            elif isinstance(idx2, int):
+                idx2 = T.as_tensor_variable(idx1)
+
+            # The maximum is needed to don't have shape[0] - idx1 < 0
+            idx2_neg = T.maximum(u.owner.inputs[0].shape[0]+idx1, 0)
+            new_idx2 = T.switch(idx1>=0, idx1, idx2_neg)+idx2
+
+            return [u.owner.inputs[0][idx1:new_idx2]]
 
 @register_canonicalize
 @gof.local_optimizer([None])
@@ -1124,6 +1318,16 @@ def local_inplace_setsubtensor(node):
 compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
+@gof.local_optimizer([None])
+def local_inplace_incsubtensor1(node):
+    """ also work for GpuAdvancedIncSubtensor1 """
+    if isinstance(node.op, T.AdvancedIncSubtensor1) and not node.op.inplace:
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(*node.inputs)
+        return [new_node]
+    return False
+compile.optdb.register('local_inplace_incsubtensor1', TopoOptimizer(local_inplace_incsubtensor1,
+    failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
 ####################
 # Rebroadcast opts #
@@ -3091,7 +3295,9 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                 s_inputs.extend(tmp_scalar)
                 s_g.append(s_op)
             else:
-                if i in inputs:
+                # We must support the case where the same variable appear many
+                # time in the inputs
+                if inputs.count(i)==node.inputs.count(i):
                     s=s_inputs[inputs.index(i)]
                 else:
                     s=scalar.Scalar(i.dtype).make_variable()
@@ -3102,9 +3308,10 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if not fused:
             return False
 
-        if new_nb_input != len(inputs):
-            raise Exception("Something has gone wrong with the elemwise fusion optimization.")
-        assert len(s_inputs) == len(inputs)
+        if new_nb_input != len(inputs) or len(s_inputs) != len(inputs):
+            raise Exception("""Something has gone wrong with the elemwise
+fusion optimization. We skip this optimization. You can ignore this message,
+your code will run correctly, but maybe slower.""")
 
         otype = node.outputs[0].type
         s_new_out=node.op.scalar_op(*s_g)

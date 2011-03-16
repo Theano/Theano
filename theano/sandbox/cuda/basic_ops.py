@@ -42,9 +42,12 @@ class HostFromGpu(Op):
         if not isinstance(x.type, CudaNdarrayType):
             raise TypeError(x)
         return Apply(self, [x], [tensor.TensorType(dtype=x.dtype, broadcastable=x.broadcastable)()])
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = numpy.asarray(x)
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, grads):
+        gz, = grads
         return [gpu_from_host(gz)]
     def infer_shape(self, node, xshp):
         return xshp
@@ -61,9 +64,12 @@ class GpuFromHost(Op):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable, dtype=x.dtype)()])
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, grads):
+        gz, = grads
         return [host_from_gpu(gz)]
     def infer_shape(self, node, xshp):
         return xshp
@@ -92,7 +98,7 @@ class GpuElemwise(Op):
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
-    
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         self.sync = d.get('sync', True) #old objects defaulted to sync behaviour
@@ -124,8 +130,9 @@ class GpuElemwise(Op):
         if self.inplace_pattern:
             items = self.inplace_pattern.items()
             items.sort()
-            return "GpuElemwise{%s}%s" % (self.scalar_op.__class__.__name__, str(items))
-        #return "GpuElemwise{%s}" % (self.scalar_op.__class__.__name__)
+            # We need to print the scalar_op, not only the its class name
+            # to have the full definition of composite op.
+            return "GpuElemwise{%s}%s" % (self.scalar_op, str(items))
         return "GpuElemwise{%s}" % (self.scalar_op)
 
     def __repr__(self):
@@ -244,7 +251,9 @@ class GpuDimShuffle(Op):
     def __str__(self):
         return "GpuDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
-    def c_code(self, node, name, (input,), (res,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        res, = out
         basename = input + '__view_or_copy'
 
         nd_in = len(self.input_broadcastable)
@@ -303,7 +312,7 @@ class GpuDimShuffle(Op):
         for i, o in enumerate(self.new_order):
             if o == 'x':
                 #TODO: remove this assertion
-                #      the correct thing to do is to insert a run-time check 
+                #      the correct thing to do is to insert a run-time check
                 #      that the size in this dimension is 1
                 assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
@@ -317,9 +326,9 @@ class GpuDimShuffle(Op):
                 """ %locals()
 
         for i, o in enumerate(self.new_order):
-                print >> sio, """
-        //std::cerr << "GpuDimShuffle " << %(res)s << " str[%(i)s] = " << %(res)s->str[%(i)s] << "\\n";
-                """ %locals()
+            print >> sio, """
+    //std::cerr << "GpuDimShuffle " << %(res)s << " str[%(i)s] = " << %(res)s->str[%(i)s] << "\\n";
+            """ %locals()
 
         # copy the host dims and stride -> device
         if 0:
@@ -351,7 +360,7 @@ class GpuDimShuffle(Op):
                 sys.exit()
 
         return sio.getvalue()
-    
+
     def c_code_cache_version(self):
         return (1,0)
 
@@ -363,7 +372,7 @@ class GpuSum(Op):
     specify for each input dimension, whether to reduce it (1) or not (0).
 
     For example:
-    
+
       - reduce_mask == (1,) sums a vector to a scalar
 
       - reduce_mask == (1,0) computes the sum of each column in a matrix
@@ -394,10 +403,14 @@ class GpuSum(Op):
         o_broadcast = [x.type.broadcastable[i] for i in xrange(x.type.ndim) if not self.reduce_mask[i]]
         return Apply(self, [x], [CudaNdarrayType(o_broadcast)()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inp, out):
+        x, = inp
+        z, = out
         z[0] = x.reduce_sum(self.reduce_mask)
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
 
         nd_in = node.inputs[0].type.ndim
         nd_out = node.outputs[0].type.ndim
@@ -422,14 +435,14 @@ class GpuSum(Op):
 
         # check the basics of out output
         print >> sio, """
-        if (  !%(z)s 
+        if (  !%(z)s
            || (%(z)s->nd != %(nd_out)s)
         """ % locals()
 
         #ensure that the output has the right non-reduced dimensions
         j = 0
         for i in xrange(nd_in):
-            if not self.reduce_mask[i]: 
+            if not self.reduce_mask[i]:
                 print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]) " % locals()
                 j += 1
 
@@ -441,7 +454,7 @@ class GpuSum(Op):
 
         j = 0
         for i in xrange(nd_in):
-            if not self.reduce_mask[i]: 
+            if not self.reduce_mask[i]:
                 print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
 
@@ -453,11 +466,10 @@ class GpuSum(Op):
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
             }
-
         }
         """ %locals()
 
-        # \begin bracket the reduction in a check that there is actually work to do 
+        # \begin bracket the reduction in a check that there is actually work to do
         print >> sio, """
         if (CudaNdarray_SIZE(%(z)s))
         {
@@ -472,12 +484,10 @@ class GpuSum(Op):
             #TODO: check if we are ccontiguous when we un-dimshuffle
             #TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
-            
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
             print >> sio, "}"
-        
         else:
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
 
@@ -508,7 +518,7 @@ class GpuSum(Op):
                         CudaNdarray_HOST_STRIDES(%(z)s)[0]
                         );
                 CNDA_THREAD_SYNC;
-                if (cudaSuccess != cudaGetLastError()) 
+                if (cudaSuccess != cudaGetLastError())
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: ... );
                     %(fail)s;
@@ -551,7 +561,7 @@ class GpuSum(Op):
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_%(pattern)s_%(name)s",
@@ -576,7 +586,7 @@ class GpuSum(Op):
                     const int d1,
                     const int d2,
                     const float *A,
-                    const int sA0, 
+                    const int sA0,
                     const int sA1,
                     const int sA2,
                     float * Z,
@@ -623,7 +633,7 @@ class GpuSum(Op):
                 float mysum = 0.0f;
 
                 if (warpSize != 32)
-                {  
+                {
                     //TODO: set error code
                     Z[0] = -666;
                     return;
@@ -645,7 +655,7 @@ class GpuSum(Op):
                 mysum += buf[i];
             }
             buf[threadNum] = mysum;
-/*Comment this optimization as it don't work on Fermi GPU. 
+/*Comment this optimization as it don't work on Fermi GPU.
   TODO: find why it don't work or put the GPU compute capability into the version
             // no sync because only one warp is running
             if(threadCount >32)
@@ -677,7 +687,7 @@ class GpuSum(Op):
             }
         }
         """ %locals()
-    
+
     #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
     #nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, nb_reduce):
@@ -696,7 +706,7 @@ class GpuSum(Op):
             %(z_pos)s = mysum;
         }
         """ %locals()
-    
+
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
         print >> sio, """
         {
@@ -717,7 +727,7 @@ class GpuSum(Op):
                     CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_ccontig_%(name)s",
@@ -756,14 +766,14 @@ class GpuSum(Op):
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             while (n_threads.y * n_threads.x <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             n_threads.y -= 1;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0])
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0];
 
             dim3 n_blocks(1);
             %(makecall)s
         }
         """ %locals()
-        
+
     def c_code_reduce_01X(self, sio, node, name, x, z, fail, N):
         """
         :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
@@ -826,8 +836,16 @@ class GpuSum(Op):
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(1,CudaNdarray_HOST_DIMS(%(x)s)[1]);
-            if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
+            dim3 n_blocks(1,
+                std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    NUM_VECTOR_OP_BLOCKS));
+            if (verbose) {
+              fprintf(stderr,
+                "running kernel_reduce_sum_10_%(name)s n_blocks=(%%i,%%i)\\n",
+                n_blocks.x,
+                n_blocks.y);
+            }
+            assert( CudaNdarray_HOST_DIMS(%(x)s)[1] == CudaNdarray_HOST_DIMS(%(z)s)[0]);
             int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_sum_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                     1,
@@ -843,7 +861,7 @@ class GpuSum(Op):
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kernel_reduce_sum_010_%(name)s",
@@ -863,7 +881,7 @@ class GpuSum(Op):
         pattern = ''.join(str(i) for i in self.reduce_mask)
         print >> sio, """
         {
-            //int n_summations = CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(x)s)[2]; 
+            //int n_summations = CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(x)s)[2];
 
             //if ((n_summations >= 15 * 32) && (CudaNdarray_HOST_DIMS(%(x)s)[2]>=16))
             if (1) // if the alternative is less buggy, consider not using this branch
@@ -878,7 +896,7 @@ class GpuSum(Op):
                 dim3 n_threads(32,1,1);
 
                 // We kindof reshape the input implicitly to something 4D:
-                //  the shape A,B,C    ->   A, B, D, E  
+                //  the shape A,B,C    ->   A, B, D, E
                 //  where C <= D*E < C+32
                 //  where E==32
 
@@ -907,7 +925,7 @@ class GpuSum(Op):
                         );
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
-                if (cudaSuccess != sts) 
+                if (cudaSuccess != sts)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                         "kernel_reduce_sum_010_%(name)s",
@@ -960,7 +978,7 @@ class GpuSum(Op):
                 }
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
-                if (cudaSuccess != sts) 
+                if (cudaSuccess != sts)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                         "kernel_reduce_sum_%(pattern)s_%(name)s",
@@ -1160,30 +1178,28 @@ class GpuSum(Op):
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
             while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2])
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2];
 
             while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
             if (n_threads.z > 64)
                 n_threads.z = 64;
-            if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
-                n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
-            
+            if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0])
+                n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
+
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
             %(makecall)s
         }
         """ %locals()
 
     def c_code_cache_version(self):
-        #return ()
-        return (19,)
-
+        return (20,)
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
         nd_in = len(self.reduce_mask)
         if all(i==1 for i in self.reduce_mask):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1210,7 +1226,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1238,7 +1254,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,1):
-            #this kernel is ok for up to a few thousand elements, but 
+            #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
@@ -1273,7 +1289,7 @@ class GpuSum(Op):
         if 0 == self.reduce_mask[0] and all(self.reduce_mask[1:]) and nd_in in[2,3,4]:
             # this kernel uses one block for each row.
             # threads per block for each element per row.
-            
+
             N_pattern = ''.join(['1']*(nd_in-1))
             if nd_in==2:
                 for_i1 = "for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)"
@@ -1311,7 +1327,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,1,0) or self.reduce_mask == (1,0):
-            # this kernel uses one block for each column, 
+            # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
@@ -1408,7 +1424,7 @@ class GpuSum(Op):
             print >> sio, """
             %(decl)s
             {
-             if(warpSize<blockDim.x){  
+             if(warpSize<blockDim.x){
                //TODO: set error code
                Z[0] = -666;
                return;
@@ -1429,7 +1445,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (1,1,0):
-            # this kernel uses one block for each column, 
+            # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
@@ -1450,7 +1466,7 @@ class GpuSum(Op):
                 float mysum = 0.0f;
 
                 if (warpSize != 32)
-                {  
+                {
                     //TODO: set error code
                     Z[blockIdx.x * sZ0] = -666;
                     return;
@@ -1513,7 +1529,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,0,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
             print >> sio, """
@@ -1548,7 +1564,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,0,1,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
             decl = self._k_decl(node, nodename)
@@ -1576,7 +1592,7 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,1,0,1):
-            # this kernel uses one block for each row, 
+            # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]')
             decl = self._k_decl(node, nodename)
@@ -1668,7 +1684,9 @@ class GpuReshape(tensor.Reshape):
     def make_node(self, x, shp):
         host_reshaped = host_from_gpu(x).reshape(shp,ndim=self.ndim)
         return Apply(self, [x, shp], [CudaNdarrayType(host_reshaped.broadcastable)()])
-    def perform(self, node, (x, shp), (out,)):
+    def perform(self, node, inp, out_):
+        x, shp = inp
+        out, = out_
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
                     ', should be %i' % (len(shp), self.ndim), shp)
@@ -1682,7 +1700,8 @@ class GpuSubtensor(tensor.Subtensor):
         otype = CudaNdarrayType(rval.outputs[0].type.broadcastable)
         return Apply(self, [x]+rval.inputs[1:], [otype()])
 
-    def perform(self, node, inputs, (out, )):
+    def perform(self, node, inputs, out_):
+        out, = out_
         x = inputs[0]
         indices = list(reversed(inputs[1:]))
 
@@ -1700,6 +1719,63 @@ class GpuSubtensor(tensor.Subtensor):
         if len(cdata) == 1:
             cdata = cdata[0]
         out[0] = x.__getitem__(cdata)
+
+class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
+    def make_node(self, x, ilist):
+        x_ = as_cuda_ndarray_variable(x)
+        ilist_ = tensor.as_tensor_variable(ilist)
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return Apply(self, [x_, ilist_], [x_.type()])
+
+    def perform(self, node, inp, out_):
+        # This don't work as CudaNdarray_Subscript() don't support it.
+        #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
+        x, idx = inp
+        out, = out_
+        o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),)+x.shape[1:])
+        for (j,i) in enumerate(idx):
+            o[j] = x[i]
+        out[0] = o
+
+class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
+    def make_node(self, x, y, ilist):
+        x_ = as_cuda_ndarray_variable(x)
+        y_ = as_cuda_ndarray_variable(y)
+        ilist_ = tensor.as_tensor_variable(ilist)
+
+        assert x_.type.dtype == y_.type.dtype
+        assert x_.type.ndim == y_.type.ndim
+
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
+
+    def perform_(self, node, inp, out_):
+        # This don't work as CudaNdarray_Subscript() don't support it.
+        #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
+        x, idx = inp
+        out, = out_
+        o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),)+x.shape[1:])
+        for (j,i) in enumerate(idx):
+            o[j] = x[i]
+        out[0] = o
 
 class GpuIncSubtensor(tensor.IncSubtensor):
     def make_node(self, x, y, *inputs):
@@ -1737,11 +1813,12 @@ class GpuJoin(tensor.Join):
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
 
-        return tensor.Join._make_node_internal(self, 
-                        axis, tensors, 
+        return tensor.Join._make_node_internal(self,
+                        axis, tensors,
                         as_tensor_variable_args, output_maker)
-       
-    def perform(self, node, axis_and_tensors, (out, )):
+
+    def perform(self, node, axis_and_tensors, out_):
+        out, = out_
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
         # In case axis is numpy.int8 and has no __index__() method
         axis = int(axis)
@@ -1773,7 +1850,7 @@ class GpuJoin(tensor.Join):
             assert not bcastable or final_shape[i] == 1, "Broadcastable dimension but dim != 1, this is invalid"
 
         rval = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(final_shape)
-        
+
         curpos = 0
 
         # we use a [:] (copy all) slice for all dimensions
@@ -1828,14 +1905,16 @@ class GpuAlloc(Op):
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
         return Apply(self, [v]+sh, [otype()])
 
-    def perform(self, node, inputs, (out,)):
+    def perform(self, node, inputs, out_):
+        out, = out_
         v = inputs[0]
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
             out[0] = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(sh)
         out[0][...] = v # broadcast v to fill us up
 
-    def c_code(self, node, name, inputs, (out,), sub):
+    def c_code(self, node, name, inputs, out_, sub):
+        out, = out_
         fail = sub['fail']
         value = inputs[0]
         shps = inputs[1:]
@@ -1858,11 +1937,12 @@ class GpuAlloc(Op):
     }
 """%locals()
         return str
-    
+
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
-    def grad(self, inputs, (gout,)):
+    def grad(self, inputs, grads):
+        gout, = grads
         return [None for i in inputs]
 
     def c_code_cache_version(self):
@@ -1884,7 +1964,9 @@ class GpuContiguous(Op):
         input = as_cuda_ndarray_variable(input)
         return Apply(self, [input], [input.type()])
 
-    def c_code(self, node, name, (input,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        z, = out
         fail = sub['fail']
         str = """
         {
@@ -1995,3 +2077,44 @@ def tensor4(name=None, dtype=None):
         dtype = config.floatX
     type = CudaNdarrayType(dtype=dtype, broadcastable=(False, False, False, False))
     return type(name)
+
+
+@theano.compile.profilemode.register_profiler_printer
+def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
+                    apply_time, op_cimpl, message, outputs_size,
+                    other_time):
+    if any([x[1].op.__class__.__name__.lower().startswith("gpu") for x in apply_time.keys()]):
+        local_time = sum(apply_time.values())
+        print
+        print 'Some info usefull for gpu:'
+
+        cpu=0
+        gpu=0
+        trans=0
+        for (_,node),t  in apply_time.items():
+            if isinstance(node.op.__class__.__name__,(HostFromGpu, GpuFromHost)):
+                trans += t
+            elif node.op.__class__.__name__.lower().startswith("gpu"):
+                gpu += t
+            else:
+                cpu += t
+        print
+        print "    Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
+            cpu, cpu/local_time*100, gpu, gpu/local_time*100, trans, trans/local_time*100)
+
+        print
+        print "    Theano function input that are float64"
+        print "    <fct name> <input name> <input type> <str input>"
+        for fct in fct_call.keys():
+            for i in fct.input_storage:
+                if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
+                    print '        ', fct.name, i.name, i.type, i
+
+        print
+        print "    List of apply that don't have float64 as input but have float64 in outputs"
+        print "    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)"
+        print '    <Apply> <Apply position> <fct name> <inputs type> <outputs type>'
+        for fct in fct_call.keys():
+            for idx, node in enumerate(fct.maker.env.toposort()):
+                if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
+                    print '        ', str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])

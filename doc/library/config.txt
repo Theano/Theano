@@ -43,9 +43,8 @@ Environment Variables
 
 .. envvar:: THEANO_FLAGS
 
-    This is a list of comma-delimited key[=value] pairs that control
-    Theano's behavior. A key that appears without an '=value' must be
-    for a boolean value, and it acts as setting it to True.
+    This is a list of comma-delimited key=value pairs that control
+    Theano's behavior.
 
     For example, in bash, you can override your :envvar:`THEANORC` defaults
     for <myscript>.py by typing this:
@@ -101,34 +100,41 @@ import theano and print the config variable, as in:
 
 .. attribute:: device
 
-    String value: either 'cpu', 'gpu', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+    String value: either ``'cpu'``, ``'gpu'``, ``'gpu0'``, ``'gpu1'``,
+    ``'gpu2'``, or ``'gpu3'``
 
-    Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.
+    Default device for computations. If ``gpu*``, change the default to try
+    to move computation to it and to put shared variable of float32 on
+    it.
     Choose the default compute device for theano graphs.  Setting this to a
-    gpu* string will make theano to try by default to move computation to it.
+    ``gpu*`` string will make theano to try by default to move computation to it.
     Also it will make theano put by default shared variable of float32 on it.
-   'gpu' lets the driver select the gpu to use, while 'gpu?' makes theano try
-    to use a specific device. If we are not able to use the gpu, we fall back
-    to the cpu.
+    ``'gpu'`` lets the driver select the GPU to use, while ``'gpu?'`` makes Theano try
+    to use a specific device. If we are not able to use the GPU, either we fall back
+    on the CPU, or an error is raised, depending on the :attr:`force_device` flag.
 
 .. attribute:: force_device
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default False
+    Default: ``False``
 
-    If True, we raise an error if we can't use the specified device. If False, we fall back to the cpu.
-    Have precedence over the device flag.
+    If ``True``, we raise an error if we cannot use the specified :attr:`device`.
+    If ``False``, we fall back to the CPU.
 
 .. attribute:: init_gpu_device
 
-    String value: either '', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+    String value: either ``''``, ``'gpu'``, ``'gpu0'``, ``'gpu1'``, ``'gpu2'``,
+    or ``'gpu3'``
 
-    Initialize the gpu device to use. This don't change anything other. So by
-    default we continue to do computation on the cpu and we keep shared variable
-    on the cpu memory.
+    Initialize the gpu device to use.
+    When its value is gpu*, the theano flag :attr:`device` must be ``"cpu"``.
+    Unlike :attr:`device`, setting this flag to a specific GPU will not
+    try to use this device by default, in particular it will **not** move
+    computations, nor shared variables, to the specified GPU.
 
-    When its value is gpu*, the theano flag device must be cpu.
+    This flag is useful to run GPU-specific tests on a particular GPU, instead
+    of using the default one.
 
 .. attribute:: floatX
 

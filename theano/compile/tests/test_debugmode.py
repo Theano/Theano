@@ -31,14 +31,18 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         r = gof.Apply(self, [a, b], [a.type()])
         return r
 
-    def perform(self, node, (a, b), (out,)):
+    def perform(self, node, inp, out_):
+        a, b = inp
+        out, = out_
         z = a+b
         #ERROR TO ADD THIS CRAPPY OFFSET
         if self.py_offset:
             out[0] = z+0.5
-        else: out[0] = z 
+        else: out[0] = z
 
-    def c_code(self, node, name, (a, b), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        a, b = inp
+        z, = out
         return """
         if (%(a)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
         if (%(b)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
@@ -75,7 +79,7 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
 # inconsistent is a invalid op, whose perform and c_code do not match
 inconsistent = BROKEN_ON_PURPOSE_Add(False)
 # off_by_half is a good op, that is different from theano.sparse.sd_csc
-off_by_half = BROKEN_ON_PURPOSE_Add(True) 
+off_by_half = BROKEN_ON_PURPOSE_Add(True)
 
 class WeirdBrokenOp(gof.Op):
     """
@@ -100,7 +104,9 @@ class WeirdBrokenOp(gof.Op):
         r = gof.Apply(self, [a_], [a_.type()])
         return r
 
-    def dontuse_perform(self, node, (a,), (out,)):
+    def dontuse_perform(self, node, inp, out_):
+        a, = inp
+        out, = out_
         if self.behaviour == 'times2':
             out[0] = a * 2
         elif self.behaviour == 'times2_inplace':
@@ -113,7 +119,9 @@ class WeirdBrokenOp(gof.Op):
         else:
             raise ValueError(self.behaviour)
 
-    def c_code(self, node, name, (a,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        a, = inp
+        z, = out
         if "inplace" in self.behaviour:
             z_code = """
             {Py_XDECREF(%(z)s);}
@@ -172,11 +180,11 @@ def test_badclinkeroutput():
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
-    f_good = theano.function([a, b], 
-            off_by_half(a, b), 
+    f_good = theano.function([a, b],
+            off_by_half(a, b),
             mode=debugmode.DebugMode(check_c_code=True))
-    f_inconsistent = theano.function([a,b], 
-            inconsistent(a, b), 
+    f_inconsistent = theano.function([a,b],
+            inconsistent(a, b),
             mode=debugmode.DebugMode(check_c_code=True))
 
     #this should evaluate with no error
@@ -189,7 +197,7 @@ def test_badclinkeroutput():
         return #TEST PASS
 
     assert False  #an error should have been detected
-        
+
 
 def test_badoptimization():
     @gof.local_optimizer([theano.tensor.add])
@@ -204,7 +212,7 @@ def test_badoptimization():
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
-    f = theano.function([a, b], a+b, 
+    f = theano.function([a, b], a+b,
             mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
 
     try:
@@ -235,8 +243,8 @@ def test_stochasticoptimization():
     b = theano.tensor.dvector()
 
     try:
-        f = theano.function([a, b], 
-                theano.tensor.add(a, b), 
+        f = theano.function([a, b],
+                theano.tensor.add(a, b),
                 mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
     except debugmode.StochasticOrder:
         return #TEST PASS
@@ -253,7 +261,9 @@ def test_baddestroymap():
         def make_node(self, a, b):
             c = a.type()
             return gof.Apply(self, [a,b], [c])
-        def perform(self, node, (a,b), (c,)):
+        def perform(self, node, inp, out):
+            a, b = inp
+            c, = out
             c[0] = a
             c[0] += b
 
@@ -283,14 +293,18 @@ class Test_ViewMap(unittest.TestCase):
         def make_node(self, a, b):
             c = b.type()
             return gof.Apply(self, [a,b], [c])
-        def perform(self, node, (a,b), (c,)):
+        def perform(self, node, inp, out):
+            a, b = inp
+            c, = out
             c[0] = b
 
     class BadAddSlice(gof.Op):
         def make_node(self, a, b):
             c = b.type()
             return gof.Apply(self, [a,b], [c])
-        def perform(self, node, (a,b), (c,)):
+        def perform(self, node, inp, out):
+            a, b = inp
+            c, = out
             c[0] = b[1:3]
 
     def test_badviewmap_ref(self):
@@ -343,7 +357,9 @@ class Test_ViewMap(unittest.TestCase):
                 c = a.type()
                 d = a.type()
                 return gof.Apply(self, [a,b], [c,d])
-            def perform(self, node, (a,b), (c,d)):
+            def perform(self, node, inp, out):
+                a, b = inp
+                c, d = out
                 c[0] = a
                 d[0] = a[1:]
 
@@ -364,7 +380,9 @@ class Test_ViewMap(unittest.TestCase):
                 c = a.type()
                 d = a.type()
                 return gof.Apply(self, [a,b], [c,d])
-            def perform(self, node, (a,b), (c,d)):
+            def perform(self, node, inp, out):
+                a, b = inp
+                c, d = out
                 r = a * 2
                 c[0] = r
                 d[0] = r[1:]
@@ -387,7 +405,9 @@ class Test_ViewMap(unittest.TestCase):
                 c = a.type()
                 d = a.type()
                 return gof.Apply(self, [a,b], [c,d])
-            def perform(self, node, (a,b), (c,d)):
+            def perform(self, node, inp, out):
+                a, b = inp
+                c, d = out
                 r = a * 1
                 c[0] = r
                 d[0] = r[1:]
@@ -409,7 +429,9 @@ class Test_ViewMap(unittest.TestCase):
                 c = a.type()
                 d = a.type()
                 return gof.Apply(self, [a,b], [c,d])
-            def perform(self, node, (a,b), (c,d)):
+            def perform(self, node, inp, out):
+                a, b = inp
+                c, d = out
                 r = a * 1
                 c[0] = r[:-1]
                 d[0] = r[1:]

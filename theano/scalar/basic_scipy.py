@@ -18,7 +18,9 @@ class Erf(UnaryScalarOp):
             return scipy.special.erf(x)
         else:
             super(Erf,self).impl(x)
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
         elif x.type in float_types:
@@ -26,7 +28,9 @@ class Erf(UnaryScalarOp):
             return gz * cst * exp(-x*x),
         else:
             return None,
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = erf(%(x)s);" % locals()
@@ -38,7 +42,9 @@ class Erfc(UnaryScalarOp):
             return scipy.special.erfc(x)
         else:
             super(Erfc,self).impl(x)
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
         elif x.type in float_types:
@@ -46,7 +52,9 @@ class Erfc(UnaryScalarOp):
             return - gz * cst * exp(-x*x),
         else:
             return None,
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = erfc(%(x)s);" % locals()

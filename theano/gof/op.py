@@ -42,10 +42,10 @@ class CLinkerObject(object):
 
         Provide search paths for headers, in addition to those in any relevant environment
         variables.
-        
+
         Hint: for unix compilers, these are the things that get '-I' prefixed in the compiler
         cmdline.
-        
+
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
 
@@ -78,10 +78,10 @@ class CLinkerObject(object):
 
         Provide search paths for libraries, in addition to those in any relevant environment
         variables (e.g. LD_LIBRARY_PATH).
-        
+
         Hint: for unix compilers, these are the things that get '-L' prefixed in the compiler
         cmdline.
-        
+
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
 
@@ -148,9 +148,9 @@ class CLinkerObject(object):
     def c_no_compile_args(self):
         """Optional: Return a list of incompatible gcc compiler arguments.
 
-        We will remove those arguments from the command line of gcc. So if 
-        another Op adds a compile arg in the graph that is incompatible 
-        with this Op, the incompatible arg will not be used. 
+        We will remove those arguments from the command line of gcc. So if
+        another Op adds a compile arg in the graph that is incompatible
+        with this Op, the incompatible arg will not be used.
         Useful for instance to remove -ffast-math.
 
         EXAMPLE
@@ -178,7 +178,7 @@ class CLinkerOp(CLinkerObject):
 
         Returns C code that does the computation associated to this `Op`,
         given names for the inputs and outputs.
-        
+
         :Parameters:
          `node` : Apply instance
            WRITEME
@@ -207,8 +207,8 @@ class CLinkerOp(CLinkerObject):
 
         QUESTION: is this function optional?
 
-        This is a convenient place to clean up things allocated by c_code().  
-        
+        This is a convenient place to clean up things allocated by c_code().
+
         :Parameters:
          `node` : Apply instance
            WRITEME
@@ -224,7 +224,7 @@ class CLinkerOp(CLinkerObject):
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
-        
+
         WRITEME
 
         :Exceptions:
@@ -256,11 +256,11 @@ class PureOp(object):
     An :term:`Op` is a type of operation.
 
     `Op` is an abstract class that documents the interface for theano's data transformations.
-    It has many subclasses, such as 
+    It has many subclasses, such as
     `sparse dot <http://pylearn.org/epydoc/theano.sparse.Dot-class.html>`__,
     and `Shape <http://pylearn.org/epydoc/theano.tensor.Shape-class.html>`__.
 
-    These subclasses are meant to be instantiated.  
+    These subclasses are meant to be instantiated.
     An instance has several responsabilities:
 
     - making `Apply` instances, which mean "apply this type of operation to some particular inputs" (via `make_node`),
@@ -278,7 +278,7 @@ class PureOp(object):
     """
 
     default_output = None
-    """ 
+    """
     configuration variable for `__call__`
 
     A subclass should not change this class variable, but instead over-ride it with a subclass
@@ -304,7 +304,7 @@ class PureOp(object):
         raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
 
     def __call__(self, *inputs, **kwargs):
-        """Optional: Return some or all output[s] of `make_node`.  
+        """Optional: Return some or all output[s] of `make_node`.
 
         It is called by code such as:
 
@@ -313,8 +313,8 @@ class PureOp(object):
            x = tensor.matrix()
 
            # tensor.exp is an Op instance, calls Op.__call__(self=<instance of exp>, inputs=(x,))
-           y = tensor.exp(x)      
-           
+           y = tensor.exp(x)
+
         This class implements a convenience function (for graph-building) which uses
         `default_output`, but subclasses are free to override this function and ignore
         `default_output`.
@@ -344,7 +344,7 @@ class PureOp(object):
         output storage.  Return None.
 
         :Parameters:
-         `node` : Apply instance 
+         `node` : Apply instance
             contains the symbolic inputs and outputs
          `inputs` : list
             sequence of inputs (immutable)
@@ -362,6 +362,6 @@ class PureOp(object):
         """
         raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
 
-class Op(utils.object2, PureOp, CLinkerOp): 
+class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""
     pass

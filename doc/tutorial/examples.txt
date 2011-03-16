@@ -256,10 +256,11 @@ internal state, and returns the old state value.
 This code introduces a few new concepts.  The ``shared`` function constructs
 so-called :term:`shared variables`.  These are hybrid symbolic and non-symbolic
 variables.  Shared variables can be used in symbolic expressions just like
-the objects returned by ``dmatrices(...)`` but they also have a ``.value``
-property that defines the value taken by this symbolic variable in *all* the
+the objects returned by ``dmatrices(...)`` but they also have an internal
+value, that defines the value taken by this symbolic variable in *all* the
 functions that use it.  It is called a *shared* variable because its value is
-shared between many functions.  We will come back to this soon.
+shared between many functions.  The value can be accessed and modified by the
+``.get_value()`` and ``.set_value()`` methods. We will come back to this soon.
 
 The other new thing in this code is the ``updates`` parameter of function.
 The updates is a list of pairs of the form (shared-variable, new expression).
@@ -274,23 +275,23 @@ Anyway, let's try it out!
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
->>> state.value
+>>> state.get_value()
 array(0)
 >>> accumulator(1)
 array(0)
->>> state.value
+>>> state.get_value()
 array(1)
 >>> accumulator(300)
 array(1)
->>> state.value
+>>> state.get_value()
 array(301)
 
-It is possible to reset the state. Just assign to the ``.value`` property:
+It is possible to reset the state. Just use the ``.set_value()`` method:
 
->>> state.value = -1
+>>> state.set_value(-1)
 >>> accumulator(3)
 array(-1)
->>> state.value
+>>> state.get_value()
 array(2)
 
 As we mentioned above, you can define more than one function to use the same
@@ -302,7 +303,7 @@ shared variable.  These functions can both update the value.
 >>> decrementor = function([inc], state, updates=[(state, state-inc)])
 >>> decrementor(2)
 array(2)
->>> state.value
+>>> state.get_value()
 array(0)
 
 You might be wondering why the updates mechanism exists.  You can always
@@ -323,13 +324,13 @@ for the purpose of one particular function.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
->>> foo = T.lscalar()    # the type (lscalar) must match the shared variable we
+>>> foo = T.lscalar()  # the type (lscalar) must match the shared variable we
 >>>                    # are replacing with the ``givens`` list
 >>> skip_shared = function([inc, foo], fn_of_state,
         givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
->>> state.value        # old state still there, but we didn't use it
+>>> state.get_value()  # old state still there, but we didn't use it
 array(0)
 
 The givens parameter can be used to replace any symbolic variable, not just a
@@ -411,9 +412,11 @@ Seedings Streams
 Random variables can be seeded individually or collectively.
 
 You can seed just one random variable by seeding or assigning to the
-``.rng.value`` attribute.
+``.rng`` attribute, using ``.rng.set_value()``.
 
->>> rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
+>>> rng_val = rv_u.rng.get_value(borrow=True)   # Get the rng for rv_u
+>>> rng_val.seed(89234)                         # seeds the generator
+>>> rv_u.rng.set_value(rng_val, borrow=True)    # Assign back seeded rng
 
 You can also seed *all* of the random variables allocated by a :class:`RandomStreams`
 object by that object's ``seed`` method.  This seed will be used to seed a
@@ -431,10 +434,12 @@ update the state of the generators used in function ``f`` above.
 
 For example:
 
->>> state_after_v0 = rv_u.rng.value.get_state()
+>>> state_after_v0 = rv_u.rng.get_value().get_state()
 >>> nearly_zeros()       # this affects rv_u's generator
 >>> v1 = f()
->>> rv_u.rng.value.set_state(state_after_v0)
+>>> rng = rng.get_value(borrow=True)
+>>> rng.set_state(state_after_v0)
+>>> rv_u.rng.set_value(rng, borrow=True)
 >>> v2 = f()             # v2 != v1
 
 

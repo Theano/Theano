@@ -25,14 +25,18 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if x < -30.0:
             return 0.0
         if x > 30.0:
-            return 1.0 
+            return 1.0
         return 1.0 / (1.0 + numpy.exp(-x))
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         y = scalar_sigmoid(x)
         return [gz * y * (1.0 - y)]
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
@@ -71,9 +75,13 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         return numpy.log1p(numpy.exp(x))
     def impl(self, x):
         return ScalarSoftplus.static_impl(x)
-    def grad(self, (x,), (gz,)):
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
         return [gz * scalar_sigmoid(x)]
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
@@ -117,7 +125,7 @@ def _is_1(expr):
         return False
 
 log1msigm_to_softplus = gof.PatternSub(
-    (tensor.log, 
+    (tensor.log,
         (tensor.sub,
             dict(pattern='y', constraint = _is_1),
             (sigmoid, 'x'))),
@@ -126,7 +134,7 @@ log1msigm_to_softplus = gof.PatternSub(
     skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
-    (tensor.log1p, 
+    (tensor.log1p,
      (tensor.exp, 'x')),
     (softplus, 'x'),
     allow_multiple_clients = True)
@@ -281,7 +289,7 @@ def local_sigm_times_exp(node):
                 rval = tensor.mul(*terms)
             else:
                 rval = terms[0]
-            
+
             if neg:
                 return [-rval]
             else:
@@ -328,13 +336,13 @@ def local_1msigmoid(node):
                 return [sigmoid(-sub_r.owner.inputs[0])]
 
 register_local_1msigmoid = False
-# This is False because the Stabilize pattern above 
-# is looking for 1-sigm.  Also Canonizer turns neg into *(-1) and so 
+# This is False because the Stabilize pattern above
+# is looking for 1-sigm.  Also Canonizer turns neg into *(-1) and so
 # this optimization might set off an unwanted chain of things.
 # OTH - this transformation can be seen as pushing normal arithmetic either  below or above the
 # sigmoidal nonlinearity... so if the canonicalized form had anything to say about that then it
 # would be a consideration... anyway leaving False for now.
-              
+
 if register_local_1msigmoid:
     opt.register_canonicalize(local_1msigmoid)
 

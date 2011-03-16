@@ -223,6 +223,8 @@ class DeepCopyOp(theano.gof.Op):
         }
 
         """%locals()
+        else:
+            super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
 deep_copy_op = DeepCopyOp()
 
@@ -380,9 +382,9 @@ class Function(object):
                 finder[i] = c
                 finder[input.variable] = c
                 if input.name not in finder:
-                  finder[input.name] = c
+                    finder[input.name] = c
                 else:
-                  finder[input.name] = DUPLICATE
+                    finder[input.name] = DUPLICATE
                 if input.name is None:
                     n_unnamed_inputs += 1
                 else:
@@ -408,9 +410,9 @@ class Function(object):
                 finder[i] = f
                 finder[input] = f
                 if input.name not in finder:
-                  finder[input.name] = f
+                    finder[input.name] = f
                 else:
-                  finder[input.name] = DUPLICATE
+                    finder[input.name] = DUPLICATE
                 #backport
                 #finder[input.name] = f if input.name not in finder else DUPLICATE
                 #setters.append(f)
@@ -421,9 +423,9 @@ class Function(object):
                     finder[sin.variable] = c
                     finder[sin.name] = c
                     if sin.name not in finder:
-                      finder[sin.name] = c
+                        finder[sin.name] = c
                     else:
-                      finder[sin.name] = DUPLICATE
+                        finder[sin.name] = DUPLICATE
                     #backport
                     #finder[sin.name] = c if sin.name not in finder else DUPLICATE
                     inv_finder[c] = input
@@ -511,7 +513,7 @@ class Function(object):
 
         # Set positional arguments
         i = 0
-        for arg_index, arg in enumerate(args):
+        for arg in args:
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
@@ -523,7 +525,7 @@ class Function(object):
                             allow_downcast=s.allow_downcast)
 
                 except Exception, e:
-                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % arg_index])
+                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % i])
                     raise
             s.provided += 1
             i+=1
@@ -626,8 +628,8 @@ class Function(object):
 
         dt_call=time.time()-t0
         if hasattr(self.maker.mode,'fct_call_time'):
-          self.maker.mode.fct_call_time[self] += dt_call
-          self.maker.mode.fct_call[self] += 1
+            self.maker.mode.fct_call_time[self] += dt_call
+            self.maker.mode.fct_call[self] += 1
 
         self.maker.mode.call_time += dt_call
         self.maker.mode.fn_time += dt_fn
@@ -732,9 +734,9 @@ class SanityCheckFunction(Function):
                     if not self.check_equal(c1.value, c2.value):
                         name = c2.name
                         if name:
-                          the_name = name
+                            the_name = name
                         else:
-                          the_name = ""
+                            the_name = ""
                         raise ValueError("Input #%i%s using %s and %s differs."
                                          % (i,
                                             #backport
@@ -751,9 +753,9 @@ class SanityCheckFunction(Function):
                 if not self.check_equal(r1, r2):
                     name = c2.name
                     if name:
-                      the_name = name
+                        the_name = name
                     else:
-                     the_name = ""
+                        the_name = ""
                     raise ValueError("Variable #%i%s using %s and %s differs."
                                      % (i,
                                         #backport
@@ -868,9 +870,11 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
-        t0 = time.time()
+        start_optimizer = time.time()
         optimizer(env)
-        _logger.debug('Optimizing took %f seconds' % (time.time() - t0))
+        end_optimizer = time.time()
+        mode.optimizer_time += end_optimizer - start_optimizer
+        _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 
         # This loop was inserted to remove aliasing between outputs when they all
         # evaluete to the same value. Originally it was OK for outputs to be aliased,
@@ -978,21 +982,23 @@ class FunctionMaker(object):
 
 
         # Get a function instance
-        t0 = time.time()
+        start_linker = time.time()
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
-        _logger.debug('Linking took %f seconds' % (time.time() - t0))
+        end_linker = time.time()
+        _logger.debug('Linker took %f seconds' % (end_linker - start_linker))
+        self.mode.linker_time += end_linker - start_linker
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
 
 def _pickle_FunctionMaker(fm):
     if fm.return_none:
-      outputs = None
+        outputs = None
     else:
-      if fm.unpack_single:
-        outputs = fm.outputs[0]
-      else:
-        outputs = fm.outputs
+        if fm.unpack_single:
+            outputs = fm.outputs[0]
+        else:
+            outputs = fm.outputs
 
     #backport
     #outputs = None if fm.return_none else (fm.outputs[0] if fm.unpack_single else fm.outputs)
@@ -1086,10 +1092,10 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
                 # TODO This may need to be changed to use containers as defaults.
                 retval = []
                 for default in defaults:
-                  if isinstance(default, gof.Container):
-                    retval +=[copy.copy(default.value)]
-                  else:
-                    retval +=[copy.copy(default)]
+                    if isinstance(default, gof.Container):
+                        retval +=[copy.copy(default.value)]
+                    else:
+                        retval +=[copy.copy(default)]
                 return retval
                 #backport
                 #return [copy.copy(default.value) if isinstance(default, gof.Container) else
@@ -1111,9 +1117,9 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
     fn.name = name
 
     if hasattr(mode,'fct_call_time'):
-      mode.fct_call_time.setdefault(fn,0)
+        mode.fct_call_time.setdefault(fn,0)
     if hasattr(mode,'fct_call'):
-      mode.fct_call.setdefault(fn,0)
+        mode.fct_call.setdefault(fn,0)
 
     return fn
 
@@ -1226,4 +1232,3 @@ def get_info_on_inputs(named_inputs, n_unnamed_inputs):
                     get_plural(n_unnamed_inputs),
                     get_plural(n_unnamed_inputs)))
     return msg
-

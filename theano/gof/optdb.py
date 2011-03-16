@@ -32,12 +32,18 @@ class DB(object):
         # this is not always the case.
         if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
             raise TypeError('Object cannot be registered in OptDB', obj)
+        if name in self.__db__:
+            raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
+        # This restriction is there because in many place we suppose that 
+        # something in the DB is there only once.
+        if getattr(obj, 'name', "") in self.__db__:
+            raise ValueError('''You can\'t register the same optimization 
+multiple time in a DB. Tryed to register "%s" again under the new name "%s".
+ Use theano.gof.ProxyDB to work around that'''%(obj.name, name))
             
         if self.name is not None:
             tags = tags + (self.name,)
         obj.name = name
-        if name in self.__db__:
-            raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
         self.__db__[name] = set([obj])
         self._names.add(name)
 
@@ -222,4 +228,16 @@ class SequenceDB(DB):
         self.print_summary(sio)
         return sio.getvalue()
 
+
+class ProxyDB(DB):
+    """
+    This is needed as we can't register the same DB mutiple time in different position
+    in a SequentialDB
+    """
+    def __init__(self, db):
+        assert isinstance(db, DB), ""
+        self.db = db
+
+    def query(self, *tags, **kwtags):
+        return self.db.query(*tags, **kwtags)
 

@@ -3,6 +3,7 @@ import StringIO
 import sys
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec
 
@@ -61,12 +62,13 @@ def safe_make_node(op, *inputs):
         return node[0].owner
     else:
         return node.owner
-
-def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}, mode = None, grad_rtol=None, eps = 1e-10):
+def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
+               bad_runtime = {}, grad = {}, mode = None, grad_rtol=None,
+               eps = 1e-10, skip = False):
     if grad is True:
         grad = good
 
-    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol, _eps = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol, eps
+    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol, _eps, skip_ = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol, eps, skip
 
     class Checker(unittest.TestCase):
 
@@ -78,8 +80,11 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
         bad_runtime = _bad_runtime
         grad = _grad
         mode = _mode
+        skip = skip_
 
         def test_good(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -138,6 +143,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                                   % (self.op, testname, description, inputs, variables))
 
         def test_bad_build(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -149,6 +156,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                           % (self.op, testname, node, inputs))
 
         def test_bad_runtime(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.bad_runtime.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -179,6 +188,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                           % (self.op, testname, inputs))
 
         def test_grad(self):
+            if skip:
+                raise SkipTest(skip)
             for testname, inputs in self.grad.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
@@ -722,39 +733,50 @@ del _good_broadcast_unary_normal_no_int_no_complex['integers']
 _good_broadcast_unary_normal_no_int = _good_broadcast_unary_normal.copy()
 del _good_broadcast_unary_normal_no_int['integers']
 
+# We can't test it if scipy is not installed!
+# Precomputing the result is brittle(it have been broken!)
+# As if we do any modification to random number here,
+# The input random number will change and the output!
 if imported_scipy_special:
-    # We can't test it if scipy is not installed!
-    # Precomputing the result is brittle(it have been broken!)
-    # As if we do any modification to random number here,
-    # The input random number will change and the output!
-    expected = scipy.special.erf
-    ErfTester = makeBroadcastTester(op = erf,
-                                    expected = scipy.special.erf,
-                                    good = _good_broadcast_unary_normal,
-                                    grad = _grad_broadcast_unary_normal,
-                                    eps = 2e-10,
-                                    mode = mode_no_scipy)
-    ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
-                                           expected = scipy.special.erf,
-                                           good = _good_broadcast_unary_normal_no_int,
-                                           grad = _grad_broadcast_unary_normal,
-                                           mode = mode_no_scipy,
-                                           eps = 2e-10,
-                                           inplace = True)
+    expected_erf = scipy.special.erf
+    expected_erfc = scipy.special.erfc
+    skip_scipy = False
+else:
+    expected_erf = []
+    expected_erfc = []
+    skip_scipy = "scipy is not present"
 
-    ErfcTester = makeBroadcastTester(op = erfc,
-                                     expected = scipy.special.erfc,
-                                     good = _good_broadcast_unary_normal_no_int_no_complex,
-                                     grad = _grad_broadcast_unary_normal,
-                                     eps = 2e-10,
-                                     mode = mode_no_scipy)
-    ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
-                                            expected = scipy.special.erfc,
-                                            good = _good_broadcast_unary_normal_no_int_no_complex,
-                                            grad = _grad_broadcast_unary_normal,
-                                            eps = 2e-10,
-                                            mode = mode_no_scipy,
-                                            inplace = True)
+ErfTester = makeBroadcastTester(op = erf,
+                                expected = expected_erf,
+                                good = _good_broadcast_unary_normal,
+                                grad = _grad_broadcast_unary_normal,
+                                eps = 2e-10,
+                                mode = mode_no_scipy,
+                                skip = skip_scipy)
+ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
+                                       expected = expected_erf,
+                                       good = _good_broadcast_unary_normal_no_int,
+                                       grad = _grad_broadcast_unary_normal,
+                                       mode = mode_no_scipy,
+                                       eps = 2e-10,
+                                       inplace = True,
+                                       skip = skip_scipy)
+
+ErfcTester = makeBroadcastTester(op = erfc,
+                                 expected = expected_erfc,
+                                 good = _good_broadcast_unary_normal_no_int_no_complex,
+                                 grad = _grad_broadcast_unary_normal,
+                                 eps = 2e-10,
+                                 mode = mode_no_scipy,
+                                 skip = skip_scipy)
+ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
+                                        expected = expected_erfc,
+                                        good = _good_broadcast_unary_normal_no_int_no_complex,
+                                        grad = _grad_broadcast_unary_normal,
+                                        eps = 2e-10,
+                                        mode = mode_no_scipy,
+                                        inplace = True,
+                                        skip = skip_scipy)
 
 
 DotTester = makeTester(name = 'DotTester',
@@ -875,10 +897,10 @@ class T_max_and_argmax(unittest.TestCase):
     def test2(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
-        v,i = eval_outputs(max_and_argmax(n))
+        v,i = eval_outputs(max_and_argmax(n,-1))
         self.failUnless(numpy.all(v == numpy.max(data,-1)))
         self.failUnless(numpy.all(i == numpy.argmax(data,-1)))
-        v = eval_outputs(max_and_argmax(n)[0].shape)
+        v = eval_outputs(max_and_argmax(n,-1)[0].shape)
         assert v==(2)
 
     def test2b(self):
@@ -977,8 +999,8 @@ class T_max_and_argmax(unittest.TestCase):
 
         #test grad of max
         #axis is the last one
-        utt.verify_grad(lambda v: max_and_argmax(v)[0], [data])
-        utt.verify_grad(lambda v: max_and_argmax(v)[1], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v,axis=-1)[0], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v,axis=-1)[1], [data])
 
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[0], [data])
         utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[1], [data])
@@ -1022,9 +1044,9 @@ class T_argmin_argmax(unittest.TestCase):
         for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
             data = numpy.random.rand(2,3)
             n = as_tensor_variable(data)
-            i = eval_outputs(fct(n))
+            i = eval_outputs(fct(n,-1))
             self.failUnless(numpy.all(i == nfct(data,-1)))
-            v = eval_outputs(fct(n).shape)
+            v = eval_outputs(fct(n,-1).shape)
             assert v==(2)
 
     def test2b(self):
@@ -1111,7 +1133,7 @@ class T_argmin_argmax(unittest.TestCase):
         n = as_tensor_variable(data)
 
         #test grad of argmin
-        utt.verify_grad(lambda v: argmin(v), [data])
+        utt.verify_grad(lambda v: argmin(v,axis=-1), [data])
 
         utt.verify_grad(lambda v: argmin(v,axis=[0]), [data])
 
@@ -1120,7 +1142,7 @@ class T_argmin_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: argmin(v.flatten()), [data])
 
         try:
-            grad(argmin(n),n)
+            grad(argmin(n,axis=-1),n)
             raise Exception('Expected an error')
         except TypeError:
             pass
@@ -1130,7 +1152,7 @@ class T_argmin_argmax(unittest.TestCase):
         n = as_tensor_variable(data)
 
         #test grad of argmax
-        utt.verify_grad(lambda v: argmax(v), [data])
+        utt.verify_grad(lambda v: argmax(v, axis=-1), [data])
 
         utt.verify_grad(lambda v: argmax(v,axis=[0]), [data])
 
@@ -1139,7 +1161,7 @@ class T_argmin_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: argmax(v.flatten()), [data])
 
         try:
-            grad(argmax(n),n)
+            grad(argmax(n, axis=-1),n)
             raise Exception('Expected an error')
         except TypeError:
             pass
@@ -1174,7 +1196,7 @@ class T_min_max(unittest.TestCase):
             v = eval_outputs(fct(n,-1))
             self.failUnless(numpy.all(v == nfct(data,-1)))
 
-            v = eval_outputs(fct(n).shape)
+            v = eval_outputs(fct(n,-1).shape)
             assert v==(2)
 
     def test2b(self):
@@ -1294,7 +1316,7 @@ class T_min_max(unittest.TestCase):
 
         #test grad of max
         #axis is the last one
-        utt.verify_grad(lambda v: max(v), [data])
+        utt.verify_grad(lambda v: max(v,axis=-1), [data])
 
         utt.verify_grad(lambda v: max(v,axis=[0]), [data])
         check_grad_max(data,eval_outputs(grad(max(n,axis=0).sum(),n)),axis=0)
@@ -1326,7 +1348,7 @@ class T_min_max(unittest.TestCase):
 
         #test grad of min
         #axis is the last one
-        utt.verify_grad(lambda v: min(v), [data])
+        utt.verify_grad(lambda v: min(v,axis=-1), [data])
 
         utt.verify_grad(lambda v: min(v,axis=[0]), [data])
         check_grad_min(data,eval_outputs(grad(min(n,axis=0).sum(),n)),axis=0)
@@ -1350,13 +1372,47 @@ class T_min_max(unittest.TestCase):
         #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
 
 class T_subtensor(unittest.TestCase):
+    """
+    This is build in a way that allow to reuse it to test the equivalent gpu op.
+    """
+    def __init__(self, name, shared=shared,
+                 sub=theano.tensor.basic.Subtensor,
+                 inc_sub=theano.tensor.basic.IncSubtensor,
+                 adv_sub1=theano.tensor.basic.AdvancedSubtensor1,
+                 adv_incsub1=theano.tensor.basic.AdvancedIncSubtensor1,
+                 mode=None,
+                 dtype=theano.config.floatX,
+                 ignore_topo=(theano.compile.function_module.DeepCopyOp)):
+        self.shared = shared
+        self.sub = sub
+        self.inc_sub = inc_sub
+        self.adv_sub1 = adv_sub1
+        self.adv_incsub1 = adv_incsub1
+        self.mode = mode
+        self.dtype = dtype
+        self.ignore_topo = ignore_topo
+        self.fast_compile = theano.config.mode == 'FAST_COMPILE'
+        return super(T_subtensor, self).__init__(name)
+
     def setUp(self):
         Subtensor.debug = False
         utt.seed_rng()
 
+    def eval_output_and_check(self, t, list=False):
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        if not list:
+            assert isinstance(topo_[0].op, self.sub)
+        else:
+            assert isinstance(topo_[0].op, self.adv_sub1)
+        tval = f()
+        return tval
+
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
-        n = as_tensor_variable(numpy.ones(()))
+        n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
             t = n[0]
         except ValueError, e:
@@ -1365,7 +1421,7 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_err_bounds(self):
-        n = as_tensor_variable(numpy.ones(3))
+        n = self.shared(numpy.ones(3, dtype=self.dtype))
         t = n[7]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
@@ -1374,7 +1430,7 @@ class T_subtensor(unittest.TestCase):
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
-                tval = eval_outputs([t])
+                self.eval_output_and_check(t)
                 assert 0
             except Exception, e:
                 if e[0] != 'index out of bounds':
@@ -1382,7 +1438,7 @@ class T_subtensor(unittest.TestCase):
         finally:
             _logger.setLevel(oldlevel)
     def test1_err_subslice(self):
-        n = as_tensor_variable(numpy.ones(3))
+        n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
             t = n[slice(0,slice(1,2,None),None)]
         except Exception, e:
@@ -1394,56 +1450,81 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_ok_range_finite(self):
-        n = as_tensor_variable(numpy.ones(3)*5)
+        n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[0:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
+
     def test2_ok_range_finite(self):
-        n = as_tensor_variable(numpy.ones((3,4))*5)
+        n = self.shared(numpy.ones((3,4), dtype=self.dtype)*5)
         t = n[0:2,3]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
+
     def test1_err_invalid(self):
-        n = as_tensor_variable(numpy.ones(1))
+        n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
             t = n[0,0]
         except ValueError, e:
             self.failUnless(hasattr(e,'subtensor_invalid'))
             return
         self.fail()
+
     def test1_ok_elem(self):
-        n = as_tensor_variable(numpy.ones(1)*5)
+        n = self.shared(numpy.ones(1, dtype=self.dtype)*5)
         t = n[0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == ())
         self.failUnless(tval == 5.0)
     def test1_ok_range_infinite(self):
         #Subtensor.debug = True
-        n = as_tensor_variable(numpy.ones(3)*5)
+        n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[1:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
-    def test1_ok_strided(self):
-        n = as_tensor_variable(numpy.ones(5)*5)
-        t = n[1::2]
-        self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
 
-        tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
+    def test1_ok_strided(self):
+        n = self.shared(numpy.ones(5, dtype=self.dtype)*5)
+        t = n[1::2]
+        self.failUnless(isinstance(t.owner.op, Subtensor))
+        tval = self.eval_output_and_check(t)
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+
+        t = n[0:-1:2] #0 to 1 from the end stepping by 2
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
 
     def test2_err_bounds0(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
         t = n[0,4]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         # Silence expected warnings
@@ -1452,108 +1533,235 @@ class T_subtensor(unittest.TestCase):
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
-                tval = eval_outputs([t])
+                tval = self.eval_output_and_check([t])
                 assert 0
             except IndexError, e:
                 pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_err_bounds1(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared((numpy.ones((2,3), dtype=self.dtype)*5))
         t = n[4:5,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
             try:
-                tval = eval_outputs([t])
+                tval = self.eval_output_and_check([t])
             except Exception, e:
                 if e[0] != 'index out of bounds':
                     raise
         finally:
             sys.stderr = old_stderr
     def test2_ok_elem(self):
-        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
+        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[0,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 2))
     def test2_ok_row(self):
-        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
+        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[1]
         self.failIf(any(n.type.broadcastable))
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (3,))
         self.failUnless(numpy.all(tval == [3,4,5]))
 
     def test2_ok_col(self):
-        n = as_tensor_variable(numpy.ones((2,3))*5)
+        n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
         t = n[:,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         self.failIf(any(n.type.broadcastable))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_rows_finite(self):
-        n = as_tensor_variable(numpy.ones((4,3))*5)
+        n = self.shared(numpy.ones((4,3), dtype=self.dtype)*5)
         t = n[1:3,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,))
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_cols_infinite(self):
-        n = as_tensor_variable(numpy.asarray(range(12)).reshape((4,3)))
+        n = self.shared(numpy.asarray(range(12), dtype=self.dtype).reshape((4,3)))
         t = n[1,2:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (1,))
         self.failUnless(numpy.all(tval == 5))
 
     def test2_ok_strided(self):
-        n = as_tensor_variable(numpy.asarray(range(20)).reshape((4,5)))
+        n = self.shared(numpy.asarray(range(20), dtype=self.dtype).reshape((4,5)))
         t = n[1:4:2,1:5:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == (2,2))
         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
 
     def test3_ok_mat(self):
-        n = as_tensor_variable(numpy.asarray(range(24)).reshape((2,3,4)))
+        n = self.shared(numpy.asarray(range(24), dtype=self.dtype).reshape((2,3,4)))
         t = n[0,0,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
-        tval = eval_outputs([t])
+        tval = self.eval_output_and_check(t)
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 0))
 
     def test_grad_1d(self):
         subi = 0
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
+        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        n = self.shared(data)
         z = scal.constant(subi)
         t = n[z:,z]
         gn = grad(sum(exp(t)), n)
-        gval = eval_outputs([gn])
+
+        f = inplace_func([], gn, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        if not self.fast_compile:
+            assert len(topo_)==6
+        assert numpy.sum([isinstance(node.op, self.inc_sub) for node in topo_])==1
+        assert numpy.sum([isinstance(node.op, self.sub) for node in topo_])==1
+        gval = f()
+
         good = numpy.zeros_like(data)
         good[subi:,subi] = numpy.exp(data[subi:,subi])
-        self.failUnless(numpy.all(gval == good), (gval, good))
+        self.failUnless(numpy.allclose(gval, good), (gval, good))
 
     def test_grad_0d(self):
-        data = numpy.random.rand(2,3)
-        n = as_tensor_variable(data)
+        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        n = self.shared(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
-        f = function([], gn, mode=None)
-        print 'toposort', f.maker.env.toposort()
+        f = function([], gn, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        if not self.fast_compile:
+            assert len(topo_)==6
+        assert numpy.sum([isinstance(node.op, self.inc_sub) for node in topo_])==1
+        assert numpy.sum([isinstance(node.op, self.sub) for node in topo_])==1
+
         gval = f()
-        print gval
         good = numpy.zeros_like(data)
         good[1,0] = numpy.exp(data[1,0])
         self.failUnless(numpy.allclose(gval, good), (gval, good))
 
+    def test_ok_list(self):
+        for data, idx in [(numpy.random.rand(4), [1,0]),
+                          (numpy.random.rand(4,5), [2,3]),
+                          (numpy.random.rand(4,2,3), [0,3]),
+                          (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
+                          ]:
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
+            t = n[idx]
+
+            # We test again AdvancedSubtensor1 as we transfer data to the cpu.
+            self.failUnless(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+
+            val = self.eval_output_and_check(t, list=True)
+            good = data[idx]
+            self.failUnless(val.ndim == data.ndim)
+            self.failUnless(numpy.allclose(val, good), (val, good))
+
+    def test_err_invalid_list(self):
+        n = self.shared(numpy.asarray(5, dtype=self.dtype))
+        self.assertRaises(TypeError, n.__getitem__, [0,0])
+
+    def test_err_invalid_2list(self):
+        # TODO the error message is not clear
+        n = self.shared(numpy.ones((3,3), dtype=self.dtype)*5)
+        self.assertRaises(TypeError, n.__getitem__, ([0,0],[1,1]))
+
+    def test_err_bound_list(self):
+        n = self.shared(numpy.ones((2,3),dtype=self.dtype)*5)
+        t = n[[0,4]]
+        # We test again AdvancedSubtensor1 as we transfer data to the cpu.
+        self.failUnless(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+
+        f = function([], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        self.failUnless(isinstance(topo_[0].op, self.adv_sub1))
+        self.assertRaises(IndexError, f)
+
+    def grad_list_(self, idxs, data):
+        n = self.shared(data)
+
+        for idx in idxs:
+            # Should stay on the cpu.
+            idx_ = shared(numpy.asarray(idx))
+            t = n[idx_]
+            gn = grad(sum(exp(t)), n)
+            f = function([], [gn, gn.shape], mode=self.mode)
+            topo = f.maker.env.toposort()
+            if not self.fast_compile:
+                assert any([isinstance(node.op, self.adv_incsub1) and node.op.inplace for node in topo])
+            else:
+                assert any([isinstance(node.op, self.adv_incsub1) for node in topo])
+            assert any([isinstance(node.op, self.adv_sub1) for node in topo])
+            gval, gshape = f()
+            good = numpy.zeros_like(data)
+            # good[idx] += numpy.exp(data[idx]) don't work when the same index is used many time
+            for i in idx:
+                good[i] += numpy.exp(data[i])
+            self.failUnless(gval.ndim == data.ndim)
+            self.failUnless(numpy.allclose(gval, good), (gval, good))
+            self.failUnless(numpy.allclose(gshape, data.shape))
+
+            def fct(t):
+                return sum(t[idx_])
+            utt.verify_grad(fct, [data])
+
+            # Test the grad of the grad (e.i. AdvancedIncSubtensor1.grad)
+            def fct(t):
+                return grad(sum(t[idx_]),t)
+            utt.verify_grad(fct, [data])
+
+            # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
+            if idx is idxs[0]:
+                f = function([], [gn.shape, n[idx_].shape], mode=self.mode)
+                topo = f.maker.env.toposort()
+                if not self.fast_compile:
+                    self.failUnless(not any([isinstance(node.op, self.adv_incsub1) for node in topo]))
+                    self.failUnless(not any([isinstance(node.op, self.adv_sub1) for node in topo]))
+                f()
+
+
+    def test_grad_list(self):
+        data = numpy.random.rand(4)
+        data = numpy.asarray(data, dtype=self.dtype)
+        idxs = [[i] for i in range(data.shape[0])]
+        for i in range(data.shape[0]):
+            for j in range(0,data.shape[0],2):
+                idxs.append([i,j,(i+1)%data.shape[0]])
+        self.grad_list_(idxs, data)
+
+        data = numpy.random.rand(4,3)
+        data = numpy.asarray(data, dtype=self.dtype)
+        self.grad_list_(idxs, data)
+
+        data = numpy.random.rand(4,3,2)
+        data = numpy.asarray(data, dtype=self.dtype)
+        self.grad_list_(idxs, data)
+
+    def test_shape_list(self):
+        #TODO for all type of subtensor shape
+        for data, idx in [(numpy.random.rand(4), [1,0]),
+                          (numpy.random.rand(4,2), [2,3]),
+                          (numpy.random.rand(4,2,3), [0,3]),
+                          (numpy.random.rand(4,2,3), [3,3,1,2,2,]),
+                          ]:
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
+            t = n[idx]
+            f = function([], t.shape, mode=None)
+            val = f()
+            self.failUnless(numpy.allclose(val, data[idx].shape))
 
 class T_Join_and_Split(unittest.TestCase):
     """
@@ -2323,8 +2531,10 @@ class T_tensorfromscalar(unittest.TestCase):
         self.failUnless(isinstance(v, numpy.ndarray))
         self.failUnless(v.shape == (), v.shape)
 
-    @dec.knownfailureif(isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-                        "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble with DEBUG_MODE")
+    @dec.knownfailureif(
+            isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
+            ("This test fails in DEBUG_MODE, but the generated code is OK. "
+             "It is actually a problem of DEBUG_MODE, see #624."))
     def test1(self):
         s = scal.constant(56)
         t = as_tensor_variable(s)
@@ -2343,8 +2553,10 @@ class T_tensorfromscalar(unittest.TestCase):
         self.failUnless(eval_outputs([g])==1)
 
 class T_scalarfromtensor(unittest.TestCase):
-    @dec.knownfailureif(isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-                        "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble with DEBUG_MODE")
+    @dec.knownfailureif(
+        isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
+            ("This test fails in DEBUG_MODE, but the generated code is OK. "
+             "It is actually a problem of DEBUG_MODE, see #625."))
     def test0(self):
         tt = constant(56)#scal.constant(56)
         ss = scalar_from_tensor(tt)
@@ -2509,7 +2721,9 @@ class test_grad(unittest.TestCase):
             inputs = [scalar('a'),scalar('c')]
             outputs = [scalar('b'),scalar('d')]
             return gof.Apply(self, inputs, outputs)
-        def grad(self, (x0,x1), (gz0,gz1)):
+        def grad(self, inp, grads):
+            x0, x1 = inp
+            gz0, gz1 = grads
             return self.gval0, self.gval1
 
     def test_1param(self):
@@ -2594,14 +2808,14 @@ def test_reshape():
     c = reshape(b, as_tensor_variable(6), ndim=1)
     f = inplace_func([b], c)
     assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    print f.maker.env.toposort()
+    #print f.maker.env.toposort()
     #check that we remove the useless reshape
 
     #basic to 1 dim(with list)
     c = reshape(b, (as_tensor_variable(6),), ndim=1)
     f = inplace_func([b], c)
     assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    print f.maker.env.toposort()
+    #print f.maker.env.toposort()
     #check that we remove the useless reshape
 
     #basic to shape object of same ndim
@@ -2645,6 +2859,13 @@ def test_reshape():
         assert len(f_sub.maker.env.toposort())==0
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
+
+    # test broadcast flag for constant value of 1
+    c = reshape(b, (b.shape[0],b.shape[1],1))
+    f = inplace_func([b], c)
+    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
+    assert f.maker.env.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
+
 
     assert numpy.all(f_sub(a_val,b_val)==[2,3])
 
@@ -2732,9 +2953,10 @@ def test_flatten_outdim_invalid():
         pass
 
 # TODO: write test case for Tile Op
-def test_tile():
-    print >> sys.stderr, "WARNING: No testcase for Tile"
-    pass
+# See Ticket #619
+#def test_tile():
+#    print >> sys.stderr, "WARNING: No testcase for Tile"
+#    pass
 
 
 class TestARange(unittest.TestCase):
@@ -3308,8 +3530,10 @@ def test_sum_overflow():
     f = function([a], sum(a))
     assert f([1]*300) == 300
 
-@dec.knownfailureif(isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-                    "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble in DEBUG_MODE")
+@dec.knownfailureif(
+        isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
+        ("This test fails in DEBUG_MODE, but the generated code is OK. "
+         "It is actually a problem of DEBUG_MODE, see #626."))
 def test_default():
     x, y = scalars('xy')
     z = default(x, y)
@@ -3318,8 +3542,10 @@ def test_default():
     assert f(None, 2) == 2
     assert f(1, None) == 1
 
-@dec.knownfailureif(isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-                    "This test fail in DEBUG_MODE but this don't make theano generate some bad code. It is a trouble in DEBUG_MODE")
+@dec.knownfailureif(
+        isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
+        ("This test fails in DEBUG_MODE, but the generated code is OK. "
+         "It is actually a problem of DEBUG_MODE, see #626."))
 def test_default_state():
     x, y = scalars('xy')
     print config.floatX
@@ -3573,6 +3799,15 @@ class T_get_constant_value(unittest.TestCase):
         # is broadcastable.
         v = tensor.row()
         assert get_constant_value(v.shape[0])==1
+
+    def test_subtensor_of_constant(self):
+        c = constant(numpy.random.rand(5))
+        for i in range(c.value.shape[0]):
+            assert get_constant_value(c[i]) == c.value[i]
+        c = constant(numpy.random.rand(5,5))
+        for i in range(c.value.shape[0]):
+            for j in range(c.value.shape[1]):
+                assert get_constant_value(c[i,j]) == c.value[i,j]
 
 if __name__ == '__main__':
     if 1:

@@ -77,7 +77,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 
         """
 
-    def c_code(self, node, nodename, (x, b, y_idx), (nll, sm, am), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, b, y_idx = inp
+        nll, sm, am = out
         classname=self.__class__.__name__
         fail = sub['fail']
         sio = StringIO.StringIO()
@@ -150,15 +152,15 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 CudaNdarray_HOST_DIMS(%(x)s)[0],
                 CudaNdarray_HOST_DIMS(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1], 
-                CudaNdarray_DEV_DATA(%(b)s), CudaNdarray_HOST_STRIDES(%(b)s)[0], 
-                CudaNdarray_DEV_DATA(%(y_idx)s), CudaNdarray_HOST_STRIDES(%(y_idx)s)[0], 
-                CudaNdarray_DEV_DATA(%(nll)s), CudaNdarray_HOST_STRIDES(%(nll)s)[0], 
-                CudaNdarray_DEV_DATA(%(sm)s), CudaNdarray_HOST_STRIDES(%(sm)s)[0], CudaNdarray_HOST_STRIDES(%(sm)s)[1], 
+                CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_DEV_DATA(%(b)s), CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                CudaNdarray_DEV_DATA(%(y_idx)s), CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
+                CudaNdarray_DEV_DATA(%(nll)s), CudaNdarray_HOST_STRIDES(%(nll)s)[0],
+                CudaNdarray_DEV_DATA(%(sm)s), CudaNdarray_HOST_STRIDES(%(sm)s)[0], CudaNdarray_HOST_STRIDES(%(sm)s)[1],
                 CudaNdarray_DEV_DATA(%(am)s), CudaNdarray_HOST_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if (cudaSuccess != err) 
+            if (cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %(classname)s %(nodename)s: %%s.\\n", cudaGetErrorString(err));
                 // no need to decref output vars the cleanup code should pick them up.
@@ -191,7 +193,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     def c_code_cache_version(self):
         return (3,)
         #return ()
-    def c_code(self, node, nodename, (dnll, sm, y_idx), (dx,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        dnll, sm, y_idx = inp
+        dx, = out
         fail = sub['fail']
         return """
         if ((%(dnll)s->nd != 1)
@@ -233,7 +237,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
                     std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(dx)s)[0],
-                        CudaNdarray_HOST_DIMS(%(dx)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(dx)s)[1],
 
                         CudaNdarray_DEV_DATA(%(dnll)s),
                         CudaNdarray_HOST_STRIDES(%(dnll)s)[0],
@@ -249,11 +253,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(dx)s);
         """ % locals()
@@ -306,7 +310,9 @@ class GpuSoftmax (Op):
     def c_code_cache_version(self):
         #return ()
         return (2,) + inline_softmax.code_version
-    def c_code(self, node, nodename, (x,), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, = inp
+        z, = out
         fail = sub['fail']
         return """
         if (%(x)s->nd != 2)
@@ -337,7 +343,7 @@ class GpuSoftmax (Op):
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -347,18 +353,18 @@ class GpuSoftmax (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return nvcc_kernel("kSoftmax_%s"%nodename,
-                params=['int M', 'int N', 
+                params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'float * sm'],
                 body=[
@@ -394,7 +400,9 @@ class GpuSoftmaxWithBias (Op):
         #return ()
         return (2,) + inline_softmax.code_version
 
-    def c_code(self, node, nodename, (x,b), (z,), sub):
+    def c_code(self, node, nodename, inp, out, sub):
+        x, b = inp
+        z, = out
         fail = sub['fail']
         return """
         if (%(x)s->nd != 2)
@@ -436,7 +444,7 @@ class GpuSoftmaxWithBias (Op):
                     CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1], 
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -449,18 +457,18 @@ class GpuSoftmaxWithBias (Op):
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
+            if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
                 %(fail)s;
-            }                         
+            }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
-                params=['int M', 'int N', 
+                params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'const float * b', 'const int sb0',
                     'float * sm'],

@@ -94,7 +94,7 @@ class FromFunctionOptimizer(Optimizer):
         env.extend(toolbox.ReplaceValidate())
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s id=%i" %(' '*level, 
+        print >> stream, "%s%s id=%i" %(' '*level,
                 str(self.apply),
                 id(self))
 
@@ -236,7 +236,7 @@ class _metadict:
 class MergeOptimizer(Optimizer):
     """
     Merges parts of the graph that are identical and redundant.
-    
+
     The basic principle is that if two Applies have ops that compare equal, and identical
     inputs, then they do not both need to be computed.  The clients of one are transfered to
     the other and one of them is removed from the graph.  This procedure is carried out in
@@ -264,9 +264,9 @@ class MergeOptimizer(Optimizer):
                 sig = c.signature()
                 other_c = const_sig_inv.get(sig, None)
                 if other_c is not None:
-                    # multiple names will clobber each other.. 
+                    # multiple names will clobber each other..
                     # we adopt convention to keep the last name
-                    if c.name:  
+                    if c.name:
                         other_c.name = c.name
                     env.replace_validate(c, other_c, reason='Constant Merge')
                 else:
@@ -286,7 +286,7 @@ class MergeOptimizer(Optimizer):
             # should at least contain `node` itself!
             #
             if node.inputs:
-                assert len(node.inputs[0].clients) > 0 
+                assert len(node.inputs[0].clients) > 0
                 assert (node,0) in node.inputs[0].clients
                 merge_candidates = [(nodes_seen[c],c) for (c,i) in node.inputs[0].clients if c in nodes_seen]
             else:
@@ -352,7 +352,7 @@ def MergeOptMerge(opt):
 class LocalOptimizer(object):
     """A class for node-based optimizations.
 
-    Instances should implement the transform function, 
+    Instances should implement the transform function,
     and be passed to configure a env-based Optimizer instance.
     """
 
@@ -396,7 +396,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
     def __str__(self):
         return getattr(self, '__name__', '<FromFunctionLocalOptimizer instance>')
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s id=%i" %(' '*level, 
+        print >> stream, "%s%s id=%i" %(' '*level,
                 str(self.transform),
                 id(self))
 
@@ -439,7 +439,7 @@ class _LocalOpKeyOptGroup(LocalOptGroup):
         if any(not hasattr(opt, 'op_key'), optimizers):
             raise TypeError("All LocalOptimizers passed here must have an op_key method.")
         CompositeLocalOptimizer.__init__(self, optimizers)
-    
+
     def op_key(self):
         return [opt.op_key() for opt in self.opts]
 
@@ -510,8 +510,8 @@ class OpRemove(LocalOptimizer):
         return "%s(x) -> x" % (self.op)
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s(%s) id=%i" %(' '*level, 
-                self.__class__.__name__, 
+        print >> stream, "%s%s(%s) id=%i" %(' '*level,
+                self.__class__.__name__,
                 str(self.op),
                 id(self))
 
@@ -519,7 +519,7 @@ class OpRemove(LocalOptimizer):
 class PatternSub(LocalOptimizer):
     """WRITEME
     @todo update
-    
+
     Replaces all occurrences of the input pattern by the output pattern:
 
      input_pattern ::= (op, <sub_pattern1>, <sub_pattern2>, ...)
@@ -531,7 +531,7 @@ class PatternSub(LocalOptimizer):
      sub_pattern ::= int
      sub_pattern ::= float
      constraint ::= lambda env, expr: additional matching condition
-     
+
      output_pattern ::= (op, <output_pattern1>, <output_pattern2>, ...)
      output_pattern ::= string
      output_pattern ::= int
@@ -574,7 +574,7 @@ class PatternSub(LocalOptimizer):
         :param in_pattern: the input pattern that we want to replace
         :param out_pattern: the replacement pattern
         :param allow_multiple_clients: if False, the pattern matching will fail
-                                       if one of the subpatterns has more than 
+                                       if one of the subpatterns has more than
                                        one client.
         :param pdb: if True, we invoke pdb when the first node in the pattern match.
         """
@@ -705,8 +705,8 @@ class PatternSub(LocalOptimizer):
         return str(self)
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s(%s, %s) id=%i" %(' '*level, 
-                self.__class__.__name__, 
+        print >> stream, "%s%s(%s, %s) id=%i" %(' '*level,
+                self.__class__.__name__,
                 str(self.in_pattern),
                 str(self.out_pattern),
                 id(self))
@@ -721,7 +721,7 @@ class PatternSub(LocalOptimizer):
 
 class NavigatorOptimizer(Optimizer):
     """Abstract class
-    
+
     """
     @staticmethod
     def warn(exc, nav, repl_pairs, local_opt):
@@ -748,14 +748,14 @@ class NavigatorOptimizer(Optimizer):
     def __init__(self, local_opt, ignore_newtrees = 'auto', failure_callback = None):
         """
         :param local_opt:  a LocalOptimizer to apply over a Env (or None is Ok too).
-        :param ignore_newtrees: 
+        :param ignore_newtrees:
             - True: new subgraphs returned by an optimization is not a candidate for optimization
             - False: new subgraphs returned by an optimization is a candidate for optimization
             - 'auto': let the local_opt set this parameter via its 'reentrant' attribute.
         :param failure_callback:
             a function that takes (exception, navigator, [(old, new),
             (old,new),...]) and we call it if there's an exception.
-              
+
             If the trouble is from local_opt.transform(), the new variables will be 'None'.
 
             If the trouble is from validation (the new types don't match for
@@ -896,7 +896,7 @@ class TopoOptimizer(NavigatorOptimizer):
             if node is not current_node:
                 try: q.remove(node)
                 except ValueError: pass
-        
+
         u = self.attach_updater(env, importer, pruner)
         try:
             while q:
@@ -920,7 +920,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
         if not hasattr(local_opt, 'op_key'):
             raise TypeError("LocalOptimizer for OpKeyOptimizer must have an 'op_key' method.")
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees, failure_callback)
-    
+
     def apply(self, env):
         op = self.local_opt.op_key()
         if isinstance(op, (list, tuple)):
@@ -961,19 +961,19 @@ from utils import D
 class ChangeTracker:
     def __init__(self):
         self.changed = False
-        
+
     def on_import(self, env, node):
         self.changed = True
-        
+
     def on_change_input(self, env, node, i, r, new_r):
         self.changed = True
 
     def reset(self):
         self.changed = False
-    
+
     def on_attach(self, env):
         env.change_tracker = self
-        
+
 class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
                  optimizers,
@@ -1026,7 +1026,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 gopt.apply(env)
             if env.change_tracker.changed:
                 changed = True
-                
+
             #apply local optimizer
             for node in start_from:
                 assert node in env.outputs
@@ -1041,7 +1041,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 if node is not current_node:
                     try: q.remove(node)
                     except ValueError: pass
-            
+
             u = self.attach_updater(env, importer, pruner)
             try:
                 while q:
@@ -1098,7 +1098,10 @@ def _check_chain(r, chain):
             r = r.owner.inputs[chain.pop()]
     #print 'check_chain', _check_chain.n_calls
     #_check_chain.n_calls += 1
-    return r
+
+    # The return value will be used as a Boolean, but some Variables cannot
+    # be used as Booleans (the results of comparisons, for instance)
+    return (r is not None)
 #_check_chain.n_calls = 0
 
 def check_chain(r, *chain):
@@ -1137,6 +1140,3 @@ class PureThenInplaceOptimizer(Optimizer):
         self.pure(env)
         env.extend(dh.DestroyHandler())
         self.inplace(env)
-
-
-

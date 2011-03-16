@@ -4,32 +4,50 @@
 How to make a release
 ==================================================
 
+Get a fresh copy of the repository
+==================================
+
 Clone the code::
 
-    ssh projects@pylearn.org
-    hg clone hg/Theano Theano-0.X
+    hg clone http://hg.assembla.com/theano Theano-0.X
+
+It does not have to be in your PYTHONPATH.
+
+Update the version number
+=========================
 
 Edit ``setup.py`` to contain the newest version number ::
 
     cd Theano-0.X
     vi setup.py     # Edit the MAJOR, MINOR, MICRO and SUFFIX
 
-The homepage must link to the download URL, for PyPI to correctly get the
-code.
-Edit ``doc/index.txt`` to contain a link to what will be the download URL::
-
-    vi doc/index.txt    # Edit the link to downloads/Theano-0.X.tar.gz
-
 ``conf.py`` in the ``doc/`` directory should be updated in the following ways:
 
  * Change the ``version`` and ``release`` variables to new version number.
  * Change the upper copyright year to the current year if necessary.
 
+``NEWS.txt`` usually contains the name and date of the release, change them
+too.
+
+Tag the release
+===============
+
+You will need to commit the previous changes, tag the resulting version, and
+push that into the original repository::
+
 Tag the release. The syntax is something like the following::
 
-    hg commit -m"setup.py modifications for 0.X release" setup.py
+    hg commit -m"modifications for 0.X release" setup.py doc/conf.py NEWS.txt
     hg tag 0.X
     hg push
+
+The documentation will be automatically regenerated in the next few hours.
+
+Generate and upload the package
+===============================
+
+On PyPI
+-------
 
 Now change ``ISRELEASED`` in setup.py to ``True``.
 
@@ -37,6 +55,56 @@ Finally, use setuptools to register and upload the release::
 
     python setup.py register sdist --formats=gztar,zip upload
 
-Change ``ISRELEASED`` back to ``False``. 
+This command register and uploads the package on pypi.python.org. To be able
+to do that, you must register on PyPI (you can create an new account, or use
+OpenID), and be listed among the "Package Index Owners" of Theano.
 
-Regenerate the documentation.
+On freshmeat
+------------
+
+Theano project page at freshmeat is `here <http://freshmeat.net/projects/theano>`__.
+The package itself is not uploaded to freshmeat, the only thing to update is
+the description and tags.
+
+ou can request the rights to add a release from an admin (for instance Fred),
+pointing them to `the "roles" page
+<http://freshmeat.net/projects/theano/roles>`__. Then, create a new release from
+`the "releases" page <http://freshmeat.net/projects/theano/releases>`__.
+
+On mloss.org
+------------
+
+Project page is at http://mloss.org/software/view/241/.
+Account jaberg is listed as submitter.
+
+1. log in as jaberg to mloss
+2. search for theano and click the logo
+3. press 'update this project' on the left and change
+  - the version number
+  - the download link
+  - the description of what has changed 
+4. press save
+
+Make sure the "what's changed" text isn't too long because it will show up on
+the front page of mloss.  You have to indent bullet lines by 4 spaces I think in
+the description.
+
+You can "update this project" and save lots of times to get the revision text
+right. Just do not change the version number.
+
+
+Finally
+-------
+
+Change ``ISRELEASED`` back to ``False``.
+
+Announce the release
+====================
+
+Generate an e-mail from the template in in ``EMAIL.txt``, including content
+from ``NEWS.txt``, and send it to the following mailing lists:
+
+* theano-users
+* theano-announce
+* numpy-discussion@scipy.org
+* scipy-user@scipy.org

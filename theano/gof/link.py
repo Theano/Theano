@@ -85,7 +85,7 @@ class Linker(object):
         of that env. If inplace is True, the calculations will operate in the
         same storage the env uses, else independent storage will be allocated
         for the function.
-        
+
         Example::
          e = x + y
          env = Env([x, y], [e])
@@ -114,13 +114,13 @@ class Linker(object):
         execute.thunk = thunk
         execute.inputs = inputs
         execute.outputs = outputs
-        
+
         return execute
 
 
 #TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
-    """This class joins a variable with its computed value. 
+    """This class joins a variable with its computed value.
     It is used in linkers, especially for the inputs and outputs of a Function.
     """
     def __init__(self, r, storage, readonly=False, strict=False,
@@ -146,7 +146,7 @@ class Container(object):
         else:
             self.type = r.type
         if name is None:
-          self.name = r.name
+            self.name = r.name
 
         self.storage = storage
         self.readonly = readonly
@@ -195,7 +195,7 @@ def map_storage(env, order, input_storage, output_storage):
 
     :rtype: 3-tuple
     :returns: (list of storage for inputs, list of storage for outputs, and the `storage_map`)
-    
+
 
     This function iterates over the nodes in `order` and ensures that for every
     input and output `Variable`, there is a unique storage container.  This is
@@ -258,22 +258,22 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
 
     :param no_recycling: storage elements that cannot be 'recycled' by repeatedly executing the
     program.  These storage elements are cleared before re-running.
-    
+
     :param profiler: deprecated
 
     :param nice_errors: run in such a way that the double-traceback is printed.  This costs a
     bit of performance in the inner python loop.
     """
-    if profiler is not None: 
+    if profiler is not None:
         raise NotImplementedError()
 
     if len(thunks) != len(order):
-        raise ValueError('Length of thunks and order must match', 
+        raise ValueError('Length of thunks and order must match',
                 (len(thunks), len(order)))
 
     if post_thunk_old_storage:
         if len(thunks) != len(post_thunk_old_storage):
-            raise ValueError('Length of thunks and post_thunk_old_storage must match', 
+            raise ValueError('Length of thunks and post_thunk_old_storage must match',
                     (len(thunks), len(post_thunk_old_storage)))
 
         def streamline_default_f():
@@ -319,10 +319,10 @@ class LocalLinker(Linker):
         return self.make_all(profiler = profiler,
                              input_storage = input_storage,
                              output_storage = output_storage)[:3]
-    
+
     def make_all(self, profiler, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
-        # 
+        #
         # This function should return a tuple of 5 things
         # 1. function to run the program
         # 2. input storage
@@ -338,7 +338,7 @@ def gc_helper(node_list):
     :rtype: a 2-tuple
     :returns: FIRST, the set of Variable instances which are computed by node_list, and SECOND a
     dictionary that maps each Variable instance to a the last node to use Variable as an input.
-    
+
     This is used to allow garbage collection within graphs.
     """
     #for freeing memory
@@ -350,7 +350,7 @@ def gc_helper(node_list):
         for output in node.outputs:
             computed.add(output)
     return computed, last_user
-        
+
 class PerformLinker(LocalLinker):
     """WRITEME
 
@@ -366,7 +366,7 @@ class PerformLinker(LocalLinker):
     def accept(self, env, no_recycling = []):
         """
         :param env: a PerformLinker can have accepted one Env instance at a time.
-        
+
         :param no_recycling: WRITEME
 
         :returns: self (TODO: WHY? Who calls this function?)
@@ -415,11 +415,11 @@ class PerformLinker(LocalLinker):
             thunks.append(thunk)
 
             if self.allow_gc:
-                post_thunk_old_storage.append([storage_map[input] 
+                post_thunk_old_storage.append([storage_map[input]
                     for input in node.inputs
                     if (input in computed) and (input not in env.outputs) and node == last_user[input]])
 
-        if no_recycling is True: 
+        if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
             # FunctionMaker always passes a list I think   -JB
             no_recycling = storage_map.values()
@@ -429,7 +429,7 @@ class PerformLinker(LocalLinker):
 
         # The function that actually runs your program is one of the f's in streamline.
         f = streamline(env, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
-  
+
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
 
@@ -490,12 +490,12 @@ class WrapLinker(Linker):
         @type env: gof.Env
         @param env: the env which we will link
 
-        @type no_recycling: a list of Variables that belong to env.  
+        @type no_recycling: a list of Variables that belong to env.
 
         @param no_recycling: If a Variable is in no_recycling, L{WrapLinker} will clear
         the output storage associated to it (for each linker in linkers) during
         the computation to avoid reusing it.
-        
+
         """
         if self.env is not None and self.env is not env:
             return type(self)(self.linkers, self.wrapper).accept(env, no_recycling)
@@ -562,5 +562,3 @@ def WrapLinkerMany(linkers, wrappers):
         for f in wrappers:
             f(*args)
     return WrapLinker(linkers, wrapper)
-
-

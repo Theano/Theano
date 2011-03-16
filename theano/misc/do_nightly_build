@@ -1,0 +1,34 @@
+#!/bin/bash
+#we set the compiledir to the /Tmp dir to make the test faster by bypassing the nfs network.
+date
+ROOT_CWD=/Tmp/nightly_build
+COMPILEDIR=/Tmp/lisa_theano_compile_dir_theano
+NOSETESTS=/usr/bin/nosetests
+
+echo "nb element in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+FLAGS=warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,compiledir=${COMPILEDIR}
+export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
+
+cd ${ROOT_CWD}
+echo "executing nosetests with mode=FAST_COMPILE"
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} Theano
+echo "nb element in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+echo "executing nosetests with mode=FAST_RUN"
+THEANO_FLAGS=${FLAGS},mode=FAST_RUN ${NOSETESTS} --with-coverage --cover-package=theano Theano
+echo "nb element in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+echo "executing nosetests with mode=FAST_RUN,floatX=float32"
+THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} Theano
+echo "nb element in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+
+#we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
+seed=$RANDOM
+echo "executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
+THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3 ${NOSETESTS} Theano
+
+echo "nb element in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+date

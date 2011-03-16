@@ -1,4 +1,4 @@
-"""Generate and compile C modules for Python, 
+"""Generate and compile C modules for Python,
 """
 import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, shutil, stat
 import distutils.sysconfig
@@ -220,8 +220,8 @@ class ModuleCache(object):
     will be deleted in an atexit() handler.
     If the ``version`` is neither 0 nor (), then the module will be kept in the cache between
     processes.
-    
-    
+
+
     An unversioned module is not deleted by the process that creates it.  Deleting such modules
     does not work on NFS filesystems because the tmpdir in which the library resides is in use
     until the end of the process' lifetime.  Instead, unversioned modules are left in their
@@ -234,7 +234,7 @@ class ModuleCache(object):
 
     module_from_name = {}
     """maps a module filename to the loaded module object"""
-    
+
     entry_from_key = {}
     """Maps keys to the filename of a .so/.pyd.
     """
@@ -262,7 +262,7 @@ class ModuleCache(object):
         self.entry_from_key = dict(self.entry_from_key)
         self.stats = [0, 0, 0]
         if force_fresh is not None:
-          self.force_fresh = force_fresh
+            self.force_fresh = force_fresh
         self.loaded_key_pkl = set()
 
         self.refresh()
@@ -294,6 +294,8 @@ class ModuleCache(object):
 
         Also, remove malformed cache directories.
         """
+        too_old_to_use = []
+
         compilelock.get_lock()
         try:
             # add entries that are not in the entry_from_key dictionary
@@ -316,11 +318,14 @@ class ModuleCache(object):
                     try:
                         entry = module_name_from_dir(root)
                     except ValueError: # there is a key but no dll!
-                        warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
+                        if not root.startswith("/tmp"):
+                            # Under /tmp, file are removed periodically by the os.
+                            # So it is normal that this happen from time to time.
+                            warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
                         info("Erasing broken cache directory", key_pkl)
                         shutil.rmtree(root)
                         continue
-                    if (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
+                    if (time_now - last_access_time(entry))<self.age_thresh_use:
                         debug('refresh adding', key_pkl)
                         try:
                             key = cPickle.load(open(key_pkl, 'rb'))
@@ -347,6 +352,9 @@ class ModuleCache(object):
                             # assert that we haven't already got this entry somehow
                             assert entry not in self.module_from_name
                             self.loaded_key_pkl.add(key_pkl)
+                    else:
+                        too_old_to_use.append(entry)
+
 
             # remove entries that are not in the filesystem
             items_copy = list(self.entry_from_key.iteritems())
@@ -359,7 +367,7 @@ class ModuleCache(object):
                     gone = True
                 if gone:
                     # assert that we didn't have one of the deleted files
-                    # loaded up and in use.  
+                    # loaded up and in use.
                     # If so, it should not have been deleted.  This should be considered a
                     # failure of the OTHER process, that deleted it.
                     if entry in self.module_from_name:
@@ -374,11 +382,16 @@ class ModuleCache(object):
                         # printing a warning, removing evidence that we ever saw this mystery
                         # key.
                         pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
-                        warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
+                        if not root.startswith("/tmp"):
+                            # Under /tmp, file are removed periodically by the os.
+                            # So it is normal that this happen from time to time.
+                            warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
                         self.loaded_key_pkl.remove(pkl_file_to_remove)
 
         finally:
             compilelock.release_lock()
+
+        return too_old_to_use
 
     def module_from_key(self, key, fn=None):
         """
@@ -478,24 +491,28 @@ class ModuleCache(object):
         seconds ago will be erased.
         """
         if age_thresh_del is None:
-          age_thresh_del = self.age_thresh_del
+            age_thresh_del = self.age_thresh_del
 
         compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
-            self.refresh() 
+            # and get all module that are too old to use.(not loaded in self.entry_from_key)
+            too_old_to_use = self.refresh()
+            too_old_to_use = [(None,entry) for entry in too_old_to_use]
             time_now = time.time()
+
             # the .items() is important here:
             # we need to get a copy of the whole list of keys and entries
             items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy: 
+            for key, entry in items_copy+too_old_to_use:
                 age = time_now - last_access_time(entry)
                 if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
                     # age_thresh_del are not currently in use by other processes, but that could be
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
-                    del self.entry_from_key[key]
+                    if key is not None:
+                        del self.entry_from_key[key]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     info("clear_old removing cache dir", parent)
@@ -516,7 +533,7 @@ class ModuleCache(object):
         filesystem.
         """
         items_copy = list(self.entry_from_key.iteritems())
-        for key, entry in items_copy: 
+        for key, entry in items_copy:
             version, rest = key
             if not version:
                 del self.entry_from_key[key]
@@ -525,13 +542,13 @@ class ModuleCache(object):
                 # because an unversioned entry should never have been loaded via refresh
                 assert entry in self.module_from_name
 
-                del self.module_from_name[entry] 
+                del self.module_from_name[entry]
 
                 parent = os.path.dirname(entry)
                 assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                 info("clear_unversioned removing cache dir", parent)
                 _rmtree(parent)
-                
+
         time_now = time.time()
         for filename in os.listdir(self.dirname):
             if filename.startswith('tmp'):
@@ -648,9 +665,9 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #TODO: Do not do the dlimport in this function
 
     if preargs is None:
-      preargs = []
+        preargs = []
     else:
-      preargs = list(preargs)
+        preargs = list(preargs)
 
     if sys.platform != 'win32':
         # Under Windows it looks like fPIC is useless. Compiler warning:
@@ -658,7 +675,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         preargs.append('-fPIC')
     no_opt = False
 
-    include_dirs = include_dirs + std_include_dirs() 
+    include_dirs = include_dirs + std_include_dirs()
     libs = std_libs() + libs
     lib_dirs = std_lib_dirs() + lib_dirs
     if sys.platform == 'win32':
@@ -674,7 +691,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         python_inc = distutils.sysconfig.get_python_inc()
         libname = os.path.basename(python_inc)
 
-    #DSE Patch 1 for supporting OSX frameworks; add -framework Python 
+    #DSE Patch 1 for supporting OSX frameworks; add -framework Python
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
         # link with the framework library *if specifically requested*
@@ -688,11 +705,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         preargs.extend(['-m%s' % n_bits])
         debug("OS X: compiling for %s bit architecture" % n_bits)
 
-    # sometimes, the linker cannot find -lpython so we need to tell it 
+    # sometimes, the linker cannot find -lpython so we need to tell it
     # explicitly where it is located
     # this returns somepath/lib/python2.x
     python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                    standard_lib=1) 
+                    standard_lib=1)
     python_lib = os.path.dirname(python_lib)
     if python_lib not in lib_dirs:
         lib_dirs.append(python_lib)
@@ -722,7 +739,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #print >> sys.stderr, config.gcc.cxxflags.split(' ')
     cmd.extend(cxxflags)
     cmd.extend('-I%s'%idir for idir in include_dirs)
-    cmd.extend(['-o',lib_filename]) 
+    cmd.extend(['-o',lib_filename])
     cmd.append(cppfilename)
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
@@ -747,4 +764,3 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
 def icc_module_compile_str(*args):
     raise NotImplementedError()
-
