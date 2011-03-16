@@ -727,8 +727,7 @@ class MRG_RandomStreams(object):
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
-    def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
-            n_unis=None):
+    def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64'):
         """
         Sample `n` (currently `n` needs to be 1) times from a multinomial
         distribution defined by probabilities pvals.
@@ -745,10 +744,15 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
         if n == 1 and pvals.ndim == 2:
-            unis = self.uniform(size=pvals.shape[0:1], ndim=1)
-            return cast(multinomial(pvals.T, unis).T, dtype)
+            ndim, size, bcast = raw_random._infer_ndim_bcast(
+                    ndim, size, n, pvals[:,0])
+            bcast = bcast+(pvals.type.broadcastable[-1],)
+            unis = self.uniform(size=size, ndim=1)
+            op = multinomial.Multinomial(dtype)
+            return op(pvals, unis)
         else:
-            raise NotImplementedError("MRG_RandomStreams.multinomial only implemented with n == 1 and pvals.ndim = 2")
+            raise NotImplementedError(("MRG_RandomStreams.multinomial only"
+                " implemented with n == 1 and pvals.ndim = 2"))
 
     def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
         """
