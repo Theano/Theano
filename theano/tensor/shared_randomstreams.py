@@ -86,7 +86,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
         simpler syntax ``item.rng.get_value()`` is also valid.
 
         """
-        return item.get_value()
+        return item.get_value(borrow=True)
 
     def __setitem__(self, item, val):
         """Set the numpy RandomState instance associated with a particular stream
@@ -102,7 +102,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
         simpler syntax ``item.rng.set_value(val)`` is also valid.
 
         """
-        item.set_value(val)
+        item.set_value(val, borrow=True)
 
     def gen(self, op, *args, **kwargs):
         """Create a new random stream in this container.
