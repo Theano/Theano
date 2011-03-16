@@ -1141,7 +1141,7 @@ def local_subtensor_merge(node):
             u_start = u.owner.op.idx_list[0].start
 
             if len(u.owner.inputs) == 1 and isinstance(u_start, int):
-                start0 = u_start
+                start0 = T.as_tensor_variable(u_start)
             elif (len(u.owner.inputs) == 2 and
                     isinstance (u_start, scalar.basic.Scalar)):
                 start0 = T.tensor_from_scalar(u.owner.inputs[1])
@@ -1178,7 +1178,7 @@ def local_subtensor_merge(node):
             ):
             idx = node.op.idx_list[0]
             if len(node.inputs) == 1 and isinstance(idx, int):
-                pass
+                idx = T.as_tensor_variable(idx)
             elif (len(node.inputs) == 2 and
                   isinstance (idx, scalar.basic.Scalar)):
                 idx = T.tensor_from_scalar(node.inputs[1])
@@ -1202,7 +1202,7 @@ def local_subtensor_merge(node):
             slice_idx = node.op.idx_list[0]
             idx = slice_idx.stop
             if len(node.inputs) == 1 and isinstance(idx, int):
-                pass
+                idx = T.as_tensor_variable(idx)
             elif (len(node.inputs) == 2 and
                   isinstance (idx, scalar.basic.Scalar)):
                 idx = T.tensor_from_scalar(node.inputs[1])
@@ -1227,8 +1227,12 @@ def local_subtensor_merge(node):
             idx2 = node.op.idx_list[0].stop
             if isinstance(idx1, scalar.basic.Scalar):
                 idx1 = T.tensor_from_scalar(u.owner.inputs[1])
+            elif isinstance(idx1, int):
+                idx1 = T.as_tensor_variable(idx1)
             if isinstance(idx2, scalar.basic.Scalar):
                 idx2 = T.tensor_from_scalar(node.inputs[1])
+            elif isinstance(idx2, int):
+                idx2 = T.as_tensor_variable(idx1)
 
             # The maximum is needed to don't have shape[0] - idx1 < 0
             idx2_neg = T.maximum(u.owner.inputs[0].shape[0]+idx1, 0)

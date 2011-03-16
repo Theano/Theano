@@ -138,6 +138,11 @@ def as_tensor_variable(x, name = None, ndim=None):
         except (TypeError, ValueError):
             pass
 
+    if isinstance(x, bool):
+        raise TypeError("Cannot cast True or False as a tensor variable. Please use 1 or 0. "
+                        "This error might be caused by using the == operator on Variables. "
+                        "v == w does not do what you think it does, use theano.tensor.eq(v, w) instead.")
+
     try:
         return constant(x, name=name, ndim=ndim)
     except TypeError:
@@ -3850,7 +3855,10 @@ class PermuteRowElements(Op):
     def make_node(self, x, y, inverse):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
-        inverse = as_tensor_variable(inverse)
+        if inverse: # as_tensor_variable does not accept booleans
+            inverse = as_tensor_variable(1)
+        else:
+            inverse = as_tensor_variable(0)
 
         # y should contain integers
         assert y.type.dtype.startswith('int') or y.type.dtype.startswith('uint')
