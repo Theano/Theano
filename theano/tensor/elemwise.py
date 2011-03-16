@@ -365,16 +365,6 @@ def _make_nfunc(name, nin, nout):
     f = getattr(numpy, name)
     return f
 
-    # if name.endswith("*"):
-    #     name = name[:-1]
-    #     f = getattr(numpy, name)
-    #     def fn(*args):
-    #         args[-1][:] = f(*(args[:-1]))
-    #     return fn
-    # else:
-    #     f = getattr(numpy, name)
-    #     return f
-
 
 ################
 ### Elemwise ###
@@ -416,6 +406,13 @@ class Elemwise(Op):
         * inplace_pattern: a dictionary that maps the index of an output to the
                            index of an input so the output is calculated inplace using
                            the input's storage. (Just like destroymap, but without the lists.)
+        * nfunc_spec: either None or a tuple of three elements, (nfunc_name, nin, nout) such
+                      that getattr(numpy, nfunc_name) implements this operation, takes nin
+                      inputs and nout **destination** outputs (nout == 0 if the numpy function
+                      does not provide the option of providing a numpy array to store the
+                      results in). Note that nin cannot always be inferred from the scalar op's
+                      own nin field because that value is sometimes 0 (meaning a variable number
+                      of inputs), whereas the numpy function may not have varargs.
         """
         self.name = name
         self.scalar_op = scalar_op
@@ -647,7 +644,14 @@ class Elemwise(Op):
         ufunc_args = inputs # + output_storage
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
-            nout = 1
+            nout = self.nfunc_spec[2]
+            if nout == 0:
+                nout = 1
+            # Unfortunately, the else case does not allow us to
+            # directly feed the destination arguments to the nfunc
+            # since it sometimes requires resizing. Doing this
+            # optimization is probably not worth the effort, since we
+            # should normally run the C version of the Op.
         else:
             # the second calling form is used because in certain versions of numpy
             # the first (faster) version leads to segfaults
@@ -661,7 +665,8 @@ class Elemwise(Op):
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
             raise
-        if nout == 1: variables = [variables]
+        if nout == 1:
+            variables = [variables]
         for variable, storage in zip(variables, output_storage):
             if hasattr(variable,'shape') and storage[0].shape != variable.shape:
                 storage[0].resize(variable.shape)

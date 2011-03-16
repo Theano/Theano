@@ -1337,7 +1337,16 @@ def _redefine_asRoutine(real_symbol_value):
     return decorator
 
 def _scal_elemwise_with_nfunc(nfunc, nin, nout):
-    """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
+    """
+    Replace a symbol definition with an elementwise version of the
+    corresponding scalar Op.  If it is not None, the nfunc argument
+    should be a string such that getattr(numpy, nfunc) implements
+    a vectorized version of the elemwise operation. nin is the number
+    of inputs expected by that function, and nout is the number of
+    **destination** inputs it takes. That is, the function should
+    take nin+nout inputs. nout == 0 means that the numpy function
+    does not take a numpy array argument to put its result in.
+    """
     def construct(symbol):
         symbolname = symbol.__name__
         inplace = symbolname.endswith('_inplace')
@@ -1350,10 +1359,12 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
         if inplace:
             scalar_op = getattr(scal, symbolname[:-len('_inplace')])
             inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-            rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n, nfunc_spec=((nfunc, nin, nout) if nfunc else None))
+            rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n,
+                                     nfunc_spec = nfunc and (nfunc, nin, nout))
         else:
             scalar_op = getattr(scal, symbolname)
-            rval = elemwise.Elemwise(scalar_op, name=n, nfunc_spec=((nfunc, nin, nout) if nfunc else None))
+            rval = elemwise.Elemwise(scalar_op, name=n,
+                                     nfunc_spec = nfunc and (nfunc, nin, nout))
 
         if getattr(symbol, '__doc__', False):
             rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
@@ -1992,9 +2003,6 @@ def round(a, mode="half_away_from_zero"):
         return round_half_to_even(a)
     else:
         raise Exception("round mode %s is not implemented."%mode)
-
-# def __round_half_to_even(a, dest):
-#     dest[:] = numpy.around(a)
 
 @_scal_elemwise_with_nfunc('around', 1, 0)
 def round_half_to_even(a):
