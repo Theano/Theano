@@ -10,6 +10,8 @@ Currently shape informations are used for 2 things in Theano:
 
 - When the exact shape is know, we use it to generate faster c code for the 2d convolution on the cpu and gpu.
 - To remove computation in the graph when we only want to know the shape.
+  This is done with the `Op.infer_shape <http://deeplearning.net/software/theano/extending/cop.html#Op.infer_shape>`_ method.
+
   ex:
 .. code-block:: python
 
