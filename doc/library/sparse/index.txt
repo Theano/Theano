@@ -17,24 +17,33 @@ This documentation is also not mature.
 The sparse module provides two kinds of sparse tensors are supported: CSC matrices and CSR matrices.
 Operations that are implemented:
 
-- conversion from sparse <-> dense
+grad?
+
+- conversion from sparse <-> dense 
+    - theano.sparse.{dense_from_sparse,dense_from_sparse}
+    - 
 
 - [un]packing of sparse matrices from indexlists and nonzero elements.
+    - packing: theano.sparse.{CRC,CSR}
+    - unpacking: theano.sparse.csm_properties
 
 - transpose
+    - theano.sparse.transpose
 
 - negation
+    - neg
 
-- sparse + sparse
+- addition/multiplication (elemwise)
+    - theano.sparse.{add,mul}
+    - sparse + sparse, sparse + dense, dense + sparse
+    - sparse * sparse, sparse * dense, dense * sparse
 
-- sparse + dense
-
-- sparse * sparse (elemwise)
-
-- sparse * dense
-
-- dot(sparse, dense) with gradient defined such that sparsity pattern is
-  constant.  This function is called "structured_dot"
+- StructuredDot
+    - with gradient defined such that sparsity pattern is
+      constant.  This function is called "structured_dot"
+    - theano.sparse.structured_dot and its grad (structured_dot_grad)
+    - theano.dot call it.
+    - dot(sparse, dense), dot(dense, sparse), dot(sparse, sparse)
 
 Subtensor selection (aka. square-bracket notation, aka indexing) is not implemented, but the
 CSR and CSC datastructures support effecient implementations.
