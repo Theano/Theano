@@ -555,7 +555,7 @@ def test_multinomial():
 
     sys.stdout.flush()
 
-    if mode!='FAST_COMPILE' and cuda_enabled:
+    if mode != 'FAST_COMPILE' and cuda_enabled:
         print ''
         print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
@@ -571,3 +571,4 @@ def test_multinomial():
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
         numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
+

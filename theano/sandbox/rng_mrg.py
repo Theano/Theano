@@ -755,7 +755,8 @@ class MRG_RandomStreams(object):
         pvals = as_tensor_variable(pvals)
         if n == 1 and pvals.ndim == 2:
             ndim, size, bcast = raw_random._infer_ndim_bcast(
-                    ndim, size, n, pvals[:,0])
+                    ndim, size, pvals[:,0])
+            assert ndim==1
             bcast = bcast+(pvals.type.broadcastable[-1],)
             unis = self.uniform(size=size, ndim=1)
             op = multinomial.Multinomial(dtype)
