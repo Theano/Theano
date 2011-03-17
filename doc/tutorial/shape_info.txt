@@ -1,0 +1,49 @@
+.. _shape_info:
+
+===========================================
+How shape information are handled by Theano
+===========================================
+
+It is not possible to enforce strict shape into a Theano variable. The given parameter of theano.function can change the shape any TheanoVariable in a graph.
+
+Currently shape informations are used for 2 things in Theano:
+
+- When the exact shape is know, we use it to generate faster c code for the 2d convolution on the cpu and gpu.
+- To remove computation in the graph when we only want to know the shape.
+  ex:
+.. code-block:: python
+
+   import theano
+   x = theano.tensor.matrix()
+   f = theano.function([x], (x**2).shape)
+   theano.printing.debugprint(f)
+   # MakeVector [@26301776] ''   2
+   #  |Shape_i{0} [@26321296] ''   1
+   #  | |<TensorType(float64, matrix)> [@26153424]
+   #  |Shape_i{1} [@26322512] ''   0
+   #  | |<TensorType(float64, matrix)> [@26153424]
+
+The output of this compiled function do not contain any multiplication or power. Theano have removed them to compute directly the shape of the output.
+
+
+Specifing exact shape
+=====================
+
+Currently this is not as easy as we want. We plan some upgrade, but this is the current state of what can be done.
+
+- You can pass the shape info directly to the `ConvOp` created when calling conv2d. You must add the parameter image_shape and filter_shape to that call. They but most be tuple of 4 elements. Ex: theano.tensor.nnet.conv2d(..., image_shape=(7,3,5,5), filter_shape=(2,3,4,4))
+- You can use the SpecifyShape op to add shape anywhere in the graph. This allow to do some optimization. In the following example, this allow to precompute the Theano function to a constant.
+
+.. code-block:: python
+
+   import theano
+   x = theano.tensor.matrix()
+   x_specify_shape = theano.tensor.specify_shape(x, (2,2))
+   f = theano.function([x], (x_specify_shape**2).shape)
+   theano.printing.debugprint(f)
+   # [2 2] [@72791376]
+
+Futur plan
+==========
+
+- Add the parameter constant shape to theano.shared(). This is probably the most frequent use case when we will use it. This will make the code simpler and we will be able to check that the shape don't change when we update the shared variable.
