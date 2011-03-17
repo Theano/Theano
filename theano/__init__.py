@@ -101,7 +101,7 @@ def dot(l, r):
         except Exception, e1:
             rval = NotImplemented
     if rval == NotImplemented:
-        raise NotImplementedError("Dot failed for the following reaons:", (e0, e1))
+        raise NotImplementedError("Dot failed for the following reasons:", (e0, e1))
     return rval
 
 
