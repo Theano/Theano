@@ -260,9 +260,9 @@ class TestConv3D(unittest.TestCase):
         self.W.set_value(
                 self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels),
                 borrow=True)
-        
+
         self.b.set_value(self.random_tensor(numFilters), borrow=True)
-        
+
         self.V.set_value(
                 self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels),
                 borrow=True)
@@ -277,7 +277,7 @@ class TestConv3D(unittest.TestCase):
         Hv = self.random_tensor( * H_shape )
 
         Vv = self.transp_func(Hv,[videoHeight,videoWidth,videoDur])
-        
+
         n = inputChannels * videoHeight * videoWidth * videoDur
         rbim = N.zeros((videoHeight,videoWidth,videoDur,inputChannels))
         for qi in xrange(0,inputChannels):
@@ -425,8 +425,8 @@ class TestConv3D(unittest.TestCase):
         self.randomize()
         Hv = self.H_func()
         H_shape = self.H_shape_func()
-        assert N.all(Hv.shape == H_shape) 
-            
+        assert N.all(Hv.shape == H_shape)
+
         gradients = self.gradientsFunc(self.V.get_value(borrow=True).shape[1:4])
         dCdWv = gradients[0]
         dCdW_shape = self.dCdW_shape_func(self.V.get_value(borrow=True).shape[1:4])
