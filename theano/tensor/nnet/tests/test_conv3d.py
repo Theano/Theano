@@ -32,7 +32,9 @@ class DummyConv3D:
         """
 
         self.V, self.W, self.b = VWbVals
-        self.dV, self.dW, self.db = shared(rng.uniform(-1,1,self.V.value.shape)), shared(rng.uniform(-1,1,self.W.value.shape)), shared(rng.uniform(-1,1,self.b.value.shape))
+        self.dV = shared(rng.uniform(-1,1,self.V.get_value(borrow=True).shape))
+        self.dW = shared(rng.uniform(-1,1,self.W.get_value(borrow=True).shape))
+        self.db = shared(rng.uniform(-1,1,self.b.get_value(borrow=True).shape))
 
         self.d = d
 
@@ -50,7 +52,8 @@ class DummyConvGrad3D:
         """
 
         self.V, self.dCdH = VdHvals
-        self.dV, self.ddCdH = shared(rng.uniform(-1,1,self.V.value.shape)), shared(rng.uniform(-1,1,self.dCdH.value.shape))
+        self.dV = shared(rng.uniform(-1,1,self.V.get_value(borrow=True).shape))
+        self.ddCdH = shared(rng.uniform(-1,1,self.dCdH.get_value(borrow=True).shape))
 
         self.d = d
         self.WShape = WShape
@@ -70,9 +73,9 @@ class DummyConvTransp3D:
         """
 
         self.W, self.b, self.H = WbHvals
-        self.dW = rng.uniform(-1,1,self.W.value.shape)
-        self.db = rng.uniform(-1,1,self.b.value.shape)
-        self.dH = rng.uniform(-1,1,self.H.value.shape)
+        self.dW = rng.uniform(-1,1,self.W.get_value(borrow=True).shape)
+        self.db = rng.uniform(-1,1,self.b.get_value(borrow=True).shape)
+        self.dH = rng.uniform(-1,1,self.H.get_value(borrow=True).shape)
         self.dW, self.db, self.dH = shared(self.dW), shared(self.db), shared(self.dH)
 
 
@@ -147,24 +150,28 @@ class TestConv3D(unittest.TestCase):
 
         numFilters = self.rng.randint(1,3)
         inputChannels = self.rng.randint(1,3)
-        self.d.value[0] = self.rng.randint(1,15)
-        self.d.value[1] = self.rng.randint(1,15)
-        self.d.value[2] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[0] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[1] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[2] = self.rng.randint(1,15)
 
-        outputHeight = int( (videoHeight - filterHeight) / self.d.value[0] )+1
-        outputWidth  = int( (videoWidth - filterWidth) / self.d.value[1] )+1
-        outputDur    = int( (videoDur - filterDur) / self.d.value[2] ) +1
+        outputHeight = int( (videoHeight - filterHeight) / self.d.get_value(borrow=True)[0] )+1
+        outputWidth  = int( (videoWidth - filterWidth) / self.d.get_value(borrow=True)[1] )+1
+        outputDur    = int( (videoDur - filterDur) / self.d.get_value(borrow=True)[2] ) +1
 
-        self.W.value  = self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels)
-        self.b.value  = self.random_tensor(numFilters)
-        self.rb.value = self.random_tensor(inputChannels)
+        self.W.set_value(
+                self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels),
+                borrow=True)
+        self.b.set_value(self.random_tensor(numFilters), borrow=True)
+        self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
-        self.V.value  = self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels)
-        self.rb.value = self.random_tensor(inputChannels)
+        self.V.set_value(
+                self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels),
+                borrow=True)
+        self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
     def test_c_against_python(self):
         self.randomize()
-        self.check_c_against_python(self.V.value.shape[1:4])
+        self.check_c_against_python(self.V.get_value(borrow=True).shape[1:4])
 
     def test_c_against_mat_mul(self):
         #Use a filter of the same size as the image, so the convolution is just a dense matrix multiply
@@ -181,17 +188,23 @@ class TestConv3D(unittest.TestCase):
         numFilters    = self.rng.randint(1,3)
         inputChannels = self.rng.randint(1,4)
 
-        self.d.value[0] = self.rng.randint(1,15)
-        self.d.value[1] = self.rng.randint(1,15)
-        self.d.value[2] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[0] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[1] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[2] = self.rng.randint(1,15)
 
 
-        self.W.value = self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels)
+        self.W.set_value(
+                self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels),
+                borrow=True)
 
-        self.W.value *= (self.W.value < 1e-5)
+        self.W.set_value(
+                self.W.get_value(borrow=True) * (self.W.get_value(borrow=True) < 1e-5),
+                borrow=True)
 
-        self.b.value = self.random_tensor(numFilters)
-        self.V.value = self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels)
+        self.b.set_value(self.random_tensor(numFilters), borrow=True)
+        self.V.set_value(
+                self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels),
+                borrow=True)
 
         Hv = self.H_func()
 
@@ -204,12 +217,12 @@ class TestConv3D(unittest.TestCase):
         V_mat = N.zeros((batchSize,n))
         Hv_mat = N.zeros((batchSize, numFilters))
         for qi in xrange(0,numFilters):
-            W_mat[:,qi] = self.W.value[qi,:,:,:,:].reshape((n))
+            W_mat[:,qi] = self.W.get_value(borrow=True)[qi,:,:,:,:].reshape((n))
             Hv_mat[:,qi] = Hv[:,0,0,0,qi]
         for qi in xrange(0,batchSize):
-            V_mat[qi,:] = self.V.value[qi,:,:,:,:].reshape((n))
+            V_mat[qi,:] = self.V.get_value(borrow=True)[qi,:,:,:,:].reshape((n))
 
-        H_mat = N.dot(V_mat,W_mat) + self.b.value
+        H_mat = N.dot(V_mat,W_mat) + self.b.get_value(borrow=True)
 
         tol = 1e-5
         if floatX == 'float32':
@@ -219,8 +232,8 @@ class TestConv3D(unittest.TestCase):
             print H_mat
             print Hv_mat
             print 'max error: '+str(N.abs(H_mat-Hv_mat).max())
-            W.value[W.value != 0] += 1.0
-            print 'min non-zero kernel mag: '+str(N.abs(W.value).min())
+            W.get_value(borrow=True)[W.get_value(borrow=True) != 0] += 1.0
+            print 'min non-zero kernel mag: '+str(N.abs(W.get_value(borrow=True)).min())
 
             assert False
 
@@ -238,18 +251,22 @@ class TestConv3D(unittest.TestCase):
         filterDur = videoDur
         numFilters = self.rng.randint(1,15)
         inputChannels = self.rng.randint(1,15)
-        self.d.value[0] = self.rng.randint(1,15)
-        self.d.value[1] = self.rng.randint(1,15)
-        self.d.value[2] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[0] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[1] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[2] = self.rng.randint(1,15)
 
 
 
-        self.W.value = self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels)
+        self.W.set_value(
+                self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels),
+                borrow=True)
         
-        self.b.value = self.random_tensor(numFilters)
+        self.b.set_value(self.random_tensor(numFilters), borrow=True)
         
-        self.V.value = self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels)
-        self.rb.value = self.random_tensor(inputChannels)
+        self.V.set_value(
+                self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels),
+                borrow=True)
+        self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
         H_shape = self.H_shape_func()
 
@@ -264,13 +281,13 @@ class TestConv3D(unittest.TestCase):
         n = inputChannels * videoHeight * videoWidth * videoDur
         rbim = N.zeros((videoHeight,videoWidth,videoDur,inputChannels))
         for qi in xrange(0,inputChannels):
-            rbim[:,:,:,qi] = self.rb.value[qi]
+            rbim[:,:,:,qi] = self.rb.get_value(borrow=True)[qi]
         rbv = rbim.reshape((n))
         W_mat = N.zeros((numFilters, n))
         Vv_mat = N.zeros((n, batchSize))
         Hv_mat = N.zeros((numFilters,batchSize))
         for qi in xrange(0,numFilters):
-            W_mat[qi,:] = self.W.value[qi,:,:,:,:].reshape((n))
+            W_mat[qi,:] = self.W.get_value(borrow=True)[qi,:,:,:,:].reshape((n))
             Hv_mat[qi,:] = Hv[:,0,0,0,qi]
         for qi in xrange(0,batchSize):
             Vv_mat[:,qi] = Vv[qi,:,:,:,:].reshape((n))
@@ -296,13 +313,13 @@ class TestConv3D(unittest.TestCase):
         filterHeight = self.rng.randint(1,8)
         filterDur    = self.rng.randint(1,8)
 
-        self.d.value[0]   = self.rng.randint(1,3)
-        self.d.value[1]   = self.rng.randint(1,3)
-        self.d.value[2]   = self.rng.randint(1,3)
+        self.d.get_value(borrow=True, return_internal_type=True)[0] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[1] = self.rng.randint(1,15)
+        self.d.get_value(borrow=True, return_internal_type=True)[2] = self.rng.randint(1,15)
 
-        dr = self.d.value[0]
-        dc = self.d.value[1]
-        dt = self.d.value[2]
+        dr = self.d.get_value(borrow=True)[0]
+        dc = self.d.get_value(borrow=True)[1]
+        dt = self.d.get_value(borrow=True)[2]
 
 
         numFilters = self.rng.randint(1,3)
@@ -319,11 +336,15 @@ class TestConv3D(unittest.TestCase):
 
         inputChannels = self.rng.randint(1,15)
 
-        self.W.value = self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels)
-        self.b.value = self.random_tensor(numFilters)
+        self.W.set_value(
+                self.random_tensor(numFilters,filterHeight,filterWidth,filterDur,inputChannels),
+                borrow=True)
+        self.b.set_value(self.random_tensor(numFilters), borrow=True)
         #just needed so H_shape works
-        self.V.value = self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels)
-        self.rb.value = self.random_tensor(inputChannels)
+        self.V.set_value(
+                self.random_tensor(batchSize,videoHeight,videoWidth,videoDur,inputChannels),
+                borrow=True)
+        self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
         H_shape = self.H_shape_func()
 
@@ -357,7 +378,7 @@ class TestConv3D(unittest.TestCase):
         n = inputChannels * videoHeight * videoWidth * videoDur
         rbim = N.zeros((videoHeight,videoWidth,videoDur,inputChannels))
         for qi in xrange(0,inputChannels):
-            rbim[:,:,:,qi] = self.rb.value[qi]
+            rbim[:,:,:,qi] = self.rb.get_value(borrow=True)[qi]
         rbv = rbim.reshape((n))
 
         W_mat = N.zeros((hn,n))
@@ -369,9 +390,13 @@ class TestConv3D(unittest.TestCase):
             ci = c[qi]
             ti = t[qi]
 
-            placed_filter = N.zeros(self.V.value.shape[1:])
+            placed_filter = N.zeros(self.V.get_value(borrow=True).shape[1:])
 
-            placed_filter[ri*dr:ri*dr+self.W.value.shape[1],ci*dc:ci*dc+self.W.value.shape[2],ti*dt:ti*dt+self.W.value.shape[3],:] = self.W.value[hi,:,:,:,:]
+            placed_filter[
+                    ri*dr:ri*dr+self.W.get_value(borrow=True).shape[1],
+                    ci*dc:ci*dc+self.W.get_value(borrow=True).shape[2],
+                    ti*dt:ti*dt+self.W.get_value(borrow=True).shape[3],
+                    :] = self.W.get_value(borrow=True)[hi,:,:,:,:]
 
             W_mat[qi,:] = placed_filter.reshape((n))
             Hv_mat[qi,:] = Hv[:,ri,ci,ti,hi]
@@ -402,14 +427,14 @@ class TestConv3D(unittest.TestCase):
         H_shape = self.H_shape_func()
         assert N.all(Hv.shape == H_shape) 
             
-        gradients = self.gradientsFunc(self.V.value.shape[1:4])
+        gradients = self.gradientsFunc(self.V.get_value(borrow=True).shape[1:4])
         dCdWv = gradients[0]
-        dCdW_shape = self.dCdW_shape_func(self.V.value.shape[1:4])
+        dCdW_shape = self.dCdW_shape_func(self.V.get_value(borrow=True).shape[1:4])
 
         assert N.all(dCdWv.shape == dCdW_shape)
 
-        Rv = self.R_func(self.V.value.shape[1:4])
-        R_shape = self.R_shape_func(self.V.value.shape[1:4])
+        Rv = self.R_func(self.V.get_value(borrow=True).shape[1:4])
+        R_shape = self.R_shape_func(self.V.get_value(borrow=True).shape[1:4])
 
         assert N.all(Rv.shape == R_shape)
 
@@ -420,5 +445,5 @@ class TestConv3D(unittest.TestCase):
         dCdH = shared(self.random_tensor( *self.H_shape_func() ))
         testsPerDir = 2
         theano.tests.unittest_tools.verify_grad(DummyConv3D(rng, (V,W,b), d), [0.0], n_tests=testsPerDir)
-        theano.tests.unittest_tools.verify_grad(DummyConvTransp3D(rng, (W,rb,dCdH), d,V.value.shape[1:4]), [0.0], n_tests=testsPerDir)
-        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V,dCdH), d, W.value.shape), [0.0], n_tests=testsPerDir)
+        theano.tests.unittest_tools.verify_grad(DummyConvTransp3D(rng, (W,rb,dCdH), d,V.get_value(borrow=True).shape[1:4]), [0.0], n_tests=testsPerDir)
+        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V,dCdH), d, W.get_value(borrow=True).shape), [0.0], n_tests=testsPerDir)
