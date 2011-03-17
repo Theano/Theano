@@ -172,6 +172,7 @@ import theano and print the config variable, as in:
     Default: 'c|py'
 
     When the mode is Mode, it sets the default linker used.
+    See :ref:`using_modes` for a comparison of the different linkers.
 
 .. attribute:: optimizer
 

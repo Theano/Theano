@@ -36,29 +36,33 @@ DEBUG_MODE        ``compile.debugmode.DebugMode()``                             
 PROFILE_MODE      ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
-Mode detail
-===========
+Linkers
+=======
 
-A mode is composed of 2 thinks: an optimizer and a linker. Some mode like PROFILE_MODE and DEBUG_MODE add logic around the optimizer and linker.PROFILE_MODE and DEBUG_MODE use there own linker.
+A mode is composed of 2 things: an optimizer and a linker. Some modes,
+like PROFILE_MODE and DEBUG_MODE, add logic around the optimizer and
+linker. PROFILE_MODE and DEBUG_MODE use their own linker.
 
-You can select witch linker to use with the Theano flag linker. Here is a table to compare the different linker.
+You can select witch linker to use with the Theano flag :attr:`config.linker`.
+Here is a table to compare the different linkers.
 
 =============  =========  =================  =========  ===
 linker         gc [#gc]_  Raise error by op  Overhead   Definition
 =============  =========  =================  =========  ===
 c|py [#cpy1]_  yes        yes                "+++"      Try c code. If none exist for an op, use python
-c|py_nogc      no         yes                "++"       As c|py but don't gc
-c              no         yes                "+"        Use only c code(if none available for an op, raise an error)
+c|py_nogc      no         yes                "++"       As c|py, but without gc
+c              no         yes                "+"        Use only c code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only python code
-c&py [#cpy2]_  no         yes                "+++++"     Use c and python code
+c&py [#cpy2]_  no         yes                "+++++"    Use c and python code
 ProfileMode    no         no                 "++++"     Compute some extra profiling info
-DebugMode      no         yes                VERY HIGH  Make many check on what Theano compute.
+DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===
 
 
-.. [#gc] Garbadge collection of intermediate result during computation.
-         Otherwise they the memory space is keep between Theano function call
-         To don't reallocate memory and lower the overhead(make it faster...)
+.. [#gc] Garbage collection of intermediate results during computation.
+         Otherwise, their memory space used by the ops is kept between
+         Theano function calls, in order not to
+         reallocate memory, and lower the overhead (make it faster...)
 .. [#cpy1] default
 .. [#cpy2] Deprecated
 
