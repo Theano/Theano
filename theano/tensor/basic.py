@@ -3660,6 +3660,8 @@ class Flatten(Op):
         return type(self) == type(other) and self.outdim == other.outdim
     def __hash__(self):
         return hashtype(self)^hash(self.outdim)
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.outdim)
     def make_node(self, x):
         t_x = as_tensor_variable(x)
         if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
