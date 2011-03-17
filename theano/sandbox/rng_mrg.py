@@ -262,7 +262,8 @@ class mrg_uniform(mrg_uniform_base):
         }
         if (%(size)s->dimensions[0] != %(ndim)s)
         {
-            PyErr_Format(PyExc_ValueError, "size must have length %%i", %(ndim)s);
+            PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
+                %(ndim)s, %(size)s->dimensions[0]);
             %(fail)s
         }
         if (%(size)s->descr->type_num != PyArray_INT32)
@@ -501,7 +502,8 @@ class GPU_mrg_uniform(mrg_uniform_base):
         }
         if (%(size)s->dimensions[0] != %(ndim)s)
         {
-            PyErr_Format(PyExc_ValueError, "size must have length %%i", %(ndim)s);
+            PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
+                %(ndim)s, %(size)s->dimensions[0]);
             %(fail)s
         }
         if (%(size)s->descr->type_num != PyArray_INT32)
