@@ -1232,7 +1232,7 @@ def local_subtensor_merge(node):
             if isinstance(idx2, scalar.basic.Scalar):
                 idx2 = T.tensor_from_scalar(node.inputs[1])
             elif isinstance(idx2, int):
-                idx2 = T.as_tensor_variable(idx1)
+                idx2 = T.as_tensor_variable(idx2)
 
             # The maximum is needed to don't have shape[0] - idx1 < 0
             idx2_neg = T.maximum(u.owner.inputs[0].shape[0]+idx1, 0)
