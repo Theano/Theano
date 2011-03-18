@@ -1089,6 +1089,21 @@ def local_upcast_elemwise_constant_inputs(node):
 ##################
 
 @register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Subtensor])
+def local_useless_subtensor(node):
+    """
+    Remove Subtensor if it take the full input
+    """
+    if (isinstance(node.op, T.Subtensor) and
+        all([isinstance(idx, slice) and
+             idx.start in [0, None] and
+             idx.stop in [sys.maxint, None]
+             and idx.step in [1, None] for idx in node.op.idx_list])):
+        x = node.inputs[0]
+        return [x]
+
+@register_canonicalize
 @gof.local_optimizer([])
 def local_subtensor_lift(node):
     """

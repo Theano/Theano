@@ -1145,6 +1145,15 @@ def test_log_add():
 
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
+def test_local_useless_subtensor():
+    x = TT.matrix('x')
+    f = function([x], TT.exp(x)[0:], mode=mode_opt)
+
+    prog=f.maker.env.toposort()
+    assert prog[0].op == TT.exp
+    assert len(prog)==1
+    f([[0,1],[2,3]]) # let debugmode test something
+
 class test_local_subtensor_lift(unittest.TestCase):
 
     def test0(self):
