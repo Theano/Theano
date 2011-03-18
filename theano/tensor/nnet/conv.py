@@ -956,11 +956,11 @@ using namespace std;
             d["dim_zz_const"]=""
             d["dim_zz_affect"]="""
   if (mode == FULL) {
-    dim_zz[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s));
-    dim_zz[1] = (int)ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));
+    dim_zz[0] = (int)ceil((dim_im[0]+dim_ker0-1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]+dim_ker1-1)/float(%(self_dy)s));
   } else {
-    dim_zz[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s));
-    dim_zz[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));
+    dim_zz[0] = (int)ceil((dim_im[0]-dim_ker0+1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]-dim_ker1+1)/float(%(self_dy)s));
   }
 """% d
 
@@ -1258,7 +1258,8 @@ int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
 npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
 npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+const npy_intp dim_ker0=%(self_kshp0)s;
+const npy_intp dim_ker1=%(self_kshp1)s;
 
 PyArray_Dims img2d_shape;
 npy_intp img2d_dim[4]={1,1,0,0};
@@ -1354,8 +1355,8 @@ if ((!%(z)s)
 }
 
 int Os[2];
-Os[0] = dim_im[0]-dim_ker[0]+1;
-Os[1] = dim_im[1]-dim_ker[1]+1;
+Os[0] = dim_im[0]-dim_ker0+1;
+Os[1] = dim_im[1]-dim_ker1+1;
 
 // allocate a temporary buffer for storing the inner product of each nth kernel row
 // with each row of an image
@@ -1504,7 +1505,8 @@ int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
 npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
 npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+const npy_intp dim_ker0=%(self_kshp0)s;
+const npy_intp dim_ker1=%(self_kshp1)s;
 
 PyArray_Dims img2d_shape;
 npy_intp img2d_dim[4]={1,1,0,0};
@@ -1650,7 +1652,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
         // Reposition index into input image based on requested output size
         int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
         if (mode == FULL) new_m = pos_m ;
-        else new_m = (pos_m+dim_ker[0]-1);
+        else new_m = (pos_m+dim_ker0-1);
 
         for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
           int pos_n=iter_n*%(self_dy)s;
@@ -1660,16 +1662,16 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
           // Sum over kernel, if index into image is out of bounds
           // fill with the value
-          for (int j=0; j < dim_ker[0]; j++) {
+          for (int j=0; j < dim_ker0; j++) {
             int ind0 = (new_m-j);
 
             if(mode==FULL){
 """%d
-    ret+=my_dup("const %(type)s * idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
+    ret+=my_dup("const %(type)s * idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];",unroll_ksize)
     ret+="""
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
-                  for (int k=0; k < dim_ker[1]; k++) {
+                  for (int k=0; k < dim_ker1; k++) {
 """%d
     ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
     ret+="""
@@ -1688,7 +1690,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
                 }else {k=max_k;}
 
                 //do the part where the kernel is on the img
-                max_k=min(pos_n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker1);
 """%d
     ret+=my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
     ret+="""
@@ -1700,7 +1702,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
-                  for(;k<dim_ker[1];k++){
+                  for(;k<dim_ker1;k++){
 """%d
     ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
     ret+="""
@@ -1709,11 +1711,11 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
             }else{//valid mode
 """%d
     ret+=my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
-    ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
+    ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];",unroll_ksize)
     ret+="""
-              int new_n = (pos_n+dim_ker[1]-1);
+              int new_n = (pos_n+dim_ker1-1);
 
-              for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
+              for (int k=0,last=new_n; k < dim_ker1; k++,last--) {
 """%d
     ret+=my_dup2("sum%(unroll_iter)s+=idx_hvals%(unroll_kiter)s[k]*idx_in%(unroll_biter)s[last];")
     ret+="""
