@@ -2619,6 +2619,9 @@ def get_canonical_form_slice(theslice, length):
 
    the function will return the canonical form and either None or [::-1]
    depending if the result of the canonical form needs to be reversed
+
+   We currently don't canonicalize variable step. We we still return an
+   equivalent slice, so no bug introduced.
    '''
 
     def extract_constant(x):
@@ -2652,44 +2655,32 @@ def get_canonical_form_slice(theslice, length):
         if step == 1:
             step = None
 
-        if type(step) is int and step < 0 :
-            if stop is not None:
-                nw_start = switch(lt(stop,0), stop+length, stop)
-                # safety guards .. this will make the graph so much more
-                # annoying :(
-                nw_start = switch(lt(nw_start,0), 0, nw_start)
-            else:
-                nw_start = None
-            if start is not None:
-                nw_stop  = switch(lt(start,0), start+length, start)
-                # safety guards .. this will make the graph so much more
-                # annoying :(
-                nw_stop = switch(lt(nw_stop, 0), 0, nw_stop)
-            else:
-                nw_stop = None
-
-            nw_step  = abs(step)
-            nw_slice  = slice(nw_start,nw_stop, nw_step)
-            return nw_slice, slice(None,None,-1)
+        if start is not None:
+            nw_start = switch(lt(start,0),start+length, start)
+            # safety guards .. this will make the graph so much more
+            # annoying :(
+            nw_start = switch(lt(nw_start,0), 0, nw_start)
         else:
-            if start is not None:
-                nw_start = switch(lt(start,0),start+length, start)
-                # safety guards .. this will make the graph so much more
-                # annoying :(
-                nw_start = switch(lt(nw_start,0), 0, nw_start)
-            else:
-                nw_start = None
-            if stop is not None:
-                nw_stop  = switch(lt(stop,0),stop + length,stop)
-                # safety guards .. this will make the graph so much more
-                # annoying :(
-                nw_stop = switch(lt(nw_stop,0), 0, nw_stop)
-            else:
-                nw_stop = None
+            nw_start = None
+        if stop is not None:
+            nw_stop  = switch(lt(stop,0),stop + length,stop)
+            # safety guards .. this will make the graph so much more
+            # annoying :(
+            nw_stop = switch(lt(nw_stop,0), 0, nw_stop)
+        else:
+            nw_stop = None
+        nw_step  = step
 
-            nw_step  = step
-            nw_slice  = slice(nw_start,nw_stop, nw_step)
-            return nw_slice, None
+        # When the step is constant and negative
+        # we make it positive.
+        # We do not for now canonicalize variable step
+        if type(step) is int and step < 0 :
+            nw_start, nw_stop = nw_stop, nw_start
+            nw_step  = abs(step)
+
+        nw_slice  = slice(nw_start,nw_stop, nw_step)
+        return nw_slice, None
+
     else:
         value = extract_constant(theslice)
         value = switch(lt(value,0), value+length, value)
