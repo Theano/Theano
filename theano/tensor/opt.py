@@ -2824,10 +2824,21 @@ register_canonicalize(constant_folding, 'fast_compile')
 register_stabilize(constant_folding) # because
 register_specialize(constant_folding)
 
-
+## dot(x,y).T -> dot(y.T, x.T)
 inplace_matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=True)
-local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y')),
-        (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))
+matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=False)
+# The transformation should be apply whether or not the transpose is inplace.
+# The newly-introduced transpositions are not inplace, this will be taken care
+# of in a later optimization phase.
+# First optimization: inplace
+local_transposed_dot_inplace = gof.PatternSub(
+        (inplace_matrix_transpose, (T.dot, 'x', 'y')),
+        (T.dot, (matrix_transpose, 'y'), (matrix_transpose, 'x')))
+register_canonicalize(local_transposed_dot_inplace, name='local_transposed_dot_inplace')
+# Second optimization: not inplace
+local_transposed_dot = gof.PatternSub(
+        (matrix_transpose, (T.dot, 'x', 'y')),
+        (T.dot, (matrix_transpose, 'y'), (matrix_transpose, 'x')))
 register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 
 def _is_1(expr):
