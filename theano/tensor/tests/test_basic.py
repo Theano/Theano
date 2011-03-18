@@ -1689,6 +1689,18 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(isinstance(topo_[0].op, self.adv_sub1))
         self.assertRaises(IndexError, f)
 
+    def test_shape_i(self):
+        data = self.shared(numpy.zeros((50,50,50,50),dtype ='int32'))
+        for slices in [ (slice(2,10,2),slice(None,None,None),slice(None,None,-1)),
+                        (slice(-5,10,1),slice(10,2,-1),slice(4,None,None)),
+                        (slice(3,-10,1),slice(10,15,8)) ]:
+            sliced_data = data[slices]
+            f = function([], sliced_data.shape )
+            assert numpy.all(f() == data.get_value()[slices].shape)
+            assert theano.tensor.Subtensor not in [ x.op for x in
+                                                   f.maker.env.toposort() ]
+
+
     def grad_list_(self, idxs, data):
         n = self.shared(data)
 
