@@ -1,7 +1,7 @@
 import unittest
 import theano
 import theano.tensor as T
-from theano import function, Mode
+from theano import function
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet.ConvTransp3D import convTransp3D
 from theano.tensor.nnet.ConvGrad3D import convGrad3D
@@ -13,6 +13,10 @@ from theano import shared
 
 floatX = theano.config.floatX
 
+#TODO: each individual test method should seed rng with utt.fetch_seed()
+#      as it is right now, setUp does the seeding, so if you run just
+#      a subset of the tests they will do different things than if you
+#      run all of them
 
 class DummyConv3D:
     """A dummy version of Conv3D passed to verify_grad
