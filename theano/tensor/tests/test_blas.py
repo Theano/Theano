@@ -1,23 +1,25 @@
-from nose.plugins.skip import SkipTest
-import traceback
+#from nose.plugins.skip import SkipTest
+#import traceback
 import theano.tensor as T
-from theano.gof import Env
+#from theano.gof import Env
 from theano.printing import pp
 
 import numpy, theano
-from numpy.testing import dec
-from numpy.testing.noseclasses import KnownFailureTest
+#from numpy.testing import dec
+#from numpy.testing.noseclasses import KnownFailureTest
 
-from theano.tensor.blas import *
+#from theano.tensor.blas import *
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar, _is_real_matrix,
-        _gemm_canonicalize, _factor_canonicalized)
+        _gemm_canonicalize, _factor_canonicalized, Gemm, Gemv, gemm_inplace, gemm_no_inplace,
+        InconsistencyError)
 from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy
 
 from theano import Param, shared, config
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
-        compile, constant, inplace, eval_outputs)
+        compile, inplace)
+        #, constant, eval_outputs)
 
 if config.mode == 'FAST_COMPILE':
     mode_not_fast_compile = 'FAST_RUN'
