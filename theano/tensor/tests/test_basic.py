@@ -1690,15 +1690,28 @@ class T_subtensor(unittest.TestCase):
         self.assertRaises(IndexError, f)
 
     def test_shape_i(self):
-        data = self.shared(numpy.zeros((50,50,50,50),dtype ='int32'))
-        for slices in [ (slice(2,10,2),slice(None,None,None),slice(None,None,-1)),
-                        (slice(-5,10,1),slice(10,2,-1),slice(4,None,None)),
-                        (slice(3,-10,1),slice(10,15,8)) ]:
-            sliced_data = data[slices]
-            f = function([], sliced_data.shape )
-            assert numpy.all(f() == data.get_value()[slices].shape)
+        # Each axis is treated independently by shape_i/shape operators
+
+        mode_opt = config.mode
+        if mode_opt == 'FAST_COMPILE':
+            mode_opt = 'FAST_RUN'
+        mode_opt = compile.mode.get_mode(mode_opt)
+
+        data = self.shared(numpy.zeros((5,),dtype ='int32'))
+        for start in [None]+ [-8,-5,-4,-1,0,1,4,5,8]:
+            outs   = []
+            shapes = []
+            for stop in [None] + [-8,-5,-4,-1,0,1,4,5,8]:
+                for step in [None]+[-3,-1,2]:
+                    outs += [ data[start:stop:step].shape ]
+                    shapes += [data.get_value()[start:stop:step].shape ]
+            f = function([], outs, mode = mode_opt)
+            t_shapes = f()
+            for t_shape, shape in zip(t_shapes,shapes):
+                assert numpy.all(t_shape == shape)
             assert theano.tensor.Subtensor not in [ x.op for x in
-                                                   f.maker.env.toposort() ]
+                                           f.maker.env.toposort() ]
+
 
 
     def grad_list_(self, idxs, data):
