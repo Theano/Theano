@@ -1095,13 +1095,22 @@ def local_useless_subtensor(node):
     """
     Remove Subtensor if it take the full input
     """
-    if (isinstance(node.op, T.Subtensor) and
-        all([isinstance(idx, slice) and
-             idx.start in [0, None] and
-             idx.stop in [sys.maxint, None]
-             and idx.step in [1, None] for idx in node.op.idx_list])):
-        x = node.inputs[0]
-        return [x]
+    shape_of = node.env.shape_feature.shape_of
+    if isinstance(node.op, T.Subtensor):
+        for pos, idx in enumerate(node.op.idx_list):
+            try:
+                length_pos = shape_i(node.inputs[0])[pos]
+            except:
+                length_pos = None
+            if ( isinstance(idx,slice) and
+                idx.start in [0,None] and
+                idx.step in [1,None] and
+                idx.stop in [sys.maxint, None, length_pos]):
+                pass
+            else:
+                return False
+        return [node.inputs[0]]
+
 
 @register_canonicalize
 @gof.local_optimizer([])
