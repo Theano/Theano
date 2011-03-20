@@ -1158,140 +1158,96 @@ def local_subtensor_lift(node):
 @gof.local_optimizer([])
 def local_subtensor_merge(node):
     """
-    1) var[int:][-1] -> var[-1] # a little different for when the first subtensor is empty.
-    2) var[::-1][int] -> var[-int-1]
-    3) var[::-1][:int] -> var[:-int-1:-1]
-    4) var[int1::][:int2] ->
-        var[int1:int2 + switch(int2<0,
-                               0,
-                               switch(int1>=0,
-                                      int1,
-                                      maximum(u.owner.inputs[0].shape[0]+int1,
-                                              0))]
+    Refractored optimization to deal with all cases  of tensor merging.
+    Given a subgraph of the form Subtensor(Subtensor(u)), the optimization
+    expresses all slices in a canonical form, and then merges them together.
     """
-    if (isinstance(node.op, T.Subtensor) and
-        len(node.op.idx_list)==1):
 
+    if isinstance(node.op, T.Subtensor):
         u = node.inputs[0]
-        if (not u.owner or len(u.clients) > 1 or
-            not isinstance(u.owner.op, T.Subtensor)):
-            return False
+        if u.owner and isinstance( u.owner.op, T.Subtensor):
+            # We can merge :)
+            # x actual tensor on which we are picking slices
+            x = u.owner.inputs[0]
+            # slices of the first applied subtensor
+            sl1 = T.get_idx_list(u.owner.inputs, u.owner.op.idx_list)
+            sl2 = T.get_idx_list(node.inputs   , node.op.idx_list   )
+            # Get the shapes of the vectors !
+            try:
+                # try not to introduce new shape into the graph
+                xshape = node.env.shape_feature.shape_of[x]
+                ushape = node.env.shape_feature.shape_of[u]
+            except:
+                xhsape = x.shape
+                ushape = u.shape
 
-        # var[int:][-1] -> var[-1]
-        if (len(node.inputs)==1 and
-            node.op.idx_list[0]==-1 and
-            len(u.owner.op.idx_list)==1 and
-            isinstance(u.owner.op.idx_list[0], slice) and
-            u.owner.op.idx_list[0].stop is None and
-            u.owner.op.idx_list[0].step is None
-            ):
-            u_start = u.owner.op.idx_list[0].start
+            # convert each list of slices into canonical forms
+            cnf1 = [ T.get_canonical_form_slice(x,xshape[i]) for (i,x) in
+                    enumerate(sl1) ]
+            cnf2 = [ T.get_canonical_form_slice(x,ushape[i]) for (i,x) in
+                    enumerate(sl2) ]
 
-            if len(u.owner.inputs) == 1 and isinstance(u_start, int):
-                start0 = T.as_tensor_variable(u_start)
-            elif (len(u.owner.inputs) == 2 and
-                    isinstance (u_start, scalar.basic.Scalar)):
-                start0 = T.tensor_from_scalar(u.owner.inputs[1])
-            else:
-                return False
+            # Some helpful utility functions :
+            def safe_prod(x,y):
+                if x is None:
+                    return y
+                if y is None:
+                    return x
+                return x*y
 
-            len0 = u.owner.inputs[0].shape[0]
-            # The following is equivalent to:
-            # if start0 <= -u.shape[0]:
-            #     actual_start0 = 0
-            # elif start0 < 0:
-            #     actual_start0 = start0 + u.shape[0]
-            # else:
-            #     actual_start0 = start0
-            actual_start0 = (start0 > -len0) * (start0 + ((start0 < 0) * len0))
+            merged_cnf = []
+            pos_cnf2   = 0
+            for idx,(sl, reverse) in enumerate(cnf1):
+                if type(sl) is not slice:
+                    merged_cnf += [ (sl, reverse) ]
+                elif type(cnf2[pos_cnf2][0]) is not slice:
+                    xlen = xshape[idx]
+                    ulen = ushape[idx]
+                    udx  = cnf2[pos_cnf2][0]
+                    if reverse is None:
+                        # we need to check if things are fine
+                        val = sl.start + udx
+                        val = T.switch(T.lt(udx,0), xlen+1, val)
+                        val = T.switch(T.ge(udx,ulen), xlen+1, val)
+                        merged_cnf += [ (val,None) ]
+                        pos_cnf2 += 1
+                    else:
+                        p_val = sl.start + cnf2[pos_cnf2][0]
+                        n_val = sl.stop  - sl.start - 1 - cnf2[pos_cnf2][0]
+                        val   = T.switch(T.lt(reverse,0), n_val, p_val)
+                        val   = T.switch(T.lt(udx,0), xlen+1, val)
+                        val   = T.switch(T.ge(udx,ulen), xlen+1, val)
+                        merged_cnf += [(val, None)]
+                        pos_cnf2 += 1
+                else:
+                    start = sl.start + cnf2[pos_cnf2][0].start
+                    stop  = sl.start + cnf2[pos_cnf2][0].stop
+                    step  = sl.step  * cnf2[pos_cnf2][0].step
+                    merged_reverse = safe_prod(reverse, cnf2[pos_cnf2][1])
+                    pos_cnf2 += 1
+                    merged_cnf += [(slice(start, stop, step),
+                                    merged_reverse)]
 
-            # if actual_start < u.shape[0]:
-            #     new_index = -1
-            # else: # Will give an IndexError
-            #     new_index = actual_start
-            new_index = -1 + (actual_start0 >= len0) * (actual_start0 + 1)
+            merged_cnf += cnf2[pos_cnf2:]
+            result_slices = []
+            # We need to apply the reverse flag where needed
+            __pos = 0
+            for cnf, reverse in merged_cnf:
+                __pos +=1
+                if reverse is not None:
+                    start = T.switch(T.lt(reverse,0), cnf.stop-1, cnf.start)
+                    stop  = T.switch(T.lt(reverse,0), cnf.start-1, cnf.stop)
+                    result_slices += [slice(start,stop,cnf.step*reverse)]
+                else:
+                    result_slices += [cnf]
 
-            new_index = T.scalar_from_tensor(new_index)
-            return [u.owner.inputs[0][new_index]]
+            subtens = T.Subtensor(result_slices)
+            sl_ins = T.Subtensor.collapse(
+                result_slices
+                , lambda x: isinstance(x, T.Variable))
+            out = subtens.make_node(node.inputs[0], *sl_ins).outputs[0]
+            return [subtens.make_node(u.owner.inputs[0], *sl_ins).outputs[0]]
 
-        # var[::-1][int] -> var[-int-1]
-        if (len(node.inputs) in [1,2] and
-            isinstance(node.op.idx_list[0], (int, scalar.basic.Scalar)) and
-            len(u.owner.op.idx_list)==1 and
-            isinstance(u.owner.op.idx_list[0], slice) and
-            u.owner.op.idx_list[0].start is None and
-            u.owner.op.idx_list[0].stop is None and
-            u.owner.op.idx_list[0].step == -1
-            ):
-            idx = node.op.idx_list[0]
-            if len(node.inputs) == 1 and isinstance(idx, int):
-                idx = T.as_tensor_variable(idx)
-            elif (len(node.inputs) == 2 and
-                  isinstance (idx, scalar.basic.Scalar)):
-                idx = T.tensor_from_scalar(node.inputs[1])
-            else:
-                return False
-
-            return [u.owner.inputs[0][-idx-1]]
-
-        # var[::-1][:int] -> var[:-int-1:-1]
-        if (len(node.inputs) in [1,2] and
-            len(u.owner.op.idx_list)==1 and
-            isinstance(node.op.idx_list[0], slice) and
-            node.op.idx_list[0].start in [0, None] and
-            isinstance(node.op.idx_list[0].stop, (int, scalar.basic.Scalar)) and
-            node.op.idx_list[0].step is None and
-            isinstance(u.owner.op.idx_list[0], slice) and
-            u.owner.op.idx_list[0].start is None and
-            u.owner.op.idx_list[0].stop is None and
-            u.owner.op.idx_list[0].step == -1
-            ):
-            slice_idx = node.op.idx_list[0]
-            idx = slice_idx.stop
-            if len(node.inputs) == 1 and isinstance(idx, int):
-                idx = T.as_tensor_variable(idx)
-            elif (len(node.inputs) == 2 and
-                  isinstance (idx, scalar.basic.Scalar)):
-                idx = T.tensor_from_scalar(node.inputs[1])
-            else:
-                return False
-
-            return [u.owner.inputs[0][:-idx-1:-1]]
-
-        # var[int1::][:int2]
-        if (len(node.inputs) in [1, 2] and
-            isinstance(node.op.idx_list[0], slice) and
-            node.op.idx_list[0].start in [0, None] and
-            isinstance(node.op.idx_list[0].stop,(int, scalar.basic.Scalar)) and
-            node.op.idx_list[0].step is None and
-            len(u.owner.op.idx_list)==1 and
-            isinstance(u.owner.op.idx_list[0], slice) and
-            isinstance(u.owner.op.idx_list[0].start,(int, scalar.basic.Scalar)) and
-            u.owner.op.idx_list[0].stop in [sys.maxint, None] and
-            u.owner.op.idx_list[0].step is None
-            ):
-            idx1 = u.owner.op.idx_list[0].start
-            idx2 = node.op.idx_list[0].stop
-            if isinstance(idx1, scalar.basic.Scalar):
-                idx1 = T.tensor_from_scalar(u.owner.inputs[1])
-            elif isinstance(idx1, int):
-                idx1 = T.as_tensor_variable(idx1)
-            if isinstance(idx2, scalar.basic.Scalar):
-                idx2 = T.tensor_from_scalar(node.inputs[1])
-            elif isinstance(idx2, int):
-                idx2 = T.as_tensor_variable(idx2)
-
-            # Get positive version of idx1
-            # TODO: use Razvan's code for that
-            # The maximum is needed so that shape[0] + idx1 >= 0
-            neg_idx1 = T.maximum(u.owner.inputs[0].shape[0]+idx1, 0)
-            new_idx1 = T.switch((idx1 >= 0), idx1, neg_idx1)
-
-            # If idx2<0, we are indexing from the end, so idx2 is OK
-            # If we are indexing from the beginning, we need to add pos_idx1
-            new_idx2 = idx2 + T.switch((idx2 < 0), 0, new_idx1)
-
-            return [u.owner.inputs[0][new_idx1:new_idx2]]
 
 @register_canonicalize
 @gof.local_optimizer([None])
