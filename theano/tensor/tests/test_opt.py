@@ -1283,11 +1283,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], x[idx::][-1], mode=mode_opt)
             g = function([x], x[idx::][-1], mode=mode_opt.excluding('local_subtensor_merge'))
 
-            #theano.printing.debugprint(f, print_type=True)
             topo=f.maker.env.toposort()
-            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
             assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
-            #print topo[-1].op
             assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
             for x_s in self.x_shapes:
@@ -1325,25 +1322,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 else:
                     self.assertRaises(IndexError, f, x_val, idx)
                     self.assertRaises(IndexError, g, x_val, idx)
-
-    def test_dont_opt(self):
-        # Test that we don't optimize some case
-        # var[int::][-1]] should be optimized but not
-        # var[int::][other int]
-        x = TT.matrix('x')
-        f = function([x], x[1::][0], mode=mode_opt)
-        #theano.printing.debugprint(f)
-
-        topo=f.maker.env.toposort()
-        assert len(topo)==3
-        assert isinstance(topo[0].op, TT.Subtensor)
-        assert isinstance(topo[1].op, TT.Subtensor)
-        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
-        # let debugmode test something
-        for x_s in self.x_shapes:
-            if x_s[0] > 1:
-                x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-                f(x_val)
 
     def test_const2(self):
         # var[::-1][const] -> var[-1]
@@ -1392,24 +1370,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 self.assertRaises(IndexError, f, x_val, idx)
                 self.assertRaises(IndexError, g, x_val, idx)
 
-    def test_dont_opt2(self):
-        # Test that we don't optimize some case
-        # var[::-1][const] should be optimized but not
-        # x[::other int][const]
-        x = TT.matrix('x')
-        f = function([x], x[::-2][0], mode=mode_opt)
-        #theano.printing.debugprint(f)
-
-        topo=f.maker.env.toposort()
-        assert len(topo)==3
-        assert isinstance(topo[0].op, TT.Subtensor)
-        assert isinstance(topo[1].op, TT.Subtensor)
-        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
-        # let debugmode test something
-        for x_s in self.x_shapes:
-            if x_s[0] > 0:
-                x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-                f(x_val)
 
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
@@ -1445,24 +1405,6 @@ class test_local_subtensor_merge(unittest.TestCase):
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
             for idx in range(-7,7):
                 f(x_val, idx) # let debugmode test something
-
-    def test_dont_opt3(self):
-        # Test that we don't optimize some case
-        # var[::-1][:const] should be optimized but not
-        # x[::other int][const]
-        x = TT.matrix('x')
-        f = function([x], x[::-2][:0], mode=mode_opt)
-        #theano.printing.debugprint(f)
-
-        topo=f.maker.env.toposort()
-        assert len(topo)==3
-        assert isinstance(topo[0].op, TT.Subtensor)
-        assert isinstance(topo[1].op, TT.Subtensor)
-        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
-        # let debugmode test something
-        for x_s in self.x_shapes:
-            x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            f(x_val)
 
     def test_const4(self):
         # var[const1::][:const2]
@@ -1502,23 +1444,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 for idx2 in range(-11,11):
                     f(x_val, idx1, idx2) # let debugmode test something
 
-    def test_dont_opt4(self):
-        # Test that we don't optimize some case
-        # var[int1:][:int2] should be optimized but not
-        # x[::other int][const]
-        x = TT.matrix('x')
-        f = function([x], x[-2:0][:0], mode=mode_opt)
-        theano.printing.debugprint(f)
-
-        topo=f.maker.env.toposort()
-        assert len(topo)==3
-        assert isinstance(topo[0].op, TT.Subtensor)
-        assert isinstance(topo[1].op, TT.Subtensor)
-        assert isinstance(topo[2].op, theano.compile.function_module.DeepCopyOp)
-        # let debugmode test something
-        for x_s in self.x_shapes:
-            x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            f(x_val)
 
 def test_local_fill_useless():
     m = theano.config.mode
