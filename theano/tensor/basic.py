@@ -2607,6 +2607,25 @@ def get_idx_list(inputs, idx_list):
     return cdata
 
 
+def extract_constant(x):
+    '''
+     This function is basically a call to tensor.get_constant_value. The
+     main difference is the behaviour in case of failure. While
+     get_constant_value raises an TypeError, this function returns x,
+     as a tensor ( by removing the last scalar_from_tensor ) if needed
+     or None if that is the value of x.
+    '''
+    try:
+        x = get_constant_value(x)
+    except:
+        pass
+    if isinstance(x, scal.ScalarVariable):
+        if x.owner and isinstance(x.owner.op, ScalarFromTensor):
+            x = x.owner.inputs[0]
+        else:
+            x = tensor.tensor_from_scalar(x)
+    return x
+
 
 def get_canonical_form_slice(theslice, length):
     '''
@@ -2618,24 +2637,6 @@ def get_canonical_form_slice(theslice, length):
     resulting set of numbers needs to be reversed or not.
    '''
 
-    def extract_constant(x):
-        '''
-         This function is basically a call to tensor.get_constant_value. The
-         main difference is the behaviour in case of failure. While
-         get_constant_value raises an TypeError, this function returns x,
-         as a tensor ( by removing the last scalar_from_tensor ) if needed
-         or None if that is the value of x.
-        '''
-        try:
-            x = get_constant_value(x)
-        except:
-            pass
-        if isinstance(x, scal.ScalarVariable):
-            if x.owner and isinstance(x.owner.op, ScalarFromTensor):
-                x = x.owner.inputs[0]
-            else:
-                x = tensor.tensor_from_scalar(x)
-        return x
 
     if isinstance(theslice,slice):
 
