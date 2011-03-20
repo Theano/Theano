@@ -2252,6 +2252,33 @@ class T_local_erfc(unittest.TestCase):
         print t1-t0,t2-t1
 
 
+class test_local_remove_switch_const_cond(unittest.TestCase):
+
+    def test_const0(self):
+
+        x = theano.tensor.matrix('x', dtype='int64')
+        y = theano.tensor.matrix('y', dtype='int64')
+        z = theano.tensor.switch(0, x , y)
+        f = theano.function([x,y],z)
+        assert len([x for x in f.maker.env.toposort() if
+                isinstance(x,theano.tensor.Elemwise) ]) == 0
+        vx = numpy.array([[1,2,3],[ 4, 5, 6]], dtype='int64')
+        vy = numpy.array([[7,8,9],[10,11,12]], dtype='int64')
+        assert numpy.all(f(vx,vy) == vy)
+
+    def test_const1(self):
+
+        x = theano.tensor.matrix('x', dtype='int64')
+        y = theano.tensor.matrix('y', dtype='int64')
+        z = theano.tensor.switch(1, x , y)
+        f = theano.function([x,y],z)
+        assert len([x for x in f.maker.env.toposort() if
+                isinstance(x,theano.tensor.Elemwise) ]) == 0
+        vx = numpy.array([[1,2,3],[ 4, 5, 6]], dtype='int64')
+        vy = numpy.array([[7,8,9],[10,11,12]], dtype='int64')
+        assert numpy.all(f(vx,vy) == vx)
+
+
 class T_local_sum(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')

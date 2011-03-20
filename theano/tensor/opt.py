@@ -1445,6 +1445,30 @@ def local_join_1(node):
 ###############
 # Switch opts #
 ###############
+
+@register_canonicalize
+@gof.local_optimizer([])
+def local_remove_switch_const_cond(node):
+    """
+    This optimization makes the following changes in the graph:
+        T.switch(cond,left,right) -->
+               if cond is constant and cond == 0: right
+               if cond is constant and cond != 0: left
+    """
+    if ( isinstance(node.op, T.Elemwise) and
+        isinstance(node.op.scalar_op, scalar.basic.Switch)):
+        cond = T.extract_constant(node.inputs[0])
+        if type(cond) is numpy.ndarray and cond.ndim == 0:
+            if cond == 0:
+                return [node.inputs[2]]
+            else:
+                return [node.inputs[1]]
+        return False
+    return False
+
+
+
+
 @register_canonicalize
 @gof.local_optimizer([T.mul])
 def local_mul_switch_sink(node):
