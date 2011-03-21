@@ -1455,14 +1455,22 @@ def local_remove_switch_const_cond(node):
                if cond is constant and cond == 0: right
                if cond is constant and cond != 0: left
     """
-    if ( isinstance(node.op, T.Elemwise) and
+    if (isinstance(node.op, T.Elemwise) and
         isinstance(node.op.scalar_op, scalar.basic.Switch)):
         cond = T.extract_constant(node.inputs[0])
         if type(cond) is numpy.ndarray and cond.ndim == 0:
             if cond == 0:
-                return [node.inputs[2]]
+                out = node.inputs[2]
             else:
-                return [node.inputs[1]]
+                out = node.inputs[1]
+
+            if out.ndim != node.outputs[0].ndim:
+                #TODO: broadcast?
+                return False
+            if out.dtype != node.outputs[0].dtype:
+                out = T.cast(out, node.outputs[0].dtype)
+            return [out]
+
         return False
     return False
 
