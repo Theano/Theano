@@ -2664,19 +2664,25 @@ def get_canonical_form_slice(theslice, length):
             stop = switch(ge(stop,length), length,stop)
 
         nw_stop  = switch(lt(step,0), start+1, stop )
-        nw_start = switch(lt(step,0), stop +1, start)
+        slice_len = ( start -stop - 1)//abs(step) + 1
+        slice_len = switch(lt(slice_len,0), 0, slice_len)
+        neg_start = nw_stop - (slice_len-1)*abs(step)-1
+        neg_start = switch(lt(neg_start,0), nw_stop-1, neg_start)
+        nw_start  = switch(lt(step,0), neg_start, start)
+        nw_start = switch(lt(nw_start,0), 0, nw_start)
+        nw_stop  = switch(lt(nw_stop,0) , 0, nw_stop )
 
         nw_step  = abs(step)
         if step != 1:
             reverse  = sgn(step)
             return slice(nw_start, nw_stop, nw_step), reverse
         else:
-            return slice(nw_start, nw_stop, nw_step), None
+            return slice(nw_start, nw_stop, nw_step), 1
     else:
         value = extract_constant(theslice)
         value = switch(lt(value,0), value+length, value)
 
-        return value, None
+        return value, 1
 
 
 def transpose(x, **kwargs):
