@@ -941,6 +941,7 @@ class TestDgemv(TestCase, BaseGemv):
     dtype = float64
 
 #The optimization to put Gemv don't work for complex type for now.
+# See ticket 653.
 #class TestCgemv(TestCase, BaseGemv):
 #    dtype = complex64
 
