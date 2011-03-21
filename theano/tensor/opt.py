@@ -3409,18 +3409,18 @@ class FusionOptimizer(Optimizer):
             nodelist.reverse()
             did_something = False
             for node in nodelist:
-                new_outputs = self.optimizer(node)
-                if new_outputs:
-                    assert len(new_outputs) == len(node.outputs)
-                    try:
-                        env.replace_all_validate(
+                # Don't try to fuse node that have already been fused.
+                if node in env.nodes:
+                    new_outputs = self.optimizer(node)
+                    if new_outputs:
+                        assert len(new_outputs) == len(node.outputs)
+                        try:
+                            env.replace_all_validate(
                                 zip(node.outputs, new_outputs),
                                 reason = self.__class__.__name__)
-                        did_something = True
-                        break
-                    except InconsistencyError, e:
-                        pass
-
+                            did_something = True
+                        except InconsistencyError, e:
+                            pass
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
