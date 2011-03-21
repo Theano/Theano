@@ -66,7 +66,7 @@ class SharedVariable(Variable):
         :param container: The container to use for this variable. Illegal to pass this as well
         as a value.
 
-        For more user-friendly constructor, see `shared`
+        :note: For more user-friendly constructor, see `shared`
 
         """
         super(SharedVariable, self).__init__(type=type, name=name, owner=None, index=None)
@@ -186,6 +186,8 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     :note:
     By passing kwargs, you effectively limit the set of potential constructors to those that
     can accept those kwargs.
+    :note: Some shared variable have 'borrow' as extra kwargs.
+           `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
 
     """
     for ctor in reversed(shared.constructors):
