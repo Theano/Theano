@@ -1444,6 +1444,25 @@ class test_local_subtensor_merge(unittest.TestCase):
                 for idx2 in range(-11,11):
                     f(x_val, idx1, idx2) # let debugmode test something
 
+    def test_const_general(self):
+        # Some cases of merge: shape, (start, stop, step) of first, (start, stop, step) of second subtensor
+        cases = [
+                ((2,3), (None, None, None), (None, None, -1)),
+                ((12, 1), (None, None, -4), (None, None, 1)),
+                ((5,3), (1, 4, 2), (None, None, -1)),
+                ]
+        x = TT.matrix('x')
+
+        for shape, sl1, sl2 in cases:
+            z = x[slice(*sl1)][slice(*sl2)]
+            f = function([x], z, mode=mode_opt)
+
+            x_val = self.rng.uniform(size=shape).astype(config.floatX)
+            f(x_val)
+
+
+
+
 
 def test_local_fill_useless():
     m = theano.config.mode
