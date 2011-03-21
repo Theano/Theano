@@ -835,6 +835,7 @@ class BaseGemv(object):
         # There is no dot21.
         # Creating one is not usefull as this is not faster(in fact it would be slower!
         # as more code would be in python, numpy.dot will call gemv itself)
+        # See ticket 594
         """
 >>> t0=time.time();x=scipy.linalg.blas.fblas.dgemv(1,a.T,b,1,z.T);t1=time.time();print t1-t0
 0.00192999839783
