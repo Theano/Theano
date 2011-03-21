@@ -1469,6 +1469,9 @@ def local_remove_switch_const_cond(node):
                 return False
             if out.dtype != node.outputs[0].dtype:
                 out = T.cast(out, node.outputs[0].dtype)
+            if out.type.broadcastable != node.outputs[0].type.broadcastable:
+                # We need to copy data to the new dimensions during execution
+                out = T.alloc(out, *[node.outputs[0].shape[i] for i in range(out.ndim)])
             return [out]
 
         return False
