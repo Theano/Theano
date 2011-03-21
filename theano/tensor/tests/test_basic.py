@@ -1689,7 +1689,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(isinstance(topo_[0].op, self.adv_sub1))
         self.assertRaises(IndexError, f)
 
-    def test_shape_i(self):
+    def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 
         mode_opt = config.mode
@@ -1697,11 +1697,11 @@ class T_subtensor(unittest.TestCase):
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
 
-        data = self.shared(numpy.zeros((5,),dtype ='int32'))
-        for start in [None]+ [-8,-5,-4,-1,0,1,4,5,8]:
+        data = self.shared(numpy.array(numpy.arange(5),dtype ='int32'))
+        for start in [None]+ [-8,-5,-1,0,1,5,8]:
             outs   = []
             shapes = []
-            for stop in [None] + [-8,-5,-4,-1,0,1,4,5,8]:
+            for stop in [None] + [-8,-5,-1,0,1,5,8]:
                 for step in [None]+[-3,-1,2]:
                     outs += [ data[start:stop:step].shape ]
                     shapes += [data.get_value()[start:stop:step].shape ]
@@ -1711,6 +1711,57 @@ class T_subtensor(unittest.TestCase):
                 assert numpy.all(t_shape == shape)
             assert theano.tensor.Subtensor not in [ x.op for x in
                                            f.maker.env.toposort() ]
+
+
+    def test_shape_i_scalar(self):
+        # Each axis is treated independently by shape_i/shape operators
+
+        mode_opt = config.mode
+        if mode_opt == 'FAST_COMPILE':
+            mode_opt = 'FAST_RUN'
+        mode_opt = compile.mode.get_mode(mode_opt)
+        v_data = numpy.array(numpy.arange(5), dtype = 'int32')
+        t_data = self.shared(v_data)
+        start  = theano.tensor.iscalar('b')
+        stop   = theano.tensor.iscalar('e')
+        step   = theano.tensor.iscalar('s')
+        f = function([start,stop,step], t_data[start:stop:step].shape, mode = mode_opt)
+        f2 = function([start,stop,step],t_data[start:stop:step])
+        assert theano.tensor.Subtensor not in [x.op for x in
+                                               f.maker.env.toposort() ]
+        for start in [-8,-5,-4,-1,0,1,4,5,8]:
+            for stop in [-8,-5,-4,-1,0,1,4,5,8]:
+                for step in [-3,-1,2,5]:
+                    assert numpy.all(
+                            f(start,stop,step) == v_data[start:stop:step].shape)
+
+
+    def test_slice_canonical_form_0(self):
+        start  = theano.tensor.iscalar('b')
+        stop   = theano.tensor.iscalar('e')
+        step   = theano.tensor.iscalar('s')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,stop,step),
+                                                          length)
+        f = function([start,stop,step, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for start in [ -8,-5,-4,-1,0,1,4,5,8]:
+            for stop in  [ -8,-5,-4,-1,0,1,4,5,8]:
+                for step in [-6,-3,-1,2,5]:
+                    out = f(start,stop,step,length)
+                    t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+                    v_out = a[start:stop:step]
+                    assert numpy.all(t_out == v_out)
+                    assert numpy.all(t_out.shape == v_out.shape)
+
+
+
 
 
 
