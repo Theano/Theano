@@ -249,6 +249,10 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             x_ = autocast_float(x)
         elif isinstance(x, numpy.ndarray):
             x_ = x
+            # Currently we don't have a bool dtype in Theano
+            # So we upcast it to uint8 to don't break our interface for constant.
+            if x.dtype == 'bool':
+                x_ = numpy.asarray(x_, dtype='uint8')
         else:
             x_ = numpy.asarray(x)
 

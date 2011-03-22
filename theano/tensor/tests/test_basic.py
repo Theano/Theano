@@ -4018,6 +4018,22 @@ class T_get_constant_value(unittest.TestCase):
             for j in range(c.value.shape[1]):
                 assert get_constant_value(c[i,j]) == c.value[i,j]
 
+class T_as_tensor_variable(unittest.TestCase):
+    """
+    We test that ticket #649 stay fixed.
+    We should not allow as_tensor_variable to accept True or False
+    But it should upcast an ndrarray of bool to uint8
+    """
+
+    def test_bool(self):
+        self.assertRaises(TypeError, as_tensor_variable, True)
+        self.assertRaises(TypeError, as_tensor_variable, False)
+
+    def test_ndarray_bool(self):
+        ten = as_tensor_variable(numpy.array([True, False, False, True, True]))
+        assert ten.type.dtype == 'uint8'
+
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
