@@ -177,13 +177,10 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     exc_value.args = exc_value.args + (err_msg, )
                     raise type, exc_value, traceback
 
-                try:
-                    variables = f(*inputs)
-                except:
-                    return
-
-                self.fail("Test %s::%s: Successful call on the following bad inputs: %s"
-                          % (self.op, testname, inputs))
+                # Add tester return a ValueError. Should we catch only this one?
+                # TODO: test that only this one is raised and catch only this one
+                #       or the subset that get raised.
+                self.assertRaises(Exception, f, *inputs)
 
         def test_grad(self):
             if skip:
