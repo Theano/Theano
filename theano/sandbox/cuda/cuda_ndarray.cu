@@ -18,6 +18,10 @@
 
 static int g_gpu_context_active = 0;
 
+
+PyObject *
+CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args);
+
 /**
  *
  * In the test program I'm using, the _outstanding_mallocs decreases with every call.
@@ -332,7 +336,10 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
     return rval;
 }
 
-
+// TODO-- we have two functions here, ZEROS and Zeros.
+// ZEROS is meant to be called just from C code (you don't need to pass it PyObject * s)
+// but this naming is very weird, makes it look like a macro
+// we should figure out the correct convention and change to that
 PyObject* CudaNdarray_ZEROS(int n, int * dims)
 {
 
@@ -2010,6 +2017,7 @@ CudaNdarray_Dot(PyObject* _unused, PyObject* args)
     PyObject *r=NULL;
     PyObject * rval = NULL;
 
+    //args should consist of two python objects ("OO")
     if (! PyArg_ParseTuple(args, "OO", &l, &r))
         return NULL;
 
@@ -2155,7 +2163,10 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
     }
 }
 
+//TODO-- CudaNdarray_Dot and CudaNdarray_active_device_name are following different capitalization conventions.
+//       Pick one and standardize it, this file is already annoying enough to grep through
 static PyMethodDef module_methods[] = {
+    {"dimshuffle", CudaNdarray_Dimshuffle, METH_VARARGS, "Returns the dimshuffle of a CudaNdarray."},
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
@@ -2936,6 +2947,7 @@ CudaNdarray_reduce_max(CudaNdarray * self, const CudaNdarray * A)
     return -1;
 }
 
+
 /**
  *
  *  pattern is a permutation of [0, 1, ... self->nd-1] with the following twists:
@@ -2999,5 +3011,110 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
     }
     free(newdims);
     return 0;
+}
+
+
+
+PyObject *
+CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
+{
+    PyObject * self = NULL;
+    PyObject * pattern_object = NULL;
+    int * pattern = NULL;
+    PyObject * rval = NULL;
+    int success = -1;
+    //const int * dims = NULL;
+
+    //args should consist of two python objects ("OO")
+    if (! PyArg_ParseTuple(args, "OO", &self, &pattern_object))
+        return NULL;
+
+    if (!CudaNdarray_Check(self) )
+    {
+        PyErr_SetString(PyExc_TypeError, "First argument to cuda_ndarray.dimshuffle must be a CudaNdarray");
+        return NULL;
+    }
+
+    //parse pattern_object into int * pattern
+
+    Py_ssize_t pattern_dim =  PyObject_Length(pattern_object);
+    
+    if (pattern_dim < 0)
+    {
+        PyErr_SetString(PyExc_TypeError, "Couldn't get length of third argument to cuda_ndarray.dimshuffle");
+        return NULL;
+    }
+
+    pattern = (int *) malloc( pattern_dim * sizeof(int));
+    
+    for (Py_ssize_t i = 0; i < pattern_dim; i++)
+    {
+        PyObject * idx = PyLong_FromLong(i);
+
+        if (idx == NULL)
+        {
+            PyErr_SetString(PyExc_Exception, "Couldn't make long object to loop over list/tuple");
+            goto CudaNdarray_dimshuffle_fail;
+        }   
+
+        long elem_value = 0;
+   
+        PyObject * elem = PyObject_GetItem(pattern_object, idx);
+
+        if (elem == NULL)
+        {
+            Py_XDECREF( elem);
+            PyErr_SetString(PyExc_ValueError, "Third argument to dimshuffle must be list or tuple of integers");
+            goto CudaNdarray_dimshuffle_fail;
+        }
+
+        elem_value = PyInt_AsLong(elem);
+
+        if (elem_value == -1 && PyErr_Occurred() )
+        {
+            Py_XDECREF(elem);
+            PyErr_SetString(PyExc_ValueError, "Third argument to dimshuffle must be list or tuple of integers");
+            goto CudaNdarray_dimshuffle_fail;
+        }
+
+        pattern[i] = elem_value;
+
+        Py_XDECREF( elem );
+        Py_XDECREF( idx );
+    }
+
+    //allocate rval
+    rval =  (PyObject *) CudaNdarray_View((CudaNdarray *) self);
+
+    if (rval == NULL)
+    {
+        //CudaNdarray_New should have set the exception string
+        goto CudaNdarray_dimshuffle_fail;
+    }
+
+
+    //printf("pattern_dim: %d\n",pattern_dim);
+    //printf("pattern: %d %d\n",pattern[0],pattern[1]);
+    //dims = CudaNdarray_HOST_DIMS( (CudaNdarray *) self);
+    //printf("dims before: %d %d\n",dims[0],dims[1]);
+
+    success = CudaNdarray_dimshuffle((CudaNdarray *) rval, pattern_dim, pattern);
+
+    if (success != 0)
+    {
+        //Exception string should already be set by CudaNdarray_dimshuffle
+        goto CudaNdarray_dimshuffle_fail;
+    }
+
+    return rval;
+
+    CudaNdarray_dimshuffle_fail:
+
+    if (pattern != NULL)
+        free(pattern);
+
+    if (rval != NULL)
+        Py_XDECREF(rval);
+    return NULL;
 }
 

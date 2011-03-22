@@ -410,7 +410,7 @@ class TestConv3D(unittest.TestCase):
 
         W_mat_T = sparse.csr_matrix(W_mat.transpose())
 
-        temp = W_mat_T.matmat(Hv_mat)
+        temp = W_mat_T * Hv_mat
         V_mat = (temp.transpose() + rbv).transpose()
 
         if N.abs(V_mat-Vv_mat).max() > 1e-5:

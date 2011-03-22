@@ -154,18 +154,53 @@ def test_nvcc_bug():
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
+def test_dimshuffle():
+    utt.seed_rng()
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    a = theano._asarray(rng.randn(3,11), dtype='float32')
+    b = cuda_ndarray.CudaNdarray(a)
+
+    assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(1,0)))
+
 def test_dot():
     print >>sys.stdout, 'starting test_dot'
-    a0 = theano._asarray(numpy.random.rand(4, 7), dtype='float32')
-    a1 = theano._asarray(numpy.random.rand(7, 6), dtype='float32')
+
+    utt.seed_rng()
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    a0 = theano._asarray(rng.randn(4, 7), dtype='float32')
+    a1 = theano._asarray(rng.randn(7, 6), dtype='float32')
 
     b0 = cuda_ndarray.CudaNdarray(a0)
     b1 = cuda_ndarray.CudaNdarray(a1)
 
     assert numpy.allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
 
-    ##TODO: #617
-    #print >> sys.stderr, 'WARNING TODO test_dot: not testing all 8 transpose cases of dot'
+
+    a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
+    b1 = cuda_ndarray.CudaNdarray(a1)
+
+    numpy_version = numpy.dot(a0, a1.T)
+    transposed = cuda_ndarray.dimshuffle(b1,(1,0))
+    cuda_version  =  cuda_ndarray.dot(b0,  transposed)
+
+    assert numpy.allclose( numpy_version,  cuda_version)
+
+    a1 = theano._asarray(rng.randn(7, 6), dtype='float32')
+    b1 = cuda_ndarray.CudaNdarray(a1)
+
+
+    a0 = theano._asarray(rng.randn(7, 4), dtype='float32')
+    b0 = cuda_ndarray.CudaNdarray(a0)
+
+    assert numpy.allclose(numpy.dot(a0.T, a1), cuda_ndarray.dot( cuda_ndarray.dimshuffle(b0,(1,0)), b1))
+
+    a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
+    b1 = cuda_ndarray.CudaNdarray(a1)
+
+    assert numpy.allclose(numpy.dot(a0.T, a1.T), cuda_ndarray.dot( cuda_ndarray.dimshuffle(b0,(1,0)), cuda_ndarray.dimshuffle(b1,(1,0) ) ) )
+
 
 def test_sum():
     shape = (2,3)
