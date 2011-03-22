@@ -1168,6 +1168,20 @@ def merge_two_slices(slice1, len1, slice2, len2):
     ``len1`` is the length of the tensor **before** applying the first slice,
     while ``len2`` is the length **after** applying the first slice.
     '''
+    def const_fold(n):
+        while True:
+            ret = constant_folding.transform(n)
+            if ret is not False and ret is not None:
+                #print n,ret
+                assert len(ret)==len(n.outputs)
+                assert len(ret)==1
+                n = ret[0].owner
+            else: break
+
+        return n.outputs
+
+
+
     if type(slice1) is not slice:
         raise ValueError( ('First provided slice should actually be of type'
                          'slice and not an index !'),slice1)
