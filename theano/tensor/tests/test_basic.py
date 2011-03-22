@@ -853,11 +853,11 @@ ALL_DTYPES = ('int8', 'int16', 'int32', 'int64',
 
 def rand_of_dtype(shape, dtype):
     if 'int' in dtype:
-        return randint(shape).astype(dtype)
+        return randint(*shape).astype(dtype)
     elif 'float' in dtype:
-        return rand(shape).astype(dtype)
+        return rand(*shape).astype(dtype)
     elif 'complex' in dtype:
-        return randcomplex(shape).astype(dtype)
+        return randcomplex(*shape).astype(dtype)
     else:
         raise TypeError()
 
