@@ -542,7 +542,7 @@ class ConvOp(Op):
         _kerns = as_tensor_variable(kerns)
         # TODO: lift this restriction by upcasting either inputs or kerns
         if _inputs.ndim != 4:
-            raise TypeError('make_node requires 4D tensor of inputs')
+            raise TypeError('ConvOp (make_node) requires input be a 4D tensor; received "%s" (%i dims)' % (inputs, _inputs.ndim))
         if _kerns.ndim != 4:
             raise TypeError('make_node requires 4D tensor of kernels')
         if _inputs.type.dtype != _kerns.type.dtype:
