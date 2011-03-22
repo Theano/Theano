@@ -806,9 +806,9 @@ ClipTester = makeTester(name='ClipTester',
                                               -1, 1),
                                     correct4=(randint(5, 5).astype('int16'),
                                               -1, 1),
-                                    correct4=(randint(5, 5).astype('int32'),
+                                    correct5=(randint(5, 5).astype('int32'),
                                               -1, 1),
-                                    correct5=(randint(5, 5).astype('int64'),
+                                    correct6=(randint(5, 5).astype('int64'),
                                               -1, 1)),
                         # These don't build -- is this equivalent to marking
                         # them as 'known fail'?
