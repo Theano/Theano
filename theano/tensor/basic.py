@@ -472,15 +472,13 @@ class TensorType(Type):
         if (type(data) is numpy.ndarray) and (data.dtype is self.numpy_dtype):
             pass # fall through to ndim check
         elif strict:
-            # this is its own subcase that doesn't fall through to anything
-            if not isinstance(data, numpy.ndarray):
+            # If any of the two conditions above was not met,
+            # we raise a meaningful TypeError.
+            if not (type(data) is numpy.ndarray):
                 raise TypeError("%s expected a ndarray object." % self, data, type(data))
-            if not str(data.dtype) == self.dtype:
-                raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.dtype, data.dtype))
-            if not data.ndim == self.ndim:
-                raise TypeError("%s expected a ndarray object with %s dimensions (got %s)." % (self, self.ndim, data.ndim))
-
-            return data
+            if not (data.dtype is self.numpy_dtype):
+                raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.numpy_dtype, data.dtype))
+            assert False, "This point in the program should never be reached."
         else:
             if allow_downcast:
                 # Convert to self.dtype, regardless of the type of data
