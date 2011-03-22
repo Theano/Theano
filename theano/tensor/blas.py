@@ -87,6 +87,11 @@ class Gemv(Op):
         if _have_fblas:
             gemv = _blas_gemv_fns[y.dtype]
 
+            if (A.shape[0] != y.shape[0] or A.shape[1] != x.shape[0]):
+                raise ValueError('Incompatible shapes for gemv '
+                        '(beta * y + alpha * dot(A, x)). y: %s, A: %s, x: %s '
+                        % (y.shape, A.shape, x.shape))#
+
             #Here I suppose that A is in c order. If we don't make it explicitly
             #  as fortran order, scipy 0.7.2 seam to create a copy in fortran
             #  order instead of just reshaping it and using the trans flag.

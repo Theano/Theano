@@ -761,6 +761,23 @@ def test_gemv2():
     if config.mode != 'FAST_COMPILE':
         assert topo[-1].op.inplace==True
 
+class TestGemv(TestCase):
+    def test_gemv_dimensions(self):
+        A = T.matrix('A')
+        x, y = T.vectors('x', 'y')
+        alpha = theano.shared(1.0, name='alpha')
+        beta = theano.shared(1.0, name='beta')
+
+        z = beta * y + alpha * T.dot(A, x)
+        f = theano.function([A, x, y], z)
+
+        A_val = numpy.ones((5,3), dtype=config.floatX)
+        f(A_val, numpy.ones(3), numpy.ones(5))
+        self.assertRaises(ValueError, f, A_val, numpy.ones(4), numpy.ones(5))
+        self.assertRaises(ValueError, f, A_val, numpy.ones(3), numpy.ones(6))
+        self.assertRaises(ValueError, f, A_val, numpy.ones(4), numpy.ones(6))
+
+
 # The following gemv tests were added in March 2011 by Ian Goodfellow
 # and are based on the gemv tests from scipy
 # http://projects.scipy.org/scipy/browser/trunk/scipy/linalg/tests/test_fblas.py?rev=6803
