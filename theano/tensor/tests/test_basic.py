@@ -794,6 +794,30 @@ DotTester = makeTester(name = 'DotTester',
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))
 
+ClipTester = makeTester(name='ClipTester',
+                        op=clip,
+                        expected=lambda x, y, z: numpy.clip(x, y, z),
+                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
+                                              -1, 1),
+                                    correct2=((5 * rand(5, 5)).astype('float64'),
+                                              -1, 1),
+                                    correct3=(randint(5, 5).astype('int8'),
+                                              -1, 1),
+                                    correct4=(randint(5, 5).astype('int16'),
+                                              -1, 1),
+                                    correct4=(randint(5, 5).astype('int32'),
+                                              -1, 1),
+                                    correct5=(randint(5, 5).astype('int64'),
+                                              -1, 1)),
+                        # These don't build -- is this equivalent to marking
+                        # them as 'known fail'?
+                        bad_build=dict(
+                            bad1=(randcomplex(5, 5).astype('complex64'),
+                                  -1, 1),
+                            bad2=(randcomplex(5, 5).astype('complex128'),
+                                  -1, 1)),
+                        # I can't think of any way to make this fail at runtime
+                        bad_runtime=dict())
 
 
 #TODO: consider moving this function / functionality to gradient.py
