@@ -875,8 +875,9 @@ def multi_dtype_cast_tests(shape, dtypes=ALL_DTYPES, nameprefix=''):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape, dtype1)
-        yield (name, (obj1, dtype2))
-        yield (name, (obj2, dtype1))
+        obj2 = rand_of_dtype(shape, dtype2)
+        yield (name1, (obj1, dtype2))
+        yield (name2, (obj2, dtype1))
 
 SecondBroadcastTester = makeTester(
                             name='SecondBroadcastTester',
@@ -917,7 +918,8 @@ CastTester = makeTester(
                 expected=lambda x, y: x.astype(y),
                 good=dict(itertools.chain(
                     multi_dtype_cast_tests((2,)),
-                    [('%s_%s' % (dtype, dtype), rand_of_dtype((2,), dtype), dtype)
+                    [('%s_%s' % (dtype, dtype),
+                      (rand_of_dtype((2,), dtype), dtype))
                      for dtype in ALL_DTYPES]
                 )),
                 bad_build=dict(
