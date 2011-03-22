@@ -72,7 +72,7 @@ that our RNN is defined as follows :
 
 Note that this network is far from a classical recurrent neural
 network and might be useless. The reason we defined as such
-is to better ilustrate the features of scan.
+is to better illustrate the features of scan.
 
 In this case we have a sequence over which we need to iterate ``u``,
 and two outputs ``x`` and ``y``. To implement this with scan we first
@@ -93,7 +93,7 @@ construct a function that computes one iteration step :
 As naming convention for the variables we used ``a_tmb`` to mean ``a`` at
 ``t-b`` and ``a_tpb`` to be ``a`` at ``t+b``.
 Note the order in which the parameters are given, and in which the
-result is returned. Try to respect cronological order among
+result is returned. Try to respect chronological order among
 the taps ( time slices of sequences or outputs) used. For scan is crucial only
 for the variables representing the different time taps to be in the same order
 as the one in which these taps are given. Also, not only taps should respect
