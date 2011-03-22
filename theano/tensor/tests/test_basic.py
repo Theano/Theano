@@ -149,12 +149,9 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
-                try:
-                    node = safe_make_node(self.op,*inputrs)
-                except:
-                    return
-                self.fail("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
-                          % (self.op, testname, node, inputs))
+                self.assertRaises(Exception, safe_make_node, self.op, *inputrs)
+                # The old error string was ("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
+                # % (self.op, testname, node, inputs))
 
         def test_bad_runtime(self):
             if skip:
