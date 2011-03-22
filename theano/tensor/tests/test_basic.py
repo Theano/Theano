@@ -1888,8 +1888,134 @@ class T_subtensor(unittest.TestCase):
                     assert numpy.all(t_out.shape == v_out.shape)
 
 
+    def test_slice_canonical_form_1(self):
+        stop   = theano.tensor.iscalar('e')
+        step   = theano.tensor.iscalar('s')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,stop,step),
+                                                          length)
+        f = function([stop,step, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for stop in  [ -8,-5,-4,-1,0,1,4,5,8]:
+            for step in [-6,-3,-1,2,5]:
+                out = f(stop,step,length)
+                t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+                v_out = a[:stop:step]
+                assert numpy.all(t_out == v_out)
+                assert numpy.all(t_out.shape == v_out.shape)
 
 
+    def test_slice_canonical_form_2(self):
+        start  = theano.tensor.iscalar('b')
+        step   = theano.tensor.iscalar('s')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,None,step),
+                                                          length)
+        f = function([start,step, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for start in [ -8,-5,-4,-1,0,1,4,5,8]:
+            for step in [-6,-3,-1,2,5]:
+                out = f(start,step,length)
+                t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+                v_out = a[start:None:step]
+                assert numpy.all(t_out == v_out)
+                assert numpy.all(t_out.shape == v_out.shape)
+
+
+    def test_slice_canonical_form_3(self):
+        start  = theano.tensor.iscalar('b')
+        stop   = theano.tensor.iscalar('e')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,stop,None),
+                                                          length)
+        f = function([start,stop, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for start in [ -8,-5,-4,-1,0,1,4,5,8]:
+            for stop in  [ -8,-5,-4,-1,0,1,4,5,8]:
+                out = f(start,stop,length)
+                t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+                v_out = a[start:stop:None]
+                assert numpy.all(t_out == v_out)
+                assert numpy.all(t_out.shape == v_out.shape)
+
+    def test_slice_canonical_form_4(self):
+        step   = theano.tensor.iscalar('s')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,None,step),
+                                                          length)
+        f = function([step, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for step in [-6,-3,-1,2,5]:
+            out = f(step,length)
+            t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+            v_out = a[None:None:step]
+            assert numpy.all(t_out == v_out)
+            assert numpy.all(t_out.shape == v_out.shape)
+
+
+    def test_slice_canonical_form_5(self):
+        start  = theano.tensor.iscalar('b')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,None,None),
+                                                          length)
+        f = function([start, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for start in [ -8,-5,-4,-1,0,1,4,5,8]:
+            out = f(start,length)
+            t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+            v_out = a[start:None:None]
+            assert numpy.all(t_out == v_out)
+            assert numpy.all(t_out.shape == v_out.shape)
+
+    def test_slice_canonical_form_6(self):
+        stop   = theano.tensor.iscalar('e')
+        length = theano.tensor.iscalar('l')
+        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,stop,None),
+                                                          length)
+        f = function([stop, length], [
+            theano.tensor.as_tensor_variable(cnf[0].start),
+            theano.tensor.as_tensor_variable(cnf[0].stop),
+            theano.tensor.as_tensor_variable(cnf[0].step),
+            theano.tensor.as_tensor_variable(cnf[1]) ])
+
+        length = 5
+        a = numpy.arange(length)
+        for stop in  [ -8,-5,-4,-1,0,1,4,5,8]:
+            out = f(stop,length)
+            t_out = a[ out[0]:out[1]:out[2]][::out[3]]
+            v_out = a[None:stop:None]
+            assert numpy.all(t_out == v_out)
+            assert numpy.all(t_out.shape == v_out.shape)
 
 
     def grad_list_(self, idxs, data):
