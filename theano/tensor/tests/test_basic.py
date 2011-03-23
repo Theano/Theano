@@ -816,7 +816,7 @@ ClipTester = makeTester(name='ClipTester',
 
 def _numpy_second(x, y):
     if x.ndim != y.ndim:
-        return broadcast_arrays(x, y)[1]
+        return numpy.broadcast_arrays(x, y)[1]
     else:
         return y
 
