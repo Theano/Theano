@@ -2348,7 +2348,7 @@ class T_local_erfc(unittest.TestCase):
 
 class test_local_remove_switch_const_cond(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().excluding('constant_folding')
+        self.mode = mode_opt.excluding('constant_folding')
 
     def test_const0(self):
 
