@@ -1829,7 +1829,7 @@ class T_subtensor(unittest.TestCase):
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
 
-        data = self.shared(numpy.array(numpy.arange(5),dtype ='int32'))
+        data = self.shared(numpy.array(numpy.arange(5),dtype=self.dtype))
         for start in [None]+ [-8,-5,-1,0,1,5,8]:
             outs   = []
             shapes = []
@@ -1852,7 +1852,7 @@ class T_subtensor(unittest.TestCase):
         if mode_opt == 'FAST_COMPILE':
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
-        v_data = numpy.array(numpy.arange(5), dtype = 'int32')
+        v_data = numpy.array(numpy.arange(5), dtype=self.dtype)
         t_data = self.shared(v_data)
         start  = theano.tensor.iscalar('b')
         stop   = theano.tensor.iscalar('e')
