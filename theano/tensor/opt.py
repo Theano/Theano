@@ -1125,8 +1125,6 @@ def local_useless_subtensor(node):
                 node_input_idx += sum([isinstance(idx.start, theano.scalar.Scalar),
                                        isinstance(idx.stop, theano.scalar.Scalar),
                                        isinstance(idx.step, theano.scalar.Scalar)])
-            if isinstance(idx, theano.scalar.Scalar):
-                node_input_idx += 1
         return [node.inputs[0]]
 
 
