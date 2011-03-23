@@ -924,36 +924,13 @@ ClipTester = makeTester(name='ClipTester',
                        )
                         # I can't think of any way to make this fail at runtime
 
-@dec.knownfailureif(True,
-                    ("clip should raise an error at instantiation if any "
-                     "argument is complex, see #656"))
-def test_clip_complex_value():
-    def check(a, b, c, aval, bval, cval, dtype):
-        f = function([a, b, c], clip(a, b, c))
-        assert numpy.allclose(numpy.clip(aval, bval, cval),
-                              f(aval, bval, cval))
-    for dtype in ['complex64', 'complex128']:
-        av = randcomplex(5).astype(dtype)
-        bv = numpy.array(-1)
-        cv = numpy.array(1)
-        a = tensor.vector(dtype=dtype)
-        b = tensor.scalar()
-        c = tensor.scalar()
-        yield check, a, b, c, av, bv, cv, dtype
-        av = rand(5)
-        bv = numpy.array(-1+1j).astype(dtype)
-        cv = numpy.array(1)
-        a = tensor.vector()
-        b = tensor.scalar(dtype=dtype)
-        c = tensor.scalar()
-        yield check, a, b, c, av, bv, cv, dtype
-        av = rand(5)
-        bv = numpy.array(-1)
-        cv = numpy.array(1+1j).astype(dtype)
-        a = tensor.vector()
-        b = tensor.scalar()
-        c = tensor.scalar(dtype=dtype)
-        yield check, a, b, c, av, bv, cv, dtype
+class T_Clip(unittest.TestCase):
+    def test_complex_value(self):
+        for dtype in ['complex64', 'complex128']:
+            a = tensor.vector(dtype=dtype)
+            b = tensor.scalar()
+            c = tensor.scalar()
+            self.assertRaises(TypeError, clip, a, b, c)
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify

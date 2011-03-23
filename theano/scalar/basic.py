@@ -1103,7 +1103,9 @@ class Clip(ScalarOp):
             return gx, None, None
         else:
             return None, None, None
-clip = Clip(upcast_out, name = 'clip')
+# Don't allow complex even if numpy do
+# As there is no mathematical reason for this function on complex
+clip = Clip(upcast_out_no_complex, name = 'clip')
 
 class First(BinaryScalarOp):
     def impl(self, x, y):
