@@ -1095,7 +1095,6 @@ def local_useless_subtensor(node):
     """
     Remove Subtensor if it take the full input
     """
-    shape_of = node.env.shape_feature.shape_of
     if isinstance(node.op, T.Subtensor):
         for pos, idx in enumerate(node.op.idx_list):
             try:
