@@ -875,6 +875,8 @@ SecondSameRankTester = makeTester(
                                 multi_dtype_checks((1, 2), (3, 2)),
                                 multi_dtype_checks((3, 2), (1, 2)),
                             )),
+                            # These sizes are not broadcastable to one another
+                            # and SHOULD raise an error, but currently don't.
                             bad_runtime=dict(itertools.chain(
                                 multi_dtype_checks((4, 5), (5, 4)),
                                 multi_dtype_checks((1, 5), (5, 4)),
