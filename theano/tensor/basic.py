@@ -3381,14 +3381,12 @@ class Join(Op):
         if len(as_tensor_variable_args) == 1:
             bcastable = list(as_tensor_variable_args[0].type.broadcastable)
         else:
-            # When the axis is fixed, the broadcastable dimensions remain, except
-            # for the axis dimension.
-            # All concatenated elements must also have the same broadcastable
-            # dimensions.
-            # initialize bcastable all false, and then fill in some trues with
-            # the loops -- a dimension should be broadcastable if at least one
-            # of the inputs is broadcastable on that dimension (see
-            # justification below)
+            # When the axis is fixed, a dimension should be
+            # broadcastable if at least one of the inputs is
+            # broadcastable on that dimension (see justification below),
+            # except for the axis dimension.
+            # Initialize bcastable all false, and then fill in some trues with
+            # the loops.
             bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
             ndim = len(bcastable)
             if isinstance(axis, int):
