@@ -1,5 +1,7 @@
+import time, copy, sys, unittest
+
+
 from theano.tests import unittest_tools as utt
-import time, copy, sys
 import theano
 import theano.sandbox.cuda as cuda_ndarray
 # Skip test if cuda_ndarray is not available.
@@ -154,14 +156,64 @@ def test_nvcc_bug():
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
-def test_dimshuffle():
-    utt.seed_rng()
-    rng = numpy.random.RandomState(utt.fetch_seed())
+class test_DimShuffle(unittest.TestCase):
+    def test_dimshuffle(self):
+        utt.seed_rng()
+        rng = numpy.random.RandomState(utt.fetch_seed())
 
-    a = theano._asarray(rng.randn(3,11), dtype='float32')
-    b = cuda_ndarray.CudaNdarray(a)
+        # 2d -> 0d
+        a = theano._asarray(rng.randn(1,1), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,()))
 
-    assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(1,0)))
+        # Test when we drop a axis that don't have shape 1
+        a = theano._asarray(rng.randn(2,1), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b,())
+
+        # Test that we can't take a dimensions multiple time
+        a = theano._asarray(rng.randn(2,1), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b,(1,1))
+
+        # 1d
+        a = theano._asarray(rng.randn(3,), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(0,)))
+        assert numpy.allclose(a[None,:,None], cuda_ndarray.dimshuffle(b,(-1,0,-1)))
+
+        # 2d
+        a = theano._asarray(rng.randn(3,11), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(1,0)))
+        assert numpy.allclose(numpy.transpose(a)[None,:,None,:,None], cuda_ndarray.dimshuffle(b,(-1,1,-1,0,-1)))
+
+        # 2d -> 1d
+        a = theano._asarray(rng.randn(1,11), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(a[:,], cuda_ndarray.dimshuffle(b,(1,)))
+        a = theano._asarray(rng.randn(11,1), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(a.reshape((11,)), cuda_ndarray.dimshuffle(b,(0,)))
+
+        # 3d
+        a = theano._asarray(rng.randn(3,4,5), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(a, cuda_ndarray.dimshuffle(b,(0,1,2)))
+        assert numpy.allclose(numpy.swapaxes(a,0,1), cuda_ndarray.dimshuffle(b,(1,0,2)))
+        assert numpy.allclose(numpy.swapaxes(a,0,2), cuda_ndarray.dimshuffle(b,(2,1,0)))
+        assert numpy.allclose(numpy.swapaxes(a,1,2), cuda_ndarray.dimshuffle(b,(0,2,1)))
+        assert numpy.allclose(numpy.swapaxes(a,1,2)[None,:,None,:,:,None], cuda_ndarray.dimshuffle(b,(-1,0,-1,2,1,-1)))
+
+        # 4d
+        a = theano._asarray(rng.randn(3,11,4,5), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        assert numpy.allclose(numpy.swapaxes(a,0,1), cuda_ndarray.dimshuffle(b,(1,0,2,3)))
+        assert numpy.allclose(numpy.swapaxes(a,0,2), cuda_ndarray.dimshuffle(b,(2,1,0,3)))
+        assert numpy.allclose(numpy.swapaxes(a,0,3), cuda_ndarray.dimshuffle(b,(3,1,2,0)))
+        assert numpy.allclose(numpy.swapaxes(a,0,3), cuda_ndarray.dimshuffle(b,(3,1,2,0)))
+        assert numpy.allclose(numpy.swapaxes(a,0,3)[None,:,None,:,:,:], cuda_ndarray.dimshuffle(b,(-1,3,-1,1,2,0)))
+
 
 def test_dot():
     print >>sys.stdout, 'starting test_dot'

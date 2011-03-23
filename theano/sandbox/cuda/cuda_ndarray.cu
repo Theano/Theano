@@ -2980,17 +2980,33 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
             newdims[i] = 1;
             newstrides[i] = 0;
         }
+	else if(dims_taken[pattern[i]])
+	{
+	  PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: The same input dimension may not appear twice in the list of output dimensions");
+	  free(newdims);
+	  return -1;
+	}
         else
         {
             if ((dims_taken[pattern[i]]) || (pattern[i]>= self->nd))
             {
-                PyErr_SetString(PyExc_ValueError, "invalid pattern for Cudandarray_dimshuffle");
+                PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle");
                 free(newdims);
                 return -1;
             }
             newdims[i] = CudaNdarray_HOST_DIMS(self)[pattern[i]];
             newstrides[i] = CudaNdarray_HOST_STRIDES(self)[pattern[i]];
             dims_taken[pattern[i]] = 1;
+        }
+    }
+    //Check if we dropped not broadcastable dims
+    for (int i = 0; i < self->nd; ++i)
+    {
+        if (dims_taken[i]==0 && CudaNdarray_HOST_DIMS(self)[i]!=1)
+        {
+	    PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: You cannot drop a non-broadcastable dimension.");
+	    free(newdims);
+	    return -1;
         }
     }
     //swap this structure in for the one in self, and sync to the card
