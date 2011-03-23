@@ -841,8 +841,8 @@ def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
 
 def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
-        name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
-        name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
+        name1 = '%s%s_%s' % (nameprefix, dtype1, dtype2)
+        name2 = '%s%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape, dtype1)
         obj2 = rand_of_dtype(shape, dtype2)
         yield (name1, (obj1, dtype2))
