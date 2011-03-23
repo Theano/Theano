@@ -789,31 +789,6 @@ DotTester = makeTester(name = 'DotTester',
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))
 
-ClipTester = makeTester(name='ClipTester',
-                        op=clip,
-                        expected=lambda x, y, z: numpy.clip(x, y, z),
-                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
-                                              -1, 1),
-                                    correct2=((5 * rand(5, 5)).astype('float64'),
-                                              -1, 1),
-                                    correct3=(randint(5, 5).astype('int8'),
-                                              -1, 1),
-                                    correct4=(randint(5, 5).astype('int16'),
-                                              -1, 1),
-                                    correct5=(randint(5, 5).astype('int32'),
-                                              -1, 1),
-                                    correct6=(randint(5, 5).astype('int64'),
-                                              -1, 1)),
-                        # These don't build -- is this equivalent to marking
-                        # them as 'known fail'?
-                        bad_build=dict(
-                            bad1=(randcomplex(5, 5).astype('complex64'),
-                                  -1, 1),
-                            bad2=(randcomplex(5, 5).astype('complex128'),
-                                  -1, 1)),
-                        # I can't think of any way to make this fail at runtime
-                        bad_runtime=dict())
-
 def _numpy_second(x, y):
     if x.ndim != y.ndim:
         return numpy.broadcast_arrays(x, y)[1]
@@ -925,6 +900,65 @@ CastTester = makeTester(
                 bad_runtime=None
             )
 
+ClipTester = makeTester(name='ClipTester',
+                        op=clip,
+                        expected=lambda x, y, z: numpy.clip(x, y, z),
+                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
+                                          numpy.array(-1, dtype='float32'),
+                                          numpy.array(1, dtype='float32')),
+                                    correct2=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(-1, dtype='float64'),
+                                          numpy.array(1, dtype='float64')),
+                                    correct3=(randint(5, 5).astype('int8'),
+                                          numpy.array(-1, dtype='int8'),
+                                          numpy.array(1, dtype='int8')),
+                                    correct4=(randint(5, 5).astype('int16'),
+                                          numpy.array(-1, dtype='int16'),
+                                          numpy.array(1, dtype='int16')),
+                                    correct5=(randint(5, 5).astype('int32'),
+                                          numpy.array(-1, dtype='int32'),
+                                          numpy.array(1, dtype='int32')),
+                                    correct6=(randint(5, 5).astype('int64'),
+                                          numpy.array(-1, dtype='int64'),
+                                          numpy.array(1, dtype='int64')),
+                                    # min > max. messed up behaviour, but
+                                    # should be same as NumPy's
+                                    correct7=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(1, dtype='float64'),
+                                          numpy.array(-1, dtype='float64')))
+                       )
+                        # I can't think of any way to make this fail at runtime
+
+@dec.knownfailureif(True,
+                    ("clip should raise an error at instantiation if any "
+                     "argument is complex, see #656"))
+def test_clip_complex_value():
+    def check(a, b, c, aval, bval, cval, dtype):
+        f = function([a, b, c], clip(a, b, c))
+        assert numpy.allclose(numpy.clip(aval, bval, cval),
+                              f(aval, bval, cval))
+    for dtype in ['complex64', 'complex128']:
+        av = randcomplex(5).astype(dtype)
+        bv = np.array(-1)
+        cv = np.array(1)
+        a = tensor.vector(dtype=dtype)
+        b = tensor.scalar()
+        c = tensor.scalar()
+        yield check, a, b, c, av, bv, cv
+        av = rand(5)
+        bv = np.array(-1+1j).astype(dtype)
+        cv = np.array(1)
+        a = tensor.vector()
+        b = tensor.scalar(dtype=dtype)
+        c = tensor.scalar()
+        yield check, a, b, c, av, bv, cv
+        av = rand(5)
+        bv = np.array(-1)
+        cv = np.array(1+1j).astype(dtype)
+        a = tensor.vector()
+        b = tensor.scalar()
+        c = tensor.scalar(dtype=dtype)
+        yield check, a, b, c, av, bv, cv
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
