@@ -789,34 +789,9 @@ DotTester = makeTester(name = 'DotTester',
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))
 
-ClipTester = makeTester(name='ClipTester',
-                        op=clip,
-                        expected=lambda x, y, z: numpy.clip(x, y, z),
-                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
-                                              -1, 1),
-                                    correct2=((5 * rand(5, 5)).astype('float64'),
-                                              -1, 1),
-                                    correct3=(randint(5, 5).astype('int8'),
-                                              -1, 1),
-                                    correct4=(randint(5, 5).astype('int16'),
-                                              -1, 1),
-                                    correct5=(randint(5, 5).astype('int32'),
-                                              -1, 1),
-                                    correct6=(randint(5, 5).astype('int64'),
-                                              -1, 1)),
-                        # These don't build -- is this equivalent to marking
-                        # them as 'known fail'?
-                        bad_build=dict(
-                            bad1=(randcomplex(5, 5).astype('complex64'),
-                                  -1, 1),
-                            bad2=(randcomplex(5, 5).astype('complex128'),
-                                  -1, 1)),
-                        # I can't think of any way to make this fail at runtime
-                        bad_runtime=dict())
-
 def _numpy_second(x, y):
     if x.ndim != y.ndim:
-        return broadcast_arrays(x, y)[1]
+        return numpy.broadcast_arrays(x, y)[1]
     else:
         return y
 
@@ -855,7 +830,7 @@ def rand_of_dtype(shape, dtype):
     else:
         raise TypeError()
 
-def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -864,7 +839,7 @@ def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
         yield (name1, (obj1, obj2))
         yield (name2, (obj2, obj1))
 
-def multi_dtype_cast_tests(shape, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -878,18 +853,17 @@ SecondBroadcastTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (5,)),
-                                multi_dtype_tests((2, 3, 2), (3, 2)),
-                                multi_dtype_tests((2, 3, 2), (2,)),
+                                multi_dtype_checks((4, 5), (5,)),
+                                multi_dtype_checks((2, 3, 2), (3, 2)),
+                                multi_dtype_checks((2, 3, 2), (2,)),
                             )),
                             # I can't think of any way to make this fail at
                             # build time
-                            bad_build=None,
                             # Just some simple smoke tests
                             bad_runtime=dict(
                                 fail1=(rand(5, 4), rand(5)),
                                 fail2=(rand(3, 2, 3), rand(6, 9)),
-                                fail3=(randint(6, 2), rand(3, 2)),
+                                fail3=(randint(6, 2, 9), rand(3, 2)),
                             )
                         )
 
@@ -898,12 +872,14 @@ SecondSameRankTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (4, 5)),
-                                multi_dtype_tests((5, 4), (4, 5)),
-                                multi_dtype_tests((1, 4), (3, 2)),
+                                multi_dtype_checks((4, 5), (4, 5)),
+                                multi_dtype_checks((1, 2), (3, 2)),
+                                multi_dtype_checks((3, 2), (1, 2)),
                             )),
-                            bad_build=None,
-                            bad_runtime=None
+                            bad_runtime=dict(itertools.chain(
+                                multi_dtype_checks((4, 5), (5, 4)),
+                                multi_dtype_checks((1, 5), (5, 4)),
+                            ))
                         )
 
 CastTester = makeTester(
@@ -911,17 +887,73 @@ CastTester = makeTester(
                 op=cast,
                 expected=lambda x, y: x.astype(y),
                 good=dict(itertools.chain(
-                    multi_dtype_cast_tests((2,)),
-                    [('%s_%s' % (dtype, dtype),
+                    multi_dtype_cast_checks((2,)),
+                    # Casts from foo to foo
+                    [('%s_%s' % (rand_of_dtype((2,), dtype), dtype),
                       (rand_of_dtype((2,), dtype), dtype))
                      for dtype in ALL_DTYPES]
                 )),
-                bad_build=dict(
-                    fail_not_a_real_dtype=((2,), 'blah')
-                ),
-                bad_runtime=None
             )
 
+ClipTester = makeTester(name='ClipTester',
+                        op=clip,
+                        expected=lambda x, y, z: numpy.clip(x, y, z),
+                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
+                                          numpy.array(-1, dtype='float32'),
+                                          numpy.array(1, dtype='float32')),
+                                    correct2=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(-1, dtype='float64'),
+                                          numpy.array(1, dtype='float64')),
+                                    correct3=(randint(5, 5).astype('int8'),
+                                          numpy.array(-1, dtype='int8'),
+                                          numpy.array(1, dtype='int8')),
+                                    correct4=(randint(5, 5).astype('int16'),
+                                          numpy.array(-1, dtype='int16'),
+                                          numpy.array(1, dtype='int16')),
+                                    correct5=(randint(5, 5).astype('int32'),
+                                          numpy.array(-1, dtype='int32'),
+                                          numpy.array(1, dtype='int32')),
+                                    correct6=(randint(5, 5).astype('int64'),
+                                          numpy.array(-1, dtype='int64'),
+                                          numpy.array(1, dtype='int64')),
+                                    # min > max. messed up behaviour, but
+                                    # should be same as NumPy's
+                                    correct7=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(1, dtype='float64'),
+                                          numpy.array(-1, dtype='float64')))
+                       )
+                        # I can't think of any way to make this fail at runtime
+
+@dec.knownfailureif(True,
+                    ("clip should raise an error at instantiation if any "
+                     "argument is complex, see #656"))
+def test_clip_complex_value():
+    def check(a, b, c, aval, bval, cval, dtype):
+        f = function([a, b, c], clip(a, b, c))
+        assert numpy.allclose(numpy.clip(aval, bval, cval),
+                              f(aval, bval, cval))
+    for dtype in ['complex64', 'complex128']:
+        av = randcomplex(5).astype(dtype)
+        bv = np.array(-1)
+        cv = np.array(1)
+        a = tensor.vector(dtype=dtype)
+        b = tensor.scalar()
+        c = tensor.scalar()
+        yield check, a, b, c, av, bv, cv
+        av = rand(5)
+        bv = np.array(-1+1j).astype(dtype)
+        cv = np.array(1)
+        a = tensor.vector()
+        b = tensor.scalar(dtype=dtype)
+        c = tensor.scalar()
+        yield check, a, b, c, av, bv, cv
+        av = rand(5)
+        bv = np.array(-1)
+        cv = np.array(1+1j).astype(dtype)
+        a = tensor.vector()
+        b = tensor.scalar()
+        c = tensor.scalar(dtype=dtype)
+        yield check, a, b, c, av, bv, cv
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
