@@ -10,13 +10,13 @@ _logger = logging.getLogger('theano.compile.mode')
 
 AddConfigVar('optimizer_excluding',
         "When using the default mode, we will remove optimizer with that tag. Separate many tags with ':'.",
-        StrParam(""))
+        StrParam("", allow_override=False))
 AddConfigVar('optimizer_including',
         "When using the default mode, we will add optimizer with that tag. Separate many tags with ':'.",
-        StrParam(""))
+        StrParam("", allow_override=False))
 AddConfigVar('optimizer_requiring',
         "When using the default mode, we will require optimizer with that tag. Separate many tags with ':'.",
-        StrParam(""))
+        StrParam("", allow_override=False))
 
 def check_equal(x, y):
     """
