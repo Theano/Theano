@@ -859,7 +859,6 @@ SecondBroadcastTester = makeTester(
                             )),
                             # I can't think of any way to make this fail at
                             # build time
-                            bad_build=None,
                             # Just some simple smoke tests
                             bad_runtime=dict(
                                 fail1=(rand(5, 4), rand(5)),
@@ -894,10 +893,6 @@ CastTester = makeTester(
                       (rand_of_dtype((2,), dtype), dtype))
                      for dtype in ALL_DTYPES]
                 )),
-                bad_build=dict(
-                    fail_not_a_real_dtype=((2,), 'blah')
-                ),
-                bad_runtime=None
             )
 
 ClipTester = makeTester(name='ClipTester',
