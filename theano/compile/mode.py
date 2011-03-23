@@ -282,8 +282,10 @@ instanciated_default_mode=None
 def get_mode(orig_string):
     if orig_string is None:
         string = config.mode
-    else: string = orig_string
-    if not isinstance(string, str): return string #it is hopefully already a mode...
+    else:
+        string = orig_string
+    if not isinstance(string, str):
+        return string #it is hopefully already a mode...
 
     global instanciated_default_mode
     if string in ['Mode','ProfileMode','DebugMode']:
@@ -301,7 +303,8 @@ def get_mode(orig_string):
 
     elif not predefined_modes.has_key(string):
         raise Exception("No predefined mode exist for string: %s"%string)
-    else: ret = predefined_modes[string]
+    else:
+        ret = predefined_modes[string]
 
     if orig_string is None:
         if theano.config.optimizer_excluding:
