@@ -1232,38 +1232,58 @@ def merge_two_slices(slice1, len1, slice2, len2):
         # according to the two steps we have 4 different combinations of
         # positive/negative. I will denote the case I'm looking at by
         # suffixes to the variables (nn,np,pn,pp):
-        pp_start = sl1.start + sl2.start * sl1.step
-        pp_stop  = sl1.start + sl2.stop  * sl1.step
-        pp_step  = sl1.step  * sl2.step
+        flen = sl2.stop - sl2.start
+        p_step  = sl1.step  * sl2.step
+        n_step  = sl1.step  * sl2.step  * -1
 
-        pn_stop  = sl1.start + sl2.start * sl1.step
-        pn_start = sl1.start + sl2.stop  * sl1.step
-        pn_step  = sl1.step  * sl2.step  * -1
-        pn_stop  = T.switch(T.eq(pn_stop,-1), -len1 -1, pn_stop)
+
+
+        pp_start = T.minimum(sl1.start + sl2.start * sl1.step, sl1.stop)
+        pp_stop  = T.minimum(sl1.start + sl2.stop  * sl1.step, sl1.stop)
+
+
+        pn_stop  = sl1.start + (sl2.start -1) * sl1.step
+        pn_stop  = T.switch(T.and_(T.lt(pn_stop,0)
+                                   , T.gt(flen,0))
+                            , -len1 -1
+                            , T.minimum(pn_stop, sl1.stop))
+        pn_start = sl1.start + (sl2.stop -1)  * sl1.step
+        pn_start = T.minimum( pn_start, sl1.stop )
+        pn_start = T.maximum( pn_start, 0 )
+
 
         np_stop  = sl1.stop - sl2.stop  * sl1.step -1
-        np_start = sl1.stop - sl2.start * sl1.step -1
-        np_step  = sl1.step * sl2.step  * -1
-        np_stop  = T.switch(T.eq(np_stop,-1), -len1 -1, np_stop)
+        np_stop  = T.switch(T.and_(T.lt(np_stop,0)
+                                   , T.gt(flen,0))
+                            ,-len1-1
+                            , T.maximum(sl1.start-1, np_stop))
+        np_start = T.maximum(sl1.start,sl1.stop - sl2.start * sl1.step -1)
 
-        nn_start = sl1.stop - sl2.start * sl1.step
-        nn_stop  = sl1.stop - sl2.stop  * sl1.step
-        nn_step  = sl1.step * sl2.step
+        nn_start = T.maximum(sl1.start,(sl1.stop -1)- (sl2.stop-1) * sl1.step)
+        nn_stop  = T.maximum(sl1.start,sl1.stop - sl2.start * sl1.step)
 
-        start = const_fold(T.switch(T.lt(reverse2*reverse1,0),
+
+        start = T.switch(T.lt(reverse2*reverse1,0),
                          T.switch(T.lt(reverse1,0), np_start, pn_start),
                          T.switch(T.lt(reverse1,0), nn_start,
-                                  pp_start)).owner)[0]
+                                  pp_start))
 
-        stop  = const_fold(T.switch(T.lt(reverse2*reverse1,0),
+        stop  = T.switch(T.lt(reverse2*reverse1,0),
                          T.switch(T.lt(reverse1,0), np_stop , pn_stop ),
                          T.switch(T.lt(reverse1,0), nn_stop , pp_stop
-                                 )).owner)[0]
+                                 ))
 
-        step  = const_fold( T.switch(T.lt(reverse2*reverse1,0),
-                         T.switch(T.lt(reverse1,0), np_step , pn_step ),
-                         T.switch(T.lt(reverse1,0), nn_step , pp_step
-                                 )).owner)[0]
+        step  = T.switch( T.lt(reverse2*reverse1,0),n_step, p_step)
+        start = T.switch(T.le(flen,0), 0, start)
+        stop  = T.switch(T.le(flen,0), 0, stop)
+
+        start = const_fold(start.owner)[0]
+        stop  = const_fold(stop.owner)[0]
+        step  = const_fold(step.owner)[0]
+
+        start = theano.printing.Print('start')(start)
+        stop  = theano.printing.Print('stop')(stop)
+        step = theano.printing.Print('step')(step)
         return slice(start, stop, step)
 
 @register_canonicalize

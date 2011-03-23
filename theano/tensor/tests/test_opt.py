@@ -1462,6 +1462,42 @@ class test_local_subtensor_merge(unittest.TestCase):
 
 
 
+    def test_scalar5(self):
+        # var[int1:][:int2]
+        x = TT.matrix('x')
+        b1 = TT.iscalar('b1')
+        e1 = TT.iscalar('e1')
+        s1 = TT.iscalar('s1')
+        b2 = TT.iscalar('b2')
+        e2 = TT.iscalar('e2')
+        s2 = TT.iscalar('s2')
+        f = function([x,b1,e1,s1,b2,e2,s2], x[b1:e1:s1][b2:e2:s2], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        b1r = self.rng.permutation(range(-8,8))[:4]
+        e1r = self.rng.permutation(range(-8,8))[:4]
+        b2r = self.rng.permutation(range(-8,8))[:4]
+        e2r = self.rng.permutation(range(-8,8))[:4]
+
+        s1r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:4]
+        s2r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:4]
+
+        for x_s in self.x_shapes:
+            x_val = self.rng.uniform(size=x_s).astype(config.floatX)
+            for b1 in b1r:
+                for e1 in e1r:
+                    for s1 in s1r:
+                        for b2 in b2r:
+                            for e2 in e2r:
+                                for s2 in s2r:
+                                    print >>sys.stderr, x_s,b1,e1,s1,b2,e2,s2
+                                    f(x_val, b1,e1,s1,b2,e2,s2)
 
 
 def test_local_fill_useless():
