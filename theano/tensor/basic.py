@@ -2303,11 +2303,6 @@ def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
 pprint.assign(tensor_copy, printing.IgnorePrinter())
 
-
-@_redefine(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
-def view(a):
-    """Create a duplicate of `a` (with shared storage)"""
-
 @constructor
 def sum(input, axis = None):
     """WRITEME"""
