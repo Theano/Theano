@@ -790,10 +790,7 @@ DotTester = makeTester(name = 'DotTester',
                                            bad2 = (rand(5, 7), rand(8, 3))))
 
 def _numpy_second(x, y):
-    if x.ndim != y.ndim:
-        return numpy.broadcast_arrays(x, y)[1]
-    else:
-        return y
+    return numpy.broadcast_arrays(x, y)[1]
 
 def combinations(iterable, r):
     # Borrowed from Python docs - can be removed when we drop
