@@ -38,6 +38,9 @@ welcome on the mailing list.
         3) All known errors should have a ticket and a reference to that
            ticket in the error message.
 
+    5) All commits should have been reviewed, to ensure none of the above
+       problems are introduced.
+
 4) The release numbers will follow the X.Y.Z scheme:
 
    1) We update Z by 1 for each lightweight release.
