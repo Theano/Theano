@@ -1926,6 +1926,17 @@ class T_useless_elemwise(unittest.TestCase):
         assert isinstance(topo2[0].op,T.Elemwise)
         assert isinstance(topo2[0].op.scalar_op,theano.scalar.Add)
 
+    def test_identity(self):
+        # scalar.identity is used in 2 Elemwise functions:
+        # tensor_copy, and view
+        x = T.matrix()
+        f = theano.function([x], T.tensor_copy(x), mode=self.mode)
+        vx = numpy.random.rand(5,4)
+        f(vx)
+        topo = f.maker.env.toposort()
+        assert len(topo) == 1
+        assert topo[0].op == theano.compile.function_module.deep_copy_op
+
 def test_constant_get_stabilized():
     """
     Currently Theano enable the constant_folding optimization before stabilization optimization.
