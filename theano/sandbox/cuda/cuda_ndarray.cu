@@ -3031,6 +3031,12 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
 
 
 
+/**
+ *
+ *  This is the function that bind to python.
+ *  See CudaNdarray_dimshuffle to call from C.
+ *  We use -1 to mean 'x' as in Tensor Dimshuffle.
+ */
 PyObject *
 CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
 {
@@ -3129,8 +3135,7 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
     if (pattern != NULL)
         free(pattern);
 
-    if (rval != NULL)
-        Py_XDECREF(rval);
+    Py_XDECREF(rval);
     return NULL;
 }
 
