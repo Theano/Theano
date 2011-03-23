@@ -883,6 +883,41 @@ SecondSameRankTester = makeTester(
                             ))
                         )
 
+def test_eye():
+    def check(dtype, N, M=None, k=0):
+        N_symb = tensor.iscalar()
+        M_symb = tensor.iscalar()
+        k_symb = tensor.iscalar()
+        f = function([N_symb, M_symb, k_symb],
+                     eye(N_symb, M_symb, k_symb, dtype=dtype))
+        result = f(N, M, k)
+        assert numpy.allclose(result, numpy.eye(N, M, k, dtype=dtype))
+        assert result.dtype == numpy.dtype(dtype)
+    for dtype in ALL_DTYPES:
+        yield check, dtype, 3
+        # M != N, k = 0
+        yield check, dtype, 3, 5
+        yield check, dtype, 5, 3
+        # N == M, k != 0
+        yield check, dtype, 3, 3, 1
+        yield check, dtype, 3, 3, -1
+        # N < M, k != 0
+        yield check, dtype, 3, 5, 1
+        yield check, dtype, 3, 5, -1
+        # N > M, k != 0
+        yield check, dtype, 5, 3, 1
+        yield check, dtype, 5, 3, -1
+
+def test_identity():
+    def check(dtype):
+        obj = rand_of_dtype((2,), dtype)
+        sym = tensor.vector(dtype=dtype)
+        f = function([sym], tensor_copy(sym))
+        assert numpy.all(obj == f(obj))
+        assert obj.dtype == f(obj).dtype
+    for dtype in ALL_DTYPES:
+        yield check, dtype
+
 class CastTester(unittest.TestCase):
     def test_good_between_real_types(self):
         expected = lambda x, y: x.astype(y),
