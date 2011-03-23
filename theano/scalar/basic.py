@@ -1107,18 +1107,6 @@ class Clip(ScalarOp):
 # As there is no mathematical reason for this function on complex
 clip = Clip(upcast_out_no_complex, name = 'clip')
 
-class First(BinaryScalarOp):
-    def impl(self, x, y):
-        return x
-    def c_code(self, node, name, (x, y), (z, ), sub):
-        return "%(z)s = %(x)s;" % locals()
-    def grad(self, (x, y), (gz, )):
-        if x.type in continuous_types:
-            return gz, None
-        else:
-            return None,None
-first = First(transfer_type(0), name = 'first')
-
 class Second(BinaryScalarOp):
     def impl(self, x, y):
         return y
