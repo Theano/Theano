@@ -1095,20 +1095,36 @@ def local_useless_subtensor(node):
     """
     Remove Subtensor if it take the full input
     """
-    shape_of = node.env.shape_feature.shape_of
     if isinstance(node.op, T.Subtensor):
+        shape_of = node.env.shape_feature.shape_of
+        node_input_idx = 1
         for pos, idx in enumerate(node.op.idx_list):
+            length_pos_data = sys.maxint
+            length_pos_shape_i = None
             try:
-                length_pos = shape_i(node.inputs[0])[pos]
-            except:
+                length_pos = shape_of[node.inputs[0]][pos]
+                if isinstance(length_pos, theano.tensor.basic.TensorConstant):
+                    length_pos_data = length_pos.data
+                else:
+                    length_pos_shape_i = node.inputs[node_input_idx].owner.inputs[0]
+
+            except Exception, e:
                 length_pos = None
             if ( isinstance(idx,slice) and
                 idx.start in [0,None] and
                 idx.step in [1,None] and
-                idx.stop in [sys.maxint, None, length_pos]):
+                (idx.stop in [sys.maxint, None, length_pos_data] or
+                 (isinstance(idx.stop, int) and idx.stop>=length_pos_data) or
+                 (isinstance(idx.stop, theano.scalar.Scalar) and
+                  length_pos==length_pos_shape_i)
+                 )):
                 pass
             else:
                 return False
+            if isinstance(idx, slice):
+                node_input_idx += sum([isinstance(idx.start, theano.scalar.Scalar),
+                                       isinstance(idx.stop, theano.scalar.Scalar),
+                                       isinstance(idx.step, theano.scalar.Scalar)])
         return [node.inputs[0]]
 
 

@@ -10,15 +10,16 @@ Guide
 =====
 
 The scan functions provides the basic functionality needed to do loops
-in Theano. Scan comes with many whistles and bells, that can be easily
-introduced through a few examples :
+in Theano. Scan comes with many whistles and bells, which we will introduce
+by way of examples.
 
-Basic functionality :  Computing :math:`A^k`
---------------------------------------------
+
+Simple loop with accumulation:  Computing :math:`A^k`
+-----------------------------------------------------
 
 Assume that, given *k* you want to get ``A**k`` using a loop.
 More precisely, if *A* is a tensor you want to compute
-``A**k`` elemwise. The python/numpy code would loop like
+``A**k`` elemwise. The python/numpy code might look like:
 
 .. code-block:: python
 
@@ -26,42 +27,176 @@ More precisely, if *A* is a tensor you want to compute
   for i in xrange(k):
     result = result * A
 
-The equivalent Theano code would be
+There are three thing here that we need to handle: the initial value
+assigned to ``result``, the accumulation of results in ``result``, and
+the unchanging variable ``A``. Unchanging variables are passed to scan as
+``non_sequences``. Initialization occurs in ``outputs_info``, and the accumulation
+happens automatically.
+
+The equivalent Theano code would be:
 
 .. code-block:: python
 
   # Symbolic description of the result
-  result,updates = theano.scan(fn = lambda x_tm1,A: x_tm1*A,\
-                       outputs_info = T.ones_like(A),\
-                       non_sequences  = A, \
-                       n_steps        = k)
+  result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
+                                outputs_info=T.ones_like(A),
+                                non_sequences=A,
+                                n_steps=k)
+
+  # We only care about A**k, but scan has provided us with A**1 through A**k.
+  # Discard the values that we don't care about. Scan is smart enough not to
+  # notice this and not waste memory saving them.
+  final_result = result[-1]
 
   # compiled function that returns A**k
-  f = theano.function([A,k], result[-1], updates = updates)
+  power = theano.function(inputs=[A,k], outputs=final_result, updates=updates)
 
 Let us go through the example line by line. What we did is first to
-construct a function (using a lambda expression) that given `x_tm1` and
-`A` returns `x_tm1*A`. Given the order of the parameters, `x_tm1`
-is the value of our output at time step ``t-1``. Therefore
-``x_t`` (value of output at time `t`) is `A` times value of output
-at `t-1`.
-Next we initialize the output as a tensor with same
-shape as A filled with ones. We give A to scan as a non sequence parameter  and
-specify the number of steps k to iterate over our lambda expression.
+construct a function (using a lambda expression) that given ``prior_result`` and
+``A`` returns ``prior_result * A``. The order of parameters is fixed by scan:
+the output of the prior call to ``fn`` (or the initial value, initially)
+is the first parameter, followed by all non-sequences.
 
-Scan will return a tuple, containing our result (``result``) and a
-dictionary of updates ( empty in this case). Note that the result
+Next we initialize the output as a tensor with same shape and dtype as ``A``,
+filled with ones. We give ``A`` to scan as a non sequence parameter and
+specify the number of steps ``k`` to iterate over our lambda expression.
+
+Scan return a tuples, containing our result (``result``) and a
+dictionary of updates (empty in this case). Note that the result
 is not a matrix, but a 3D tensor containing the value of ``A**k`` for
-each step. We want the last value ( after k steps ) so we compile
+each step. We want the last value (after ``k`` steps) so we compile
 a function to return just that. Note that there is an optimization, that
 at compile time will detect that you are using just the last value of the
 result and ensure that scan does not store all the intermediate values
-that are used. So do not worry if A and k are large.
+that are used. So do not worry if ``A`` and ``k`` are large.
+
+
+Iterating over the first dimension of a tensor: Calculating a polynomial
+------------------------------------------------------------------------
+In addition to looping a fixed number of times, scan can iterate over
+the leading dimension of tensors (similar to Python's ``for x in a_list``).
+
+The tensor(s) to be looped over should be provided to scan using the
+``sequence`` keyword argument.
+
+Here's an example that builds a symbolic calculation of a polynomial
+from a list of its coefficients:
+
+.. code-block:: python
+
+    coefficients = theano.tensor.vector("coefficients")
+    x = T.scalar("x")
+
+    max_coefficients_supported = 10000
+
+    # Generate the components of the polynomial
+    components, updates = theano.scan(fn=lambda coefficient, power, free_variable: coefficient * (free_variable ** power),
+                                      outputs_info=None,
+                                      sequences=[coefficients, theano.tensor.arange(max_coefficients_supported)],
+                                      non_sequences=x)
+    # Sum them up
+    polynomial = components.sum()
+
+    # Compile a function
+    calculate_polynomial = theano.function(inputs=[coefficients, x], outputs=polynomial)
+
+    # Test
+    test_coefficients = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+    test_value = 3
+    print calculate_polynomial(test_coefficients, test_value)
+    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2) 
+
+There are a few things to note here.
+
+First, we calculate the polynomial by first generating each of the coefficients, and
+then summing them at the end. (We could also have accumulated them along the way, and then
+taken the last one, which would have been more memory-efficient, but this is an example.)
+
+Second, there is no accumulation of results, we can set ``outputs_info`` to ``None``. This indicates
+to scan that it doesn't need to pass the prior result to ``fn``.
+
+The general order of function parameters to ``fn`` is::
+
+    sequences (if any), prior result(s) (if needed), non-sequences (if any)
+
+Third, there's a handy trick used to simulate python's ``enumerate``: simply include
+``theano.tensor.arange`` to the sequences.
+
+Fourth, given multiple sequences of uneven lengths, scan will truncate to the shortest of them.
+This makes it safe to pass a very long arange, which we need to do for generality, since
+arange must have its length specified at creation time.
+
+
+Simple accumulation into a scalar, ditching lamba
+-------------------------------------------------
+
+This should be fairly self-explanatory.
+
+.. code-block:: python
+
+    up_to = T.iscalar("up_to")
+
+    # define a named function, rather than using lambda
+    def accumulate_by_adding(arange_val, sum_to_date):
+        return sum_to_date + arange_val
+
+    scan_result, scan_updates = theano.scan(fn=accumulate_by_adding,
+                                            outputs_info=T.as_tensor_variable(0),
+                                            sequences=T.arange(up_to))
+    triangular_sequence = theano.function(inputs=[up_to], outputs=scan_result)
+
+    # test
+    some_num = 15
+    print triangular_sequence(some_num)
+    print [n * (n + 1) // 2 for n in xrange(some_num)]
+
+
+
+Another simple example
+----------------------
+
+Unlike some of the prior examples, this one is hard to reproduce except by using scan.
+
+This takes a sequence of array indices, and values to place there,
+and a "model" output array (whose shape and dtype will be mimicked),
+and produces a sequence of arrays with the shape and dtype of the model,
+with all values set to zero except at the provided array indices.
+
+.. code-block:: python
+
+    location = T.imatrix("location")
+    values = T.vector("values")
+    output_model = T.matrix("output_model")
+
+    def set_value_at_position(a_location, a_value, output_model):
+        zeros = T.zeros_like(output_model)
+        zeros_subtensor = zeros[a_location[0], a_location[1]]
+        return T.set_subtensor(zeros_subtensor, a_value)
+
+    result, updates = theano.scan(fn=set_value_at_position,
+                                  outputs_info=None,
+                                  sequences=[location, values],
+                                  non_sequences=output_model)
+
+    assign_values_at_positions = theano.function(inputs=[location, values, output_model], outputs=result)
+
+    # test
+    test_locations = numpy.asarray([[1, 1], [2, 3]], dtype=numpy.int32)
+    test_values = numpy.asarray([42, 50], dtype=numpy.float32)
+    test_output_model = numpy.zeros((5, 5), dtype=numpy.float32)
+    print assign_values_at_positions(test_locations, test_values, test_output_model)
+
+This demonstrates that you can introduce new Theano variables into a scan function.
+
 
 Multiple outputs, several taps values - Recurrent Neural Network with Scan
 --------------------------------------------------------------------------
 
-A more practical task would be to implement a RNN using scan. Assume
+The examples above showed simple uses of scan. However, scan also supports
+referring not only to the prior result and the current sequence value, but
+also looking back more than one step.
+
+This is needed, for example, to implement a RNN using scan. Assume
 that our RNN is defined as follows :
 
 .. math::

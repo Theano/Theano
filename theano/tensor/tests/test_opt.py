@@ -1147,12 +1147,76 @@ def test_log_add():
 
 def test_local_useless_subtensor():
     x = TT.matrix('x')
-    f = function([x], TT.exp(x)[0:], mode=mode_opt)
 
-    prog=f.maker.env.toposort()
-    assert prog[0].op == TT.exp
-    assert len(prog)==1
-    f([[0,1],[2,3]]) # let debugmode test something
+    # Test default
+    for dims in [(slice(0,None),),
+                 (slice(0,None),slice(0,None)),
+                 ]:
+        f = function([x], TT.exp(x).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog=f.maker.env.toposort()
+        assert prog[0].op == TT.exp
+        assert len(prog)==1
+        f([[0,1,2],[3,4,5]]) # let debugmode test something
+
+    x_c = specify_shape(x, (2,3))
+    # Test constant
+    for dims, res in [((slice(0,2),), True),
+                 ((slice(0,2),slice(0,None)), True),
+                 ((slice(0,2),slice(0,3)), True),
+                 ((slice(0,None),slice(0,3)), True),
+                 ((slice(0,3),slice(0,13)), True),
+                 ((slice(0,3),slice(0,2)), False),
+                 ((slice(0,1),slice(0,None)), False),
+                 ((slice(0,1),1), False),
+                 ]:
+        f = function([x], TT.exp(x_c).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog=f.maker.env.toposort()
+        if res:
+            assert isinstance(prog[0].op, theano.tensor.basic.SpecifyShape), dims
+            assert prog[1].op == TT.exp, dims
+            assert len(prog)==2, dims
+        else:
+            assert any([isinstance(node.op, Subtensor) for node in prog])
+        f([[0,1,2],[3,4,5]]) # let debugmode test something
+
+    # Test Variable
+    for idx, (dims, res) in enumerate([
+            ((slice(0,x.shape[0]),), True),
+            ((slice(0,x.shape[1]),), False),
+            ((slice(0,x.shape[0]),slice(0,x.shape[1]),), True),
+            ((slice(0,x.shape[0]),slice(0,x.shape[0]),), False),
+            ((slice(0,x.shape[1]),slice(0,x.shape[0]),), False),
+            ((slice(0,x.shape[1]),slice(0,x.shape[1]),), False),
+            ((slice(0,x.shape[1]),2), False),
+            ((slice(0,x.shape[1]),slice(x.shape[0]-x.shape[0],x.shape[1]),), False),
+            ]):
+        f = function([x], TT.exp(x).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog=f.maker.env.toposort()
+        if res:
+            assert prog[0].op == TT.exp, dims
+            assert len(prog)==1, dims
+        else:
+            assert any([isinstance(node.op, Subtensor) for node in prog])
+        f([[0,1,2],[3,4,5]]) # let debugmode test something
+    # Test mix Variable and Constant
+    # Currently not supported
+    for idx, (dims, res) in enumerate([
+            ((slice(0,x.shape[0]),slice(0,3)), False),
+            ((slice(0,3),slice(0,x.shape[1])), False),
+            ]):
+        f = function([x], TT.exp(x_c).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog=f.maker.env.toposort()
+        if res:
+            assert prog[0].op == TT.exp, dims
+            assert len(prog)==1, dims
+        else:
+            assert any([isinstance(node.op, Subtensor) for node in prog])
+        f([[0,1,2],[3,4,5]]) # let debugmode test something
+
 
 class test_local_subtensor_lift(unittest.TestCase):
 
@@ -2320,7 +2384,7 @@ class T_local_erfc(unittest.TestCase):
 
 class test_local_remove_switch_const_cond(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().excluding('constant_folding')
+        self.mode = mode_opt.excluding('constant_folding')
 
     def test_const0(self):
 

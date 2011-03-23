@@ -15,7 +15,7 @@ from theano.tensor import inplace
 from copy import copy
 from theano import compile, config
 from theano import gof
-from theano.gof.python25 import any, all
+from theano.gof.python25 import any, all, combinations
 
 from theano.compile.mode import get_default_mode
 from theano import function
@@ -217,6 +217,16 @@ def randint_ranged(min, max, shape):
 
 def randc128_ranged(min, max, shape):
     return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype='complex128')
+
+def rand_of_dtype(shape, dtype):
+    if 'int' in dtype:
+        return randint(*shape).astype(dtype)
+    elif 'float' in dtype:
+        return rand(*shape).astype(dtype)
+    elif 'complex' in dtype:
+        return randcomplex(*shape).astype(dtype)
+    else:
+        raise TypeError()
 
 def makeBroadcastTester(op, expected, checks = {}, **kwargs):
     name = str(op) + "Tester"
@@ -789,73 +799,15 @@ DotTester = makeTester(name = 'DotTester',
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))
 
-ClipTester = makeTester(name='ClipTester',
-                        op=clip,
-                        expected=lambda x, y, z: numpy.clip(x, y, z),
-                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
-                                              -1, 1),
-                                    correct2=((5 * rand(5, 5)).astype('float64'),
-                                              -1, 1),
-                                    correct3=(randint(5, 5).astype('int8'),
-                                              -1, 1),
-                                    correct4=(randint(5, 5).astype('int16'),
-                                              -1, 1),
-                                    correct5=(randint(5, 5).astype('int32'),
-                                              -1, 1),
-                                    correct6=(randint(5, 5).astype('int64'),
-                                              -1, 1)),
-                        # These don't build -- is this equivalent to marking
-                        # them as 'known fail'?
-                        bad_build=dict(
-                            bad1=(randcomplex(5, 5).astype('complex64'),
-                                  -1, 1),
-                            bad2=(randcomplex(5, 5).astype('complex128'),
-                                  -1, 1)),
-                        # I can't think of any way to make this fail at runtime
-                        bad_runtime=dict())
-
 def _numpy_second(x, y):
-    if x.ndim != y.ndim:
-        return broadcast_arrays(x, y)[1]
-    else:
-        return y
-
-def combinations(iterable, r):
-    # Borrowed from Python docs - can be removed when we drop
-    # support for 2.4/2.5
-    # combinations('ABCD', 2) --> AB AC AD BC BD CD
-    # combinations(range(4), 3) --> 012 013 023 123
-    pool = tuple(iterable)
-    n = len(pool)
-    if r > n:
-        return
-    indices = range(r)
-    yield tuple(pool[i] for i in indices)
-    while True:
-        for i in reversed(range(r)):
-            if indices[i] != i + n - r:
-                break
-        else:
-            return
-        indices[i] += 1
-        for j in range(i+1, r):
-            indices[j] = indices[j-1] + 1
-        yield tuple(pool[i] for i in indices)
+    return numpy.broadcast_arrays(x, y)[1]
 
 ALL_DTYPES = ('int8', 'int16', 'int32', 'int64',
               'float32', 'float64', 'complex64', 'complex128')
+REAL_DTYPES = ALL_DTYPES[:-2]
+COMPLEX_DTYPES = ALL_DTYPES[-2:]
 
-def rand_of_dtype(shape, dtype):
-    if 'int' in dtype:
-        return randint(*shape).astype(dtype)
-    elif 'float' in dtype:
-        return rand(*shape).astype(dtype)
-    elif 'complex' in dtype:
-        return randcomplex(*shape).astype(dtype)
-    else:
-        raise TypeError()
-
-def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -864,7 +816,7 @@ def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
         yield (name1, (obj1, obj2))
         yield (name2, (obj2, obj1))
 
-def multi_dtype_cast_tests(shape, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -878,18 +830,17 @@ SecondBroadcastTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (5,)),
-                                multi_dtype_tests((2, 3, 2), (3, 2)),
-                                multi_dtype_tests((2, 3, 2), (2,)),
+                                multi_dtype_checks((4, 5), (5,)),
+                                multi_dtype_checks((2, 3, 2), (3, 2)),
+                                multi_dtype_checks((2, 3, 2), (2,)),
                             )),
                             # I can't think of any way to make this fail at
                             # build time
-                            bad_build=None,
                             # Just some simple smoke tests
                             bad_runtime=dict(
                                 fail1=(rand(5, 4), rand(5)),
                                 fail2=(rand(3, 2, 3), rand(6, 9)),
-                                fail3=(randint(6, 2), rand(3, 2)),
+                                fail3=(randint(6, 2, 9), rand(3, 2)),
                             )
                         )
 
@@ -898,30 +849,84 @@ SecondSameRankTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (4, 5)),
-                                multi_dtype_tests((5, 4), (4, 5)),
-                                multi_dtype_tests((1, 4), (3, 2)),
+                                multi_dtype_checks((4, 5), (4, 5)),
+                                multi_dtype_checks((1, 2), (3, 2)),
+                                multi_dtype_checks((3, 2), (1, 2)),
                             )),
-                            bad_build=None,
-                            bad_runtime=None
+                            # These sizes are not broadcastable to one another
+                            # and SHOULD raise an error, but currently don't.
+                            bad_runtime=dict(itertools.chain(
+                                multi_dtype_checks((4, 5), (5, 4)),
+                                multi_dtype_checks((1, 5), (5, 4)),
+                            ))
                         )
 
-CastTester = makeTester(
-                name='CastTester',
-                op=cast,
-                expected=lambda x, y: x.astype(y),
-                good=dict(itertools.chain(
-                    multi_dtype_cast_tests((2,)),
-                    [('%s_%s' % (dtype, dtype),
+class CastTester(unittest.TestCase):
+    def test_good_between_real_types(self):
+        expected = lambda x, y: x.astype(y),
+        good = itertools.chain(
+                    multi_dtype_cast_checks((2,), dtypes=REAL_DTYPES),
+                    # Casts from foo to foo
+                    [('%s_%s' % (rand_of_dtype((2,), dtype), dtype),
                       (rand_of_dtype((2,), dtype), dtype))
-                     for dtype in ALL_DTYPES]
-                )),
-                bad_build=dict(
-                    fail_not_a_real_dtype=((2,), 'blah')
-                ),
-                bad_runtime=None
-            )
+                     for dtype in ALL_DTYPES])
+        for testname, (obj, dtype) in good:
+            inp = tensor.vector(dtype=obj.dtype)
+            out = tensor.cast(inp, dtype=dtype)
+            f = function([inp], out)
+            assert f(obj).dtype == numpy.dtype(dtype)
 
+    def test_cast_from_real_to_complex(self):
+        for real_dtype in REAL_DTYPES:
+            for complex_dtype in COMPLEX_DTYPES:
+                inp = tensor.vector(dtype=real_dtype)
+                out = tensor.cast(inp, dtype=complex_dtype)
+                f = function([inp], out)
+                obj = rand_of_dtype((2, ), real_dtype)
+                assert f(obj).dtype == numpy.dtype(complex_dtype)
+
+    def test_cast_from_complex_to_real_raises_error(self):
+        for real_dtype in REAL_DTYPES:
+            for complex_dtype in COMPLEX_DTYPES:
+                inp = tensor.vector(dtype=real_dtype)
+                self.assertRaises(TypeError, tensor.cast(inp, dtype=complex_dtype))
+
+ClipTester = makeTester(name='ClipTester',
+                        op=clip,
+                        expected=lambda x, y, z: numpy.clip(x, y, z),
+                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
+                                          numpy.array(-1, dtype='float32'),
+                                          numpy.array(1, dtype='float32')),
+                                    correct2=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(-1, dtype='float64'),
+                                          numpy.array(1, dtype='float64')),
+                                    correct3=(randint(5, 5).astype('int8'),
+                                          numpy.array(-1, dtype='int8'),
+                                          numpy.array(1, dtype='int8')),
+                                    correct4=(randint(5, 5).astype('int16'),
+                                          numpy.array(-1, dtype='int16'),
+                                          numpy.array(1, dtype='int16')),
+                                    correct5=(randint(5, 5).astype('int32'),
+                                          numpy.array(-1, dtype='int32'),
+                                          numpy.array(1, dtype='int32')),
+                                    correct6=(randint(5, 5).astype('int64'),
+                                          numpy.array(-1, dtype='int64'),
+                                          numpy.array(1, dtype='int64')),
+                                    # min > max. messed up behaviour, but
+                                    # should be same as NumPy's
+                                    correct7=((5 * rand(5, 5)).astype('float64'),
+                                          numpy.array(1, dtype='float64'),
+                                          numpy.array(-1, dtype='float64')))
+                       )
+                        # I can't think of any way to make this fail at runtime
+
+class T_Clip(unittest.TestCase):
+    def test_complex_value(self):
+        for dtype in ['complex64', 'complex128']:
+            a = tensor.vector(dtype=dtype)
+            b = tensor.scalar()
+            c = tensor.scalar()
+            self.assertRaises(TypeError, clip, a, b, c)
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
@@ -1824,7 +1829,7 @@ class T_subtensor(unittest.TestCase):
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
 
-        data = self.shared(numpy.array(numpy.arange(5),dtype ='int32'))
+        data = self.shared(numpy.array(numpy.arange(5),dtype=self.dtype))
         for start in [None]+ [-8,-5,-1,0,1,5,8]:
             outs   = []
             shapes = []
@@ -1847,7 +1852,7 @@ class T_subtensor(unittest.TestCase):
         if mode_opt == 'FAST_COMPILE':
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
-        v_data = numpy.array(numpy.arange(5), dtype = 'int32')
+        v_data = numpy.array(numpy.arange(5), dtype=self.dtype)
         t_data = self.shared(v_data)
         start  = theano.tensor.iscalar('b')
         stop   = theano.tensor.iscalar('e')
@@ -2275,12 +2280,13 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
-        b_val = rng.rand(1, 3, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 3, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(1,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if dimension 0 does not match
-        self.assertRaises(ValueError, f, rng.rand(2,4,1), b_val)
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        self.assertRaises(ValueError, f, bad_a_val, b_val)
 
     def test_broadcastable_flag_assignment_mixed_thisaxes(self):
         """
@@ -2295,12 +2301,13 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(2, 4, 1)
-        b_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if b_val.shape[0] is not 1
-        self.assertRaises(TypeError, f, a_val, rng.rand(3,4,1))
+        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
         """
@@ -2315,13 +2322,15 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
-        b_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, f, rng.rand(2,4,1), b_val)
-        self.assertRaises(TypeError, f, a_val, rng.rand(3,4,1))
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, bad_a_val, b_val)
+        self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
         """
@@ -2336,11 +2345,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a], b)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val)
         utt.verify_grad((lambda a: join(0,a)), [a_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, f, rng.rand(2,4,1))
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
         """
@@ -2364,26 +2374,32 @@ class T_Join_and_Split(unittest.TestCase):
 
         g = function([a,b,c,d,e], f)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 1, 1, 1, 2, 1)
-        b_val = rng.rand(1, 1, 1, 1, 2, 1)
-        c_val = rng.rand(1, 1, 1, 1, 2, 1)
-        d_val = rng.rand(1, 1, 1, 1, 2, 1)
-        e_val = rng.rand(1, 1, 1, 1, 2, 1)
+        a_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        b_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        c_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        d_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
         g(a_val, b_val, c_val, d_val, e_val)
         utt.verify_grad((lambda a,b,c,d,e: join(0,a,b,c,d,e)),
                 [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, g, rng.rand(2,1,1,1,2,1), b_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, rng.rand(2,1,1,1,2,1), c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, rng.rand(2,1,1,1,2,1), d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, rng.rand(2,1,1,1,2,1), e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, rng.rand(2,1,1,1,2,1))
+        bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(config.floatX)
+        self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
-        self.assertRaises(ValueError, g, rng.rand(1,2,1,1,2,1), b_val, c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, rng.rand(1,1,1,1,2,2), c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, rng.rand(1,1,2,1,2,1), d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, rng.rand(1,2,1,1,2,1), e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, rng.rand(1,1,1,2,2,1))
+        bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
+        bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(config.floatX)
+        bad_c_val = rng.rand(1, 1, 2, 1, 2, 1).astype(config.floatX)
+        bad_d_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
+        bad_e_val = rng.rand(1, 1, 1, 2, 2, 1).astype(config.floatX)
+        self.assertRaises(ValueError, g, bad_a_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, bad_b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, bad_c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, c_val, bad_d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, bad_e_val)
 
 
 class test_comparison(unittest.TestCase):
