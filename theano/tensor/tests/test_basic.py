@@ -863,7 +863,7 @@ SecondBroadcastTester = makeTester(
                             bad_runtime=dict(
                                 fail1=(rand(5, 4), rand(5)),
                                 fail2=(rand(3, 2, 3), rand(6, 9)),
-                                fail3=(randint(6, 2), rand(3, 2)),
+                                fail3=(randint(6, 2, 9), rand(3, 2)),
                             )
                         )
 
