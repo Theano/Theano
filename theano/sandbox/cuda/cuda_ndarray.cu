@@ -2982,18 +2982,20 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
         }
 	else if(dims_taken[pattern[i]])
 	{
-	  PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: The same input dimension may not appear twice in the list of output dimensions");
+                PyErr_Format(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle. You used the dimensions %d multiple time",
+			     pattern[i]);
 	  free(newdims);
 	  return -1;
 	}
-        else
-        {
-            if ((dims_taken[pattern[i]]) || (pattern[i]>= self->nd))
-            {
-                PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle");
-                free(newdims);
-                return -1;
-            }
+        else if (pattern[i]>= self->nd)
+	{
+	    PyErr_Format(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle. You asked for a dimensions that don't exist %d for a %d dims CudaNdarray",
+			 pattern[i], self->nd);
+	    free(newdims);
+	    return -1;
+	}
+	else
+	{
             newdims[i] = CudaNdarray_HOST_DIMS(self)[pattern[i]];
             newstrides[i] = CudaNdarray_HOST_STRIDES(self)[pattern[i]];
             dims_taken[pattern[i]] = 1;
