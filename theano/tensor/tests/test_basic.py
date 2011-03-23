@@ -934,26 +934,26 @@ def test_clip_complex_value():
                               f(aval, bval, cval))
     for dtype in ['complex64', 'complex128']:
         av = randcomplex(5).astype(dtype)
-        bv = np.array(-1)
-        cv = np.array(1)
+        bv = numpy.array(-1)
+        cv = numpy.array(1)
         a = tensor.vector(dtype=dtype)
         b = tensor.scalar()
         c = tensor.scalar()
-        yield check, a, b, c, av, bv, cv
+        yield check, a, b, c, av, bv, cv, dtype
         av = rand(5)
-        bv = np.array(-1+1j).astype(dtype)
-        cv = np.array(1)
+        bv = numpy.array(-1+1j).astype(dtype)
+        cv = numpy.array(1)
         a = tensor.vector()
         b = tensor.scalar(dtype=dtype)
         c = tensor.scalar()
-        yield check, a, b, c, av, bv, cv
+        yield check, a, b, c, av, bv, cv, dtype
         av = rand(5)
-        bv = np.array(-1)
-        cv = np.array(1+1j).astype(dtype)
+        bv = numpy.array(-1)
+        cv = numpy.array(1+1j).astype(dtype)
         a = tensor.vector()
         b = tensor.scalar()
         c = tensor.scalar(dtype=dtype)
-        yield check, a, b, c, av, bv, cv
+        yield check, a, b, c, av, bv, cv, dtype
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
