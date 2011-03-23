@@ -855,7 +855,7 @@ def rand_of_dtype(shape, dtype):
     else:
         raise TypeError()
 
-def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -864,7 +864,7 @@ def multi_dtype_tests(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
         yield (name1, (obj1, obj2))
         yield (name2, (obj2, obj1))
 
-def multi_dtype_cast_tests(shape, dtypes=ALL_DTYPES, nameprefix=''):
+def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
@@ -878,9 +878,9 @@ SecondBroadcastTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (5,)),
-                                multi_dtype_tests((2, 3, 2), (3, 2)),
-                                multi_dtype_tests((2, 3, 2), (2,)),
+                                multi_dtype_checks((4, 5), (5,)),
+                                multi_dtype_checks((2, 3, 2), (3, 2)),
+                                multi_dtype_checks((2, 3, 2), (2,)),
                             )),
                             # I can't think of any way to make this fail at
                             # build time
@@ -898,12 +898,14 @@ SecondSameRankTester = makeTester(
                             op=second,
                             expected=_numpy_second,
                             good=dict(itertools.chain(
-                                multi_dtype_tests((4, 5), (4, 5)),
-                                multi_dtype_tests((5, 4), (4, 5)),
-                                multi_dtype_tests((1, 4), (3, 2)),
+                                multi_dtype_checks((4, 5), (4, 5)),
+                                multi_dtype_checks((1, 2), (3, 2)),
+                                multi_dtype_checks((3, 2), (1, 2)),
                             )),
-                            bad_build=None,
-                            bad_runtime=None
+                            bad_runtime=dict(itertools.chain(
+                                multi_dtype_checks((4, 5), (5, 4)),
+                                multi_dtype_checks((1, 5), (5, 4)),
+                            ))
                         )
 
 CastTester = makeTester(
@@ -911,8 +913,9 @@ CastTester = makeTester(
                 op=cast,
                 expected=lambda x, y: x.astype(y),
                 good=dict(itertools.chain(
-                    multi_dtype_cast_tests((2,)),
-                    [('%s_%s' % (dtype, dtype),
+                    multi_dtype_cast_checks((2,)),
+                    # Casts from foo to foo
+                    [('%s_%s' % (rand_of_dtype((2,), dtype), dtype),
                       (rand_of_dtype((2,), dtype), dtype))
                      for dtype in ALL_DTYPES]
                 )),
