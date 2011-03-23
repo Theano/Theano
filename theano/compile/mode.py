@@ -288,9 +288,18 @@ def get_mode(orig_string):
         return string #it is hopefully already a mode...
 
     global instanciated_default_mode
-    if string in ['Mode','ProfileMode','DebugMode']:
-        if instanciated_default_mode:
+    # The default mode is cached. However, config.mode can change
+    # If instanciated_default_mode has the right class, use it.
+    if orig_string is None and instanciated_default_mode:
+        if predefined_modes.has_key(string):
+            default_mode_class = predefined_modes[string].__class__.__name__
+        else:
+            default_mode_class = string
+        if (instanciated_default_mode.__class__.__name__ ==
+                default_mode_class):
             return instanciated_default_mode
+
+    if string in ['Mode','ProfileMode','DebugMode']:
         if string == 'DebugMode':
             #need to import later to break circular dependency.
             from debugmode import DebugMode
@@ -300,13 +309,13 @@ def get_mode(orig_string):
             # The import is needed in case string is ProfileMode
             from profilemode import ProfileMode
             ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
-
-    elif not predefined_modes.has_key(string):
-        raise Exception("No predefined mode exist for string: %s"%string)
-    else:
+    elif predefined_modes.has_key(string):
         ret = predefined_modes[string]
+    else:
+        raise Exception("No predefined mode exist for string: %s"%string)
 
     if orig_string is None:
+        # Build and cache the default mode
         if theano.config.optimizer_excluding:
             ret = ret.excluding(*theano.config.optimizer_excluding.split(':'))
         if theano.config.optimizer_including:
