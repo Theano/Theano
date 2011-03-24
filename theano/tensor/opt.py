@@ -1346,7 +1346,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             if isinstance(sl, slice):
                 for idx in [sl.start, sl.stop, sl.step]:
                     if isinstance(idx, Variable):
-                        list_no_opt.update(sl.start.env.nodes)
+                        list_no_opt.update(idx.env.nodes)
             if isinstance(sl, Variable):
                 list_no_opt.update(sl.env.nodes)
 
