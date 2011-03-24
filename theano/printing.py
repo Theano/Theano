@@ -611,7 +611,8 @@ def pydotprint(fct, outfile=None,
 
 
 def pydotprint_variables(vars,
-                         outfile=os.path.join(config.compiledir,'theano.pydotprint.png'),
+                         outfile=None,
+                         format='png',
                          depth = -1,
                          high_contrast = True, colorCodes = None):
     ''' Identical to pydotprint just that it starts from a variable instead
@@ -619,7 +620,9 @@ def pydotprint_variables(vars,
 
     if colorCodes is None:
         colorCodes = default_colorCodes
-
+    if outfile is None:
+        outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
+                               config.device + '.' + format)
     try:
         import pydot as pd
     except:
