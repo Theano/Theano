@@ -14,10 +14,6 @@ if cuda_ndarray.cuda_available == False:
 import theano
 import theano.tensor as T
 from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp
-from theano.sandbox.cuda import GpuContiguous
-import theano.misc.pycuda_example
-
-import theano.sandbox.cuda as cuda_ndarray
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
