@@ -17,10 +17,9 @@ This don't work with broadcast and non-contiguous memory as pycuda don't support
 import numpy
 
 import theano
-import theano.tensor as T
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
-from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, CudaNdarray
-from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, gpu_contiguous, host_from_gpu
+from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, gpu_contiguous
 from theano.sandbox.cuda.opt import gpu_seqopt
 
 from pycuda.elementwise import ElementwiseKernel
