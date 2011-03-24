@@ -1560,7 +1560,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                         for b2 in b2r:
                             for e2 in e2r:
                                 for s2 in s2r:
-                                    print >>sys.stderr, x_s,b1,e1,s1,b2,e2,s2
                                     f(x_val, b1,e1,s1,b2,e2,s2)
 
 
