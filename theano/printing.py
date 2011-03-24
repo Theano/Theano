@@ -613,9 +613,13 @@ def pydotprint(fct, outfile=None,
 def pydotprint_variables(vars,
                          outfile=os.path.join(config.compiledir,'theano.pydotprint.png'),
                          depth = -1,
-                         high_contrast = True):
+                         high_contrast = True, colorCodes = None):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
+
+    if colorCodes is None:
+        colorCodes = default_colorCodes
+
     try:
         import pydot as pd
     except:
