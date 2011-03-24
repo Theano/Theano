@@ -1544,13 +1544,13 @@ class test_local_subtensor_merge(unittest.TestCase):
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
-        b1r = self.rng.permutation(range(-8,8))[:4]
-        e1r = self.rng.permutation(range(-8,8))[:4]
-        b2r = self.rng.permutation(range(-8,8))[:4]
-        e2r = self.rng.permutation(range(-8,8))[:4]
+        b1r = self.rng.permutation(range(-8,8))[:2]
+        e1r = self.rng.permutation(range(-8,8))[:2]
+        b2r = self.rng.permutation(range(-8,8))[:2]
+        e2r = self.rng.permutation(range(-8,8))[:2]
 
-        s1r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:4]
-        s2r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:4]
+        s1r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:2]
+        s2r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:2]
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
