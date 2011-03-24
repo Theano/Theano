@@ -1184,7 +1184,7 @@ def greedy_local_optimizer(list_optimizations, out, no_opt):
     '''
     def local_recursive_function( list_opt, out, optimized_vars, depth):
         if not out.owner :
-            return [out]
+            return [out], optimized_vars
         node = out.owner
         if node in no_opt:
             return node.outputs, optimized_vars
