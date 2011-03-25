@@ -1306,7 +1306,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
     ``len1`` is the length of the tensor **before** applying the first slice,
     while ``len2`` is the length **after** applying the first slice.
     '''
-    list_opt = [ constant_folding, local_remove_switch_const_cond, local_upcast_elemwise_constant_inputs ]
+    list_opt = [ local_abs_merge, local_mul_switch_sink, local_upcast_elemwise_constant_inputs, local_remove_switch_const_cond, constant_folding ]
 
 
     if type(slice1) is not slice:
