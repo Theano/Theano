@@ -438,7 +438,11 @@ CudaNdarray_NewDims(int nd, const inttype * dims)
  *
  * Set self to be a view of given `data`, owned by existing CudaNdarray `base`.
  */
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base);
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base);
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
+{
+  return CudaNdarray_set_device_data(self, data, (PyObject *) base);
+}
 
 /**
  * Return an independent copy of self
