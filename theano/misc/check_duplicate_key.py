@@ -37,7 +37,7 @@ for dir in dirs:
         del f
         del path
     except IOError:
-        print dir, "don't have a mod.{cpp,ca} file"
+        print dir, "don't have a mod.{cpp,cu} file"
         pass
 
 
