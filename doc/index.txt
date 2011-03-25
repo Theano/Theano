@@ -75,7 +75,7 @@ Community
 
 * Register and post to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask questions at `metaoptimize/qa/tags/theano/`_ (it's like stack overflow for machine learning)
+* Ask/view questions/answers at `metaoptimize/qa/tags/theano/`_ (it's like stack overflow for machine learning)
 
 * We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__ 
 
