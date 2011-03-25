@@ -1243,8 +1243,9 @@ def greedy_local_optimizer(list_optimizations, out):
     So we don't optimize node that have an attribute env.
 
     :note: This don't do an equilibrium... So if there is optimization
-           in the list, there can be case when calling this function
-           multiple time do think at each call.
+           like local_upcast_elemwise_constant_inputs in the list, that
+           add additional node to the inputs of the node, it can
+           be needed to call this function multiple time.
     '''
     def local_recursive_function( list_opt, out, optimized_vars, depth):
         if not out.owner :
