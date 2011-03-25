@@ -57,6 +57,9 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         order = obj.maker.env.toposort()
     elif isinstance(obj, (list, tuple)):
         results_to_print.extend(obj)
+    elif isinstance(obj, gof.Env):
+        results_to_print.extend(obj.outputs)
+        order = obj.toposort()
     else:
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
