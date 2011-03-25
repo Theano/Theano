@@ -344,6 +344,37 @@ def MergeOptMerge(opt):
     return SeqOptimizer([merger, opt, merger])
 
 
+def pre_constant_merge(vars):
+    """
+    Merge constants before the variables in the list `out`
+    Modify the nodes that are in the path to create out.
+
+    :note: This don't change node that are in an env.
+           This is used to pre-merge node generated in an optimization
+           that we don't want DebugMode to check as there is too many
+    """
+
+    seen_var = set()
+    const_sig = {}     # variable -> variable.signature()  (for constants)
+    const_sig_inv = {} # signature -> variable (for constants)
+    def recursive_merge(var):
+        if var in seen_var:
+            return var
+        if var.owner and hasattr(var.owner, "env"):
+            return var
+        seen_var.add(var)
+        if isinstance(var, graph.Constant):
+            sig = var.signature()
+            if sig in const_sig_inv:
+                return const_sig_inv[sig]
+            const_sig_inv[sig] = var
+            return var
+        if var.owner:
+            for idx,inp in enumerate(var.owner.inputs):
+                var.owner.inputs[idx] = recursive_merge(inp)
+        return var
+
+    return map(recursive_merge, vars)
 
 ########################
 ### Local Optimizers ###

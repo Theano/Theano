@@ -25,7 +25,7 @@ import basic as T
 from theano import compile  #to register the optimizer built by this file
 
 from theano.gof.python25 import any, all
-from theano.gof.opt import Optimizer
+from theano.gof.opt import Optimizer, pre_constant_merge
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value
 
@@ -1415,9 +1415,9 @@ def merge_two_slices(slice1, len1, slice2, len2):
         stop  = greedy_local_optimizer( list_opt, stop)
         step  = greedy_local_optimizer( list_opt, step)
 
-        #start = theano.printing.Print('start')(start)
-        #stop  = theano.printing.Print('stop')(stop)
-        #step = theano.printing.Print('step')(step)
+        #Pre merge constant for the same reason.
+        start, stop, step = pre_constant_merge([start, stop, step])
+
         return slice(start, stop, step)
 
 @register_canonicalize
