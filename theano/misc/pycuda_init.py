@@ -1,6 +1,7 @@
 import os
 
 import theano
+import theano.sandbox.cuda as cuda
 
 def select_gpu_from_theano():
     # Transfer the theano gpu binding to pycuda, for consistency
@@ -9,7 +10,10 @@ def select_gpu_from_theano():
                                    "gpu1": "1",
                                    "gpu2": "2",
                                    "gpu3": "3"}
-    os.environ["CUDA_DEVICE"] = theano_to_pycuda_device_map.get(theano.config.device, "0")
+    dev = theano_to_pycuda_device_map.get(theano.config.device, "0")
+    if theano.config.device == 'gpu':
+        dev = str(cuda.cuda_ndarray.cuda_ndarray.active_device_number())
+    os.environ["CUDA_DEVICE"] = dev
 
 select_gpu_from_theano()
 pycuda_available = False
