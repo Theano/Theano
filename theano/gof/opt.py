@@ -346,7 +346,7 @@ def MergeOptMerge(opt):
 
 def pre_constant_merge(vars):
     """
-    Merge constants before the variables in the list `out`
+    Merge constants before the Theano variables in the list `vars`
     Modify the nodes that are in the path to create out.
 
     :note: This don't change node that are in an env.
