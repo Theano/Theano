@@ -22,12 +22,14 @@ from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, gpu_contiguous
 from theano.sandbox.cuda.opt import gpu_seqopt
 
+import pycuda_init
+if not pycuda_init.pycuda_available:
+    raise Exception("No pycuda available. You can't load pycuda_example.py")
+
+import pycuda
 from pycuda.elementwise import ElementwiseKernel
 from pycuda.compiler import SourceModule
-from pycuda.gpuarray import splay
 from pycuda.tools import VectorArg
-
-import pycuda.autoinit
 
 def theano_parse_c_arg(c_arg):
     c_arg = c_arg.replace('npy_float32','float')

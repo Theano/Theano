@@ -1,8 +1,9 @@
 import numpy
 
-try:
-    import pycuda
-except ImportError:
+import theano
+import theano.misc.pycuda_init
+
+if not theano.misc.pycuda_init.pycuda_available:
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed. Skip test of theano op with pycuda code.")
 
