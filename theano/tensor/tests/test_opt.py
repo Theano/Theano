@@ -2030,7 +2030,7 @@ class T_useless_elemwise(unittest.TestCase):
         # tensor_copy, and view
         x = T.matrix()
         f = theano.function([x], T.tensor_copy(x), mode=self.mode)
-        vx = numpy.random.rand(5,4)
+        vx = numpy.random.rand(5,4).astype(config.floatX)
         f(vx)
         topo = f.maker.env.toposort()
         assert len(topo) == 1
