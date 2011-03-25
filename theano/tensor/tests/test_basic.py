@@ -2458,43 +2458,52 @@ class test_comparison(unittest.TestCase):
             self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
 
 class test_bitwise(unittest.TestCase):
+    dtype = ['int8', 'int16', 'int32', 'int64',]
+
     def test_or(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x|y)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x|y)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
 
     def test_xor(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x^y)
-        ix = x
-        ix = inplace.xor_inplace(ix, y)
-        gn = inplace_func([x,y], ix)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
-        v = gn(l, r)
-        #test the in-place stuff
-        self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x^y)
+            ix = x
+            ix = inplace.xor_inplace(ix, y)
+            gn = inplace_func([x,y], ix)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
+            v = gn(l, r)
+            #test the in-place stuff
+            self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
 
     def test_and(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x&y)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x&y)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
 
     def test_inv(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], ~x)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (~l)), (l, r, v))
+        for dtype in self.dtype:
+            x = vector(dtype=dtype)
+            fn = inplace_func([x], ~x)
+            for l in [[0,0,1,1],[0,1,0,1],
+                      [0,0,1,1],[0,1,0,1],
+                      [-1,2**16, 2**16-1]
+                      ]:
+                l = theano._asarray([0,0,1,1], dtype = dtype)
+                v = fn(l)
+                self.failUnless(numpy.all(v == (~l)), (l, v))
 
     def test_eye(self):
         n = iscalar()
