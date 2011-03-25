@@ -1670,7 +1670,7 @@ class test_shapeoptimizer(unittest.TestCase):
         register_specialize(local_identity_noshape_to_identity_shape)
 
         # With the optimization
-        # The identity_shape op is should not be needed anymore to compute
+        # The identity_shape op should not be needed anymore to compute
         # the shape
         g = theano.function([x], ins_x.shape, mode=mode)
         xval = rng.randn(6,1,2).astype(config.floatX)

@@ -618,11 +618,10 @@ class ShapeFeature(object):
         assert other_r in self.shape_of, ('other_r not in shape_of', other_r)
         other_shape = self.shape_of[other_r]
 
-        # If no info is known on r's shape, use other_shape
-        try:
-            r_shape = self.shape_tuple(r)
-        except AttributeError, e:
-            #print e
+        if r in self.shape_of:
+            r_shape = self.shape_of[r]
+        else:
+            # If no info is known on r's shape, use other_shape
             self.shape_of[r] = other_shape
             return
 
@@ -634,11 +633,14 @@ class ShapeFeature(object):
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
         for i, ps in enumerate(other_shape):
-            # If other_shape[i] is uninformative (if it is just
-            # Shape_i(i)(other_r)), use r_shape[i]
-            if (isinstance(getattr(ps,'op',None), Shape_i) and
-                    ps.i == i and
-                    ps.inputs[0] == other_r):
+            # If other_shape[i] is uninformative, use r_shape[i].
+            # For now, we consider 2 cases of uninformative other_shape[i]:
+            #  - Shape_i(i)(other_r);
+            #  - Shape_i(i)(r).
+            if (ps.owner and
+                    isinstance(getattr(ps.owner,'op',None), Shape_i) and
+                    ps.owner.op.i == i and
+                    ps.owner.inputs[0] in (r, other_r)):
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
