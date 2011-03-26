@@ -1,6 +1,9 @@
+import pickle
 import os, sys
 
 import theano
+
+DISPLAY_DUPLICATE_KEYS = False
 
 dirs = []
 if len(sys.argv)>1:
@@ -40,6 +43,10 @@ for dir in dirs:
         print dir, "don't have a mod.{cpp,cu} file"
         pass
 
+if DISPLAY_DUPLICATE_KEYS:
+    for k, v in keys.iteritems():
+        if v > 1:
+            print "Duplicate key (%i copies): %s" % (v, pickle.loads(k))
 
 nbs = {} # nb seen -> now many key
 for val in keys.values():
