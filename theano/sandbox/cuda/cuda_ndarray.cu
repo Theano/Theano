@@ -630,7 +630,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // calculate new size, assert same as old size
     if (rval_size != CudaNdarray_SIZE(self))
     {
-        PyErr_SetString(PyExc_ValueError, "size must remain unchanged");
+        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %i to %i", CudaNdarray_SIZE(self), rval_size);
         free(rval_dims);
         return NULL;
     }
