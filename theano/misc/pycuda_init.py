@@ -22,4 +22,7 @@ try:
     import pycuda.autoinit
     pycuda_available = True
 except ImportError:
-    pass
+    # presumably, the user wanted to use pycuda, else they wouldn't have
+    # imported this module, so issue a warning that the import failed.
+    import warnings
+    warnings.warn("PyCUDA import failed in theano.misc.pycuda_init")
