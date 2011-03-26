@@ -346,12 +346,16 @@ def MergeOptMerge(opt):
 
 def pre_constant_merge(vars):
     """
-    Merge constants before the Theano variables in the list `vars`
-    Modify the nodes that are in the path to create out.
+    Merge constants in the subgraph used to compute nodes in `vars`.
 
-    :note: This don't change node that are in an env.
-           This is used to pre-merge node generated in an optimization
-           that we don't want DebugMode to check as there is too many
+    `vars` is a list of nodes, and we want to merge together nodes
+    that are constant inputs used to compute nodes in that list.
+
+    :note: This function will ignore nodes that are in an env.
+           It is used to pre-merge nodes generated inside an optimization,
+           before it is inserted in the env.
+           It is useful if there are many such replacements to make,
+           so that DebugMode will not check each of them.
     """
 
     seen_var = set()
