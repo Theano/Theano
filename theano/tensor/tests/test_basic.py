@@ -893,6 +893,11 @@ def test_identity():
         f = function([sym], tensor_copy(sym))
         assert numpy.all(obj == f(obj))
         assert obj.dtype == f(obj).dtype
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        if theano.config.mode != 'FAST_COMPILE':
+            assert isinstance(topo[0].op, theano.compile.function_module.DeepCopyOp)
+
     for dtype in ALL_DTYPES:
         yield check, dtype
 
