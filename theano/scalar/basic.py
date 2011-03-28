@@ -779,7 +779,7 @@ class UnaryBitOp(UnaryScalarOp):
     def output_types(self, *input_types):
         for i in input_types[0]:
             if i not in (int8, int16, int32, int64):
-                raise TypeError('input to a BitOp must have type int8, int32 or int64... not %s' % i)
+                raise TypeError('input to a BitOp must have type int8, int16, int32 or int64... not %s' % i)
         return upcast_out(*input_types[0])
     def grad(self, inputs, output_gradients):
         return [None]
@@ -789,7 +789,7 @@ class BinaryBitOp(BinaryScalarOp):
         t0, t1 = input_types[0]
         for i in input_types[0]:
             if i not in (int8, int16, int32, int64):
-                raise TypeError('input to a BitOp must have type int8, int32 or int64... not %s' % i)
+                raise TypeError('input to a BitOp must have type int8, int16, int32 or int64... not %s' % i)
         return upcast_out(*input_types[0])
     def grad(self, inputs, output_gradients):
         return [None, None]
