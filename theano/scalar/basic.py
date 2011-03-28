@@ -829,20 +829,7 @@ class Invert(UnaryBitOp):
     def impl(self, x):
         return ~x
     def c_code(self, node, name, (x,), (z, ), sub):
-        dtype = node.inputs[0].type.dtype
-        # For an unknow reason, the pattern must have 2 times the number of bits
-        # then the inputs...
-        if dtype == 'int8':
-            pattern = "0xFF"
-        elif dtype == 'int16':
-            pattern = "0xFFFF"
-        elif dtype == 'int32':
-            pattern = "0xFFFFFFFF"
-        elif dtype == 'int64':
-            pattern = "0xFFFFFFFFFFFFFFFF"
-        else:
-            super(Invert, self).c_code(node, name, (x,), (z, ), sub)
-        return "%(z)s = (%(x)s ^ %(pattern)s);" % locals()
+        return "%(z)s = (~%(x)s);" % locals()
 invert = Invert()
 
 
