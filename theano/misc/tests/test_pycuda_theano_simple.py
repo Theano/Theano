@@ -66,7 +66,8 @@ def test_pycuda_memory_to_theano():
     print 'strides', strides
     assert cuda_rand._strides == strides, (cuda_rand._strides, strides)
 
-    z = cuda_ndarray.from_gpu_pointer(y.ptr, y.shape, strides, y)
+    y_ptr = int(y.gpudata) # in pycuda trunk, y.ptr also works, which is a little cleaner
+    z = cuda_ndarray.from_gpu_pointer(y_ptr, y.shape, strides, y)
     print "gpuarray ref count after creating a CudaNdarray", sys.getrefcount(y)
     assert sys.getrefcount(y)==3
     assert (numpy.asarray(z) == 0).all()
