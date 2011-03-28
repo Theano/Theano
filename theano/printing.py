@@ -57,6 +57,9 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         order = obj.maker.env.toposort()
     elif isinstance(obj, (list, tuple)):
         results_to_print.extend(obj)
+    elif isinstance(obj, gof.Env):
+        results_to_print.extend(obj.outputs)
+        order = obj.toposort()
     else:
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
@@ -611,11 +614,18 @@ def pydotprint(fct, outfile=None,
 
 
 def pydotprint_variables(vars,
-                         outfile=os.path.join(config.compiledir,'theano.pydotprint.png'),
+                         outfile=None,
+                         format='png',
                          depth = -1,
-                         high_contrast = True):
+                         high_contrast = True, colorCodes = None):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
+
+    if colorCodes is None:
+        colorCodes = default_colorCodes
+    if outfile is None:
+        outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
+                               config.device + '.' + format)
     try:
         import pydot as pd
     except:

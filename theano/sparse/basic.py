@@ -650,7 +650,9 @@ class AddSD(gof.op.Op):
                                         broadcastable = y.type.broadcastable).make_variable()])
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
-        out[0] = x + y
+        # The asarray is needed as in some case, this return a
+        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
+        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)

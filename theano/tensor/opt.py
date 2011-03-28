@@ -25,7 +25,7 @@ import basic as T
 from theano import compile  #to register the optimizer built by this file
 
 from theano.gof.python25 import any, all
-from theano.gof.opt import Optimizer
+from theano.gof.opt import Optimizer, pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value
 
@@ -602,13 +602,66 @@ class ShapeFeature(object):
                     s_i, type(s_i), getattr(s_i, 'type', None))
 
     def set_shape(self, r, s):
-        assert r not in self.shape_of
+        assert r not in self.shape_of, 'r already in shape_of'
         if s is None:
             self.shape_of[r] = s
         else:
             self.shape_of[r] = tuple([self.unpack(s_i) for s_i in s])
 
-    def init_r(self,r):
+    def update_shape(self, r, other_r):
+        '''Replace shape of r by shape of other_r.
+
+        If, on some dimensions, the shape of other_r is not informative,
+        keep the shape of r on those dimensions.
+        '''
+        # other_r should already have a shape
+        assert other_r in self.shape_of, ('other_r not in shape_of', other_r)
+        other_shape = self.shape_of[other_r]
+
+        if r in self.shape_of:
+            r_shape = self.shape_of[r]
+        else:
+            # If no info is known on r's shape, use other_shape
+            self.shape_of[r] = other_shape
+            return
+
+        # If other_shape has no information, use r_shape
+        if other_shape is None:
+            self.shape_of[r] = r_shape
+            return
+
+        # Merge other_shape with r_shape, giving the priority to other_shape
+        merged_shape = []
+        for i, ps in enumerate(other_shape):
+            # If other_shape[i] is uninformative, use r_shape[i].
+            # For now, we consider 2 cases of uninformative other_shape[i]:
+            #  - Shape_i(i)(other_r);
+            #  - Shape_i(i)(r).
+            if (ps.owner and
+                    isinstance(getattr(ps.owner,'op',None), Shape_i) and
+                    ps.owner.op.i == i and
+                    ps.owner.inputs[0] in (r, other_r)):
+                merged_shape.append(r_shape[i])
+            else:
+                merged_shape.append(other_shape[i])
+        self.shape_of[r] = tuple(merged_shape)
+
+    def set_shape_i(self, r, i, s_i):
+        '''Replace element i of shape_of[r] by s_i'''
+        assert r in self.shape_of
+        prev_shape = self.shape_of[r]
+        # prev_shape is a tuple, so we cannot change it inplace,
+        # so we build another one.
+        new_shape = []
+        for j, s_j in enumerate(prev_shape):
+            if j == i:
+                new_shape.append(self.unpack(s_i))
+            else:
+                new_shape.append(s_j)
+        self.shape_of[r] = tuple(new_shape)
+
+    def init_r(self, r):
+        '''Register r's shape in the shape_of dictionary.'''
         if r not in self.shape_of:
             try:
                 self.set_shape(r, self.shape_tuple(r))
@@ -619,7 +672,7 @@ class ShapeFeature(object):
         return make_vector(*self.shape_of[r])
     #
     #
-    # Feature inteface
+    # Feature interface
     #
     #
     def on_attach(self, env):
@@ -669,10 +722,10 @@ class ShapeFeature(object):
             self.set_shape(r, s)
 
     def on_change_input(self, env, node, i, r, new_r):
-        # TODO:
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.
-        self.init_r(new_r)
+        self.update_shape(new_r, r)
+
         # change_input happens in two cases:
         # 1) we are trying to get rid of r, or
         # 2) we are putting things back after a failed transaction.
@@ -689,6 +742,15 @@ class ShapeFeature(object):
         for k,v in self.scheduled.items():
             if v == r:
                 del self.scheduled[k]
+
+        # In either case, r could be in shape_of.values(), that is, r itself
+        # is the shape of  something. In that case, we want to update
+        # the value in shape_of, to keep it up-to-date.
+        for k,v in self.shape_of.iteritems():
+            if v is not None:
+                for ii, vi in enumerate(v):
+                    if vi == r:
+                        self.set_shape_i(k, ii, new_r)
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an env feature.
@@ -1125,8 +1187,6 @@ def local_useless_subtensor(node):
                 node_input_idx += sum([isinstance(idx.start, theano.scalar.Scalar),
                                        isinstance(idx.stop, theano.scalar.Scalar),
                                        isinstance(idx.step, theano.scalar.Scalar)])
-            if isinstance(idx, theano.scalar.Scalar):
-                node_input_idx += 1
         return [node.inputs[0]]
 
 
@@ -1171,6 +1231,7 @@ def local_subtensor_lift(node):
                             new_inputs.append(i.dimshuffle(['x']*node.outputs[0].ndim))
                 return [u.owner.op(*new_inputs)]
 
+
 def merge_two_slices(slice1, len1, slice2, len2):
     '''
      This function merges two slices into a single slice. The code works on
@@ -1186,18 +1247,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
     ``len1`` is the length of the tensor **before** applying the first slice,
     while ``len2`` is the length **after** applying the first slice.
     '''
-    def const_fold(n):
-        while True:
-            ret = constant_folding.transform(n)
-            if ret is not False and ret is not None:
-                #print n,ret
-                assert len(ret)==len(n.outputs)
-                assert len(ret)==1
-                n = ret[0].owner
-            else: break
-
-        return n.outputs
-
+    list_opt = [ local_abs_merge, local_mul_switch_sink, local_upcast_elemwise_constant_inputs, local_remove_switch_const_cond, constant_folding ]
 
 
     if type(slice1) is not slice:
@@ -1250,38 +1300,65 @@ def merge_two_slices(slice1, len1, slice2, len2):
         # according to the two steps we have 4 different combinations of
         # positive/negative. I will denote the case I'm looking at by
         # suffixes to the variables (nn,np,pn,pp):
-        pp_start = sl1.start + sl2.start * sl1.step
-        pp_stop  = sl1.start + sl2.stop  * sl1.step
-        pp_step  = sl1.step  * sl2.step
+        flen = sl2.stop - sl2.start
+        p_step  = sl1.step  * sl2.step
+        n_step  = sl1.step  * sl2.step  * -1
 
-        pn_stop  = sl1.start + sl2.start * sl1.step
-        pn_start = sl1.start + sl2.stop  * sl1.step
-        pn_step  = sl1.step  * sl2.step  * -1
-        pn_stop  = T.switch(T.eq(pn_stop,-1), -len1 -1, pn_stop)
+
+
+        pp_start = T.minimum(sl1.start + sl2.start * sl1.step, sl1.stop)
+        pp_stop  = T.minimum(sl1.start + sl2.stop  * sl1.step, sl1.stop)
+
+
+        pn_stop  = sl1.start + (sl2.start -1) * sl1.step
+        pn_stop  = T.switch(T.and_(T.lt(pn_stop,0)
+                                   , T.gt(flen,0))
+                            , -len1 -1
+                            , T.minimum(pn_stop, sl1.stop))
+        pn_start = sl1.start + (sl2.stop -1)  * sl1.step
+        pn_start = T.minimum( pn_start, sl1.stop )
+        pn_start = T.maximum( pn_start, 0 )
+
 
         np_stop  = sl1.stop - sl2.stop  * sl1.step -1
-        np_start = sl1.stop - sl2.start * sl1.step -1
-        np_step  = sl1.step * sl2.step  * -1
-        np_stop  = T.switch(T.eq(np_stop,-1), -len1 -1, np_stop)
+        np_stop  = T.switch(T.and_(T.lt(np_stop,0)
+                                   , T.gt(flen,0))
+                            ,-len1-1
+                            , T.maximum(sl1.start-1, np_stop))
+        np_start = T.maximum(sl1.start,sl1.stop - sl2.start * sl1.step -1)
 
-        nn_start = sl1.stop - sl2.start * sl1.step
-        nn_stop  = sl1.stop - sl2.stop  * sl1.step
-        nn_step  = sl1.step * sl2.step
+        nn_start = T.maximum(sl1.start,(sl1.stop -1)- (sl2.stop-1) * sl1.step)
+        nn_stop  = T.maximum(sl1.start,sl1.stop - sl2.start * sl1.step)
 
-        start = const_fold(T.switch(T.lt(reverse2*reverse1,0),
+
+        start = T.switch(T.lt(reverse2*reverse1,0),
                          T.switch(T.lt(reverse1,0), np_start, pn_start),
                          T.switch(T.lt(reverse1,0), nn_start,
-                                  pp_start)).owner)[0]
+                                  pp_start))
 
-        stop  = const_fold(T.switch(T.lt(reverse2*reverse1,0),
+        stop  = T.switch(T.lt(reverse2*reverse1,0),
                          T.switch(T.lt(reverse1,0), np_stop , pn_stop ),
                          T.switch(T.lt(reverse1,0), nn_stop , pp_stop
-                                 )).owner)[0]
+                                 ))
 
-        step  = const_fold( T.switch(T.lt(reverse2*reverse1,0),
-                         T.switch(T.lt(reverse1,0), np_step , pn_step ),
-                         T.switch(T.lt(reverse1,0), nn_step , pp_step
-                                 )).owner)[0]
+        step  = T.switch( T.lt(reverse2*reverse1,0),n_step, p_step)
+        start = T.switch(T.le(flen,0), 0, start)
+        stop  = T.switch(T.le(flen,0), 0, stop)
+
+        # The canonical form of the slice is pretty complicated
+        # and is not simplified. We simplify it in advance here
+        # as otherwise this create too many useless optimization that
+        # DebugMode must check.
+        start = pre_greedy_local_optimizer( list_opt, start)
+        stop  = pre_greedy_local_optimizer( list_opt, stop)
+        step  = pre_greedy_local_optimizer( list_opt, step)
+        start = pre_greedy_local_optimizer( list_opt, start)
+        stop  = pre_greedy_local_optimizer( list_opt, stop)
+        step  = pre_greedy_local_optimizer( list_opt, step)
+
+        #Pre merge constant for the same reason.
+        start, stop, step = pre_constant_merge([start, stop, step])
+
         return slice(start, stop, step)
 
 @register_canonicalize

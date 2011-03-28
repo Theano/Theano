@@ -1,8 +1,9 @@
 import numpy
 
-try:
-    import pycuda
-except ImportError:
+import theano
+import theano.misc.pycuda_init
+
+if not theano.misc.pycuda_init.pycuda_available:
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed. Skip test of theano op with pycuda code.")
 
@@ -14,10 +15,6 @@ if cuda_ndarray.cuda_available == False:
 import theano
 import theano.tensor as T
 from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp
-from theano.sandbox.cuda import GpuContiguous
-import theano.misc.pycuda_example
-
-import theano.sandbox.cuda as cuda_ndarray
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -37,8 +34,8 @@ def test_pycuda_elemwise_source_module():
     assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
     assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
 
-    val1 = numpy.random.rand(5,5)
-    val2 = numpy.random.rand(5,5)
+    val1 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
+    val2 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
     #val1 = numpy.ones((5,5))
     #val2 = numpy.arange(25).reshape(5,5)
     assert (f(val1,val2) == f2(val1,val2)).all()

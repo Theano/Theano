@@ -765,17 +765,26 @@ class TestGemv(TestCase):
     def test_gemv_dimensions(self):
         A = T.matrix('A')
         x, y = T.vectors('x', 'y')
-        alpha = theano.shared(1.0, name='alpha')
-        beta = theano.shared(1.0, name='beta')
+        alpha = theano.shared(theano._asarray(1.0, dtype=config.floatX),
+                name='alpha')
+        beta = theano.shared(theano._asarray(1.0, dtype=config.floatX),
+                name='beta')
 
         z = beta * y + alpha * T.dot(A, x)
         f = theano.function([A, x, y], z)
 
+        # Matrix value
         A_val = numpy.ones((5,3), dtype=config.floatX)
-        f(A_val, numpy.ones(3), numpy.ones(5))
-        self.assertRaises(ValueError, f, A_val, numpy.ones(4), numpy.ones(5))
-        self.assertRaises(ValueError, f, A_val, numpy.ones(3), numpy.ones(6))
-        self.assertRaises(ValueError, f, A_val, numpy.ones(4), numpy.ones(6))
+        # Different vector length
+        ones_3 = numpy.ones(3, dtype=config.floatX)
+        ones_4 = numpy.ones(4, dtype=config.floatX)
+        ones_5 = numpy.ones(5, dtype=config.floatX)
+        ones_6 = numpy.ones(6, dtype=config.floatX)
+
+        f(A_val, ones_3, ones_5)
+        self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
+        self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
+        self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
 
 
 # The following gemv tests were added in March 2011 by Ian Goodfellow

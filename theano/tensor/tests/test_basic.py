@@ -15,7 +15,7 @@ from theano.tensor import inplace
 from copy import copy
 from theano import compile, config
 from theano import gof
-from theano.gof.python25 import any, all
+from theano.gof.python25 import any, all, combinations
 
 from theano.compile.mode import get_default_mode
 from theano import function
@@ -217,6 +217,16 @@ def randint_ranged(min, max, shape):
 
 def randc128_ranged(min, max, shape):
     return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype='complex128')
+
+def rand_of_dtype(shape, dtype):
+    if 'int' in dtype:
+        return randint(*shape).astype(dtype)
+    elif 'float' in dtype:
+        return rand(*shape).astype(dtype)
+    elif 'complex' in dtype:
+        return randcomplex(*shape).astype(dtype)
+    else:
+        raise TypeError()
 
 def makeBroadcastTester(op, expected, checks = {}, **kwargs):
     name = str(op) + "Tester"
@@ -792,42 +802,10 @@ DotTester = makeTester(name = 'DotTester',
 def _numpy_second(x, y):
     return numpy.broadcast_arrays(x, y)[1]
 
-def combinations(iterable, r):
-    # Borrowed from Python docs - can be removed when we drop
-    # support for 2.4/2.5
-    # combinations('ABCD', 2) --> AB AC AD BC BD CD
-    # combinations(range(4), 3) --> 012 013 023 123
-    pool = tuple(iterable)
-    n = len(pool)
-    if r > n:
-        return
-    indices = range(r)
-    yield tuple(pool[i] for i in indices)
-    while True:
-        for i in reversed(range(r)):
-            if indices[i] != i + n - r:
-                break
-        else:
-            return
-        indices[i] += 1
-        for j in range(i+1, r):
-            indices[j] = indices[j-1] + 1
-        yield tuple(pool[i] for i in indices)
-
 ALL_DTYPES = ('int8', 'int16', 'int32', 'int64',
               'float32', 'float64', 'complex64', 'complex128')
 REAL_DTYPES = ALL_DTYPES[:-2]
 COMPLEX_DTYPES = ALL_DTYPES[-2:]
-
-def rand_of_dtype(shape, dtype):
-    if 'int' in dtype:
-        return randint(*shape).astype(dtype)
-    elif 'float' in dtype:
-        return rand(*shape).astype(dtype)
-    elif 'complex' in dtype:
-        return randcomplex(*shape).astype(dtype)
-    else:
-        raise TypeError()
 
 def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
     for dtype1, dtype2 in combinations(dtypes, 2):
@@ -932,6 +910,7 @@ class CastTester(unittest.TestCase):
             out = tensor.cast(inp, dtype=dtype)
             f = function([inp], out)
             assert f(obj).dtype == numpy.dtype(dtype)
+            f(obj)
 
     def test_cast_from_real_to_complex(self):
         for real_dtype in REAL_DTYPES:
@@ -941,6 +920,7 @@ class CastTester(unittest.TestCase):
                 f = function([inp], out)
                 obj = rand_of_dtype((2, ), real_dtype)
                 assert f(obj).dtype == numpy.dtype(complex_dtype)
+                f(obj)
 
     def test_cast_from_complex_to_real_raises_error(self):
         for real_dtype in REAL_DTYPES:
@@ -1886,7 +1866,7 @@ class T_subtensor(unittest.TestCase):
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
 
-        data = self.shared(numpy.array(numpy.arange(5),dtype ='int32'))
+        data = self.shared(numpy.array(numpy.arange(5),dtype=self.dtype))
         for start in [None]+ [-8,-5,-1,0,1,5,8]:
             outs   = []
             shapes = []
@@ -1909,7 +1889,7 @@ class T_subtensor(unittest.TestCase):
         if mode_opt == 'FAST_COMPILE':
             mode_opt = 'FAST_RUN'
         mode_opt = compile.mode.get_mode(mode_opt)
-        v_data = numpy.array(numpy.arange(5), dtype = 'int32')
+        v_data = numpy.array(numpy.arange(5), dtype=self.dtype)
         t_data = self.shared(v_data)
         start  = theano.tensor.iscalar('b')
         stop   = theano.tensor.iscalar('e')
@@ -2337,12 +2317,13 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
-        b_val = rng.rand(1, 3, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 3, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(1,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if dimension 0 does not match
-        self.assertRaises(ValueError, f, rng.rand(2,4,1), b_val)
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        self.assertRaises(ValueError, f, bad_a_val, b_val)
 
     def test_broadcastable_flag_assignment_mixed_thisaxes(self):
         """
@@ -2357,12 +2338,13 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(2, 4, 1)
-        b_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if b_val.shape[0] is not 1
-        self.assertRaises(TypeError, f, a_val, rng.rand(3,4,1))
+        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
         """
@@ -2377,13 +2359,15 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
-        b_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
+        b_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val, b_val)
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, f, rng.rand(2,4,1), b_val)
-        self.assertRaises(TypeError, f, a_val, rng.rand(3,4,1))
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, bad_a_val, b_val)
+        self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
         """
@@ -2398,11 +2382,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a], b)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1)
+        a_val = rng.rand(1, 4, 1).astype(config.floatX)
         f(a_val)
         utt.verify_grad((lambda a: join(0,a)), [a_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, f, rng.rand(2,4,1))
+        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
+        self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
         """
@@ -2426,26 +2411,32 @@ class T_Join_and_Split(unittest.TestCase):
 
         g = function([a,b,c,d,e], f)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 1, 1, 1, 2, 1)
-        b_val = rng.rand(1, 1, 1, 1, 2, 1)
-        c_val = rng.rand(1, 1, 1, 1, 2, 1)
-        d_val = rng.rand(1, 1, 1, 1, 2, 1)
-        e_val = rng.rand(1, 1, 1, 1, 2, 1)
+        a_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        b_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        c_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        d_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
+        e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
         g(a_val, b_val, c_val, d_val, e_val)
         utt.verify_grad((lambda a,b,c,d,e: join(0,a,b,c,d,e)),
                 [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        self.assertRaises(TypeError, g, rng.rand(2,1,1,1,2,1), b_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, rng.rand(2,1,1,1,2,1), c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, rng.rand(2,1,1,1,2,1), d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, rng.rand(2,1,1,1,2,1), e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, rng.rand(2,1,1,1,2,1))
+        bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(config.floatX)
+        self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
+        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
-        self.assertRaises(ValueError, g, rng.rand(1,2,1,1,2,1), b_val, c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, rng.rand(1,1,1,1,2,2), c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, rng.rand(1,1,2,1,2,1), d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, rng.rand(1,2,1,1,2,1), e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, rng.rand(1,1,1,2,2,1))
+        bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
+        bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(config.floatX)
+        bad_c_val = rng.rand(1, 1, 2, 1, 2, 1).astype(config.floatX)
+        bad_d_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
+        bad_e_val = rng.rand(1, 1, 1, 2, 2, 1).astype(config.floatX)
+        self.assertRaises(ValueError, g, bad_a_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, bad_b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, bad_c_val, d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, c_val, bad_d_val, e_val)
+        self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, bad_e_val)
 
 
 class test_comparison(unittest.TestCase):
@@ -2504,43 +2495,52 @@ class test_comparison(unittest.TestCase):
             self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
 
 class test_bitwise(unittest.TestCase):
+    dtype = ['int8', 'int16', 'int32', 'int64',]
+
     def test_or(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x|y)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x|y)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
 
     def test_xor(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x^y)
-        ix = x
-        ix = inplace.xor_inplace(ix, y)
-        gn = inplace_func([x,y], ix)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
-        v = gn(l, r)
-        #test the in-place stuff
-        self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x^y)
+            ix = x
+            ix = inplace.xor_inplace(ix, y)
+            gn = inplace_func([x,y], ix)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
+            v = gn(l, r)
+            #test the in-place stuff
+            self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
 
     def test_and(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], x&y)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
+        for dtype in self.dtype:
+            x, y = vector(dtype=dtype), vector(dtype=dtype)
+            fn = inplace_func([x,y], x&y)
+            l = theano._asarray([0,0,1,1], dtype = dtype)
+            r = theano._asarray([0,1,0,1], dtype = dtype)
+            v = fn(l, r)
+            self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
 
     def test_inv(self):
-        x, y = bvector(), bvector()
-        fn = inplace_func([x,y], ~x)
-        l = theano._asarray([0,0,1,1], dtype = 'int8')
-        r = theano._asarray([0,1,0,1], dtype = 'int8')
-        v = fn(l, r)
-        self.failUnless(numpy.all(v == (~l)), (l, r, v))
+        for dtype in self.dtype:
+            x = vector(dtype=dtype)
+            fn = inplace_func([x], ~x)
+            for l in [[0,0,1,1],[0,1,0,1],
+                      [0,0,1,1],[0,1,0,1],
+                      [-1,2**16, 2**16-1]
+                      ]:
+                l = theano._asarray([0,0,1,1], dtype = dtype)
+                v = fn(l)
+                self.failUnless(numpy.all(v == (~l)), (l, v))
 
     def test_eye(self):
         n = iscalar()

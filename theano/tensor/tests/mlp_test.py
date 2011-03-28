@@ -302,10 +302,11 @@ def test_mlp():
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
                 y:train_set_y[index*batch_size:(index+1)*batch_size]},
             mode=mode)
-    for i in train_model.maker.env.toposort(): print i
-    #theano.printing.pydotprint(train_model)
+    print 'MODEL 1'
+    theano.printing.debugprint(train_model, print_type=True)
+    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
 
-    assert any( [isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
+    # Now, this case works, too!
     train_model =theano.function( inputs = [index],
             updates = updates2,
             mode=mode.excluding('local_track_shape_i'),
@@ -313,9 +314,21 @@ def test_mlp():
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
                 y:train_set_y[index*batch_size:(index+1)*batch_size]})
     print
-    for i in train_model.maker.env.toposort(): print i
+    print 'MODEL 2'
+    theano.printing.debugprint(train_model, print_type=True)
+    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
 
-    assert not any( [isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
+    # Even without FeatureShape
+    train_model =theano.function( inputs = [index],
+            updates = updates2,
+            mode=mode.excluding('local_shape_to_shape_i'),
+            givens={
+                x:train_set_x[index*batch_size:(index+1)*batch_size],
+                y:train_set_y[index*batch_size:(index+1)*batch_size]})
+    print
+    print 'MODEL 3'
+    theano.printing.debugprint(train_model, print_type=True)
+    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
 
 if __name__ == '__main__':
     test_mlp()

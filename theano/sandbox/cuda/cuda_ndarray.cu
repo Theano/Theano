@@ -630,7 +630,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // calculate new size, assert same as old size
     if (rval_size != CudaNdarray_SIZE(self))
     {
-        PyErr_SetString(PyExc_ValueError, "size must remain unchanged");
+        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %i to %i", CudaNdarray_SIZE(self), rval_size);
         free(rval_dims);
         return NULL;
     }
@@ -2010,6 +2010,100 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     return Py_None;
 }
 
+/*
+ * This function is tested in theano/misc/test_pycuda_theano_simple.py
+ */
+PyObject *
+CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
+{
+    PyObject *gpu_ptr = NULL;
+    PyObject *shapes = NULL;
+    PyObject *strides = NULL;
+    PyObject *base = NULL;
+    PyObject *rval = NULL;
+
+    //args should consist of 3 python objects
+    //The first is the gpu ptr
+    //The second if the shape
+    //The third if the strides
+    if (! PyArg_ParseTuple(args, "OOOO", &gpu_ptr, &shapes, &strides, &base))
+        return NULL;
+
+    printf("In CudaNdarray_from_gpu_pointer\n");
+    if (!PyLong_Check(gpu_ptr))
+    {
+        PyErr_Format(PyExc_Exception, "CudaNdarray_from_gpu_pointer: The gpu pointor is not an long");
+	return NULL;
+    }
+
+    Py_ssize_t nd =  PyObject_Length(shapes);
+    if (nd < 0)
+    {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_from_gpu_pointer: Couldn't get length of second argument");
+        return NULL;
+    }
+    Py_ssize_t nd_stride =  PyObject_Length(strides);
+    if (nd_stride < 0)
+    {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_from_gpu_pointer: Couldn't get length of third argument");
+        return NULL;
+    }
+    
+    if (nd != nd_stride)
+    {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_from_gpu_pointer: We need the same number of shapes and strides");
+        return NULL;
+    }
+
+    rval = CudaNdarray_new_null();
+
+    if (CudaNdarray_set_nd((CudaNdarray *)rval, nd))
+    {
+        //CudaNdarray_set_nd set the error msg
+        return NULL;
+    }
+    // set gpu pointeur
+    assert(((CudaNdarray *)rval)->data_allocated == 0);
+    if (CudaNdarray_set_device_data((CudaNdarray *)rval, (float *)PyInt_AsLong(gpu_ptr), base))
+    {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_from_gpu_pointer: Error while setting the gpu pointor");
+        return NULL;
+
+    }
+
+    // Set dims and strides    
+    for (int i = nd-1; i >= 0; --i)
+    {
+        PyObject * idx = PyLong_FromLong(i);
+        if (idx == NULL)
+        {
+            PyErr_SetString(PyExc_Exception, "CudaNdarray_from_gpu_pointer: Couldn't make long object to loop over list/tuple");
+            return NULL;
+        }
+        PyObject* dim_ = PyObject_GetItem(shapes, idx);
+        PyObject* strd_ = PyObject_GetItem(strides, idx);
+	if (!PyInt_Check(dim_))
+        {
+	    PyErr_Format(PyExc_Exception, "CudaNdarray_from_gpu_pointer: shapes[%d] is not an int", i);
+            return NULL;
+        }
+	if (!PyInt_Check(strd_))
+        {
+	    PyErr_Format(PyExc_Exception, "CudaNdarray_from_gpu_pointer: strides[%d] is not an int", i);
+            return NULL;
+        }
+	int dim = PyInt_AsLong(dim_);
+	int strd = PyInt_AsLong(strd_);
+        CudaNdarray_set_stride((CudaNdarray *)rval, i, strd);
+        CudaNdarray_set_dim((CudaNdarray *)rval, i, dim);
+	Py_DECREF(idx);
+	Py_DECREF(dim_);
+	Py_DECREF(strd_);
+    }
+    printf("CudaNdarray_from_gpu_pointer normal return\n");
+    return rval;
+}
+
 PyObject *
 CudaNdarray_Dot(PyObject* _unused, PyObject* args)
 {
@@ -2175,6 +2269,7 @@ static PyMethodDef module_methods[] = {
     {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
+    {"from_gpu_pointer", CudaNdarray_from_gpu_pointer, METH_VARARGS, "Used to create a CudaNdarray from already allocated memory on the gpu.(example by pycuda)"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
@@ -2367,7 +2462,7 @@ CudaNdarray_new_nd(int nd)
     return (PyObject *) rval;
 }
 
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base)
 {
     if (self->data_allocated)
     {
@@ -2380,10 +2475,10 @@ int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * 
         }
     }
     //N.B. XDECREF and XINCREF are no-ops for NULL pointers
-    if (self->base != (PyObject*)base)
+    if (self->base != base)
     {
         Py_XDECREF(self->base);
-        self->base = (PyObject*)base;
+        self->base = base;
         Py_XINCREF(self->base);
     }
     self->data_allocated = 0;
@@ -2982,18 +3077,20 @@ CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern
         }
 	else if(dims_taken[pattern[i]])
 	{
-	  PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: The same input dimension may not appear twice in the list of output dimensions");
+                PyErr_Format(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle. You used the dimensions %d multiple time",
+			     pattern[i]);
 	  free(newdims);
 	  return -1;
 	}
-        else
-        {
-            if ((dims_taken[pattern[i]]) || (pattern[i]>= self->nd))
-            {
-                PyErr_SetString(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle");
-                free(newdims);
-                return -1;
-            }
+        else if (pattern[i]>= self->nd)
+	{
+	    PyErr_Format(PyExc_ValueError, "Cudandarray_dimshuffle: invalid pattern for Cudandarray_dimshuffle. You asked for a dimensions that don't exist %d for a %d dims CudaNdarray",
+			 pattern[i], self->nd);
+	    free(newdims);
+	    return -1;
+	}
+	else
+	{
             newdims[i] = CudaNdarray_HOST_DIMS(self)[pattern[i]];
             newstrides[i] = CudaNdarray_HOST_STRIDES(self)[pattern[i]];
             dims_taken[pattern[i]] = 1;

@@ -1526,6 +1526,41 @@ class test_local_subtensor_merge(unittest.TestCase):
 
 
 
+    def test_scalar5(self):
+        # var[int1:][:int2]
+        x = TT.matrix('x')
+        b1 = TT.iscalar('b1')
+        e1 = TT.iscalar('e1')
+        s1 = TT.iscalar('s1')
+        b2 = TT.iscalar('b2')
+        e2 = TT.iscalar('e2')
+        s2 = TT.iscalar('s2')
+        f = function([x,b1,e1,s1,b2,e2,s2], x[b1:e1:s1][b2:e2:s2], mode=mode_opt)
+        #theano.printing.debugprint(f, print_type=True)
+
+        topo=f.maker.env.toposort()
+        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print topo[-1].op
+        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+        b1r = self.rng.permutation(range(-8,8))[:2]
+        e1r = self.rng.permutation(range(-8,8))[:2]
+        b2r = self.rng.permutation(range(-8,8))[:2]
+        e2r = self.rng.permutation(range(-8,8))[:2]
+
+        s1r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:2]
+        s2r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:2]
+
+        for x_s in self.x_shapes:
+            x_val = self.rng.uniform(size=x_s).astype(config.floatX)
+            for b1 in b1r:
+                for e1 in e1r:
+                    for s1 in s1r:
+                        for b2 in b2r:
+                            for e2 in e2r:
+                                for s2 in s2r:
+                                    f(x_val, b1,e1,s1,b2,e2,s2)
 
 
 def test_local_fill_useless():
@@ -1635,7 +1670,7 @@ class test_shapeoptimizer(unittest.TestCase):
         register_specialize(local_identity_noshape_to_identity_shape)
 
         # With the optimization
-        # The identity_shape op is should not be needed anymore to compute
+        # The identity_shape op should not be needed anymore to compute
         # the shape
         g = theano.function([x], ins_x.shape, mode=mode)
         xval = rng.randn(6,1,2).astype(config.floatX)
@@ -1995,7 +2030,7 @@ class T_useless_elemwise(unittest.TestCase):
         # tensor_copy, and view
         x = T.matrix()
         f = theano.function([x], T.tensor_copy(x), mode=self.mode)
-        vx = numpy.random.rand(5,4)
+        vx = numpy.random.rand(5,4).astype(config.floatX)
         f(vx)
         topo = f.maker.env.toposort()
         assert len(topo) == 1

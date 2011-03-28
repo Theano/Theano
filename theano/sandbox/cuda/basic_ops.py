@@ -1767,15 +1767,9 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
-    def perform_(self, node, inp, out_):
-        # This don't work as CudaNdarray_Subscript() don't support it.
-        #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
-        x, idx = inp
-        out, = out_
-        o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),)+x.shape[1:])
-        for (j,i) in enumerate(idx):
-            o[j] = x[i]
-        out[0] = o
+    #def perform(self, node, inp, out_):
+        # CudaNdarray_Subscript() don't support Advanced slicing.
+        # so we use the parent version that loop on each indices.
 
 class GpuIncSubtensor(tensor.IncSubtensor):
     def make_node(self, x, y, *inputs):
