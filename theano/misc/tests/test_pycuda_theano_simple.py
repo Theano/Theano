@@ -15,12 +15,10 @@ import theano.misc.pycuda_init
 
 if not theano.misc.pycuda_init.pycuda_available:
     from nose.plugins.skip import SkipTest
-    import pdb;pdb.set_trace()
     raise SkipTest("Pycuda not installed. Skip test of theano op with pycuda code.")
 
 if cuda_ndarray.cuda_available == False:
     from nose.plugins.skip import SkipTest
-    import pdb;pdb.set_trace()
     raise SkipTest('Optional package cuda disabled')
 
 import pycuda
