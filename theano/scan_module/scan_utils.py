@@ -514,7 +514,7 @@ class Clone(Op):
         self.as_view = as_view
         self.gpu = gpu
         if as_view:
-            view_map = {0:[0]}
+            self.view_map = {0:[0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.as_view == other.as_view
