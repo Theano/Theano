@@ -1,5 +1,5 @@
 """
-This module provides optimizations for the Scan Op
+This module provides syntax shortcut for the Scan Op
 
 See scan.py for details on scan
 """
