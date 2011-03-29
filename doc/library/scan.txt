@@ -44,7 +44,7 @@ The equivalent Theano code would be:
                                 n_steps=k)
 
   # We only care about A**k, but scan has provided us with A**1 through A**k.
-  # Discard the values that we don't care about. Scan is smart enough not to
+  # Discard the values that we don't care about. Scan is smart enough to
   # notice this and not waste memory saving them.
   final_result = result[-1]
 
