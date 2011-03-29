@@ -915,7 +915,6 @@ class CastTester(unittest.TestCase):
             out = tensor.cast(inp, dtype=dtype)
             f = function([inp], out)
             assert f(obj).dtype == numpy.dtype(dtype)
-            f(obj)
 
     def test_cast_from_real_to_complex(self):
         for real_dtype in REAL_DTYPES:
@@ -925,7 +924,6 @@ class CastTester(unittest.TestCase):
                 f = function([inp], out)
                 obj = rand_of_dtype((2, ), real_dtype)
                 assert f(obj).dtype == numpy.dtype(complex_dtype)
-                f(obj)
 
     def test_cast_from_complex_to_real_raises_error(self):
         for real_dtype in REAL_DTYPES:
