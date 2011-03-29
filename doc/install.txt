@@ -132,6 +132,13 @@ directory; see the `virtualenv documentation`_ for details.
 
 .. _install_bleeding_edge:
 
+With rpm package
+~~~~~~~~~~~~~~~~
+
+A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
+
+.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
+
 Bleeding-edge (developer) install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
