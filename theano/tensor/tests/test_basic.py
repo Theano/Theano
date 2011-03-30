@@ -862,14 +862,20 @@ SecondSameRankTester = makeTester(
                         )
 
 def test_eye():
-    def check(dtype, N, M=None, k=0):
+    def check(dtype, N, M_=None, k=0):
+        # Theano don't accept None as a tendor
+        # So we must use a real value.
+        M = M_
+        # Currently DebugMode don't support None as inputs event if this is allowed.
+        if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
+            M = N
         N_symb = tensor.iscalar()
         M_symb = tensor.iscalar()
         k_symb = tensor.iscalar()
         f = function([N_symb, M_symb, k_symb],
                      eye(N_symb, M_symb, k_symb, dtype=dtype))
         result = f(N, M, k)
-        assert numpy.allclose(result, numpy.eye(N, M, k, dtype=dtype))
+        assert numpy.allclose(result, numpy.eye(N, M_, k, dtype=dtype))
         assert result.dtype == numpy.dtype(dtype)
     for dtype in ALL_DTYPES:
         yield check, dtype, 3
