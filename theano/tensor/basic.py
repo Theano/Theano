@@ -3533,7 +3533,10 @@ def stack(*tensors):
     # Doing it here make the graph less canonicalized
     # (more type need to be understood by all optimization)
     # And DebugMode can't detect error in this code as it is not in an optimization.
-    if numpy.all([isinstance(t, (numpy.number, float, int, python_complex)) or #in case their is direct int
+    # See ticket #660
+    if numpy.all([
+                  # in case their is direct int in tensors.
+                  isinstance(t, (numpy.number, float, int, python_complex)) or
                   (isinstance(t, Variable) and
                    isinstance(t.type, TensorType) and
                    t.ndim==0)
