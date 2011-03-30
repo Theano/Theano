@@ -1974,7 +1974,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, op_cimpl, message, outputs_size,
                     other_time):
     # Scan overhead profile
-    if any([isinstance(node.op, (Scan, ScanGrad)) for (_,node) in apply_time.keys()]):
+    if any([isinstance(node.op, (Scan, ScanGrad)) and v>0 for (_,node),v in apply_time.items()]):
         print
         print 'Scan overhead:'
         print '<Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time/scan op time(%)> <sub scan op time/scan op time(%)> <node>'
@@ -1982,7 +1982,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_scan_fct_time = 0
         total_scan_op_time = 0
         for (_,node),v in apply_time.items():
-            if isinstance(node.op, (Scan, ScanGrad)):
+            if isinstance(node.op, (Scan, ScanGrad)) and v > 0:
                 scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
                 scan_op_time = sum(node.op.mode_instance.local_time)
                 total_super_scan_time += v
