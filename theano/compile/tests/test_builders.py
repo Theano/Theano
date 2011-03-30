@@ -27,7 +27,7 @@ class T_OpFromGraph(unittest.TestCase):
         print fn(xv, yv, zv)
         assert numpy.all(8.0 == fn(xv, yv, zv))
         assert numpy.all(8.0 == fn(xv, yv, zv))
-    
+
     def test_size_changes(self):
         x, y, z = T.matrices('xyz')
         e = T.dot(x, y)
@@ -43,7 +43,7 @@ class T_OpFromGraph(unittest.TestCase):
         res = fn(xv, yv, zv)
         assert res.shape == (2, 5)
         assert numpy.all(180.0 == res)
-    
+
     def test_grad(self):
         x, y, z = T.matrices('xyz')
         e = x + y * z
@@ -59,4 +59,3 @@ class T_OpFromGraph(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
