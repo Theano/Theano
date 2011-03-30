@@ -276,6 +276,14 @@ def scan_function( inputs
     optimizer(env)
     _logger.debug('Optimizing took %f seconds' %(time.time() - t0))
     mask = [ 0 for x in env.outputs[slices:] ]
+
+
+    for i,out in enumerate(env.outputs):
+        if (out in env.inputs or
+            isinstance(out, tensor.Constant)):
+                env.change_input('output', i, Clone()(out) )
+
+
     for i in xrange(len(env.outputs[slices:])):
         views_of_output_i = set()
         view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
@@ -291,7 +299,6 @@ def scan_function( inputs
             for input_j in env.inputs:
                 # do not allow outputs to be aliased to an inputs (j), unless
                 # a) that j'th input has been 'destroyed' by e.g. in-place computations
-                # b) that j'th input is a shared variable that is also being updated
                 if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
                     continue
                 if input_j in views_of_output_i:
@@ -510,36 +517,24 @@ def expand( tensor_var, size):
 
 
 class Clone(Op):
-    def __init__(self,as_view=False, gpu=False):
-        self.as_view = as_view
-        self.gpu = gpu
-        if as_view:
-            self.view_map = {0:[0]}
+    def __init__(self):
+        self.view_map = {0:[0]}
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.as_view == other.as_view
+        return type(self) == type(other)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.as_view)
+        return hash(type(self))
 
     def __str__(self):
-        if self.as_view:
-            return 'clone[as_view]'
-        else:
-            return 'clone'
+        return 'clone[as_view]'
 
     def make_node(self, *inputs):
         x = inputs[0]
-        if self.gpu:
-            return Apply(self, inputs, [x.type()] )
-        else:
-            return Apply(self, inputs, [ safe_new(x)] )
+        return Apply(self, inputs, [x.type()] )
 
     def perform( self, node, args, outs):
-        if self.as_view:
-            outs[0][0] = args[0]
-        else:
-            outs[0][0] = args[0].copy()
+        outs[0][0] = args[0]
 
     def infer_shape(self, node, input_shapes):
         return input_shapes

@@ -919,19 +919,11 @@ class Scan(Op):
                           scan_shared_ins     +
                           old_scan_shared_ins +
                           inner_other_args )
-        _inner_gfn_outs = ( scan_mit_mot_outs +
+        inner_gfn_outs = ( scan_mit_mot_outs +
                            scan_nit_sot_outs +
                            scan_shared_outs  +
                            old_scan_shared_outs )
 
-        # Create Op and apply it
-        inner_gfn_outs = []
-        for o in _inner_gfn_outs:
-            if (o in inner_gfn_ins or
-                isinstance(o, tensor.Constant)):
-                inner_gfn_outs.append( scan_utils.cloneOp(o) )
-            else:
-                inner_gfn_outs.append(o)
         local_op = Scan( inner_gfn_ins, inner_gfn_outs, info )
         outputs = local_op(*scan_inputs)
         if type(outputs) not in (list, tuple):

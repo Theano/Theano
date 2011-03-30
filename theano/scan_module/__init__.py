@@ -601,48 +601,6 @@ optdb.register( 'scanOp_merge'
                , 2.39
                , 'fast_run')
 '''
-class AddCloneNodes(Optimizer):
-    """ Graph Optimizer that adds clone nodes if output is a constant or
-    input"""
-    def __init__(self):
-        Optimizer.__init__(self)
-
-
-    def add_requirements(self,env):
-        env.extend(toolbox.ReplaceValidate())
-
-    def apply(self, env):
-        # Check for constants
-        for out in env.outputs:
-            if (out in env.inputs or
-                isinstance(out, tensor.Constant)):
-                env.replace_all_validate(
-                    [(out, scan_utils.cloneOp(out))],
-                      reason = 'adding_Clone_Nodes')
-
-
-
-optdb.register( 'add_clone_nodes'
-               , AddCloneNodes()
-               , 70
-               , 'fast_run')
-
-
-@gof.local_optimizer([None])
-def clone_make_inplace(node):
-    op = node.op
-    if ( isinstance(op, scan_utils.Clone) and
-        (not op.as_view) ):
-        return scan_utils.Clone(as_view=True
-                                , gpu = op.gpu).make_node(*node.inputs).outputs
-    return False
-
-optdb.register( 'cloneOp_make_inplace'
-               , opt.in2out(clone_make_inplace,ignore_newtrees=True)
-               , 99
-               , 'fast_run'
-               , 'inplace')
-
 
 
 from theano.sandbox import cuda
@@ -677,34 +635,6 @@ if cuda.cuda_available:
             return y
         else:
             return x
-
-    @register_opt()
-    @local_optimizer([])
-    def gpuCloneOptimization(node):
-        if node.op == gpu_from_host:
-            host_input = node.inputs[0]
-            if ( host_input.owner
-                and host_input.owner.op == scan_utils.Clone
-                and host_input.owner.inputs[0].dtype == config.floatX
-                and not host_input.owner.op.gpu):
-                     x = host_owner.inputs[0]
-                     x = safe_to_gpu(x)
-                     op = host_owner.op
-                     nw_op = scan_utils.Clone(as_view=op.as_view
-                                              , gpu = True).make_node(x)
-                     outputs = [ safe_to_cpu(x) for x in nw_op.outputs]
-                     return outputs
-        if (type(node.op) == scan_utils.Clone
-            and not node.op.gpu
-            and node.inputs[0].dtype == config.floatX ):
-                     x = node.inputs[0]
-                     x = safe_to_gpu(x)
-                     op = node.op
-                     nw_op = scan_utils.Clone(as_view=op.as_view
-                                              , gpu = True).make_node(x)
-                     outputs = [ safe_to_cpu(x) for x in nw_op.outputs]
-                     return outputs
-        return False
 
 
     @register_opt()
