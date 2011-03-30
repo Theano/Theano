@@ -25,7 +25,7 @@ AddConfigVar('ProfileMode.min_memory_size',
 
 AddConfigVar('ProfileMode.profile_memory',
              """Enable profiling of memory used by Theano functions""",
-        BoolParam(True))
+        BoolParam(False))
 
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
@@ -146,7 +146,7 @@ class ProfileMode(Mode):
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        if config.ProfileMode.profile_memory:
+        if not config.ProfileMode.profile_memory:
             p_thunk = profile_thunk
         else:
             p_thunk = profile_thunk2
