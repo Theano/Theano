@@ -1824,10 +1824,9 @@ class T_Scan(object):
                                        go_backwards = False)
 
         go1 = theano.tensor.grad(o1.mean(), wrt = x)
-        f = theano.function([x],o1, updates = updates,
+        f = theano.function([x],go1, updates = updates,
                             allow_input_downcast = True)
-        theano.printing.pydotprint(f, 'ff.png', high_contrast=True)
-        print f([1,2,3,4,5])
+        print f([1,2,3])
 
 if __name__ == '__main__':
     '''

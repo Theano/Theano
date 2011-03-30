@@ -1826,20 +1826,26 @@ class T_Scan(unittest.TestCase):
 
     def test_remove_stuff(self):
 
-        trng  = theano.tensor.shared_randomstreams.RandomStreams(
-                                                     utt.fetch_seed())
-
         x = theano.tensor.vector()
-        [o1,o2], updates = theano.scan( lambda m:
-                                       [2*m+trng.uniform(),m+trng.uniform()],
+
+        def lm(m):
+            trng  = theano.tensor.shared_randomstreams.RandomStreams(
+                                                     utt.fetch_seed())
+            return [ 2*m+ trng.uniform(low =-1.1, high =1.1,
+                                      dtype = theano.config.floatX),
+                    m + trng.uniform(size=[3])]
+
+        [o1,o2], updates = theano.scan( lm,
                                        sequences = x,
                                        n_steps = None,
                                        truncate_gradient = -1,
                                        go_backwards = False)
+        go1 = theano.tensor.grad(o1.mean(), wrt = x)
+        f = theano.function([x],go1, updates = updates,
+                            allow_input_downcast = True)
+        print f([1,2,3])
 
-        f = theano.function([x],o1, allow_input_downcast = True)
 
-        f([1,2,3,4,5])
 
 if __name__ == '__main__':
     #'''
