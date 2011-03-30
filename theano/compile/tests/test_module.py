@@ -683,7 +683,7 @@ def test_method_implicit_ticket_384():
             raise
 
 def get_mode():
-    if config.mode != 'DEBUG_MODE':
+    if config.mode not in ['DEBUG_MODE', 'DebugMode']:
         mode = config.mode
     else: mode = 'FAST_RUN'
     return mode
