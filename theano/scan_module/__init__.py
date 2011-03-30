@@ -350,6 +350,9 @@ class ScanSaveMem(Optimizer):
                         store_steps[i] = pval
                         flag_store = True
 
+        orphane_outs = [ i for i,x in enumerate(store_steps)
+                        if (type(x) is int) and (x<0) ]
+        flag_store = flag_store or (len(orphane_outs) > 0 )
         # 3. is there anything to change ?
         if (flag_store or global_nsteps is not None):
             # 3.1 initialize inputs for the new scan
@@ -358,8 +361,6 @@ class ScanSaveMem(Optimizer):
             nw_inputs[0] = nw_steps
 
             # 3.2 check orphane outputs to see if we can eliminate any
-            orphane_outs = [ i for i,x in enumerate(store_steps)
-                             if (type(x) is int) and (x < 0) ]
             required,not_required = \
                     scan_utils.scan_can_remove_outs(node.op
                                                     , orphane_outs)
