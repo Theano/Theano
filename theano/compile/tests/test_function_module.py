@@ -1,14 +1,17 @@
+import copy
+import cPickle
+import numpy
 import unittest
-from theano import gof,config
 
-from theano import compile
-from theano.scalar import *
-from theano.compile.function_module import *
+
+from theano import gof,config
+from theano.scalar import mul
+from theano.compile.io import In, Out
 from theano.compile import function
 
 from theano import tensor
 from theano import tensor as T
-import random, theano
+import theano
 
 import numpy as N
 from numpy.testing.noseclasses import KnownFailureTest
