@@ -1808,6 +1808,27 @@ class T_Scan(object):
         assert len(f2.maker.env.outputs) == 5
 
 
+    def test_remove_stuff(self):
+        x = theano.tensor.vector()
+        def lm(m):
+            trng  = theano.tensor.shared_randomstreams.RandomStreams(
+                                                     utt.fetch_seed())
+            return [ 2*m+ trng.uniform(low =-1.1, high =1.1,
+                                      dtype = theano.config.floatX),
+                    m + trng.uniform(size=[3])]
+
+        [o1,o2], updates = theano.scan( lm,
+                                       sequences = x,
+                                       n_steps = None,
+                                       truncate_gradient = -1,
+                                       go_backwards = False)
+
+        go1 = theano.tensor.grad(o1.mean(), wrt = x)
+        f = theano.function([x],o1, updates = updates,
+                            allow_input_downcast = True)
+        theano.printing.pydotprint(f, 'ff.png', high_contrast=True)
+        print f([1,2,3,4,5])
+
 if __name__ == '__main__':
     '''
     print ' Use nosetests to run these tests '
@@ -1881,8 +1902,8 @@ if __name__ == '__main__':
     print 19
     scan_tst.test_grad_multiple_outs_taps_backwards()
     #'''
-    print 20
-    scan_tst.test_grad_multiple_outs_some_uncomputable()
+    #print 19.5
+    #scan_tst.test_remove_stuff()
     #'''
     print 21
     scan_tst.test_grad_multiple_outs_some_truncate()
