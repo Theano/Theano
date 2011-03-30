@@ -1155,20 +1155,12 @@ class T_Scan(unittest.TestCase):
         vparams = [v_u,v_u2, v_x0,vW_in]
         params = [u,u2,x0,W_in ]
         gparams = theano.tensor.grad(cost, params)
-
-        print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>0'
         grad_fn = theano.function([u,u2,x0,W_in], gparams,
                 updates = updates, no_default_updates = True,
                                  allow_input_downcast = True)
-        print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>1'
         cost_fn = theano.function([u,u2,x0,W_in], cost,
                 updates = updates, no_default_updates = True,
                                  allow_input_downcast = True)
-        for app in grad_fn.maker.env.toposort():
-            if app.op.__class__.__name__ == 'Scan':
-                f = app.op.fn
-                for o in f.maker.env.outputs:
-                    theano.printing.debugprint(o,4)
         def reset_rng_fn(fn, *args):
             for idx,arg in enumerate(fn.maker.expanded_inputs):
                 if ( arg.value and type(arg.value.data) ==
@@ -1219,7 +1211,6 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([u,x0,W_in], gparams,
                 updates = updates, no_default_updates = True,
                                  allow_input_downcast = True)
-        print '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>1'
         cost_fn = theano.function([u,x0,W_in], cost,
                 updates = updates, no_default_updates = True,
                                  allow_input_downcast = True)
@@ -1833,6 +1824,22 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(tx4, v_u[-1]    +4.)
         assert numpy.allclose(tx5, v_u[-1]    +5.)
 
+    def test_remove_stuff(self):
+
+        trng  = theano.tensor.shared_randomstreams.RandomStreams(
+                                                     utt.fetch_seed())
+
+        x = theano.tensor.vector()
+        [o1,o2], updates = theano.scan( lambda m:
+                                       [2*m+trng.uniform(),m+trng.uniform()],
+                                       sequences = x,
+                                       n_steps = None,
+                                       truncate_gradient = -1,
+                                       go_backwards = False)
+
+        f = theano.function([x],o1, allow_input_downcast = True)
+
+        f([1,2,3,4,5])
 
 if __name__ == '__main__':
     #'''
