@@ -3,19 +3,18 @@
 """
 __docformat__ = "restructuredtext en"
 
+import copy
 import copy_reg
-import cPickle
 import itertools
-
-import sys, time, copy
-
-from theano.gof.python25 import partial
+import time
 
 import numpy
-import theano.gof
-#from theano import gof
+
+import theano
+from theano import gof
+from theano.gof.python25 import partial
 import mode as mode_module
-from io import *
+from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
 
 
 import logging
