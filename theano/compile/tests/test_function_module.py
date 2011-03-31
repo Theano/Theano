@@ -304,7 +304,9 @@ class T_function(unittest.TestCase):
         assert (out==4).all()
         out[0]=3
         out2 = f()
-        # If the following 2 asserts fail it mean Theano DID some new optimization
+        # Currently we don't do this optimization!
+        # As this is a corner case that is not usefull for use
+        # We probably won't optimize it.
         assert out2 is not out
         assert (out2==4).all()
 
