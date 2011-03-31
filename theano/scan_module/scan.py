@@ -533,7 +533,8 @@ def scan( fn
             # defined in scan utils
             sit_sot_scan_inputs.append(
                 scan_utils.expand(
-                    tensor.shape_padleft(actual_arg)
+                    tensor.unbroadcast(
+                        tensor.shape_padleft(actual_arg), 0)
                     , actual_n_steps
                 ) )
 

@@ -380,8 +380,7 @@ class ScanSaveMem(Optimizer):
                     # If the memory for this output has been pre-allocated
                     # before going into the scan op (by an alloc node)
                     if idx < op.n_mit_sot + op.n_sit_sot:
-                        _nw_input =nw_inputs[offset+idx].owner.inputs[1]
-
+                        _nw_input = nw_inputs[offset+idx].owner.inputs[1]
                         nw_input = scan_utils.expand( _nw_input, val - init_l[i] )
                         nw_inputs[offset+idx] = nw_input
                         replaced_outs.append(op.n_mit_mot + idx)

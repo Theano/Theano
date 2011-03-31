@@ -509,11 +509,18 @@ def expand( tensor_var, size):
     # Corner case that I might use in an optimization
     if size == 0:
         return tensor_var
+    #shapes      = [ tensor_var.shape[x] for x in xrange(tensor_var.ndim) ]
+    #zeros_shape = [size] + shapes[1:]
+    #empty       = tensor.zeros( zeros_shape
+    #                          , dtype = tensor_var.dtype)
+    #return tensor.join(0, tensor_var, empty)
+    # V2:
     shapes      = [ tensor_var.shape[x] for x in xrange(tensor_var.ndim) ]
-    zeros_shape = [size] + shapes[1:]
+    zeros_shape = [size+shapes[0]] + shapes[1:]
     empty       = tensor.zeros( zeros_shape
                               , dtype = tensor_var.dtype)
-    return tensor.join(0, tensor_var, empty)
+    return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+
 
 
 class Clone(Op):
