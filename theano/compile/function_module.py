@@ -795,7 +795,7 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
 
     # We can't use env.inputs as this don't include Constant Value.
     all_graph_inputs = gof.graph.inputs(env.outputs)
-    all_graph_inputs = env.inputs
+
     for i in xrange(len(env.outputs)):
         views_of_output_i = set()
         view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
