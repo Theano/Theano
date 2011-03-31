@@ -121,6 +121,12 @@ class MultinomialFromUniform(Op):
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform):
+    """
+    The output is transposed compared to MultinomialFromUniform.
+    We must insert a Transpose op after it.
+
+    The optimization that move it to the gpu do it.
+    """
 
     def make_node(self, pvals, unis):
         assert pvals.dtype == 'float32'
@@ -290,8 +296,8 @@ def use_gpu_multinomial(node):
             any([i.owner and isinstance(i.owner.op, theano.sandbox.cuda.HostFromGpu)
                  for i in node.inputs])):
             gpu_op = GpuMultinomialFromUniform(node.op.odtype)
-            return [host_from_gpu(gpu_op(*[gpu_from_host(i) for i in node.inputs]))]
+            return [host_from_gpu(gpu_op(*[gpu_from_host(i) for i in node.inputs])).T]
+
 if cuda_available:
-    # Currently this it is bugged!
-    #register_opt()(use_gpu_multinomial)
+    register_opt()(use_gpu_multinomial)
     pass
