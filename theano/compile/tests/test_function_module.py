@@ -285,6 +285,30 @@ class T_function(unittest.TestCase):
         self.failUnless(dec[s] == -1)
 
 
+    def test_constant_output(self):
+        # Test that if the output is a constant, we respect the theano memory interface
+        f = theano.function([],theano.tensor.constant([4]))
+        print f.maker.env.toposort()
+        out = f()
+        assert (out==4).all()
+        out[0]=3
+        out2 = f()
+        # If the following 2 asserts fail it mean Theano broke it's memory contract.
+        assert out2 is not out
+        assert (out2==4).all()
+
+        # Test that if the output is a constant and borrow, we respect the theano memory interface
+        f = theano.function([],Out(theano.tensor.constant([4]), borrow=True))
+        print f.maker.env.toposort()
+        out = f()
+        assert (out==4).all()
+        out[0]=3
+        out2 = f()
+        # If the following 2 asserts fail it mean Theano DID some new optimization
+        assert out2 is not out
+        assert (out2==4).all()
+
+
     def test_borrow_input(self):
         """
         Tests that the contract for io.In is respected. When borrow=False, it should be
