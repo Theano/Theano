@@ -297,6 +297,16 @@ def use_gpu_multinomial(node):
                  for i in node.inputs])):
             gpu_op = GpuMultinomialFromUniform(node.op.odtype)
             return [host_from_gpu(gpu_op(*[gpu_from_host(i) for i in node.inputs])).T]
+    if (isinstance(node.op, theano.sandbox.cuda.GpuFromHost) and
+        node.inputs[0].owner and type(node.inputs[0].owner.op) is MultinomialFromUniform):
+        multi = node.inputs[0].owner
+        p, u = multi.inputs
+        m, = multi.outputs
+        if (p.dtype == u.dtype == m.dtype == 'float32'):
+            gpu_op = GpuMultinomialFromUniform(multi.op.odtype)
+            ret = gpu_op(*[gpu_from_host(i) for i in multi.inputs]).T
+            # The dimshuffle is on the cpu, but will be moved to the gpu by an opt.
+            return [gpu_from_host(ret)]
 
 if cuda_available:
     register_opt()(use_gpu_multinomial)

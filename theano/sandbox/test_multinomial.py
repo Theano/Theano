@@ -1,22 +1,25 @@
+import copy
 
 import numpy
+
 import theano
-from theano import tensor, shared, function
+from theano import tensor, function
 import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 
-def run_with_c(f, gpu=False):
+def get_mode(gpu):
     mode = get_default_mode()
-    linker_orig = mode.linker
-    if linker_orig == predefined_linkers['py']:
-        mode.linker = predefined_linkers['c|py']
+    mode = copy.copy(mode)
     if gpu:
-        mode = mode.including('gpu')
-    try:
-        f(mode, gpu)
-    finally:
-        mode.linker = linker_orig
+        mode = mode.including('gpu', 'gpu_local_optimizations', 'local_cut_gpu_host_gpu', 'use_gpu_multinomial')
+    if isinstance(mode.linker, theano.gof.PerformLinker):
+        mode.linker = predefined_linkers['c|py']
+    return mode
+
+def run_with_c(f, gpu=False):
+    mode = get_mode(gpu)
+    f(mode, gpu)
 
 
 def test_multinomial_0():
@@ -99,3 +102,23 @@ def test_multinomial_dtypes():
     u = tensor.fvector()
     m = multinomial.MultinomialFromUniform('float64')(p,u)
     assert m.dtype == 'float64', m.dtype
+
+def test_gpu_opt():
+    if not cuda.cuda_available:
+        # Skip test if cuda_ndarray is not available.
+        from nose.plugins.skip import SkipTest
+        raise SkipTest('Optional package cuda not available')
+
+    # We test the case where we put the op on the gpu when the output is moved to the gpu.
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    m = multinomial.MultinomialFromUniform('auto')(p,u)
+    assert m.dtype == 'float32', m.dtype
+    m_gpu = cuda.gpu_from_host(m)
+
+    f = function([p,u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
+    assert any([type(node.op) is multinomial.GpuMultinomialFromUniform for node in f.maker.env.toposort()])
+    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4))+0.1
+    pval = pval / pval.sum(axis=1)[:,None]
+    uval = numpy.ones_like(pval[:,0]) * 0.5
+    mval = f(pval,uval)
