@@ -771,6 +771,58 @@ class SanityCheckFunction(Function):
 ### FunctionMaker
 ###
 
+def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
+    """
+    Insert deepcopy in the env to break aliasing of outputs
+    """
+    # This loop was inserted to remove aliasing between outputs when they all
+    # evaluete to the same value. Originally it was OK for outputs to be aliased,
+    # but some of the outputs can be shared variables, and is not good for shared
+    # variables to be aliased. It might be possible to optimize this by making sure
+    # there is no aliasing only between shared variables.
+
+    # If some outputs are constant, we add deep copy to respect the memory contract
+
+    # We don't insert deep copy when the output.borrow is True for all conserned outputs.
+
+    assert len(wrapped_inputs) == len(env.inputs)
+    assert len(wrapped_outputs) == len(env.outputs)
+
+    updated_env_inputs = [env_i for i, env_i in zip(wrapped_inputs, env.inputs) if getattr(i, 'update', False)]
+
+    # We can't use env.inputs as this don't include Constant Value.
+    all_graph_inputs = gof.graph.inputs(env.outputs)
+    all_graph_inputs = env.inputs
+    for i in xrange(len(env.outputs)):
+        views_of_output_i = set()
+        view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
+        copied = False
+        # do not allow outputs to be aliased
+        #import pdb;pdb.set_trace()
+        for j in xrange(i+1, len(env.outputs)):
+            # We could don't put deep copy if both outputs have borrow==True
+            # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
+            if env.outputs[j] in views_of_output_i:
+                #import pdb;pdb.set_trace()
+                env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                copied = True
+                break
+
+        if not copied:
+            for input_j in all_graph_inputs:
+                # do not allow outputs to be aliased to an inputs (j), unless
+                # a) that j'th input has been 'destroyed' by e.g. in-place computations
+                # b) that j'th input is a shared variable that is also being updated
+                if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
+                    continue
+                if input_j in updated_env_inputs:
+                    continue
+                # We could don't put deep_copy_op if the input and the output have borrow==True
+                if input_j in views_of_output_i:
+                    #import pdb;pdb.set_trace()
+                    env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                    break
+
 NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
@@ -875,41 +927,8 @@ class FunctionMaker(object):
         mode.optimizer_time += end_optimizer - start_optimizer
         _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 
-        # This loop was inserted to remove aliasing between outputs when they all
-        # evaluete to the same value. Originally it was OK for outputs to be aliased,
-        # but some of the outputs can be shared variables, and is not good for shared
-        # variables to be aliased. It might be possible to optimize this by making sure
-        # there is no aliasing only between shared variables.
-
-        assert len(inputs) == len(env.inputs)
-
-        updated_env_inputs = [env_i for i, env_i in zip(inputs, env.inputs) if getattr(i, 'update', False)]
-
-        for i in xrange(len(env.outputs)):
-            views_of_output_i = set()
-            view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
-            copied = False
-            # do not allow outputs to be aliased
-            for j in xrange(i+1, len(env.outputs)):
-                if env.outputs[j] in views_of_output_i:
-                    env.change_input('output', i, deep_copy_op(env.outputs[i]))
-                    copied = True
-                    break
-
-            if not copied:
-                for input_j in env.inputs:
-                    # do not allow outputs to be aliased to an inputs (j), unless
-                    # a) that j'th input has been 'destroyed' by e.g. in-place computations
-                    # b) that j'th input is a shared variable that is also being updated
-                    if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
-                        continue
-                    if input_j in updated_env_inputs:
-                        continue
-                    if input_j in views_of_output_i:
-                        env.change_input('output', i, deep_copy_op(env.outputs[i]))
-                        break
-
-
+        #Add deep copy to respect the memory interface
+        insert_deepcopy(env, inputs, outputs+additional_outputs)
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
