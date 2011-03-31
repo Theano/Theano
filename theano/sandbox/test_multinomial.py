@@ -4,31 +4,35 @@ import theano
 from theano import tensor, shared, function
 import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
+import theano.sandbox.cuda as cuda
 
-def run_with_c(f):
+def run_with_c(f, gpu=False):
     mode = get_default_mode()
     linker_orig = mode.linker
     if linker_orig == predefined_linkers['py']:
         mode.linker = predefined_linkers['c|py']
+    if gpu:
+        mode = mode.including('gpu')
     try:
-        f(mode)
+        f(mode, gpu)
     finally:
         mode.linker = linker_orig
 
 
-def test_multimomial_0():
+def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
 
-    p = tensor.matrix()
-    u = tensor.vector()
+    p = tensor.fmatrix()
+    u = tensor.fvector()
 
     m = multinomial.MultinomialFromUniform('auto')(p,u)
 
-    def body(mode):
+    def body(mode, gpu):
         #the m*2 allows the multinomial to reuse output
         f = function([p,u], m*2, allow_input_downcast=True, mode=mode)
-
+        if gpu:
+            assert any([type(node.op) is multinomial.GpuMultinomialFromUniform for node in f.maker.env.toposort()])
 
         # test that both first and second samples can be drawn
         assert numpy.allclose(f([[1,0], [0,1]], [.1, .1]),
@@ -50,16 +54,19 @@ def test_multimomial_0():
         assert numpy.allclose(r, [[0,2]]), r
 
     run_with_c(body)
-
+    if cuda.cuda_available:
+        run_with_c(body, True)
 
 #TODO: check a bigger example (make sure blocking on GPU is handled correctly)
 def test_multinomial_large():
     # DEBUG_MODE will test this on GPU
-    def body(mode):
+    def body(mode, gpu):
         p = tensor.fmatrix()
         u = tensor.fvector()
         m = multinomial.MultinomialFromUniform('auto')(p,u)
         f = function([p,u], m*2, allow_input_downcast=True, mode=mode)
+        if gpu:
+            assert any([type(node.op) is multinomial.GpuMultinomialFromUniform for node in f.maker.env.toposort()])
 
         pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4))+0.1
         pval = pval / pval.sum(axis=1)[:,None]
@@ -72,6 +79,8 @@ def test_multinomial_large():
         asdf = numpy.asarray([0, 0, 2, 0])+0*pval
         assert numpy.allclose(mval, asdf) #broadcast over all rows
     run_with_c(body)
+    if cuda.cuda_available:
+        run_with_c(body, True)
 
 
 def test_multinomial_dtypes():
