@@ -37,6 +37,9 @@ def alias_root(v):
 def view_tree_set(v, treeset):
     """Add to `treeset` all variables that are views of v, given that v is not a view"""
     treeset.add(v)
+    if v.owner and v.owner.op.__class__.__name__ == 'Clone':
+        v = v.owner.inputs[0]
+        treeset.add(v)
     for cl, v_input_pos_to_cl in v.clients:
         if cl == 'output':
             continue
