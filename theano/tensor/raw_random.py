@@ -106,9 +106,9 @@ class RandomFunction(gof.Op):
         self.state = state
         fn, outtype, inplace, ndim_added = state
         if isinstance(fn, str):
-          self.fn = getattr(numpy.random.RandomState, fn)
+            self.fn = getattr(numpy.random.RandomState, fn)
         else:
-          self.fn = fn
+            self.fn = fn
         self.outtype = outtype
         self.inplace = inplace
         if self.inplace:
@@ -794,5 +794,3 @@ class RandomStreamsBase(object):
         shuffled = tensor.permute_row_elements(input, perm)
         shuffled.permutation = perm
         return shuffled
-
-
