@@ -17,13 +17,13 @@ def run_with_c(f):
 
 
 def test_multimomial_0():
-    # This tests the multinomial Op directly, not going through the
+    # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
 
     p = tensor.matrix()
     u = tensor.vector()
 
-    m = multinomial.Multinomial('auto')(p,u)
+    m = multinomial.MultinomialFromUniform('auto')(p,u)
 
     def body(mode):
         #the m*2 allows the multinomial to reuse output
@@ -58,7 +58,7 @@ def test_multinomial_large():
     def body(mode):
         p = tensor.fmatrix()
         u = tensor.fvector()
-        m = multinomial.Multinomial('auto')(p,u)
+        m = multinomial.MultinomialFromUniform('auto')(p,u)
         f = function([p,u], m*2, allow_input_downcast=True, mode=mode)
 
         pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4))+0.1
@@ -77,16 +77,16 @@ def test_multinomial_large():
 def test_multinomial_dtypes():
     p = tensor.dmatrix()
     u = tensor.dvector()
-    m = multinomial.Multinomial('auto')(p,u)
+    m = multinomial.MultinomialFromUniform('auto')(p,u)
     assert m.dtype == 'float64', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.Multinomial('auto')(p,u)
+    m = multinomial.MultinomialFromUniform('auto')(p,u)
     assert m.dtype == 'float32', m.dtype
 
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.Multinomial('float64')(p,u)
+    m = multinomial.MultinomialFromUniform('float64')(p,u)
     assert m.dtype == 'float64', m.dtype
