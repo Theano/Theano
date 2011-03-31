@@ -516,6 +516,9 @@ class Function(object):
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
+            # We special case None as by a mailing list threads, we always
+            # allow None as an input. We let to the op implementation to deal
+            # with that.
             if arg is None:
                 s.storage[0] = arg
             else:
