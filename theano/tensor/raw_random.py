@@ -239,14 +239,12 @@ def _infer_ndim_bcast(ndim, shape, *args):
     """
     Infer the number of dimensions from the shape or the other arguments.
 
-    :rtype: (int, variable) pair, where the variable is an integer vector.
+    :rtype: (int, variable, tuple) triple, where the variable is an integer
+    vector, and the tuple contains Booleans.
     :returns: the first element returned is the inferred number of dimensions.
-    The second element's length is either the first element, or 0
-    (if the original shape was None).
-
-    In the special case where the shape argument is None, the variable
-    returned has a length of 0, meaning that the shape will be computed
-    at runtime from the shape of the other args.
+    The second element is the shape inferred (combining symbolic and constant
+    informations from shape and args).
+    The third element is a broadcasting pattern corresponding to that shape.
     """
 
     # Find the minimum value of ndim required by the *args
