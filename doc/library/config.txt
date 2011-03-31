@@ -113,6 +113,8 @@ import theano and print the config variable, as in:
     to use a specific device. If we are not able to use the GPU, either we fall back
     on the CPU, or an error is raised, depending on the :attr:`force_device` flag.
 
+    This flag's value cannot be modified during the program execution.
+
 .. attribute:: force_device
 
     Bool value: either ``True`` or ``False``
@@ -121,6 +123,8 @@ import theano and print the config variable, as in:
 
     If ``True``, we raise an error if we cannot use the specified :attr:`device`.
     If ``False``, we fall back to the CPU.
+
+    This flag's value cannot be modified during the program execution.
 
 .. attribute:: init_gpu_device
 
@@ -135,6 +139,8 @@ import theano and print the config variable, as in:
 
     This flag is useful to run GPU-specific tests on a particular GPU, instead
     of using the default one.
+
+    This flag's value cannot be modified during the program execution.
 
 .. attribute:: floatX
 
@@ -210,6 +216,8 @@ import theano and print the config variable, as in:
     It is also recommended you put this into your .theanorc, so this setting
     will always be used.
 
+    This flag's value cannot be modified during the program execution.
+
 .. attribute:: home
 
     Default: env-variable $HOME
@@ -222,12 +230,16 @@ import theano and print the config variable, as in:
 
     This directory stores the architecture-dependent compilation directories.
 
+    This flag's value cannot be modified during the program execution.
+
 .. attribute:: compiledir
 
     Default: $HOME/.theano/<arch-identifier>
 
     This directory stores dynamically-compiled modules for a particular
     architecture.
+
+    This flag's value cannot be modified during the program execution.
 
 .. attribute:: config.blas.ldflags
 
@@ -258,6 +270,8 @@ import theano and print the config variable, as in:
     use the flags: optimizer_excluding:inplace_opt, where
     inplace_opt is the name of that optimization.
 
+    This flag's value cannot be modified during the program execution.
+
 .. attribute:: optimizer_including
 
     Default: ""
@@ -265,12 +279,16 @@ import theano and print the config variable, as in:
     A list of optimizer tags that we want included in the default Mode.
     If multiple tags, separate them by ':'.
 
+    This flag's value cannot be modified during the program execution.
+
 .. attribute:: optimizer_requiring
 
     Default: ""
 
     A list of optimizer tags that we require for optimizer in the default Mode.
     If multiple tags, separate them by ':'.
+
+    This flag's value cannot be modified during the program execution.
 
 .. attribute:: nocleanup
 
@@ -282,4 +300,4 @@ import theano and print the config variable, as in:
     This mean it remove file that he tried to compile but failed.
     Set to True to keep the source file that failed to compile to
     debug them.
-    
+
