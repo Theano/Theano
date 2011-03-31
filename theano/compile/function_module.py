@@ -516,9 +516,8 @@ class Function(object):
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
-            # We special case None as by a mailing list threads, we always
-            # allow None as an input. We let to the op implementation to deal
-            # with that.
+            # see this emails for a discuation about None as input
+            # https://groups.google.com/group/theano-dev/browse_thread/thread/920a5e904e8a8525/4f1b311a28fc27e5
             if arg is None:
                 s.storage[0] = arg
             else:
