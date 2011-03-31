@@ -12,7 +12,7 @@ def get_mode(gpu):
     mode = get_default_mode()
     mode = copy.copy(mode)
     if gpu:
-        mode = mode.including('gpu', 'gpu_local_optimizations', 'local_cut_gpu_host_gpu', 'use_gpu_multinomial')
+        mode = mode.including('gpu', 'gpu_local_optimizations', 'local_cut_gpu_host_gpu', 'local_gpu_multinomial')
     if isinstance(mode.linker, theano.gof.PerformLinker):
         mode.linker = predefined_linkers['c|py']
     return mode

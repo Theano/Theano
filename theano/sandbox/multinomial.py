@@ -288,7 +288,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform):
         """ % locals()
 
 @local_optimizer()
-def use_gpu_multinomial(node):
+def local_gpu_multinomial(node):
     if type(node.op) is MultinomialFromUniform:
         p, u = node.inputs
         m, = node.outputs
@@ -309,5 +309,5 @@ def use_gpu_multinomial(node):
             return [gpu_from_host(ret)]
 
 if cuda_available:
-    register_opt()(use_gpu_multinomial)
+    register_opt()(local_gpu_multinomial)
     pass

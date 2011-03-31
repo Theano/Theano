@@ -611,7 +611,7 @@ def gpu_print_wrapper(op, cnda):
 
 @register_opt()
 @local_optimizer([])
-def local_print_op(node):
+def local_gpu_print_op(node):
     if isinstance(node.op, tensor.printing.Print):
         x, = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
