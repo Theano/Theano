@@ -801,12 +801,10 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
         view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
         copied = False
         # do not allow outputs to be aliased
-        #import pdb;pdb.set_trace()
         for j in xrange(i+1, len(env.outputs)):
             # We could don't put deep copy if both outputs have borrow==True
             # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
             if env.outputs[j] in views_of_output_i:
-                #import pdb;pdb.set_trace()
                 env.change_input('output', i, deep_copy_op(env.outputs[i]))
                 copied = True
                 break
@@ -822,7 +820,6 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
                     continue
                 # We could don't put deep_copy_op if the input and the output have borrow==True
                 if input_j in views_of_output_i:
-                    #import pdb;pdb.set_trace()
                     env.change_input('output', i, deep_copy_op(env.outputs[i]))
                     break
 
