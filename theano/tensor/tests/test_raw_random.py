@@ -165,6 +165,51 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.allclose(o4, o1_4))
         self.assertTrue(numpy.allclose(o4, o2_4_4[0]))
 
+    def test_random_function_noshape_args(self):
+        '''Test if random_function helper works with args but without shape'''
+        rng_R = random_state_type()
+
+        # No shape, default args -> OK
+        post_out, out = uniform(rng_R, size=None, ndim=2)
+        f = compile.function(
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_out,
+                    mutable=True)],
+                [out],
+                accept_inplace=True)
+        o, = f()
+
+        # No shape, args that have to be broadcasted -> OK
+        low = tensor.TensorType(dtype='float64',
+                broadcastable=(False, True, True))()
+        high = tensor.TensorType(dtype='float64',
+                broadcastable=(True, True, True, False))()
+        post_out2, out2 = uniform(rng_R, size=None, ndim=2, low=low, high=high)
+        self.assertEqual(out2.ndim, 4)
+        self.assertEqual(out2.broadcastable, (True,False,True,False))
+
+        g = compile.function(
+                [low,
+                 high,
+                 compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_out2,
+                    mutable=True)],
+                [out2],
+                accept_inplace=True)
+        low_v = [[[3]],[[4]],[[-5]]]
+        high_v = [[[[5, 8]]]]
+        o2, = g(low_v, high_v)
+        self.assertEqual(o2.shape, (1,3,1,2))
+
+    def test_random_function_noshape_noargs(self):
+        '''Test if random_function helper works without args or shape'''
+        rng_R = random_state_type()
+
+        # No shape, no args -> TypeError
+        self.assertRaises(TypeError, permutation, rng_R, size=None, ndim=2)
+
     def test_random_function_ndim_added(self):
         """Test that random_function helper function accepts ndim_added as keyword argument"""
         # If using numpy's uniform distribution, ndim_added should be 0,
@@ -174,10 +219,14 @@ class T_random_function(unittest.TestCase):
         # and a ValueError should be raised.
         def ndim_added_deco(ndim_added):
             def randomfunction(random_state, size=(), low=0.0, high=0.0, ndim=None):
-                ndim, size = raw_random._infer_ndim(ndim, size)
+                ndim, size, bcast = raw_random._infer_ndim_bcast(ndim, size)
+                if ndim_added < 0:
+                    bcast = bcast[:ndim_added]
+                else:
+                    bcast = bcast + ((False,) * ndim_added)
+                assert len(bcast) == ndim + ndim_added
                 op = RandomFunction('uniform',
-                        tensor.TensorType(dtype = 'float64', broadcastable =
-                            (False,)*(ndim+ndim_added)),
+                        tensor.TensorType(dtype='float64', broadcastable=bcast),
                         ndim_added=ndim_added)
                 return op(random_state, size, low, high)
             return randomfunction
