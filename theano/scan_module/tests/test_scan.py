@@ -1845,6 +1845,12 @@ class T_Scan(unittest.TestCase):
                             allow_input_downcast = True)
         print f([1,2,3])
 
+    def test_bug_josh_reported(self):
+        import theano
+        import theano.tensor.signal.conv
+        m1 = theano.tensor.matrix()
+        m2 = theano.tensor.matrix()
+        conv = theano.tensor.signal.conv.conv2d(m1, m2)
 
 
 if __name__ == '__main__':
