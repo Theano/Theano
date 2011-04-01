@@ -2552,7 +2552,9 @@ def pow(a, b):
     """elementwise power"""
     # see decorator for function body
 
-@_scal_elemwise_with_nfunc('clip', 3, 1)
+# The numpy.clip don't work correctly when
+# the min is bigger then the max
+@_scal_elemwise #_with_nfunc('clip', 3, 1)
 def clip(x, min, max):
     """clip x to be between min and max"""
     # see decorator for function body
