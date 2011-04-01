@@ -1615,8 +1615,9 @@ class test_shapeoptimizer(unittest.TestCase):
         v = T.vector()
         m = T.matrix()
         f = function([v,m], v.dimshuffle('x','x',0).shape[1], mode=mode)
-        print f.maker.env.toposort()
-        assert [] == f.maker.env.toposort()
+        topo = f.maker.env.toposort()
+        assert len(topo) == 1
+        assert topo[0].op == theano.compile.function_module.deep_copy_op
 
     def test_local_track_shape_i(self):
         class IdentityNoShape(gof.Op):
@@ -2513,7 +2514,7 @@ class T_local_sum(unittest.TestCase):
         input=numpy.asarray(numpy.arange(2*3*4).reshape(2,3,4),dtype='float64')
         mode = self.mode.including('specialize').excluding('fusion')
 
-        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(0,3,3,2)),
+        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(1,3,3,2)),
                                        (tensor.ones_like,numpy.ones_like,(5,5,5,6))]:
 
             f = theano.function([a],t_like(a).sum(None),mode=mode)
