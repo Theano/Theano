@@ -3318,7 +3318,9 @@ def test_reshape():
     if config.mode=="FAST_COMPILE":
         assert len(f_sub.maker.env.toposort())==3
     else:
-        assert len(f_sub.maker.env.toposort())==0
+        topo = f_sub.maker.env.toposort()
+        assert len(topo)==1
+        topo[0].op == theano.compile.function_module.deep_copy_op
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
         #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
 
