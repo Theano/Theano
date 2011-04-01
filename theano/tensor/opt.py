@@ -408,7 +408,18 @@ class MakeVector(T.Op):
             out[0][...] = inputs
 
     def grad(self, inputs, output_gradients):
-        return [output_gradients[0][i] for i in xrange(len(inputs))]
+        # If the output is of an integer dtype, no gradient shall pass
+        if 'int' in self.dtype:
+            return [None] * len(inputs)
+
+        grads = []
+        for i,inp in enumerate(inputs):
+            if 'int' in inp.dtype:
+                # No gradient wrt integer inputs
+                grads.append(None)
+            else:
+                grads.append(output_gradients[0][i])
+        return grads
 
 make_vector = MakeVector()
 
