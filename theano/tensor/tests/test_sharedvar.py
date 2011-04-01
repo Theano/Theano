@@ -428,7 +428,8 @@ def makeSharedTester(shared_constructor_,
             assert numpy.all(shape_constant_fct()==shape_op_fct())
             topo_cst = shape_constant_fct.maker.env.toposort()
             if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_cst)==0
+                assert len(topo_cst)==1
+                topo_cst[0].op == theano.compile.function_module.deep_copy_op
 
             # Test that we can take the grad.
             if isinstance(x1_specify_shape.type, theano.sparse.SparseType):
