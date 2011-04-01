@@ -24,7 +24,7 @@ Theano is now `available on PyPI`_, and can be installed via ``easy_install
 Theano``, or by downloading and unpacking the tarball and typing ``python
 setup.py install``.
 
-Those interested in bleeding-edge features should obtain the latest development 
+Those interested in bleeding-edge features should obtain the latest development
 version, available via::
 
     hg clone http://hg.assembla.com/theano Theano
@@ -62,7 +62,7 @@ Community
 
     "Thank YOU for correcting it so quickly. I wish all packages I worked
     with would have such an active maintenance - this is as good as it
-    gets :-)" 
+    gets :-)"
 
     (theano-users, Aug 2, 2010)
 
@@ -77,7 +77,7 @@ Community
 
 * Ask/view questions/answers at `metaoptimize/qa/tags/theano/`_ (it's like stack overflow for machine learning)
 
-* We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__ 
+* We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__
 
 * Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 
