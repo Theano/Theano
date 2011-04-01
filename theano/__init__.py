@@ -69,8 +69,8 @@ FancyModule = Module
 
 from printing import \
     pprint, pp
-import scan as scan_module
-from scan import scan, map, reduce, foldl, foldr, Scan, ScanGrad
+import scan_module
+from scan_module import scan, map, reduce, foldl, foldr, clone
 
 import tensor
 import scalar
