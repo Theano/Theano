@@ -10,11 +10,17 @@ from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
+import theano.scalar as scal
 from theano import config
 from theano import gof
-from theano.tensor.opt import *
+import theano.tensor.opt as opt
+from theano.tensor.opt import local_dimshuffle_lift, out2in, local_greedy_distributor, mul_canonizer, local_add_specialize
+from theano.tensor.opt import Shape_i
+from theano.tensor import scalar, iscalar, dscalar, lscalar, vectors, lvector, fvector, dvector, fmatrix, dmatrix, matrices, fmatrices, dmatrices, Subtensor, as_tensor_variable, Join, join
+
 from theano import tensor  #do not use, there is  an import * below that hides it
 from theano import tensor as TT  #ugly but works for now...
+from theano import tensor as T  #ugly but works for now...
 from theano.tensor import TensorType, inplace
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
@@ -86,9 +92,6 @@ def test_add_canonizer_problem0():
     r = segment_labels * 5
     f = function([label], r)
 
-from theano.tensor import *
-# Why is there TWO 'import *' in this file???
-
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
@@ -106,7 +109,7 @@ class test_greedy_distribute(unittest.TestCase):
 
         #r = theano.tensor.mul(theano.tensor.fill(x, 2.*a), x/a , (y+z) , a)
         #r = theano.tensor.mul((x/a+y) , a, z)
-        r = mul(
+        r = tensor.mul(
                 s - 1
                 , eps + x/s
                 , eps + y/s
@@ -317,7 +320,6 @@ class test_canonize(unittest.TestCase):
         with and without DimShuffle
         TODO: with DimShuffle
         """
-        import theano.tensor, theano.compile
 
         shp=(3,3)
         fx, fy, fz, fw = fmatrices('xyzw')
@@ -558,7 +560,6 @@ class test_canonize(unittest.TestCase):
 
 
     def test_multiple_case_that_fail(self):
-        import theano.tensor, theano.compile
         raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
 
         shp=(4,4)
@@ -660,12 +661,12 @@ def test_const_type_in_mul_canonizer():
     betas = dvector()
     a = dvector()
 
-    def sigm(x): return 1./(1+exp(-x))
+    def sigm(x): return 1./(1+tensor.exp(-x))
 
-    hid = sigm( (dot(w,input) + hidb) * betas )
+    hid = sigm( (tensor.dot(w,input) + hidb) * betas )
 
-    vis_gauss1 = (dot(w.T, hid) + visb) * betas / (2 * a * a)
-    vis_gauss2 = (dot(w.T, hid) + visb) * betas / (2. * a * a)
+    vis_gauss1 = (tensor.dot(w.T, hid) + visb) * betas / (2 * a * a)
+    vis_gauss2 = (tensor.dot(w.T, hid) + visb) * betas / (2. * a * a)
 
     f1 = function([input,w,visb,hidb,betas,a],vis_gauss1)
     f2 = function([input,w,visb,hidb,betas,a],vis_gauss2)
@@ -757,8 +758,8 @@ class test_fusion(unittest.TestCase):
 #, nout=1, env=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
             ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
             #test other elemwise op
-            (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
-            (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
+            (fx+fy+tensor.cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
+            (fx+fy+tensor.cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
             (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),
             (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+numpy.absolute(izv),'int32'),#30
             (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
@@ -779,10 +780,10 @@ class test_fusion(unittest.TestCase):
             (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
             (fx-T.eq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),
             (fx-T.neq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
-            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
-            (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),#50
-            (fx-fy+sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
-            (fx-fy+sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
+            (fx-fy+tensor.tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
+            (fx-fy+tensor.tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),#50
+            (fx-fy+tensor.sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
+            (fx-fy+tensor.sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
             (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(fzv*fzv),'float32'),
             (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
             (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),#55
@@ -794,7 +795,7 @@ class test_fusion(unittest.TestCase):
 #            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
             (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
             (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle
-            (fv-fy+tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
+            (fv-fy+tensor.tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
 
             # Cases where the same input is reused many times.
             (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*fxv*fxv*fxv,'float32'),
@@ -954,7 +955,7 @@ class test_fusion(unittest.TestCase):
 
 
         x, y, z = dmatrices('xyz')
-        f=theano.function([x,y,z],dot(x,y)+x+y+z,mode=mode)
+        f=theano.function([x,y,z],tensor.dot(x,y)+x+y+z,mode=mode)
         topo = f.maker.env.toposort()
         assert len(topo) == 2
         assert f.maker.env.toposort()[-1].op.inplace_pattern
@@ -962,7 +963,7 @@ class test_fusion(unittest.TestCase):
 
     def speed_fusion_gpu(self):
         import theano.sandbox.cuda as cuda
-        self.speed_fusion(shared_fn=tcn.float32_shared_constructor, gpu=True, s=slice(0,15))
+        self.speed_fusion(shared_fn=cuda.float32_shared_constructor, gpu=True, s=slice(0,15))
 
     def speed_log_exp(self):
         s=slice(31,36)
@@ -1070,20 +1071,20 @@ def test_log1p():
 
     # check trickier cases (and use different dtype)
     y = fmatrix()
-    f = function([x,y], T.log(fill(y,1)+(x)), mode=m)
+    f = function([x,y], T.log(tensor.fill(y,1)+(x)), mode=m)
     print f.maker.env.toposort()
     # the first three ops are Shape_i, Shape_i, and Dimshuffle
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
-    f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
+            == [T.log1p, tensor.alloc]
+    f = function([x,y], T.log(0+(x) + tensor.fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
-    f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
+            == [T.log1p, tensor.alloc]
+    f = function([x,y], T.log(2+(x) - tensor.fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
+            == [T.log1p, tensor.alloc]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values
 
@@ -1091,14 +1092,14 @@ def test_log1p():
         # at one point this worked, but it has been broken since
         # the constant up-casting made 1 -> 1.0+0.0j
         # I was never sure if this optimization should work on complex numbers or not.
-        z = zmatrix()
+        z = tensor.zmatrix()
         f = function([z], T.log(1+(z)), mode=m)
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
     if 1:
         # should work for int
-        z = imatrix()
+        z = tensor.imatrix()
         f = function([z], T.log(1+(z)), mode=m)
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
@@ -1159,7 +1160,7 @@ def test_local_useless_subtensor():
         assert len(prog)==1
         f([[0,1,2],[3,4,5]]) # let debugmode test something
 
-    x_c = specify_shape(x, (2,3))
+    x_c = tensor.specify_shape(x, (2,3))
     # Test constant
     for dims, res in [((slice(0,2),), True),
                  ((slice(0,2),slice(0,None)), True),
@@ -1618,11 +1619,11 @@ class test_shapeoptimizer(unittest.TestCase):
         assert [] == f.maker.env.toposort()
 
     def test_local_track_shape_i(self):
-        class IdentityNoShape(Op):
+        class IdentityNoShape(gof.Op):
             '''Op that does not infer the output shape from the input one'''
             def make_node(self, x):
                 x = as_tensor_variable(x)
-                return Apply(self, [x], [x.type()])
+                return gof.Apply(self, [x], [x.type()])
             def perform(self, node, inp, out_):
                 x, = inp
                 out, = out_
@@ -1631,11 +1632,11 @@ class test_shapeoptimizer(unittest.TestCase):
                 #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
         identity_noshape = IdentityNoShape()
 
-        class IdentityShape(Op):
+        class IdentityShape(gof.Op):
             '''Op that does infer the output shape from the input one'''
             def make_node(self, x):
                 x = as_tensor_variable(x)
-                return Apply(self, [x], [x.type()])
+                return gof.Apply(self, [x], [x.type()])
             def perform(self, node, inp, out_):
                 x, = inp
                 out, = out_
@@ -1667,7 +1668,7 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_shape not in f_ops
 
         # Register the optimization
-        register_specialize(local_identity_noshape_to_identity_shape)
+        opt.register_specialize(local_identity_noshape_to_identity_shape)
 
         # With the optimization
         # The identity_shape op should not be needed anymore to compute
@@ -2512,8 +2513,8 @@ class T_local_sum(unittest.TestCase):
         input=numpy.asarray(numpy.arange(2*3*4).reshape(2,3,4),dtype='float64')
         mode = self.mode.including('specialize').excluding('fusion')
 
-        for t_like,n_like,nb_nodes in [(zeros_like,numpy.zeros_like,(0,3,3,2)),
-                                       (ones_like,numpy.ones_like,(5,5,5,6))]:
+        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(0,3,3,2)),
+                                       (tensor.ones_like,numpy.ones_like,(5,5,5,6))]:
 
             f = theano.function([a],t_like(a).sum(None),mode=mode)
             assert numpy.allclose(f(input),n_like(input).sum())
@@ -2551,6 +2552,7 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         b = T.vector('b')
         c = T.tensor3('c')
         d = T.scalar('d')
+        sum = tensor.sum
         sums = [
             sum(a/d),
             sum(a/d.dimshuffle('x','x')),
@@ -2692,7 +2694,7 @@ def test_make_vector():
 def test_local_join_1():
     #test for vector
     a = TT.vector('a')
-    s = stack(a)
+    s = tensor.stack(a)
     f = function([a], s, mode=mode_opt)
     val = f([1])
     assert numpy.all(val == [1])
