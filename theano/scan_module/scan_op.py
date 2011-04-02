@@ -195,9 +195,6 @@ class Scan(Op):
                                          info['n_nit_sot'] )
 
                             )
-            for o in self.fn.maker.env.outputs:
-                if not o.owner:
-                    import GPUscan.ipdb; GPUscan.ipdb.set_trace()
             # check for shared variables in the inputs
             assert not numpy.any( [isinstance(x, SharedVariable) for x
                            in self.fn.maker.inputs])
