@@ -39,7 +39,7 @@ class test_ScalarOps(unittest.TestCase):
     #so this is not a silent bug.
     def tes_mod(self):
         """
-        We add this test as not all language and C implementation give the same 
+        We add this test as not all language and C implementation give the same
         signe to the result. This check that the c_code of `Mod` is implemented
         as Python. That is what we want.
         """
@@ -161,7 +161,7 @@ class test_logical(unittest.TestCase):
         fn = gof.DualLinker().accept(Env([x,y], [x & y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == (a & b), (a,b))
-    
+
     def test_not(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [invert(x)])).make_function()
@@ -196,7 +196,3 @@ class test_div(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-
-

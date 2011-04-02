@@ -505,4 +505,3 @@ class Test_check_isfinite(unittest.TestCase):
         print infs
         f(infs)
         return
-

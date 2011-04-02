@@ -45,7 +45,7 @@ class test_casting(unittest.TestCase):
         f = function([a],basic._convert_to_complex128(a))
         #we need to compare with the same type.
         assert a.type.values_eq_approx(b.data, f(a.data))
-        
+
         f = function([b],basic._convert_to_complex128(b))
         assert b.type.values_eq_approx(b.data, f(b.data))
 
@@ -77,7 +77,7 @@ class test_casting(unittest.TestCase):
                 f = function([a],basic._convert_to_complex64(a))
                 assert a.type.values_eq_approx(b.data, f(a.data))
 
-    
+
     def test_bug_complext_10_august_09(self):
         v0 = dmatrix()
         v1 = basic._convert_to_complex128(v0)

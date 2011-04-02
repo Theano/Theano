@@ -240,4 +240,3 @@ class test_true_dot(unittest.TestCase):
                     w = w - (lr * gw)
 
                 self.assertTrue(origloss > loss)
-

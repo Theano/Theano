@@ -62,4 +62,3 @@ class T_solve(unittest.TestCase):
         self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))
         #print A,b
         #print numpy.dot(A,x)
-
