@@ -99,7 +99,8 @@ Computing gradients
 
 Now let's use Theano for a slightly more sophisticated task: create a
 function which computes the derivative of some expression ``y`` with
-respect to its parameter ``x``. For instance, we can compute the
+respect to its parameter ``x``. To do this we will use the macro ``T.grad``.
+For instance, we can compute the
 gradient of :math:`x^2` with respect to :math:`x`. Note that:
 :math:`d(x^2)/dx = 2 \cdot x`.
 
@@ -158,12 +159,13 @@ logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
 array([[ 0.25      ,  0.19661193],
        [ 0.19661193,  0.10499359]])
 
-
-The resulting function computes the gradient of its first argument
-with respect to the second. In this way, Theano can be used for
-`automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_.
-As opposed to what this page tell, Theano do efficient symbolic differentiation
-even for function with many inputs.
+In general, for any **scalar** expression ``s``, ``T.grad(s, w)`` provides
+the theano expression for computing :math:`\frac{\partial s}{\partial w}`. In 
+this way Theano can be used for doing **efficient** symbolic differentiation
+(as
+the expression return by ``TT.grad`` will be optimized during compilation) even for
+function with many inputs. ( see `automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_ for a description
+of symbolic differentiation).
 
 .. note::
 
