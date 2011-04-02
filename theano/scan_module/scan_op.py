@@ -544,7 +544,7 @@ class Scan(Op):
                 part_2 = range(pos[idx] )
                 reordered = part_1 + part_2
                 if len(reordered) > 1:
-                    if isinstance( outs[idx][0], cuda.CudaNdarray):
+                    if cuda.cuda_available and isinstance( outs[idx][0], cuda.CudaNdarray):
                         shape = outs[idx][0].shape
                         tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
                         pdx = pos[idx]
