@@ -422,7 +422,9 @@ def pydotprint(fct, outfile=None,
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
                                config.device + '.' + format)
-    if isinstance(fct, Function):
+    # I did this to avoid import scan_module.scan_utils, which would lead to
+    # a cycle import that I did not know how to solve
+    if fct.__class__.__name__ in ['Function','ScanInnerFunction']:
         mode = fct.maker.mode
         fct_env  = fct.maker.env
         if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
