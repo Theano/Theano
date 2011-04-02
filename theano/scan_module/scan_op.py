@@ -959,7 +959,8 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, op_cimpl, message, outputs_size,
                     other_time):
     # Scan overhead profile
-    if any([isinstance(node.op, Scan) for (_,node) in apply_time.keys()]):
+    if any([isinstance(node.op, Scan) and v>0 for (_,node),v in
+            apply_time.items()]):
         print
         print 'Scan overhead:'
         print '<Scan op time(s)> <sub scan fct time(s)> <sub scan op time(s)> <sub scan fct time(% scan op time)> <sub scan op time(% scan op time)> <node>'
