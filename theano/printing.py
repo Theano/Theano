@@ -402,6 +402,12 @@ def pydotprint(fct, outfile=None,
             the border
     :param colorCodes: dictionary with names of ops as keys and colors as
             values
+    :param cond_highlight: Highlights a lazy if by sorrounding each of the 3
+                possible categories of ops with a border. The categories
+                are: ops that are on the left branch, ops that are on the
+                right branch, ops that are on both branches
+                As an alternative you can provide the node that represents
+                the lazy if
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
@@ -433,7 +439,7 @@ def pydotprint(fct, outfile=None,
         mode = None
         fct_env = fct
     else:
-        raise ValueError(('pydotprint expects as input a theano.function or'
+        raise ValueError(('pydotprint expects as input a theano.function or '
                          'the env of a function!'), fct)
 
     try:
@@ -466,8 +472,8 @@ def pydotprint(fct, outfile=None,
         left   = left.difference(middle)
         right  = right.difference(middle)
         middle = list(middle)
-        left   = list(middle)
-        right  = list(middle)
+        left   = list(left)
+        right  = list(right)
 
     var_str={}
     all_strings = set()
