@@ -121,7 +121,7 @@ class ConvGrad3D(theano.Op):
 
             if (%(d)s->dimensions[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"ConvGrad3D: 3 stride length arguments expected (row, col, time) but %%li were given",%(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"ConvGrad3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)%(d)s->dimensions[0]);
                 %(fail)s
             }
 { //extra scope so that fail will not jump over declarations
@@ -197,7 +197,7 @@ class ConvGrad3D(theano.Op):
                 %(dCdH)s->dimensions[2] != outputWidth ||
                 %(dCdH)s->dimensions[3] != outputDur)
             {
-                PyErr_Format(PyExc_ValueError, "dCdH is the wrong size, expected (%%i,%%i,%%i,%%i,%%i), got (%%li,%%li,%%li,%%li,%%li)", batchSize,  outputHeight, outputWidth, outputDur, outputChannels, %(dCdH)s->dimensions[0], %(dCdH)s->dimensions[1], %(dCdH)s->dimensions[2] ,%(dCdH)s->dimensions[3], %(dCdH)s->dimensions[4] );
+                PyErr_Format(PyExc_ValueError, "dCdH is the wrong size, expected (%%i,%%i,%%i,%%i,%%i), got (%%li,%%li,%%li,%%li,%%li)", batchSize,  outputHeight, outputWidth, outputDur, outputChannels, (long)%(dCdH)s->dimensions[0], (long)%(dCdH)s->dimensions[1], (long)%(dCdH)s->dimensions[2], (long)%(dCdH)s->dimensions[3], (long)%(dCdH)s->dimensions[4]);
                 %(fail)s
             }
 { // extra scope for fail

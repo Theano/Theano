@@ -125,7 +125,7 @@ class ConvTransp3D(theano.Op):
 		    //Read and check stride arguments
 		    if (%(d)s->dimensions[0] != 3)
 		    {
-		         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", %(d)s->dimensions[0] );
+		         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", (long)%(d)s->dimensions[0] );
 			 %(fail)s
 		    }
 
@@ -149,7 +149,7 @@ class ConvTransp3D(theano.Op):
 
 			    if (%(H)s->dimensions[4] != outputChannels)
 			    {
-                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li,%%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)",outputChannels,%(H)s->dimensions[4], %(W)s->dimensions[0], %(W)s->dimensions[1], %(W)s->dimensions[2], %(W)s->dimensions[3], %(W)s->dimensions[4], %(H)s->dimensions[0], %(H)s->dimensions[1], %(H)s->dimensions[2], %(H)s->dimensions[3], %(H)s->dimensions[4]);
+                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li, %%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)", outputChannels, (long)%(H)s->dimensions[4], (long)%(W)s->dimensions[0], (long)%(W)s->dimensions[1], (long)%(W)s->dimensions[2], (long)%(W)s->dimensions[3], (long)%(W)s->dimensions[4], (long)%(H)s->dimensions[0], (long)%(H)s->dimensions[1], (long)%(H)s->dimensions[2], (long)%(H)s->dimensions[3], (long)%(H)s->dimensions[4]);
                                 %(fail)s
 			    }
 
@@ -159,7 +159,7 @@ class ConvTransp3D(theano.Op):
 
 			        if (%(b)s->dimensions[0] != inputChannels)
 			        {
-                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", %(b)s->dimensions[0], inputChannels );
+                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", (long)%(b)s->dimensions[0], inputChannels );
 				    %(fail)s
 			        }
 
