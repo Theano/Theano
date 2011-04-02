@@ -52,7 +52,7 @@ class TestNnet(unittest.TestCase):
                 mean_cost += cost
             mean_cost /= float(len(data))
             print 'Mean cost at epoch %s: %s' % (epoch, mean_cost)
-        self.failUnless(abs(mean_cost - 0.20588975452) < 1e-6)
+        self.assertTrue(abs(mean_cost - 0.20588975452) < 1e-6)
         # Just call functions to make sure they do not crash.
         out = nnet.compute_output(input)
         out = nnet.output_from_hidden(numpy.ones(10))

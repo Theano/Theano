@@ -29,7 +29,7 @@ class TestRealImag(unittest.TestCase):
 
     def test_cast(self):
         x= zvector()
-        self.failUnlessRaises(TypeError, cast, x, 'int32')
+        self.assertRaises(TypeError, cast, x, 'int32')
 
     def test_complex(self):
         rng = numpy.random.RandomState(2333)

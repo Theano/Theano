@@ -106,7 +106,7 @@ class T_extending(unittest.TestCase):
         assert f(5.6, 6.7) ==  37.519999999999996
 
         x = double('x')
-        self.failUnlessRaises(AttributeError, mul, x, 2)
+        self.assertRaises(AttributeError, mul, x, 2)
 
 
         def make_node(x, y):

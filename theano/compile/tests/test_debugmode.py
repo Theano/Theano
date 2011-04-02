@@ -475,15 +475,15 @@ class Test_check_isfinite(unittest.TestCase):
         # if TensorType.filter_checks_isfinite were true, these would raise ValueError
         # if not, DebugMode will check internally, and raise InvalidValueError
         # passing an invalid value as an input should trigger ValueError
-        self.failUnlessRaises(debugmode.InvalidValueError, f,
+        self.assertRaises(debugmode.InvalidValueError, f,
                 numpy.log([3, -4, 5]).astype(config.floatX))
-        self.failUnlessRaises(debugmode.InvalidValueError, f,
+        self.assertRaises(debugmode.InvalidValueError, f,
                 (numpy.asarray([0, 1.0, 0])/0).astype(config.floatX))
-        self.failUnlessRaises(debugmode.InvalidValueError, f,
+        self.assertRaises(debugmode.InvalidValueError, f,
                 (numpy.asarray([1.0, 1.0, 1.0])/0).astype(config.floatX))
 
         # generating an invalid value internally should trigger InvalidValueError
-        self.failUnlessRaises(debugmode.InvalidValueError, g,
+        self.assertRaises(debugmode.InvalidValueError, g,
                 numpy.asarray([3,-4,5], dtype=config.floatX))
 
         # this should disable the exception

@@ -66,7 +66,7 @@ class TestSignalConv2D(unittest.TestCase):
                                                     ).sum()
 
 
-                self.failUnless(_allclose(theano_output4d[b,k,:,:], output2d))
+                self.assertTrue(_allclose(theano_output4d[b,k,:,:], output2d))
 
         ############# TEST GRADIENT ############
         if verify_grad:

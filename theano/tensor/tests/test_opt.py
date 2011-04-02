@@ -49,35 +49,35 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs()
         e = ds(ds(x, (1, 0)), (1, 0))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
+        self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[x]")
+        self.assertTrue(str(g) == "[x]")
 
     def test_merge2(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]", str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
 
     def test_elim3(self):
         x, y, z = inputs()
         e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}(DimShuffle{0,x,1}(x)))]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}(DimShuffle{0,x,1}(x)))]", str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[x]", str(g))
+        self.assertTrue(str(g) == "[x]", str(g))
 
     def test_lift(self):
         x, y, z = inputs([False]*1, [False]*2, [False]*3)
         e = x + y + z
         g = Env([x, y, z], [e])
-        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}("
+        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}("
             "InplaceDimShuffle{x,0,1}(Elemwise{add,no_inplace}"
             "(InplaceDimShuffle{x,0}(x), y)), z)]"), str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
+        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
             "{add,no_inplace}(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle"
             "{x,0,1}(y)), z)]"), str(g))
 
@@ -1699,7 +1699,7 @@ class test_assert(unittest.TestCase):
         y=T.scalar()
         f = theano.function([x,y],theano.tensor.opt.assert_(x,T.eq(x,y)))
         f(1,1)
-        self.failUnlessRaises(AssertionError, f, 1,0)
+        self.assertRaises(AssertionError, f, 1,0)
 
     def test1(self):
         #remove assert that are always true
@@ -1743,7 +1743,7 @@ class test_assert(unittest.TestCase):
         x=T.scalar()
         y=T.scalar()
         f = theano.function([x,y],theano.tensor.opt.assert_(x,y,0),mode=mode)
-        self.failUnlessRaises(AssertionError, f, 1,0)
+        self.assertRaises(AssertionError, f, 1,0)
         topo=f.maker.env.toposort()
         assert len(topo)==2
         assert len(topo[0].inputs)==3

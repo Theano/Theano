@@ -213,8 +213,8 @@ class T_prepend(unittest.TestCase):
         f=theano.function([x],[y])
         m=numpy.random.rand(3,5)
         my = f(m)
-        self.failUnless(my.shape == (3, 6), my.shape)
-        self.failUnless(numpy.all( my[:,0] == 4.0))
+        self.assertTrue(my.shape == (3, 6), my.shape)
+        self.assertTrue(numpy.all( my[:,0] == 4.0))
 
 
 class T_prepend(unittest.TestCase):
@@ -225,8 +225,8 @@ class T_prepend(unittest.TestCase):
         f=theano.function([x],y)
         m=numpy.ones((3,5),dtype="float32")
         my = f(m)
-        self.failUnless(my.shape == (3, 6))
-        self.failUnless(numpy.all(my[:,0] == 5.0))
+        self.assertTrue(my.shape == (3, 6))
+        self.assertTrue(numpy.all(my[:,0] == 5.0))
 
 class T_CrossentropyCategorical1Hot(unittest.TestCase):
     def setUp(self):

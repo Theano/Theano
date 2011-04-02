@@ -36,7 +36,7 @@ class test_casting(unittest.TestCase):
                 f = function([compile.In(x, strict = True)], y)
                 a = numpy.arange(10, dtype = type1)
                 b = f(a)
-                self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
+                self.assertTrue(numpy.all(b == numpy.arange(10, dtype = type2)))
 
     def test_convert_to_complex(self):
         a = value(numpy.ones(3, dtype='complex64')+0.5j)

@@ -34,7 +34,7 @@ class Test_SharedVariable(unittest.TestCase):
         assert shared([]).type == generic
         def badfunc():
             shared(7, bad_kw=False)
-        self.failUnlessRaises(TypeError, badfunc)
+        self.assertRaises(TypeError, badfunc)
 
     def test_strict_generic(self):
 
@@ -119,38 +119,38 @@ class Test_SharedVariable(unittest.TestCase):
 
         b = shared(numpy.int64(7), strict=True)
         assert b.type == theano.tensor.lscalar
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int32(7), strict=True)
         assert b.type == theano.tensor.iscalar
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int16(7), strict=True)
         assert b.type == theano.tensor.wscalar
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int8(7), strict=True)
         assert b.type == theano.tensor.bscalar
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.float64(7.234), strict=True)
         assert b.type == theano.tensor.dscalar
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
         b = shared(numpy.float32(7.234), strict=True)
         assert b.type == theano.tensor.fscalar
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
         b = shared(numpy.float(7.234), strict=True)
         assert b.type == theano.tensor.dscalar
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
         b = shared(7.234, strict=True)
         assert b.type == theano.tensor.dscalar
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
         c = shared(numpy.zeros((5,5), dtype='float32'))
-        self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
+        self.assertRaises(TypeError, f, b, numpy.random.rand(5,5))
 
 
 
@@ -160,40 +160,40 @@ class Test_SharedVariable(unittest.TestCase):
 
         b = shared(numpy.int64([7]), strict=True)
         assert b.type == theano.tensor.lvector
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int32([7]), strict=True)
         assert b.type == theano.tensor.ivector
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int16([7]), strict=True)
         assert b.type == theano.tensor.wvector
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.int8([7]), strict=True)
         assert b.type == theano.tensor.bvector
-        self.failUnlessRaises(TypeError, f, b, 8.23)
+        self.assertRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.float64([7.234]), strict=True)
         assert b.type == theano.tensor.dvector
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
         b = shared(numpy.float32([7.234]), strict=True)
         assert b.type == theano.tensor.fvector
-        self.failUnlessRaises(TypeError, f, b, 8)
+        self.assertRaises(TypeError, f, b, 8)
 
 #numpy.float([7.234]) don't work
 #        b = shared(numpy.float([7.234]), strict=True)
 #        assert b.type == theano.tensor.dvector
-#        self.failUnlessRaises(TypeError, f, b, 8)
+#        self.assertRaises(TypeError, f, b, 8)
 
 #This generate a generic type. Should we cast? I don't think.
 #        b = shared([7.234], strict=True)
 #        assert b.type == theano.tensor.dvector
-#        self.failUnlessRaises(TypeError, f, b, 8)
+#        self.assertRaises(TypeError, f, b, 8)
 
         c = shared(numpy.zeros((5,5), dtype='float32'))
-        self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
+        self.assertRaises(TypeError, f, b, numpy.random.rand(5,5))
 
 
 
@@ -252,7 +252,7 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.get_value()==8
 
         c = shared(numpy.zeros((5,5), dtype='float32'), allow_downcast=True)
-        self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
+        self.assertRaises(TypeError, f, b, numpy.random.rand(5,5))
 
 
 
@@ -306,4 +306,4 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.get_value() == 8
 
         c = shared(numpy.zeros((5,5), dtype='float32'), allow_downcast=True)
-        self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
+        self.assertRaises(TypeError, f, b, numpy.random.rand(5,5))

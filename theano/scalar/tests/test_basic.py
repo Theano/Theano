@@ -49,7 +49,7 @@ class test_ScalarOps(unittest.TestCase):
                     (1,2), (-1,2), (1,-2), (-1,-2),
                     (5,3), (-5,3), (5,-3), (-5,-3)
                     ):
-            self.failUnless(fn(a,b) == a%b, (a,))
+            self.assertTrue(fn(a,b) == a%b, (a,))
 
 class test_composite(unittest.TestCase):
 
@@ -106,72 +106,72 @@ class test_logical(unittest.TestCase):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [x > y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a>b))
+            self.assertTrue(fn(a,b) == (a>b))
 
     def test_lt(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [x < y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a<b))
+            self.assertTrue(fn(a,b) == (a<b))
 
     def test_le(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [x <= y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a<=b))
+            self.assertTrue(fn(a,b) == (a<=b))
 
     def test_ge(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [x >= y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a>=b))
+            self.assertTrue(fn(a,b) == (a>=b))
 
     def test_eq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [eq(x,y)])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a==b))
+            self.assertTrue(fn(a,b) == (a==b))
 
     def test_neq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [neq(x,y)])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.failUnless(fn(a,b) == (a!=b))
+            self.assertTrue(fn(a,b) == (a!=b))
 
 
     def test_or(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [x|y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a|b), (a,b))
+            self.assertTrue(fn(a,b) == (a|b), (a,b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [x^y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a ^ b), (a,b))
+            self.assertTrue(fn(a,b) == (a ^ b), (a,b))
 
     def test_and(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [and_(x, y)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a & b), (a,b))
+            self.assertTrue(fn(a,b) == (a & b), (a,b))
 
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [x & y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a & b), (a,b))
+            self.assertTrue(fn(a,b) == (a & b), (a,b))
     
     def test_not(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [invert(x)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == ~a, (a,))
+            self.assertTrue(fn(a,b) == ~a, (a,))
 
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(Env([x,y], [~x])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == ~a, (a,))
+            self.assertTrue(fn(a,b) == ~a, (a,))
 
 
 class test_div(unittest.TestCase):

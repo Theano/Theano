@@ -81,7 +81,7 @@ class test_Broadcast(unittest.TestCase):
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
 
-            self.failUnless((f(xv, yv) == zv).all())
+            self.assertTrue((f(xv, yv) == zv).all())
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
@@ -111,7 +111,7 @@ class test_Broadcast(unittest.TestCase):
 
             f(xv, yv)
 
-            self.failUnless((xv == zv).all())
+            self.assertTrue((xv == zv).all())
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker,gof.PerformLinker):
@@ -238,7 +238,7 @@ class test_CAReduce(unittest.TestCase):
                 else:
                     self.fail()
             else:
-                self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
+                self.assertTrue((numpy.abs(f(xv) - zv) < 1e-10).all())
 
 
             #test CAReduce.infer_shape

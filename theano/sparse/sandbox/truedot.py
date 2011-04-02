@@ -93,103 +93,103 @@ class test_true_dot(unittest.TestCase):
             x = as_sparse_variable(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_variable(x))
+            self.assertTrue(_is_sparse_variable(x))
 
             xT = x.T
-            self.failUnless(_is_sparse_variable(xT))
+            self.assertTrue(_is_sparse_variable(xT))
 
             zop = true_dot(x,xT)
-            self.failUnless(_is_sparse_variable(zop))
+            self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,500))
-            self.failUnless(type(z) is mtype)
+            self.assertTrue(_is_sparse(z))
+            self.assertTrue(z.shape == (500,500))
+            self.assertTrue(type(z) is mtype)
 
             w = mtype((500,500))
             w[(10, 10)] = 1
             w[(20, 20)] = 4
-            self.failUnless(z.shape == w.shape)
-            self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
+            self.assertTrue(z.shape == w.shape)
+            self.assertTrue(type(z) == type(w))
+            self.assertTrue(z.dtype == w.dtype)
 
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
+            #self.assertTrue(z == w)
+            self.assertTrue(abs(z-w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
-            self.failUnless((z == w).all() == True)
+            self.assertTrue((z == w).all() == True)
 
     def test_basicSD(self):
         for mtype in _mtypes:
             x = as_sparse_variable(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_variable(x))
+            self.assertTrue(_is_sparse_variable(x))
 
             y = tensor.as_tensor_variable([[1., 2], [3, 4], [2, 1]])
-            self.failUnless(_is_dense_variable(y))
+            self.assertTrue(_is_dense_variable(y))
 
             zop = true_dot(x,y)
-            self.failUnless(_is_sparse_variable(zop))
+            self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,2))
-            self.failUnless(type(z) is mtype)
+            self.assertTrue(_is_sparse(z))
+            self.assertTrue(z.shape == (500,2))
+            self.assertTrue(type(z) is mtype)
 
             w = mtype((500,2))
             w[(10, 0)] = 3.
             w[(20, 0)] = 4
             w[(10, 1)] = 4
             w[(20, 1)] = 2
-            self.failUnless(z.shape == w.shape)
-            self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
+            self.assertTrue(z.shape == w.shape)
+            self.assertTrue(type(z) == type(w))
+            self.assertTrue(z.dtype == w.dtype)
 
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
+            #self.assertTrue(z == w)
+            self.assertTrue(abs(z-w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
-            self.failUnless((z == w).all() == True)
+            self.assertTrue((z == w).all() == True)
 
     def test_basicDS(self):
         for mtype in _mtypes:
             x = as_sparse_variable(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_variable(x))
+            self.assertTrue(_is_sparse_variable(x))
 
             y = tensor.as_tensor_variable([[1., 2], [3, 4], [2, 1]])
-            self.failUnless(_is_dense_variable(y))
+            self.assertTrue(_is_dense_variable(y))
 
             x.data = x.data.T
             y.data = y.data.T
 
             zop = true_dot(y, x)
             zop = transpose(true_dot(y, x))
-            self.failUnless(_is_sparse_variable(zop))
+            self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,2))
-#            self.failUnless(type(z) is mtype)
+            self.assertTrue(_is_sparse(z))
+            self.assertTrue(z.shape == (500,2))
+#            self.assertTrue(type(z) is mtype)
 
             w = mtype((500,2))
             w[(10, 0)] = 3.
             w[(20, 0)] = 4
             w[(10, 1)] = 4
             w[(20, 1)] = 2
-            self.failUnless(z.shape == w.shape)
+            self.assertTrue(z.shape == w.shape)
             # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
+            #self.assertTrue(type(z) == type(w))
+            self.assertTrue(z.dtype == w.dtype)
 
             # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
+            #self.assertTrue(z == w)
+            self.assertTrue(abs(z-w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
-            self.failUnless((z == w).all() == True)
+            self.assertTrue((z == w).all() == True)
 
     def test_graph_bprop0(self):
         for mtype in _mtypes:
@@ -213,8 +213,8 @@ class test_true_dot(unittest.TestCase):
                 w = w - (lr * gw)
                 print loss
 
-            self.failUnless(origloss > loss)
-            self.failUnless('1.05191241115' == str(loss))
+            self.assertTrue(origloss > loss)
+            self.assertTrue('1.05191241115' == str(loss))
 
     def test_graph_bprop_rand(self):
         for i in range(10):
@@ -239,5 +239,5 @@ class test_true_dot(unittest.TestCase):
                     y, loss, gw = trainfn(x, w)
                     w = w - (lr * gw)
 
-                self.failUnless(origloss > loss)
+                self.assertTrue(origloss > loss)
 

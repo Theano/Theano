@@ -48,7 +48,7 @@ class Test_incsubtensor(unittest.TestCase):
             else:
                 expected_result[:,:val_sl2_end] += val_inc
            
-            self.failUnless(numpy.array_equal(result, expected_result))
+            self.assertTrue(numpy.array_equal(result, expected_result))
         return
 
     def test_grad(self):
