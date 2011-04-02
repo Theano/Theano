@@ -336,10 +336,19 @@ class Scan(Op):
             return self.info == other.info
 
     def __str__(self):
-        if self.name:
-            return self.name
+        if self.gpu:
+            gpu_str = 'gpu'
         else:
-            return 'scan'
+            gpu_str = 'cpu'
+        if self.inplace :
+            aux_txt = '[inplace,%s]'%gpu_str
+        else:
+            aux_txt = '[%s]'%gpu_str
+
+        if self.name:
+            return self.name+aux_txt
+        else:
+            return 'scan'+aux_txt
 
 
     def __hash__(self):
