@@ -167,7 +167,7 @@ class ScanSaveMem(Optimizer):
         # change the number of steps in that case. To do this we set
         # global_nsteps to None which is seen as a flag that nothing needs
         # to be done
-        if len(node.outputs) > c_outs :
+        if len(node.outputs) <= c_outs :
             global_nsteps = {'real' :-1, 'sym': []}
         else:
             global_nsteps = None
@@ -289,7 +289,7 @@ class ScanSaveMem(Optimizer):
                 sym_steps = None
             else:
                 sym_steps =global_nsteps['sym'][0]
-                for c in global_nsteps['sym'][:1]:
+                for c in global_nsteps['sym'][1:]:
                     sym_steps = tensor.maximum(sym_steps, c)
 
             if global_nsteps['real'] >= 0:
