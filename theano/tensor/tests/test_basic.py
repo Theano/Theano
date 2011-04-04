@@ -2993,10 +2993,6 @@ class T_tensorfromscalar(unittest.TestCase):
         self.assertTrue(isinstance(v, numpy.ndarray))
         self.assertTrue(v.shape == (), v.shape)
 
-    @dec.knownfailureif(
-            isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-            ("This test fails in DEBUG_MODE, but the generated code is OK. "
-             "It is actually a problem of DEBUG_MODE, see #624."))
     def test1(self):
         s = scal.constant(56)
         t = as_tensor_variable(s)
@@ -3015,10 +3011,6 @@ class T_tensorfromscalar(unittest.TestCase):
         self.assertTrue(eval_outputs([g])==1)
 
 class T_scalarfromtensor(unittest.TestCase):
-    @dec.knownfailureif(
-        isinstance(get_default_mode(),theano.compile.debugmode.DebugMode),
-            ("This test fails in DEBUG_MODE, but the generated code is OK. "
-             "It is actually a problem of DEBUG_MODE, see #625."))
     def test0(self):
         tt = constant(56)#scal.constant(56)
         ss = scalar_from_tensor(tt)
