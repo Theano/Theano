@@ -341,9 +341,9 @@ class Scan(Op):
         else:
             gpu_str = 'cpu'
         if self.inplace :
-            aux_txt = '[inplace,%s]'%gpu_str
+            aux_txt = '{inplace,%s}'%gpu_str
         else:
-            aux_txt = '[%s]'%gpu_str
+            aux_txt = '{%s}'%gpu_str
 
         if self.name:
             return self.name+aux_txt
