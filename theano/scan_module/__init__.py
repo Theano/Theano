@@ -93,15 +93,6 @@ class ScanSaveMem(gof.Optimizer):
     def add_requirements(self,env):
         env.extend(gof.toolbox.ReplaceValidate())
 
-    def get_int_val(self,x):
-        # int/constant
-        if type(x) in [int, float]:
-            return int(val)
-        elif isinstance(val, tensor.Constant):
-            return int(val.value)
-        else:
-            return None
-
     def process_node(self, env, node):
 
         # helpful functions
@@ -638,6 +629,7 @@ if cuda.cuda_available:
         """
 
         if node.op == gpu_from_host:
+            # NOT TESTED!!!!
             host_input = node.inputs[0]
             if ( host_input.owner
                 and host_input.owner.op == scan_op.Scan
