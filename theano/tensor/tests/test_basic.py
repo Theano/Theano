@@ -2866,8 +2866,8 @@ class test_matinv(unittest.TestCase):
             gw = 2*(x*w - ones)*x  # derivative of dMSE/dw
             myssd = numpy.sum((x*w - ones)**2)
             w -= 0.4 * gw
-        self.failUnlessAlmostEqual(ssd0, myssd0)
-        self.failUnlessAlmostEqual(ssd, myssd)
+        self.assertAlmostEqual(ssd0, myssd0)
+        self.assertAlmostEqual(ssd, myssd)
 
 class t_dot(unittest.TestCase):
     def setUp(self):
