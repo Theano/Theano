@@ -114,11 +114,11 @@ class OutputGuard(gof.Op):
             return """
             %(z)s = %(x)s;
             """ % locals()
-        elif isinstance(node.inputs[0].type,
+        elif (isinstance(node.inputs[0].type,
                 (theano.tensor.TensorType,
                     theano.sandbox.cuda.CudaNdarrayType,
-                    theano.sparse.SparseType,
-                    theano.tensor.raw_random.RandomStateType)
+                    theano.tensor.raw_random.RandomStateType)) or
+                node.inputs[0].type.__class__.__name__ == 'SparseType'
                 ):
             # These are Python object types
             return """
