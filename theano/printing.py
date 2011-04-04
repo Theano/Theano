@@ -4,6 +4,8 @@ They all allow different way to print a graph or the result of an Op in a graph(
 import sys, os, StringIO
 from copy import copy
 
+import numpy
+
 import theano
 import gof
 from theano import config
@@ -486,7 +488,7 @@ def pydotprint(fct, outfile=None,
         if var.name is not None:
             varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
-            dstr = 'val='+str(var.data)
+            dstr = 'val='+str(numpy.asarray(var.data))
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
             if len(dstr) > 30:
