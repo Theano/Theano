@@ -163,7 +163,7 @@ In general, for any **scalar** expression ``s``, ``T.grad(s, w)`` provides
 the theano expression for computing :math:`\frac{\partial s}{\partial w}`. In 
 this way Theano can be used for doing **efficient** symbolic differentiation
 (as
-the expression return by ``TT.grad`` will be optimized during compilation) even for
+the expression return by ``T.grad`` will be optimized during compilation) even for
 function with many inputs. ( see `automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_ for a description
 of symbolic differentiation).
 
