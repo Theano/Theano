@@ -192,7 +192,8 @@ class Scalar(Type):
             %(fail)s
         }
         PyArrayScalar_ASSIGN(py_%(name)s, %(cls)s, %(name)s);
-        """ % dict(name = name,
+        """ % dict(sub,
+                   name = name,
                    dtype = specs[1],
                    cls = specs[2])
 
