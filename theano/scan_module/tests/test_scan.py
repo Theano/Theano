@@ -226,6 +226,58 @@ class T_Scan(unittest.TestCase):
         theano_values = f2(v_u,v_x0, W_in, W)
         assert numpy.allclose(theano_values, v_out)
 
+    # as test_one_sequence_one_output_weights, but on the gpu
+    def test_one_sequence_one_output_weights_gpu(self):
+        def f_rnn(u_t,x_tm1,W_in, W):
+            return u_t*W_in+x_tm1*W
+
+        u    = theano.tensor.fvector('u')
+        x0   = theano.tensor.fscalar('x0')
+        W_in = theano.tensor.fscalar('win')
+        W    = theano.tensor.fscalar('w')
+        mode = theano.compile.mode.get_default_mode().including('gpu')
+        output, updates = theano.scan(f_rnn, u,x0,[W_in,W]
+                                      , n_steps           = None
+                                      , truncate_gradient = -1
+                                      , go_backwards      = False
+                                      , mode = mode)
+
+        f2   = theano.function([u,x0,W_in,W], output, updates = updates,
+                               allow_input_downcast = True,
+                               mode = mode)
+
+        # get random initial values
+        rng  = numpy.random.RandomState(utt.fetch_seed())
+        v_u  = rng.uniform( size = (4,), low = -5., high = 5.)
+        v_x0 = rng.uniform()
+        W    = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[0]*W_in + v_x0 * W
+        for step in xrange(1,4):
+            v_out[step] = v_u[step]*W_in + v_out[step-1] * W
+        theano_values = f2(v_u,v_x0, W_in, W)
+        assert numpy.allclose(theano_values, v_out)
+
+        topo = f2.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu) for node in topo]) == 1
+        assert sum([isinstance(node.op, theano.sandbox.cuda.GpuFromHost) for node in topo]) == 4
+
+        scan_node = [node for node in topo if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+        scan_node_topo = scan_node.op.fn.maker.env.toposort()
+
+        theano.printing.pydotprint(f2, outfile='out.png', high_contrast=True)
+        theano.printing.pydotprint(scan_node.op.fn,
+                                   outfile='inner.png', high_contrast=True)
+
+        #check that there is less gpu transfer
+        assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in scan_node_topo])
+        assert not any([isinstance(node.op, theano.sandbox.cuda.HostFromGpu) for node in scan_node_topo])
+        assert not any([isinstance(node.op, theano.sandbox.cuda.GpuFromHost) for node in scan_node_topo])
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables

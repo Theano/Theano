@@ -598,7 +598,7 @@ if cuda.cuda_available:
 
     def safe_to_gpu(x):
         if (isinstance(x.type, TensorType) and
-            x.type.dtype == config.floatX):
+            x.type.dtype == 'float32'):
             return gpu_from_host(x)
         else:
             return x
@@ -611,7 +611,7 @@ if cuda.cuda_available:
 
     def tensor_to_cuda(x):
         if (isinstance(x.type, TensorType) and
-            x.type.dtype == config.floatX):
+            x.type.dtype == 'float32'):
             y = CudaNdarrayType( broadcastable = x.type.broadcastable)()
             if x.name :
                 y.name = x.name +'[cuda]'
@@ -629,11 +629,11 @@ if cuda.cuda_available:
         """
 
         if node.op == gpu_from_host:
-            # NOT TESTED!!!!
             host_input = node.inputs[0]
             if ( host_input.owner
                 and host_input.owner.op == scan_op.Scan
                 and not host_input.owner.op.info['gpu']):
+                # NOT TESTED!!!!
                 thescan = host_input.owner.op
                 inputs = host_input.owner.inputs
                 # I need to cast thescan.inputs to gpuhost stuff
@@ -697,10 +697,3 @@ if cuda.cuda_available:
                 outputs = [safe_to_cpu(x) for x in _outputs]
                 return outputs
         return False
-
-
-
-
-
-
-
