@@ -37,7 +37,6 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import itertools
 import logging
 import numpy
 import sys
@@ -45,12 +44,8 @@ import sys
 from theano import tensor
 from theano.tensor import opt, TensorType
 from theano import gof
-from theano.gof import Optimizer, toolbox
 from theano.compile import optdb
-from theano.compile.sharedvalue import SharedVariable
-from theano.configparser import AddConfigVar, BoolParam
 from theano import config
-from theano.tensor import opt
 
 import scan_op
 from scan import scan
@@ -90,13 +85,13 @@ optdb.register( 'scanOp_make_inplace'
 
 
 
-class ScanSaveMem(Optimizer):
+class ScanSaveMem(gof.Optimizer):
     """ Graph Optimizer that reduces scan memory consumption """
     def __init__(self):
-        Optimizer.__init__(self)
+        gof.Optimizer.__init__(self)
 
     def add_requirements(self,env):
-        env.extend(toolbox.ReplaceValidate())
+        env.extend(gof.toolbox.ReplaceValidate())
 
     def get_int_val(self,x):
         # int/constant
@@ -529,13 +524,13 @@ optdb.register( 'scanOp_save_mem'
                , 'fast_run')
 
 '''
-class ScanMerge(Optimizer):
+class ScanMerge(gof.Optimizer):
     """ Graph Optimizer that reduces scan memory consumption """
     def __init__(self):
-        Optimizer.__init__(self)
+        gof.Optimizer.__init__(self)
 
     def add_requirements(self,env):
-        env.extend(toolbox.ReplaceValidate())
+        env.extend(gof.toolbox.ReplaceValidate())
 
     def merge(self, A,B):
         # Step 1. Identify common inputs
@@ -606,11 +601,9 @@ from theano.sandbox import cuda
 
 if cuda.cuda_available:
 
-    from theano.sandbox.cuda.basic_ops import *
+    from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
     from theano.sandbox.cuda.type import CudaNdarrayType
-    from theano import sandbox
     from theano.sandbox.cuda.opt import register_opt, local_optimizer
-    from theano import config
 
     def safe_to_gpu(x):
         if (isinstance(x.type, TensorType) and
