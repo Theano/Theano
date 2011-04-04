@@ -468,7 +468,7 @@ def pydotprint(fct, outfile=None,
 
         left = set(recursive_pass(cond.inputs[1],[]))
         right =set(recursive_pass(cond.inputs[2],[]))
-        middle = left.intersecton(right)
+        middle = left.intersection(right)
         left   = left.difference(middle)
         right  = right.difference(middle)
         middle = list(middle)
