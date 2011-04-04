@@ -1,9 +1,12 @@
-
 import unittest
-import theano
+
 import numpy
+
+import theano
 import theano.sandbox.rng_mrg
+from theano import tensor
 from theano.tests  import unittest_tools as utt
+
 '''
   Questions and notes about scan that should be answered :
 
@@ -1701,15 +1704,9 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_y , v_y[-1:])
 
     def caching_nsteps_by_scan_op(self):
-
-        import theano
-        import theano.tensor as T
-        import scipy
-
-
-        W = T.matrix('weights')
-        initial = T.vector('initial')
-        inpt = T.matrix('inpt')
+        W = tensor.matrix('weights')
+        initial = tensor.vector('initial')
+        inpt = tensor.matrix('inpt')
 
         def one_step(x_t, h_tm1, W):
           expr = T.dot(h_tm1, W) + x_t
@@ -1725,24 +1722,24 @@ class T_Scan(unittest.TestCase):
 
         shapef = theano.function([W], expr,
                                  givens={initial: theano.shared(
-                                     scipy.ones(5,
+                                     numpy.ones(5,
                                                 dtype=theano.config.floatX)),
                                          inpt: theano.shared(
-                                             scipy.ones((5, 5),
+                                             numpy.ones((5, 5),
                                                        dtype=theano.config.floatX))})
         # First execution to cache n_steps
-        shapef(scipy.ones((5, 5), dtype=theano.config.floatX))
+        shapef(numpy.ones((5, 5), dtype=theano.config.floatX))
 
 
         cost = expr.sum()
-        d_cost_wrt_W = T.grad(cost, [W])
+        d_cost_wrt_W = tensor.grad(cost, [W])
         f = theano.function([W, inpt], d_cost_wrt_W,
-                             givens={initial: theano.shared(scipy.zeros(5))})
+                             givens={initial: theano.shared(numpy.zeros(5))})
 
         rval = numpy.asarray([[5187989]*5]*5, dtype = theano.config.floatX)
-        assert numpy.allclose( f(scipy.ones((5, 5),
+        assert numpy.allclose( f(numpy.ones((5, 5),
                                             dtype=theano.config.floatX)
-                                 , scipy.ones((10, 5),
+                                 , numpy.ones((10, 5),
                                               dtype=theano.config.floatX))
                               ,rval)
 
