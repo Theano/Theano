@@ -540,19 +540,30 @@ class Scan(Op):
             min_tap = self.mintaps[idx]
             if ( store_steps[idx] < n_steps-self.mintaps[idx] and
                 pos[idx] < store_steps[idx] ):
-                part_1 = range(pos[idx], store_steps[idx])
-                part_2 = range(pos[idx] )
-                reordered = part_1 + part_2
-                if len(reordered) > 1:
-                    if cuda.cuda_available and isinstance( outs[idx][0], cuda.CudaNdarray):
-                        shape = outs[idx][0].shape
+
+                pdx = pos[idx]
+                if pdx < store_steps[idx]//2 :
+                    shape = (pdx,)+ outs[idx][0].shape[1:]
+                    if cuda.cuda_available and isinstance( outs[idx][0],
+                                                          cuda.CudaNdarray):
                         tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                        pdx = pos[idx]
-                        tmp[:store_steps[idx]-pdx] = outs[idx][0][pdx:]
-                        tmp[store_steps[idx]-pdx:] = outs[idx][0][:pdx]
-                        outs[idx][0] = tmp
                     else:
-                        outs[idx][0] = outs[idx][0][reordered]
+                        tmp = numpy.empty(shape)
+                    tmp[:] = outs[idx][0][:pdx]
+                    outs[idx][0][:store_steps[idx]-pdx] = outs[idx][0][pdx:]
+                    outs[idx][0][store_steps[idx]-pdx:] = tmp
+                else:
+                    shape = (store_steps[idx]-pdx,) + outs[idx][0].shape[1:]
+                    if cuda.cuda_available and isinstance( outs[idx][0],
+                                                          cuda.CudaNdarray):
+                        tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
+                    else:
+                        tmp = numpy.empty(shape)
+                    tmp[:] = outs[idx][0][pdx:]
+                    outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
+                    outs[idx][0][:store_steps[idx]-pdx] = tmp
+
+
         for idx,val in enumerate(self.mask):
             if val == 1:
                 if hasattr(outs[end+idx][0], 'copy'):
