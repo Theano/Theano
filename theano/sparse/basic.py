@@ -222,10 +222,12 @@ class SparseType(gof.Type):
         #WARNING: equality comparison of sparse matrices is not fast or easy
         # we definitely do not want to be doing this un-necessarily during
         # a FAST_RUN computation..
-        return scipy.sparse.issparse(a) \
-                and scipy.sparse.issparse(b) \
-                and ((abs(a-b).sum() < (1e-6 * a.nnz))
-                     or (a.nnz==0 and b.nnz==0))#in case a and b are empty
+        if not scipy.sparse.issparse(a) or not scipy.sparse.issparse(b):
+            return False
+        diff = abs(a-b)
+        if diff.nnz == 0:
+            return True
+        return max(diff)<eps
 
     def values_eq(self, a, b):
         #WARNING: equality comparison of sparse matrices is not fast or easy
