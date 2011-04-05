@@ -382,7 +382,6 @@ def makeSharedTester(shared_constructor_,
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
             # Test by set_value with borrow=True when new data casted.
-            print
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
@@ -537,7 +536,6 @@ def makeSharedTester(shared_constructor_,
             topo=f.maker.env.toposort()
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
-            #print topo
             if theano.config.mode!='FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
@@ -551,7 +549,6 @@ def makeSharedTester(shared_constructor_,
                                 updates={s_shared:theano.dot(a_shared,b_shared)
                                          +s_shared_specify})
             topo=f.maker.env.toposort()
-            print topo
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':
@@ -568,7 +565,6 @@ def makeSharedTester(shared_constructor_,
                                 updates={s_shared:theano.dot(a_shared,b_shared)
                                          +s_shared_specify})
             topo=f.maker.env.toposort()
-            print topo
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':
@@ -609,7 +605,7 @@ def makeSharedTester(shared_constructor_,
 
 test_shared_options=makeSharedTester(
     shared_constructor_ = tensor.shared,
-    dtype_ = 'float64',
+    dtype_ = theano.config.floatX,
     get_value_borrow_true_alias_ = True,
     shared_borrow_true_alias_ = True,
     set_value_borrow_true_alias_ = True,
@@ -618,7 +614,7 @@ test_shared_options=makeSharedTester(
     shared_constructor_accept_ndarray_ = True,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
-    theano_fct_ = theano.tensor.sum,
+    theano_fct_ = lambda a: a*2,
     ref_fct_ = lambda a: numpy.asarray((a*2)),
     cast_value_ = numpy.asarray,
     op_by_matrix_ = False)
