@@ -919,7 +919,7 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     test_internal_type_ = lambda a: isinstance(a,cuda_ndarray.CudaNdarray),
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
-    cast_value_ = cuda_ndarray.CudaNdarray,
+    cast_value_ = cuda.as_cuda_array,
     op_by_matrix_ = True)
 
 #This test the case when the shared constructor view an ndarray as input
