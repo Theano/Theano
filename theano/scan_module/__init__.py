@@ -624,23 +624,22 @@ if cuda.cuda_available:
     @local_optimizer([])
     def gpuScanOptimization(node):
         """
-        gpu_from_host(scan) -> GPUscan(gpu_from_host)
         scan(host_from_gpu) -> host_from_gpu(GPUscan)
+        gpu_from_host(scan) -> GPUscan(gpu_from_host)
         """
 
+        #gpu_from_host(scan) -> GPUscan(gpu_from_host)
         if node.op == gpu_from_host:
             host_input = node.inputs[0]
-            if ( host_input.owner
-                and host_input.owner.op == scan_op.Scan
-                and not host_input.owner.op.info['gpu']):
-                # NOT TESTED!!!!
+            if (host_input.owner and
+                isinstance(host_input.owner.op, scan_op.Scan) and
+                not host_input.owner.op.info['gpu']):
                 thescan = host_input.owner.op
-                inputs = host_input.owner.inputs
-                # I need to cast thescan.inputs to gpuhost stuff
                 info = thescan.info.copy()
                 info['gpu'] = True
+                inputs = host_input.owner.inputs
                 nw_ins = [ inputs[0]]
-                e = ( thescan.n_seqs
+                e = ( 1+ thescan.n_seqs
                      + thescan.n_mit_mot
                      + thescan.n_mit_sot
                      + thescan.n_sit_sot
@@ -649,20 +648,20 @@ if cuda.cuda_available:
                 b = e
                 e = e + thescan.n_nit_sot + thescan.n_other_ignore
                 nw_ins += inputs[b:e]
-                nw_ins += [safe_to_gpu(x) for x in inptus[e:] ]
+                nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
                 scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
                 scan_outs = [ safe_to_gpu(x) for x in thescan.outputs ]
                 scan_outs = scan_utils.clone(
                     scan_outs
-                    , replace = zip(thescan.inputs
-                                    ,[safe_to_cpu(x) for x in  scan_ins]))
+                    , replace = zip(thescan.inputs,
+                                    [safe_to_cpu(x) for x in  scan_ins]))
                 nw_op = scan_op.Scan( scan_ins
                                      , scan_outs
                                      , info).make_node(*nw_ins)
                 _outputs = nw_op.outputs
-                outputs = [safe_to_cpu(x) for x in _outputs]
-                return outputs
+                return _outputs
 
+        #scan(host_from_gpu) -> host_from_gpu(GPUscan)
         if (type(node.op) == scan_op.Scan
             and not node.op.info['gpu']):
             if numpy.any([(i.owner and i.owner.op == host_from_gpu)
@@ -689,7 +688,6 @@ if cuda.cuda_available:
                     scan_outs
                     , replace = zip(thescan.inputs
                                     ,[safe_to_cpu(x) for x in  scan_ins]))
-                info['gpu'] = True
                 _outputs = scan_op.Scan(
                         scan_ins
                         , scan_outs
