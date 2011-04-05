@@ -4156,6 +4156,18 @@ class test_broadcast(unittest.TestCase):
         assert addbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
         assert addbroadcast(unbroadcast(x,0),0) is x
 
+    def test_infer_shape(self):
+        x = matrix()
+        y = addbroadcast(x,0)
+        f = theano.function([x], y.shape)
+        f(numpy.zeros((1,5)))
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert len(topo) == 3
+            assert isinstance(topo[0].op, opt.Shape_i)
+            assert isinstance(topo[1].op, opt.Shape_i)
+            assert isinstance(topo[2].op, opt.MakeVector)
+
 def test_mod():
     """
     We add this test as not all language and C implementation give the same

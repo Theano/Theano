@@ -3289,6 +3289,8 @@ class Rebroadcast(Op):
         gz, = grads
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis]) for axis, value in self.axis.iteritems()])(gz),
+    def infer_shape(self, node, ishapes):
+        return ishapes
 
 def addbroadcast(x, *axes):
     """
