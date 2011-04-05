@@ -310,12 +310,12 @@ def makeSharedTester(shared_constructor_,
 
             shp = (100/4,1024)#100KB
 
-            x = numpy.zeros(shp, dtype='float32')
+            x = numpy.zeros(shp, dtype=dtype)
             x = self.cast_value(x)
             x_shared = self.shared_constructor(x, borrow=True)
 
             old_data = x_shared.container.storage[0]
-            nd = numpy.ones(shp, dtype='float32')
+            nd = numpy.ones(shp, dtype=dtype)
 
             if x.__class__.__name__ != 'csr_matrix':
                 #sparse matrix don't support inplace affectation
