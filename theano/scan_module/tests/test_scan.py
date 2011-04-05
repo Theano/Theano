@@ -229,6 +229,11 @@ class T_Scan(unittest.TestCase):
     # as test_one_sequence_one_output_weights, but on the gpu
     # This first version test the first case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu1(self):
+        from nose.plugins.skip import SkipTest
+        import theano.sandbox.cuda as cuda
+        if cuda.cuda_available == False:
+            raise SkipTest('Optional package cuda disabled')
+
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
 
@@ -297,6 +302,11 @@ class T_Scan(unittest.TestCase):
 
     # This second version test the second case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu2(self):
+        from nose.plugins.skip import SkipTest
+        import theano.sandbox.cuda as cuda
+        if cuda.cuda_available == False:
+            raise SkipTest('Optional package cuda disabled')
+
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
 
