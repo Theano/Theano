@@ -61,42 +61,7 @@ def infer_reuse_pattern(env, outputs_to_disown):
     # remove from rval all of the inputs, constants, values.
     rval = set(r for r in rval if r.owner is not None)
 
-    if 0:
-        # DEBUG STUFF
-        # verify that we return a superset of what we've been returning so far...
-        rval0 = _old_infer_reuse_pattern(env, outputs_to_disown)
-        rval0_set = set(rval0)
-
-        for r in rval0_set:
-            assert r in rval
-
     return rval
-
-def _old_infer_reuse_pattern(env, outputs_to_disown):
-    """
-    Given an env and a list of variables, returns the list of all
-    variables which may share the same underlying data storage as any of
-    the specified variables. Used internally by function, FunctionMaker.
-
-    This list is also refered to as no_recycling sometimes.
-    """
-    do_not_reuse = list()
-    seen = set()
-    def walk(r):
-        if r.owner is None or r in seen:
-            return
-        seen.add(r)
-        do_not_reuse.append(r)
-        node = r.owner
-        op = node.op
-        dmap = getattr(op, 'destroy_map', {})
-        vmap = getattr(op, 'view_map', {})
-        for l in dmap.values() + vmap.values():
-            for i in l:
-                walk(node.inputs[i])
-    for output in outputs_to_disown:
-        walk(output)
-    return do_not_reuse
 
 
 class Supervisor:
