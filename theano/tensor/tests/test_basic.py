@@ -4160,7 +4160,7 @@ class test_broadcast(unittest.TestCase):
         x = matrix()
         y = addbroadcast(x,0)
         f = theano.function([x], y.shape)
-        f(numpy.zeros((1,5)))
+        f(numpy.zeros((1,5), dtype=config.floatX))
         topo = f.maker.env.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 3
