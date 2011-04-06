@@ -2753,6 +2753,14 @@ def test_local_add_specialize():
     s = tensor.add(tensor.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
 
+    # Test when the 0 input is forcing upcasting
+    a = tensor.constant(0, dtype='int64')
+    b = tensor.constant(1, dtype='int32')
+    s = a + b
+    transformed = local_add_specialize.transform(s.owner)
+    assert transformed
+    assert transformed[0].type == s.type
+
 def test_local_tensor_scalar_tensor():
     dtypes = ['int8', 'int16', 'int32', 'int64',
             'uint8', 'uint16', 'uint32', 'uint64',
