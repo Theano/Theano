@@ -1169,7 +1169,9 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            if len(args) == 1:
+            if len(args) == 1 and isinstance(args[0],
+                                             (list, TensorVariable,
+                                              theano.tensor.sharedvar.TensorSharedVariable)):
                 return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor(args)(self, *args)
@@ -2552,7 +2554,9 @@ def pow(a, b):
     """elementwise power"""
     # see decorator for function body
 
-@_scal_elemwise_with_nfunc('clip', 3, 1)
+# The numpy.clip don't work correctly when
+# the min is bigger then the max
+@_scal_elemwise #_with_nfunc('clip', 3, 1)
 def clip(x, min, max):
     """clip x to be between min and max"""
     # see decorator for function body
@@ -3287,6 +3291,8 @@ class Rebroadcast(Op):
         gz, = grads
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis]) for axis, value in self.axis.iteritems()])(gz),
+    def infer_shape(self, node, ishapes):
+        return ishapes
 
 def addbroadcast(x, *axes):
     """
@@ -3533,7 +3539,10 @@ def stack(*tensors):
     # Doing it here make the graph less canonicalized
     # (more type need to be understood by all optimization)
     # And DebugMode can't detect error in this code as it is not in an optimization.
-    if numpy.all([isinstance(t, (numpy.number, float, int, python_complex)) or #in case their is direct int
+    # See ticket #660
+    if numpy.all([
+                  # in case their is direct int in tensors.
+                  isinstance(t, (numpy.number, float, int, python_complex)) or
                   (isinstance(t, Variable) and
                    isinstance(t.type, TensorType) and
                    t.ndim==0)

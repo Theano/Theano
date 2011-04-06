@@ -90,7 +90,7 @@ class TestConv2D(unittest.TestCase):
                                                                   icol:icol+N_filter_shape[3]]*filter2d[::-1,::-1]
                                                           ).sum()
 
-        self.failUnless(_allclose(theano_output, ref_output))
+        self.assertTrue(_allclose(theano_output, ref_output))
 
         ############# TEST GRADIENT ############
         if verify_grad:
@@ -222,7 +222,7 @@ class TestConv2D(unittest.TestCase):
         """
         def f():
             self.validate((3,2,8,8), (4,3,5,5), 'valid')
-        self.failUnlessRaises(AssertionError, f)
+        self.assertRaises(AssertionError, f)
 
     def test_missing_info(self):
         """
@@ -246,7 +246,7 @@ class TestConv2D(unittest.TestCase):
         self.validate((3,2,5,5), (4,2,8,8), 'full')
         def f():
             self.validate((3,2,5,5), (4,2,8,8), 'valid')
-        self.failUnlessRaises(Exception, f)
+        self.assertRaises(Exception, f)
 
     def test_wrong_input(self):
         """

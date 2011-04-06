@@ -30,7 +30,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         try:
             _grad_sources_inputs([(a.out, 1)], None)
         except ValueError, e:
-            self.failUnless(e[0] is gradient._msg_retType)
+            self.assertTrue(e[0] is gradient._msg_retType)
             return
         self.fail()
     def test_retNone1_b(self):
@@ -44,7 +44,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         i = gof.generic()
         a = retNone().make_node(i)
         g = _grad_sources_inputs([(a.out, 1)], None)
-        self.failUnless(not i in g)
+        self.assertTrue(not i in g)
 
     def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradients"""
@@ -63,7 +63,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         try:
             g = _grad_sources_inputs([(a2.out, 1)], None)
         except ValueError, e:
-            self.failUnless(e[0] is gradient._msg_badlen)
+            self.assertTrue(e[0] is gradient._msg_badlen)
             return
         self.fail()
 
@@ -95,7 +95,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return gval,
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
-        self.failUnless(g[a1.inputs[0]] is gval)
+        self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_1in_Nout(self):
         """Test grad is called correctly for a 1-to-many op"""
@@ -111,7 +111,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return gval,
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
-        self.failUnless(g[a1.inputs[0]] is gval)
+        self.assertTrue(g[a1.inputs[0]] is gval)
     def test_Nin_1out(self):
         """Test grad is called correctly for a many-to-1 op"""
         gval0 = gof.generic()
@@ -127,8 +127,8 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return (gval0, gval1)
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
-        self.failUnless(g[a1.inputs[0]] is gval0)
-        self.failUnless(g[a1.inputs[1]] is gval1)
+        self.assertTrue(g[a1.inputs[0]] is gval0)
+        self.assertTrue(g[a1.inputs[1]] is gval1)
     def test_Nin_Nout(self):
         """Test grad is called correctly for a many-to-many op"""
         gval0 = gof.generic()
@@ -142,8 +142,8 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return gval0, gval1
         a1 = O().make_node()
         g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
-        self.failUnless(g[a1.inputs[0]] is gval0)
-        self.failUnless(g[a1.inputs[1]] is gval1)
+        self.assertTrue(g[a1.inputs[0]] is gval0)
+        self.assertTrue(g[a1.inputs[1]] is gval1)
     def test_some_None_ograds(self):
         """Test grad is called when some output gradients are None"""
         class O(gof.op.Op):
@@ -157,7 +157,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         i = gof.generic()
         a1 = O(self).make_node(i)
         g = grad_sources_inputs([(a1.outputs[0], 1)], None, warn_type=False)
-        self.failUnless(g[i] is 1)
+        self.assertTrue(g[i] is 1)
 
     def test_some_None_igrads(self):
         """Test that traversal works properly when an op return some None"""
@@ -179,12 +179,12 @@ class test_grad_sources_inputs(unittest.TestCase):
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(a1.outputs[1], k)
         g = grad_sources_inputs([(a2.outputs[0], 1)], None, warn_type=False)
-        self.failUnless(g[i] is 1 and j not in g and k not in g)
+        self.assertTrue(g[i] is 1 and j not in g and k not in g)
 
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(k, a1.outputs[1])
         g = _grad_sources_inputs([(a2.outputs[0], 1)], None)
-        self.failUnless(g[k] is 1 and i not in g and j not in g)
+        self.assertTrue(g[k] is 1 and i not in g and j not in g)
 
     def test_inputs(self):
         """Test that passing inputs shortens the traversal"""
@@ -211,12 +211,12 @@ class test_grad_sources_inputs(unittest.TestCase):
         a2 = O(self, True).make_node(k,a1.outputs[1])
         g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
             (a1.outputs[0], 3), (a1.outputs[0], 3)], a1.outputs)
-        self.failUnless(g[a2.inputs[0]] == 1)
-        self.failUnless(g[a2.inputs[1]] == 5)
-        self.failUnless(g[a1.outputs[0]] == 6)
-        self.failUnless(g[a1.outputs[1]] == 5)
-        self.failUnless(a1.inputs[0] not in g)
-        self.failUnless(a1.inputs[1] not in g)
+        self.assertTrue(g[a2.inputs[0]] == 1)
+        self.assertTrue(g[a2.inputs[1]] == 5)
+        self.assertTrue(g[a1.outputs[0]] == 6)
+        self.assertTrue(g[a1.outputs[1]] == 5)
+        self.assertTrue(a1.inputs[0] not in g)
+        self.assertTrue(a1.inputs[1] not in g)
 
     def test_multiple_sources(self):
         """Test that passing multiple sources works"""
@@ -243,12 +243,12 @@ class test_grad_sources_inputs(unittest.TestCase):
         a2 = O(self,True).make_node(k,a1.outputs[1])
         g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
             (a1.outputs[0], 3), (a1.outputs[0], 3)], None)
-        self.failUnless(g[a2.inputs[0]] == 1)
-        self.failUnless(g[a2.inputs[1]] == 5)
-        self.failUnless(g[a1.outputs[0]] == 6)
-        self.failUnless(g[a1.outputs[1]] == 5)
-        self.failUnless(g[a1.inputs[0]] == 6)
-        self.failUnless(g[a1.inputs[1]] == 11)
+        self.assertTrue(g[a2.inputs[0]] == 1)
+        self.assertTrue(g[a2.inputs[1]] == 5)
+        self.assertTrue(g[a1.outputs[0]] == 6)
+        self.assertTrue(g[a1.outputs[1]] == 5)
+        self.assertTrue(g[a1.inputs[0]] == 6)
+        self.assertTrue(g[a1.inputs[1]] == 11)
 
 
 if __name__ == '__main__':

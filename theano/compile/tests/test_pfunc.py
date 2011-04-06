@@ -27,23 +27,23 @@ class Test_pfunc(unittest.TestCase):
         b = shared(1)
         f1 = pfunc([a], a+b)
         f2 = pfunc([Param(a, default=44)], a + b, updates={b: b + 1})
-        self.failUnless(b.get_value() == 1)
-        self.failUnless(f1(3) == 4)
-        self.failUnless(f2(3) == 4)
-        self.failUnless(b.get_value() == 2)
-        self.failUnless(f1(3) == 5)
+        self.assertTrue(b.get_value() == 1)
+        self.assertTrue(f1(3) == 4)
+        self.assertTrue(f2(3) == 4)
+        self.assertTrue(b.get_value() == 2)
+        self.assertTrue(f1(3) == 5)
         b.set_value(0)
-        self.failUnless(f1(3) == 3)
+        self.assertTrue(f1(3) == 3)
 
         # Example #2.
         a = tensor.lscalar()
         b = shared(7)
         f1 = pfunc([a], a + b)
         f2 = pfunc([a], a * b)
-        self.failUnless(f1(5) == 12)
+        self.assertTrue(f1(5) == 12)
         b.set_value(8)
-        self.failUnless(f1(5) == 13)
-        self.failUnless(f2(4) == 32)
+        self.assertTrue(f1(5) == 13)
+        self.assertTrue(f2(4) == 32)
 
     def test_shared(self):
 
@@ -317,25 +317,25 @@ class Test_pfunc(unittest.TestCase):
         x = shared(0)
         assign = pfunc([], [], updates = {x: 3})
         assign()
-        self.failUnless(x.get_value() == 3)
+        self.assertTrue(x.get_value() == 3)
 
         # Basic increment function.
         x.set_value(0)
         inc = pfunc([], [], updates = {x: x + 1})
         inc()
-        self.failUnless(x.get_value() == 1)
+        self.assertTrue(x.get_value() == 1)
 
         # Increment by a constant value.
         x.set_value(-1)
         y = shared(2)
         inc_by_y = pfunc([], [], updates = {x: x + y})
         inc_by_y()
-        self.failUnless(x.get_value() == 1)
+        self.assertTrue(x.get_value() == 1)
 
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(numpy.ones((2,3)))
-        self.failUnlessRaises(ValueError, theano.function, [x,y], [z], updates=[(z, z+x+y), (z, z-x)])
+        self.assertRaises(ValueError, theano.function, [x,y], [z], updates=[(z, z+x+y), (z, z-x)])
 
     def test_givens(self):
         x = shared(0)
@@ -419,9 +419,9 @@ class Test_pfunc(unittest.TestCase):
         print x.get_value()
         assert x.get_value() == 6
 
-        self.failUnlessRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
-        self.failUnlessRaises(TypeError, pfunc, [], [x], no_default_updates=x)
-        self.failUnlessRaises(TypeError, pfunc, [], [x], no_default_updates='canard')
+        self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
+        self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=x)
+        self.assertRaises(TypeError, pfunc, [], [x], no_default_updates='canard')
 
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x,x-1)], no_default_updates=True)
@@ -582,7 +582,7 @@ class Test_pfunc(unittest.TestCase):
         assert y.get_value() == 2
 
         # a is needed as input if y.default_update is used
-        self.failUnlessRaises(TypeError, pfunc, [], x)
+        self.assertRaises(TypeError, pfunc, [], x)
 
     def test_default_updates_partial_graph(self):
         a = shared(0)

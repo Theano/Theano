@@ -4,6 +4,9 @@ They all allow different way to print a graph or the result of an Op in a graph(
 import sys, os, StringIO
 from copy import copy
 
+import numpy
+
+import theano
 import gof
 from theano import config
 from gof import Op, Apply
@@ -388,8 +391,9 @@ default_colorCodes = {'GpuFromHost' : 'red',
 
 
 def pydotprint(fct, outfile=None,
-        compact=True, format='png', with_ids=False,
-        high_contrast=False, cond_highlight = None, colorCodes = None):
+               compact=True, format='png', with_ids=False,
+               high_contrast=False, cond_highlight = None, colorCodes = None,
+               max_label_size=50):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
@@ -402,6 +406,12 @@ def pydotprint(fct, outfile=None,
             the border
     :param colorCodes: dictionary with names of ops as keys and colors as
             values
+    :param cond_highlight: Highlights a lazy if by sorrounding each of the 3
+                possible categories of ops with a border. The categories
+                are: ops that are on the left branch, ops that are on the
+                right branch, ops that are on both branches
+                As an alternative you can provide the node that represents
+                the lazy if
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
@@ -422,7 +432,8 @@ def pydotprint(fct, outfile=None,
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
                                config.device + '.' + format)
-    if isinstance(fct, Function):
+
+    if isinstance(fct, (Function, theano.scan_module.scan_utils.ScanInnerFunction)):
         mode = fct.maker.mode
         fct_env  = fct.maker.env
         if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
@@ -431,7 +442,7 @@ def pydotprint(fct, outfile=None,
         mode = None
         fct_env = fct
     else:
-        raise ValueError(('pydotprint expects as input a theano.function or'
+        raise ValueError(('pydotprint expects as input a theano.function or '
                          'the env of a function!'), fct)
 
     try:
@@ -460,12 +471,12 @@ def pydotprint(fct, outfile=None,
 
         left = set(recursive_pass(cond.inputs[1],[]))
         right =set(recursive_pass(cond.inputs[2],[]))
-        middle = left.intersecton(right)
+        middle = left.intersection(right)
         left   = left.difference(middle)
         right  = right.difference(middle)
         middle = list(middle)
-        left   = list(middle)
-        right  = list(middle)
+        left   = list(left)
+        right  = list(right)
 
     var_str={}
     all_strings = set()
@@ -478,11 +489,9 @@ def pydotprint(fct, outfile=None,
         if var.name is not None:
             varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
-            dstr = 'val='+str(var.data)
+            dstr = 'val='+str(numpy.asarray(var.data))
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            if len(dstr) > 30:
-                dstr = dstr[:27]+'...'
             varstr = '%s [%s]'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
             varstr = input_update[var].variable.name+" "+str(var.type)
@@ -491,6 +500,8 @@ def pydotprint(fct, outfile=None,
             varstr = str(var.type)
         if (varstr in all_strings) or with_ids:
             varstr += ' id=' + str(len(var_str))
+        if len(varstr) > max_label_size:
+            varstr = varstr[:max_label_size-3]+'...'
         var_str[var]=varstr
         all_strings.add(varstr)
 
@@ -512,6 +523,8 @@ def pydotprint(fct, outfile=None,
             else: pf = time*100/mode.fct_call_time[fct]
             prof_str='   (%.3fs,%.3f%%,%.3f%%)'%(time,pt,pf)
         applystr = str(node.op).replace(':','_')
+        if len(applystr)>max_label_size:
+            applystr = applystr[:max_label_size-3]+'...'
         if (applystr in all_strings) or with_ids:
             applystr = applystr+'    id='+str(topo.index(node))
         applystr += prof_str
@@ -557,6 +570,8 @@ def pydotprint(fct, outfile=None,
         for id,var in enumerate(node.inputs):
             varstr=var_name(var)
             label=str(var.type)
+            if len(label)>max_label_size:
+                label = label[:max_label_size-3]+'...'
             if len(node.inputs)>1:
                 label=str(id)+' '+label
             if var.owner is None:
@@ -580,6 +595,8 @@ def pydotprint(fct, outfile=None,
             label=str(var.type)
             if len(node.outputs)>1:
                 label=str(id)+' '+label
+            if len(label)>max_label_size:
+                label = label[:max_label_size-3]+'...'
             if out:
                 g.add_edge(pd.Edge(astr, varstr, label=label))
                 if high_contrast:
@@ -617,7 +634,8 @@ def pydotprint_variables(vars,
                          outfile=None,
                          format='png',
                          depth = -1,
-                         high_contrast = True, colorCodes = None):
+                         high_contrast = True, colorCodes = None,
+                         max_label_size=50):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
 
@@ -647,18 +665,21 @@ def pydotprint_variables(vars,
             dstr = 'val='+str(var.data)
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            if len(dstr) > 30:
-                dstr = dstr[:27]+'...'
             varstr = '%s [%s]'% (dstr, str(var.type))
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
+        if len(dstr) > max_label_size:
+            dstr = dstr[:max_label_size-1]+'...'
         varstr += ' ' + str(len(var_str))
         var_str[var]=varstr
-
         return varstr
+
     def apply_name(node):
-        return str(node.op).replace(':','_')
+        name = str(node.op).replace(':','_')
+        if len(name) > max_label_size:
+            name = name[:max_label_size-3]+'...'
+        return name
 
     def plot_apply(app, d):
         if d == 0:
@@ -666,6 +687,8 @@ def pydotprint_variables(vars,
         if app in my_list:
             return
         astr = apply_name(app) + '_' + str(len(my_list.keys()))
+        if len(astr) > max_label_size:
+            astr = astr[:max_label_size-3]+'...'
         my_list[app] = astr
 
         use_color = None
@@ -685,6 +708,8 @@ def pydotprint_variables(vars,
         for i,nd  in enumerate(app.inputs):
             if nd not in my_list:
                 varastr = var_name(nd) + '_' + str(len(my_list.keys()))
+                if len(varastr) > max_label_size:
+                    varastr = varastr[:max_label_size-3]+'...'
                 my_list[nd] = varastr
                 if nd.owner is not None:
                     g.add_node(pd.Node(varastr))
@@ -703,6 +728,8 @@ def pydotprint_variables(vars,
         for i,nd in enumerate(app.outputs):
             if nd not in my_list:
                 varastr = var_name(nd) + '_' + str(len(my_list.keys()))
+                if len(varastr) > max_label_size:
+                    varastr = varastr[:max_label_size-3]+'...'
                 my_list[nd] = varastr
                 color = None
                 if nd in vars:

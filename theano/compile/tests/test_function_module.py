@@ -43,12 +43,12 @@ class T_function(unittest.TestCase):
 
     def test_empty(self):
         fn = function([], []) #ok
-        self.failUnless(fn() == [])
+        self.assertTrue(fn() == [])
 
     def test_extra_inputs(self):
         x,s = T.scalars('xs')
         fn = function([x], [x])
-        self.failUnlessRaises(TypeError,fn,1,2)
+        self.assertRaises(TypeError,fn,1,2)
 
     def test_missing_inputs(self):
 
@@ -87,23 +87,23 @@ class T_function(unittest.TestCase):
     def test_input_anon_singleton(self):
         x,s = T.scalars('xs')
         fn = function([s,x], [x+s])
-        self.failUnless(fn(2,3) == [5])
+        self.assertTrue(fn(2,3) == [5])
         # no state
-        self.failUnless(fn(2,3) == [5])
+        self.assertTrue(fn(2,3) == [5])
 
     def test_input_anon_unpack(self):
         x,s = T.scalars('xs')
         fn = function([s,x], x+s)
-        self.failUnless(fn(2,3) == 5)
+        self.assertTrue(fn(2,3) == 5)
 
     def test_naming_rule0(self):
         x,s = T.scalars('xs')
         f = function([x,s], x/s)
-        self.failUnless(f(1,2) == 0.5)
-        self.failUnless(f(2,1) == 2.0)
-        self.failUnless(f(s=2,x=1) == 0.5)
-        self.failUnless(f(x=2,s=1) == 2.0)
-        self.failUnless(f(2, s=1) == 2.0)
+        self.assertTrue(f(1,2) == 0.5)
+        self.assertTrue(f(2,1) == 2.0)
+        self.assertTrue(f(s=2,x=1) == 0.5)
+        self.assertTrue(f(x=2,s=1) == 2.0)
+        self.assertTrue(f(2, s=1) == 2.0)
         checkfor(self, lambda :f(2, x=2.0), TypeError) #got multiple values for keyword argument 'x'
         checkfor(self, lambda :f(x=1), TypeError) #takes exactly 2 non-keyword arguments (1 given)
         checkfor(self, lambda :f(s=1), TypeError) #takes exactly 2 non-keyword arguments (0 given)
@@ -112,9 +112,9 @@ class T_function(unittest.TestCase):
         a = T.scalar() # the a is for 'anonymous' (un-named).
         x,s = T.scalars('xs')
         f = function([a, s], a/s)
-        self.failUnless(f(1,2) == 0.5)
-        self.failUnless(f(2,1) == 2.0)
-        self.failUnless(f(2, s=1) == 2.0)
+        self.assertTrue(f(1,2) == 0.5)
+        self.assertTrue(f(2,1) == 2.0)
+        self.assertTrue(f(2, s=1) == 2.0)
         checkfor(self, lambda:f(q=2,s=1), TypeError) #got unexpected keyword argument 'q'
         checkfor(self, lambda:f(a=2,s=1), TypeError) #got unexpected keyword argument 'a'
 
@@ -124,9 +124,9 @@ class T_function(unittest.TestCase):
 
         #x's name is ignored because it is followed by anonymous parameter a.
         f = function([x, a, s], a/s)
-        self.failUnless(f(9,1,2) == 0.5)
-        self.failUnless(f(9,2,1) == 2.0)
-        self.failUnless(f(9,2, s=1) == 2.0)
+        self.assertTrue(f(9,1,2) == 0.5)
+        self.assertTrue(f(9,2,1) == 2.0)
+        self.assertTrue(f(9,2, s=1) == 2.0)
         checkfor(self, lambda:f(x=9,a=2,s=1), TypeError) #got unexpected keyword argument 'x'
         checkfor(self, lambda:f(5.0,x=9), TypeError) #got unexpected keyword argument 'x'
 
@@ -136,10 +136,10 @@ class T_function(unittest.TestCase):
 
         #x's name is not ignored (as in test_naming_rule2) because a has a default value.
         f = function([x, In(a, value=1.0), s], a/s+x)
-        self.failUnless(f(9,2,4) == 9.5) #can specify all args in order
-        self.failUnless(f(9,2,s=4) == 9.5) # can give s as kwarg
-        self.failUnless(f(9,s=4) == 9.25) # can give s as kwarg, get default a
-        self.failUnless(f(x=9,s=4) == 9.25) # can give s as kwarg, omit a, x as kw
+        self.assertTrue(f(9,2,4) == 9.5) #can specify all args in order
+        self.assertTrue(f(9,2,s=4) == 9.5) # can give s as kwarg
+        self.assertTrue(f(9,s=4) == 9.25) # can give s as kwarg, get default a
+        self.assertTrue(f(x=9,s=4) == 9.25) # can give s as kwarg, omit a, x as kw
         checkfor(self, lambda:f(x=9,a=2,s=4), TypeError) #got unexpected keyword argument 'a'
         checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
         checkfor(self, lambda:f(x=9), TypeError) #takes exactly 3 non-keyword arguments (1 given)
@@ -150,12 +150,12 @@ class T_function(unittest.TestCase):
 
         f = function([x, In(a, value=1.0,name='a'), s], a/s+x)
 
-        self.failUnless(f(9,2,4) == 9.5) #can specify all args in order
-        self.failUnless(f(9,2,s=4) == 9.5) # can give s as kwarg
-        self.failUnless(f(9,s=4) == 9.25) # can give s as kwarg, get default a
-        self.failUnless(f(9,a=2,s=4) == 9.5) # can give s as kwarg, a as kwarg
-        self.failUnless(f(x=9,a=2, s=4) == 9.5) # can give all kwargs
-        self.failUnless(f(x=9,s=4) == 9.25) # can give all kwargs
+        self.assertTrue(f(9,2,4) == 9.5) #can specify all args in order
+        self.assertTrue(f(9,2,s=4) == 9.5) # can give s as kwarg
+        self.assertTrue(f(9,s=4) == 9.25) # can give s as kwarg, get default a
+        self.assertTrue(f(9,a=2,s=4) == 9.5) # can give s as kwarg, a as kwarg
+        self.assertTrue(f(x=9,a=2, s=4) == 9.5) # can give all kwargs
+        self.assertTrue(f(x=9,s=4) == 9.25) # can give all kwargs
         checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
         checkfor(self, lambda:f(5.0,x=9), TypeError) #got multiple values for keyword argument 'x'
 
@@ -165,25 +165,25 @@ class T_function(unittest.TestCase):
 
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
 
-        self.failUnless(f[a] == 1.0)
-        self.failUnless(f[s] == 0.0)
+        self.assertTrue(f[a] == 1.0)
+        self.assertTrue(f[s] == 0.0)
 
-        self.failUnless(f(3.0) == 3.0)
-        self.failUnless(f(3.0,a=2.0) == 9.0) #3.0 + 2*3.0
+        self.assertTrue(f(3.0) == 3.0)
+        self.assertTrue(f(3.0,a=2.0) == 9.0) #3.0 + 2*3.0
 
-        self.failUnless(f[a] == 1.0) #state hasn't changed permanently, we just overrode it last line
-        self.failUnless(f[s] == 9.0)
+        self.assertTrue(f[a] == 1.0) #state hasn't changed permanently, we just overrode it last line
+        self.assertTrue(f[s] == 9.0)
 
         f[a] = 5.0
-        self.failUnless(f[a] == 5.0)
-        self.failUnless(f(3.0) == 24.0) #9 + 3*5
-        self.failUnless(f[s] == 24.0)
+        self.assertTrue(f[a] == 5.0)
+        self.assertTrue(f(3.0) == 24.0) #9 + 3*5
+        self.assertTrue(f[s] == 24.0)
 
     def test_same_names(self):
         a,x,s = T.scalars('xxx')
         #implicit names would cause error.  What do we do?
         f = function([a, x, s], a+x+s)
-        self.failUnless(f(1,2,3) == 6)
+        self.assertTrue(f(1,2,3) == 6)
         checkfor(self, lambda:f(1,2,x=3), TypeError)
 
     def test_weird_names(self):
@@ -206,18 +206,18 @@ class T_function(unittest.TestCase):
         g = copy.copy(f)
         #if they both return, assume  that they return equivalent things.
 
-        self.failIf(g.container[x].storage is f.container[x].storage)
-        self.failIf(g.container[a].storage is f.container[a].storage)
-        self.failIf(g.container[s].storage is f.container[s].storage)
+        self.assertFalse(g.container[x].storage is f.container[x].storage)
+        self.assertFalse(g.container[a].storage is f.container[a].storage)
+        self.assertFalse(g.container[s].storage is f.container[s].storage)
 
-        self.failIf(g.value[a] is not f.value[a]) # should not have been copied
-        self.failIf(g.value[s] is f.value[s]) # should have been copied because it is mutable.
-        self.failIf((g.value[s] != f.value[s]).any()) # its contents should be identical
+        self.assertFalse(g.value[a] is not f.value[a]) # should not have been copied
+        self.assertFalse(g.value[s] is f.value[s]) # should have been copied because it is mutable.
+        self.assertFalse((g.value[s] != f.value[s]).any()) # its contents should be identical
 
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
-        self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
 
     def test_shared_state0(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
@@ -227,11 +227,11 @@ class T_function(unittest.TestCase):
         g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s], update=s-a*x, mutable=True)], s+a*x)
 
         f(1, 2)
-        self.failUnless(f[s] == 2)
-        self.failUnless(g[s] == 2)
+        self.assertTrue(f[s] == 2)
+        self.assertTrue(g[s] == 2)
         g(1, 2)
-        self.failUnless(f[s] == 0)
-        self.failUnless(g[s] == 0)
+        self.assertTrue(f[s] == 0)
+        self.assertTrue(g[s] == 0)
 
     def test_shared_state1(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
@@ -241,12 +241,12 @@ class T_function(unittest.TestCase):
         g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
 
         f(1, 2)
-        self.failUnless(f[s] == 2)
-        self.failUnless(g[s] == 2)
+        self.assertTrue(f[s] == 2)
+        self.assertTrue(g[s] == 2)
         f(1, 2)
         g(1, 2)
-        self.failUnless(f[s] == 4)
-        self.failUnless(g[s] == 4)
+        self.assertTrue(f[s] == 4)
+        self.assertTrue(g[s] == 4)
 
     def test_shared_state2(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
@@ -257,14 +257,14 @@ class T_function(unittest.TestCase):
         g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
 
         f(1, 2)
-        self.failUnless(f[s] == 2)
-        self.failUnless(g[s] == 2)
+        self.assertTrue(f[s] == 2)
+        self.assertTrue(g[s] == 2)
         f(1, 2)
-        self.failUnless(f[s] == 4)
-        self.failUnless(g[s] == 4)
+        self.assertTrue(f[s] == 4)
+        self.assertTrue(g[s] == 4)
         g(1, 2) # has no effect on state
-        self.failUnless(f[s] == 4)
-        self.failUnless(g[s] == 4)
+        self.assertTrue(f[s] == 4)
+        self.assertTrue(g[s] == 4)
 
     def test_shared_state_not_implicit(self):
         # This test is taken from the documentation in
@@ -275,14 +275,40 @@ class T_function(unittest.TestCase):
         inc = function([x, In(s, update=(s+x), value=10.0)], [])
         dec = function([x, In(s, update=(s-x), value=inc.container[s],
             implicit = False)], [])
-        self.failUnless(dec[s] is inc[s])
+        self.assertTrue(dec[s] is inc[s])
         inc[s] = 2
-        self.failUnless(dec[s] == 2)
+        self.assertTrue(dec[s] == 2)
         dec(1)
-        self.failUnless(inc[s] == 1)
+        self.assertTrue(inc[s] == 1)
         dec(1, 0)
-        self.failUnless(inc[s] == -1)
-        self.failUnless(dec[s] == -1)
+        self.assertTrue(inc[s] == -1)
+        self.assertTrue(dec[s] == -1)
+
+
+    def test_constant_output(self):
+        # Test that if the output is a constant, we respect the theano memory interface
+        f = theano.function([],theano.tensor.constant([4]))
+        print f.maker.env.toposort()
+        out = f()
+        assert (out==4).all()
+        out[0]=3
+        out2 = f()
+        # If the following 2 asserts fail it mean Theano broke it's memory contract.
+        assert out2 is not out
+        assert (out2==4).all()
+
+        # Test that if the output is a constant and borrow, we respect the theano memory interface
+        f = theano.function([],Out(theano.tensor.constant([4]), borrow=True))
+        print f.maker.env.toposort()
+        out = f()
+        assert (out==4).all()
+        out[0]=3
+        out2 = f()
+        # Currently we don't do this optimization!
+        # As this is a corner case that is not usefull for use
+        # We probably won't optimize it.
+        assert out2 is not out
+        assert (out2==4).all()
 
 
     def test_borrow_input(self):
@@ -344,29 +370,29 @@ class T_picklefunction(unittest.TestCase):
         #print [(k,id(k)) for k in f.finder.keys()]
         #print [(k,id(k)) for k in g.finder.keys()]
 
-        self.failIf(g.container[0].storage is f.container[0].storage)
-        self.failIf(g.container[1].storage is f.container[1].storage)
-        self.failIf(g.container[2].storage is f.container[2].storage)
-        self.failIf(x in g.container)
-        self.failIf(x in g.value)
-        self.failUnless(len(f.defaults) == len(g.defaults))
+        self.assertFalse(g.container[0].storage is f.container[0].storage)
+        self.assertFalse(g.container[1].storage is f.container[1].storage)
+        self.assertFalse(g.container[2].storage is f.container[2].storage)
+        self.assertFalse(x in g.container)
+        self.assertFalse(x in g.value)
+        self.assertTrue(len(f.defaults) == len(g.defaults))
         print 'f.defaults = %s' % (f.defaults, )
         print 'g.defaults = %s' % (g.defaults, )
-        self.failUnless(all([f_req == g_req and f_feed == g_feed and
+        self.assertTrue(all([f_req == g_req and f_feed == g_feed and
             f_val == g_val
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
                 f.defaults, g.defaults)]))
 
-        self.failIf(g.value[1] is f.value[1]) # should not have been copied
-        self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
-        self.failIf((g.value[2] != f.value[2]).any()) # its contents should be identical
+        self.assertFalse(g.value[1] is f.value[1]) # should not have been copied
+        self.assertFalse(g.value[2] is f.value[2]) # should have been copied because it is mutable.
+        self.assertFalse((g.value[2] != f.value[2]).any()) # its contents should be identical
 
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
-        self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
         g(1, 2) # put them back in sync
-        self.failUnless(f(3) == g(3)) # They should be in sync again.
+        self.assertTrue(f(3) == g(3)) # They should be in sync again.
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
@@ -389,8 +415,8 @@ class T_picklefunction(unittest.TestCase):
                 raise
         h[a] = 1
         hc[ac] = 2
-        self.failUnless(f[a] == 1)
-        self.failUnless(fc[ac] == 2)
+        self.assertTrue(f[a] == 1)
+        self.assertTrue(fc[ac] == 2)
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
@@ -409,20 +435,20 @@ class T_picklefunction(unittest.TestCase):
         #print [(k,id(k)) for k in f.finder.keys()]
         #print [(k,id(k)) for k in g.finder.keys()]
 
-        self.failIf(g.container[0].storage is f.container[0].storage)
-        self.failIf(g.container[1].storage is f.container[1].storage)
-        self.failIf(g.container[2].storage is f.container[2].storage)
-        self.failIf(x in g.container)
-        self.failIf(x in g.value)
+        self.assertFalse(g.container[0].storage is f.container[0].storage)
+        self.assertFalse(g.container[1].storage is f.container[1].storage)
+        self.assertFalse(g.container[2].storage is f.container[2].storage)
+        self.assertFalse(x in g.container)
+        self.assertFalse(x in g.value)
 
-        self.failIf(g.value[1] is f.value[1]) # should not have been copied
-        self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
-        self.failIf((g.value[2] != f.value[2]).any()) # its contents should be identical
+        self.assertFalse(g.value[1] is f.value[1]) # should not have been copied
+        self.assertFalse(g.value[2] is f.value[2]) # should have been copied because it is mutable.
+        self.assertFalse((g.value[2] != f.value[2]).any()) # its contents should be identical
 
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
-        self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
 
     def test_optimizations_preserved(self):
         a = T.dvector() # the a is for 'anonymous' (un-named).

@@ -759,7 +759,7 @@ class MRG_RandomStreams(object):
             assert ndim==1
             bcast = bcast+(pvals.type.broadcastable[-1],)
             unis = self.uniform(size=size, ndim=1)
-            op = multinomial.Multinomial(dtype)
+            op = multinomial.MultinomialFromUniform(dtype)
             return op(pvals, unis)
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"

@@ -10,11 +10,16 @@ from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
+import theano.scalar as scal
 from theano import config
 from theano import gof
-from theano.tensor.opt import *
+import theano.tensor.opt as opt
+from theano.tensor.opt import local_dimshuffle_lift, out2in, local_greedy_distributor, mul_canonizer, local_add_specialize
+from theano.tensor.opt import Shape_i
+from theano.tensor import scalar, iscalar, dscalar, lscalar, vectors, lvector, fvector, dvector, fmatrix, dmatrix, matrices, fmatrices, dmatrices, Subtensor, as_tensor_variable, Join, join
+
 from theano import tensor  #do not use, there is  an import * below that hides it
-from theano import tensor as TT  #ugly but works for now...
+from theano import tensor as T  #ugly but works for now...
 from theano.tensor import TensorType, inplace
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
@@ -43,35 +48,35 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs()
         e = ds(ds(x, (1, 0)), (1, 0))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
+        self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[x]")
+        self.assertTrue(str(g) == "[x]")
 
     def test_merge2(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]", str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
 
     def test_elim3(self):
         x, y, z = inputs()
         e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
         g = Env([x], [e])
-        self.failUnless(str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}(DimShuffle{0,x,1}(x)))]", str(g))
+        self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}(DimShuffle{0,x,1}(x)))]", str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[x]", str(g))
+        self.assertTrue(str(g) == "[x]", str(g))
 
     def test_lift(self):
         x, y, z = inputs([False]*1, [False]*2, [False]*3)
         e = x + y + z
         g = Env([x, y, z], [e])
-        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}("
+        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}("
             "InplaceDimShuffle{x,0,1}(Elemwise{add,no_inplace}"
             "(InplaceDimShuffle{x,0}(x), y)), z)]"), str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
+        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
             "{add,no_inplace}(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle"
             "{x,0,1}(y)), z)]"), str(g))
 
@@ -85,9 +90,6 @@ def test_add_canonizer_problem0():
 
     r = segment_labels * 5
     f = function([label], r)
-
-from theano.tensor import *
-# Why is there TWO 'import *' in this file???
 
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
@@ -106,7 +108,7 @@ class test_greedy_distribute(unittest.TestCase):
 
         #r = theano.tensor.mul(theano.tensor.fill(x, 2.*a), x/a , (y+z) , a)
         #r = theano.tensor.mul((x/a+y) , a, z)
-        r = mul(
+        r = tensor.mul(
                 s - 1
                 , eps + x/s
                 , eps + y/s
@@ -317,7 +319,6 @@ class test_canonize(unittest.TestCase):
         with and without DimShuffle
         TODO: with DimShuffle
         """
-        import theano.tensor, theano.compile
 
         shp=(3,3)
         fx, fy, fz, fw = fmatrices('xyzw')
@@ -358,12 +359,12 @@ class test_canonize(unittest.TestCase):
                 if sym_inputs[0].broadcastable[0]:
                     assert len(topo)==2
                     assert isinstance(topo[0].op, Shape_i)
-                    assert isinstance(topo[1].op, TT.Alloc)
+                    assert isinstance(topo[1].op, tensor.Alloc)
                 else:
                     assert len(topo)==3
                     assert isinstance(topo[0].op, Shape_i)
                     assert isinstance(topo[1].op, Shape_i)
-                    assert isinstance(topo[2].op, TT.Alloc)
+                    assert isinstance(topo[2].op, tensor.Alloc)
                 assert(out_dtype==out.dtype)
 
             #test (x * y) / x -> y
@@ -390,7 +391,7 @@ class test_canonize(unittest.TestCase):
                 if topo and not(len(topo)==1 and topo[0].op==theano.compile.function_module.deep_copy_op):
                     for node in topo[:-1]:
                         assert isinstance(node.op, Shape_i)
-                    assert isinstance(topo[-1].op, TT.Alloc)
+                    assert isinstance(topo[-1].op, tensor.Alloc)
 
             #test x / y / x -> 1 / y
             for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
@@ -558,7 +559,6 @@ class test_canonize(unittest.TestCase):
 
 
     def test_multiple_case_that_fail(self):
-        import theano.tensor, theano.compile
         raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
 
         shp=(4,4)
@@ -660,12 +660,12 @@ def test_const_type_in_mul_canonizer():
     betas = dvector()
     a = dvector()
 
-    def sigm(x): return 1./(1+exp(-x))
+    def sigm(x): return 1./(1+tensor.exp(-x))
 
-    hid = sigm( (dot(w,input) + hidb) * betas )
+    hid = sigm( (tensor.dot(w,input) + hidb) * betas )
 
-    vis_gauss1 = (dot(w.T, hid) + visb) * betas / (2 * a * a)
-    vis_gauss2 = (dot(w.T, hid) + visb) * betas / (2. * a * a)
+    vis_gauss1 = (tensor.dot(w.T, hid) + visb) * betas / (2 * a * a)
+    vis_gauss2 = (tensor.dot(w.T, hid) + visb) * betas / (2. * a * a)
 
     f1 = function([input,w,visb,hidb,betas,a],vis_gauss1)
     f2 = function([input,w,visb,hidb,betas,a],vis_gauss2)
@@ -757,8 +757,8 @@ class test_fusion(unittest.TestCase):
 #, nout=1, env=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
             ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
             #test other elemwise op
-            (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
-            (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
+            (fx+fy+tensor.cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
+            (fx+fy+tensor.cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
             (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),
             (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+numpy.absolute(izv),'int32'),#30
             (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
@@ -779,10 +779,10 @@ class test_fusion(unittest.TestCase):
             (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
             (fx-T.eq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),
             (fx-T.neq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
-            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
-            (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),#50
-            (fx-fy+sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
-            (fx-fy+sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
+            (fx-fy+tensor.tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
+            (fx-fy+tensor.tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),#50
+            (fx-fy+tensor.sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
+            (fx-fy+tensor.sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
             (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(fzv*fzv),'float32'),
             (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
             (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),#55
@@ -794,7 +794,7 @@ class test_fusion(unittest.TestCase):
 #            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
             (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
             (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle
-            (fv-fy+tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
+            (fv-fy+tensor.tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
 
             # Cases where the same input is reused many times.
             (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*fxv*fxv*fxv,'float32'),
@@ -954,7 +954,7 @@ class test_fusion(unittest.TestCase):
 
 
         x, y, z = dmatrices('xyz')
-        f=theano.function([x,y,z],dot(x,y)+x+y+z,mode=mode)
+        f=theano.function([x,y,z],tensor.dot(x,y)+x+y+z,mode=mode)
         topo = f.maker.env.toposort()
         assert len(topo) == 2
         assert f.maker.env.toposort()[-1].op.inplace_pattern
@@ -962,7 +962,7 @@ class test_fusion(unittest.TestCase):
 
     def speed_fusion_gpu(self):
         import theano.sandbox.cuda as cuda
-        self.speed_fusion(shared_fn=tcn.float32_shared_constructor, gpu=True, s=slice(0,15))
+        self.speed_fusion(shared_fn=cuda.float32_shared_constructor, gpu=True, s=slice(0,15))
 
     def speed_log_exp(self):
         s=slice(31,36)
@@ -1070,20 +1070,20 @@ def test_log1p():
 
     # check trickier cases (and use different dtype)
     y = fmatrix()
-    f = function([x,y], T.log(fill(y,1)+(x)), mode=m)
+    f = function([x,y], T.log(tensor.fill(y,1)+(x)), mode=m)
     print f.maker.env.toposort()
     # the first three ops are Shape_i, Shape_i, and Dimshuffle
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
-    f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
+            == [T.log1p, tensor.alloc]
+    f = function([x,y], T.log(0+(x) + tensor.fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
-    f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
+            == [T.log1p, tensor.alloc]
+    f = function([x,y], T.log(2+(x) - tensor.fill(y,1.0)), mode=m)
     theano.printing.debugprint(f)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, alloc]
+            == [T.log1p, tensor.alloc]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values
 
@@ -1091,14 +1091,14 @@ def test_log1p():
         # at one point this worked, but it has been broken since
         # the constant up-casting made 1 -> 1.0+0.0j
         # I was never sure if this optimization should work on complex numbers or not.
-        z = zmatrix()
+        z = tensor.zmatrix()
         f = function([z], T.log(1+(z)), mode=m)
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
     if 1:
         # should work for int
-        z = imatrix()
+        z = tensor.imatrix()
         f = function([z], T.log(1+(z)), mode=m)
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
@@ -1146,20 +1146,20 @@ def test_log_add():
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 def test_local_useless_subtensor():
-    x = TT.matrix('x')
+    x = tensor.matrix('x')
 
     # Test default
     for dims in [(slice(0,None),),
                  (slice(0,None),slice(0,None)),
                  ]:
-        f = function([x], TT.exp(x).__getitem__(dims), mode=mode_opt)
+        f = function([x], tensor.exp(x).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
         prog=f.maker.env.toposort()
-        assert prog[0].op == TT.exp
+        assert prog[0].op == tensor.exp
         assert len(prog)==1
         f([[0,1,2],[3,4,5]]) # let debugmode test something
 
-    x_c = specify_shape(x, (2,3))
+    x_c = tensor.specify_shape(x, (2,3))
     # Test constant
     for dims, res in [((slice(0,2),), True),
                  ((slice(0,2),slice(0,None)), True),
@@ -1170,12 +1170,12 @@ def test_local_useless_subtensor():
                  ((slice(0,1),slice(0,None)), False),
                  ((slice(0,1),1), False),
                  ]:
-        f = function([x], TT.exp(x_c).__getitem__(dims), mode=mode_opt)
+        f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
         prog=f.maker.env.toposort()
         if res:
             assert isinstance(prog[0].op, theano.tensor.basic.SpecifyShape), dims
-            assert prog[1].op == TT.exp, dims
+            assert prog[1].op == tensor.exp, dims
             assert len(prog)==2, dims
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
@@ -1192,11 +1192,11 @@ def test_local_useless_subtensor():
             ((slice(0,x.shape[1]),2), False),
             ((slice(0,x.shape[1]),slice(x.shape[0]-x.shape[0],x.shape[1]),), False),
             ]):
-        f = function([x], TT.exp(x).__getitem__(dims), mode=mode_opt)
+        f = function([x], tensor.exp(x).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
         prog=f.maker.env.toposort()
         if res:
-            assert prog[0].op == TT.exp, dims
+            assert prog[0].op == tensor.exp, dims
             assert len(prog)==1, dims
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
@@ -1207,11 +1207,11 @@ def test_local_useless_subtensor():
             ((slice(0,x.shape[0]),slice(0,3)), False),
             ((slice(0,3),slice(0,x.shape[1])), False),
             ]):
-        f = function([x], TT.exp(x_c).__getitem__(dims), mode=mode_opt)
+        f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
         prog=f.maker.env.toposort()
         if res:
-            assert prog[0].op == TT.exp, dims
+            assert prog[0].op == tensor.exp, dims
             assert len(prog)==1, dims
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
@@ -1222,54 +1222,54 @@ class test_local_subtensor_lift(unittest.TestCase):
 
     def test0(self):
         # basic test that the Op works
-        x = TT.matrix('x')
-        f = function([x], TT.exp(x)[0], mode=mode_opt)
+        x = tensor.matrix('x')
+        f = function([x], tensor.exp(x)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
-        assert prog[1].op == TT.exp
+        assert isinstance(prog[0].op, tensor.Subtensor) #first subtensor
+        assert prog[1].op == tensor.exp
         assert len(prog)==2
         f([[0,1],[2,3]]) # let debugmode test something
 
     def test0b(self):
         # as test0, but we reuse the output of the elemwise
         # So we should not lift the subtensor
-        x = TT.matrix('x')
-        f = function([x], [TT.exp(x)[0], TT.exp(x)], mode=mode_opt)
+        x = tensor.matrix('x')
+        f = function([x], [tensor.exp(x)[0], tensor.exp(x)], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert prog[0].op == TT.exp
-        assert isinstance(prog[1].op, TT.Subtensor) #first subtensor
+        assert prog[0].op == tensor.exp
+        assert isinstance(prog[1].op, tensor.Subtensor) #first subtensor
         assert isinstance(prog[2].op, theano.compile.function_module.DeepCopyOp)
         assert len(prog)==3
         f([[0,1],[2,3]]) # let debugmode test something
 
     def test1(self):
         # basic test that the optimization work with scalar broadcasted
-        x = TT.matrix('x')
-        y = TT.scalar('y')
-        z = TT.matrix('z')
-        f = function([x,y,z], TT.exp(x+y+z)[0], mode=mode_opt)
+        x = tensor.matrix('x')
+        y = tensor.scalar('y')
+        z = tensor.matrix('z')
+        f = function([x,y,z], tensor.exp(x+y+z)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[1].op, TT.DimShuffle)
-        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
-        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[1].op, tensor.DimShuffle)
+        assert isinstance(prog[0].op, tensor.Subtensor) #first subtensor
+        assert isinstance(prog[2].op, tensor.Subtensor) #first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.Composite)#Composite{add,add}
         assert len(prog)==4
         f([[0,1],[2,3]], 4, [[4,5],[6,7]]) # let debugmode test something
 
     def test2(self):
         # as 1, but take a slice
-        x = TT.matrix('x')
-        y = TT.scalar('y')
-        z = TT.matrix('z')
-        f = function([x,y,z], TT.exp(x+y+z)[0:2], mode=mode_opt)
+        x = tensor.matrix('x')
+        y = tensor.scalar('y')
+        z = tensor.matrix('z')
+        f = function([x,y,z], tensor.exp(x+y+z)[0:2], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[1].op, TT.DimShuffle)
-        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
-        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[1].op, tensor.DimShuffle)
+        assert isinstance(prog[0].op, tensor.Subtensor) #first subtensor
+        assert isinstance(prog[2].op, tensor.Subtensor) #first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.Composite)#Composite{add,add}
         assert len(prog)==4
         f([[0,1],[2,3]], 4, [[4,5],[6,7]]) # let debugmode test something
@@ -1277,13 +1277,13 @@ class test_local_subtensor_lift(unittest.TestCase):
     def test3(self):
         # basic test that the optimization does work with broadcasting
         # for unary elemwise.
-        y = TT.vector('y')
-        f = function([y], TT.exp(y.dimshuffle(0,'x'))[0], mode=mode_opt)
+        y = tensor.vector('y')
+        f = function([y], tensor.exp(y.dimshuffle(0,'x'))[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[0].op, TT.DimShuffle)
-        assert isinstance(prog[1].op, TT.Subtensor)
-        assert prog[2].op == TT.exp
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert isinstance(prog[1].op, tensor.Subtensor)
+        assert prog[2].op == tensor.exp
         assert len(prog)==3
         f([4,5]) # let debugmode test something
 
@@ -1291,14 +1291,14 @@ class test_local_subtensor_lift(unittest.TestCase):
         # basic test that the optimization doesn't work with broadcasting
         # ... It *could* be extended to,
         # ... but right now it doesn't, so it shouldn't try.
-        x = TT.matrix('x')
-        y = TT.vector('y')
-        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+        x = tensor.matrix('x')
+        y = tensor.vector('y')
+        f = function([x,y], tensor.exp(x+y)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[0].op, TT.DimShuffle)
-        assert prog[1].op == TT.add
-        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert prog[1].op == tensor.add
+        assert isinstance(prog[2].op, tensor.Subtensor) #first subtensor
         assert prog[3].op == inplace.exp_inplace
         assert len(prog)==4
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
@@ -1306,15 +1306,15 @@ class test_local_subtensor_lift(unittest.TestCase):
     def test5(self):
         # test that we don't lift when we reuse the output of the
         # elemwise for other computation.
-        x = TT.matrix('x')
-        y = TT.vector('y')
-        f = function([x,y], [TT.exp(x+y)[0],TT.exp(x+y)+x], mode=mode_opt)
+        x = tensor.matrix('x')
+        y = tensor.vector('y')
+        f = function([x,y], [tensor.exp(x+y)[0],tensor.exp(x+y)+x], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[0].op, TT.DimShuffle)
+        assert isinstance(prog[0].op, tensor.DimShuffle)
         assert isinstance(prog[1].op.scalar_op, theano.scalar.Composite)#Composite{add,exp}
-        assert prog[2].op == TT.add
-        assert isinstance(prog[3].op, TT.Subtensor) #first subtensor
+        assert prog[2].op == tensor.add
+        assert isinstance(prog[3].op, tensor.Subtensor) #first subtensor
         assert len(prog)==4
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
 
@@ -1323,12 +1323,12 @@ class test_local_subtensor_lift(unittest.TestCase):
         # and a scalar as output (no broadcasting of the scalar needed).
         # The optimization used to fail and display an ERROR message.
 
-        x = TT.vector('x')
-        y = TT.scalar('y')
-        f = function([x,y], TT.exp(x+y)[0], mode=mode_opt)
+        x = tensor.vector('x')
+        y = tensor.scalar('y')
+        f = function([x,y], tensor.exp(x+y)[0], mode=mode_opt)
 
         prog=f.maker.env.toposort()
-        assert isinstance(prog[0].op, TT.Subtensor)
+        assert isinstance(prog[0].op, tensor.Subtensor)
         # Composite{add,exp}
         assert isinstance(prog[1].op.scalar_op, theano.scalar.Composite)
         assert len(prog)==2
@@ -1342,13 +1342,13 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const(self):
         # var[const::][-1] -> var[-1]
-        x = TT.matrix('x')
+        x = tensor.matrix('x')
         for idx in range(-7,6):
             f = function([x], x[idx::][-1], mode=mode_opt)
             g = function([x], x[idx::][-1], mode=mode_opt.excluding('local_subtensor_merge'))
 
             topo=f.maker.env.toposort()
-            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
             assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
             for x_s in self.x_shapes:
@@ -1364,15 +1364,15 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_scalar(self):
         # var[int::][-1] -> var[-1]
-        x = TT.matrix('x')
-        y = TT.iscalar('y')
+        x = tensor.matrix('x')
+        y = tensor.iscalar('y')
         f = function([x,y], x[y::][-1], mode=mode_opt)
         g = function([x,y], x[y::][-1], mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1389,15 +1389,15 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const2(self):
         # var[::-1][const] -> var[-1]
-        x = TT.matrix('x')
+        x = tensor.matrix('x')
         for idx in range(-8,7):
             f = function([x], x[::-1][idx], mode=mode_opt)
             g = function([x], x[::-1][idx], mode=mode_opt.excluding('local_subtensor_merge'))
 
             #theano.printing.debugprint(f, print_type=True)
             topo=f.maker.env.toposort()
-            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
             assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1413,15 +1413,15 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_scalar2(self):
         # var[::-1][int] -> var[-1]
-        x = TT.matrix('x')
-        y = TT.iscalar('y')
+        x = tensor.matrix('x')
+        y = tensor.iscalar('y')
         f = function([x,y], x[::-1][y], mode=mode_opt)
         g = function([x,y], x[::-1][y], mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1437,14 +1437,14 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
-        x = TT.matrix('x')
+        x = tensor.matrix('x')
         for idx in range(-9,8):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
             #theano.printing.debugprint(f, print_type=True)
             topo=f.maker.env.toposort()
-            #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-            assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
             assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1454,14 +1454,14 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_scalar3(self):
         # var[::-1][:int] -> var[-1]
-        x = TT.matrix('x')
-        y = TT.iscalar('y')
+        x = tensor.matrix('x')
+        y = tensor.iscalar('y')
         f = function([x,y], x[::-1][:y], mode=mode_opt)
         #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1472,15 +1472,15 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const4(self):
         # var[const1::][:const2]
-        x = TT.matrix('x')
+        x = tensor.matrix('x')
         for idx1 in range(-7,7):
             for idx2 in range(-7,7):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
                 #theano.printing.debugprint(f, print_type=True)
                 topo=f.maker.env.toposort()
-                #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-                assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+                #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+                assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
                 #print topo[-1].op
                 assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1490,15 +1490,15 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_scalar4(self):
         # var[int1:][:int2]
-        x = TT.matrix('x')
-        y = TT.iscalar('y')
-        z = TT.iscalar('y')
+        x = tensor.matrix('x')
+        y = tensor.iscalar('y')
+        z = tensor.iscalar('y')
         f = function([x,y,z], x[y:][:z], mode=mode_opt)
         #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1515,7 +1515,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 ((12, 1), (None, None, -4), (None, None, 1)),
                 ((5,3), (1, 4, 2), (None, None, -1)),
                 ]
-        x = TT.matrix('x')
+        x = tensor.matrix('x')
 
         for shape, sl1, sl2 in cases:
             z = x[slice(*sl1)][slice(*sl2)]
@@ -1528,19 +1528,19 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_scalar5(self):
         # var[int1:][:int2]
-        x = TT.matrix('x')
-        b1 = TT.iscalar('b1')
-        e1 = TT.iscalar('e1')
-        s1 = TT.iscalar('s1')
-        b2 = TT.iscalar('b2')
-        e2 = TT.iscalar('e2')
-        s2 = TT.iscalar('s2')
+        x = tensor.matrix('x')
+        b1 = tensor.iscalar('b1')
+        e1 = tensor.iscalar('e1')
+        s1 = tensor.iscalar('s1')
+        b2 = tensor.iscalar('b2')
+        e2 = tensor.iscalar('e2')
+        s2 = tensor.iscalar('s2')
         f = function([x,b1,e1,s1,b2,e2,s2], x[b1:e1:s1][b2:e2:s2], mode=mode_opt)
         #theano.printing.debugprint(f, print_type=True)
 
         topo=f.maker.env.toposort()
-        #print [t for t in topo if isinstance(t.op, TT.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, TT.Subtensor)]) == 1
+        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
@@ -1614,15 +1614,16 @@ class test_shapeoptimizer(unittest.TestCase):
         v = T.vector()
         m = T.matrix()
         f = function([v,m], v.dimshuffle('x','x',0).shape[1], mode=mode)
-        print f.maker.env.toposort()
-        assert [] == f.maker.env.toposort()
+        topo = f.maker.env.toposort()
+        assert len(topo) == 1
+        assert topo[0].op == theano.compile.function_module.deep_copy_op
 
     def test_local_track_shape_i(self):
-        class IdentityNoShape(Op):
+        class IdentityNoShape(gof.Op):
             '''Op that does not infer the output shape from the input one'''
             def make_node(self, x):
                 x = as_tensor_variable(x)
-                return Apply(self, [x], [x.type()])
+                return gof.Apply(self, [x], [x.type()])
             def perform(self, node, inp, out_):
                 x, = inp
                 out, = out_
@@ -1631,11 +1632,11 @@ class test_shapeoptimizer(unittest.TestCase):
                 #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
         identity_noshape = IdentityNoShape()
 
-        class IdentityShape(Op):
+        class IdentityShape(gof.Op):
             '''Op that does infer the output shape from the input one'''
             def make_node(self, x):
                 x = as_tensor_variable(x)
-                return Apply(self, [x], [x.type()])
+                return gof.Apply(self, [x], [x.type()])
             def perform(self, node, inp, out_):
                 x, = inp
                 out, = out_
@@ -1667,7 +1668,7 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_shape not in f_ops
 
         # Register the optimization
-        register_specialize(local_identity_noshape_to_identity_shape)
+        opt.register_specialize(local_identity_noshape_to_identity_shape)
 
         # With the optimization
         # The identity_shape op should not be needed anymore to compute
@@ -1697,7 +1698,7 @@ class test_assert(unittest.TestCase):
         y=T.scalar()
         f = theano.function([x,y],theano.tensor.opt.assert_(x,T.eq(x,y)))
         f(1,1)
-        self.failUnlessRaises(AssertionError, f, 1,0)
+        self.assertRaises(AssertionError, f, 1,0)
 
     def test1(self):
         #remove assert that are always true
@@ -1741,7 +1742,7 @@ class test_assert(unittest.TestCase):
         x=T.scalar()
         y=T.scalar()
         f = theano.function([x,y],theano.tensor.opt.assert_(x,y,0),mode=mode)
-        self.failUnlessRaises(AssertionError, f, 1,0)
+        self.assertRaises(AssertionError, f, 1,0)
         topo=f.maker.env.toposort()
         assert len(topo)==2
         assert len(topo[0].inputs)==3
@@ -2512,8 +2513,8 @@ class T_local_sum(unittest.TestCase):
         input=numpy.asarray(numpy.arange(2*3*4).reshape(2,3,4),dtype='float64')
         mode = self.mode.including('specialize').excluding('fusion')
 
-        for t_like,n_like,nb_nodes in [(zeros_like,numpy.zeros_like,(0,3,3,2)),
-                                       (ones_like,numpy.ones_like,(5,5,5,6))]:
+        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(1,3,3,2)),
+                                       (tensor.ones_like,numpy.ones_like,(5,5,5,6))]:
 
             f = theano.function([a],t_like(a).sum(None),mode=mode)
             assert numpy.allclose(f(input),n_like(input).sum())
@@ -2551,6 +2552,7 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         b = T.vector('b')
         c = T.tensor3('c')
         d = T.scalar('d')
+        sum = tensor.sum
         sums = [
             sum(a/d),
             sum(a/d.dimshuffle('x','x')),
@@ -2611,14 +2613,68 @@ def test_make_vector():
     i = T.iscalar()
     d = T.dscalar()
 
-    assert opt.MakeVector(dtype="int8")(b,b).dtype=="int8"
-    assert opt.MakeVector(dtype="int32")(i,b).dtype=="int32"
-    assert opt.MakeVector(dtype="int32")(b,i).dtype=="int32"
-    assert opt.MakeVector(dtype="float64")(b,i).dtype=="float64"
-    assert opt.MakeVector(dtype="float64")(b,d).dtype=="float64"
-    assert opt.MakeVector(dtype="float64")(d,i).dtype=="float64"
-    assert opt.MakeVector(dtype="float64")().dtype=="float64"
-    assert opt.MakeVector(dtype="int64")().dtype=="int64"
+    #TODO: draw random values instead. Not really important.
+    val = {b: 2,
+           i: -3,
+           d: 0.7}
+
+    # Should work
+    for (dtype, inputs) in [("int8", (b,b)),
+                            ("int32", (i,b)),
+                            ("int32", (b,i)),
+                            ("float64", (b,i)),
+                            ("float64", (b,d)),
+                            ("float64", (d,i)),
+                            ("float64", ()),
+                            ("int64", ()),
+                            ]:
+        mv = opt.MakeVector(dtype=dtype)(*inputs)
+        assert mv.dtype == dtype
+        f = theano.function([b,i,d], mv)
+        f_val = f(val[b], val[i], val[d])
+        print 'f_val =', f_val
+
+
+        s = mv.sum()
+        gb = T.grad(s, b)
+        gi = T.grad(s, i)
+        gd = T.grad(s, d)
+        print 'gb =', gb
+        print 'gi =', gi
+        print 'gd =', gd
+
+        g = theano.function([b,i,d], [gb, gi, gd])
+        g_val = g(val[b], val[i], val[d])
+        print 'g_val =', g_val
+
+        if dtype.startswith('int'):
+            # The gradient should be 0
+            assert numpy.allclose(g_val, 0)
+        else:
+            for var, grval in zip((b,i,d), g_val):
+                float_inputs = []
+                if var.dtype.startswith('int'):
+                    assert grval == 0
+                elif var not in inputs:
+                    assert grval == 0
+                else:
+                    float_inputs.append(var)
+
+            # Build a function that takes float_inputs, use fix values for the
+            # other inputs, and returns the MakeVector. Use it for verify_grad.
+            if float_inputs:
+                def fun(*fl_inputs):
+                    f_inputs = []
+                    for var in f_inputs:
+                        if var in fl_inputs:
+                            # use symbolic variable
+                            f_inputs.append(var)
+                        else:
+                            # use constant value
+                            f_inputs.append(val[var])
+                    return opt.MakeVector(dtype=dtype)(*f_inputs)
+
+                utt.verify_grad(fun, [val[ri] for ri in float_inputs])
 
     #should fail
     for (dtype,inputs) in [("int8",(b,i)),
@@ -2637,8 +2693,8 @@ def test_make_vector():
 
 def test_local_join_1():
     #test for vector
-    a = TT.vector('a')
-    s = stack(a)
+    a = tensor.vector('a')
+    s = tensor.stack(a)
     f = function([a], s, mode=mode_opt)
     val = f([1])
     assert numpy.all(val == [1])
@@ -2647,7 +2703,7 @@ def test_local_join_1():
     assert f.maker.env.outputs[0].dtype == config.floatX
 
     #test for matrix join(0,a)
-    a = TT.matrix('a')
+    a = tensor.matrix('a')
     s = join(0,a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
@@ -2688,13 +2744,13 @@ def test_local_mul_to_neg():
 def test_local_add_specialize():
 
     # test of non-zero dimension
-    a = TT.vector()
-    s = TT.add(TT.zeros_like(a))
+    a = tensor.vector()
+    s = tensor.add(tensor.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
 
     # test of 0-d
-    a = TT.scalar()
-    s = TT.add(TT.zeros_like(a))
+    a = tensor.scalar()
+    s = tensor.add(tensor.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
 
 def test_local_tensor_scalar_tensor():
@@ -2707,14 +2763,14 @@ def test_local_tensor_scalar_tensor():
     for dtype in dtypes:
         t_type = TensorType(dtype=dtype, broadcastable=())
         t = t_type()
-        s = TT.scalar_from_tensor(t)
-        t2 = TT.tensor_from_scalar(s)
+        s = tensor.scalar_from_tensor(t)
+        t2 = tensor.tensor_from_scalar(s)
 
         f = function([t], t2, mode=mode_opt)
         e = f.maker.env.toposort()
         cast_nodes = [n for n in e
-                if isinstance(n.op, (TT.TensorFromScalar,
-                                     TT.ScalarFromTensor))]
+                if isinstance(n.op, (tensor.TensorFromScalar,
+                                     tensor.ScalarFromTensor))]
         assert len(cast_nodes) == 0
         f(0)
 
@@ -2733,14 +2789,14 @@ def test_local_scalar_tensor_scalar():
     for dtype in dtypes:
         s_type = theano.scalar.Scalar(dtype=dtype)
         s = s_type()
-        t = TT.tensor_from_scalar(s)
-        s2 = TT.scalar_from_tensor(t)
+        t = tensor.tensor_from_scalar(s)
+        s2 = tensor.scalar_from_tensor(t)
 
         f = function([s], s2, mode=mode_opt)
         e = f.maker.env.toposort()
         cast_nodes = [n for n in e
-                if isinstance(n.op, (TT.TensorFromScalar,
-                                     TT.ScalarFromTensor))]
+                if isinstance(n.op, (tensor.TensorFromScalar,
+                                     tensor.ScalarFromTensor))]
         assert len(cast_nodes) == 0
         f(0)
 

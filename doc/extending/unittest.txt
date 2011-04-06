@@ -47,7 +47,7 @@ example:
             # test passes cleanly
 
         def test1(self):
-            self.failUnless(2+2 == 5)
+            self.assertTrue(2+2 == 5)
             # raises an exception, causes test to fail
 
         def test2(self):
@@ -221,13 +221,13 @@ Example:
             c = T.dot(a,b)
             f = theano.function([a,b],[c])
             cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
-            self.failUnless(numpy.all(cmp))
+            self.assertTrue(numpy.all(cmp))
 
 Avoid hard-coding variables, as in the following case:
 
 .. code-block:: python
 
-    self.failUnless(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
+    self.assertTrue(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
 
 This makes the test case less manageable and forces the user to update
 the variables each time the input is changed or possibly when the
@@ -238,15 +238,15 @@ idea.
 
 Here is a list of useful functions, as defined by TestCase:
 
-* checking the state of boolean variables: assert, failUnless,
-  assertTrue, failIf, assertFalse
+* checking the state of boolean variables: assert,
+  assertTrue, assertFalse
 
-* checking for (in)equality constraints: assertEqual, failUnlessEqual,
-  assertNotEqual, failIfEqual
+* checking for (in)equality constraints: assertEqual,
+  assertNotEqual
 
 * checking for (in)equality constraints up to a given precision (very
-  useful in theano): assertAlmostEqual, failUnlessAlmostEqual,
-  assertNotAlmostEqual, failIfAlmostEqual
+  useful in theano): assertAlmostEqual,
+  assertNotAlmostEqual
 
 
 Checking for errors
@@ -270,11 +270,11 @@ Example:
                 b = T.dmatrix()
                 c = T.dot(a,b) # we expect this to fail
             # above should fail as dot operates on 2D tensors only
-            self.failUnlessRaises(TypeError, func)
+            self.assertRaises(TypeError, func)
 
-Useful functions, as defined by TestCase:
+Useful function, as defined by TestCase:
 
-* assertRaises, failUnlessRaises
+* assertRaises
 
 
 Test Cases and Theano Modes

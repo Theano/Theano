@@ -310,12 +310,12 @@ def makeSharedTester(shared_constructor_,
 
             shp = (100/4,1024)#100KB
 
-            x = numpy.zeros(shp, dtype='float32')
+            x = numpy.zeros(shp, dtype=dtype)
             x = self.cast_value(x)
             x_shared = self.shared_constructor(x, borrow=True)
 
             old_data = x_shared.container.storage[0]
-            nd = numpy.ones(shp, dtype='float32')
+            nd = numpy.ones(shp, dtype=dtype)
 
             if x.__class__.__name__ != 'csr_matrix':
                 #sparse matrix don't support inplace affectation
@@ -382,7 +382,6 @@ def makeSharedTester(shared_constructor_,
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
             # Test by set_value with borrow=True when new data casted.
-            print
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
@@ -428,7 +427,8 @@ def makeSharedTester(shared_constructor_,
             assert numpy.all(shape_constant_fct()==shape_op_fct())
             topo_cst = shape_constant_fct.maker.env.toposort()
             if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_cst)==0
+                assert len(topo_cst)==1
+                topo_cst[0].op == theano.compile.function_module.deep_copy_op
 
             # Test that we can take the grad.
             if isinstance(x1_specify_shape.type, theano.sparse.SparseType):
@@ -536,7 +536,6 @@ def makeSharedTester(shared_constructor_,
             topo=f.maker.env.toposort()
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
-            #print topo
             if theano.config.mode!='FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
@@ -550,7 +549,6 @@ def makeSharedTester(shared_constructor_,
                                 updates={s_shared:theano.dot(a_shared,b_shared)
                                          +s_shared_specify})
             topo=f.maker.env.toposort()
-            print topo
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':
@@ -567,19 +565,47 @@ def makeSharedTester(shared_constructor_,
                                 updates={s_shared:theano.dot(a_shared,b_shared)
                                          +s_shared_specify})
             topo=f.maker.env.toposort()
-            print topo
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm","GpuGemm","StructuredDot"] for node in topo])==1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op,tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
+        def test_values_eq(self):
+            """ Test the type.values_eq[_approx] function"""
+            dtype = self.dtype
+            if dtype is None:
+                dtype = theano.config.floatX
+
+            # We need big shape as in the past there have been a bug in the
+            # sparse values_eq_approx.
+            shp = (1024,1024)
+
+            #Test the case with all zeros element
+            for x in [numpy.asarray(numpy.random.rand(*shp), dtype=dtype),
+                      numpy.zeros(shp, dtype=dtype)]:
+                zeros = (x==0).all()
+                x = self.cast_value(x)
+                x_shared = self.shared_constructor(x, borrow=True)
+
+                y = x.copy()
+                y[0,0],y[1,0] = y[1,0],y[0,0]
+                y = self.cast_value(y)
+
+                assert x_shared.type.values_eq(x, x)
+                assert x_shared.type.values_eq_approx(x, x)
+                if not zeros:
+                    assert not numpy.allclose(self.ref_fct(x), self.ref_fct(y))
+                    assert not x_shared.type.values_eq(x, y)
+                    assert not x_shared.type.values_eq_approx(x, y)
+
+
 
     return SharedTester
 
 test_shared_options=makeSharedTester(
     shared_constructor_ = tensor.shared,
-    dtype_ = 'float64',
+    dtype_ = theano.config.floatX,
     get_value_borrow_true_alias_ = True,
     shared_borrow_true_alias_ = True,
     set_value_borrow_true_alias_ = True,
@@ -588,7 +614,7 @@ test_shared_options=makeSharedTester(
     shared_constructor_accept_ndarray_ = True,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),
-    theano_fct_ = theano.tensor.sum,
-    ref_fct_ = numpy.sum,
+    theano_fct_ = lambda a: a*2,
+    ref_fct_ = lambda a: numpy.asarray((a*2)),
     cast_value_ = numpy.asarray,
     op_by_matrix_ = False)

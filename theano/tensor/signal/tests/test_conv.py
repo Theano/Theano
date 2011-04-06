@@ -16,7 +16,7 @@ class TestSignalConv2D(unittest.TestCase):
         utt.seed_rng()
 
     def validate(self, image_shape, filter_shape, verify_grad=True):
-        
+
         image_dim = len(image_shape)
         filter_dim = len(filter_shape)
         input = T.TensorType('float64', [False]*image_dim)()
@@ -33,12 +33,12 @@ class TestSignalConv2D(unittest.TestCase):
             return conv.conv2d(input, filters)
         output = sym_conv2d(input, filters)
         theano_conv = theano.function([input, filters], output)
-          
+
         # initialize input and compute result
         image_data  = numpy.random.random(image_shape)
         filter_data = numpy.random.random(filter_shape)
         theano_output = theano_conv(image_data, filter_data)
-        
+
         ############# REFERENCE IMPLEMENTATION ############
         out_shape2d = numpy.array(image_shape[-2:]) -\
                       numpy.array(filter_shape[-2:]) + 1
@@ -66,7 +66,7 @@ class TestSignalConv2D(unittest.TestCase):
                                                     ).sum()
 
 
-                self.failUnless(_allclose(theano_output4d[b,k,:,:], output2d))
+                self.assertTrue(_allclose(theano_output4d[b,k,:,:], output2d))
 
         ############# TEST GRADIENT ############
         if verify_grad:

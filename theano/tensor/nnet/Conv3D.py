@@ -201,7 +201,7 @@ class Conv3D(theano.Op):
 
             if (%(d)s->dimensions[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given",%(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)%(d)s->dimensions[0]);
                 %(fail)s
             }
 
@@ -213,13 +213,13 @@ class Conv3D(theano.Op):
 
             if (%(W)s->dimensions[4] != inputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)",%(W)s->dimensions[4],inputChannels, %(V)s->dimensions[0], %(V)s->dimensions[1], %(V)s->dimensions[2], %(V)s->dimensions[3], %(V)s->dimensions[4]);
+                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)", (long)%(W)s->dimensions[4], inputChannels, (long)%(V)s->dimensions[0], (long)%(V)s->dimensions[1], (long)%(V)s->dimensions[2], (long)%(V)s->dimensions[3], (long)%(V)s->dimensions[4]);
                 %(fail)s
             }
 
             if (%(b)s->dimensions[0] != outputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels",%(b)s->dimensions[0],outputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels", (long)%(b)s->dimensions[0], outputChannels);
                 %(fail)s
             }
 

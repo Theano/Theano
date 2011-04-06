@@ -9,7 +9,7 @@ class Test_incsubtensor(unittest.TestCase):
 
     What could be tested:
     - increment vs set
-    - thing incremented: scalar, vector, matrix, 
+    - thing incremented: scalar, vector, matrix,
     - increment/set: constant, scalar, vector, matrix
     - indices: scalar vs slice, constant vs variable, out of bound, ...
     - inplace
@@ -47,8 +47,8 @@ class Test_incsubtensor(unittest.TestCase):
                 expected_result[:,:val_sl2_end] = val_inc
             else:
                 expected_result[:,:val_sl2_end] += val_inc
-           
-            self.failUnless(numpy.array_equal(result, expected_result))
+
+            self.assertTrue(numpy.array_equal(result, expected_result))
         return
 
     def test_grad(self):
@@ -65,20 +65,17 @@ class Test_incsubtensor(unittest.TestCase):
         # vector
         utt.verify_grad(
                 inc_slice(slice(2,4,None)),
-                (numpy.asarray([0,1,2,3,4,5.]), 
+                (numpy.asarray([0,1,2,3,4,5.]),
                     numpy.asarray([9,9.]),))
 
         # matrix
         utt.verify_grad(
                 inc_slice(slice(1,2,None), slice(None, None, None)),
-                (numpy.asarray([[0,1],[2,3],[4,5.]]), 
+                (numpy.asarray([[0,1],[2,3],[4,5.]]),
                     numpy.asarray([[9,9.]]),))
 
         #single element
         utt.verify_grad(
                 inc_slice(2, 1),
-                (numpy.asarray([[0,1],[2,3],[4,5.]]), 
+                (numpy.asarray([[0,1],[2,3],[4,5.]]),
                     numpy.asarray(9.),))
-
-
-

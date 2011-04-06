@@ -105,16 +105,34 @@ class OutputGuard(gof.Op):
         z[0] = x
     def __str__(self):
         return '%s' % self.__class__.__name__
+
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
-        return """
-        Py_XDECREF(%(z)s);
-        %(z)s = %(x)s;
-        Py_XINCREF(%(z)s);
-        """ %locals()
+        if isinstance(node.inputs[0].type, theano.scalar.Scalar):
+            # Scalars are C objects on the stacks, and should not be inc/decrefed
+            return """
+            %(z)s = %(x)s;
+            """ % locals()
+        elif (isinstance(node.inputs[0].type,
+                (theano.tensor.TensorType,
+                    theano.sandbox.cuda.CudaNdarrayType,
+                    theano.tensor.raw_random.RandomStateType)) or
+                node.inputs[0].type.__class__.__name__ == 'SparseType'
+                ):
+            # These are Python object types
+            return """
+            Py_XDECREF(%(z)s);
+            %(z)s = %(x)s;
+            Py_XINCREF(%(z)s);
+            """ % locals()
+
+        # Else, no C code for you
+        return super(OutputGuard, self).c_code(node, nodename, inp, out, sub)
+
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
+
 _output_guard = OutputGuard()
 
 class AddDestroyHandler(gof.Optimizer):

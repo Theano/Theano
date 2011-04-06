@@ -364,6 +364,8 @@ def pre_constant_merge(vars):
     def recursive_merge(var):
         if var in seen_var:
             return var
+        if not hasattr(var, 'owner'):
+            return var
         if var.owner and hasattr(var.owner, "env"):
             return var
         seen_var.add(var)
@@ -1164,7 +1166,7 @@ def pre_greedy_local_optimizer(list_optimizations, out):
            be needed to call this function multiple time.
     '''
     def local_recursive_function( list_opt, out, optimized_vars, depth):
-        if not out.owner :
+        if not getattr(out, 'owner', None):
             return [out], optimized_vars
         node = out.owner
         if hasattr(node, 'env'):

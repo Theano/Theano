@@ -59,7 +59,6 @@ class T_solve(unittest.TestCase):
         x=scipy.linalg.solve(A,b)
         Ax = numpy.dot(A,x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)
-        self.failUnless(numpy.all(are < 1.0e-5), (are, Ax, b))
+        self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))
         #print A,b
         #print numpy.dot(A,x)
-

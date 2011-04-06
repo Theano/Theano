@@ -126,11 +126,11 @@ Guillaume can you make sure to hit these points:
 
     * What is the right eq function to use?
 
-        * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())``
+        * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.assertTrue((numpy.abs(f(xv) - zv) < 1e-10).all())``
 
     * If the expected variable of a test is that an Exception is thrown, how do we correctly detect and handle that?
 
-        nosetests has ``failUnlessRaises``
+        nosetests has ``assertRaises``
 
     * Convention is that all test files must start with ``test_``, not
         ``_test_``, so rename all that use the old convention?

@@ -31,6 +31,14 @@ def as_cuda_ndarray_variable(x):
     tensor_x = tensor.as_tensor_variable(x)
     return gpu_from_host(tensor_x)
 
+def as_cuda_array(obj):
+    if isinstance(obj, numpy.ndarray):
+        return cuda_ndarray.cuda_ndarray.CudaNdarray(obj)
+    elif isinstance(obj, cuda_ndarray.cuda_ndarray.CudaNdarray):
+        return obj
+    else:
+        raise TypeError("Don't know how to cast to a CudaNdarray object")
+
 class HostFromGpu(Op):
     def __eq__(self, other):
         return type(self) == type(other)

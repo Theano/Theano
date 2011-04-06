@@ -18,7 +18,7 @@ class T_XlogX(unittest.TestCase):
         x = as_tensor_variable([1, 0])
         y = xlogx(x)
         f = theano.function([], [y])
-        self.failUnless(numpy.all(f() == numpy.asarray([0, 0.])))
+        self.assertTrue(numpy.all(f() == numpy.asarray([0, 0.])))
     def test1(self):
 #        class Dummy(object):
 #            def make_node(self, a):
@@ -36,7 +36,7 @@ class T_XlogY0(unittest.TestCase):
         y = as_tensor_variable([1, 0])
         z = xlogy0(x, y)
         f = theano.function([], z)
-        self.failUnless(numpy.all(f() == numpy.asarray([0, 0.])))
+        self.assertTrue(numpy.all(f() == numpy.asarray([0, 0.])))
 
 
 if __name__ == '__main__':

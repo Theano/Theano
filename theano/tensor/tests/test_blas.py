@@ -67,11 +67,11 @@ class t_gemm(TestCase):
 
                 #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
                 #_approx_eq.debug = 1
-                self.failUnless(_approx_eq(z_after, z))
+                self.assertTrue(_approx_eq(z_after, z))
                 if a == 0.0 and b == 1.0:
                     return
                 else:
-                    self.failIf(numpy.all(z_orig == z))
+                    self.assertFalse(numpy.all(z_orig == z))
 
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
@@ -100,7 +100,7 @@ class t_gemm(TestCase):
         try:
             self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
         except ValueError, e:
-            self.failUnless(e[0] == Gemm.E_rank)
+            self.assertTrue(e[0] == Gemm.E_rank)
             return
         self.fail()
     def test4(self):
@@ -217,11 +217,11 @@ class t_gemm(TestCase):
             #f(z, a, x, y, b)
             f = inplace_func([], gemm_inplace(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f()
-            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
+            self.assertTrue(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
+            self.assertTrue(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
             f()
-            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
+            self.assertTrue(_approx_eq(z_after, tz.get_value(borrow=True)), (z_orig, z_after, z, z_after - z))
 
             #tz.value *= 0 # clear z's value
             y_T = ty.get_value(borrow=True).T
@@ -230,7 +230,7 @@ class t_gemm(TestCase):
 
             f()
             # test that the transposed version of multiplication gives same answer
-            self.failUnless(_approx_eq(z_after, tz.get_value(borrow=True).T))
+            self.assertTrue(_approx_eq(z_after, tz.get_value(borrow=True).T))
 
         t(C,A,B)
         t(C.T, A, B)
@@ -275,17 +275,17 @@ class t_as_scalar(TestCase):
         d_b = T.DimShuffle([True, True, True], [0,2,1])(b)
         d_a2 = T.DimShuffle([], ['x', 'x', 'x'])(a)
 
-        self.failUnless(_as_scalar(a) == a)
-        self.failUnless(_as_scalar(b) != b)
-        self.failUnless(_as_scalar(d_a) != d_a)
-        self.failUnless(_as_scalar(d_b) != d_b)
-        self.failUnless(_as_scalar(d_a2) != d_a2)
+        self.assertTrue(_as_scalar(a) == a)
+        self.assertTrue(_as_scalar(b) != b)
+        self.assertTrue(_as_scalar(d_a) != d_a)
+        self.assertTrue(_as_scalar(d_b) != d_b)
+        self.assertTrue(_as_scalar(d_a2) != d_a2)
 
     def test1(self):
         """Test that it fails on nonscalar constants"""
         a = T.constant(numpy.ones(5))
-        self.failUnless(None == _as_scalar(a))
-        self.failUnless(None == _as_scalar(T.DimShuffle([False], [0,'x'])(a)))
+        self.assertTrue(None == _as_scalar(a))
+        self.assertTrue(None == _as_scalar(T.DimShuffle([False], [0,'x'])(a)))
 
     def test2(self):
         """Test that it works on scalar variables"""
@@ -293,20 +293,20 @@ class t_as_scalar(TestCase):
         d_a = T.DimShuffle([], [])(a)
         d_a2 = T.DimShuffle([], ['x', 'x'])(a)
 
-        self.failUnless(_as_scalar(a) is a)
-        self.failUnless(_as_scalar(d_a) is a)
-        self.failUnless(_as_scalar(d_a2) is a)
+        self.assertTrue(_as_scalar(a) is a)
+        self.assertTrue(_as_scalar(d_a) is a)
+        self.assertTrue(_as_scalar(d_a2) is a)
 
     def test3(self):
         """Test that it fails on nonscalar variables"""
         a = T.dmatrix()
-        self.failUnless(None == _as_scalar(a))
-        self.failUnless(None == _as_scalar(T.DimShuffle([False, False], [0,'x', 1])(a)))
+        self.assertTrue(None == _as_scalar(a))
+        self.assertTrue(None == _as_scalar(T.DimShuffle([False, False], [0,'x', 1])(a)))
 
 class T_real_matrix(TestCase):
     def test0(self):
-        self.failUnless(_is_real_matrix(T.DimShuffle([False,False], [1, 0])(T.dmatrix())))
-        self.failUnless(not _is_real_matrix(T.DimShuffle([False], ['x', 0])(T.dvector())))
+        self.assertTrue(_is_real_matrix(T.DimShuffle([False,False], [1, 0])(T.dmatrix())))
+        self.assertTrue(not _is_real_matrix(T.DimShuffle([False], ['x', 0])(T.dvector())))
 
 def fail(msg):
     print 'FAIL', msg

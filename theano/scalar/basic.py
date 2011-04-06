@@ -104,6 +104,7 @@ class Scalar(Type):
 
     def c_headers(self):
         l=['<math.h>']
+        l.append('<numpy/arrayscalars.h>')
         if config.lib.amdlibm:
             l+=['<amdlibm.h>']
         return l
@@ -127,18 +128,19 @@ class Scalar(Type):
 
     def dtype_specs(self):
         try:
-            return {'float32': (numpy.float32, 'npy_float32', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
-                    'float64': (numpy.float64, 'npy_float64', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
-                    'complex128': (numpy.complex128, 'theano_complex128', 'PyComplex_Check', 'PyComplex_AsCComplex', 'PyComplex_FromCComplex'),
-                    'complex64': (numpy.complex64, 'theano_complex64', None, None, None),
-                    'uint8':  (numpy.uint8, 'npy_uint8', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'int8':  (numpy.int8, 'npy_int8', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'uint16':  (numpy.uint16, 'npy_uint16', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'int16': (numpy.int16, 'npy_int16', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'uint32':  (numpy.uint32, 'npy_uint32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'int32': (numpy.int32, 'npy_int32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'uint64':  (numpy.uint64, 'npy_uint64', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
-                    'int64': (numpy.int64, 'npy_int64', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong')
+            return {# dtype: (py_type, c_type, cls_name)
+                    'float32': (numpy.float32, 'npy_float32', 'Float32'),
+                    'float64': (numpy.float64, 'npy_float64', 'Float64'),
+                    'complex128': (numpy.complex128, 'theano_complex128', 'Complex128'),
+                    'complex64': (numpy.complex64, 'theano_complex64', 'Complex64'),
+                    'uint8':  (numpy.uint8, 'npy_uint8', 'UInt8'),
+                    'int8':  (numpy.int8, 'npy_int8', 'Int8'),
+                    'uint16':  (numpy.uint16, 'npy_uint16', 'UInt16'),
+                    'int16': (numpy.int16, 'npy_int16', 'Int16'),
+                    'uint32':  (numpy.uint32, 'npy_uint32', 'UInt32'),
+                    'int32': (numpy.int32, 'npy_int32', 'Int32'),
+                    'uint64':  (numpy.uint64, 'npy_uint64', 'UInt64'),
+                    'int64': (numpy.int64, 'npy_int64', 'Int64')
                     }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
@@ -173,37 +175,37 @@ class Scalar(Type):
 
     def c_extract(self, name, sub):
         specs = self.dtype_specs()
-        #TODO: This is the wrong code, but we don't know what to change it to.
-        # For example, a numpy.uint8 is not a PyInt, so PyInt_Check
-        # is simply the wrong function to
-        # call.
-        # Look at PyArrayScalar api for how to cast to/from PyArrayScalar objects.
-        # numpy.uint* numpy.float* are all constructors of PyArrayScalar objects.
-        #
         return """
-        if (!%(check)s(py_%(name)s))
+        if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
         {
             PyErr_Format(PyExc_ValueError,
-                "Scalar check failed");
+                "Scalar check failed (%(dtype)s)");
             %(fail)s
         }
-        %(name)s = (%(dtype)s)%(conv)s(py_%(name)s);
+        PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
         """ % dict(sub,
                    name = name,
                    dtype = specs[1],
-                   check = specs[2],
-                   conv = specs[3])
+                   pyarr_type = 'Py%sArrType_Type' % specs[2])
 
     def c_sync(self, name, sub):
         specs = self.dtype_specs()
         return """
         Py_XDECREF(py_%(name)s);
-        py_%(name)s = %(conv)s((%(dtype)s)%(name)s);
+        py_%(name)s = PyArrayScalar_New(%(cls)s);
         if (!py_%(name)s)
+        {
+            Py_XINCREF(Py_None);
             py_%(name)s = Py_None;
-        """ % dict(name = name,
+            PyErr_Format(PyExc_MemoryError,
+                "Instantiation of new Python scalar failed (%(dtype)s)");
+            %(fail)s
+        }
+        PyArrayScalar_ASSIGN(py_%(name)s, %(cls)s, %(name)s);
+        """ % dict(sub,
+                   name = name,
                    dtype = specs[1],
-                   conv = specs[4])
+                   cls = specs[2])
 
     def c_cleanup(self, name, sub):
         return ""
@@ -340,6 +342,7 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
+        return (10, numpy.__version__) # Use the correct type checking and conversion functions
         return (9, numpy.__version__) # Make operators work with 64 and 128 arguments at the same time
         return (8, numpy.__version__) # put const around operators and added unary '-' operator
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.

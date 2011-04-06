@@ -106,9 +106,9 @@ class RandomFunction(gof.Op):
         self.state = state
         fn, outtype, inplace, ndim_added = state
         if isinstance(fn, str):
-          self.fn = getattr(numpy.random.RandomState, fn)
+            self.fn = getattr(numpy.random.RandomState, fn)
         else:
-          self.fn = fn
+            self.fn = fn
         self.outtype = outtype
         self.inplace = inplace
         if self.inplace:
@@ -235,22 +235,16 @@ class RandomFunction(gof.Op):
         return [None for i in inputs]
 
 
-def _infer_ndim(ndim, shape, *args):
-    ndim, ivec, bcast = _infer_ndim_bcast(ndim, shape, *args)
-    return ndim, ivec
-
 def _infer_ndim_bcast(ndim, shape, *args):
     """
     Infer the number of dimensions from the shape or the other arguments.
 
-    :rtype: (int, variable) pair, where the variable is an integer vector.
+    :rtype: (int, variable, tuple) triple, where the variable is an integer
+    vector, and the tuple contains Booleans.
     :returns: the first element returned is the inferred number of dimensions.
-    The second element's length is either the first element, or 0
-    (if the original shape was None).
-
-    In the special case where the shape argument is None, the variable
-    returned has a length of 0, meaning that the shape will be computed
-    at runtime from the shape of the other args.
+    The second element is the shape inferred (combining symbolic and constant
+    informations from shape and args).
+    The third element is a broadcasting pattern corresponding to that shape.
     """
 
     # Find the minimum value of ndim required by the *args
@@ -402,10 +396,10 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.
     """
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
-    ndim, size = _infer_ndim(ndim, size, low, high)
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size, low, high)
     dtype = tensor.scal.upcast(dtype, low.dtype, high.dtype)
     op = RandomFunction('uniform',
-            tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
+            tensor.TensorType(dtype=dtype, broadcastable=bcast) )
     return op(random_state, size, low, high)
 
 def binomial(random_state, size=None, n=1, p=0.5, ndim=None, dtype='int64', prob=None):
@@ -424,7 +418,7 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None, dtype='int64', prob
         print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
     n = tensor.as_tensor_variable(n)
     p = tensor.as_tensor_variable(p)
-    ndim, size = _infer_ndim(ndim, size, n, p)
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
     if n.dtype=='int64':
         ### THIS WORKS AROUND A NUMPY BUG on 32bit machine
         ###  Erase when the following works on a 32bit machine:
@@ -449,10 +443,10 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=theano.co
     """
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
-    ndim, size = _infer_ndim(ndim, size, avg, std)
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size, avg, std)
     dtype = tensor.scal.upcast(dtype, avg.dtype, std.dtype)
     op = RandomFunction('normal',
-            tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
+            tensor.TensorType(dtype=dtype, broadcastable=bcast))
     return op(random_state, size, avg, std)
 
 def random_integers_helper(random_state, low, high, size):
@@ -509,9 +503,9 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None, dtype='in
     """
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
-    ndim, size = _infer_ndim(ndim, size, low, high)
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size, low, high)
     op = RandomFunction(random_integers_helper,
-            tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
+            tensor.TensorType(dtype=dtype, broadcastable=bcast))
     return op(random_state, size, low, high)
 
 def permutation_helper(random_state, n, shape):
@@ -558,10 +552,10 @@ def permutation(random_state, size=None, n=1, ndim=None, dtype='int64'):
     .. note::
         Note that the output will then be of dimension ndim+1.
     """
-    ndim, size = _infer_ndim(ndim, size)
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size)
     #print "NDIM", ndim, size
     op = RandomFunction(permutation_helper,
-            tensor.TensorType(dtype=dtype, broadcastable=(False,)*(ndim+1)),
+            tensor.TensorType(dtype=dtype, broadcastable=bcast+(False,)),
             ndim_added=1)
     return op(random_state, size, n)
 
@@ -798,5 +792,3 @@ class RandomStreamsBase(object):
         shuffled = tensor.permute_row_elements(input, perm)
         shuffled.permutation = perm
         return shuffled
-
-
