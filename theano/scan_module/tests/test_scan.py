@@ -1951,12 +1951,9 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(tx4, v_u[-1]    +4.)
         assert numpy.allclose(tx5, v_u[-1]    +5.)
 
-    '''
-    there is an issue with this test in debugmode, that I think has nothing
-    to do with scan, but rather with Env. This needs to be looked into
-    closer asap.
+    # The following test will fail in DebugMode if there are
+    # some problems in Scan.infer_shape
     def test_remove_stuff(self):
-
         x = theano.tensor.vector()
 
         def lm(m):
@@ -1974,9 +1971,16 @@ class T_Scan(unittest.TestCase):
         go1 = theano.tensor.grad(o1.mean(), wrt = x)
         f = theano.function([x],go1, updates = updates,
                             allow_input_downcast = True)
-        print f([1,2,3])
-    '''
+        self.assertTrue(numpy.allclose(f([1,2,3]), 2./3))
 
+        #theano.printing.debugprint(f, print_type=True)
+        topo = f.maker.env.toposort()
+        nb_scan = len([n for n in topo
+            if isinstance(n.op, theano.scan_module.scan_op.Scan)])
+        self.assertTrue(nb_scan == 2)
+        nb_shape_i = len([n for n in topo
+            if isinstance(n.op, theano.tensor.opt.Shape_i)])
+        self.assertTrue(nb_shape_i == 1)
 
     def test_bug_josh_reported(self):
         import theano
