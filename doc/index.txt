@@ -78,7 +78,8 @@ Roughly in order of what you'll want to check out:
 * :ref:`libdoc` -- Theano's functionality, module by module.
 * :ref:`optimizations` -- Guide to Theano's graph optimizations.
 * :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
-* :ref:`internal` -- How to maintaining Theano, LISA-specific tips, and more...
+* :ref:`developer` -- Primarily of interest to developers of Theano
+* :ref:`internal` -- How to maintain Theano, LISA-specific tips, and more...
 * :ref:`release` -- How our release should work.
 
 You can download the latest `PDF documentation <http://deeplearning.net/software/theano/theano.pdf>`_, rather than reading it online.
