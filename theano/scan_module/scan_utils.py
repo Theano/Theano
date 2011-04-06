@@ -575,45 +575,124 @@ def equal_computations(x,y, strict=False):
                 return False
         return True
 
-def infer_shape( outs, inputs, input_shapes):
+def infer_shape(outs, inputs, input_shapes):
     '''
-     Compute the shape of the outputs given the shape of the inputs
-     of a theano graph ( assuming that all ops on the way have infer_shape
-     implemented).
+    Compute the shape of the outputs given the shape of the inputs
+    of a theano graph.
     '''
-    shape_dict = {}
-    for inp, inp_shp in zip(inputs, input_shapes):
-        shape_dict[inp] = inp_shp
+    # We use a ShapeFeature because it has all the necessary logic inside.
+    # We don't use the Feature interface, so we need to initialize some
+    # things by hand.
+    shape_feature = tensor.opt.ShapeFeature()
 
-    def local_traverse(out, shape_dict):
-        if out in shape_dict:
-            return shape_dict
-        elif not out.owner:
-            if isinstance(out, tensor.TensorConstant):
-                shape_dict[out] = out.data.shape
-                return shape_dict
-            elif isinstance(out, tensor.sharedvar.TensorSharedVariable):
-                shape_dict[out] = out.value.shape
-                return shape_dict
-            else:
-                raise ValueError('Could not figure shape of', out)
+    # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+    # All keys of shape_of should be either in valid or in invalid
+    shape_feature.shape_of = {}
+
+    # To avoid merging lots of ones together.
+    shape_feature.lscalar_one = tensor.constant(1, dtype='int64')
+
+    # Initialize shape_of with the input shapes
+    for inp, inp_shp in zip(inputs, input_shapes):
+        shape_feature.set_shape(inp, inp_shp)
+
+    def local_traverse(out):
+        '''
+        Go back in the graph, from out, adding computable shapes to shape_of.
+        '''
+
+        if out in shape_feature.shape_of:
+            # Its shape is already known
+            return
+        elif out.owner is None:
+            # This is an input of the graph
+            shape_feature.init_r(out)
         else:
+            # Recurse over inputs
             for inp in out.owner.inputs:
-                if not inp in shape_dict:
-                    shape_dict = local_traverse(inp,shape_dict)
-            try:
-                self = out.owner.op
-                node = out.owner
-                input_shapes = [ shape_dict[i] for i in out.owner.inputs]
-                shapes = self.infer_shape(node, input_shapes)
-                out_idx = node.outputs.index(out)
-                shape_dict[out] = shapes[out_idx]
-            except:
-                shape_dict[out] = None
-            return shape_dict
-    for out in outs:
-        shape_dict = local_traverse(out, shape_dict)
-    return [ shape_dict[o] for o in outs]
+                if not inp in shape_feature.shape_of:
+                    local_traverse(inp)
+
+            # shape_feature.on_import does not actually use an env
+            # It will call infer_shape and set_shape appropriately
+            dummy_env = None
+            shape_feature.on_import(dummy_env, out.owner)
+
+    ret = []
+    for o in outs:
+        local_traverse(o)
+        ret.append(shape_feature.shape_of[o])
+    return ret
+
+class Validator(object):
+    def __init__(self, valid=[], invalid=[], valid_equivalent={}):
+        '''
+        Check if variables can be expressed without using variables in invalid.
+
+        init_valid_equivalent provides a dictionary mapping some invalid
+        variables to valid ones that can be used instead.
+        '''
+
+        # Nodes that are valid to have in the graph computing outputs
+        self.valid = set(valid)
+
+        # Nodes that are NOT valid to have in the graph computing outputs
+        self.invalid = set(invalid)
+
+        # Mapping from invalid variables to equivalent valid ones.
+        self.valid_equivalent = valid_equivalent.copy()
+        self.valid.update(valid_equivalent.values())
+        self.invalid.update(valid_equivalent.keys())
+
+    def check(self, out):
+        '''
+        Go backwards in the graph, from out, and check if out is valid.
+
+        If out is a valid node, (out, True) is returned.
+        If out is not valid, but has an equivalent e, (e, False) is returned.
+        If out is not valid and has no equivalent, None is returned.
+        '''
+        if out in self.valid:
+            return out, True
+        elif out in self.valid_equivalent:
+            return self.valid_equivalent[out], False
+        elif out in self.invalid:
+            return None
+
+        if out.owner is None:
+            # This is an unknown input node, so it is invalid.
+            self.invalid.add(out)
+            if isinstance(out, tensor.TensorConstant):
+                # We can clone it to get a valid constant
+                cloned_out = out.clone()
+                self.valid.add(cloned_out)
+                self.valid_equivalent[out] = cloned_out
+                return cloned_out, False
+
+            return None
+
+        # Recurse over inputs
+        inputs = [self.check(i) for i in out.owner.inputs]
+
+        # If some inputs are invalid without equivalent, so is out
+        if None in inputs:
+            self.invalid.add(out)
+            return None
+
+        # If some inputs are invalid with equivalent,
+        # an equivalent out should be built and returned
+        all_inputs = [inp for (inp, is_valid) in inputs]
+        equiv_inputs = [inp for (inp, is_valid) in inputs if not is_valid]
+        if equiv_inputs:
+            cloned_node = out.owner.clone_with_new_inputs(all_inputs)
+            cloned_out = cloned_node.outputs[out.index]
+            self.invalid.add(out)
+            self.valid.add(cloned_out)
+            self.valid_equivalent[out] = cloned_out
+            return cloned_out, False
+
+        # All inputs are valid, so is out
+        return out, True
 
 
 def scan_can_remove_outs(op, out_idxs):

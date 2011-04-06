@@ -16,6 +16,7 @@ import copy
 import itertools
 import logging
 import numpy
+import sys
 
 from theano.compile import SharedVariable, function, Param
 from theano import compile
@@ -574,40 +575,81 @@ class Scan(Op):
 
     ### Infer Shape
     def infer_shape(self, node, input_shapes):
+        # input_shapes correspond to the shapes of node.inputs
+        # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
+        # is the shape of self.inputs[i]
 
+        # sequences
         seqs_shape = [ x[1:] for x in input_shapes[1:1+self.n_seqs] ]
+
+        # mit_mot, mit_sot, sit_sot
         n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         outs_shape = []
         for idx in xrange(n_outs):
             for k in self.tap_array[idx]:
                 outs_shape += [ input_shapes[idx+self.n_seqs+1][1:] ]
+
+        # shared_outs
         offset = 1 + self.n_seqs + n_outs
         for idx in xrange(self.n_shared_outs):
             outs_shape += [ input_shapes[idx+offset] ]
 
+        # non_sequences
         offset += self.n_nit_sot + self.n_other_ignore + self.n_shared_outs
         inner_ins_shapes = seqs_shape + outs_shape + input_shapes[offset:]
+        assert len(inner_ins_shapes) == len(self.inputs)
+
+        # Non-sequences have a direct equivalent from self.inputs in node.inputs
+        inner_non_sequences = self.inputs[len(seqs_shape) + len(outs_shape):]
+        out_equivalent = {}
+        for in_ns, out_ns in zip(inner_non_sequences, input_shapes[offset:]):
+            out_equivalent[in_ns] = out_ns
+
         outs_shape = scan_utils.infer_shape(
-            self.outputs
-            , self.inputs
-            , inner_ins_shapes)
+                outs = self.outputs,
+                inputs = self.inputs,
+                input_shapes = inner_ins_shapes)
+        # Will be used to check if outs_shape can be expressed without using
+        # variables in self.inputs
+        validator = scan_utils.Validator(
+                valid = [],
+                invalid = self.inputs,
+                valid_equivalent = out_equivalent)
+
         offset = 1 + self.n_seqs
         scan_outs = [x for x in input_shapes[offset:offset+n_outs]]
         offset += n_outs
         for x in xrange(self.n_nit_sot):
-            if outs_shape[n_outs+x] is not None:
-                scan_outs.append(
-                    (node.inputs[offset+self.n_shared_outs+x],) +
-                    tuple(outs_shape[n_outs+x]) )
+            out_shape_x = outs_shape[n_outs+x]
+            if out_shape_x is None:
+                # This output is not a tensor, and has no shape
+                scan_outs.append(None)
             else:
+                # We need to make sure that we can compute the shapes from
+                # node.inputs, and constants, without using the variables
+                # in the inner function.
                 r = node.outputs[n_outs+x]
-                shp = (node.inputs[offset+self.n_shared_outs+x],)
-                shp += tuple([Shape_i(i)(r) for i in xrange(1,r.ndim)])
-                scan_outs.append( shp )
+                assert r.ndim == 1 + len(outs_shape[n_outs+x])
+                shp = [node.inputs[offset+self.n_shared_outs+x]]
+                for i, shp_i in zip(xrange(1,r.ndim), outs_shape[n_outs+x]):
+                    # Validate shp_i. v_shape_i is either None (if invalid),
+                    # or a (variable, Boolean) tuple. The Boolean indicates
+                    # whether variable is shp_i (if True), or an valid
+                    # equivalent (if False). Here, we only need the variable.
+                    v_shp_i = validator.check(shp_i)
+                    if v_shp_i is None:
+                        if hasattr(r, 'broadcastable') and r.broadcastable[i]:
+                            shp.append(1)
+                        else:
+                            shp.append(Shape_i(i)(r))
+                    else:
+                        # It can (or at least, an equivalent variable can)
+                        shp.append(v_shp_i[0])
+                scan_outs.append(tuple(shp))
+
         scan_outs += [ x for x in
                      input_shapes[offset:offset+self.n_shared_outs] ]
         return scan_outs
-
 
 
     ### GRAD FUNCTION
