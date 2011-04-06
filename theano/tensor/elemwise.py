@@ -537,7 +537,10 @@ class Elemwise(Op):
 
     def grad(self, inputs, ograds):
         # Gradients (especially on the final costs) don't have to be symbolic
+        # e.g., ograds will be [ 1. ] if your objective is c and the output
+        # of the current apply node is c
         ograds = map(as_tensor_variable, ograds)
+
         scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
         scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
         scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
