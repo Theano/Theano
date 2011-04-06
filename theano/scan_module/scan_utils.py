@@ -188,10 +188,10 @@ class ScanInnerFunction(object):
         _logger.debug('Optimizing took %f seconds' %(time.time() - t0))
 
         if not hasattr(linker, 'accept'):
-                raise ValueError( ( "'linker' parameter of FunctionFactory "
-                                 "should be a Linker with an accept method "
-                                 "or one of %s") %
-                                        mode_module.predefined_linkers.keys())
+            raise ValueError( ( "'linker' parameter of FunctionFactory "
+                             "should be a Linker with an accept method "
+                             "or one of %s") %
+                                    mode_module.predefined_linkers.keys())
 
         my_linker = linker.accept ( env )
 
@@ -281,7 +281,7 @@ def scan_function( inputs
     for i,out in enumerate(env.outputs):
         if (out in env.inputs or
             isinstance(out, tensor.Constant)):
-                env.change_input('output', i, Clone()(out) )
+            env.change_input('output', i, Clone()(out) )
 
 
     for i in xrange(len(env.outputs[slices:])):
@@ -307,10 +307,10 @@ def scan_function( inputs
 
 
     if not hasattr(linker, 'accept'):
-            raise ValueError( ( "'linker' parameter of FunctionFactory "
-                             "should be a Linker with an accept method "
-                             "or one of %s") %
-                                    mode_module.predefined_linkers.keys())
+        raise ValueError( ( "'linker' parameter of FunctionFactory "
+                         "should be a Linker with an accept method "
+                         "or one of %s") %
+                                mode_module.predefined_linkers.keys())
 
 
     my_linker = linker.accept ( env )
@@ -330,9 +330,9 @@ def scan_function( inputs
     _logger.debug('Linking took %f seconds' %(time.time() - t0))
     if hasattr(mode, 'apply_time'):
         for i, node in enumerate(env.toposort()):
-           mode.apply_time[(i,node)] = 0.0
-           assert len(_fn.thunk_groups[i])==1
-           mode.op_cimpl[node.op] = hasattr(_fn.thunk_groups[i][0],'cthunk')
+            mode.apply_time[(i,node)] = 0.0
+            assert len(_fn.thunk_groups[i])==1
+            mode.op_cimpl[node.op] = hasattr(_fn.thunk_groups[i][0],'cthunk')
 
 
     fn = ScanInnerFunction( _fn
@@ -870,4 +870,3 @@ def compress_outs(op, not_required, inputs):
     node_inputs += inputs[ni_offset+op.n_shared_outs+op.n_nit_sot:]
 
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
-
