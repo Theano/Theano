@@ -582,7 +582,8 @@ def makeSharedTester(shared_constructor_,
             shp = (1024,1024)
 
             #Test the case with all zeros element
-            for x in [numpy.asarray(numpy.random.rand(*shp), dtype=dtype),
+            rng = numpy.random.RandomState(utt.fetch_seed())
+            for x in [numpy.asarray(rng.rand(*shp), dtype=dtype),
                       numpy.zeros(shp, dtype=dtype)]:
                 zeros = (x==0).all()
                 x = self.cast_value(x)
