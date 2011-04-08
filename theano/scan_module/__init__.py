@@ -646,7 +646,7 @@ if cuda.cuda_available:
                      + thescan.n_shared_outs)
                 nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
                 b = e
-                e = e + thescan.n_nit_sot + thescan.n_other_ignore
+                e = e + thescan.n_nit_sot
                 nw_ins += inputs[b:e]
                 nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
                 scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
@@ -678,7 +678,7 @@ if cuda.cuda_available:
                      + thescan.n_shared_outs)
                 nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
                 b = e
-                e = e + thescan.n_nit_sot + thescan.n_other_ignore
+                e = e + thescan.n_nit_sot
                 nw_ins += inputs[b:e]
                 nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
 

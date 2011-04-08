@@ -427,7 +427,7 @@ class Scan(Op):
                 outs[idx][0] = args[self.seqs_arg_offset + idx].copy()
 
 
-        offset = self.nit_sot_arg_offset + self.n_nit_sot + self.n_other_ignore
+        offset = self.nit_sot_arg_offset + self.n_nit_sot
         other_args = args[offset:]
         zipped_outs = [(outs[idx], self.vector_outs[idx], tap,
                        store_steps[idx], idx) for idx in xrange(self.n_outs)
@@ -595,7 +595,7 @@ class Scan(Op):
             outs_shape += [ input_shapes[idx+offset] ]
 
         # non_sequences
-        offset += self.n_nit_sot + self.n_other_ignore + self.n_shared_outs
+        offset += self.n_nit_sot + self.n_shared_outs
         inner_ins_shapes = seqs_shape + outs_shape + input_shapes[offset:]
         assert len(inner_ins_shapes) == len(self.inputs)
 
@@ -940,10 +940,8 @@ class Scan(Op):
             info['name'] = None
         info['mode']                     = self.mode
         info['inplace']                  = False
-        info['n_other_ignore']           = 0
         n_mit_sot           = 0
         n_sit_sot           = 0
-        n_other_ignore_seqs = 0
         if self.truncate_gradient != -1 :
             do_steps = tensor.minimum(args[0], self.truncate_gradient)
         else:
@@ -955,8 +953,7 @@ class Scan(Op):
                   + self.n_mit_sot
                   + self.n_sit_sot
                   + self.n_nit_sot
-                  + self.n_shared_outs
-                  + self.n_other_ignore )
+                  + self.n_shared_outs )
 
         scan_inputs = ( [do_steps]                            +
                        scan_seqs                              +
@@ -999,7 +996,6 @@ class Scan(Op):
         gradients += [ x[::-1] for x in outputs[:end]]
         gradients += [ None for x in xrange(self.n_shared_outs)]
         gradients += [ None for x in xrange(self.n_nit_sot) ]
-        gradients += [ None for x in xrange(self.n_other_ignore) ]
         begin = end + self.n_seqs
 
         end   = begin + n_shared_outs

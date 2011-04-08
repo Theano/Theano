@@ -754,7 +754,6 @@ def compress_outs(op, not_required, inputs):
     info['n_sit_sot']          = 0
     info['n_shared_outs']      = 0
     info['n_nit_sot']          = 0
-    info['n_other_ignore']     = op.info['n_other_ignore']
     info['truncate_gradient']  = op.info['truncate_gradient']
     info['name']               = op.info['name']
     info['inplace']            = op.info['inplace']
