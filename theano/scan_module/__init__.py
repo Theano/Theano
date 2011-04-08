@@ -633,7 +633,19 @@ if cuda.cuda_available:
             host_input = node.inputs[0]
             if (host_input.owner and
                 isinstance(host_input.owner.op, scan_op.Scan) and
-                not host_input.owner.op.info['gpu']):
+                not host_input.owner.op.info['gpu'] and
+                len(host_input.owner.outputs) == 1 ):
+                # Note that we are not doing the right thing here !!
+                # This is because the local optimizer expects only one
+                # output that corresponds to the input of ``node``
+                # If we do this for each output seperately we will have
+                # multiple scan ops in the graph ( as many as outputs )
+                # and I'm not sure they will get merged into one again
+                # So for now I will just cover a limited case when there
+                # is only one output and the local optimizer can be used
+                # TODO (fix) : either make sure the different scans get
+                # merged or implement this optimization as a global
+                # optimization
                 thescan = host_input.owner.op
                 info = thescan.info.copy()
                 info['gpu'] = True
