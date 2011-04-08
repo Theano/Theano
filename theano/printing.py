@@ -665,14 +665,14 @@ def pydotprint_variables(vars,
             dstr = 'val='+str(var.data)
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            if len(dstr) > max_label_size:
-                dstr = dstr[:max_label_size-1]+'...'
             varstr = '%s [%s]'% (dstr, str(var.type))
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
 
         varstr += ' ' + str(len(var_str))
+        if len(varstr) > max_label_size:
+            varstr = varstr[:max_label_size-3]+'...'
         var_str[var]=varstr
         return varstr
 
