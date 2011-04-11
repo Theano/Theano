@@ -4173,15 +4173,37 @@ class test_broadcast(unittest.TestCase):
 
     def test_infer_shape(self):
         x = matrix()
-        y = addbroadcast(x,0)
+        y = addbroadcast(x, 0)
         f = theano.function([x], y.shape)
-        f(numpy.zeros((1,5), dtype=config.floatX))
+        assert (f(numpy.zeros((1,5), dtype=config.floatX)) == [1,5]).all()
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert len(topo) == 2
+            assert isinstance(topo[0].op, opt.Shape_i)
+            assert isinstance(topo[1].op, opt.MakeVector)
+
+        x = matrix()
+        y = unbroadcast(x, 0)
+        f = theano.function([x], y.shape)
+        assert (f(numpy.zeros((2,5), dtype=config.floatX)) == [2,5]).all()
         topo = f.maker.env.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 3
             assert isinstance(topo[0].op, opt.Shape_i)
             assert isinstance(topo[1].op, opt.Shape_i)
             assert isinstance(topo[2].op, opt.MakeVector)
+
+        x = row()
+        y = unbroadcast(x, 0)
+        f = theano.function([x], y.shape)
+        assert (f(numpy.zeros((1,5), dtype=config.floatX)) == [1,5]).all()
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert len(topo) == 2
+            assert isinstance(topo[0].op, opt.Shape_i)
+            assert isinstance(topo[1].op, opt.MakeVector)
+
+
 
 def test_mod():
     """
