@@ -81,7 +81,8 @@ optdb.register( 'scanOp_make_inplace'
                , opt.in2out(scan_make_inplace,ignore_newtrees=True)
                , 75
                , 'fast_run'
-               , 'inplace')
+               , 'inplace'
+               , 'scan')
 
 
 
@@ -512,7 +513,8 @@ class ScanSaveMem(gof.Optimizer):
 optdb.register( 'scanOp_save_mem'
                , ScanSaveMem()
                , 1.99
-               , 'fast_run')
+               , 'fast_run'
+               , 'scan')
 
 '''
 class ScanMerge(gof.Optimizer):
@@ -584,7 +586,8 @@ class ScanMerge(gof.Optimizer):
 optdb.register( 'scanOp_merge'
                , ScanMerge()
                , 2.39
-               , 'fast_run')
+               , 'fast_run'
+               , 'scan')
 '''
 
 
@@ -620,7 +623,7 @@ if cuda.cuda_available:
             return x
 
 
-    @register_opt()
+    @register_opt('scan')
     @local_optimizer([])
     def gpuScanOptimization(node):
         """
