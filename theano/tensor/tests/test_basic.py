@@ -2447,6 +2447,21 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, g, a_val, b_val, c_val, bad_d_val, e_val)
         self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, bad_e_val)
 
+    def test_infer_shape_join(self):
+        x1 = matrix()
+        x2 = matrix()
+        x3 = matrix()
+
+        z = join(0,x1,x2,x3)
+        def get_mat(s1,s2):
+            return numpy.asarray( numpy.random.uniform(size=(s1,s2)),
+                                 dtype= config.floatX)
+        f = theano.function([x1,x2,x3], z.shape)
+        f( get_mat(3,4), get_mat(2,4), get_mat(1,5))
+        if theano.config.mode != 'FAST_COMPILE':
+            for node in f.maker.env.toposort():
+                assert not isinstance(node.op, tensor.Join)
+
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):
