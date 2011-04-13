@@ -659,7 +659,7 @@ def _constructor_Function(maker, input_storage, inputs_data):
     f = maker.create(input_storage, trustme = True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
-        assert (container.data is x) or (container.data == x)
+        assert (container.data is x) or (container.data == x).all()
     return f
 
 copy_reg.pickle(Function, _pickle_Function)
