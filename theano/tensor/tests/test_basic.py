@@ -2452,15 +2452,36 @@ class T_Join_and_Split(unittest.TestCase):
         x2 = matrix()
         x3 = matrix()
 
-        z = join(0,x1,x2,x3)
         def get_mat(s1,s2):
             return numpy.asarray( numpy.random.uniform(size=(s1,s2)),
                                  dtype= config.floatX)
+
+        # Test dim 0
+        z = join(0,x1,x2,x3)
         f = theano.function([x1,x2,x3], z.shape)
-        f( get_mat(3,4), get_mat(2,4), get_mat(1,5))
+        out = f( get_mat(3,4), get_mat(2,4), get_mat(1,4))
+        assert (out == [6,4]).all()
+
         if theano.config.mode != 'FAST_COMPILE':
             for node in f.maker.env.toposort():
                 assert not isinstance(node.op, tensor.Join)
+
+        # Test dim 1
+        z = join(1,x1,x2,x3)
+        f = theano.function([x1,x2,x3], z.shape)
+        out = f( get_mat(3,4), get_mat(3,4), get_mat(3,5))
+        assert (out == [3,13]).all()
+
+        if theano.config.mode != 'FAST_COMPILE':
+            for node in f.maker.env.toposort():
+                assert not isinstance(node.op, tensor.Join)
+
+        # Test hide error
+        if theano.config.mode in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']:
+            self.assertRaises(ValueError, f, get_mat(3,4), get_mat(3,4), get_mat(2,5))
+        else:
+            f(get_mat(3,4), get_mat(3,4), get_mat(2,5))
+
 
 
 class test_comparison(unittest.TestCase):
