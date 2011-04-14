@@ -3507,7 +3507,7 @@ class Join(Op):
                     raise NotImplementedError
             # at this point the inputs have been broadcasted so they should
             # all have the same shape
-            assert abs(len(shape) - n_dim) == 0
+            assert len(shape) == n_dim
 
         out_shapes = []
         for dim in xrange(n_dim):
