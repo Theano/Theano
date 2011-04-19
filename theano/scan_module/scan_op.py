@@ -354,8 +354,6 @@ class Scan(Op):
 
     def __hash__(self):
         return ( hash(type(self)) ^
-                scan_utils.hash_listsDictsTuples(self.inputs) ^
-                scan_utils.hash_listsDictsTuples(self.outputs) ^
                 scan_utils.hash_listsDictsTuples(self.info) )
 
 
