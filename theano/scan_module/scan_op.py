@@ -353,6 +353,9 @@ class Scan(Op):
 
 
     def __hash__(self):
+        # any two objects that *might* compare equal must hash equal.
+        # so we don't check the self.inputs and self.outputs here and it's
+        # ok.
         return ( hash(type(self)) ^
                 scan_utils.hash_listsDictsTuples(self.info) )
 
