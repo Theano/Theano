@@ -3234,7 +3234,7 @@ class test_grad(unittest.TestCase):
         """grad: Test returning a single zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
-        g = grad(a1.outputs[0], a1.outputs[1])
+        g = grad(a1.outputs[0], a1.outputs[1], strict = False)
         self.assertTrue(g.owner.op == fill)
         self.assertTrue(g.owner.inputs[1].data == 0)
         try:
@@ -3247,7 +3247,8 @@ class test_grad(unittest.TestCase):
         """grad: Test returning some zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
-        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')])
+        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')],
+                        strict = False)
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
         self.assertTrue(g2.owner.op == fill)
@@ -3256,7 +3257,7 @@ class test_grad(unittest.TestCase):
     def test_zero_gradient_shape(self):
         """Ensure that a zero gradient has the proper shape."""
         x = dmatrix()
-        f = theano.function([x], grad(dscalar(), x))
+        f = theano.function([x], grad(dscalar(), x, strict= False))
         a = numpy.ones((3, 7))
         self.assertTrue((f(a) == 0).all())  # Zero gradient.
         self.assertTrue(a.shape == f(a).shape)  # With proper shape.
