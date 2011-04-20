@@ -12,7 +12,6 @@ If you want to use scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 
-import operator
 import math
 from copy import copy
 
