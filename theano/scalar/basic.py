@@ -587,8 +587,8 @@ class ScalarOp(Op):
             if not isinstance(variables, (list, tuple)) or any(not isinstance(x, Type) for x in variables):
                 raise TypeError("output_types_preference should return a list or a tuple of types", self.output_types_preference, variables)
             if len(variables) != self.nout:
-                raise TypeError("Not the right number of outputs produced for %s(%s) by %s. Expected %s, got ?s."
-                                % (self, ", ".join(str(input.type) for input in inputs),
+                raise TypeError("Not the right number of outputs types produced for %s(%s) by %s. Expected %s, got %s."
+                                % (self, ", ".join(str(type) for type in variables),
                                    self.output_types_preference, self.nout, len(variables)))
             return variables
         else:
