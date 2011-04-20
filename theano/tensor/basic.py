@@ -4677,7 +4677,7 @@ outer = Outer()
 #########################
 
 def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
-         strict = True):
+         assume_continuously_differentiable = False):
     """
     :type cost: Scalar (0-dimensional) `Variable`
     :type wrt: `Variable` or list of `Variable`s.
@@ -4689,12 +4689,12 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
     :param warn_type: a value of True will cause warnings to be logged for any Op that emits a
         gradient that does not match its input type.
 
-    :param strict: flag that says if grad is strict about what it returns.
-        If set to true it will raise an exception for any argument in
+    :param assume_continuously_differentiable : flag that says if grad is strict about what it returns.
+        If set to false it will raise an exception for any argument in
         ``wrt`` for which there is no gradient either because some op does
         not know how to compute the gradient with respect to that argument
         or the argument is not part of the computational graph. If the flag
-        is set to false, the ``grad`` method returns zeros like the argument
+        is set to true, the ``grad`` method returns zeros like the argument
         ( i.e. it makes the assumption that the gradient should be 0).
 
     :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
@@ -4738,7 +4738,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
         wrt = [wrt]
     ret = []
     for p in wrt:
-        if p not in gmap and strict:
+        if p not in gmap and not assume_continuously_differentiable:
             raise ValueError(("grad method was asked to compute the graident "
                              "with respect to a variable that is not part of "
                              "the computational graph of the cost or is used "
@@ -5018,7 +5018,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
 
-    symbolic_grad = grad(cost, tensor_pt, g_cost, strict = False)
+    symbolic_grad = grad(cost, tensor_pt, g_cost,
+                         assume_continuously_differentiable = True)
     #if o_output.dtype in ['float32','float64']:
     #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
 
