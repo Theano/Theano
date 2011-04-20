@@ -1999,6 +1999,16 @@ class T_Scan(unittest.TestCase):
         conv = theano.tensor.signal.conv.conv2d(m1, m2)
 
 
+    def test_hash(self):
+        x = theano.tensor.vector()
+        y = theano.tensor.vector()
+        scan1,updates = theano.scan(lambda _x:_x+1, x )
+        scan2,updates = theano.scan(lambda _x:_x+1, y )
+        assert scan1.owner.op == scan2.owner.op
+        assert hash(scan1.owner.op) == hash(scan2.owner.op)
+
+
+
 if __name__ == '__main__':
     #'''
     print ' Use nosetests to run these tests '
