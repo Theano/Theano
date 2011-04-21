@@ -294,21 +294,29 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
         ival = numpy.asarray(ival)
         if i == 0:
             mean = numpy.array(ival, copy=True)
-            avg_std = numpy.std(ival)
+            #avg_std = numpy.std(ival)
+            avg_std = numpy.sqrt(numpy.mean((ival - target_avg)**2))
             min_ = ival.min()
             max_ = ival.max()
         else:
             alpha = 1.0 / (1+i)
             mean = alpha * ival + (1-alpha)*mean
-            avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
+            #avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
+            avg_std = alpha * numpy.sqrt(numpy.mean((ival - target_avg)**2)) + (1-alpha)*avg_std
             min_ = min(min_,ival.min())
             max_ = max(max_,ival.max())
         if not allow_01:
             assert min_ > 0
             assert max_ < 1
 
-    print prefix, 'mean', numpy.mean(mean)
-    assert abs(numpy.mean(mean) - target_avg) < mean_rtol, 'bad mean? %f %f'%(numpy.mean(mean), target_avg)
+    if hasattr(target_avg, 'shape'): # looks if target_avg is an array
+        diff = numpy.mean(abs(mean - target_avg))
+        print prefix, 'mean diff with mean', diff
+        assert diff < mean_rtol, 'bad mean? %f %f' % (mean, target_avg)
+    else: # if target_avg is a scalar, then we can do the mean of `mean` to get something more precise
+        mean = numpy.mean(mean)
+        print prefix, 'mean', mean
+        assert abs(mean - target_avg) < mean_rtol, 'bad mean? %f %f'%(numpy.mean(mean), target_avg)
     print prefix, 'std', avg_std
     if target_std is not None:
         assert abs(avg_std - target_std) < .01, 'bad std? %f %f'%(avg_std, target_std)
@@ -450,30 +458,32 @@ def test_binomial():
 def test_normal0():
 
     steps = 50
+    std = 2.
     if mode in ['DEBUG_MODE','DebugMode','FAST_COMPILE']:
         sample_size = (25,30)
-        rtol=.02
+        default_rtol=.02
     else:
         sample_size = (999,50)
-        rtol=.01
+        default_rtol=.01
     sample_size_odd = (sample_size[0],sample_size[1]-1)
     x = tensor.matrix()
-    for size, const_size, var_input, input in [
-            (sample_size, sample_size, [], []),
-            (x.shape, sample_size, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
-            (sample_size_odd, sample_size_odd, [], []),#test odd value
-            (x.shape, sample_size_odd, [x], [numpy.zeros(sample_size_odd, dtype=config.floatX)]),#test odd value
+    for size, const_size, var_input, input, avg, rtol in [
+            (sample_size, sample_size, [], [], -5., default_rtol),
+            (x.shape, sample_size, [x], [numpy.zeros(sample_size, dtype=config.floatX)], -5., default_rtol),
+            (sample_size_odd, sample_size_odd, [], [], -5., default_rtol),#test odd value
+            (x.shape, sample_size_odd, [x], [numpy.zeros(sample_size_odd, dtype=config.floatX)], -5., default_rtol),#test odd value
+            (sample_size, sample_size, [], [], numpy.arange(numpy.prod(sample_size), dtype='float32').reshape(sample_size), 10.*std/numpy.sqrt(steps)),
             ]:
         print ''
         print 'ON CPU:'
 
         R = MRG_RandomStreams(234, use_cuda=False)
-        n = R.normal(size=size, avg=-5.0, std=2.0)
+        n = R.normal(size=size, avg=avg, std=std)
         f = theano.function(var_input, n, mode=mode)
         theano.printing.debugprint(f)
         out  = f(*input)
         print 'random?[:10]\n', out[0,0:10]
-        basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+        basictest(f, steps, const_size, target_avg=avg, target_std=std, prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
 
         sys.stdout.flush()
 
@@ -481,7 +491,7 @@ def test_normal0():
             print ''
             print 'ON GPU:'
             R = MRG_RandomStreams(234, use_cuda=True)
-            n = R.normal(size=size, avg=-5.0, std=2.0, dtype='float32')
+            n = R.normal(size=size, avg=avg, std=std, dtype='float32')
             assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
             f = theano.function(var_input, theano.Out(
                 theano.sandbox.cuda.basic_ops.gpu_from_host(n),
@@ -493,7 +503,7 @@ def test_normal0():
             print 'random?[:10]\n', gpu_out[0,0:10]
             print '----'
             sys.stdout.flush()
-            basictest(f, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+            basictest(f, steps, const_size, target_avg=avg, target_std=std, prefix='gpu mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
             # Need to allow some rounding error as their is float
             # computation that are done on the gpu vs cpu
             assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
@@ -503,10 +513,10 @@ def test_normal0():
         print 'ON CPU w NUMPY:'
         RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
-        nn = RR.normal(size=size, avg=-5.0, std=2.0)
+        nn = RR.normal(size=size, avg=avg, std=std)
         ff = theano.function(var_input, nn)
 
-        basictest(ff, steps, const_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
+        basictest(ff, steps, const_size, target_avg=avg, target_std=std, prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_rtol=0.04):
 
