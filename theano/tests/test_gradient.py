@@ -4,6 +4,7 @@
 #
 import unittest
 import numpy
+import theano
 from theano import gof
 
 from theano.gradient import *
@@ -250,6 +251,15 @@ class test_grad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] == 6)
         self.assertTrue(g[a1.inputs[1]] == 11)
 
+def test_unimplemented_grad():
+    a = theano.tensor.vector()
+    b = theano.gradient.unimplemented_grad(theano.tensor.add, 1, a)
+    f = theano.function([a], b)
+    try:
+        f([1,2,3])
+        assert 0
+    except NotImplementedError:
+        pass
 
 if __name__ == '__main__':
     unittest.main()
