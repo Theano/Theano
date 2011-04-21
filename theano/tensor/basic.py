@@ -3753,7 +3753,7 @@ class Reshape(Op):
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int'):
-            raise TypeError("Shape must be integers")
+            raise TypeError("Shape must be integers", shp, shp.dtype)
         assert shp.ndim == 1
         if isinstance(shp, TensorConstant):
             bcast = [s==1 for s in shp.data]
