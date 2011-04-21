@@ -1,16 +1,24 @@
-"""Driver for general gradient calculations."""
+"""Driver for gradient calculations."""
+
+__authors__   = "James Bergstra"
+__copyright__ = "(c) 2011, Universite de Montreal"
+__license__   = "3-clause BSD License"
+__contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
+import logging
+_logger = logging.getLogger('theano.gradient')
 import sys
-import gof #, gof.variable
+
 import numpy #for numeric_grad
 
+import gof #, gof.variable
 from gof.python25 import all
 import gof.utils
 
-import logging
-_logger = logging.getLogger('theano.gradient')
+from raise_op import Raise
+
 def warning(*msg):
     _logger.warning('WARNING theano.gradient: '+' '.join(msg))
 def info(*msg):
@@ -106,4 +114,14 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     gmap[r] = g_r
     return gmap
 
+def unimplemented_grad(op, x_pos, x):
+    """
+    Return an un-computable symbolic variable of type `x.type`.
 
+    If any function tries to compute this un-computable variable, an exception
+    (NotImplementedError) will be raised indicating that the gradient on the
+    `x_pos`'th input of `op` has not been implemented.
+
+    """
+    msg = '%s.grad not implemented for input %i'%(op, x_pos)
+    return Raise(msg=msg)(x)

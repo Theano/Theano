@@ -62,22 +62,25 @@ class Scan(Op):
                         the scan op.
         """
         # adding properties into self
-        self.info    = info
         self.inputs  = inputs
         self.outputs = outputs
         self.__dict__.update(info)
+        # I keep a version of info in self, to use in __eq__ and __hash__,
+        # since info contains all tunable parameters of the op, so for two
+        # scan to be equal this tunable parameters should be the same
+        self.info = info
 
         # build a list of output types for any Apply node using this op.
-        info['output_types'] = []
+        self.output_types = []
         idx = 0
         jdx = 0
-        if info['gpu']:
+        if self.gpu:
             # mit_mot
             while idx < self.n_mit_mot_outs:
                 # Not that for mit_mot there are several output slices per
                 # output sequence
                 o     = outputs[idx]
-                info['output_types'].append(
+                self.output_types.append(
                     cuda.CudaNdarrayType(
                         broadcastable = (False,) + o.type.broadcastable))
                 idx += len(self.mit_mot_out_slices[jdx])
@@ -86,22 +89,22 @@ class Scan(Op):
             # mit_sot / sit_sot / nit_sot
             end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
             for o in outputs[idx:end]:
-                info['output_types'].append(
+                self.output_types.append(
                     cuda.CudaNdarrayType( broadcastable = (False,) +
                                     o.type.broadcastable))
             # shared outputs
             for o in outputs[end:]:
                 if isinstance(o.type, TensorType):
-                    info['output_types'].append(cuda.CudaNdarrayType(
+                    self.output_types.append(cuda.CudaNdarrayType(
                         broadcastable = o.type.broadcastable))
                 else:
-                    info['output_types'].append( o.type )
+                    self.output_types.append( o.type )
         else:
             while idx < self.n_mit_mot_outs:
                 # Not that for mit_mot there are several output slices per
                 # output sequence
                 o     = outputs[idx]
-                info['output_types'].append(
+                self.output_types.append(
                     TensorType(
                         broadcastable = (False,) + o.type.broadcastable
                         , dtype = o.type.dtype)
@@ -112,7 +115,7 @@ class Scan(Op):
             # mit_sot / sit_sot / nit_sot
             end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
             for o in outputs[idx:end]:
-                info['output_types'].append(
+                self.output_types.append(
                     TensorType(
                         broadcastable = (False,) + o.type.broadcastable
                         , dtype = o.type.dtype ))
@@ -120,50 +123,55 @@ class Scan(Op):
             for o in outputs[end:]:
                 if cuda.cuda_available and isinstance(o.type,
                                                       cuda.CudaNdarrayType):
-                    info['output_types'].append( TensorType(
+                    self.output_types.append( TensorType(
                         broadcastable = o.type.broadcastable
                         , dtype = theano.config.floatX) )
                 else:
-                    info['output_types'].append( o.type )
+                    self.output_types.append( o.type )
 
 
         self.destroy_map = {}
 
-        if 'inplace' in info and info['inplace']:
-            for idx in xrange(info['n_mit_mot'] + info['n_mit_sot'] +
-                              info['n_sit_sot'] ):
-                self.destroy_map[idx] = [idx + 1 + info['n_seqs']]
+        if hasattr(self,'inplace') and self.inplace:
+            for idx in xrange(self.n_mit_mot + self.n_mit_sot +
+                              self.n_sit_sot ):
+                self.destroy_map[idx] = [idx + 1 + self.n_seqs]
 
         # I consider all inputs of the inner function non mutable
         nonmutable = range(len(inputs))
 
-        mode_instance = compile.mode.get_mode(info['mode'])
+        mode_instance = compile.mode.get_mode(self.mode)
         # if the default mode is used, and that mode is ProfileMode
         # then we need to copy the mode otherwise the time for a given
         # op will be counted multiple times
-        if ( info['mode'] is None and
+        if ( self.mode is None and
             isinstance(mode_instance, compile.profilemode.ProfileMode) ):
             mode_instance = compile.profilemode.ProfileMode(
                 optimizer = mode_instance.provided_optimizer
                 , linker = mode_instance.provided_linker )
             compile.profilemode.prof_mode_instance_to_print.append(mode_instance)
-            info['mode_instance'] = mode_instance
+            self.mode_instance = mode_instance
             if self.name:
-                info['mode_instance'].message = self.name + " sub profile"
+                self.mode_instance.message = self.name + " sub profile"
             else:
-                info['mode_instance'].message = "Scan sub profile"
+                self.mode_instance.message = "Scan sub profile"
         else:
-            info['mode_instance'] = mode_instance
+            self.mode_instance = mode_instance
 
-        if 'name' not in info or info['name'] is None:
-            info['name'] = 'scan_fn'
+        if not hasattr(self,'name') or self.name is None:
+            self.name = 'scan_fn'
+        # to have a fair __eq__ comparison later on, we update the info with
+        # the actual mode used to compile the function and the name of the
+        # function that we set in case none was given
+        self.info['name'] = self.name
+        self.info['mode_instance'] = self.mode_instance
 
-        if isinstance(info['mode_instance'], compile.debugmode.DebugMode):
+        if isinstance(self.mode_instance, compile.debugmode.DebugMode):
             theano_fn = function(
                 inputs
                 , outputs
-                , mode = info['mode_instance']
-                , name = info['name'] )
+                , mode = self.mode_instance
+                , name = self.name )
 
             def fn_wrapper(ins_storage, outs_storage):
                 '''
@@ -188,20 +196,18 @@ class Scan(Op):
                             inputs
                             , outputs
                             , nonmutable
-                            , mode = info['mode_instance']
-                            , name = info['name']
-                            , slices = ( info['n_mit_mot_outs'] +
-                                         info['n_mit_sot'] +
-                                         info['n_sit_sot'] +
-                                         info['n_nit_sot'] )
+                            , mode = self.mode_instance
+                            , name = self.name
+                            , slices = ( self.n_mit_mot_outs +
+                                         self.n_mit_sot +
+                                         self.n_sit_sot +
+                                         self.n_nit_sot )
 
                             )
             # check for shared variables in the inputs
             assert not numpy.any( [isinstance(x, SharedVariable) for x
                            in self.fn.maker.inputs])
 
-        self.__dict__.update(info)
-        self.info = info
         # Pre-computing some values to speed up perform
         self.mintaps   = [ numpy.min(x) for x in self.tap_array]
         self.mintaps  += [ 0 for x in xrange(self.n_nit_sot) ]
@@ -214,6 +220,9 @@ class Scan(Op):
                                     self.n_shared_outs )
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
+        self._cmodule_key = gof.CLinker.cmodule_key_(self.fn.maker.env,[])
+        self._hash_inner_graph = hash(self._cmodule_key)
+
 
     def make_node(self, *inputs):
         assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
@@ -317,23 +326,31 @@ class Scan(Op):
 
         apply_node = Apply(self
                            , inputs
-                           , [t() for t in self.info['output_types']])
+                           , [t() for t in self.output_types])
         return apply_node
 
     def __eq__(self, other):
+        # Check if we are dealing with same type of objects
         if not type(self) == type(other):
             return False
+        # This are some safety checks ( namely that the inner graph has the
+        # same number of inputs and same number of outputs )
         elif not len(self.inputs) == len(other.inputs):
             return False
         elif not len(self.outputs) == len(other.outputs):
             return False
         else:
+            # If everything went OK up to here, there is still one thing to
+            # check. Namely, do the internal graph represent same
+            # computations
             for x,y in zip(self.inputs, other.inputs):
                 if not scan_utils.equal_computations(x,y):
                     return False
             for x,y in zip(self.outputs, other.outputs):
                 if not scan_utils.equal_computations(x,y):
                     return False
+            # If they do, then they need to match in other small details
+            # like name, mode, etc.
             return self.info == other.info
 
     def __str__(self):
@@ -354,8 +371,9 @@ class Scan(Op):
 
     def __hash__(self):
         return ( hash(type(self)) ^
-                scan_utils.hash_listsDictsTuples(self.inputs) ^
-                scan_utils.hash_listsDictsTuples(self.outputs) ^
+                # and a hash representing the inner graph using the
+                # CLinker.cmodule_key_
+                self._hash_inner_graph ^
                 scan_utils.hash_listsDictsTuples(self.info) )
 
 
@@ -427,7 +445,7 @@ class Scan(Op):
                 outs[idx][0] = args[self.seqs_arg_offset + idx].copy()
 
 
-        offset = self.nit_sot_arg_offset + self.n_nit_sot + self.n_other_ignore
+        offset = self.nit_sot_arg_offset + self.n_nit_sot
         other_args = args[offset:]
         zipped_outs = [(outs[idx], self.vector_outs[idx], tap,
                        store_steps[idx], idx) for idx in xrange(self.n_outs)
@@ -510,7 +528,7 @@ class Scan(Op):
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
                         outs[j][0].dtype != dtype ):
-                        if self.info['gpu']:
+                        if self.gpu:
                             outs[j][0] = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
                         else:
                             outs[j][0] = numpy.zeros(shape, dtype)
@@ -595,14 +613,14 @@ class Scan(Op):
             outs_shape += [ input_shapes[idx+offset] ]
 
         # non_sequences
-        offset += self.n_nit_sot + self.n_other_ignore + self.n_shared_outs
+        offset += self.n_nit_sot + self.n_shared_outs
         inner_ins_shapes = seqs_shape + outs_shape + input_shapes[offset:]
         assert len(inner_ins_shapes) == len(self.inputs)
 
         # Non-sequences have a direct equivalent from self.inputs in node.inputs
         inner_non_sequences = self.inputs[len(seqs_shape) + len(outs_shape):]
         out_equivalent = {}
-        for in_ns, out_ns in zip(inner_non_sequences, input_shapes[offset:]):
+        for in_ns, out_ns in zip(inner_non_sequences, node.inputs[offset:]):
             out_equivalent[in_ns] = out_ns
 
         outs_shape = scan_utils.infer_shape(
@@ -629,9 +647,9 @@ class Scan(Op):
                 # node.inputs, and constants, without using the variables
                 # in the inner function.
                 r = node.outputs[n_outs+x]
-                assert r.ndim == 1 + len(outs_shape[n_outs+x])
+                assert r.ndim == 1 + len(out_shape_x)
                 shp = [node.inputs[offset+self.n_shared_outs+x]]
-                for i, shp_i in zip(xrange(1,r.ndim), outs_shape[n_outs+x]):
+                for i, shp_i in zip(xrange(1,r.ndim), out_shape_x):
                     # Validate shp_i. v_shape_i is either None (if invalid),
                     # or a (variable, Boolean) tuple. The Boolean indicates
                     # whether variable is shp_i (if True), or an valid
@@ -940,10 +958,8 @@ class Scan(Op):
             info['name'] = None
         info['mode']                     = self.mode
         info['inplace']                  = False
-        info['n_other_ignore']           = 0
         n_mit_sot           = 0
         n_sit_sot           = 0
-        n_other_ignore_seqs = 0
         if self.truncate_gradient != -1 :
             do_steps = tensor.minimum(args[0], self.truncate_gradient)
         else:
@@ -955,8 +971,7 @@ class Scan(Op):
                   + self.n_mit_sot
                   + self.n_sit_sot
                   + self.n_nit_sot
-                  + self.n_shared_outs
-                  + self.n_other_ignore )
+                  + self.n_shared_outs )
 
         scan_inputs = ( [do_steps]                            +
                        scan_seqs                              +
@@ -999,7 +1014,6 @@ class Scan(Op):
         gradients += [ x[::-1] for x in outputs[:end]]
         gradients += [ None for x in xrange(self.n_shared_outs)]
         gradients += [ None for x in xrange(self.n_nit_sot) ]
-        gradients += [ None for x in xrange(self.n_other_ignore) ]
         begin = end + self.n_seqs
 
         end   = begin + n_shared_outs

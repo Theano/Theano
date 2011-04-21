@@ -787,13 +787,18 @@ class test_fusion(unittest.TestCase):
             (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
             (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),#55
             (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(-fzv),'float32'),
-#            (fx-fy+theano.tensor.iround(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),#TODO: trouble with the output type. To my understanding, numpy and c round fct return the same type as the input. Why we don't do this?
+            (fx-fy+theano.tensor.round(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),
+            (ix-iy+theano.tensor.iround(fz),(ix,iy,fz),(ixv,iyv,fzv),1,ixv-iyv+numpy.round(fzv),'int64'),
+            # Bit op
+            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv|izv),'float64'),
+            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv^izv),'float64'),#60
+            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv&izv),'float64'),
+            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,fxv-(~iyv),'float64'),
 
-            #TODO: BIT OP only with ints, xor, or, and, invert, cast
-#            (fx-theano.tensor.or_(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy|fz),'float32'),
-#            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
+            (fx-theano.tensor.cast(fy,dtype='float64'),(fx,fy),(fxv,fyv),1,
+                              fxv-numpy.asarray(fyv,'float64'),'float64'),
             (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
-            (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle
+            (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle #65
             (fv-fy+tensor.tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
 
             # Cases where the same input is reused many times.
@@ -2752,6 +2757,14 @@ def test_local_add_specialize():
     a = tensor.scalar()
     s = tensor.add(tensor.zeros_like(a))
     assert local_add_specialize.transform(s.owner)
+
+    # Test when the 0 input is forcing upcasting
+    a = tensor.constant(0, dtype='int64')
+    b = tensor.constant(1, dtype='int32')
+    s = a + b
+    transformed = local_add_specialize.transform(s.owner)
+    assert transformed
+    assert transformed[0].type == s.type
 
 def test_local_tensor_scalar_tensor():
     dtypes = ['int8', 'int16', 'int32', 'int64',

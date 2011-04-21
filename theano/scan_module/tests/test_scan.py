@@ -242,7 +242,11 @@ class T_Scan(unittest.TestCase):
         W_in = theano.tensor.fscalar('win')
         W    = theano.tensor.fscalar('w')
 
-        mode = theano.compile.mode.get_default_mode().including('gpu')
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        mode = mode.including('gpu','scan')
         # The following line is needed to have the first case being used
         # Otherwise, it is the second that is tested.
         mode = mode.excluding('InputToGpuOptimizer')
@@ -314,7 +318,11 @@ class T_Scan(unittest.TestCase):
         x0   = theano.tensor.fscalar('x0')
         W_in = theano.tensor.fscalar('win')
         W    = theano.tensor.fscalar('w')
-        mode = theano.compile.mode.get_default_mode().including('gpu')
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        mode = mode.including('gpu','scan')
         output, updates = theano.scan(f_rnn, u,x0,[W_in,W]
                                       , n_steps           = None
                                       , truncate_gradient = -1
@@ -1980,7 +1988,8 @@ class T_Scan(unittest.TestCase):
         self.assertTrue(nb_scan == 2)
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
-        self.assertTrue(nb_shape_i == 1)
+        if theano.config.mode != 'FAST_COMPILE':
+            self.assertTrue(nb_shape_i == 1)
 
     def test_bug_josh_reported(self):
         import theano
@@ -1988,6 +1997,16 @@ class T_Scan(unittest.TestCase):
         m1 = theano.tensor.matrix()
         m2 = theano.tensor.matrix()
         conv = theano.tensor.signal.conv.conv2d(m1, m2)
+
+
+    def test_hash(self):
+        x = theano.tensor.vector()
+        y = theano.tensor.vector()
+        scan1,updates = theano.scan(lambda _x:_x+1, x )
+        scan2,updates = theano.scan(lambda _x:_x+1, y )
+        assert scan1.owner.op == scan2.owner.op
+        assert hash(scan1.owner.op) == hash(scan2.owner.op)
+
 
 
 if __name__ == '__main__':

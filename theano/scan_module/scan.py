@@ -759,23 +759,14 @@ def scan( fn
             nit_sot_rightOrder.append( i )
             n_nit_sot += 1
 
-    ## Step 5.5 Sequences with no taps used
-    n_other_ignore    = 0
-    ignore_scan_seqs  = []
-    ignore_inner_seqs = []
-    for i,seq in enumerate(seqs):
-        if not 'taps' in seq:
-            ignore_scan_seqs.append(seq['input'])
-            n_other_ignore += 1
-
-    ## Step 5.6 all other arguments including extra inputs
+    ## Step 5.5 all other arguments including extra inputs
     other_scan_args  = []
     other_inner_args = []
 
     other_scan_args  += [ arg for arg in non_seqs
                         if not isinstance(arg, SharedVariable) ]
 
-    ## Step 5.8 all shared variables with no update rules
+    ## Step 5.6 all shared variables with no update rules
     def new_variable( v ):
         new_v = safe_new(v)
         if v.name:
@@ -805,7 +796,6 @@ def scan( fn
                     mit_sot_inner_inputs    +
                     sit_sot_inner_inputs    +
                     shared_inner_inputs     +
-                    ignore_inner_seqs       +
                     other_shared_inner_args +
                     other_inner_args        )
 
@@ -850,7 +840,6 @@ def scan( fn
     info['n_sit_sot']          = n_sit_sot
     info['n_shared_outs']      = n_shared_outs
     info['n_nit_sot']          = n_nit_sot
-    info['n_other_ignore']     = n_other_ignore
     info['truncate_gradient']  = truncate_gradient
     info['name']               = name
     info['mode']               = mode
@@ -876,7 +865,6 @@ def scan( fn
                    sit_sot_scan_inputs                           +
                    shared_scan_inputs                            +
                    [ actual_n_steps for x in xrange(n_nit_sot) ] +
-                   ignore_scan_seqs                              +
                    other_shared_scan_args                        +
                    other_scan_args                               )
 

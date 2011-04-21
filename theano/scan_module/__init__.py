@@ -81,7 +81,8 @@ optdb.register( 'scanOp_make_inplace'
                , opt.in2out(scan_make_inplace,ignore_newtrees=True)
                , 75
                , 'fast_run'
-               , 'inplace')
+               , 'inplace'
+               , 'scan')
 
 
 
@@ -512,7 +513,8 @@ class ScanSaveMem(gof.Optimizer):
 optdb.register( 'scanOp_save_mem'
                , ScanSaveMem()
                , 1.99
-               , 'fast_run')
+               , 'fast_run'
+               , 'scan')
 
 '''
 class ScanMerge(gof.Optimizer):
@@ -584,7 +586,8 @@ class ScanMerge(gof.Optimizer):
 optdb.register( 'scanOp_merge'
                , ScanMerge()
                , 2.39
-               , 'fast_run')
+               , 'fast_run'
+               , 'scan')
 '''
 
 
@@ -620,7 +623,7 @@ if cuda.cuda_available:
             return x
 
 
-    @register_opt()
+    @register_opt('scan')
     @local_optimizer([])
     def gpuScanOptimization(node):
         """
@@ -633,7 +636,19 @@ if cuda.cuda_available:
             host_input = node.inputs[0]
             if (host_input.owner and
                 isinstance(host_input.owner.op, scan_op.Scan) and
-                not host_input.owner.op.info['gpu']):
+                not host_input.owner.op.info['gpu'] and
+                len(host_input.owner.outputs) == 1 ):
+                # Note that we are not doing the right thing here !!
+                # This is because the local optimizer expects only one
+                # output that corresponds to the input of ``node``
+                # If we do this for each output seperately we will have
+                # multiple scan ops in the graph ( as many as outputs )
+                # and I'm not sure they will get merged into one again
+                # So for now I will just cover a limited case when there
+                # is only one output and the local optimizer can be used
+                # TODO (fix) : either make sure the different scans get
+                # merged or implement this optimization as a global
+                # optimization
                 thescan = host_input.owner.op
                 info = thescan.info.copy()
                 info['gpu'] = True
@@ -646,7 +661,7 @@ if cuda.cuda_available:
                      + thescan.n_shared_outs)
                 nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
                 b = e
-                e = e + thescan.n_nit_sot + thescan.n_other_ignore
+                e = e + thescan.n_nit_sot
                 nw_ins += inputs[b:e]
                 nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
                 scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
@@ -678,7 +693,7 @@ if cuda.cuda_available:
                      + thescan.n_shared_outs)
                 nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
                 b = e
-                e = e + thescan.n_nit_sot + thescan.n_other_ignore
+                e = e + thescan.n_nit_sot
                 nw_ins += inputs[b:e]
                 nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
 

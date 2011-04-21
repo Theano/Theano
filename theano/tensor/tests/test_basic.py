@@ -2447,6 +2447,42 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, g, a_val, b_val, c_val, bad_d_val, e_val)
         self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, bad_e_val)
 
+    def test_infer_shape_join(self):
+        x1 = matrix()
+        x2 = matrix()
+        x3 = matrix()
+
+        def get_mat(s1,s2):
+            return numpy.asarray( numpy.random.uniform(size=(s1,s2)),
+                                 dtype= config.floatX)
+
+        # Test dim 0
+        z = join(0,x1,x2,x3)
+        f = theano.function([x1,x2,x3], z.shape)
+        out = f( get_mat(3,4), get_mat(2,4), get_mat(1,4))
+        assert (out == [6,4]).all()
+
+        if theano.config.mode != 'FAST_COMPILE':
+            for node in f.maker.env.toposort():
+                assert not isinstance(node.op, tensor.Join)
+
+        # Test dim 1
+        z = join(1,x1,x2,x3)
+        f = theano.function([x1,x2,x3], z.shape)
+        out = f( get_mat(3,4), get_mat(3,4), get_mat(3,5))
+        assert (out == [3,13]).all()
+
+        if theano.config.mode != 'FAST_COMPILE':
+            for node in f.maker.env.toposort():
+                assert not isinstance(node.op, tensor.Join)
+
+        # Test hide error
+        if theano.config.mode in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']:
+            self.assertRaises(ValueError, f, get_mat(3,4), get_mat(3,4), get_mat(2,5))
+        else:
+            f(get_mat(3,4), get_mat(3,4), get_mat(2,5))
+
+
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):
@@ -3198,7 +3234,8 @@ class test_grad(unittest.TestCase):
         """grad: Test returning a single zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
-        g = grad(a1.outputs[0], a1.outputs[1])
+        g = grad(a1.outputs[0], a1.outputs[1],
+                 assume_continuously_differentiable = True)
         self.assertTrue(g.owner.op == fill)
         self.assertTrue(g.owner.inputs[1].data == 0)
         try:
@@ -3211,7 +3248,8 @@ class test_grad(unittest.TestCase):
         """grad: Test returning some zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
-        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')])
+        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')],
+                        assume_continuously_differentiable = True)
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
         self.assertTrue(g2.owner.op == fill)
@@ -3220,7 +3258,8 @@ class test_grad(unittest.TestCase):
     def test_zero_gradient_shape(self):
         """Ensure that a zero gradient has the proper shape."""
         x = dmatrix()
-        f = theano.function([x], grad(dscalar(), x))
+        f = theano.function([x], grad(dscalar(), x,
+                                      assume_continuously_differentiable= True))
         a = numpy.ones((3, 7))
         self.assertTrue((f(a) == 0).all())  # Zero gradient.
         self.assertTrue(a.shape == f(a).shape)  # With proper shape.
@@ -4158,15 +4197,37 @@ class test_broadcast(unittest.TestCase):
 
     def test_infer_shape(self):
         x = matrix()
-        y = addbroadcast(x,0)
+        y = addbroadcast(x, 0)
         f = theano.function([x], y.shape)
-        f(numpy.zeros((1,5), dtype=config.floatX))
+        assert (f(numpy.zeros((1,5), dtype=config.floatX)) == [1,5]).all()
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert len(topo) == 2
+            assert isinstance(topo[0].op, opt.Shape_i)
+            assert isinstance(topo[1].op, opt.MakeVector)
+
+        x = matrix()
+        y = unbroadcast(x, 0)
+        f = theano.function([x], y.shape)
+        assert (f(numpy.zeros((2,5), dtype=config.floatX)) == [2,5]).all()
         topo = f.maker.env.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 3
             assert isinstance(topo[0].op, opt.Shape_i)
             assert isinstance(topo[1].op, opt.Shape_i)
             assert isinstance(topo[2].op, opt.MakeVector)
+
+        x = row()
+        y = unbroadcast(x, 0)
+        f = theano.function([x], y.shape)
+        assert (f(numpy.zeros((1,5), dtype=config.floatX)) == [1,5]).all()
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert len(topo) == 2
+            assert isinstance(topo[0].op, opt.Shape_i)
+            assert isinstance(topo[1].op, opt.MakeVector)
+
+
 
 def test_mod():
     """

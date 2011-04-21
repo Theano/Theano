@@ -3292,7 +3292,16 @@ class Rebroadcast(Op):
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis]) for axis, value in self.axis.iteritems()])(gz),
     def infer_shape(self, node, ishapes):
-        return ishapes
+        assert len(ishapes)==1
+        l = []
+        one = constant(1)
+        for ax in range(len(ishapes[0])):
+            if self.axis.get(ax, False):
+                l.append(one)
+            else:
+                l.append(ishapes[0][ax])
+
+        return [tuple(l)]
 
 def addbroadcast(x, *axes):
     """
@@ -3476,6 +3485,51 @@ class Join(Op):
             raise ValueError("could not determine vector length")
         else:
             return node.owner.tag.shape_zero
+
+
+    def infer_shape(self, node, ishapes):
+        # Join op should get at least two inputs to join
+        assert len(ishapes) > 1
+        # Not sure this is needed anymore :( ... basically the apply_shape
+        # version of the apply node (i.e. the one defined in
+        # gof/apply_shape) calls infer_shape methods passing None to unknown
+        # inputs. It can handle NotImplementedError, so for now I just raise
+        # that whenever I get a None. Should we just remove gof/apply_shape
+        # if it is depricated ??
+        if ishapes[1] is None:
+            raise NotImplementedError
+        n_dim = len(ishapes[1])
+        for shape in ishapes[1:]:
+            if shape is None:
+                raise NotImplementedError
+            for shape_i in shape:
+                if shape_i is None:
+                    raise NotImplementedError
+            # at this point the inputs have been broadcasted so they should
+            # all have the same shape
+            assert len(shape) == n_dim
+
+        out_shapes = []
+        for dim in xrange(n_dim):
+            # we have to deal with 2 possible cases in here :
+            #   a) we are dealing with the dimension for which we join
+            #     (called t_side from true side of the if, where the if
+            #     compares current dimension with the joining dimension)
+            #   b) a non joining dimension ( in which maybe a symbolic
+            #      assertion can be used to make sure all tensors have
+            #      the same number of elements on this non-joined dimension
+            #      this is f_side
+            # initialize
+            t_side = ishapes[1][dim]
+            f_side = ishapes[1][dim]
+            # loop over tensors and sum for the joining dimension
+            for shape in ishapes[2:]:
+                t_side = t_side + shape[dim]
+            # return the dimensions found
+            out_shapes.append( switch(eq(dim, node.inputs[0]),
+                              t_side, f_side))
+
+        return [tuple(out_shapes)]
 
 @_redefine_asRoutine(Join())
 def join(axis, *tensors):
@@ -4622,7 +4676,8 @@ outer = Outer()
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
+def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
+         assume_continuously_differentiable = False):
     """
     :type cost: Scalar (0-dimensional) `Variable`
     :type wrt: `Variable` or list of `Variable`s.
@@ -4633,6 +4688,14 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
 
     :param warn_type: a value of True will cause warnings to be logged for any Op that emits a
         gradient that does not match its input type.
+
+    :param assume_continuously_differentiable : flag that says if grad is strict about what it returns.
+        If set to false it will raise an exception for any argument in
+        ``wrt`` for which there is no gradient either because some op does
+        not know how to compute the gradient with respect to that argument
+        or the argument is not part of the computational graph. If the flag
+        is set to true, the ``grad`` method returns zeros like the argument
+        ( i.e. it makes the assumption that the gradient should be 0).
 
     :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
 
@@ -4663,13 +4726,30 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
             list(inputs) + list(consider_constant),
             warn_type=warn_type)
 
-    # Note that it is important to use `zeros_like` when there is no gradient,
-    # instead of returning a scalar constant equal to zero. Otherwise we lose
-    # the guarantee that the gradient has same shape as `wrt`.
-    if isinstance(wrt, (list, tuple)):
-        return [gmap.get(p, zeros_like(p)) for p in wrt]
+
+    # Note : If p is not in gmap there can be several reasons, among which
+    # is the fact that p might not be part of the computational graph. A
+    # simple example is that for a+b for e.g. a[0] is not part of the graph,
+    # so Theano does not know how to compute TT.grad(TT.sum(a+b), a[0])
+    # such subtle cases can be fixed by a more careful implementation of the
+    # gradient, but for now Theano needs to throw an exception, and make the
+    # user aware that it does not know how to compute that gradient
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [wrt]
+    ret = []
+    for p in wrt:
+        if p not in gmap and not assume_continuously_differentiable:
+            raise ValueError(("grad method was asked to compute the graident "
+                             "with respect to a variable that is not part of "
+                             "the computational graph of the cost or is used "
+                             "by a non-differentiable operator "),p)
+        else:
+            ret.append(gmap.get(p, zeros_like(p)))
+
+    if len(ret) == 1:
+        return ret[0]
     else:
-        return gmap.get(wrt, zeros_like(wrt))
+        return ret
 
 class numeric_grad:
     """WRITEME"""
@@ -4938,7 +5018,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
 
-    symbolic_grad = grad(cost, tensor_pt, g_cost)
+    symbolic_grad = grad(cost, tensor_pt, g_cost,
+                         assume_continuously_differentiable = True)
     #if o_output.dtype in ['float32','float64']:
     #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
 

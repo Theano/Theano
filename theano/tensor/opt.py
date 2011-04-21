@@ -2742,10 +2742,10 @@ def local_add_specialize(node):
             new_inputs.append(input)
 
         if len(new_inputs) < len(node.inputs):
+            dtype = node.outputs[0].type.dtype
             if len(new_inputs) == 0:
                 #we got rid of the entire expression!
                 ndim = node.outputs[0].type.ndim
-                dtype = node.outputs[0].type.dtype
                 return fill_chain(
                         T.TensorConstant(
                             T.TensorType(
@@ -2754,9 +2754,14 @@ def local_add_specialize(node):
                             numpy.zeros((1,)*ndim, dtype=dtype)))
 
             if len(new_inputs) == 1:
-                return fill_chain(new_inputs[0])
+                ret = fill_chain(new_inputs[0])
             else:
-                return fill_chain(T.add(*new_inputs))
+                ret = fill_chain(T.add(*new_inputs))
+            # The dtype should not be changed. It can happen if the input
+            # that was forcing upcasting was equal to 0.
+            if ret[0].dtype != dtype:
+                ret = [T.cast(ret[0], dtype)]
+            return ret
     else:
         return False
 register_specialize(local_add_specialize)

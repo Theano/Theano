@@ -815,10 +815,10 @@ class MRG_RandomStreams(object):
         else:
             final_samples = normal_samples[:prod(size)]
 
-        final_samples = avg + std * final_samples
-
         if size:
             final_samples = final_samples.reshape(size)
+
+        final_samples = avg + std * final_samples
 
         return final_samples
 

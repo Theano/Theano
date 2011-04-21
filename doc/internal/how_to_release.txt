@@ -25,6 +25,7 @@ Edit ``setup.py`` to contain the newest version number ::
 
  * Change the ``version`` and ``release`` variables to new version number.
  * Change the upper copyright year to the current year if necessary.
+ * Update the year in the Theano/LICENSE.txt file.
 
 ``NEWS.txt`` usually contains the name and date of the release, change them
 too.
