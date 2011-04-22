@@ -628,9 +628,10 @@ class Scan(Op):
                 inputs = self.inputs,
                 input_shapes = inner_ins_shapes)
         # Will be used to check if outs_shape can be expressed without using
-        # variables in self.inputs
+        # variables in self.inputs.
+        # The shapes of node.inputs are valid.
         validator = scan_utils.Validator(
-                valid = [],
+                valid = input_shapes,
                 invalid = self.inputs,
                 valid_equivalent = out_equivalent)
 
