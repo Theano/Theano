@@ -571,6 +571,7 @@ class Scan(Op):
                     tmp[:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx]-pdx] = outs[idx][0][pdx:]
                     outs[idx][0][store_steps[idx]-pdx:] = tmp
+                    del tmp
                 else:
                     shape = (store_steps[idx]-pdx,) + outs[idx][0].shape[1:]
                     if cuda.cuda_available and isinstance( outs[idx][0],
@@ -581,6 +582,7 @@ class Scan(Op):
                     tmp[:] = outs[idx][0][pdx:]
                     outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx]-pdx] = tmp
+                    del tmp
 
 
         for idx,val in enumerate(self.mask):
