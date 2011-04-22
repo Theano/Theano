@@ -5,10 +5,10 @@ WARNING
 
 This directory is for the internal of Theano.
 
-You are strongly adviced to don't use it except if you know
-what you do!
+You are strongly advised not to use it, except if you know
+what you are doing!
 
-If you want to use scalar variable in a Theano graph,
+If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 
