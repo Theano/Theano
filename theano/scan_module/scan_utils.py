@@ -280,7 +280,8 @@ def scan_function( inputs
 
     for i,out in enumerate(env.outputs):
         if (out in env.inputs or
-            isinstance(out, tensor.Constant)):
+            isinstance(out, tensor.Constant) or
+            out in env.outputs[i+1:]):
             env.change_input('output', i, Clone()(out) )
 
 
@@ -290,7 +291,8 @@ def scan_function( inputs
         copied = False
         # do not allow outputs to be aliased
         for j in xrange(i+1, len(env.outputs)):
-            if env.outputs[j] in views_of_output_i:
+            if ( env.outputs[j] in views_of_output_i or
+                env.outputs[j] == env.outputs[i]):
                 mask[i] = 1
                 copied = True
                 break
