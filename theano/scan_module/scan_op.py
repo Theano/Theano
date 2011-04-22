@@ -269,7 +269,7 @@ class Scan(Op):
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
                                                , inputs[index].name
-                                               , idx
+                                               , index
                                                , inputs[index].dtype
                                                , self.inputs[index_i].name
                                                , self.inputs[index_i].dtype) )
@@ -277,7 +277,7 @@ class Scan(Op):
             for k in self.mit_mot_out_slices[index-start]:
                 if inputs[index].dtype != self.outputs[index_o].dtype:
                     raise ValueError(err_msg2%( inputs[index].name
-                                               , idx
+                                               , index
                                                , inputs[index].dtype
                                                , self.outputs[index_o].dtype) )
                 index_o += 1
@@ -289,7 +289,7 @@ class Scan(Op):
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
                                                , inputs[index].name
-                                               , idx
+                                               , index
                                                , inputs[index].dtype
                                                , self.inputs[index_i].name
                                                , self.inputs[index_i].dtype) )
@@ -310,7 +310,7 @@ class Scan(Op):
             if (hasattr(inputs[index],'dtype') and
                 inputs[index].dtype != self.outputs[index_o].dtype):
                 raise ValueError(err_msg2%( inputs[index].name
-                                           , idx
+                                           , index
                                            , inputs[index].dtype
                                            , self.outputs[index_o].dtype) )
             index   += 1
