@@ -71,7 +71,7 @@ AddConfigVar('home',
 #This expanduser works on windows (see discussion on theano-users, July 13 2010)
 
 AddConfigVar('nocleanup',
-        "suppress the deletion of code files that did not compile cleanly",
+        "Suppress the deletion of code files that did not compile cleanly",
         BoolParam(False))
 
 AddConfigVar('tensor.cmp_sloppy',

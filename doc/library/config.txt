@@ -296,10 +296,9 @@ import theano and print the config variable, as in:
 
     Default: False
 
-    Remove compiled file when not needed anymore.
-    This mean it remove file that he tried to compile but failed.
-    Set to True to keep the source file that failed to compile to
-    debug them.
+    If False, source code files are removed when they are not needed anymore.
+    This means files whose compilation failed are deleted.
+    Set to True to keep those files in order to debug compilation errors.
 
 .. attribute:: numpy.seterr_all
 
