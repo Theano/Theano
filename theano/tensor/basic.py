@@ -4748,10 +4748,10 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
     ret = []
     for p in wrt:
         if p not in gmap and not assume_continuously_differentiable:
-            raise ValueError(("grad method was asked to compute the graident "
+            raise ValueError(("grad method was asked to compute the gradient "
                              "with respect to a variable that is not part of "
-                             "the computational graph of the cost or is used "
-                             "by a non-differentiable operator "),p)
+                             "the computational graph of the cost, or is used "
+                             "by a non-differentiable operator"), p)
         else:
             ret.append(gmap.get(p, zeros_like(p)))
 
