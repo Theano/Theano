@@ -81,6 +81,36 @@ import gof
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
 
+# Use config.numpy to call numpy.seterr
+import numpy
+if config.numpy.seterr_all == 'None':
+    _all = None
+else:
+    _all = config.numpy.seterr_all
+if config.numpy.seterr_divide == 'None':
+    _divide = None
+else:
+    _divide = config.numpy.seterr_divide
+if config.numpy.seterr_over == 'None':
+    _over = None
+else:
+    _over = config.numpy.seterr_over
+if config.numpy.seterr_under == 'None':
+    _under = None
+else:
+    _under = config.numpy.seterr_under
+if config.numpy.seterr_invalid == 'None':
+    _invalid = None
+else:
+    _invalid = config.numpy.seterr_invalid
+numpy.seterr(
+        all=_all,
+        divide=_divide,
+        over=_over,
+        under=_under,
+        invalid=_invalid)
+del _all, _divide, _over, _under, _invalid
+
 ## import scalar_opt
 
 ### This is defined here because it is designed to work across symbolic datatypes
