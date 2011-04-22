@@ -38,11 +38,11 @@ output.
 Shape inference problem
 =======================
 
-Theano do shape information propagation in the graph. Sometimes this
-can had error. Example:
+Theano propagates shape information in the graph. Sometimes this
+can lead to errors. For example:
 
 .. code-block:: python
-   
+
    import numpy
    import theano
    x = theano.tensor.matrix('x')
@@ -71,10 +71,10 @@ can had error. Example:
    # |Shape_i{1} [@55959184] ''   0
    # | |<TensorType(float64, matrix)> [@55583888]
 
-   print f(xv,yv)# DONT RAISE AN ERROR AS SHOULD BE.
+   print f(xv,yv)# DOES NOT RAISE AN ERROR AS SHOULD BE.
    #[8,4]
 
-   f = theano.function([x,y], z)# Don't take the shape.
+   f = theano.function([x,y], z)# Do not take the shape.
    theano.printing.debugprint(f)
    #Join [@44540496] ''   0
    # |0 [@44540432]
@@ -84,22 +84,25 @@ can had error. Example:
    f(xv,yv)
    # Raise a dimensions mismatch error.
 
-As you see, when you ask for the shape of some computation(join in the
-example), we sometimes compute the shape without executing the
-computation(there is no join in the first output or debugprint).
+As you see, when you ask for the shape of some computation (join in the
+example), we sometimes compute an inferred shape directly, without executing
+the computation itself (there is no join in the first output or debugprint).
 
-This make the computation of the shape faster, but can hide error. In
+This makes the computation of the shape faster, but it can hide errors. In
 the example, the computation of the shape of join is done on the first
 theano variable in the join, not on the other.
 
 This can probably happen with many other op as elemwise, dot, ...
+Indeed, to make some optimizations (for speed or stability, for instance),
+Theano can assume that the computation is correct and consistent
+in the first place, this is the case here.
 
 You can detect those problem by running the code without this
-optimization with the theano flag
+optimization, with the Theano flag
 `optimizer_excluding=local_shape_to_shape_i`. You can also have the
-same effect by running in the mode FAST_COMPILE(won't apply this
-optimization and most other optimization too) or DEBUG_MODE(will test
-before and after all optimizations(much slower)).
+same effect by running in the mode FAST_COMPILE (it will not apply this
+optimization, nor most other optimizations) or DEBUG_MODE (it will test
+before and after all optimizations (much slower)).
 
 
 Specifing exact shape
