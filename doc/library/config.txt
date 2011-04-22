@@ -301,3 +301,61 @@ import theano and print the config variable, as in:
     Set to True to keep the source file that failed to compile to
     debug them.
 
+.. attribute:: numpy.seterr_all
+
+    String Value: `'ignore'`, `'warn'`, `'raise'`, `'call'`, `'print'`,
+        `'log'`, `'None'`
+
+    Default: `'ignore'`
+
+    Set the default behaviour described by `numpy.seterr
+    <http://docs.scipy.org/doc/numpy/reference/generated/numpy.seterr.html>`__.
+
+    `'None'` means that numpy's default behaviour will not be changed (unless
+    one of the other `numpy.seterr_*` overrides it), but this behaviour
+    can change between numpy releases.
+
+    This flag sets the default behaviour for all kinds of floating-pont
+    errors, and it can be overriden for specific errors by setting one
+    (or more) of the flags below.
+
+.. attribute:: numpy.seterr_divide
+
+    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
+         `'print'`, `'log'`
+
+    Default: `'None'`
+
+    Sets numpy's behavior for division by zero. 'None' means using the
+    default, defined by numpy.seterr_all.
+
+.. attribute:: numpy.seterr_over
+
+    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
+         `'print'`, `'log'`
+
+    Default: `'None'`
+
+    Sets numpy's behavior for floating-point overflow. 'None' means
+    using the default, defined by numpy.seterr_all.
+
+.. attribute:: numpy.seterr_under
+
+    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
+         `'print'`, `'log'`
+
+    Default: `'None'`
+
+    Sets numpy's behavior for floating-point underflow. 'None' means
+    using the default, defined by numpy.seterr_all.
+
+.. attribute:: numpy.seterr_invalid
+
+    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
+         `'print'`, `'log'`
+
+    Default: `'None'`
+
+    Sets numpy's behavior for invalid floating-point operation. 'None'
+    means using the default, defined by numpy.seterr_all.
+
