@@ -2787,11 +2787,6 @@ def test_local_tensor_scalar_tensor():
         assert len(cast_nodes) == 0
         f(0)
 
-@dec.knownfailureif(
-        isinstance(theano.compile.mode.get_default_mode(),
-            theano.compile.debugmode.DebugMode),
-        ("This test fails in DEBUG_MODE, but the generated code is OK. "
-         "It is actually a problem of DEBUG_MODE, see #624."))
 def test_local_scalar_tensor_scalar():
     dtypes = ['int8', 'int16', 'int32', 'int64',
             'uint8', 'uint16', 'uint32', 'uint64',

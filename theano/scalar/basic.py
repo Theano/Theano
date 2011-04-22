@@ -103,7 +103,7 @@ class Scalar(Type):
             raise TypeError("Could not convert %s (value=%s) to %s" % (type(data), data, self.dtype), e)
 
     def values_eq_approx(self, a, b, tolerance = 1e-4):
-        return abs(a - b) / (a+b) < tolerance
+        return abs(a - b) <= ((abs(a)+abs(b)) * tolerance)
 
     def c_headers(self):
         l=['<math.h>']
