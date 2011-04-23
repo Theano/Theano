@@ -226,6 +226,7 @@ class In(SymbolicInput):
                 autoname=autoname,
                 implicit=implicit)
         self.value = value
+        self.borrow = borrow
         if self.implicit and value is None:
             raise TypeError('An implicit input must be given a default value')
 
