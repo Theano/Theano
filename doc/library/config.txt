@@ -300,18 +300,23 @@ import theano and print the config variable, as in:
     This means files whose compilation failed are deleted.
     Set to True to keep those files in order to debug compilation errors.
 
-.. attribute:: numpy.seterr_all
+.. attribute:: config.DebugMode
 
-    String Value: `'ignore'`, `'warn'`, `'raise'`, `'call'`, `'print'`,
-        `'log'`, `'None'`
+    This section contains various attributes configuring the behaviour
+    of mode :class:`~debugmode.DebugMode`.
 
-    Default: `'ignore'`
+.. attribute:: config.numpy.seterr_all
+
+    String Value: ``'ignore'``, ``'warn'``, ``'raise'``, ``'call'``,
+    ``'print'``, ``'log'``, ``'None'``
+
+    Default: ``'ignore'``
 
     Set the default behaviour described by `numpy.seterr
     <http://docs.scipy.org/doc/numpy/reference/generated/numpy.seterr.html>`__.
 
-    `'None'` means that numpy's default behaviour will not be changed (unless
-    one of the other `numpy.seterr_*` overrides it), but this behaviour
+    ``'None'`` means that numpy's default behaviour will not be changed (unless
+    one of the other `config.numpy.seterr_*` overrides it), but this behaviour
     can change between numpy releases.
 
     This flag sets the default behaviour for all kinds of floating-pont
@@ -320,50 +325,50 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
-.. attribute:: numpy.seterr_divide
+.. attribute:: config.numpy.seterr_divide
 
-    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
-         `'print'`, `'log'`
+    String Value: ``'None'``, ``'ignore'``, ``'warn'``, ``'raise'``,
+    ``'call'``, ``'print'``, ``'log'``
 
-    Default: `'None'`
+    Default: ``'None'``
 
-    Sets numpy's behavior for division by zero. 'None' means using the
-    default, defined by numpy.seterr_all.
-
-    This flag's value cannot be modified during the program execution.
-
-.. attribute:: numpy.seterr_over
-
-    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
-         `'print'`, `'log'`
-
-    Default: `'None'`
-
-    Sets numpy's behavior for floating-point overflow. 'None' means
-    using the default, defined by numpy.seterr_all.
+    Sets numpy's behavior for division by zero. ``'None'`` means using the
+    default, defined by config.numpy.seterr_all.
 
     This flag's value cannot be modified during the program execution.
 
-.. attribute:: numpy.seterr_under
+.. attribute:: config.numpy.seterr_over
 
-    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
-         `'print'`, `'log'`
+    String Value: ``'None'``, ``'ignore'``, ``'warn'``, ``'raise'``,
+    ``'call'``, ``'print'``, ``'log'``
 
-    Default: `'None'`
+    Default: ``'None'``
 
-    Sets numpy's behavior for floating-point underflow. 'None' means
-    using the default, defined by numpy.seterr_all.
+    Sets numpy's behavior for floating-point overflow. ``'None'`` means
+    using the default, defined by config.numpy.seterr_all.
+
+    This flag's value cannot be modified during the program execution.
+
+.. attribute:: config.numpy.seterr_under
+
+    String Value: ``'None'``, ``'ignore'``, ``'warn'``, ``'raise'``,
+    ``'call'``, ``'print'``, ``'log'``
+
+    Default: ``'None'``
+
+    Sets numpy's behavior for floating-point underflow. ``'None'`` means
+    using the default, defined by config.numpy.seterr_all.
 
     This flag's value cannot be modified during the program execution.
 
 .. attribute:: numpy.seterr_invalid
 
-    String Value: `'None'`, `'ignore'`, `'warn'`, `'raise'`, `'call'`,
-         `'print'`, `'log'`
+    String Value: ``'None'``, ``'ignore'``, ``'warn'``, ``'raise'``,
+    ``'call'``, ``'print'``, ``'log'``
 
-    Default: `'None'`
+    Default: ``'None'``
 
-    Sets numpy's behavior for invalid floating-point operation. 'None'
-    means using the default, defined by numpy.seterr_all.
+    Sets numpy's behavior for invalid floating-point operation. ``'None'``
+    means using the default, defined by :attr:`config.numpy.seterr_all`.
 
     This flag's value cannot be modified during the program execution.
