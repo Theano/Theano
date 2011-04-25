@@ -164,6 +164,11 @@ class In(SymbolicInput):
         True: permit the compiled function to modify the python object being passed as the input
         False: do not permit the compiled function to modify the python object being passed as the input.
 
+    borrow: Bool (default: False if update is None, True if update is not None)
+        True: permit the output of the compiled function to be aliased to the input
+        False: do not permit any output to be aliased to the input
+
+
     strict: Bool (default: False)
         True: means that the value you pass for this input must have exactly the right type
         False: the value you pass for this input may be cast automatically to the proper type

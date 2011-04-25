@@ -244,7 +244,7 @@ def rebuild_collect_shared( outputs
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False,
-            strict=False, allow_downcast=None, implicit=None):
+            strict=False, allow_downcast=None, implicit=None, borrow = False):
         """
         :param variable: A variable in an expression graph to use as a compiled-function parameter
 
@@ -255,6 +255,11 @@ class Param(object):
 
         :param mutable: True -> function is allowed to modify this argument.
 
+        :param borrow: True -> function is allowed to alias some output to
+                       this input
+
+
+        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or casted to match the
         type required by the parameter `variable`.  True -> function arguments must exactly match the type
         required by `variable`.
@@ -274,6 +279,7 @@ class Param(object):
         self.strict = strict
         self.allow_downcast = allow_downcast
         self.implicit = implicit
+        self.borrow = borrow
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         no_default_updates=False, accept_inplace=False, name=None,
@@ -396,6 +402,7 @@ def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
                 value=param.default,
                 mutable=param.mutable,
                 strict=param.strict,
+                borrow = param.borrow,
                 allow_downcast=param.allow_downcast,
                 implicit = param.implicit)
     raise TypeError('Unknown parameter type: %s' % type(param))
