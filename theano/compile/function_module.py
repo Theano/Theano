@@ -210,6 +210,11 @@ class ViewOp(theano.gof.Op):
     def perform( self, node, args, outs):
         outs[0][0] = args[0]
 
+    def infer_shape(self, node, input_shapes):
+        return input_shapes
+
+    def grad(self, args, g_outs):
+        return g_outs
 
 deep_copy_op = DeepCopyOp()
 view_op      = ViewOp()
