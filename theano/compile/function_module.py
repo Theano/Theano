@@ -811,7 +811,6 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
                     continue
                 if input_j in updated_env_inputs:
                     continue
-                # We could don't put deep_copy_op if the input and the output have borrow==True
                 if input_j in views_of_output_i:
                     # We don't put deep_copy_op if the input and the output have borrow==True
                     if input_j in env.inputs:
