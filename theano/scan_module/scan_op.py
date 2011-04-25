@@ -18,7 +18,8 @@ import logging
 import numpy
 import sys
 
-from theano.compile import SharedVariable, function, Param
+from theano.compile import SharedVariable, function, Param, Out
+from theano.compile.function_module import ViewOp, DeepCopyOp
 from theano import compile
 from theano import gradient
 from theano.gof.python25 import all
@@ -166,47 +167,25 @@ class Scan(Op):
         self.info['name'] = self.name
         self.info['mode_instance'] = self.mode_instance
 
-        if isinstance(self.mode_instance, compile.debugmode.DebugMode):
-            theano_fn = function(
-                inputs
-                , outputs
-                , mode = self.mode_instance
-                , name = self.name )
+        wrapped_inputs  = [Param(x,borrow=True) for x in inputs ]
+        wrapped_outputs = [Out(x, borrow=True) for x in outputs ]
+        self.fn = function(wrapped_inputs,
+                           wrapped_outputs,
+                           mode = self.mode_instance,
+                           name = self.name )
+        self.mask = [ 0 for x in xrange(self.n_shared_outs) ]
+        # If a shared variable is the result of a ViewOp it is a clear
+        # indication that we need to copy that value after the perform of
+        # scan is done
+        slices = ( self.n_mit_mot_outs +
+                  self.n_mit_sot +
+                  self.n_sit_sot +
+                  self.n_nit_sot )
+        for i in xrange(slices, slices+self.n_shared_outs):
+            if isinstance(self.fn.maker.env.outputs[i].owner.op,
+                          ViewOp):
+                self.mask[i-slices] = 1
 
-            def fn_wrapper(ins_storage, outs_storage):
-                '''
-                 Wrap theano_fn to have same interface as scan_utils's
-                 scan_function
-                '''
-                outputs = theano_fn(*ins_storage)
-                for (out,out_storage) in zip( outputs, outs_storage):
-                    if out_storage[0] is not None and out_storage[0].shape:
-                        out_storage[0][:] = out
-                    elif out_storage[0] is not None:
-                        out_storage[0].itemset(out)
-                return [[o] for o in outputs ]
-            self.fn               = fn_wrapper
-            self.fn.maker         = scan_utils.EmptyObject()
-            self.fn.maker.inputs  = inputs
-            self.fn.maker.outputs = outputs
-            self.fn.maker.env     = theano_fn.maker.env
-            self.mask = [ 0 for x in xrange(self.n_shared_outs)]
-        else:
-            self.mask, self.fn = scan_utils.scan_function(
-                            inputs
-                            , outputs
-                            , nonmutable
-                            , mode = self.mode_instance
-                            , name = self.name
-                            , slices = ( self.n_mit_mot_outs +
-                                         self.n_mit_sot +
-                                         self.n_sit_sot +
-                                         self.n_nit_sot )
-
-                            )
-            # check for shared variables in the inputs
-            assert not numpy.any( [isinstance(x, SharedVariable) for x
-                           in self.fn.maker.inputs])
 
         # Pre-computing some values to speed up perform
         self.mintaps   = [ numpy.min(x) for x in self.tap_array]
@@ -406,10 +385,8 @@ class Scan(Op):
         if n_steps < 0:
             n_steps = abs(n_steps)
             seqs = [ seq[::-1] for seq in args[1:self.seqs_arg_offset]]
-            seqs = zip( seqs, self.vector_seqs )
         else:
             seqs = args[1:self.seqs_arg_offset]
-            seqs = zip( seqs, self.vector_seqs )
 
         # 2. Allocate memory for the outputs. Construct the list:
         #       store_steps  -- map containting the length of each output
@@ -447,62 +424,81 @@ class Scan(Op):
 
         offset = self.nit_sot_arg_offset + self.n_nit_sot
         other_args = args[offset:]
-        zipped_outs = [(outs[idx], self.vector_outs[idx], tap,
-                       store_steps[idx], idx) for idx in xrange(self.n_outs)
-                       for tap in self.tap_array[idx] ]
-        end = self.n_outs + self.n_nit_sot
-        sot_outs = zip( outs[self.n_mit_mot:end]
-                       , self.vector_outs[self.n_mit_mot:end]
-                       , store_steps[self.n_mit_mot:end]
-                       , range(self.n_mit_mot, end ))
+        input_storage = self.fn.input_storage
+        output_storage = self.fn.output_storage
+        fn = self.fn.fn
+        offset = ( self.n_seqs + sum(map(len, self.tap_array[:self.n_outs])) +
+                    self.n_shared_outs)
+        for idx in xrange(len(other_args)):
+            input_storage[idx+offset].storage[0] = other_args[idx]
 
         ############## THE MAIN LOOP #########################
         for i in xrange(n_steps):
             # sequences over which scan iterates
             # 3. collect input slices
-            if i == 1 and self.n_nit_sot > 0 :
-                sot_outs = zip( outs[self.n_mit_mot:end]
-                               , self.vector_outs[self.n_mit_mot:end]
-                               , store_steps[self.n_mit_mot:end]
-                               , range(self.n_mit_mot, end ))
+            for idx in xrange(self.n_seqs):
+                if self.vector_seqs[idx]:
+                    input_storage[idx].storage[0] = seqs[idx][i:i+1].reshape(())
+                else:
+                    input_storage[idx].storage[0] = seqs[idx][i]
+
+            offset = self.n_seqs
+            for idx in xrange(self.n_outs):
+                if self.vector_outs[idx]:
+                    for tap in self.tap_array[idx]:
+                        _idx = (pos[idx]+tap)%store_steps[idx]
+                        input_storage[offset].storage[0] =\
+                                outs[idx][0][_idx:_idx+1].reshape(())
+                        offset += 1
+                else:
+                    for tap in self.tap_array[idx]:
+                        _idx = (pos[idx]+tap)%store_steps[idx]
+                        input_storage[offset].storage[0] = outs[idx][0][_idx]
+                        offset += 1
 
 
-            fn_args = [ seq[i:i+1].reshape(()) if c else seq[i]
-                               for seq,c in seqs]
-
-            fn_args += [ out[0][(pos[j]+tap)%sz:
-                                (pos[j]+tap)%sz+1].reshape(())
-                        if c else out[0][(pos[j]+tap)%sz]
-                        for (out, c, tap, sz, j) in zipped_outs ]
             a_offset = self.shared_arg_offset
             o_offset = self.n_outs + self.n_nit_sot
-            fn_args += [ args[a_offset+j] if i==0 else outs[o_offset+j][0]
-                        for j in xrange(self.n_shared_outs) ]
-
-            fn_args += other_args
+            if i == 0:
+                for j in xrange(self.n_shared_outs):
+                    input_storage[offset].storage[0] = args[a_offset+j]
+                    offset += 1
+            else:
+                for j in xrange(self.n_shared_outs):
+                    input_storage[offset].storage[0] = outs[o_offset+j][0]
+                    offset += 1
 
             # 4. collecting slices where the output should be stored
-            fn_out_storage = [ [None] for x in xrange(self.n_mit_mot_outs)]
-            if i == 0 and self.n_nit_sot > 0:
-                fn_out_storage += [
-                    [None] if store == 1 or c else [out[0][pos[j]]]
-                    for out,c,store,j in sot_outs[:-self.n_nit_sot] ]
-                fn_out_storage += [[None]]*self.n_nit_sot
+            for idx in xrange(self.n_mit_mot_outs):
+                output_storage[idx].storage[0] = None
+
+            offset = self.n_mit_mot_outs
+            if i !=0 and self.n_nit_sot >0:
+                for idx in xrange(self.n_outs + self.n_nit_sot -
+                                  self.n_mit_mot):
+                    if ( store_steps[idx+self.n_mit_mot] == 1 or
+                        self.vector_outs[idx+self.n_mit_mot]):
+                        output_storage[idx+offset].storage[0] = None
+                    else:
+                        output_storage[idx+offset].storage[0] =\
+                            outs[idx+self.n_mit_mot][0][pos[idx+self.n_mit_mot]]
             else:
-                fn_out_storage += [
-                    [ None ] if store == 1 or c else [out[0][pos[j]]]
-                    for out,c,store,j in sot_outs ]
+                for idx in xrange(self.n_outs + self.n_nit_sot -
+                                  self.n_mit_mot):
+                    output_storage[idx+offset].storage[0] = None
 
-            fn_out_storage += [ [None] for x in xrange(self.n_shared_outs) ]
-
+            offset += self.n_outs+self.n_nit_sot - self.n_mit_mot
+            for idx in xrange(self.n_shared_outs):
+                output_storage[idx+offset].storage[0] = None
 
             # 5. compute outputs
-            something = self.fn(fn_args, fn_out_storage)
+            fn()
+
             offset_out = 0
             # 5.1 Copy over the values for mit_mot outputs
             for j in xrange(self.n_mit_mot):
                 for k in self.mit_mot_out_slices[j]:
-                    outs[j][0][k+pos[j]] = something[offset_out][0]
+                    outs[j][0][k+pos[j]] = output_storage[offset_out].storage[0]
                     offset_out += 1
 
             # 5.2 Copy over the values for mit_sot/sit_sot outputs
@@ -511,8 +507,10 @@ class Scan(Op):
             offset_out -= self.n_mit_mot
 
             for j in xrange(begin, end):
-                if store_steps[j] == 1 or self.vector_outs[j]:
-                    outs[j][0][pos[j]] =  something[offset_out+j][0]
+                if ( store_steps[j] == 1 or self.vector_outs[j] or
+                    outs[j][0][pos[j]] is not output_storage[offset_out+j].storage[0]):
+
+                    outs[j][0][pos[j]] = output_storage[offset_out+j].storage[0]
 
             # 5.3 Copy over the values for nit_sot outputs
             begin  = end
@@ -520,10 +518,10 @@ class Scan(Op):
             for j in xrange(begin,end):
                 if i == 0:
                     jout = j+offset_out
-                    shape = (store_steps[j],) + something[jout][0].shape
-                    if len(something[jout][0].shape) == 0:
+                    shape = (store_steps[j],) + output_storage[jout].storage[0].shape
+                    if len(output_storage[jout].storage[0].shape) == 0:
                         self.vector_outs[j] = True
-                    dtype = something[jout][0].dtype
+                    dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
@@ -534,9 +532,10 @@ class Scan(Op):
                             outs[j][0] = numpy.zeros(shape, dtype)
                     elif outs[j][0].shape[0] != store_steps[j]:
                         outs[j][0] = outs[j][0][:store_steps[j]]
-                    outs[j][0][pos[j]] = something[jout][0]
-                elif store_steps[j] == 1 or self.vector_outs[j]:
-                    outs[j][0][pos[j]] = something[j+offset_out][0]
+                    outs[j][0][pos[j]] = output_storage[jout].storage[0]
+                elif (store_steps[j] == 1 or self.vector_outs[j] or
+                      outs[j][0][pos[j]] is not output_storage[j+offset_out].storage[0]):
+                    outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
 
 
             # 5.4 Copy over the values for outputs corresponding to shared
@@ -545,7 +544,7 @@ class Scan(Op):
             end   += self.n_shared_outs
             for j in xrange(begin,end):
                 jout = j +offset_out
-                outs[j][0] = something[jout][0]
+                outs[j][0] = output_storage[jout].storage[0]
 
             pos = [ (idx+1)%store for idx,store in
                                itertools.izip(pos, store_steps)
