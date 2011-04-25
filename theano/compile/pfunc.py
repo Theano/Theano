@@ -276,6 +276,11 @@ class Param(object):
         self.default = default
         self.name = name
         self.mutable = mutable
+        # Mutable implies borrow. You can get borrow = False because of the
+        # default and it is a bit annoying to require the user to set both
+        # borrow and mutable to True
+        if mutable:
+            borrow = True
         self.strict = strict
         self.allow_downcast = allow_downcast
         self.implicit = implicit
