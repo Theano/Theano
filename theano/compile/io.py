@@ -199,7 +199,7 @@ class In(SymbolicInput):
     def __init__(self, variable, name=None, value=None, update=None,
             mutable=None, strict=False, allow_downcast=None, autoname=True,
             implicit=None, borrow=None):
-        
+
         # mutable implies the output can be both aliased to the input and that the input can be
         # destroyed. borrow simply implies the output can be aliased to the input. Thus
         # mutable=True should require borrow=True. Raise warning when borrow is explicitely set
@@ -215,7 +215,7 @@ class In(SymbolicInput):
 
         # borrow=None basically means False. We can't set default value to False because of the
         # above business with  mutable.
-        if borrow is None: 
+        if borrow is None:
             borrow = False
 
         if implicit is None:
