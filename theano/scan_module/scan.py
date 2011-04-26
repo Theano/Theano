@@ -467,9 +467,14 @@ def scan( fn
                          'n_steps argument of scan or provide an input '
                          'sequence')
 
-    actual_n_steps = lengths_vec[0]
-    for contestant in lengths_vec[1:]:
-        actual_n_steps = tensor.minimum(actual_n_steps, contestant)
+    # If the user has provided the number of steps, do that regardless ( and
+    # raise an error if the sequences are not long enough )
+    if scan_utils.check_NaN_Inf_None(n_steps):
+        actual_n_steps = lengths_vec[0]
+        for contestant in lengths_vec[1:]:
+            actual_n_steps = tensor.minimum(actual_n_steps, contestant)
+    else:
+        actual_n_steps = tensor.as_tensor(n_steps)
 
     # Add names -- it helps a lot when debugging
     for (nw_seq, seq) in zip(scan_seqs, seqs):

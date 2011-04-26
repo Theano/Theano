@@ -381,12 +381,26 @@ class Scan(Op):
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
         n_steps  = args[0]
-
+        seqs = []
         if n_steps < 0:
             n_steps = abs(n_steps)
-            seqs = [ seq[::-1] for seq in args[1:self.seqs_arg_offset]]
+            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
+                if seq.shape[0] < n_steps:
+                    raise ValueError(('Sequence is shorter then the required '
+                                     'number of steps : (n_steps, seq, '
+                                      'seq.shape):'), n_steps,
+                                      node.inputs[1+idx],
+                                      seq.shape)
+                seqs.append(seq[::-1])
         else:
-            seqs = args[1:self.seqs_arg_offset]
+            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
+                if seq.shape[0] < n_steps:
+                    raise ValueError(('Sequence is shorter then the required '
+                                     'number of steps : (n_steps, seq, '
+                                      'seq.shape):'), n_steps,
+                                      node.inputs[1+idx],
+                                      seq.shape)
+                seqs.append(seq)
 
         # 2. Allocate memory for the outputs. Construct the list:
         #       store_steps  -- map containting the length of each output
