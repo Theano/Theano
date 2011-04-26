@@ -433,7 +433,7 @@ def pydotprint(fct, outfile=None,
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
                                config.device + '.' + format)
 
-    if isinstance(fct, (Function, theano.scan_module.scan_utils.ScanInnerFunction)):
+    if isinstance(fct, Function):
         mode = fct.maker.mode
         fct_env  = fct.maker.env
         if not isinstance(mode,ProfileMode) or not mode.fct_call.has_key(fct):
