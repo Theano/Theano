@@ -2637,20 +2637,20 @@ def test_make_vector():
         assert mv.dtype == dtype
         f = theano.function([b,i,d], mv)
         f_val = f(val[b], val[i], val[d])
-        print 'f_val =', f_val
+        #print 'f_val =', f_val
 
 
         s = mv.sum()
-        gb = T.grad(s, b)
-        gi = T.grad(s, i)
-        gd = T.grad(s, d)
-        print 'gb =', gb
-        print 'gi =', gi
-        print 'gd =', gd
+        gb = T.grad(s, b, assume_continuously_differentiable=True)
+        gi = T.grad(s, i, assume_continuously_differentiable=True)
+        gd = T.grad(s, d, assume_continuously_differentiable=True)
+        #print 'gb =', gb
+        #print 'gi =', gi
+        #print 'gd =', gd
 
         g = theano.function([b,i,d], [gb, gi, gd])
         g_val = g(val[b], val[i], val[d])
-        print 'g_val =', g_val
+        #print 'g_val =', g_val
 
         if dtype.startswith('int'):
             # The gradient should be 0
