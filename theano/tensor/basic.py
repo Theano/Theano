@@ -3753,7 +3753,7 @@ class Reshape(Op):
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int'):
-            raise TypeError("Shape must be integers")
+            raise TypeError("Shape must be integers", shp, shp.dtype)
         assert shp.ndim == 1
         if isinstance(shp, TensorConstant):
             bcast = [s==1 for s in shp.data]
@@ -3788,9 +3788,18 @@ class Reshape(Op):
         g_out, = grads
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
     def infer_shape(self, node, ishapes):
-        #we can't just put node.inputs[1] as not all op support interation
-        #and this is needed in the ShapeOptimizer
-        return [tuple([node.inputs[1][i] for i in range(self.ndim)])]
+        # inputs[1] can contain at most one value of '-1', meaning the actual
+        # shape of the output will be automatically computed by reshape, so
+        # that the total number of elements stays the same.
+        # TODO: Maybe put that formula here?
+        # It's not trivial, because we would have to check if the product of
+        # all the non-minus-one shapes is a divisor of the product of the
+        # original shapes.
+        return [tuple([switch(eq(node.inputs[1][i], -1),
+                                 theano.tensor.opt.Shape_i(i)(node.outputs[0]),
+                                 node.inputs[1][i])
+                            for i in range(self.ndim)]
+            )]
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
@@ -4739,10 +4748,10 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
     ret = []
     for p in wrt:
         if p not in gmap and not assume_continuously_differentiable:
-            raise ValueError(("grad method was asked to compute the graident "
+            raise ValueError(("grad method was asked to compute the gradient "
                              "with respect to a variable that is not part of "
-                             "the computational graph of the cost or is used "
-                             "by a non-differentiable operator "),p)
+                             "the computational graph of the cost, or is used "
+                             "by a non-differentiable operator"), p)
         else:
             ret.append(gmap.get(p, zeros_like(p)))
 

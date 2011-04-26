@@ -846,15 +846,7 @@ def scan( fn
     info['inplace']            = False
     info['gpu']                = False
 
-    revised_outs = []
-    for o in new_outs:
-        if (o in inner_inputs or
-            isinstance(o, tensor.Constant)):
-            revised_outs.append( scan_utils.cloneOp(o))
-        else:
-            revised_outs.append(o)
-
-    local_op = scan_op.Scan( inner_inputs, revised_outs, info )
+    local_op = scan_op.Scan( inner_inputs, new_outs, info )
 
     ##
     ### Step 8. Compute the outputs using the scan op

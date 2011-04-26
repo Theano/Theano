@@ -3290,79 +3290,102 @@ class T_op_cache(unittest.TestCase):
         a = numpy.random.rand(5,2).astype(config.floatX)
         self.assertTrue(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
+class T_reshape(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
 
-def test_reshape():
+    def test_reshape(self):
+        a = dvector()
+        b = dmatrix()
+        d = dmatrix()
 
-    a = dvector()
-    b = dmatrix()
-    d = dmatrix()
+        #basic to 1 dim(without list)
+        c = reshape(b, as_tensor_variable(6), ndim=1)
+        f = inplace_func([b], c)
+        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
+        #print f.maker.env.toposort()
+        #check that we remove the useless reshape
 
-    #basic to 1 dim(without list)
-    c = reshape(b, as_tensor_variable(6), ndim=1)
-    f = inplace_func([b], c)
-    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    #print f.maker.env.toposort()
-    #check that we remove the useless reshape
+        #basic to 1 dim(with list)
+        c = reshape(b, (as_tensor_variable(6),), ndim=1)
+        f = inplace_func([b], c)
+        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
+        #print f.maker.env.toposort()
+        #check that we remove the useless reshape
 
-    #basic to 1 dim(with list)
-    c = reshape(b, (as_tensor_variable(6),), ndim=1)
-    f = inplace_func([b], c)
-    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-    #print f.maker.env.toposort()
-    #check that we remove the useless reshape
+        #basic to shape object of same ndim
+        c = reshape(b,d.shape)
+        f = inplace_func([b,d], c)
+        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]]),[[0,1],[2,3],[4,5]]) == numpy.asarray([[0,1],[2,3],[4,5]]))
 
-    #basic to shape object of same ndim
-    c = reshape(b,d.shape)
-    f = inplace_func([b,d], c)
-    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]]),[[0,1],[2,3],[4,5]]) == numpy.asarray([[0,1],[2,3],[4,5]]))
+        #basic to 2 dims
+        c = reshape(a, [2,3])
+        f = inplace_func([a], c)
+        assert numpy.all(f(numpy.asarray([0,1,2,3,4,5])) == numpy.asarray([[0,1,2], [3,4,5]]))
 
-    #basic to 2 dims
-    c = reshape(a, [2,3])
-    f = inplace_func([a], c)
-    assert numpy.all(f(numpy.asarray([0,1,2,3,4,5])) == numpy.asarray([[0,1,2], [3,4,5]]))
+        #test that it works without inplace operations
+        a_val = numpy.asarray([0,1,2,3,4,5])
+        a_val_copy = numpy.asarray([0,1,2,3,4,5])
+        b_val = numpy.asarray([[0,1,2],[3,4,5]])
 
-    #test that it works without inplace operations
-    a_val = numpy.asarray([0,1,2,3,4,5])
-    a_val_copy = numpy.asarray([0,1,2,3,4,5])
-    b_val = numpy.asarray([[0,1,2],[3,4,5]])
+        f_sub = inplace_func([a,b], c-b)
+        assert numpy.all(f_sub(a_val, b_val) == 0.0)
+        assert numpy.all(a_val == a_val_copy)
 
-    f_sub = inplace_func([a,b], c-b)
-    assert numpy.all(f_sub(a_val, b_val) == 0.0)
-    assert numpy.all(a_val == a_val_copy)
+        #test that it works with inplace operations
+        a_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
+        a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float64')
+        b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
 
-    #test that it works with inplace operations
-    a_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
-    a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float64')
-    b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
+        f_sub = inplace_func([a,b], c-b)
+        assert numpy.all(f_sub(a_val, b_val) == 0.0)
+        assert numpy.all(a_val == a_val_copy)
 
-    f_sub = inplace_func([a,b], c-b)
-    assert numpy.all(f_sub(a_val, b_val) == 0.0)
-    assert numpy.all(a_val == a_val_copy)
+        # verify gradient
+        def just_vals(v):
+            return Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
+        utt.verify_grad(just_vals, [a_val])
 
-    # verify gradient
-    def just_vals(v):
-        return Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
-    utt.verify_grad(just_vals, [a_val])
+        #test infer_shape
+        f_sub = function([a,b], (c-b).shape)
+        if config.mode=="FAST_COMPILE":
+            assert len(f_sub.maker.env.toposort())==3
+        else:
+            topo = f_sub.maker.env.toposort()
+            assert len(topo)==1
+            topo[0].op == theano.compile.function_module.deep_copy_op
+            #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
+            #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
 
-    #test infer_shape
-    f_sub = function([a,b], (c-b).shape)
-    if config.mode=="FAST_COMPILE":
-        assert len(f_sub.maker.env.toposort())==3
-    else:
-        topo = f_sub.maker.env.toposort()
-        assert len(topo)==1
-        topo[0].op == theano.compile.function_module.deep_copy_op
-        #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
-        #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
+        # test broadcast flag for constant value of 1
+        c = reshape(b, (b.shape[0],b.shape[1],1))
+        f = inplace_func([b], c)
+        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
+        assert f.maker.env.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
 
-    # test broadcast flag for constant value of 1
-    c = reshape(b, (b.shape[0],b.shape[1],1))
-    f = inplace_func([b], c)
-    assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
-    assert f.maker.env.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
+        assert numpy.all(f_sub(a_val,b_val)==[2,3])
 
+    def test_infer_shape(self):
+        a = matrix('a')
+        shapes = ivector('shapes')
+        ndim = 2
 
-    assert numpy.all(f_sub(a_val,b_val)==[2,3])
+        r = a.reshape(shapes, ndim=2)
+        z = zeros_like(r)
+
+        f = function([a, shapes], z.shape)
+
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.uniform(size=(3,4)).astype(config.floatX)
+
+        self.assertTrue((f(a_val, [4, 3]) == [4, 3]).all())
+        self.assertTrue((f(a_val, [-1, 3]) == [4, 3]).all())
+        self.assertTrue((f(a_val, [4, -1]) == [4, 3]).all())
+        self.assertRaises(ValueError, f, a_val, [-1, 5])
+        self.assertRaises(ValueError, f, a_val, [7, -1])
+        self.assertRaises(ValueError, f, a_val, [7, 5])
+        self.assertRaises(ValueError, f, a_val, [-1, -1])
+
 
 def test_make_column_matrix_broadcastable():
     # The goal of the operation made by `b` is to ensure the second dimension

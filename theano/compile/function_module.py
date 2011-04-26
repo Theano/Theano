@@ -190,7 +190,36 @@ class DeepCopyOp(theano.gof.Op):
         else:
             super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
+
+class ViewOp(theano.gof.Op):
+    def __init__(self):
+        self.view_map={0:[0]}
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def make_node(self, x):
+        return theano.gof.Apply(self, [x], [x.type()])
+
+    def perform( self, node, args, outs):
+        outs[0][0] = args[0]
+
+    def infer_shape(self, node, input_shapes):
+        return input_shapes
+
+    def grad(self, args, g_outs):
+        return g_outs
+
 deep_copy_op = DeepCopyOp()
+view_op      = ViewOp()
+
+
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
 class Function(object):
@@ -771,7 +800,10 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
             # We could don't put deep copy if both outputs have borrow==True
             # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
             if env.outputs[j] in views_of_output_i:
-                env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                if wrapped_outputs[i].borrow and wrapped_outputs[j].borrow:
+                    env.change_input('output',i, view_op(env.outputs[i]))
+                else:
+                    env.change_input('output', i, deep_copy_op(env.outputs[i]))
                 copied = True
                 break
 
@@ -784,10 +816,22 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
                     continue
                 if input_j in updated_env_inputs:
                     continue
-                # We could don't put deep_copy_op if the input and the output have borrow==True
                 if input_j in views_of_output_i:
-                    env.change_input('output', i, deep_copy_op(env.outputs[i]))
-                    break
+                    # We don't put deep_copy_op if the input and the output have borrow==True
+                    if input_j in env.inputs:
+                        j = env.inputs.index(input_j)
+                        if wrapped_outputs[i].borrow and wrapped_inputs[j].borrow:
+                            env.change_input('output',i, view_op(env.outputs[i]))
+                            break
+                        else:
+                            env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                            break
+                    elif wrapped_outputs[i].borrow:
+                        env.change_input('output',i, view_op(env.outputs[i]))
+                        break
+                    else:
+                        env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                        break
 
 NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):

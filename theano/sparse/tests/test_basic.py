@@ -190,6 +190,63 @@ class T_AddMul(unittest.TestCase):
                 self.assertTrue(numpy.all(val.todense() == numpy.array([[1, 0],
 [9, 0], [0, 36]])))
 
+    def test_upcast(self):
+        array1 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='float32')
+        array2 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int32')
+        array3 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int8')
+
+        # AddSS and MulSS
+        for mtype in _mtypes:
+            a = mtype(array1)
+            aR = as_sparse_variable(a)
+            b = mtype(array2)
+            bR = as_sparse_variable(b)
+            c = mtype(array3)
+            cR = as_sparse_variable(c)
+
+            # Ops that do not upcast
+            self.assertRaises(NotImplementedError, add, aR, bR)
+            self.assertRaises(NotImplementedError, add, bR, aR)
+            self.assertRaises(NotImplementedError, add, bR, cR)
+            self.assertRaises(NotImplementedError, add, cR, bR)
+            self.assertRaises(NotImplementedError, add, aR, cR)
+            self.assertRaises(NotImplementedError, add, cR, aR)
+
+            self.assertRaises(NotImplementedError, mul, aR, bR)
+            self.assertRaises(NotImplementedError, mul, bR, aR)
+            self.assertRaises(NotImplementedError, mul, bR, cR)
+            self.assertRaises(NotImplementedError, mul, cR, bR)
+            self.assertRaises(NotImplementedError, mul, aR, cR)
+            self.assertRaises(NotImplementedError, mul, cR, aR)
+
+        # AddSD and MulSD
+        for mtype in _mtypes:
+            a = mtype(array1)
+            a_sv = as_sparse_variable(a)
+            a_dv = tensor.as_tensor_variable(array1)
+            b = mtype(array2)
+            b_sv = as_sparse_variable(b)
+            b_dv = tensor.as_tensor_variable(array2)
+            c = mtype(array3)
+            c_sv = as_sparse_variable(c)
+            c_dv = tensor.as_tensor_variable(array3)
+
+            # add does not upcast
+            self.assertRaises(NotImplementedError, add, a_sv, b_dv)
+            self.assertRaises(NotImplementedError, add, b_sv, a_dv)
+            self.assertRaises(NotImplementedError, add, b_sv, c_dv)
+            self.assertRaises(NotImplementedError, add, c_sv, b_dv)
+            self.assertRaises(NotImplementedError, add, a_sv, c_dv)
+            self.assertRaises(NotImplementedError, add, c_sv, a_dv)
+
+            # mul upcasts the dense input if needed
+            self.assertRaises(NotImplementedError, mul, a_sv, b_dv)
+            self.assertRaises(NotImplementedError, mul, b_sv, a_dv)
+            assert mul(b_sv, c_dv).dtype == 'int32'
+            self.assertRaises(NotImplementedError, mul, c_sv, b_dv)
+            assert mul(a_sv, c_dv).dtype == 'float32'
+            self.assertRaises(NotImplementedError, mul, c_sv, a_dv)
+
 
 class T_conversion(unittest.TestCase):
     def setUp(self):

@@ -304,11 +304,8 @@ class T_function(unittest.TestCase):
         assert (out==4).all()
         out[0]=3
         out2 = f()
-        # Currently we don't do this optimization!
-        # As this is a corner case that is not usefull for use
-        # We probably won't optimize it.
-        assert out2 is not out
-        assert (out2==4).all()
+        assert out2 is out
+        assert (out2==3).all()
 
 
     def test_borrow_input(self):

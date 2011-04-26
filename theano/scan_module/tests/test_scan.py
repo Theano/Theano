@@ -2007,7 +2007,34 @@ class T_Scan(unittest.TestCase):
         assert scan1.owner.op == scan2.owner.op
         assert hash(scan1.owner.op) == hash(scan2.owner.op)
 
+    def test_same(self):
+        # This test is checking a bug discovered by Arnaud and it is based
+        # on his code
 
+        x = theano.tensor.fmatrix('x')
+
+        mem_val = numpy.zeros((2,), dtype='float32')
+        memory = theano.shared(mem_val.copy())
+        W = theano.shared(numpy.random.random((5, 2)).astype('float32'))
+
+        def f(inp, mem):
+            i = theano.tensor.join(0, inp, mem)
+            d = theano.tensor.dot(i, W)
+            return d, d
+
+        outs, updts = theano.scan(f, sequences=[x],
+                          non_sequences=[],
+                          outputs_info=[None, memory])
+
+        f = theano.function([x], outs[0])
+        f2 = theano.function([x], outs[1])
+
+        x_val = numpy.random.random((4, 3)).astype('float32')
+
+        f_vals = f(x_val)
+        memory.set_value(mem_val.copy())
+        f2_vals = f2(x_val)
+        assert numpy.allclose(f_vals, f2_vals)
 
 if __name__ == '__main__':
     #'''

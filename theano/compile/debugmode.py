@@ -535,7 +535,13 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
     if warn_input_not_reused and destroyed_res_list:
         dmap=getattr(node.op,'destroy_map',{})
         for oo,ii in dmap.iteritems():
-            if storage_map[node.outputs[oo]][0] is not storage_map[node.inputs[ii[0]]][0]:
+            out_var = storage_map[node.outputs[oo]][0]
+            in_var = storage_map[node.inputs[ii[0]]][0]
+            if isinstance (node.op, theano.compile.mode.OutputGuard):
+                # The point of OutputGuard is to be declared as destructive
+                # while not destroying anything
+                continue
+            if out_var is not in_var:
                 opt_warning("input idx %d marked as destroyed was not changed for node '%s'"%(ii[0],str(node)))
 
     if warn_input_not_reused:

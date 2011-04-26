@@ -71,7 +71,7 @@ AddConfigVar('home',
 #This expanduser works on windows (see discussion on theano-users, July 13 2010)
 
 AddConfigVar('nocleanup',
-        "suppress the deletion of code files that did not compile cleanly",
+        "Suppress the deletion of code files that did not compile cleanly",
         BoolParam(False))
 
 AddConfigVar('tensor.cmp_sloppy',
@@ -115,6 +115,44 @@ AddConfigVar('experimental.mrg',
              "Another random number generator that work on the gpu",
              BoolParam(False))
 
+AddConfigVar('numpy.seterr_all',
+             ("Sets numpy's behaviour for floating-point errors, ",
+              "see numpy.seterr. "
+              "'None' means not to change numpy's default, which can be "
+              "different for different numpy releases. "
+              "This flag sets the default behaviour for all kinds of floating-"
+              "point errors, its effect can be overriden for specific errors "
+              "by the following flags: seterr_divide, seterr_over, "
+              "seterr_under and seterr_invalid."),
+             EnumStr('ignore', 'warn', 'raise', 'call', 'print', 'log', 'None',
+                 allow_override=False))
+
+AddConfigVar('numpy.seterr_divide',
+             ("Sets numpy's behavior for division by zero, see numpy.seterr. "
+              "'None' means using the default, defined by numpy.seterr_all."),
+             EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
+                 allow_override=False))
+
+AddConfigVar('numpy.seterr_over',
+             ("Sets numpy's behavior for floating-point overflow, "
+              "see numpy.seterr. "
+              "'None' means using the default, defined by numpy.seterr_all."),
+             EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
+                 allow_override=False))
+
+AddConfigVar('numpy.seterr_under',
+             ("Sets numpy's behavior for floating-point underflow, "
+              "see numpy.seterr. "
+              "'None' means using the default, defined by numpy.seterr_all."),
+             EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
+                 allow_override=False))
+
+AddConfigVar('numpy.seterr_invalid',
+             ("Sets numpy's behavior for invalid floating-point operation, "
+              "see numpy.seterr. "
+              "'None' means using the default, defined by numpy.seterr_all."),
+             EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
+                 allow_override=False))
 
 ###
 ### To disable some warning about old bug that are fixed now.
