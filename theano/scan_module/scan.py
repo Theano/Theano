@@ -236,8 +236,7 @@ def scan( fn
     :param n_steps:
         ``n_steps`` is the number of steps to iterate given as an int
         or Theano scalar. If any of the input sequences do not have
-        enough elements, scan will produce a warning and run only for
-        the maximal amount of steps it can. If the *value is 0* the
+        enough elements, scan will raise an error. If the *value is 0* the
         outputs will have *0 rows*. If the value is negative, ``scan``
         run backwards in time. If the ``go_backwards`` flag is already
         set and also ``n_steps`` is negative, ``scan`` will run forward
