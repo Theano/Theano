@@ -411,6 +411,36 @@ def test_neibs_grad_verify_grad_warp_centered():
         except NotImplementedError:
             pass
 
+def test_neibs_ignore_border():
+    shape = (2,3,5,5)
+    images = T.dtensor4()
+    images_val = numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+
+    def fn(images):
+        return T.sum(T.sqr(images2neibs(images, (2,2), mode='ignore_borders')), axis=[0,1])
+
+    unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+    
+#    not implemented for gpu
+#    if cuda.cuda_available:
+#        unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
+
+def test_neibs_valid_with_inconsistent_borders():
+    shape = (2,3,5,5)
+    images = T.dtensor4()
+    images_val = numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+
+    def fn(images):
+        return T.sum(T.sqr(images2neibs(images, (2,2), mode='valid')), axis=[0,1])
+
+    try:
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+        assert False,"An error was expected"
+    except TypeError:
+        # This is expected if the assert is there
+        pass
+
+
 def test_neibs2images_crash_on_grad():
     # say we had images of size (2,3,20,20)
     # then we extracted 2x2 neighbors on this, we get (2*3*10*10, 4)

@@ -12,6 +12,14 @@ if cuda_available:
 
 class Images2Neibs(Op):
     def __init__(self, mode='valid'):
+        """
+        Modes:
+            valid : Reshapes the input as a a 2D tensor where each row is a pooling example. 
+                Requires an input that is a multiple of the pooling factor (in each direction)
+            ignore_borders : Same as valid, but will ignore the borders if the shape(s) of the input
+                is not a multiple of the pooling factor(s)
+            wrap_centered : ?? TODO comment
+        """
         if mode not in ['valid','wrap_centered','ignore_borders']:
             raise NotImplementedError("Only the mode valid, ignore_borders and wrap_centered have been implemented for the op Images2Neibs")
         self.mode = mode
@@ -55,7 +63,7 @@ class Images2Neibs(Op):
             raise NotImplementedError()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inp, out, sub):
         ten4, neib_shape, neib_step = inp
