@@ -1190,7 +1190,7 @@ class _tensor_py_operators:
         try:
             for i in xrange(get_vector_length(self)):
                 yield self[i]
-        except:
+        except TypeError, e:
             # This prevents accidental iteration via builtin.sum(self)
             raise TypeError('TensorType does not support iteration. '
             'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
