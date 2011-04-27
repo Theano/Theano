@@ -205,7 +205,7 @@ def get_updates_and_outputs(outputs_updates):
     return outputs, updates
 
 
-def check_NaN_Inf_None(x):
+def isNaN_or_Inf_or_None(x):
     isNone = x is None
     try:
         isNaN = numpy.isnan(x)

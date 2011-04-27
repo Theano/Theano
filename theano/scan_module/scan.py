@@ -240,9 +240,9 @@ def scan( fn
         outputs will have *0 rows*. If the value is negative, ``scan``
         run backwards in time. If the ``go_backwards`` flag is already
         set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n stpes is not provided, or evaluates to ``None``,
-        ``inf`` or ``NaN``, ``scan`` will figure out the amount of
-        steps it should run given its input sequences.
+        in time. If n stpes is not provided, or is a constant that
+        evaluates to ``None``, ``inf`` or ``NaN``, ``scan`` will figure
+        out the amount of steps it should run given its input sequences.
 
 
     :param truncate_gradient:
@@ -454,7 +454,7 @@ def scan( fn
     for seq in scan_seqs:
         lengths_vec.append( seq.shape[0] )
 
-    if not scan_utils.check_NaN_Inf_None(n_steps):
+    if not scan_utils.isNaN_or_Inf_or_None(n_steps):
         # ^ N_steps should also be considered
         lengths_vec.append( tensor.as_tensor(n_steps) )
 
@@ -468,7 +468,7 @@ def scan( fn
 
     # If the user has provided the number of steps, do that regardless ( and
     # raise an error if the sequences are not long enough )
-    if scan_utils.check_NaN_Inf_None(n_steps):
+    if scan_utils.isNaN_or_Inf_or_None(n_steps):
         actual_n_steps = lengths_vec[0]
         for contestant in lengths_vec[1:]:
             actual_n_steps = tensor.minimum(actual_n_steps, contestant)
