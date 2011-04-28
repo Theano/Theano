@@ -37,7 +37,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
 
     b = T.fvector('b')
-    W = T.fmatrix('W')
+    #W = T.fmatrix('W')
 
     #we precompute the dot with big shape before to allow the test of GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error (the launch timed out and was terminated) on GPU card not powerfull enought. We need the big shape to check for corner case.
     dot_result = T.fmatrix('dot_result')
@@ -52,14 +52,14 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     W_values = numpy.asarray(numpy.random.rand(n_in,n_out),dtype='float32')
 
     dot_value = numpy.asarray(numpy.dot(xx, W_values),dtype='float32')
-
+    del W_values
     p_y_given_x = T.nnet.softmax(dot_result+b)
     y_pred = T.argmax(p_y_given_x, axis=-1)
     loss = -T.mean(T.log(p_y_given_x)[T.arange(y.shape[0]), y])
-    dW = T.grad(loss,W)
-    classify = theano.function( inputs = [x,y,b,W,dot_result], outputs = [loss,y_pred,dW],
+    dW = T.grad(loss, dot_result)
+    classify = theano.function( inputs = [x,y,b,dot_result], outputs = [loss,y_pred,dW],
                                 mode = mode_without_gpu)
-    classify_gpu = theano.function( inputs = [x,y,b,W,dot_result], outputs = [loss,y_pred,dW],
+    classify_gpu = theano.function( inputs = [x,y,b,dot_result], outputs = [loss,y_pred,dW],
                                     mode = mode_with_gpu)
     #theano.printing.debugprint(classify)
     #theano.printing.debugprint(classify_gpu)
@@ -67,8 +67,8 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     assert any([isinstance(node.op,T.nnet.CrossentropySoftmaxArgmax1HotWithBias) for node in classify.maker.env.toposort()])
     assert any([isinstance(node.op,cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias) for node in classify_gpu.maker.env.toposort()])
 
-    out=classify(xx,yy,b_values,W_values,dot_value)
-    gout=classify_gpu(xx,yy,b_values,W_values,dot_value)
+    out=classify(xx,yy,b_values,dot_value)
+    gout=classify_gpu(xx,yy,b_values,dot_value)
 
     assert len(out)==len(gout)==3
     assert numpy.allclose(out[0],gout[0])
