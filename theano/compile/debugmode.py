@@ -9,21 +9,15 @@ import numpy
 import theano
 from theano import gof
 from theano.gof import Env, graph, utils, link
-from theano.gof.link import WrapLinkerMany, raise_with_op
-#from theano.gof.cutils import run_cthunk
-from theano.gof.cc import OpWiseCLinker, CLinker
+from theano.gof.link import raise_with_op
+from theano.gof.cc import CLinker
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import (FunctionMaker,
-        alias_root,
-        deep_copy_op,
         Function,
         infer_reuse_pattern,
-        SymbolicInput,
         SymbolicInputKit,
         SymbolicOutput,
-        Supervisor,
-        view_tree_set,
-        insert_deepcopy)
+        Supervisor)
 from theano.compile.mode import Mode, register_mode
 
 AddConfigVar('DebugMode.patience',
