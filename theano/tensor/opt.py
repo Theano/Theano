@@ -845,7 +845,7 @@ def local_shape_to_shape_i(node):
 def local_track_shape_i(node):
     try:
         shape_feature = node.env.shape_feature
-    except:
+    except AttributeError:
         return
     if node in shape_feature.scheduled:
         assert isinstance(node.op, Shape_i)
