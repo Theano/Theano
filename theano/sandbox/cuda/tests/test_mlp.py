@@ -449,7 +449,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 
         if not compare:
             return run_conv_nnet2_classif(use_gpu=use_gpu,
-                    seed=seed, isize=isize, ksize=ksize, n_batch=bsize,
+                    seed=seed, isize=isize, ksize=ksize, bsize=bsize,
                     n_train=n_train,
                     check_isfinite=check_isfinite,
                     pickle=pickle,
