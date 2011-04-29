@@ -384,7 +384,6 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
             check_isfinite=check_isfinite)
 
     if use_gpu:
-        tcn.use()
         device = 'GPU'
     else:
         device = 'CPU'
