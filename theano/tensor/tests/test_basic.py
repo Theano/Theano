@@ -3238,11 +3238,7 @@ class test_grad(unittest.TestCase):
                  assume_continuously_differentiable = True)
         self.assertTrue(g.owner.op == fill)
         self.assertTrue(g.owner.inputs[1].data == 0)
-        try:
-            grad(a1.outputs[0], 'wtf')
-        except AttributeError, e:
-            return
-        self.fail()
+        self.assertRaises(ValueError, grad, a1.outputs[0], 'wtf')
 
     def test_NNone_rval(self):
         """grad: Test returning some zero value from grad"""
