@@ -5,7 +5,7 @@ Defines Linkers that deal with C implementations.
 # Python imports
 from copy import copy
 import re #for set_compiledir
-import os, sys, platform, StringIO, time
+import os, sys, StringIO
 
 if sys.version_info[:2] >= (2,5):
     import hashlib
@@ -16,7 +16,8 @@ else:
     def hash_from_code(msg):
         return md5.new(msg).hexdigest()
 
-from theano.gof.python25 import any, all
+from theano.gof.python25 import all
+from theano import config
 
 # Note that we need to do this before importing cutils, since when there is
 # no theano cache dir initialized yet, importing cutils may require compilation
@@ -33,12 +34,9 @@ import graph
 import link
 import utils
 
-from compiledir import *
 from compilelock import get_lock, release_lock
 
 import cmodule
-
-from theano.configparser import TheanoConfigParser, EnumStr, IntParam, FloatParam, BoolParam
 
 
 
