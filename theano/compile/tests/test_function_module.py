@@ -586,7 +586,13 @@ class T_picklefunction(unittest.TestCase):
         fp = StringIO.StringIO()
         p = cPickle.Pickler(fp, 2)
         p.persistent_id = pers_save
-        p.dump(f)
+        try:
+            p.dump(f)
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
         fp2 = StringIO.StringIO(fp.getvalue())
         fp.close()
         p = cPickle.Unpickler(fp2)
