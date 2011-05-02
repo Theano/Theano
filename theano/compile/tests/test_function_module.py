@@ -304,8 +304,14 @@ class T_function(unittest.TestCase):
         assert (out==4).all()
         out[0]=3
         out2 = f()
-        assert out2 is out
-        assert (out2==3).all()
+
+        if isinstance(theano.compile.mode.get_default_mode(),
+                      theano.compile.DebugMode):
+            # In DebugMode, we don't implement optimization based on borrow on the output.
+            assert (out2==4).all()
+        else:
+            assert out2 is out
+            assert (out2==3).all()
 
 
     def test_borrow_input(self):
