@@ -393,7 +393,7 @@ class ModuleCache(object):
 
         return too_old_to_use
 
-    def module_from_key(self, key, fn=None):
+    def module_from_key(self, key, fn=None, keep_lock=False):
         """
         :param fn: a callable object that will return a module for the key (it is called only if the key isn't in
         the cache).  This function will be called with a single keyword argument "location"
@@ -430,13 +430,15 @@ class ModuleCache(object):
                 module = fn(location=location)  # WILL FAIL FOR BAD C CODE
             except Exception, e:
                 _rmtree(location)
-                compilelock.release_lock()
+                if not keep_lock:
+                    compilelock.release_lock()
                 #try:
                 #except Exception, ee:
                     #error('failed to cleanup location', location, ee)
                 raise
 
-            compilelock.release_lock()
+            if not keep_lock:
+                compilelock.release_lock()
             name = module.__file__
 
             debug("Adding module to cache", key, name)

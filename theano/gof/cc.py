@@ -33,6 +33,7 @@ from env import Env
 import graph
 import link
 import utils
+import op
 
 from compilelock import get_lock, release_lock
 
@@ -696,7 +697,7 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined: pass
         return list(set(ret))
 
-    def __compile__(self, input_storage = None, output_storage = None):
+    def __compile__(self, input_storage = None, output_storage = None, keep_lock=False):
         """WRITEME
         Compiles this linker's env.
 
@@ -724,7 +725,8 @@ class CLinker(link.Linker):
         output_storage = tuple(output_storage)
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
-                                    output_storage)
+                                    output_storage,
+                                    keep_lock=keep_lock)
         return thunk, \
             [link.Container(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
@@ -751,7 +753,7 @@ class CLinker(link.Linker):
             id += 1
         return init_tasks, tasks
 
-    def make_thunk(self, input_storage = None, output_storage = None):
+    def make_thunk(self, input_storage = None, output_storage = None, keep_lock=False):
         """WRITEME
         Compiles this linker's env and returns a function to perform the
         computations, as well as lists of storage cells for both the
@@ -775,7 +777,8 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
+        cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage,
+                                                                          keep_lock=keep_lock)
         res = _execute(cthunk, init_tasks, tasks, error_storage), in_storage, out_storage
         return res
 
@@ -1021,7 +1024,7 @@ class CLinker(link.Linker):
         return mod
 
 
-    def cthunk_factory(self, error_storage, in_storage, out_storage):
+    def cthunk_factory(self, error_storage, in_storage, out_storage, keep_lock=False):
         """WRITEME
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
@@ -1041,7 +1044,7 @@ class CLinker(link.Linker):
             #if we can't get a key, then forget the cache mechanism
             module = self.compile_cmodule()
         else:
-            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule)
+            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule, keep_lock=keep_lock)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments
@@ -1147,9 +1150,12 @@ class OpWiseCLinker(link.LocalLinker):
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
 
-        # Acquire lock on compilation directory, and
-        # hold it throughout the compilation of all internal nodes.
-        get_lock()
+        # The lock will be acquired when we compile the first
+        # C code. We will keep the lock untill all the function
+        # compilation will be finished. This allow to don't
+        # require the lock when all c code are already compiled!
+        keep_lock=True
+        orig_n_lock = get_lock.n_lock
         try:
 
             env = self.env
@@ -1168,26 +1174,39 @@ class OpWiseCLinker(link.LocalLinker):
                 node_input_storage = [storage_map[r] for r in node.inputs]
                 node_output_storage = [storage_map[r] for r in node.outputs]
                 debug('Compiling node %i of graph' % node_idx)
-                try:
-                    e = Env(*graph.clone(node.inputs, node.outputs))
-                    if self.allow_gc:
-                        # if we allow garbage collection of intermediate nodes
-                        # we must forbid this C implementatio from cacheing its own
-                        # reference to its output
-                        node_no_recycling = e.outputs
-                    else:
-                        node_no_recycling = [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling]
-                    cl = CLinker().accept(e, node_no_recycling)
+                thunk = None
+                # If the op don't override the c_code function, we don't try
+                # to generate a cthunk! Otherwise we won't find it in the compilation cache
+                # and try to compile it. This will get the lock even if we don't need it!
+                if node.op.c_code.im_func is not op.Op.c_code.im_func:
+                    try:
+                        e = Env(*graph.clone(node.inputs, node.outputs))
+                        if self.allow_gc:
+                            # if we allow garbage collection of intermediate nodes
+                            # we must forbid this C implementatio from cacheing its own
+                            # reference to its output
+                            node_no_recycling = e.outputs
+                        else:
+                            node_no_recycling = [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling]
+                        cl = CLinker().accept(e, node_no_recycling)
 
-                    debug('Trying CLinker.make_thunk')
-                    thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                        input_storage = node_input_storage,
-                        output_storage = node_output_storage)
-                    assert callable(thunk)
-                    thunk.inputs = node_input_storage
-                    thunk.outputs = node_output_storage
-                    thunks.append(thunk)
-                except (NotImplementedError, utils.MethodNotDefined):
+                        debug('Trying CLinker.make_thunk')
+                        thunk, node_input_filters, node_output_filters = cl.make_thunk(
+                            input_storage = node_input_storage,
+                            output_storage = node_output_storage,
+                            keep_lock=keep_lock)
+                        assert callable(thunk)
+                        thunk.inputs = node_input_storage
+                        thunk.outputs = node_output_storage
+                        thunks.append(thunk)
+                        if keep_lock and get_lock.n_lock > orig_n_lock:
+
+                            keep_lock=False
+                        do_python_thunk = False
+                    except (NotImplementedError, utils.MethodNotDefined):
+                        thunk = None
+
+                if thunk is None:
                     if self.fallback_on_perform:
                         debug('Falling back on perform')
                         p = node.op.perform
@@ -1200,7 +1219,7 @@ class OpWiseCLinker(link.LocalLinker):
                         thunk.perform = p
                         thunks.append(thunk)
                     else:
-                        raise
+                        raise NotImplementedError("We where not able to use c_code and perform code for this node", node)
 
                 if self.allow_gc:
                     post_thunk_old_storage.append([storage_map[input]
@@ -1222,7 +1241,9 @@ class OpWiseCLinker(link.LocalLinker):
 
         finally:
             # Release lock on compilation directory.
-            release_lock()
+            if get_lock.n_lock > orig_n_lock:
+                release_lock()
+                assert get_lock.n_lock == orig_n_lock
 
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
