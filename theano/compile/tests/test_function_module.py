@@ -576,10 +576,10 @@ class T_picklefunction(unittest.TestCase):
 
         a = numpy.random.rand(4, 5)
         b = numpy.random.rand(5, 4)
-        
+
         x = theano.tensor.matrix()
         y = theano.shared(b)
-        
+
         f = theano.function([x], theano.tensor.dot(x, y))
 
         import StringIO
