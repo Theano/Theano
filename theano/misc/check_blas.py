@@ -88,7 +88,8 @@ if __name__ == "__main__":
         print """
         Some result that you can compare again. They where 10 executions of gemm in float64 with matrix of shape 2000x2000 on FC9.
 
-        Cpu tested: Xeon E5345, Xeon E5430, Xeon E5450(3Ghz), Xeon X5560(2.8Ghz, hyper-threads enabled?)
+        Cpu tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB), Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
+                    Xeon E5450(3Ghz, 12M L2 cache, 1333Mhz FSB), Xeon X5560(2.8Ghz, 12M L2 cache, 6.4GT/s QPI, hyper-threads enabled?)
                     Core 2 E8500, Core i7 930(2.8Ghz, hyper-threads enabled), Core i7 950(3.07GHz, hyper-threads enabled)
 
 
