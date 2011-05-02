@@ -724,6 +724,9 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     rval = None
 
     cppfile.write(src_code)
+    # Avoid gcc warning "no newline at end of file".
+    if not src_code.endswith('\n'):
+        cppfile.write('\n')
     cppfile.close()
 
     lib_filename = os.path.join(location, '%s.%s' %
