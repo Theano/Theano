@@ -1155,7 +1155,7 @@ class OpWiseCLinker(link.LocalLinker):
         # compilation will be finished. This allow to don't
         # require the lock when all c code are already compiled!
         keep_lock=True
-        orig_n_lock = get_lock.n_lock
+        orig_n_lock = getattr(get_lock,"n_lock",0)
         try:
 
             env = self.env
