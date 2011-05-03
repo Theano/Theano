@@ -1154,7 +1154,6 @@ class OpWiseCLinker(link.LocalLinker):
         # C code. We will keep the lock untill all the function
         # compilation will be finished. This allow to don't
         # require the lock when all c code are already compiled!
-        keep_lock=True
         orig_n_lock = getattr(get_lock,"n_lock",0)
         try:
 
@@ -1194,14 +1193,11 @@ class OpWiseCLinker(link.LocalLinker):
                         thunk, node_input_filters, node_output_filters = cl.make_thunk(
                             input_storage = node_input_storage,
                             output_storage = node_output_storage,
-                            keep_lock=keep_lock)
+                            keep_lock=getattr(get_lock,"n_lock",0) != orig_n_lock)
                         assert callable(thunk)
                         thunk.inputs = node_input_storage
                         thunk.outputs = node_output_storage
                         thunks.append(thunk)
-                        if keep_lock and get_lock.n_lock > orig_n_lock:
-
-                            keep_lock=False
                         do_python_thunk = False
                     except (NotImplementedError, utils.MethodNotDefined):
                         thunk = None
@@ -1241,7 +1237,7 @@ class OpWiseCLinker(link.LocalLinker):
 
         finally:
             # Release lock on compilation directory.
-            if get_lock.n_lock > orig_n_lock:
+            if getattr(get_lock,"n_lock",0) > orig_n_lock:
                 release_lock()
                 assert get_lock.n_lock == orig_n_lock
 
