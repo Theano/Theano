@@ -165,7 +165,6 @@ class Scan(Op):
         # the actual mode used to compile the function and the name of the
         # function that we set in case none was given
         self.info['name'] = self.name
-        self.info['mode_instance'] = self.mode_instance
 
         wrapped_inputs  = [Param(x,borrow=True) for x in inputs ]
         wrapped_outputs = [Out(x, borrow=True) for x in outputs ]
