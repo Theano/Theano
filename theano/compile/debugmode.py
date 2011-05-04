@@ -1126,6 +1126,18 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
 
+
+                # Debug Mode complains if someone provides memory buffers
+                # for the otuputs ( where the linker can choose to store the
+                # outputs). Since this is what scan does by default, we will
+                # delete the output_storage for now. This code is going to
+                # change when someone decides to go over the debug code
+                # again, and try to include checks for such behaviour as
+                # well.
+                for r in storage_map:
+                    if r in env.outputs:
+                        storage_map[r][0] = None
+
                 #####
                 #  Precondition: the storage map is empty, transferred completely to r_vals
                 #####
