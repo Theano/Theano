@@ -15,6 +15,12 @@ AddConfigVar('floatX',
         EnumStr('float64', 'float32'),
         )
 
+# TODO Work-in-progress
+#AddConfigVar('casting_policy',
+#        "Rules for implicit casts of constants in arithmetic operations",
+#        EnumStr('theano_0.3', 'numpy'),
+#        )
+
 #gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
 #gpuX mean use the gpu number X.
 AddConfigVar('device',
