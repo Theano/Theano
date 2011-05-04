@@ -159,28 +159,36 @@ _as_tensor_variable = as_tensor_variable
 as_tensor = as_tensor_variable
 
 class NumpyAutocaster(object):
-    """ This class is used to cast python ints and floats to numpy arrays.
+    """
+    This class is used to cast python ints and floats to numpy arrays.
 
-    The behaviour for numpy scalars is a bit tricky... but tends to work in practice.
-    If the dtype of a numpy scalar is in the self.dtypes list, then this 'cast' is a no-op.
+    The behaviour for numpy scalars is a bit tricky... but tends to work in
+    practice.
+    If the dtype of a numpy scalar is in the self.dtypes list, then this 'cast'
+    is a no-op.
 
-    When config.floatX is float32 (at the time of calling), then this function downcasts float
-    and numpy.float arguments to numpy.float32, if float32 is in the self.dtypes list.
+    When config.floatX is float32 (at the time of calling), then this function
+    downcasts float and numpy.float arguments to numpy.float32, if float32 is
+    in the self.dtypes list.
 
     Python ints are always 64bit and floats are always double precision.
-    This class uses the algorithm in __call__ to use a narrower dtype when no precision would
-    be lost, and to even lose precision when this is demanded by the list of dtypes (e.g. to
-    automatically cast all floats to single-precision if self.dtypes does not include full
-    precision floats).
+    This class uses the algorithm in __call__ to use a narrower dtype when no
+    precision would be lost, and to even lose precision when this is demanded
+    by the list of dtypes (e.g. to automatically cast all floats to
+    single-precision if self.dtypes does not include full precision floats).
 
     """
     def __init__(self, dtypes):
         self.dtypes = tuple(dtypes)
+
     def __call__(self, x):
-        # change the default casting behaviour for python floats to always cast to float32
+        # Change the default casting behaviour for python floats to always cast
+        # to float32
         dtype = None
 
-        try: # pass through numpy scalars, since they are already typed on purpose typically.
+        try:
+            # Pass through numpy scalars, since they are already typed on
+            # purpose typically.
             if str(x.dtype) in self.dtypes:
                 return theano._asarray(x, dtype=x.dtype) #leave dtype alone
         except AttributeError:
@@ -188,7 +196,10 @@ class NumpyAutocaster(object):
 
         # unsafe downcast of float64 variables when config.floatX == 'float32'
         # recall: float is numpy.float
-        if isinstance(x, float) and config.floatX in self.dtypes and config.floatX == 'float32':
+        if (isinstance(x, float) and
+            config.floatX in self.dtypes and
+            config.floatX == 'float32'):
+
             return theano._asarray(x, dtype='float32')
 
         for dtype in self.dtypes:
@@ -197,8 +208,10 @@ class NumpyAutocaster(object):
                 break
         # returns either an exact x_==x, or the last casted x_
         return x_
+
 autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
 autocast_float = NumpyAutocaster(('float32', 'float64'))
+
 # autocast_float dtypes might be manipulated in tensor.__init__
 #
 # Note: it's a bit weird for a compiler to automatically downcast literals like this, and it might
@@ -240,8 +253,8 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         # in this case, the semantics are that the caller is forcing the dtype
         x_ = theano._asarray(x, dtype=dtype)
     else:
-        # in this case, this function should infer the dtype according to the autocasting
-        # rules.  See autocasting above.
+        # In this case, this function should infer the dtype according to th
+        # autocasting rules. See autocasting above.
         x_ = None
         if rtype is TensorConstant and isinstance(x, int):
             x_ = autocast_int(x)
@@ -249,8 +262,9 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             x_ = autocast_float(x)
         elif isinstance(x, numpy.ndarray):
             x_ = x
-            # Currently we don't have a bool dtype in Theano
-            # So we upcast it to uint8 to don't break our interface for constant.
+            # Currently we do not have a bool dtype in Theano.
+            # So we upcast it to uint8 to avoid breaking our interface for
+            # constant.
             if x.dtype == 'bool':
                 x_ = numpy.asarray(x_, dtype='uint8')
         else:
@@ -282,7 +296,8 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 def constant(x, name=None, ndim=None, dtype=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim, dtype=dtype)
+    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
+                             dtype=dtype)
 
 def value(x, name=None, ndim=None, dtype=None):
     return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim, dtype=dtype)
