@@ -480,13 +480,6 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         b = T.dvector('b')
         y = T.lvector('y')
 
-        def print_graph(func):
-            for i, node in enumerate(func.maker.env.toposort()):
-                print i, node
-            # Last node should be the output
-            print i, pprint(node.outputs[0])
-            print
-
         ## Basic case
         expressions = [
                 T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
@@ -498,7 +491,8 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         for expr in expressions:
             # Verify the optimizer worked on the expressions
             f = theano.function([x,y], expr, mode=mode)
-            if verbose: print_graph(f)
+            if verbose:
+                theano.printing.debugprint(f)
             try:
                 assert len(f.maker.env.toposort()) == 4
                 f(x_val, y_val)
@@ -508,59 +502,14 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 
             # Also verify the gradient wrt x
             g = theano.function([x,y], T.grad(expr, x), mode=mode)
-            if verbose: print_graph(g)
+            if verbose:
+                theano.printing.debugprint(g)
             try:
                 assert len(g.maker.env.toposort()) == 4
                 g(x_val, y_val)
             except:
                 theano.printing.debugprint(g)
                 raise
-
-    def test_xent_thing_int32(self):
-        verbose = 0
-        mode = theano.compile.mode.get_default_mode()
-        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
-            mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(3,5)
-        b_val = rng.randn(5)
-        y_val = numpy.asarray([2,4,1], dtype='int64')
-
-        x = T.dmatrix('x')
-        b = T.dvector('b')
-        y = T.lvector('y')
-        yi = T.cast(y, 'int32')
-
-        expressions = [
-                T.sum(-T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
-                -T.sum(T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
-                -T.sum(T.log(softmax(x))[T.arange(yi.shape[0]), yi]),
-                T.sum(-T.log(softmax(x))[T.arange(yi.shape[0]), yi])
-                ]
-
-        for expr in expressions:
-            # Verify the optimizer worked on the expressions
-            f = theano.function([x,y], expr, mode=mode)
-            if verbose:
-                theano.printing.debugprint(f)
-            try:
-                assert len(f.maker.env.toposort()) == 5
-                f(x_val, y_val)
-            except:
-                theano.printing.debugprint(f)
-                raise
-
-            # Also verify the gradient wrt x
-            g = theano.function([x,y], T.grad(expr, x), mode=mode)
-            if verbose:
-                theano.printing.debugprint(g)
-            try:
-                assert len(g.maker.env.toposort()) == 5
-                g(x_val, y_val)
-            except:
-                theano.printing.debugprint(g)
-                raise
-
 
         ## Test that a biased softmax is optimized correctly
         bias_expressions = [
@@ -644,6 +593,52 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             except:
                 theano.printing.debugprint(g)
                 raise
+
+    def test_xent_thing_int32(self):
+        verbose = 0
+        mode = theano.compile.mode.get_default_mode()
+        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
+            mode = 'FAST_RUN'
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x_val = rng.randn(3,5)
+        b_val = rng.randn(5)
+        y_val = numpy.asarray([2,4,1], dtype='int64')
+
+        x = T.dmatrix('x')
+        b = T.dvector('b')
+        y = T.lvector('y')
+        yi = T.cast(y, 'int32')
+
+        expressions = [
+                T.sum(-T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
+                -T.sum(T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
+                -T.sum(T.log(softmax(x))[T.arange(yi.shape[0]), yi]),
+                T.sum(-T.log(softmax(x))[T.arange(yi.shape[0]), yi])
+                ]
+
+        for expr in expressions:
+            # Verify the optimizer worked on the expressions
+            f = theano.function([x,y], expr, mode=mode)
+            if verbose:
+                theano.printing.debugprint(f)
+            try:
+                assert len(f.maker.env.toposort()) == 5
+                f(x_val, y_val)
+            except:
+                theano.printing.debugprint(f)
+                raise
+
+            # Also verify the gradient wrt x
+            g = theano.function([x,y], T.grad(expr, x), mode=mode)
+            if verbose:
+                theano.printing.debugprint(g)
+            try:
+                assert len(g.maker.env.toposort()) == 5
+                g(x_val, y_val)
+            except:
+                theano.printing.debugprint(g)
+                raise
+
 
     def test_optimize_xent_vector(self):
         verbose = 0
