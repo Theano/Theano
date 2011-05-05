@@ -88,7 +88,11 @@ class GpuElemwise(Op):
     nout = property(lambda self: self.scalar_op.nout)
 
     def __init__(self, scalar_op, inplace_pattern = {}, sync=None):
+        #TODO-- this looks like a bug-- either we should use the sync argument
+        # or get rid of it, we shouldn't let the client think they can control
+        #sync when they can't
         sync = config.gpuelemwise.sync
+
         self.scalar_op = scalar_op
 
         self.inplace_pattern = inplace_pattern
@@ -370,7 +374,7 @@ class GpuDimShuffle(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (3,0)
 
 class GpuSum(Op):
     """GpuSum is a Reduction along some dimensions by summation.

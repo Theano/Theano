@@ -107,7 +107,7 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     for node in env.nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
-                raise TypeError("Graph must not contain inplace operations", node)
+                raise TypeError("Graph must not contain inplace operations", node, node.op)
             else:
                 env.extend(gof.DestroyHandler())
                 break
