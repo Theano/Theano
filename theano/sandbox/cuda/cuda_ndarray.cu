@@ -3225,6 +3225,7 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
         goto CudaNdarray_dimshuffle_fail;
     }
 
+    free(pattern);
     return rval;
 
     CudaNdarray_dimshuffle_fail:
