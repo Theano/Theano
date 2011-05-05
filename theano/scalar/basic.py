@@ -77,6 +77,16 @@ def constant(x):
 
 class Scalar(Type):
 
+    """
+        Internal class, should not be used by clients
+        Primarily used by tensor.elemwise and tensor.reduce
+        Analogous to TensorType, but for zero-dimensional objects
+        Maps directly to C primitives
+
+        TODO: refactor to be named ScalarType for consistency with TensorType
+    """
+
+
     def __init__(self, dtype):
         if dtype == 'floatX':
             dtype = config.floatX
