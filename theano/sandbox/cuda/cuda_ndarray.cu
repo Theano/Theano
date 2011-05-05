@@ -636,7 +636,9 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     }
     if (rval_size==0)
     {
-        return CudaNdarray_NewDims(rval_nd, rval_dims);
+        PyObject * rval = CudaNdarray_NewDims(rval_nd, rval_dims);
+	free(rval_dims);
+	return rval;
     }
 
     if(CudaNdarray_is_c_contiguous(self))
