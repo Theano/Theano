@@ -374,7 +374,7 @@ class GpuDimShuffle(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (3,0)
+        return (1,0)
 
 class GpuSum(Op):
     """GpuSum is a Reduction along some dimensions by summation.
