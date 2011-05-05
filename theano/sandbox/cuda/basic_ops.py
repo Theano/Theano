@@ -145,7 +145,7 @@ class GpuElemwise(Op):
             # We need to print the scalar_op, not only the its class name
             # to have the full definition of composite op.
             return "GpuElemwise{%s}%s" % (self.scalar_op, str(items))
-        return "GpuElemwise{%s}" % (self.scalar_op)
+        return "GpuElemwise{%s,no_inplace}" % (self.scalar_op)
 
     def __repr__(self):
         return self.__str__()

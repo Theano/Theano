@@ -1298,6 +1298,9 @@ class TensorConstant(_tensor_py_operators, Constant):
 
     To create a TensorConstant, use the `constant` function in this module.
     """
+    def __str__(self):
+        return "TensorConstant{%s}" % self.data
+
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
 TensorType.Constant = TensorConstant
