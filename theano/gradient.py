@@ -132,14 +132,3 @@ def unimplemented_grad(op, x_pos, x):
     """
     msg = '%s.grad not implemented for input %i'%(op, x_pos)
     return Raise(msg=msg)(x)
-
-
-class GradientUndefined(Exception): pass
-
-def undefined_grad(op, x_pos, x):
-    msg = "Undefined gradient - do not use in computations"
-    exc = RuntimeError
-    return Raise(msg=msg, exc=exc)(x)
-
-def grad(self, inputs, out_storage):
-    return [g_x0, undefined_grad(self, 1, inputs[1])]
