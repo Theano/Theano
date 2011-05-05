@@ -334,13 +334,17 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
         if (nd == -1) return 0;
 
         self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
-        //initialize all dimensions and strides to 0
-        for (int i = 0; i < cnda_structure_size(nd); ++i) self->host_structure[i] = 0;
         if (NULL == self->host_structure)
         {
             PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
             return -1;
         }
+        //initialize all dimensions and strides to 0
+        for (int i = 0; i < cnda_structure_size(nd); ++i)
+        {
+            self->host_structure[i] = 0;
+        }
+
         int struct_size = cnda_structure_size(nd);
         if (struct_size)
         {
