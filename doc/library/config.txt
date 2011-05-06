@@ -252,6 +252,9 @@ import theano and print the config variable, as in:
     Default: $CUDA_ROOT or failing that, "/usr/local/cuda"
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
+    If set to an empty string (e.g. with ``root=`` in the ``[cuda]`` section
+    of your .theanorc file), then it will disable warnings about cuda not
+    being found.
 
 .. attribute:: config.gcc.cxxflags
 

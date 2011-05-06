@@ -48,7 +48,9 @@ def set_cuda_disabled():
     """
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
-    if not cuda_warning_is_displayed:
+    # Note that we do not display this warning when the user manually unset the
+    # config.cuda.root configuration variable.
+    if not cuda_warning_is_displayed and config.cuda.root:
         cuda_warning_is_displayed = True
         warning('Cuda is disabled, cuda-based code will thus not be '
                 'working properly')
@@ -81,8 +83,11 @@ try:
     if compile_cuda_ndarray:
         import nvcc_compiler
         if not nvcc_compiler.is_nvcc_available():
-            error('nvcc compiler not found on $PATH.'
-                    '  Check your nvcc installation and try again')
+            # Hide the error message if the user manually unset the
+            # config.cuda.root configuration variable.
+            if config.cuda.root:
+                error('nvcc compiler not found on $PATH.'
+                      ' Check your nvcc installation and try again.')
             set_cuda_disabled()
 
         if cuda_available:
