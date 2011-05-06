@@ -253,7 +253,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         # in this case, the semantics are that the caller is forcing the dtype
         x_ = theano._asarray(x, dtype=dtype)
     else:
-        # In this case, this function should infer the dtype according to th
+        # In this case, this function should infer the dtype according to the
         # autocasting rules. See autocasting above.
         x_ = None
         if rtype is TensorConstant and isinstance(x, int):
