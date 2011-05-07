@@ -835,10 +835,12 @@ def local_gpu_join(node):
             return [replacement_node]
 
 
-@local_optimizer([gpu_gemm_no_inplace])
-def local_inplace_gemm(node):
-    if node.op == gpu_gemm_no_inplace:
-        return [gpu_gemm_inplace(*node.inputs)]
+#Commented out because it can result in shared = dimshuffle(gemm_inplace(dimshuffle(shared)))
+#which causes memory leaks (long term fix is to make the above not leak memory)
+#@local_optimizer([gpu_gemm_no_inplace])
+#def local_inplace_gemm(node):
+#    if node.op == gpu_gemm_no_inplace:
+#        return [gpu_gemm_inplace(*node.inputs)]
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
