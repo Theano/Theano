@@ -454,7 +454,49 @@ class Elemwise(Op):
         """
 
         inputs = map(as_tensor_variable, inputs)
-        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
+        input_dtypes = [i.dtype for i in inputs]
+
+        scalar_inputs = []
+        array_inputs = []
+        for input_idx, input in enumerate(inputs):
+            if input.ndim == 0:
+                scalar_inputs.append((input_idx, input))
+            else:
+                array_inputs.append((input_idx, input))
+
+        if (scalar_inputs and
+            array_inputs and
+            theano.config.cast_policy in ('numpy', 'numpy+floatX')):
+            # We need to make sure that scalars do not upcast arrays unless
+            # they are fundamentally different. This is specified in
+            #   http://docs.scipy.org/doc/numpy/reference/ufuncs.html
+            # in the 'casting rules' section.
+            array_dtype = scalar.upcast(*[a[1].dtype for a in array_inputs])
+            for input_idx, input in scalar_inputs:
+                # Replace this scalar input's type with the one that numpy
+                # would use when adding this scalar to the array.
+                # Note that currently numpy's behavior is not consistent, which
+                # is a bug (will be fixed in 1.6). See for details
+                #   http://projects.scipy.org/numpy/ticket/1827
+                # As a result, we pick the highest precision data type that
+                # numpy may decide to use (although we may prefer float32 over
+                # float64).
+                n_inputs = [
+                        numpy.array(0, dtype=input_dtypes[input_idx]),
+                        numpy.array([0], dtype=array_dtype)]
+                n_types = [(n_inputs[0] + n_inputs[1]).dtype,
+                           (n_inputs[1] + n_inputs[0]).dtype]
+                n_highest_type = scalar.upcast(*map(str, n_types))
+                if (n_highest_type == 'float64' and
+                    theano.config.cast_policy == 'numpy+floatX' and
+                    theano.config.floatX == 'float32' and
+                    array_dtype != 'float64' and
+                    input_dtypes[input_idx] != 'float64'):
+                    # Prefer float 32 instead.
+                    n_highest_type = 'float32'
+                input_dtypes[input_idx] = n_highest_type
+
+        shadow = self.scalar_op.make_node(*[Scalar(dtype=dtype)() for dtype in input_dtypes])
 
         target_length = max([input.type.ndim for input in inputs])
 
