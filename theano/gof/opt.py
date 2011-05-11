@@ -14,9 +14,10 @@ import utils
 import unify
 import toolbox
 import op
+import theano
+from theano import config
 from theano.gof.python25 import any, all
 from theano.configparser import AddConfigVar, BoolParam, config
-import theano
 
 #if sys.version_info[:2] >= (2,5):
 #  from collections import defaultdict
@@ -122,6 +123,8 @@ class SeqOptimizer(Optimizer, list):
         _logger.error("ERROR: SeqOptimizer apply %s"% str(optimizer))
         _logger.error("Traceback:")
         _logger.error(traceback.format_exc())
+        if config.on_opt_error == 'raise':
+            raise exc
 
     def __init__(self, *opts, **kw):
         """WRITEME"""
@@ -767,7 +770,7 @@ class NavigatorOptimizer(Optimizer):
         _logger.error("ERROR: Optimization failure due to: %s" % str(local_opt))
         _logger.error("TRACEBACK:")
         _logger.error(traceback.format_exc())
-        if isinstance(exc, AssertionError):
+        if isinstance(exc, AssertionError) or config.on_opt_error == 'raise':
             raise exc
     @staticmethod
     def warn_inplace(exc, nav, repl_pairs, local_opt):
