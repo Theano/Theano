@@ -49,7 +49,7 @@ void * device_malloc(size_t size)
 #else
         fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
 #endif
-        PyErr_Format(PyExc_MemoryError, "error allocating %li bytes of device memory (%s)", (long)size, cudaGetErrorString(err));
+        PyErr_Format(PyExc_MemoryError, "Error allocating %%li bytes of device memory (%%s).", (long)size, cudaGetErrorString(err));
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
