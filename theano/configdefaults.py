@@ -71,6 +71,10 @@ AddConfigVar('optimizer',
         "Default optimizer. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'))
 
+AddConfigVar('on_opt_error',
+        "What to do when an optimization crashes: warn and skip it, or raise the exception",
+        EnumStr('warn', 'raise'))
+
 AddConfigVar('home',
         "User home directory",
         StrParam(os.getenv("HOME", os.path.expanduser('~'))))

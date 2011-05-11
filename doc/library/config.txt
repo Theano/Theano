@@ -188,6 +188,16 @@ import theano and print the config variable, as in:
 
     When the mode is Mode, it sets the default optimizer used.
 
+.. attribute:: on_opt_error
+
+    String value: 'warn' or 'raise'
+
+    Default: 'warn'
+
+    When a crash occurs while trying to apply some optimization, either warn
+    the user and skip this optimization ('warn'), or raise the exception
+    ('raise').
+
 .. attribute:: config.warn.ignore_bug_before
 
     String value: 'None', 'all', '0.3'
