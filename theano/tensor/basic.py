@@ -7,6 +7,7 @@ import sys # for sys.maxint
 from theano.configparser import config, AddConfigVar, BoolParam
 import traceback #for overriding Op.__call__
 import warnings
+from itertools import izip
 
 import numpy, theano
 #from copy import copy as python_copy
@@ -22,6 +23,9 @@ from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
 from theano import compile, printing
 from theano.printing import pprint
+
+# We use this exception as well.
+from theano.scalar import IntegerDivisionError
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -1138,7 +1142,7 @@ class _tensor_py_operators:
     def __div__(self,other):
         try:
             return div_proxy(self,other)
-        except NotImplementedError:
+        except IntegerDivisionError:
             # This is to raise the exception that occurs when trying to divide
             # two integer arrays (currently forbidden).
             raise
@@ -2579,7 +2583,7 @@ def div_proxy(x, y):
     if (as_tensor_variable(x).dtype in discrete_dtypes and
         as_tensor_variable(y).dtype in discrete_dtypes):
         # See the same in scalar/basic.py
-        raise NotImplementedError(
+        raise IntegerDivisionError(
                 "Dividing two integer arrays with '/' is forbidden until "
                 "Theano v0.4 is released (where the result will be a floating "
                 "point number). In the meantime, please either use '//' for "
@@ -2921,7 +2925,7 @@ class Subtensor(Op):
         padded = ( actual_idx_list +
                   [slice(None, None, None)]*(len(xshp)-len(self.idx_list)))
         i = 0
-        for idx, xl in zip(padded, xshp):
+        for idx, xl in izip(padded, xshp):
             if isinstance(idx, slice):
                 # If it is the default (None, None, None) slice, or a variant,
                 # the shape will be xl
@@ -2931,7 +2935,7 @@ class Subtensor(Op):
                     outshp.append(xl)
                 else:
                     cnf = get_canonical_form_slice(idx, xl)
-                    length = (cnf[0].stop - cnf[0].start -1)/cnf[0].step + 1
+                    length = (cnf[0].stop - cnf[0].start -1) // cnf[0].step + 1
                     length = switch(lt(length,0), 0, length)
                     outshp.append(length)
                 i += 1
