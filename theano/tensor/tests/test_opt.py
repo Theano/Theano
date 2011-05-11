@@ -652,7 +652,7 @@ def test_mixeddiv():
     d = dscalar()
     try:
         0 == function([i,d], d*(i/(i+1)))(3, 1.0)
-    except NotImplementedError:
+    except theano.scalar.IntegerDivisionError:
         pass
 
 def test_const_type_in_mul_canonizer():
