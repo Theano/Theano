@@ -27,15 +27,10 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer, pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_constant_value
+from basic import get_constant_value, ShapeError
 
 
 # Utilities
-
-
-class ShapeError(Exception):
-    """Raised when the shape cannot be computed."""
-    pass
 
 
 def out2in(*local_opts):
@@ -727,7 +722,7 @@ class ShapeFeature(object):
                     'Code called by infer_shape failed raising a '
                     'NotImplementedError. Raising NotImplementedError to '
                     'indicate that a shape cannot be computed is no longer '
-                    'supported, and one should now use tensor.opt.ShapeError '
+                    'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
         except Exception, e:
             _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,

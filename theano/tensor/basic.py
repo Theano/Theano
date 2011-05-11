@@ -45,6 +45,11 @@ int_dtypes = map(str, scal.int_types)
 discrete_dtypes = map(str, scal.discrete_types)
 
 
+class ShapeError(Exception):
+    """Raised when the shape cannot be computed."""
+    pass
+
+
 def check_equal_numpy(x, y):
     """
     Returns True iff x and y are equal (checks the dtype and
@@ -3576,14 +3581,14 @@ class Join(Op):
         # that whenever I get a None. Should we just remove gof/apply_shape
         # if it is depricated ??
         if ishapes[1] is None:
-            raise NotImplementedError
+            raise ShapeError()
         n_dim = len(ishapes[1])
         for shape in ishapes[1:]:
             if shape is None:
-                raise NotImplementedError
+                raise ShapeError()
             for shape_i in shape:
                 if shape_i is None:
-                    raise NotImplementedError
+                    raise ShapeError()
             # at this point the inputs have been broadcasted so they should
             # all have the same shape
             assert len(shape) == n_dim

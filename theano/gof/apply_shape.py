@@ -36,7 +36,7 @@ class Apply(gof.Apply):
 
         try:
             oshapes = infer_shape(self, ishapes)
-        except theano.tensor.opt.ShapeError:
+        except theano.tensor.ShapeError:
             return
 
         for o, oshp in zip(outputs, oshapes):
