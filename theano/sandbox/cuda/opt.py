@@ -846,10 +846,10 @@ def local_gpu_join(node):
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
 # elemwise(step 71)
-optdb.register('InplaceGpuBlasOpt',
-        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
-            max_use_ratio=5),
-               70.0, 'fast_run', 'inplace')
+#optdb.register('InplaceGpuBlasOpt',
+#        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+#            max_use_ratio=5),
+#               70.0, 'fast_run', 'inplace')
 
 def get_device_type_sizes():
     if hasattr(get_device_type_sizes, 'rval'):

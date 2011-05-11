@@ -4450,6 +4450,9 @@ class Dot(Op):
                 else:            #y is a scalar
                     bz = bx
         else:
+            if len(inputs) != 2:
+                raise TypeError('theanor.tensor.Dot: 2 arguments required, %d given ' % len(inputs))
+
             x, y = inputs
             nx = x.type.ndim
             ny = y.type.ndim
