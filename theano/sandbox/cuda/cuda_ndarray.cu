@@ -1886,12 +1886,13 @@ static PyTypeObject CudaNdarrayType =
 static __global__ void get_gpu_ptr_size(int* dst)
 {
   dst[0] = sizeof(float*);
+  dst[1] = sizeof(int);
 }
 
 PyObject *
 CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 {
-  int *gpu_data = (int*)device_malloc(sizeof(int));
+  int *gpu_data = (int*)device_malloc(sizeof(int)*2);
   if(gpu_data == NULL){
     return PyErr_Format(PyExc_MemoryError,
                         "CudaNdarray_ptr_int_size: Can't allocate memory on the gpu.");
@@ -1903,14 +1904,17 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
     return PyErr_Format(PyExc_RuntimeError,
                         "CudaNdarray_ptr_int_size: error when calling the gpu code.");
   }
-  int gpu_ptr_size = -1;
-  cublasGetVector(1, sizeof(int), gpu_data, 1, &gpu_ptr_size, 1);
+
+  // Transfer the result to cpu
+  int gpu_sizes[] = {-1,-1};
+  cublasGetVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
   device_free(gpu_data);
+
   if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
     PyErr_SetString(PyExc_RuntimeError, "error copying data to from memory");
     return NULL;
   }
-  return Py_BuildValue("iii", gpu_ptr_size, sizeof(float*), sizeof(int));
+  return Py_BuildValue("iiii", gpu_sizes[0], sizeof(float*), sizeof(int), gpu_sizes[1]);
 }
 
 // Initialize the gpu.

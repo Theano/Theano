@@ -852,6 +852,10 @@ def local_gpu_join(node):
 #               70.0, 'fast_run', 'inplace')
 
 def get_device_type_sizes():
+    """
+    :return:(gpu ptr size, cpu ptr size, int sizes(gpu and cpu))
+    :return type: tuple
+    """
     if hasattr(get_device_type_sizes, 'rval'):
         return get_device_type_sizes.rval
     gpu_ptr_size = 8
@@ -859,9 +863,10 @@ def get_device_type_sizes():
     int_size = 8
     try:
 
-        #RETURN (gpu ptr size, cpu ptr size, int sizes)
         t = cuda_ndarray.cuda_ndarray.ptr_int_size()
-        gpu_ptr_size, cpu_ptr_size, int_size = t
+        gpu_ptr_size, cpu_ptr_size, int_size, gpu_int_size = t
+        assert int_size == gpu_int_size
+        del gpu_int_size
         del t
     except Exception, e:
         _logger.warning(("OPTIMIZATION WARNING: "
