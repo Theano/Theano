@@ -144,13 +144,30 @@ import theano and print the config variable, as in:
 
 .. attribute:: floatX
 
-    String value: either 'float64' or 'float32'.
+    String value: either 'float64' or 'float32'
 
     Default: 'float64'
 
     This sets the default dtype returned by tensor.matrix(), tensor.vector(),
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
+
+.. attribute:: cast_policy
+
+    String value: either 'numpy+floatX', 'numpy' or 'custom'
+
+    Default: 'custom'
+
+    This specifies how data types are implicitly figured out in Theano, e.g.  for
+    constants or in the result of arithmetic operations. The recommended value is
+    'numpy+floatX', that mimics numpy's behavior except for floats when
+    ``config.floatX`` is set to 'float32', for which we use float32 instead of
+    float64 unless the user is explicitly using data typed as float64. When
+    'numpy' is used, this specific floatX behavior is discarded. The current
+    default value is 'custom' for backward compatibility reason, and corresponds
+    to a set of custom rules originally used in Theano (which can be partially
+    customized, see e.g. the in-code help of ``tensor.NumpyAutocaster``). The
+    'custom' option will be deprecated in a future release of Theano.
 
 .. attribute:: mode
 

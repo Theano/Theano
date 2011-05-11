@@ -26,11 +26,28 @@ builtin_complex = complex
 builtin_int = int
 builtin_float = float
 
+
 def upcast(dtype, *dtypes):
-    z = numpy.zeros((), dtype = dtype)
-    for dtype in dtypes:
-        z = z + numpy.zeros((), dtype = dtype)
-    return str(z.dtype)
+    # Should we try to keep float32 instead of float64? This is used so that
+    # for instance mixing int64 with float32 yields float32 instead of float64.
+    # Note that we store this boolean as a one-element list so that it can be
+    # modified within `make_array`.
+    keep_float32 = [(config.cast_policy == 'numpy+floatX' and
+                     config.floatX == 'float32')]
+    def make_array(dt):
+        if dt == 'float64':
+            # There is an explicit float64 dtype: we cannot keep float32.
+            keep_float32[0] = False
+        return numpy.zeros((), dtype=dt)
+    z = make_array(dtype)
+    for dt in dtypes:
+        z = z + make_array(dt=dt)
+    rval = str(z.dtype)
+    if rval == 'float64' and keep_float32[0]:
+        return 'float32'
+    else:
+        return rval
+
 
 def as_scalar(x, name = None):
     if isinstance(x, gof.Apply):
@@ -46,6 +63,7 @@ def as_scalar(x, name = None):
         return constant(x)
     except TypeError:
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
+
 
 def constant(x):
     # pass through numpy scalars, since they are already typed on purpose typically.
@@ -383,6 +401,7 @@ uint_types = uint8, uint16, uint32, uint64
 float_types = float32, float64
 complex_types = complex64, complex128
 
+discrete_types = int_types + uint_types
 continuous_types = float_types + complex_types
 
 class _scalar_py_operators:
@@ -416,6 +435,7 @@ class _scalar_py_operators:
     def __sub__(self,other): return sub(self,other)
     def __mul__(self,other): return mul(self,other)
     def __div__(self,other): return div_proxy(self,other)
+    def __floordiv__(self,other): return int_div(self,other)
     def __mod__(self,other): return mod(self,other)
     def __pow__(self,other): return pow(self,other)
 
@@ -995,32 +1015,48 @@ class Sub(BinaryScalarOp):
         return first_part, second_part
 sub = Sub(upcast_out, name = 'sub')
 
+
 def div_proxy(x, y):
-    """Proxy for either true_div or int_div, depending on types of x, y.
     """
-    if as_scalar(x).type.dtype.startswith('int') and as_scalar(y).type.dtype.startswith('int'):
-        return int_div(x, y)
+    Currently used as a check to ensure we are not trying to divide integers.
+
+    In 0.4 we will get rid of this function to always use true_div:
+        http://trac-hg.assembla.com/theano/ticket/669
+    """
+    if (as_scalar(x).type in discrete_types and
+        as_scalar(y).type in discrete_types):
+        # Following discussion on theano-dev ("Inconsistent behavior in integer
+        # division"), we will change the semantics of "/" on integer types in
+        # Theano 0.4. Until then, it is forbidden to use "/" on integers.
+        raise NotImplementedError(
+                "Dividing two integers with '/' is forbidden until Theano v0.4"
+                " is released (where the result will be a floating point "
+                "number). In the meantime, please either use '//' for integer "
+                "division, or cast one of the arguments to a floating point "
+                "type for float division.")
     else:
         return true_div(x, y)
 
+
 class TrueDiv(BinaryScalarOp):
     def output_types(self, types):
-        if all(t.dtype.startswith('int') for t in types):
-            return [float64]
+        if all(t in discrete_types for t in types):
+            return [Scalar(config.floatX)]
         else:
             return super(TrueDiv, self).output_types(types)
     def impl(self, x, y):
         x = numpy.asarray(x)
         y = numpy.asarray(y)
-        if str(x.dtype).startswith('int') and str(y.dtype).startswith('int'):
-            return float(x) / y
+        if all(a.dtype in discrete_types for a in (x, y)):
+            return numpy.array(float(x) / y, dtype=config.floatX)
         else:
             return x / y
     def c_code(self, node, name, (x, y), (z, ), sub):
         #we generate good c code only when both are complex!
         if sum([node.inputs[0].type in complex_types, node.inputs[1].type in complex_types])==1:
             raise NotImplementedError('type not supported', type)
-        if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
+        if (node.inputs[0].type in discrete_types and
+            node.inputs[1].type in discrete_types):
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
@@ -1029,11 +1065,15 @@ class TrueDiv(BinaryScalarOp):
         if x.type in float_types:
             first_part = cast(gz / y, x.type.dtype)
         else:
+            assert x.type in discrete_types
             first_part = None
 
+        if y.type in complex_types:
+            raise NotImplementedError()
         if y.type in float_types:
             second_part = cast(-(gz * x) / (y * y), y.type.dtype)
         else:
+            assert y.type in discrete_types
             second_part = None
         return first_part, second_part
 true_div = TrueDiv(upcast_out, name = 'true_div')

@@ -36,6 +36,11 @@ def _warn(*msg):
 #This is needed as we will hide it later
 python_complex=complex
 
+# Define common subsets of dtypes (as strings).
+int_dtypes = map(str, scal.int_types)
+discrete_dtypes = map(str, scal.discrete_types)
+
+
 def check_equal_numpy(x, y):
     """
     Returns True iff x and y are equal (checks the dtype and
@@ -162,36 +167,64 @@ class NumpyAutocaster(object):
     """
     This class is used to cast python ints and floats to numpy arrays.
 
-    The behaviour for numpy scalars is a bit tricky... but tends to work in
-    practice.
-    If the dtype of a numpy scalar is in the self.dtypes list, then this 'cast'
-    is a no-op.
-
-    When config.floatX is float32 (at the time of calling), then this function
-    downcasts float and numpy.float arguments to numpy.float32, if float32 is
-    in the self.dtypes list.
-
-    Python ints are always 64bit and floats are always double precision.
-    This class uses the algorithm in __call__ to use a narrower dtype when no
-    precision would be lost, and to even lose precision when this is demanded
-    by the list of dtypes (e.g. to automatically cast all floats to
-    single-precision if self.dtypes does not include full precision floats).
-
+    The behavior when called on scalar `x` depends on `config.cast_policy`:
+        - 'numpy' will simply use the same type as found by `numpy.asarray(x)`.
+        - 'numpy+floatX' will do the same, except it will use float32 instead
+          of float64 if `x` is a Python float and `config.floatX` is set to
+          'float32' (note that if `x` is a numpy scalar whose data type is
+          float64, it is not modified since we assume the user is purposedly
+          using float64).
+        - 'custom' lets one define a tuple of data types such that:
+            - if `x` is already a numpy scalar and its data type is in this
+              tuple, then it is returned unchanged;
+            - otherwise, the first data type in this tuple that can represent
+              `x` without loss of precision will be used, unless `x` is a float
+              and 'float32' is in the tuple (in which case `x` is cast as a
+              float32);
+            - if no data type can represent `x` without loss of precision, then
+              the last data type in the tuple will be used.
     """
     def __init__(self, dtypes):
+        """
+        Constructor.
+
+        :type dtypes: Tuple of strings.
+        :param dtypes: The ordered list of preferred data types (only used when
+        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster` help
+        for details).
+        """
         self.dtypes = tuple(dtypes)
 
     def __call__(self, x):
-        # Change the default casting behaviour for python floats to always cast
-        # to float32
-        dtype = None
+        # Make sure we only deal with scalars.
+        assert (isinstance(x, int) or
+                isinstance(x, float) or
+                (isinstance(x, numpy.ndarray) and x.ndim == 0))
+
+        if config.cast_policy == 'numpy':
+            return numpy.asarray(x)
+        elif config.cast_policy == 'numpy+floatX':
+            rval = numpy.asarray(x)
+            if (rval.dtype == 'float64' and         # numpy wants float64
+                config.floatX == 'float32' and      # but we prefer float32
+                not hasattr(x, 'dtype')):           # and `x` was not typed
+                rval = theano._asarray(rval, dtype='float32')
+            return rval
+
+        # The following is the original code, corresponding to the 'custom'
+        # option for `config.cast_policy`.
+        assert config.cast_policy == 'custom'
 
         try:
             # Pass through numpy scalars, since they are already typed on
             # purpose typically.
             if str(x.dtype) in self.dtypes:
-                return theano._asarray(x, dtype=x.dtype) #leave dtype alone
+                # No need to cast `x` into a new dtype. Note that we still
+                # need to convert it into an array, because it may not be
+                # one already (e.g. if x == numpy.float64(1.1)).
+                return numpy.asarray(x)
         except AttributeError:
+            # Means `x` has no 'dtype' attribute.
             pass
 
         # unsafe downcast of float64 variables when config.floatX == 'float32'
@@ -223,7 +256,10 @@ autocast_float = NumpyAutocaster(('float32', 'float64'))
 # have the same type as the xmatrix().
 #
 class autocast_float_as(object):
-    """This class makes it possible to temporarily and locally adjust autocasting behaviour.
+    """
+    This class makes it possible to temporarily and locally adjust autocasting
+    behavior when `config.cast_policy` is set to 'custom'.
+    If `config.cast_policy` is not 'custom', an exception is raised.
 
     For example:
     >>> with autocast_float_as('float32') as _dummy:
@@ -235,10 +271,13 @@ class autocast_float_as(object):
     """
     def __init__(self, *dtypes):
         self.dtypes = dtypes
+        assert config.cast_policy == 'custom'
     def __enter__(self):
+        assert config.cast_policy == 'custom'
         self.old_dtypes = autocast_float.dtypes
         autocast_float.dtypes = self.dtypes
     def __exit__(self, *args):
+        assert config.cast_policy == 'custom'
         autocast_float.dtypes = self.old_dtypes
 
 def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
@@ -260,6 +299,11 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             x_ = autocast_int(x)
         elif rtype is TensorConstant and isinstance(x, float):
             x_ = autocast_float(x)
+        elif rtype is TensorConstant and isinstance(x, long):
+            # It is not clear what would happen if one was to use a `long`
+            # number as a constant in a Theano graph. As a result, we throw
+            # an exception in this situation.
+            raise NotImplementedError('Constants of type `long` not supported')
         elif isinstance(x, numpy.ndarray):
             x_ = x
             # Currently we do not have a bool dtype in Theano.
@@ -352,7 +396,7 @@ def _allclose(a, b):
         rtol = float64_rtol
 
     # Work around bug in Numpy, see http://projects.scipy.org/numpy/ticket/1684
-    if str(b.dtype).startswith('int') and (numpy.absolute(b) < 0).any():
+    if str(b.dtype) in int_dtypes and (numpy.absolute(b) < 0).any():
         b = theano._asarray(b, dtype='float64')
 
     return numpy.allclose(a,b, atol=atol, rtol=rtol)
@@ -1094,6 +1138,10 @@ class _tensor_py_operators:
     def __div__(self,other):
         try:
             return div_proxy(self,other)
+        except NotImplementedError:
+            # This is to raise the exception that occurs when trying to divide
+            # two integer arrays (currently forbidden).
+            raise
         except Exception, e:
             return NotImplemented
     def __pow__(self,other):
@@ -1848,7 +1896,7 @@ def min(x, axis='DEFAULT'):
         "flatten the tensor before calling min()."),
         stacklevel=2)
     str_x_type = str(x.dtype)
-    if str_x_type.startswith('float') or str_x_type.startswith('int'):
+    if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return -max(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex
@@ -1878,7 +1926,7 @@ def argmin(x, axis='DEFAULT'):
         "axis before calling argmin."),
         stacklevel=2)
     str_x_type = str(x.dtype)
-    if str_x_type.startswith('float') or str_x_type.startswith('int'):
+    if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return argmax(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex
@@ -2381,7 +2429,7 @@ def mean(input, axis = None, op = False):
     if op:
         return Mean(axis)(input)
 
-    if str(input.dtype).startswith('int'):
+    if str(input.dtype) in discrete_dtypes:
             # we need to cast eventually anyway, and this helps
             # to prevents overflow
         input = cast(input, 'float64')
@@ -2524,13 +2572,22 @@ def minimum(x,y):
     """
     # see decorator for function body
 
+
 def div_proxy(x, y):
     """Proxy for either true_div or int_div, depending on types of x, y.
     """
-    if as_tensor_variable(x).type.dtype.startswith('int') and as_tensor_variable(y).type.dtype.startswith('int'):
-        return int_div(x, y)
+    if (as_tensor_variable(x).dtype in discrete_dtypes and
+        as_tensor_variable(y).dtype in discrete_dtypes):
+        # See the same in scalar/basic.py
+        raise NotImplementedError(
+                "Dividing two integer arrays with '/' is forbidden until "
+                "Theano v0.4 is released (where the result will be a floating "
+                "point number). In the meantime, please either use '//' for "
+                "integer division, or cast one of the arguments to a floating "
+                "point type for float division.")
     else:
         return true_div(x, y)
+
 
 @_scal_elemwise_with_nfunc('add', 2, 1)
 def add(a, *other_terms):
@@ -4021,6 +4078,31 @@ def arange(start, stop=None, step=1, dtype=None):
     # If dtype is not provided, infer it from the other arguments
     if dtype is None:
         dtype = scal.upcast(start.type.dtype, stop.type.dtype, step.type.dtype)
+        if config.cast_policy in ('numpy', 'numpy+floatX'):
+            # We enforce numpy semantics, except in the special case where
+            # `config.cast_policy` is 'numpy+floatX' and we want to use float32
+            # rather than float64.
+            # As an example, if `start`, `stop` and `step` are all int32,
+            # `numpy.arange` returns an int64 array (on 64-bit platforms),
+            # while the upcast above returns int32.
+            numpy_dtype = numpy.arange(
+                    start=numpy.array(0, dtype=start.dtype),
+                    stop=numpy.array(1, dtype=stop.dtype),
+                    step=numpy.array(1, dtype=step.dtype)).dtype
+            if numpy_dtype != dtype:
+                if (config.cast_policy == 'numpy+floatX' and
+                    config.floatX == 'float32' and
+                    numpy_dtype == 'float64' and
+                    # No explicit float64 in the three arguments?
+                    all(dt != 'float64'
+                        for dt in [s.dtype for s in (start, stop, step)])):
+                    # We use float32 instead.
+                    assert dtype != 'float64'
+                    dtype = 'float32'
+                else:
+                    # We use the same dtype as numpy instead of the result of
+                    # the upcast.
+                    dtype = str(numpy_dtype)
 
     if dtype not in _arange:
         _arange[dtype] = ARange(dtype)

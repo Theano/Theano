@@ -47,6 +47,75 @@ def eval_outputs(outputs):
         return variables[0]
     return variables
 
+def get_numeric_subclasses(cls=numpy.number, ignore=None):
+    """
+    Return subclasses of `cls` in the numpy scalar hierarchy.
+
+    We only return subclasses that correspond to unique data types.
+    The hierarchy can be seen here:
+        http://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+    """
+    if ignore is None:
+        ignore = []
+    rval = []
+    dtype = numpy.dtype(cls)
+    dtype_num = dtype.num
+    if dtype_num not in ignore:
+        # Safety check: we should be able to represent 0 with this data type.
+        numpy.array(0, dtype=dtype)
+        rval.append(cls)
+        ignore.append(dtype_num)
+    for sub in cls.__subclasses__():
+        rval += [c for c in get_numeric_subclasses(sub, ignore=ignore)]
+    return rval
+
+
+def get_numeric_types(with_int=True, with_float=True, with_complex=False,
+                      with_128_bit=False):
+    """
+    Return numpy numeric data types.
+
+    :param with_int: Whether to include integer types.
+
+    :param with_float: Whether to include floating point types.
+
+    :param with_complex: Whether to include complex types.
+
+    :param with_128_bit: Whether to include 128/256-bit types.
+
+    :returns: A list of unique data type objects. Note that multiple data types
+    may share the same string representation, but can be differentiated through
+    their `num` attribute.
+
+    Note that we could probably rely on the lists of types defined in the
+    `scalar` module. However with this function we can test more unique dtype
+    objects, and possibly detect defects in dtypes that may be introduced in
+    numpy in the future.
+    """
+    rval = []
+    def is_within(cls1, cls2):
+        # Return True if scalars defined from `cls1` are within the hierarchy
+        # starting from `cls2`.
+        # The third test below is to catch for instance the fact that
+        # one can use ``dtype=numpy.number`` and obtain a float64 scalar, even
+        # though `numpy.number` is not under `numpy.floating` in the class
+        # hierarchy.
+        return (cls1 is cls2 or
+                issubclass(cls1, cls2) or
+                isinstance(numpy.array([0], dtype=cls1)[0], cls2))
+    for cls in get_numeric_subclasses():
+        dtype = numpy.dtype(cls)
+        if ((not with_complex and is_within(cls, numpy.complexfloating)) or
+            (not with_int and is_within(cls, numpy.integer)) or
+            (not with_float and is_within(cls, numpy.floating)) or
+            (not with_128_bit and ('128' in str(dtype) or
+                                   '256' in str(dtype)))):
+            # Ignore this class.
+            continue
+        rval.append([str(dtype), dtype, dtype.num])
+    # We sort it to be deterministic, then remove the string and num elements.
+    return [x[1] for x in sorted(rval, key=str)]
+
 def _numpy_checker(x, y):
     """
     Checks if x.data and y.data have the same contents.
@@ -2180,7 +2249,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_stack_scalar_make_vector(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
-        not Join. Test that the floatX dtype stay floatX, not down casted to int64'''
+        not Join. Test that the floatX dtype stay floatX, not downcasted to int64'''
         a = tensor.scalar('a')
         b = tensor.scalar('b')
         s = stack(a, b, a, b)
@@ -3056,7 +3125,13 @@ class T_scalarfromtensor(unittest.TestCase):
         v = eval_outputs([ss])
 
         self.assertTrue(v == 56, v)
-        self.assertTrue(isinstance(v, numpy.int8))
+        if config.cast_policy == 'custom':
+            self.assertTrue(isinstance(v, numpy.int8))
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            self.assertTrue(isinstance(
+                v, getattr(numpy, str(numpy.asarray(56).dtype))))
+        else:
+            raise NotImplementedError(config.cast_policy)
         self.assertTrue(v.shape == (), v.shape)
         tt = lscalar()
         ss = scalar_from_tensor(tt)
@@ -3538,7 +3613,13 @@ class TestARange(unittest.TestCase):
         out = arange(start, stop)
         f = function([start, stop], out)
 
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            assert out.dtype == numpy.arange(numpy.int32(0),
+                                             numpy.int32(1)).dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
         assert numpy.all(f(0,5) == numpy.arange(0,5))
         assert numpy.all(f(-5,1) == numpy.arange(-5,1))
         assert numpy.all(f(0,0) == numpy.arange(0,0))
@@ -3560,7 +3641,12 @@ class TestARange(unittest.TestCase):
         out = arange(stop)
         f = function([stop], out)
 
-        assert out.dtype == stop.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == stop.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            assert out.dtype == numpy.arange(numpy.int32(1)).dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
         assert numpy.all(f(8) == numpy.arange(8))
         assert numpy.all(f(-2) == numpy.arange(-2))
 
@@ -3568,24 +3654,93 @@ class TestARange(unittest.TestCase):
         fout = arange(fstop)
         ff = function([fstop], fout)
 
-        assert fout.dtype == fstop.type.dtype
+        if config.cast_policy == 'custom':
+            assert fout.dtype == fstop.type.dtype
+        elif config.cast_policy == 'numpy':
+            assert fout.dtype == numpy.arange(numpy.float32(1)).dtype
+        elif config.cast_policy == 'numpy+floatX':
+            if config.floatX == 'float32':
+                assert fout.dtype == 'float32'
+            else:
+                assert fout.dtype == numpy.arange(numpy.float32(1)).dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
+
         fstop_values = [0.2, -0.7, 8.5]
         for fstop_v in fstop_values:
             fstop_v32 = numpy.float32(fstop_v)
             assert numpy.all(ff(fstop_v32) == numpy.arange(fstop_v))
 
     def test_upcast(self):
-        """Test that arange compute output type adequately"""
-        assert arange(iscalar()).dtype == iscalar().dtype
-        assert arange(fscalar()).dtype == fscalar().dtype
-        assert arange(dscalar()).dtype == dscalar().dtype
+        """Test that arange computes output type adequately"""
+        if config.cast_policy == 'custom':
+            assert arange(iscalar()).dtype == iscalar().dtype
+            assert arange(fscalar()).dtype == fscalar().dtype
+            assert arange(dscalar()).dtype == dscalar().dtype
 
-        # int32 + float32 -> float64
-        assert arange(iscalar(), fscalar()).dtype == dscalar().dtype
-        assert arange(iscalar(), dscalar()).dtype == dscalar().dtype
-        assert arange(fscalar(), dscalar()).dtype == dscalar().dtype
+            # int32 + float32 -> float64
+            assert arange(iscalar(), fscalar()).dtype == dscalar().dtype
+            assert arange(iscalar(), dscalar()).dtype == dscalar().dtype
+            assert arange(fscalar(), dscalar()).dtype == dscalar().dtype
 
-        assert arange(iscalar(), fscalar(), dscalar()).dtype == dscalar().dtype
+            assert arange(iscalar(), fscalar(), dscalar()).dtype == dscalar().dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            for dtype in get_numeric_types():
+                # Test with a single argument.
+                arange_dtype = arange(scalar(dtype=str(dtype))).dtype
+                numpy_dtype = numpy.arange(numpy.array(1, dtype=dtype)).dtype
+                if (dtype != 'float64' and
+                    numpy_dtype == 'float64' and
+                    config.cast_policy == 'numpy+floatX' and
+                    config.floatX == 'float32'):
+                    # We want a float32 arange.
+                    assert arange_dtype == 'float32'
+                else:
+                    # Follow numpy.
+                    assert arange_dtype == numpy_dtype
+                
+                # Test with two arguments.
+                for stop_dtype in get_numeric_types():
+                    arange_dtype = arange(
+                            start=scalar(dtype=str(dtype)),
+                            stop=scalar(dtype=str(stop_dtype))).dtype
+                    numpy_dtype = numpy.arange(
+                            start=numpy.array(0, dtype=dtype),
+                            stop=numpy.array(1, dtype=stop_dtype)).dtype
+                    if (dtype != 'float64' and
+                        stop_dtype != 'float64' and
+                        numpy_dtype == 'float64' and
+                        config.cast_policy == 'numpy+floatX' and
+                        config.floatX == 'float32'):
+                        # We want a float32 arange.
+                        assert arange_dtype == 'float32'
+                    else:
+                        # Follow numpy.
+                        assert arange_dtype == numpy_dtype
+
+                    # Test with three arguments.
+                    for step_dtype in get_numeric_types():
+                        arange_dtype = arange(
+                                start=scalar(dtype=str(dtype)),
+                                stop=scalar(dtype=str(stop_dtype)),
+                                step=scalar(dtype=str(step_dtype))).dtype
+                        numpy_dtype = numpy.arange(
+                                start=numpy.array(0, dtype=dtype),
+                                stop=numpy.array(1, dtype=stop_dtype),
+                                step=numpy.array(1, dtype=step_dtype)).dtype
+                        if (dtype != 'float64' and
+                            stop_dtype != 'float64' and
+                            step_dtype != 'float64' and
+                            numpy_dtype == 'float64' and
+                            config.cast_policy == 'numpy+floatX' and
+                            config.floatX == 'float32'):
+                            # We want a float32 arange.
+                            assert arange_dtype == 'float32'
+                        else:
+                            # Follow numpy.
+                            assert arange_dtype == numpy_dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
 
     def test_dtype_cache(self):
         """Checks that the same Op is returned on repeated calls to arange
@@ -3624,7 +3779,13 @@ class TestARange(unittest.TestCase):
         f = function([start, stop], out.shape, mode=mode)
         assert len(f.maker.env.toposort())==4
 #4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            assert out.dtype == numpy.arange(
+                    numpy.int32(0), numpy.int32(1), numpy.int32(1)).dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
         assert numpy.all(f(0,5) == len(numpy.arange(0,5)))
         assert numpy.all(f(2,11) == len(numpy.arange(2,11)))
         assert numpy.all(f(-5,1) == len(numpy.arange(-5,1)))
@@ -4074,6 +4235,22 @@ def test_default_state():
     assert numpy.allclose(f(numpy.asarray(2.2, dtype=config.floatX)), 7)
 
 def test_autocast():
+    backup_config = config.cast_policy
+    # Call test functions for all possible values of `config.cast_policy`.
+    for autocast_cfg in (
+            'custom',
+            'numpy',
+            'numpy+floatX',
+            ):
+        config.cast_policy = autocast_cfg
+        try:
+            eval('_test_autocast_' + autocast_cfg.replace('+', '_'))()
+        finally:
+            config.cast_policy = backup_config
+
+def _test_autocast_custom():
+    """Called from `test_autocast`."""
+    assert config.cast_policy == 'custom'
     orig_autocast = autocast_float.dtypes
 
     # Test that autocast_float_as sets the autocast dtype correctly
@@ -4164,6 +4341,131 @@ def test_autocast():
             ac2.__exit__()
     finally:
         ac.__exit__()
+
+
+def _test_autocast_numpy():
+    """Called from `test_autocast`."""
+    assert config.cast_policy == 'numpy'
+    # Go through some typical scalar values.
+    def ok(z):
+        assert tensor.constant(z).dtype == numpy.asarray(z).dtype
+    for x in ([2**i for i in xrange(63)] +
+              [0] +
+              [0., 1., 1.1, 1.5]):
+        n_x = numpy.asarray(x)
+        # Make sure the data type is the same as the one found by numpy.
+        ok(x)
+        ok(-x)
+        ok(x - 1)
+        ok(-x + 1)
+        ok(n_x)
+
+
+def _test_autocast_numpy_floatX():
+    """Called from `test_autocast`."""
+    assert config.cast_policy == 'numpy+floatX'
+    backup_floatX = config.floatX
+    def ok(z, floatX):
+        if (isinstance(z, float) and
+            floatX == 'float32' and
+            not hasattr(z, 'dtype')):
+            # Special case where we use 'float32' instead of 'float64'.
+            assert tensor.constant(z).dtype == 'float32'
+        else:
+            assert tensor.constant(z).dtype == numpy.asarray(z).dtype
+    try:
+        # Test with various values of `config.floatX`.
+        for floatX in ('float32', 'float64'):
+            config.floatX = floatX
+            # Go through some typical scalar values.
+            for x in ([2**i for i in xrange(63)] +
+                      [0] +
+                      [0., 1., 1.1, 1.5]):
+                ok(x, floatX)
+                ok(-x, floatX)
+                ok(x - 1, floatX)
+                ok(-x + 1, floatX)
+                ok(numpy.asarray(x), floatX)
+                ok(numpy.float64(x), floatX)
+    finally:
+        config.floatX = backup_floatX
+
+
+class test_arithmetic_cast(unittest.TestCase):
+
+    """
+    Test output types of typical arithmeric operations (* / + - //).
+
+    We only test the behavior for `config.cast_policy` set to either 'numpy' or
+    'numpy+floatX': the 'custom' behavior is (at least partially) tested in
+    `_test_autocast_custom`.
+    """
+
+    def test_arithmetic_cast(self):
+        backup_config = config.cast_policy
+        dtypes = get_numeric_types(with_complex=True)
+        # Here:
+        # scalar == scalar stored as a 0d array
+        # array == 1d array
+        # i_scalar == scalar type used internally by Theano
+        theano_scalar = lambda dtype: tensor.scalar(dtype=str(dtype))
+        numpy_scalar = lambda dtype: numpy.array(1, dtype=dtype)
+        theano_array = lambda dtype: tensor.vector(dtype=str(dtype))
+        numpy_array = lambda dtype: numpy.array([1], dtype=dtype)
+        theano_i_scalar = lambda dtype: theano.scalar.Scalar(str(dtype))()
+        numpy_i_scalar = numpy_scalar
+        try:
+            for cfg in ('numpy', 'numpy+floatX'):
+                config.cast_policy = cfg
+                for op in (operator.add, operator.sub, operator.mul,
+                           operator.div, operator.floordiv):
+                    for a_type in dtypes:
+                        for b_type in dtypes:
+                            # Note that we do not test division between
+                            # integers as this is currently forbidden.
+                            if (op is operator.div and
+                                a_type in tensor.discrete_dtypes and
+                                b_type in tensor.discrete_dtypes):
+                                continue
+                            # We will test all meaningful combinations of
+                            # scalar and array operations.
+                            for combo in (
+                                          ('scalar', 'scalar'),
+                                          ('array', 'array'),
+                                          ('scalar', 'array'),
+                                          ('array', 'scalar'),
+                                          ('i_scalar', 'i_scalar'),
+                                          ):
+                                theano_args = map(eval,
+                                        ['theano_%s' % c for c in combo])
+                                numpy_args = map(eval,
+                                        ['numpy_%s' % c for c in combo])
+                                theano_dtype = op(
+                                        theano_args[0](a_type),
+                                        theano_args[1](b_type)).type.dtype
+                                # For numpy we have a problem:
+                                #   http://projects.scipy.org/numpy/ticket/1827
+                                # The current expected behavior is to use
+                                # the highest data type that numpy may return.
+                                numpy_dtypes = [
+                                        op(numpy_args[0](a_type),
+                                           numpy_args[1](b_type)).dtype,
+                                        op(numpy_args[1](b_type),
+                                           numpy_args[0](a_type)).dtype]
+                                numpy_dtype = theano.scalar.upcast(
+                                        *map(str, numpy_dtypes))
+                                if (cfg == 'numpy+floatX' and
+                                    config.floatX == 'float32' and
+                                    a_type != 'float64' and
+                                    b_type != 'float64' and
+                                    numpy_dtype == 'float64'):
+                                    # We should keep float32.
+                                    assert theano_dtype == 'float32'
+                                else:
+                                    assert theano_dtype == numpy_dtype
+        finally:
+            config.cast_policy = backup_config
+
 
 class test_broadcast(unittest.TestCase):
     def test_broadcast_bigdim(self):
