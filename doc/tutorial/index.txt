@@ -23,6 +23,7 @@ you out.
 
 .. toctree::
 
+    python
     numpy
     adding
     examples

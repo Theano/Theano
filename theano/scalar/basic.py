@@ -1005,7 +1005,7 @@ def div_proxy(x, y):
 
 class TrueDiv(BinaryScalarOp):
     def output_types(self, types):
-        if all(t.dtype.startswith('int') for t in types):
+        if all(t not in continuous_types for t in types):
             return [float64]
         else:
             return super(TrueDiv, self).output_types(types)

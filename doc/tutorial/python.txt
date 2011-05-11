@@ -1,0 +1,12 @@
+.. _python:
+
+
+***************
+Python tutorial
+***************
+
+In this documentation, we suppose that reader know python. Here is a small list of python tutorials/exercices if you know know it or need a refresher:
+
+  * `Python Challenge <http://www.pythonchallenge.com/>`__
+  * `Dive into Python <http://diveintopython.org/>`__
+  * `Google Python Class <http://code.google.com/edu/languages/google-python-class/index.html>`__
