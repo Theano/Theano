@@ -263,7 +263,7 @@ class mrg_uniform(mrg_uniform_base):
         if (%(size)s->dimensions[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, %(size)s->dimensions[0]);
+                %(ndim)s, int(%(size)s->dimensions[0]));
             %(fail)s
         }
         if (%(size)s->descr->type_num != PyArray_INT32)
@@ -789,11 +789,11 @@ class MRG_RandomStreams(object):
         flattened = self.uniform(size=(n_samples,), dtype=dtype)
 
         if constant:
-            U1 = flattened[:n_samples/2]
-            U2 = flattened[n_samples/2:]
+            U1 = flattened[:n_samples // 2]
+            U2 = flattened[n_samples // 2:]
         else:
-            U1 = flattened[:prod(flattened.shape)/2]
-            U2 = flattened[prod(flattened.shape)/2:]
+            U1 = flattened[:prod(flattened.shape) // 2]
+            U2 = flattened[prod(flattened.shape) // 2:]
 
         #normal_samples = zeros_like(flattened)
         sqrt_ln_U1 = sqrt(-2.0*log(U1))

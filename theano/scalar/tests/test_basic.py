@@ -182,9 +182,9 @@ class test_div(unittest.TestCase):
         d = float64()
         f = float32()
 
-        print (a/b).owner.op
-        assert isinstance((a/b).owner.op, IntDiv)
-        assert isinstance((b/a).owner.op, IntDiv)
+        print (a//b).owner.op
+        assert isinstance((a//b).owner.op, IntDiv)
+        assert isinstance((b//a).owner.op, IntDiv)
         assert isinstance((b/d).owner.op, TrueDiv)
         assert isinstance((b/f).owner.op, TrueDiv)
         assert isinstance((f/a).owner.op, TrueDiv)

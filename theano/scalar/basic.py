@@ -27,6 +27,11 @@ builtin_int = int
 builtin_float = float
 
 
+class IntegerDivisionError(Exception):
+    """Raised if someone tries to divide integers with '/' instead of '//'."""
+    pass
+
+
 def upcast(dtype, *dtypes):
     # Should we try to keep float32 instead of float64? This is used so that
     # for instance mixing int64 with float32 yields float32 instead of float64.
@@ -1028,7 +1033,7 @@ def div_proxy(x, y):
         # Following discussion on theano-dev ("Inconsistent behavior in integer
         # division"), we will change the semantics of "/" on integer types in
         # Theano 0.4. Until then, it is forbidden to use "/" on integers.
-        raise NotImplementedError(
+        raise IntegerDivisionError(
                 "Dividing two integers with '/' is forbidden until Theano v0.4"
                 " is released (where the result will be a floating point "
                 "number). In the meantime, please either use '//' for integer "
