@@ -575,14 +575,15 @@ class ConvOp(Op):
             try:
                 fmshp = ConvOp.getOutputShape(imshp[1:], kshp, (self.dx,self.dy), self.out_mode)
             except TypeError:
-                raise NotImplementedError()
+                raise theano.tensor.opt.ShapeError()
             outshp = (batch_size,fmo) + tuple(fmshp)
             return [outshp]
         else:
             # Haven't implemented this case. imshp and kshp may be symbollic
             # and ConvOp.getOutputShape doesn't handle this. In this case
             # we simply let the default function do its work.
-            raise NotImplementedError()
+            raise theano.tensor.opt.ShapeError()
+            
 
     def perform(self,node, inp, out):
         """

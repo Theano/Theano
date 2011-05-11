@@ -4,6 +4,7 @@ This is not used currently very used. It appear in some case, but I'm not sure i
 It could help the current system to make it detect problem earlier when contructing the graph instead of during optimization.
 """
 import sys
+import theano
 from theano import gof
 
 def ishape(v):
@@ -35,7 +36,7 @@ class Apply(gof.Apply):
 
         try:
             oshapes = infer_shape(self, ishapes)
-        except NotImplementedError:
+        except theano.tensor.opt.ShapeError:
             return
 
         for o, oshp in zip(outputs, oshapes):
