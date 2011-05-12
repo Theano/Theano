@@ -2490,6 +2490,7 @@ class T_local_sum(unittest.TestCase):
         assert numpy.allclose(f(input),input.sum())
 
 
+        config.warn.sum_sum_bug = False
         f = theano.function([a],a.sum(0).sum(0).sum(0),mode=self.mode)
         assert len(f.maker.env.nodes)==1
         assert numpy.allclose(f(input),input.sum())
@@ -2499,6 +2500,7 @@ class T_local_sum(unittest.TestCase):
         input=numpy.arange(3*3*3, dtype=config.floatX).reshape(3,3,3)
         dims=[(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]
 
+        config.warn.sum_sum_bug = False
         for d,dd in dims:
             f = theano.function([a],a.sum(d).sum(dd),mode=self.mode)
             assert numpy.allclose(f(input),input.sum(d).sum(dd))
@@ -2544,6 +2546,7 @@ class T_local_sum(unittest.TestCase):
                 assert len(f.maker.env.nodes)==nb_nodes[2]
                 assert f.maker.env.toposort()[-1].op==T.alloc
 
+            config.warn.sum_sum_bug = False
             for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
                 f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
                 print f.maker.env.toposort()
@@ -2603,6 +2606,8 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         c_val = rng.randn(2,2,2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
+        config.warn.sum_sum_bug = False
+        config.warn.sum_div_dimshuffle_bug = False
         for i,s in enumerate(sums):
             print i
             f = theano.function([a,b,c,d], s, mode=self.mode)
