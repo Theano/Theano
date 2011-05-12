@@ -443,6 +443,18 @@ _good_broadcast_div_mod_normal_float_inplace = dict(same_shapes = (rand(2, 3), r
 _good_broadcast_div_mod_normal_float = dict(empty2 = (numpy.asarray([0]), numpy.asarray([])),
                                             **_good_broadcast_div_mod_normal_float_inplace
                                             )
+def no_complex(d):
+    """Remove pairs from dictionary d when the value contains complex data."""
+    return dict((k, v) for k, v in d.iteritems()
+                if all(str(x.dtype) not in tensor.complex_dtypes for x in v))
+
+
+# 'No-complex' versions.
+_good_broadcast_div_mod_normal_float_no_complex = no_complex(
+                                        _good_broadcast_div_mod_normal_float)
+_good_broadcast_div_mod_normal_float_inplace_no_complex = no_complex(
+                                _good_broadcast_div_mod_normal_float_inplace)
+
 _grad_broadcast_div_mod_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                       scalar = (rand(2, 3), rand(1, 1)),
                                       row = (rand(2, 3), rand(1, 3)),
@@ -480,14 +492,14 @@ DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
 
 ModTester = makeBroadcastTester(op = mod,
                                   expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
-                                  good = _good_broadcast_div_mod_normal_float,
+                                  good = _good_broadcast_div_mod_normal_float_no_complex,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   )
 ModInplaceTester = makeBroadcastTester(op = inplace.mod_inplace,
                                          expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
-                                         good = _good_broadcast_div_mod_normal_float_inplace,
+                                         good = _good_broadcast_div_mod_normal_float_inplace_no_complex,
                                          inplace = True)
 
 _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
