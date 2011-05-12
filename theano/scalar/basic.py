@@ -14,6 +14,7 @@ you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 
 import math
 from copy import copy
+from itertools import imap
 
 import numpy, theano
 
@@ -1095,8 +1096,10 @@ int_div = IntDiv(upcast_out, name = 'int_div')
 floor_div = int_div
 
 class Mod(BinaryScalarOp):
+
     def impl(self, x, y):
         return x % y
+
     def c_code_cache_version(self):
         return (5,)
 
@@ -1110,12 +1113,24 @@ class Mod(BinaryScalarOp):
         """
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
-        if t in int_types or t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64']:
+        if (str(t) in imap(str, discrete_types) or
+            t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64'] or
+            t in discrete_types):
+            # The above or's should not be needed anymore. However, for now we
+            # keep them out of safety, and verify they are useless with an
+            # assert.
+            assert str(t) in imap(str, discrete_types)
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)"%locals()
             x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)"%locals()
             x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)"%locals()
             x_mod_ymp = "THEANO_MACRO_MOD(-%(x)s, %(y)s)"%locals()
-        elif t in float_types or t in ['float32','float64']:
+        elif (str(t) in imap(str, float_types) or
+              t in ['float32','float64'] or
+              t in float_types):
+            # The above or's should not be needed anymore. However, for now we
+            # keep them out of safety, and verify they are useless with an
+            # assert.
+            assert str(t) in imap(str, float_types)
             x_mod_y = "fmod(%(x)s,%(y)s)"%locals()
             x_mod_ymm = "fmod(-%(x)s,-%(y)s)"%locals()
             x_mod_ypm = "fmod(%(x)s,-%(y)s)"%locals()
