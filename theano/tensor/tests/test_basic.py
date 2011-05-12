@@ -458,8 +458,9 @@ _grad_broadcast_div_mod_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
 
 div_grad_rtol=None
 if config.floatX=='float32':
-    #We raise the relative tolerence for the grad as their is error in float32
-    #This is probably caused by our way of computing the gradient error.
+    # We raise the relative tolerance for the grad as there can be errors in
+    # float32.
+    # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
 DivTester = makeBroadcastTester(op = true_div,
                                   expected = lambda x, y: x / y,

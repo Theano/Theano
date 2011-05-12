@@ -2589,11 +2589,11 @@ def div_proxy(x, y):
         as_tensor_variable(y).dtype in discrete_dtypes):
         # See the same in scalar/basic.py
         raise IntegerDivisionError(
-                "Dividing two integer arrays with '/' is forbidden until "
-                "Theano v0.4 is released (where the result will be a floating "
-                "point number). In the meantime, please either use '//' for "
-                "integer division, or cast one of the arguments to a floating "
-                "point type for float division.")
+                "Dividing two integer arrays with '/' is currently forbidden "
+                "to avoid confusion between integer and floating point "
+                "divisions. Please either use '//' for integer division, or "
+                "cast one of the arguments to a floating point type for float "
+                "division.")
     else:
         return true_div(x, y)
 
@@ -3044,8 +3044,11 @@ def setsubtensor(x, y, idx_list, inplace=False):
     print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=True)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
-def incsubtensor(x, y, idx_list, inplace=False):
-    print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
+def incsubtensor(x, y, idx_list, inplace=False, show_warning=True):
+    # Note that `show_warning` should only be set to False by tests, in order
+    # to make sure this old code is still working.
+    if show_warning:
+        print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
