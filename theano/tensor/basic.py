@@ -3039,8 +3039,11 @@ def setsubtensor(x, y, idx_list, inplace=False):
     print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=True)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
-def incsubtensor(x, y, idx_list, inplace=False):
-    print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
+def incsubtensor(x, y, idx_list, inplace=False, show_warning=True):
+    # Note that `show_warning` should only be set to False by tests, in order
+    # to make sure this old code is still working.
+    if show_warning:
+        print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
