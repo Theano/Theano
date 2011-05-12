@@ -1098,7 +1098,14 @@ floor_div = int_div
 class Mod(BinaryScalarOp):
 
     def impl(self, x, y):
+        if isinstance(x, numpy.complex) or isinstance(y, numpy.complex):
+            self.raise_complex_error()
         return x % y
+
+    def raise_complex_error(self):
+        raise TypeError(
+                    "Theano does not support the mod operator (%) on "
+                    "complex numbers, since numpy deprecated it.")
 
     def c_code_cache_version(self):
         return (5,)
@@ -1109,7 +1116,7 @@ class Mod(BinaryScalarOp):
 
     def c_code(self, node, name, (x, y), (z, ), sub):
         """
-        We want the result to have the same sign as python, not the other implementaiton of mod.
+        We want the result to have the same sign as python, not the other implementation of mod.
         """
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
@@ -1135,6 +1142,8 @@ class Mod(BinaryScalarOp):
             x_mod_ymm = "fmod(-%(x)s,-%(y)s)"%locals()
             x_mod_ypm = "fmod(%(x)s,-%(y)s)"%locals()
             x_mod_ymp = "fmod(-%(x)s,%(y)s)"%locals()
+        elif str(t) in imap(str, complex_types):
+            self.raise_complex_error()
         else:
             raise NotImplementedError('type not supported', type)
 
