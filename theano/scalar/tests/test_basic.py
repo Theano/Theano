@@ -175,6 +175,19 @@ class test_logical(unittest.TestCase):
             self.assertTrue(fn(a,b) == ~a, (a,))
 
 
+class test_complex_mod(unittest.TestCase):
+    """Make sure % fails on complex numbers."""
+
+    def test_fail(self):
+        x = complex64()
+        y = int32()
+        try:
+            theano.function([x, y], x % y)
+            assert False
+        except TypeError:
+            pass
+
+
 class test_div(unittest.TestCase):
     def test_0(self):
         a = int8()
