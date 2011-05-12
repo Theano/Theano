@@ -30,7 +30,8 @@ class Test_incsubtensor(unittest.TestCase):
         for do_set in [False,True]:
 
             if do_set:
-                resut = T.setsubtensor(a, increment, [sl1, sl2])
+                resut = T.setsubtensor(a, increment, [sl1, sl2],
+                                       show_warning=False)
             else:
                 resut = T.incsubtensor(a, increment, [sl1, sl2],
                                        show_warning=False)
