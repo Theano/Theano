@@ -1034,11 +1034,11 @@ def div_proxy(x, y):
         # division"), we will change the semantics of "/" on integer types in
         # Theano 0.4. Until then, it is forbidden to use "/" on integers.
         raise IntegerDivisionError(
-                "Dividing two integers with '/' is forbidden until Theano v0.4"
-                " is released (where the result will be a floating point "
-                "number). In the meantime, please either use '//' for integer "
-                "division, or cast one of the arguments to a floating point "
-                "type for float division.")
+                "Dividing two integers with '/' is currently forbidden "
+                "to avoid confusion between integer and floating point "
+                "divisions. Please either use '//' for integer division, or "
+                "cast one of the arguments to a floating point type for float "
+                "division.")
     else:
         return true_div(x, y)
 

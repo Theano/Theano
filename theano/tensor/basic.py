@@ -2584,11 +2584,11 @@ def div_proxy(x, y):
         as_tensor_variable(y).dtype in discrete_dtypes):
         # See the same in scalar/basic.py
         raise IntegerDivisionError(
-                "Dividing two integer arrays with '/' is forbidden until "
-                "Theano v0.4 is released (where the result will be a floating "
-                "point number). In the meantime, please either use '//' for "
-                "integer division, or cast one of the arguments to a floating "
-                "point type for float division.")
+                "Dividing two integer arrays with '/' is currently forbidden "
+                "to avoid confusion between integer and floating point "
+                "divisions. Please either use '//' for integer division, or "
+                "cast one of the arguments to a floating point type for float "
+                "division.")
     else:
         return true_div(x, y)
 
