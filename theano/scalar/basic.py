@@ -28,6 +28,10 @@ builtin_int = int
 builtin_float = float
 
 
+class ComplexError(Exception):
+    """Raised if complex numbers are used in an unsupported operation."""
+    pass
+
 class IntegerDivisionError(Exception):
     """Raised if someone tries to divide integers with '/' instead of '//'."""
     pass
@@ -409,7 +413,7 @@ complex_types = complex64, complex128
 
 discrete_types = int_types + uint_types
 continuous_types = float_types + complex_types
-
+ 
 class _scalar_py_operators:
 
     #UNARY
@@ -441,8 +445,8 @@ class _scalar_py_operators:
     def __sub__(self,other): return sub(self,other)
     def __mul__(self,other): return mul(self,other)
     def __div__(self,other): return div_proxy(self,other)
-    def __floordiv__(self,other): return int_div(self,other)
-    def __mod__(self,other): return mod(self,other)
+    def __floordiv__(self, other): return int_div(self, other)
+    def __mod__(self, other): return mod_check(self, other)
     def __pow__(self,other): return pow(self,other)
 
     #ARITHMETIC - RIGHT-OPERAND
@@ -1121,17 +1125,28 @@ int_div = IntDiv(upcast_out, name = 'int_div')
 
 floor_div = int_div
 
+
+def raise_complex_error():
+    raise ComplexError(
+                "Theano does not support the mod operator (%) on "
+                "complex numbers, since numpy deprecated it.")
+
+
+def mod_check(x, y):
+    if (as_scalar(x).type in complex_types or
+        as_scalar(y).type in complex_types):
+        # Currently forbidden.
+        raise_complex_error()
+    else:
+        return mod(x, y)
+
+
 class Mod(BinaryScalarOp):
 
     def impl(self, x, y):
         if isinstance(x, numpy.complex) or isinstance(y, numpy.complex):
-            self.raise_complex_error()
+            raise_complex_error()
         return x % y
-
-    def raise_complex_error(self):
-        raise TypeError(
-                    "Theano does not support the mod operator (%) on "
-                    "complex numbers, since numpy deprecated it.")
 
     def c_code_cache_version(self):
         return (5,)
@@ -1169,7 +1184,7 @@ class Mod(BinaryScalarOp):
             x_mod_ypm = "fmod(%(x)s,-%(y)s)"%locals()
             x_mod_ymp = "fmod(-%(x)s,%(y)s)"%locals()
         elif str(t) in imap(str, complex_types):
-            self.raise_complex_error()
+            raise_complex_error()
         else:
             raise NotImplementedError('type not supported', type)
 

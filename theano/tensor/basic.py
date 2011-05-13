@@ -24,8 +24,8 @@ from theano.gof.python25 import partial, any, all
 from theano import compile, printing
 from theano.printing import pprint
 
-# We use this exception as well.
-from theano.scalar import IntegerDivisionError
+# We use these exceptions as well.
+from theano.scalar import ComplexError, IntegerDivisionError
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -1161,7 +1161,11 @@ class _tensor_py_operators:
             return NotImplemented
     def __mod__(self,other):
         try:
-            return mod(self,other)
+            return mod_check(self, other)
+        except ComplexError:
+            # This is to raise the exception that occurs when trying to compute
+            # x % y with either x or y a complex number.
+            raise
         except Exception, e:
             return NotImplemented
 
@@ -2582,14 +2586,12 @@ def minimum(x,y):
     """
     # see decorator for function body
 
-
 def div_proxy(x, y):
     """Proxy for either true_div or int_div, depending on types of x, y."""
     f = eval('%s_div' % scal.int_or_true_div(
         as_tensor_variable(x).dtype in discrete_dtypes,
         as_tensor_variable(y).dtype in discrete_dtypes))
     return f(x, y)
-
 
 @_scal_elemwise_with_nfunc('add', 2, 1)
 def add(a, *other_terms):
@@ -2620,6 +2622,15 @@ def floor_div(a, b):
 def int_div(a, b):
     """elementwise integer-division"""
     # see decorator for function body
+
+def mod_check(x, y):
+    """Make sure we do not try to use complex numbers."""
+    if (as_tensor_variable(x).dtype in complex_dtypes or
+        as_tensor_variable(y).dtype in complex_dtypes):
+        # Currently forbidden.
+        scal.raise_complex_error()
+    else:
+        return mod(x, y)
 
 @_scal_elemwise_with_nfunc('mod', 2, 1)
 def mod(a, b):

@@ -182,9 +182,9 @@ class test_complex_mod(unittest.TestCase):
         x = complex64()
         y = int32()
         try:
-            theano.function([x, y], x % y)
+            x % y
             assert False
-        except TypeError:
+        except ComplexError:
             pass
 
 
