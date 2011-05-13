@@ -436,7 +436,7 @@ class GpuDownsampleFactorMax(Op):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (1)
+        return (2)
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -462,7 +462,7 @@ class GpuDownsampleFactorMax(Op):
             dims[3] += (xdim3%%(%(ds1)s)?1:0);
         }
         if(dims[3]>512){
-            PyErr_SetString(PyExc_ValueError, "last dimention bigger then 512. This case is not implemented.");
+            PyErr_Format(PyExc_ValueError, "GpuDownsampleFactorMax: last dimention size of %%d is bigger then 512. This case is not implemented.", dims[3]);
             %(fail)s;
         }
 
