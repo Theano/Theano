@@ -7,6 +7,8 @@ import ConfigParser
 import logging
 import warnings
 
+import theano
+
 _logger = logging.getLogger('theano.config')
 
 class TheanoConfigWarning(Warning):
@@ -103,6 +105,17 @@ def _config_print(thing, buf):
         print >> buf, "    Value: ", cv.val
         print >> buf, ""
 
+
+def get_config_md5():
+    """
+    Return a string md5 of the current config options. It should be such that
+    we can safely assume that two different config setups will lead to two
+    different strings.
+    """
+    all_opts = sorted(_config_var_list, key=lambda cv: cv.fullname)
+    return theano.gof.cc.hash_from_code('\n'.join(['%s = %s' % (cv.fullname, cv.val) for cv in all_opts]))
+
+
 class TheanoConfigParser(object):
     #properties are installed by AddConfigVar
     _i_am_a_config_class = True
@@ -110,6 +123,7 @@ class TheanoConfigParser(object):
         sio = StringIO.StringIO()
         _config_print(self.__class__, sio)
         return sio.getvalue()
+
 # N.B. all instances of TheanoConfigParser give access to the same properties.
 config = TheanoConfigParser()
 
