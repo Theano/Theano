@@ -16,8 +16,14 @@ AddConfigVar('floatX',
         )
 
 AddConfigVar('cast_policy',
-        "Rules for implicit type casting.",
+        "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX', 'numpy'),
+        )
+
+AddConfigVar('int_division',
+        "What to do when one computes x / y, where both x and y are of "
+        "integer types",
+        EnumStr('int', 'raise', 'floatX'),
         )
 
 #gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.

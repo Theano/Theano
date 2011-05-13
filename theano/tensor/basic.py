@@ -2584,19 +2584,11 @@ def minimum(x,y):
 
 
 def div_proxy(x, y):
-    """Proxy for either true_div or int_div, depending on types of x, y.
-    """
-    if (as_tensor_variable(x).dtype in discrete_dtypes and
-        as_tensor_variable(y).dtype in discrete_dtypes):
-        # See the same in scalar/basic.py
-        raise IntegerDivisionError(
-                "Dividing two integer arrays with '/' is currently forbidden "
-                "to avoid confusion between integer and floating point "
-                "divisions. Please either use '//' for integer division, or "
-                "cast one of the arguments to a floating point type for float "
-                "division.")
-    else:
-        return true_div(x, y)
+    """Proxy for either true_div or int_div, depending on types of x, y."""
+    f = eval('%s_div' % scal.int_or_true_div(
+        as_tensor_variable(x).dtype in discrete_dtypes,
+        as_tensor_variable(y).dtype in discrete_dtypes))
+    return f(x, y)
 
 
 @_scal_elemwise_with_nfunc('add', 2, 1)

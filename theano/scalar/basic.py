@@ -12,7 +12,7 @@ If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 
-import math
+import math, warnings
 from copy import copy
 from itertools import imap
 
@@ -1022,26 +1022,52 @@ class Sub(BinaryScalarOp):
 sub = Sub(upcast_out, name = 'sub')
 
 
-def div_proxy(x, y):
+def int_or_true_div(x_discrete, y_discrete):
     """
-    Currently used as a check to ensure we are not trying to divide integers.
+    Return 'int' or 'true' depending on the type of division used for x / y.
 
-    In 0.4 we will get rid of this function to always use true_div:
-        http://trac-hg.assembla.com/theano/ticket/669
+    :param x_discrete: True if `x` is discrete ([unsigned] integer).
+
+    :param y_discrete: True if `x` is discrete ([unsigned] integer).
+
+    :returns: 'int' if `x / y` should be an integer division, or `true` if it
+    should be a true division.
+
+    Raises an IntegerDivisionError if both `x_discrete` and `y_discrete` are
+    True and `config.int_division` is set to 'raise'.
+
+    This function is used by both scalar/basic.py and tensor.basic/py.
     """
-    if (as_scalar(x).type in discrete_types and
-        as_scalar(y).type in discrete_types):
-        # Following discussion on theano-dev ("Inconsistent behavior in integer
-        # division"), we will change the semantics of "/" on integer types in
-        # Theano 0.4. Until then, it is forbidden to use "/" on integers.
-        raise IntegerDivisionError(
-                "Dividing two integers with '/' is currently forbidden "
-                "to avoid confusion between integer and floating point "
-                "divisions. Please either use '//' for integer division, or "
-                "cast one of the arguments to a floating point type for float "
-                "division.")
+    if (x_discrete and y_discrete):
+        if config.int_division == 'raise':
+            raise IntegerDivisionError(
+                "With `config.int_division` set to 'raise', dividing two "
+                "integer types with '/' is forbidden to avoid confusion "
+                "between integer and floating point divisions. Please "
+                "use // for integer division, or if you want a float result "
+                "either cast one of the arguments to a float or directly call "
+                "`x.__truediv__(y)`.")
+        elif config.int_division == 'int':
+            warnings.warn(
+                    "Division of two integer types with x / y is deprecated, "
+                    "please use x // y for an integer division "
+                    "(set `config.int_division = raise` to track the origin "
+                    "of this warning)",
+                    DeprecationWarning)
+            return 'int'
+        elif config.int_division == 'floatX':
+            return 'true'
+        else:
+            raise NotImplementedError(config.int_division)
     else:
-        return true_div(x, y)
+        return 'true'
+
+
+def div_proxy(x, y):
+    """Proxy for either true_div or int_div, depending on types of x, y."""
+    f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
+                                        as_scalar(y).type in discrete_types))
+    return f(x, y)
 
 
 class TrueDiv(BinaryScalarOp):
