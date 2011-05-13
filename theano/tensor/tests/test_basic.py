@@ -4688,6 +4688,18 @@ class T_as_tensor_variable(unittest.TestCase):
         assert ten.type.dtype == 'uint8'
 
 
+class test_complex_mod(unittest.TestCase):
+    """Make sure % fails on complex numbers."""
+
+    def test_fail(self):
+        x = vector(dtype='complex64')
+        try:
+            x % 5
+            assert False
+        except ComplexError:
+            pass
+
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
