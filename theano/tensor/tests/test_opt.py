@@ -652,6 +652,7 @@ def test_mixeddiv():
     d = dscalar()
     try:
         0 == function([i,d], d*(i/(i+1)))(3, 1.0)
+        assert False
     except theano.scalar.IntegerDivisionError:
         pass
 
