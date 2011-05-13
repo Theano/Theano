@@ -12,7 +12,7 @@ if cuda_ndarray.cuda_available == False:
 
 import theano.sandbox.cuda as tcn
 
-from theano.tensor.signal.downsample import DownsampleFactorMax
+from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
 
@@ -163,7 +163,12 @@ def test_downsample():
             (30, 6, 12, 12),
             (30, 2, 24, 24),
             (30, 6, 24, 24),
-            (10, 10, 10, 11)]
+            (10, 10, 10, 11),
+            (1,1,10,1025),
+            (1,1,10,1023),
+            (1,1,1025,10),
+            (1,1,1023,10),
+             ]
 
     numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
 
@@ -171,6 +176,8 @@ def test_downsample():
         for ds in (2, 2), (3,2), (1,1):
             if ds[0] > shp[2]: continue
             if ds[1] > shp[3]: continue
+            #GpuDownsampleFactorMax don't having more then 512 columns in the output tensor
+            if float(shp[3])/ds[1]>512: continue
             for ignore_border in (True, False):
                 print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
@@ -180,12 +187,16 @@ def test_downsample():
                 f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMax) for node in
                             f.maker.env.toposort()])
+                assert any([isinstance(node.op, DownsampleFactorMax) for node in
+                            f2.maker.env.toposort()])
                 assert numpy.allclose(f(),f2())
 
                 g = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_with_gpu)
                 g2 = pfunc([], tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),a), mode=mode_without_gpu)
                 assert any([isinstance(node.op, tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.env.toposort()])
+                assert any([isinstance(node.op, DownsampleFactorMaxGrad)
+                            for node in g2.maker.env.toposort()])
                 assert numpy.allclose(g(),g2())
 
                 #We already check that the gpu version return the same value as the gpu version

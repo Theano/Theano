@@ -588,7 +588,7 @@ class GpuDownsampleFactorMaxGrad(Op):
         return Apply(self, [x, z, gz], [x.type()])
     def c_code_cache_version(self):
         #return ()
-        return (3,)
+        return (4,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -625,7 +625,8 @@ class GpuDownsampleFactorMaxGrad(Op):
             // make sure we cover every x row when ignore border isset and there's a border present to be ignored
             int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
             dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
-            dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
+            dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
+
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(%(z)s)[0],
                 CudaNdarray_HOST_DIMS(%(z)s)[1],
@@ -705,32 +706,44 @@ class GpuDownsampleFactorMaxGrad(Op):
 
             for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
             {
-                if (%(ignore_border)s && x_col >= ds1 * D3)
-                {
-                    // This happens only if x_col was ignored (via ignore_border)
-                    // TODO: if ignore_border is False, this is impossible and we don't even
-                    //       need to generate this code.
+                for(int col_iter = 0; col_iter * blockDim.x <= xD3 ; col_iter++){
+                    //The if inside is to don't do the division if we need only 1 col_iter
+                    if(blockDim.x != xD3)
+                    {
+                        x_col = threadIdx.x + col_iter * blockDim.x;
+                        z_col = x_col/ds1;
+                    }
 
-                    my_gz = 0.0f;
-                    //any fp number suffices for my_z, so we don't even need to set it to
-                    //anything in particular.
-                }
-                else
-                {
-                    // this is effectively:
-                    // my_gz = gz[image_row][image_col][z_row][z_col]
-                    // my_z  = z[image_row][image_col][z_row][z_col]
-                    my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + z_col*gzS3];
-                    my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
-                }
+                    if (%(ignore_border)s && x_col >= ds1 * D3)
+                    {
+                        // This happens only if x_col was ignored (via ignore_border)
+                        // TODO: if ignore_border is False, this is impossible and we don't even
+                        //       need to generate this code.
 
-                for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
-                {
-                    // this is effectively:
-                    // gx[image_row][image_col][x_row][x_col]
-                    //   = (my_z == x[image_row][image_col][x_row][x_col]) ? my_gz : 0.0f;
-                    gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
-                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
+                        my_gz = 0.0f;
+                        //any fp number suffices for my_z, so we don't even need to set it to
+                        //anything in particular.
+                    }
+                    else
+                    {
+                        // this is effectively:
+                        // my_gz = gz[image_row][image_col][z_row][z_col]
+                        // my_z  = z[image_row][image_col][z_row][z_col]
+                        my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + z_col*gzS3];
+                        my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
+                    }
+                    if(x_col<xD3){
+                        for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
+                        {
+                            // this is effectively:
+                            // gx[image_row][image_col][x_row][x_col]
+                            //   = (my_z == x[image_row][image_col][x_row][x_col]) ? my_gz : 0.0f;
+                            gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
+                               = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
+                        }
+                    //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col] = -999;
+}
+
                 }
             }
         }
