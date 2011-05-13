@@ -168,6 +168,9 @@ import theano and print the config variable, as in:
     to a set of custom rules originally used in Theano (which can be partially
     customized, see e.g. the in-code help of ``tensor.NumpyAutocaster``). The
     'custom' option will be deprecated in a future release of Theano.
+    **Until further notice, it is strongly advised to never change this option
+    within a script, and to always clean your Theano cache whenever you modify its
+    value**.
 
 .. attribute:: int_division
 
