@@ -1063,7 +1063,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_scan_op_time = 0
         for (_,node),v in apply_time.items():
             if isinstance(node.op, Scan):
-                scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
+                scan_fct_time = sum(node.op.mode_instance.call_time.values())
                 scan_op_time = sum(node.op.mode_instance.local_time)
                 total_super_scan_time += v
                 total_scan_fct_time += scan_fct_time
