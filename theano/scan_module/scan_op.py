@@ -16,7 +16,7 @@ import copy
 import itertools
 import logging
 import numpy
-import sys
+import time, sys
 
 from theano.compile import SharedVariable, function, Param, Out
 from theano.compile.function_module import ViewOp, DeepCopyOp
@@ -379,6 +379,8 @@ class Scan(Op):
         """
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
+        t0_call = time.time()
+        t_fn = 0
         n_steps  = args[0]
         seqs = []
         if n_steps < 0:
@@ -505,8 +507,10 @@ class Scan(Op):
                 output_storage[idx+offset].storage[0] = None
 
             # 5. compute outputs
+            t0_fn = time.time()
             fn()
-
+            dt_fn = time.time() - t0_fn
+            t_fn += dt_fn
             offset_out = 0
             # 5.1 Copy over the values for mit_mot outputs
             for j in xrange(self.n_mit_mot):
@@ -603,6 +607,14 @@ class Scan(Op):
                     outs[end + idx][0] = outs[end+idx][0].copy()
                 else:
                     outs[end + idx][0] = copy.deepcopy(outs[end+idx][0])
+        t_call = time.time() - t0_call
+
+        if hasattr(self.fn.maker.mode,'fct_call_time'):
+            self.fn.maker.mode.fct_call_time[self.fn] += t_call
+            self.fn.maker.mode.fct_call[self.fn] += n_steps
+
+        self.fn.maker.mode.call_time += t_call
+        self.fn.maker.mode.fn_time += t_fn
 
 
     ### Infer Shape
