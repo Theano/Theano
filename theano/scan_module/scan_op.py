@@ -1063,13 +1063,16 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_scan_op_time = 0
         for (_,node),v in apply_time.items():
             if isinstance(node.op, Scan):
-                scan_fct_time = node.op.mode_instance.fn_time
-                scan_op_time = sum(node.op.mode_instance.local_time)
-                total_super_scan_time += v
-                total_scan_fct_time += scan_fct_time
-                total_scan_op_time += scan_op_time
-                print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
-                    v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
-                    scan_op_time/v*100), node
+                if v> 0:
+                    scan_fct_time = node.op.mode_instance.fn_time
+                    scan_op_time = sum(node.op.mode_instance.local_time)
+                    total_super_scan_time += v
+                    total_scan_fct_time += scan_fct_time
+                    total_scan_op_time += scan_op_time
+                    print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
+                        v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
+                        scan_op_time/v*100), node
+                else:
+                    print ' The node took 0s, so we can not compute the overhead'
         print '    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
             total_super_scan_time, total_scan_fct_time, total_scan_op_time, total_scan_fct_time/total_super_scan_time*100, total_scan_op_time/total_super_scan_time*100)
