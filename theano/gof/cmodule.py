@@ -471,7 +471,7 @@ class ModuleCache(object):
                                     "key not equal to unpickled version (Hint:"
                                     " verify the __eq__ and __hash__ functions"
                                     " for your Ops", (key, key_from_file))
-                            # Adding the key file to this set measn it is a
+                            # Adding the key file to this set means it is a
                             # versioned key.
                             self.loaded_key_pkl.add(key_pkl)
                         except cPickle.UnpicklingError:
@@ -491,7 +491,7 @@ class ModuleCache(object):
         return rval
 
     age_thresh_del = 60*60*24*31#31 days
-    age_thresh_del_unversionned = 60*60*24*7#7 days
+    age_thresh_del_unversioned = 60*60*24*7#7 days
 
     """The default age threshold for `clear_old` (in seconds)
     """
@@ -510,13 +510,13 @@ class ModuleCache(object):
             # update the age of modules that have been accessed by other processes
             # and get all module that are too old to use.(not loaded in self.entry_from_key)
             too_old_to_use = self.refresh()
-            too_old_to_use = [(None,entry) for entry in too_old_to_use]
+            too_old_to_use = [(None, entry) for entry in too_old_to_use]
             time_now = time.time()
 
             # the .items() is important here:
             # we need to get a copy of the whole list of keys and entries
             items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy+too_old_to_use:
+            for key, entry in items_copy + too_old_to_use:
                 age = time_now - last_access_time(entry)
                 if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
@@ -533,17 +533,19 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
 
-    def clear(self):
+    def clear(self, unversioned_min_age=None):
         """
         Clear all the elements of the cache
         """
         self.clear_old(-1.0)
-        self.clear_unversioned()
+        self.clear_unversioned(min_age=unversioned_min_age)
 
-    def clear_unversioned(self):
+    def clear_unversioned(self, min_age=None):
         """Delete unversioned dynamic modules from the internal dictionaries and from the
         filesystem.
         """
+        if min_age is None:
+            min_age = self.age_thresh_del_unversioned
         items_copy = list(self.entry_from_key.iteritems())
         for key, entry in items_copy:
             version, rest = key
@@ -571,12 +573,13 @@ class ModuleCache(object):
                     has_key = False
                 if not has_key:
                     age = time_now - last_access_time(os.path.join(self.dirname, filename))
-                    #In normal case, the processus that created this directory will delete it
-                    #In case this processus crash, it won't be cleaned up.
-                    #As we don't know how to know if this directory is still used
-                    #we wait 1 weak and suppose that the processus crashed
-                    #and we do the clean up for it.
-                    if age > self.age_thresh_del_unversionned:
+                    # In normal case, the processus that created this directory
+                    # will delete it. However, if this processus crashes, it
+                    # will not be cleaned up.
+                    # As we don't know if this directory is still used, we wait
+                    # one week and suppose that the processus crashed, and we
+                    # take care of the clean-up.
+                    if age > min_age:
                         info("clear_unversioned removing cache dir", filename)
                         _rmtree(os.path.join(self.dirname, filename))
 
