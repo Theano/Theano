@@ -1299,7 +1299,11 @@ class TensorConstant(_tensor_py_operators, Constant):
     To create a TensorConstant, use the `constant` function in this module.
     """
     def __str__(self):
-        return "TensorConstant{%s}" % self.data
+        name = "%s"%self.data
+        if len(name) > 20:
+            name = name[:10]+".."+name[-10:]
+
+        return "TensorConstant{%s}" % name
 
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
