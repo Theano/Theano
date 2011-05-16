@@ -301,7 +301,8 @@ class ModuleCache(object):
             # add entries that are not in the entry_from_key dictionary
             time_now = time.time()
             for root, dirs, files in os.walk(self.dirname):
-                if os.path.join(root, 'key.pkl') in self.loaded_key_pkl:
+                key_pkl = os.path.join(root, 'key.pkl')
+                if key_pkl in self.loaded_key_pkl:
                     continue
                 elif 'delete.me' in files or len(files)==0:
                     # On NFS filesystems, it is impossible to delete a directory with open
@@ -314,13 +315,12 @@ class ModuleCache(object):
                         # the directory is still in use??  We just leave it for future removal.
                         pass
                 elif 'key.pkl' in files:
-                    key_pkl = os.path.join(root, 'key.pkl')
                     try:
                         entry = module_name_from_dir(root)
                     except ValueError: # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
-                            # So it is normal that this happen from time to time.
+                            # So it is normal that this happens from time to time.
                             warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
                         info("Erasing broken cache directory", key_pkl)
                         shutil.rmtree(root)
@@ -419,59 +419,69 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             hash_key = hash(key)
-            # we have never seen this key before
+            # We have never seen this key before.
             # Acquire lock before creating things in the compile cache,
-            # to avoid that other processes remove the compile dire while it
-            # is still empty
+            # to avoid that other processes remove the compile dir while it
+            # is still empty.
             compilelock.get_lock()
-            location = dlimport_workdir(self.dirname)
-            #debug("LOCATION*", location)
+            # This try/finally block ensures that the lock is released once we
+            # are done writing in the cache file or after raising an exception.
             try:
-                module = fn(location=location)  # WILL FAIL FOR BAD C CODE
-            except Exception, e:
-                _rmtree(location)
+                location = dlimport_workdir(self.dirname)
+                #debug("LOCATION*", location)
+                try:
+                    module = fn(location=location)  # WILL FAIL FOR BAD C CODE
+                except Exception, e:
+                    _rmtree(location)
+                    #try:
+                    #except Exception, ee:
+                        #error('failed to cleanup location', location, ee)
+                    raise
+
+                name = module.__file__
+
+                debug("Adding module to cache", key, name)
+                assert name.startswith(location)
+                assert name not in self.module_from_name
+                # Changing the hash of the key is not allowed during
+                # compilation. That is the only cause found that makes the
+                # following assert fail.
+                assert hash(key) == hash_key
+                assert key not in self.entry_from_key
+
+                if _version: # save they key
+                    key_pkl = os.path.join(location, 'key.pkl')
+                    # Note that using a binary file is important under Windows.
+                    key_file = open(key_pkl, 'wb')
+                    try:
+                        cPickle.dump(key, key_file, cPickle.HIGHEST_PROTOCOL)
+                        key_file.close()
+                        key_broken = False
+                    except cPickle.PicklingError:
+                        key_file.close()
+                        os.remove(key_pkl)
+                        warning("Cache leak due to unpickle-able key", key)
+                        key_broken = True
+
+                    if not key_broken:
+                        try:
+                            key_from_file = cPickle.load(open(key_pkl, 'rb'))
+                            if key != key_from_file:
+                                raise Exception(
+                                    "key not equal to unpickled version (Hint:"
+                                    " verify the __eq__ and __hash__ functions"
+                                    " for your Ops", (key, key_from_file))
+                            # Adding the key file to this set measn it is a
+                            # versioned key.
+                            self.loaded_key_pkl.add(key_pkl)
+                        except cPickle.UnpicklingError:
+                            warning('Cache failure due to un-loadable key',
+                                    key)
+            finally:
+                # Release lock if needed.
                 if not keep_lock:
                     compilelock.release_lock()
-                #try:
-                #except Exception, ee:
-                    #error('failed to cleanup location', location, ee)
-                raise
 
-            if not keep_lock:
-                compilelock.release_lock()
-            name = module.__file__
-
-            debug("Adding module to cache", key, name)
-            assert name.startswith(location)
-            assert name not in self.module_from_name
-#Changing the hash of the key is not allowed during compilation
-#That is the only cause found that make the last assert fail.
-            assert hash(key)==hash_key
-            assert key not in self.entry_from_key
-
-            assert key not in self.entry_from_key
-            if _version: # save they key
-                key_pkl = os.path.join(location, 'key.pkl')
-                # Note that using a binary file is important under Windows.
-                key_file = open(key_pkl, 'wb')
-                try:
-                    cPickle.dump(key, key_file, cPickle.HIGHEST_PROTOCOL)
-                    key_file.close()
-                    key_broken = False
-                except cPickle.PicklingError:
-                    key_file.close()
-                    os.remove(key_pkl)
-                    warning("Cache leak due to unpickle-able key", key)
-                    key_broken = True
-
-                if not key_broken:
-                    try:
-                        key_from_file = cPickle.load(open(key_pkl, 'rb'))
-                        if key != key_from_file:
-                            raise Exception("key not equal to unpickled version (Hint: verify the __eq__ and __hash__ functions for your Ops", (key, key_from_file))
-                        self.loaded_key_pkl.add(key_pkl) # adding the key file to this set means it is a versioned key
-                    except cPickle.UnpicklingError:
-                        warning('Cache failure due to un-loadable key', key)
             self.entry_from_key[key] = name
             self.module_from_name[name] = module
 
