@@ -851,9 +851,9 @@ class BinaryBitOp(BinaryScalarOp):
         return [None, None]
 
 class OR(BinaryBitOp):
-    identity = False
+    identity = 0
     commutative = True
-    associative = False
+    associative = True
     def impl(self, x, y):
         return x | y
     def c_code(self, node, name, (x, y), (z, ), sub):
@@ -861,9 +861,9 @@ class OR(BinaryBitOp):
 or_ = OR()
 
 class XOR(BinaryBitOp):
-    identity = False
+    identity = 0
     commutative = True
-    associative = False
+    associative = True
     def impl(self, x, y):
         return x ^ y
     def c_code(self, node, name, (x, y), (z, ), sub):
@@ -871,9 +871,9 @@ class XOR(BinaryBitOp):
 xor = XOR()
 
 class AND(BinaryBitOp):
-    identity = False
+    identity = 1
     commutative = True
-    associative = False
+    associative = True
     def impl(self, x, y):
         return x & y
     def c_code(self, node, name, (x, y), (z, ), sub):
@@ -881,7 +881,6 @@ class AND(BinaryBitOp):
 and_ = AND()
 
 class Invert(UnaryBitOp):
-    identity = False
     def impl(self, x):
         return ~x
     def c_code(self, node, name, (x,), (z, ), sub):
