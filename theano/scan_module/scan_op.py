@@ -610,11 +610,13 @@ class Scan(Op):
         t_call = time.time() - t0_call
 
         if hasattr(self.fn.maker.mode,'fct_call_time'):
-            self.fn.maker.mode.fct_call_time[self.fn] += t_call
+            self.fn.maker.mode.fct_call_time[self.fn] += t_fn
             self.fn.maker.mode.fct_call[self.fn] += n_steps
 
-        self.fn.maker.mode.call_time += t_call
+        self.fn.maker.mode.call_time += t_fn
         self.fn.maker.mode.fn_time += t_fn
+        self.t_call = t_call
+        self.t_fn = t_fn
 
 
     ### Infer Shape
