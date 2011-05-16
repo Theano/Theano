@@ -454,7 +454,73 @@ class Elemwise(Op):
         """
 
         inputs = map(as_tensor_variable, inputs)
-        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
+        input_dtypes = [i.dtype for i in inputs]
+
+        scalar_inputs = []
+        array_inputs = []
+        for input_idx, input in enumerate(inputs):
+            if input.ndim == 0:
+                scalar_inputs.append((input_idx, input))
+            else:
+                array_inputs.append((input_idx, input))
+
+        shadow = self.scalar_op.make_node(*[Scalar(dtype=dtype)() for dtype in input_dtypes])
+        out_dtypes = [o.type.dtype for o in shadow.outputs]
+
+        if (scalar_inputs and
+            array_inputs and
+            theano.config.cast_policy in ('numpy', 'numpy+floatX')):
+            # We need to make sure that scalars do not upcast arrays unless
+            # they are fundamentally different. This is specified in
+            #   http://docs.scipy.org/doc/numpy/reference/ufuncs.html
+            # in the 'casting rules' section.
+            # It seems difficult to find a generic mechanism that would work
+            # for any elemwise Op. In the following we use a heuristic that
+            # should work for simple Ops, but may break in the future for more
+            # complex Ops (in which case we may need to implement a way for
+            # these Ops to override this heuristic).
+            # The heuristic consists in detecting a situation where we suspect
+            # some scalar input upcasted an array, by comparing the highest
+            # type of the outputs with the highest type of the input arrays.
+            # If it happens that the former is of higher type than the latter,
+            # then we go through all scalar inputs and if they are of a higher
+            # type than the highest type of the input arrays, we pretend they
+            # actually are of the same type (the idea is that we suspect they
+            # are responsible for the upcasting, so by downcasting them we hope
+            # to get rid of this upcasting).
+            array_dtype = scalar.upcast(*[a[1].dtype for a in array_inputs])
+            out_dtype = scalar.upcast(*out_dtypes)
+            def is_higher(dtype_a, dtype_b):
+                return (dtype_a != dtype_b and
+                        scalar.upcast(dtype_a, dtype_b) == dtype_a)
+            if is_higher(out_dtype, array_dtype):
+                # We are in the situation described above.
+                modified_scalar_inputs = False
+                for input_idx, input in scalar_inputs:
+                    if scalar.upcast(input.dtype, array_dtype) == out_dtype:
+                        # This scalar may be responsible for the upcasting.
+                        input_dtypes[input_idx] = array_dtype
+                        modified_scalar_inputs = True
+                if modified_scalar_inputs:
+                    # Update 'shadow' and 'out_dtypes'.
+                    shadow = self.scalar_op.make_node(
+                            *[Scalar(dtype=dtype)() for dtype in input_dtypes])
+                    out_dtypes = [o.type.dtype for o in shadow.outputs]
+                    # The whole point of all this is to try to avoid upcasting
+                    # the dtype of the input arrays. The following assert makes
+                    # sure this goal was achieved. Note however that it might
+                    # fail for some Ops that purposedly upcast arrays, in which
+                    # case it would probably be better to use a different
+                    # mechanism for such Ops.
+                    out_dtype = scalar.upcast(*out_dtypes)
+                    assert not is_higher(out_dtype, array_dtype)
+                else:
+                    # Same as above: safety assert to make sure our heuristics
+                    # did its job. It may fail in the future for some Ops that
+                    # would require a different mechanism.
+                    import pdb; pdb.set_trace()
+                    raise AssertionError(
+                            'Heuristic failure - see Elemwise.make_node')
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -487,7 +553,6 @@ class Elemwise(Op):
                 for ob, ib in zip(out_broadcastables[overwriter], inputs[overwritten].type.broadcastable):
                     if ib and not ob:
                         raise ValueError("Operation cannot be done inplace on an input with broadcasted dimensions.")
-        out_dtypes = [o.type.dtype for o in shadow.outputs]
         if any(inputs[i].type.dtype != out_dtypes[o] for o, i in inplace_pattern.items()):
             raise TypeError("Cannot do an inplace operation on incompatible data types.",
                     ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern))

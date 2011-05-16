@@ -16,6 +16,7 @@ else:
     def hash_from_code(msg):
         return md5.new(msg).hexdigest()
 
+import theano
 from theano.gof.python25 import all
 from theano import config
 
@@ -791,7 +792,7 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries,
+            'CLinker.cmodule_key', compilation args, libraries, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -858,10 +859,12 @@ class CLinker(link.Linker):
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
 
-        # first we put the header, compile_args, library names into the signature
+        # First we put the header, compile_args, library names and config md5
+        # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+        sig.append(theano.configparser.get_config_md5())
 
         # technically this should only be appended for gcc-compiled Ops
         # and the flags of other compilers should be inserted here... but it's not clear how to
