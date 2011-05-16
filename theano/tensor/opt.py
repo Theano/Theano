@@ -3541,7 +3541,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if new_nb_input != len(inputs) or len(s_inputs) != len(inputs):
             raise Exception("""Something has gone wrong with the elemwise
 fusion optimization. We skip this optimization. You can ignore this message,
-your code will run correctly, but maybe slower.""")
+your code will run correctly, but may be slower.""")
 
         otype = node.outputs[0].type
         s_new_out=node.op.scalar_op(*s_g)
