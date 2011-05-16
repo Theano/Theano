@@ -415,6 +415,10 @@ def scan( fn
                   # each frame by the corresponding slice
                 nw_slice = seq['input'][0].type()
                 actual_slice = seq['input'][k-mintap]
+
+                if not hasattr(seq['input'],'name'):
+                    raise TypeError('Expected object with a "name" field, got '+str(seq)+"['input'] = "+str(seq['input']))
+
                 # Add names to slices for debugging and pretty printing ..
                 # that is if the input already has a name
                 if seq['input'].name:
