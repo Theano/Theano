@@ -1102,6 +1102,12 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
             except:
                 print >> sys.stderr, 'ERROR retrieving error_storage', error_storage
                 raise
+
+
+            #TODO-- someone who understands how these exceptions work, please put this info into the exception message itself
+            # (exc_value.message seems to be ignored)
+            print "while computing "+str(task.outputs)
+
             raise exc_type, exc_value, exc_trace
     execute.cthunk = cthunk
     return execute
