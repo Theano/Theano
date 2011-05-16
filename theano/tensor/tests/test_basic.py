@@ -4407,7 +4407,7 @@ def _test_autocast_numpy_floatX():
 class test_arithmetic_cast(unittest.TestCase):
 
     """
-    Test output types of typical arithmeric operations (* / + - //).
+    Test output types of basic arithmeric operations (* / + - //).
 
     We only test the behavior for `config.cast_policy` set to either 'numpy' or
     'numpy+floatX': the 'custom' behavior is (at least partially) tested in
@@ -4435,11 +4435,13 @@ class test_arithmetic_cast(unittest.TestCase):
                     for a_type in dtypes:
                         for b_type in dtypes:
                             # Note that we do not test division between
-                            # integers as this is currently forbidden.
-                            if (op is operator.div and
-                                a_type in tensor.discrete_dtypes and
-                                b_type in tensor.discrete_dtypes):
-                                continue
+                            # integers if it is forbidden.
+                            # Theano deals with integer division in its own
+                            # special way (depending on `config.int_division`).
+                            is_int_division = (
+                                    op is operator.div and
+                                    a_type in tensor.discrete_dtypes and
+                                    b_type in tensor.discrete_dtypes)
                             # We will test all meaningful combinations of
                             # scalar and array operations.
                             for combo in (
@@ -4449,17 +4451,29 @@ class test_arithmetic_cast(unittest.TestCase):
                                           ('array', 'scalar'),
                                           ('i_scalar', 'i_scalar'),
                                           ):
+
                                 theano_args = map(eval,
                                         ['theano_%s' % c for c in combo])
                                 numpy_args = map(eval,
                                         ['numpy_%s' % c for c in combo])
-                                theano_dtype = op(
+                                try:
+                                    theano_dtype = op(
                                         theano_args[0](a_type),
                                         theano_args[1](b_type)).type.dtype
+                                    # Should have crashed if it is an integer
+                                    # division and `config.int_division` does
+                                    # not allow it.
+                                    assert not (is_int_division and
+                                                config.int_division == 'raise')
+                                except theano.scalar.IntegerDivisionError:
+                                    assert (is_int_division and
+                                            config.int_division == 'raise')
+                                    # This is the expected behavior.
+                                    continue
                                 # For numpy we have a problem:
                                 #   http://projects.scipy.org/numpy/ticket/1827
-                                # The current expected behavior is to use
-                                # the highest data type that numpy may return.
+                                # As a result we only consider the highest data
+                                # type that numpy may return.
                                 numpy_dtypes = [
                                         op(numpy_args[0](a_type),
                                            numpy_args[1](b_type)).dtype,
@@ -4467,6 +4481,9 @@ class test_arithmetic_cast(unittest.TestCase):
                                            numpy_args[0](a_type)).dtype]
                                 numpy_dtype = theano.scalar.upcast(
                                         *map(str, numpy_dtypes))
+                                if numpy_dtype == theano_dtype:
+                                    # Same data type found, all is good!
+                                    continue
                                 if (cfg == 'numpy+floatX' and
                                     config.floatX == 'float32' and
                                     a_type != 'float64' and
@@ -4474,8 +4491,40 @@ class test_arithmetic_cast(unittest.TestCase):
                                     numpy_dtype == 'float64'):
                                     # We should keep float32.
                                     assert theano_dtype == 'float32'
-                                else:
-                                    assert theano_dtype == numpy_dtype
+                                    continue
+                                if 'array' in combo and 'scalar' in combo:
+                                    # For mixed scalar / array operations,
+                                    # Theano may differ from numpy as it does
+                                    # not try to prevent the scalar from
+                                    # upcasting the array.
+                                    array_type, scalar_type = (
+                                            (a_type, b_type)[
+                                                        list(combo).index(arg)]
+                                            for arg in ('array', 'scalar'))
+                                    up_type = theano.scalar.upcast(array_type,
+                                                                   scalar_type)
+                                    if (
+                                        # The two data types are different.
+                                        scalar_type != array_type and
+                                        # The array type is not enough to hold
+                                        # the scalar type as well.
+                                        array_type != up_type and
+                                        # Theano upcasted the result array.
+                                        theano_dtype == up_type and
+                                        # But Numpy kept its original type.
+                                        # (not an equality because of numpy bug
+                                        # mentioned above).
+                                        array_type in numpy_dtypes):
+                                        # Then we accept this difference in
+                                        # behavior.
+                                        continue
+                                if (is_int_division and
+                                    config.int_division == 'floatX'):
+                                    assert theano_dtype == config.floatX
+                                    continue
+                                # In any other situation: something wrong is
+                                # going on!
+                                assert False
         finally:
             config.cast_policy = backup_config
 
