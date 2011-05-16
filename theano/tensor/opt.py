@@ -3420,11 +3420,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
+        As part of specialization, we fuse two consecutive elemwise Ops of the
+        same shape.
 
-        For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
-        The number of dimension is validated at call time by theano itself.
-
+        For mixed dtype, we let the Composite op do the cast. It lets the C
+        compiler do the cast.
+        The number of dimensions is validated at call time by theano itself.
         """
         # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
         # TODO: use broadcast flag?
