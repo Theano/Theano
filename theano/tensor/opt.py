@@ -568,12 +568,15 @@ class ShapeFeature(object):
     """
     @staticmethod
     def shape_ir(i, r):
+        #TODO: Write a doc string for this method
+
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
-            return self.lscalar_one
+            return T.constant(1.0,dtype='int64')
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
+        #TODO: Write a doc string for this method
         return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
