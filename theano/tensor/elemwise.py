@@ -1057,6 +1057,7 @@ class CAReduce(Op):
                 if input.type.dtype in ["float32","float64"]:
                     identity = "-__builtin_inf()"
                 elif input.type.dtype.startswith("uint"):
+                    # numpy1.5.1 don't define NPY_MIN_UINT*
                     identity = "0"
                 else:
                     identity = "NPY_MIN_"+str(input.type.dtype).upper()
