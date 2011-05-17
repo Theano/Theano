@@ -22,8 +22,8 @@ slower but should at least let you run the test suite.
 
 Note that this script is a work-in-progress and is not fully functional at this
 point: the way some tests are defined in the Theano test-suite seems to confuse
-nosetests' TestID module, probably leading to not running all tests, as well as
-to some unexpected test failures.
+the nosetests' TestID module, probably leading to not running all tests, as
+well as to some unexpected test failures.
 
 You can also provide a single command-line argument, which should be an integer
 number N (default = 1), in order to run batches of N tests rather than run tests
