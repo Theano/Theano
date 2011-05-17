@@ -1097,16 +1097,14 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
                 trace = ()
             try:
                 exc_type, _exc_value, exc_trace = error_storage
-                exc_value = exc_type(_exc_value, task)
+                if hasattr(task, "outputs"):
+                    exc_value = exc_type(_exc_value, task, task.outputs)
+                else:
+                    exc_value = exc_type(_exc_value, task)
                 exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
             except:
                 print >> sys.stderr, 'ERROR retrieving error_storage', error_storage
                 raise
-
-
-            #TODO-- someone who understands how these exceptions work, please put this info into the exception message itself
-            # (exc_value.message seems to be ignored)
-            print "while computing "+str(task.outputs)
 
             raise exc_type, exc_value, exc_trace
     execute.cthunk = cthunk
