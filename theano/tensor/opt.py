@@ -9,7 +9,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 import operator
 import itertools
 import sys
-
+import traceback
 import numpy
 import numpy as N #guys... please don't do this in the library :(
 
@@ -717,9 +717,9 @@ class ShapeFeature(object):
         except NotImplementedError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
         except Exception, e:
-            _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+            _logger.error('Failed to infer_shape from Op %s.\nInput shapes:%s\nException encountered during infer_shape: %s\nException message: %s\nTraceback: %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
-                type(e), str(e)))
+                type(e), str(e), traceback.format_exc()))
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
 
         # this is packed information
