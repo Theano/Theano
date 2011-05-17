@@ -1056,6 +1056,8 @@ class CAReduce(Op):
                 scal_name = 'maximum'
                 if input.type.dtype in ["float32","float64"]:
                     identity = "-__builtin_inf()"
+                elif input.type.dtype.startswith("uint"):
+                    identity = "0"
                 else:
                     identity = "NPY_MIN_"+str(input.type.dtype).upper()
             if self.scalar_op == scalar.minimum:
