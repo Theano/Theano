@@ -566,16 +566,15 @@ class ShapeFeature(object):
     sometimes Theano constants?? That would be confusing.
 
     """
-    def shape_i(self, i):
-        def op_deco(r):
-            if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
-                return self.lscalar_one
-            else:
-                return Shape_i(i)(r)
-        return op_deco
+    @staticmethod
+    def shape_ir(i, r):
+        if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
+            return self.lscalar_one
+        else:
+            return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
-        return tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])
+        return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
         rval = []
