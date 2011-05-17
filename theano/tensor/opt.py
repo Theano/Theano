@@ -491,6 +491,8 @@ class Shape_i(T.Op):
     def grad(self, inp, grads):
         return [None]
 
+lscalar_one = T.constant(1, dtype='int64')
+assert lscalar_one.type == T.lscalar
 class ShapeFeature(object):
     """Graph optimizer for removing all calls to shape()
 
@@ -571,7 +573,7 @@ class ShapeFeature(object):
         #TODO: Write a doc string for this method
 
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
-            return T.constant(1.0,dtype='int64')
+            return lscalar_one
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
@@ -593,7 +595,7 @@ class ShapeFeature(object):
         assert s_i is not None
         if s_i == 1:
             # don't make the optimizer merge a zillion ones together
-            return self.lscalar_one
+            return lscalar_one
         if type(s_i) is int or isinstance(s_i, numpy.integer):
             # this shape is a constant
             assert s_i >= 0
@@ -693,8 +695,6 @@ class ShapeFeature(object):
         env.shape_feature = self
         self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
         self.scheduled = {} # Variable ->
-        self.lscalar_one = T.constant(1, dtype='int64')
-        assert self.lscalar_one.type == T.lscalar
         for node in env.toposort():
             self.on_import(env, node)
 
