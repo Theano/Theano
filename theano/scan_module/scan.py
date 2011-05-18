@@ -104,11 +104,11 @@ def scan( fn
 
         .. code-block:: python
 
-            scan(fn, sequences = [ dict( Sequence1, taps = [-3,2,-1])
+            scan(fn, sequences = [ dict(input= Sequence1, taps = [-3,2,-1])
                                  , Sequence2
-                                 , dict( Sequence3, taps = 3) ]
-                   , outputs_info = [ dict( Output1, taps = [-3,-5])
-                                    , dict( Output2, taps = None)
+                                 , dict(input =  Sequence3, taps = 3) ]
+                   , outputs_info = [ dict(initial =  Output1, taps = [-3,-5])
+                                    , dict(initial = Output2, taps = None)
                                     , Output3 ]
                    , non_sequences = [ Argument1, Argument 2])
 
