@@ -30,6 +30,18 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         return -1;
     }
     
+    if (verbose>1)
+    {
+        fprintf(stderr, "INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
+        fprintf(stderr, "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
+                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
+                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
+        fprintf(stderr, "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
+                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
+                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
+        fprintf(stderr, "INFO:   subsample_rows=%d, subsample_cols=%d\n", subsample_rows, subsample_cols);
+    }
+
     //Check the output size is valid
     assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows));
     assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols));
@@ -98,17 +110,6 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       kern_data_unflipped=&(kern->devdata[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
-    if (verbose>1)
-    {
-        fprintf(stderr, "INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
-        fprintf(stderr, "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
-        fprintf(stderr, "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
-    }
-    
     //if we remove the restriction img_size_byte+kern_size_byte>8*1024, we can enter in condition where we will lower the occupency due to shared memory and/or registers.
     if ((version == -1) && (out_size<64 || img_size_byte+kern_size_byte>8*1024) && out_size<=256){
       //condition for exec 
@@ -634,20 +635,20 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (1)
         {
             if (verbose) fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
+            if (verbose>1) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
                     nbatch, CudaNdarray_HOST_DIMS(img)[1], img_len, img_wid,
                     img->devdata,
                     CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3]);
-            if (verbose) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
+            if (verbose>1) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
                     nkern, nstack, kern_len, kern_wid,
                     kern->devdata,
                     CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3]
                         );
-            if (verbose) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
+            if (verbose>1) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
                     CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1], out_len, out_wid,
                     out->devdata,
                     CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3]);
-            if (verbose) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
+            if (verbose>1) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
         }
         conv_reference_valid<<<n_blocks, n_threads>>>( nbatch, nkern, CudaNdarray_HOST_DIMS(img)[1],
                 img_len, img_wid,
