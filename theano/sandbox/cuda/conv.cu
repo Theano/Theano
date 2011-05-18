@@ -29,12 +29,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
     }
-    if (subsample_rows==1 && subsample_cols==1)
-    {
-        //TODO: rethink these asserts in light of the difference between physical and logical dimensions
-        assert (CudaNdarray_HOST_DIMS(out)[2] == CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1);
-        assert (CudaNdarray_HOST_DIMS(out)[3] == CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1);
-    }
+    
+    //Check the output size is valid
+    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows));
+    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols));
+
     assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
     assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
     assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
@@ -701,12 +700,10 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
     }
-    if (0)
-    {
-        //TODO: rethink these to use physical / logical dimensions, subsampling, offsets, etc.
-        assert (CudaNdarray_HOST_DIMS(out)[2] == CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1);
-        assert (CudaNdarray_HOST_DIMS(out)[3] == CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1);
-    }
+    // check the size of the output matrix
+    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1, subsample_rows));
+    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1, subsample_cols));
+
     assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
     assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
     assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
