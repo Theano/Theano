@@ -2036,6 +2036,71 @@ class T_Scan(unittest.TestCase):
         f2_vals = f2(x_val)
         assert numpy.allclose(f_vals, f2_vals)
 
+
+    def test_reduce_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.reduce(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+
+        #f1 = theano.function([],o)
+
+        # Get the scan node
+        #scan_node = [n for n in f1.maker.env.toposort()
+        #             if n.op.__class__.__name__=='Scan'][0]
+        # Check how much memory it uses
+        # Can actually do that since things are hidden by the infershape
+        # mechanism
+        #assert scan_node.inputs[2].value.shape == ()
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
+
+
+    def test_foldl_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.foldl(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+
+        #f1 = theano.function([],o)
+
+        # Get the scan node
+        #scan_node = [n for n in f1.maker.env.toposort()
+        #             if n.op.__class__.__name__=='Scan'][0]
+        # Check how much memory it uses
+        # Can actually do that since things are hidden by the infershape
+        # mechanism
+        #assert scan_node.inputs[2].value.shape == ()
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
+
+    def test_foldr_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.foldr(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+
+        #f1 = theano.function([],o)
+
+        # Get the scan node
+        #scan_node = [n for n in f1.maker.env.toposort()
+        #             if n.op.__class__.__name__=='Scan'][0]
+        # Check how much memory it uses
+        # Can actually do that since things are hidden by the infershape
+        # mechanism
+        #assert scan_node.inputs[2].value.shape == ()
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
+
 if __name__ == '__main__':
     #'''
     print ' Use nosetests to run these tests '
