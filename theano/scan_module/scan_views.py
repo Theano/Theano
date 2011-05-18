@@ -130,7 +130,7 @@ def reduce( fn
                 , outputs_info      = outs_info
                 , non_sequences     = non_sequences
                 , go_backwards      = go_backwards
-                , truncate_gradient = 1
+                , truncate_gradient = -1
                 , mode              = mode
                 , name              = name )
 
