@@ -98,6 +98,7 @@ class Env(utils.object2):
 
         for f in features:
             self.extend(f)
+        self.extend(toolbox.ReplaceValidate())
 
         for input in self.inputs:
             if input.owner is not None:

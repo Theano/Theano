@@ -9,7 +9,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 import operator
 import itertools
 import sys
-
+import traceback
 import numpy
 import numpy as N #guys... please don't do this in the library :(
 
@@ -567,16 +567,18 @@ class ShapeFeature(object):
     sometimes Theano constants?? That would be confusing.
 
     """
-    def shape_i(self, i):
-        def op_deco(r):
-            if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
-                return self.lscalar_one
-            else:
-                return Shape_i(i)(r)
-        return op_deco
+
+    def shape_ir(self, i, r):
+        #TODO: Write a doc string for this method
+
+        if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
+            return self.lscalar_one
+        else:
+            return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
-        return tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])
+        #TODO: Write a doc string for this method
+        return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
         rval = []
@@ -690,10 +692,13 @@ class ShapeFeature(object):
     def on_attach(self, env):
         assert not hasattr(env, 'shape_feature')
         env.shape_feature = self
-        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-        self.scheduled = {} # Variable ->
+        # Must be local to the object as otherwise we reuse the same
+        # variable for multiple env!
         self.lscalar_one = T.constant(1, dtype='int64')
         assert self.lscalar_one.type == T.lscalar
+
+        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        self.scheduled = {} # Variable ->
         for node in env.toposort():
             self.on_import(env, node)
 
@@ -725,12 +730,10 @@ class ShapeFeature(object):
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
         except Exception, e:
-            _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+            _logger.error('Failed to infer_shape from Op %s.\nInput shapes:%s\nException encountered during infer_shape: %s\nException message: %s\nTraceback: %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
-                type(e), str(e)))
-            # We raise the exception to make sure the user knows something bad
-            # is going on.
-            raise
+                type(e), str(e), traceback.format_exc()))
+            o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
 
         # this is packed information
         # an element of o_shapes is either None or a tuple

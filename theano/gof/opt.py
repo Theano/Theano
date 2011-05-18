@@ -92,7 +92,9 @@ class FromFunctionOptimizer(Optimizer):
     def __init__(self, fn):
         self.apply = fn
     def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
+        # Added by default
+        #env.extend(toolbox.ReplaceValidate())
+        pass
 
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level,
@@ -252,7 +254,9 @@ class MergeOptimizer(Optimizer):
         self.skip_const_merge = skip_const_merge
 
     def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
+        # Added by default
+        #env.extend(toolbox.ReplaceValidate())
+        pass
 
     def apply_constant_merge(self, env):
         seen_constants = set()
@@ -421,7 +425,9 @@ class LocalOptimizer(object):
     def add_requirements(self, env):
         """If this local optimization wants to add some requirements to the env,
         This is the place to do it."""
-        env.extend(toolbox.ReplaceValidate())
+        # Added by default
+        #env.extend(toolbox.ReplaceValidate())
+        pass
 
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
@@ -908,7 +914,8 @@ class NavigatorOptimizer(Optimizer):
 
     def add_requirements(self, env):
         super(NavigatorOptimizer, self).add_requirements(env)
-        env.extend(toolbox.ReplaceValidate())
+        # Added by default
+        #env.extend(toolbox.ReplaceValidate())
         if self.local_opt:
             self.local_opt.add_requirements(env)
 
@@ -989,7 +996,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
         """
         Requires the following features:
           - NodeFinder
-          - ReplaceValidate
+          - ReplaceValidate(Added by default)
         """
         super(OpKeyOptimizer, self).add_requirements(env)
         env.extend(toolbox.NodeFinder())

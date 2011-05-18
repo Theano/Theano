@@ -520,8 +520,14 @@ class Function(object):
                             allow_downcast=s.allow_downcast)
 
                 except Exception, e:
-                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % i])
+                    function_name="theano function"
+                    if self.name:
+                        function_name += 'with name "'+self.name+'" '
+                    #end if
+                    e.args = tuple(list(e.args)+["Bad input argument to "+function_name+" at index %d" % i])
                     raise
+                #end except
+            #end if
             s.provided += 1
             i+=1
 

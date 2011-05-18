@@ -118,10 +118,9 @@ def reduce( fn
             if not isinstance(out_info, dict):
                 # Specifies that it should return only the last step.
                 outs_info[i] = dict(
-                    initial = out_info,  return_steps = 1, store_steps = 1)
+                    initial = out_info,  return_steps = 1)
             else:
                 # Specifies that it should return only the last step.
-                outs_info[i]['store_steps']  = 1
                 outs_info[i]['return_steps'] = 1
                 # NOTE : If the user asks for more then the last step,
                 # it means he does not understand ``reduce``. We could
@@ -131,7 +130,7 @@ def reduce( fn
                 , outputs_info      = outs_info
                 , non_sequences     = non_sequences
                 , go_backwards      = go_backwards
-                , truncate_gradient = 1
+                , truncate_gradient = -1
                 , mode              = mode
                 , name              = name )
 

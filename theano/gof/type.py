@@ -224,6 +224,13 @@ class PureType(object):
         """
         raise MethodNotDefined("filter", type(self), self.__class__.__name__)
 
+    # If filter_inplace is defined, it will be called instead of
+    # filter() This is to allow reusing the old allocated memory. As
+    # of this writing this is used only when we transfer new data to a
+    # shared variable on the gpu.  
+    
+    #def filter_inplace(value, storage, strict=False, allow_downcast=None)
+
     def is_valid_value(self, a):
         """Required: Return True for any python object `a` that would be a legal value for a Variable of this Type"""
         try:
