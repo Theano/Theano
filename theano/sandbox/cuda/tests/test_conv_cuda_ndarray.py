@@ -282,8 +282,7 @@ def get_valid_shapes():
     shapes += get_shapes2(scales_img=(2,2),img_stride=(-1,-1))
     shapes += get_shapes2(scales_img=(2,2),kern_stride=(-1,-1))
 
-    #test subsample
-    shapes += get_shapes2(scales_img=(2,2),subsample=(2,2))
+    #test subsample done in a separate fct
 
     shapes += [
          #other test
@@ -502,8 +501,7 @@ def test_full():
     shapes += get_shapes2(scales_img=(2,2),img_stride=(-1,-1))
     shapes += get_shapes2(scales_img=(2,2),kern_stride=(-1,-1))
 
-    #test subsample
-    shapes += get_shapes2(scales_img=(2,2),subsample=(2,2))
+    #test subsample done in a separate fct
 
     shapes += [
         #other test
@@ -552,22 +550,32 @@ def test_full():
 
 def test_subsample():
     # implement when
-    shapes = [
-            ((1, 1, 1, 1), (1, 1, 1, 1), (1,1))
-            , ((1, 1, 1, 1), (1, 1, 1, 1), (2,2))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 3))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 1))
+    shapes = [ 
+            ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
+            , ((1, 1, 1, 1), (1, 1, 1, 1), (2,2), (1,1), (1,1))
+            , ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3), (1,1), (1,1))
+            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 3), (1,1), (1,1))
+            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 1), (1,1), (1,1))
             ]
-    all_good = True
+    shapes += get_shapes2(scales_img=(2,2),subsample=(1,1))
+    shapes += get_shapes2(scales_img=(2,2),subsample=(1,2))
+    shapes += get_shapes2(scales_img=(2,2),subsample=(2,1))
+    shapes += get_shapes2(scales_img=(2,2),subsample=(2,2))
 
-    _params_allgood_header()
-    for ishape, kshape, ds in shapes:
-        if not _params_allgood(ishape, kshape, 'full', subsample=ds):
-            all_good = False
-        if not _params_allgood(ishape, kshape, 'valid', subsample=ds):
-            all_good = False
-    assert all_good
+#We put only the version that implement the subsample to make the test faster.
+    version_valid = [-2,-1,1,3,11,12]
+    version_full = [-2,-1]
+    verbose = 0
+    random = True
+    print_ = False
+    ones = False
+    if ones:
+        random = False
+    
+    #test
+    random = False
+    exec_conv(version_valid, shapes, verbose, random, 'valid', print_=print_, ones=ones)
+    exec_conv(version_full, shapes, verbose, random, 'full', print_=print_, ones=ones)
 
 ## See #616
 #def test_logical_shapes():
