@@ -226,10 +226,10 @@ class Scan(Op):
         for idx in xrange(self.n_seqs):
             if inputs[1+idx].dtype != self.inputs[idx].dtype:
                 raise ValueError(err_msg1%( 'Sequence'
-                                       , inputs[1+idx].name
+                                       , str(inputs[1+idx])
                                        , idx
                                        , inputs[1+idx].dtype
-                                       , self.inputs[idx].name
+                                       , str(self.inputs[idx])
                                        , self.inputs[idx].dtype) )
 
         # Check that this 3 things have the same dtype for mit_mot:
@@ -246,10 +246,10 @@ class Scan(Op):
             for k in self.tap_array[index-start]:
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
-                                               , inputs[index].name
+                                               , str(inputs[index])
                                                , index
                                                , inputs[index].dtype
-                                               , self.inputs[index_i].name
+                                               , str(self.inputs[index_i])
                                                , self.inputs[index_i].dtype) )
                 index_i += 1
             for k in self.mit_mot_out_slices[index-start]:
@@ -266,14 +266,14 @@ class Scan(Op):
             for k in self.tap_array[index-start]:
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
-                                               , inputs[index].name
+                                               , str(inputs[index])
                                                , index
                                                , inputs[index].dtype
-                                               , self.inputs[index_i].name
+                                               , str(self.inputs[index_i])
                                                , self.inputs[index_i].dtype) )
                 index_i += 1
             if inputs[index].dtype != self.outputs[index_o].dtype:
-                raise ValueError(err_msg2%( inputs[index].name
+                raise ValueError(err_msg2%( str(inputs[index])
                                            , index
                                            , inputs[index].dtype
                                            , self.outputs[index_o].dtype) )
@@ -287,7 +287,7 @@ class Scan(Op):
         while index < end:
             if (hasattr(inputs[index],'dtype') and
                 inputs[index].dtype != self.outputs[index_o].dtype):
-                raise ValueError(err_msg2%( inputs[index].name
+                raise ValueError(err_msg2%( str(inputs[index])
                                            , index
                                            , inputs[index].dtype
                                            , self.outputs[index_o].dtype) )
@@ -794,7 +794,7 @@ class Scan(Op):
                 g_out_slices.append(g_outs_no_shared[dx][0])
             else:
                 g_out_slices.append(None)
-            if out.name:
+            if getattr(out,'name',None) is not None:
                 inner_g_out.name = 'g_'+out.name
             else:
                 inner_g_out.name = 'g_'+str(dx)
@@ -872,7 +872,7 @@ class Scan(Op):
                     nw_seq = seq[dim_offset +k -mintap: -(maxtap -k)]
                 else:
                     nw_seq = seq[dim_offset +k -mintap: ]
-                if seq.name:
+                if getattr(seq,'name', None) is not None:
                     nw_seq.name = seq.name + '[%d:]'%k
                 scan_seqs.append(nw_seq)
 
