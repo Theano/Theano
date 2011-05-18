@@ -42,6 +42,16 @@ default values.
       have a default value of ``False``. The third argument must be called
       ``allow_downcast`` and must have a default value of ``None``.
 
+    .. method:: filter_inplace(value, storage, strict=False, allow_downcast=None)
+
+      If filter_inplace is defined, it will be called instead of
+      filter() This is to allow reusing the old allocated memory. As
+      of this writing this is used only when we transfer new data to a
+      shared variable on the gpu.
+
+      ``storage`` will be the old value. i.e. The old numpy array,
+      CudaNdarray, ...
+
     .. method:: is_valid_value(value)
 
       Returns True iff the value is compatible with the Type. If
