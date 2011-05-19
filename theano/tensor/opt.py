@@ -603,7 +603,7 @@ class ShapeFeature(object):
         if s_i == 1:
             # don't make the optimizer merge a zillion ones together
             return self.lscalar_one
-        if type(s_i) is int or isinstance(s_i, numpy.integer):
+        if type(s_i) in (int,long) or isinstance(s_i, numpy.integer):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
