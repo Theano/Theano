@@ -505,8 +505,10 @@ def pydotprint(fct, outfile=None,
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
         if (varstr in all_strings) or with_ids:
-            varstr += ' id=' + str(len(var_str))
-        if len(varstr) > max_label_size:
+            idx = ' id=' + str(len(var_str))
+            if len(varstr)+len(idx) > max_label_size:
+                varstr = varstr[:max_label_size-3-len(idx)]+idx+'...'
+        elif len(varstr) > max_label_size:
             varstr = varstr[:max_label_size-3]+'...'
         var_str[var]=varstr
         all_strings.add(varstr)
@@ -529,11 +531,14 @@ def pydotprint(fct, outfile=None,
             else: pf = time*100/mode.fct_call_time[fct]
             prof_str='   (%.3fs,%.3f%%,%.3f%%)'%(time,pt,pf)
         applystr = str(node.op).replace(':','_')
-        if len(applystr)>max_label_size:
-            applystr = applystr[:max_label_size-3]+'...'
-        if (applystr in all_strings) or with_ids:
-            applystr = applystr+'    id='+str(topo.index(node))
         applystr += prof_str
+        if (applystr in all_strings) or with_ids:
+            idx = ' id='+str(topo.index(node))
+            if len(applystr)+len(idx) > max_label_size:
+                applystr = applystr[:max_label_size-3-len(idx)]+idx+'...'
+        elif len(applystr) > max_label_size:
+            applystr = applystr[:max_label_size-3]+'...'
+
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
         return applystr
