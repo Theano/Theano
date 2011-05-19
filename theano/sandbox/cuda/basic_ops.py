@@ -1205,7 +1205,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (20,)
+        return (21,)
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
