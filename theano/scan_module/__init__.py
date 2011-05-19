@@ -367,8 +367,21 @@ class ScanSaveMem(gof.Optimizer):
                     # If the memory for this output has been pre-allocated
                     # before going into the scan op (by an alloc node)
                     if idx < op.n_mit_sot + op.n_sit_sot:
-                        _nw_input = nw_inputs[offset+idx].owner.inputs[1]
-                        nw_input = scan_utils.expand( _nw_input, val - init_l[i] )
+                        # In case the input is still an alloc node
+                        if nw_inputs[offset+idx].owner:
+                            _nw_input = nw_inputs[offset+idx].owner.inputs[1]
+                            nw_input = scan_utils.expand( _nw_input, val - init_l[i] )
+                        # Else, if it was constant folded to a single value
+                        elif isinstance(nw_inputs[offset+idx], tensor.Constant):
+                            # The hope is that constant folding will fold
+                            # this as well
+                            nw_input = nw_inputs[offset+idx][:val]
+                        else:
+                            raise Exception(('Unforseen case. Please report'
+                                            ' to theano-dev with an example'
+                                            ' script for this case to be'
+                                            ' debuged'))
+
                         nw_inputs[offset+idx] = nw_input
                         replaced_outs.append(op.n_mit_mot + idx)
                         odx = op.n_mit_mot + idx
