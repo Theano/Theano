@@ -879,6 +879,7 @@ def test_argmax_pushdown():
             [x],
             [out])
 
+    config.warn.argmax_pushdown_bug = False
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
@@ -922,6 +923,7 @@ def test_argmax_pushdown_bias():
             [x,b],
             [out])
 
+    config.warn.argmax_pushdown_bug = False
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
 

@@ -246,13 +246,13 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
 
-    new_neib_shape = T.stack( original_shape[-1]/neib_shape[1], neib_shape[1] )
+    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1], neib_shape[1])
     output_2d = images2neibs(neibs.dimshuffle('x','x',0,1), new_neib_shape, mode=mode)
     
     if mode == 'ignore_borders':
         valid_shape = list(original_shape)
-        valid_shape[2]  = valid_shape[2] / neib_shape[0] * neib_shape[0]
-        valid_shape[3]  = valid_shape[3] / neib_shape[1] * neib_shape[1]
+        valid_shape[2]  = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
+        valid_shape[3]  = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
         output_4d = output_2d.reshape(valid_shape)
         #padding the borders with zeros
         for d in [2,3]:

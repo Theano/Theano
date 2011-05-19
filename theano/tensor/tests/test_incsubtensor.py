@@ -30,9 +30,11 @@ class Test_incsubtensor(unittest.TestCase):
         for do_set in [False,True]:
 
             if do_set:
-                resut = T.setsubtensor(a, increment, [sl1, sl2])
+                resut = T.setsubtensor(a, increment, [sl1, sl2],
+                                       show_warning=False)
             else:
-                resut = T.incsubtensor(a, increment, [sl1, sl2])
+                resut = T.incsubtensor(a, increment, [sl1, sl2],
+                                       show_warning=False)
 
             f = theano.function([a, increment, sl2_end], resut)
 
@@ -59,7 +61,7 @@ class Test_incsubtensor(unittest.TestCase):
 
         def inc_slice(*s):
             def just_numeric_args(a,b):
-                return T.incsubtensor(a, b, s)
+                return T.incsubtensor(a, b, s, show_warning=False)
             return just_numeric_args
 
         # vector

@@ -37,6 +37,7 @@ class test_ScalarOps(unittest.TestCase):
     #As we use theano.scalar normally, but we use theano.tensor.scalar
     #that is not important. Also this make the theano fct fail at call time
     #so this is not a silent bug.
+    # --> This is why it is purposedly named 'tes_mod' instead of 'test_mod'.
     def tes_mod(self):
         """
         We add this test as not all language and C implementation give the same
@@ -174,6 +175,19 @@ class test_logical(unittest.TestCase):
             self.assertTrue(fn(a,b) == ~a, (a,))
 
 
+class test_complex_mod(unittest.TestCase):
+    """Make sure % fails on complex numbers."""
+
+    def test_fail(self):
+        x = complex64()
+        y = int32()
+        try:
+            x % y
+            assert False
+        except ComplexError:
+            pass
+
+
 class test_div(unittest.TestCase):
     def test_0(self):
         a = int8()
@@ -182,9 +196,9 @@ class test_div(unittest.TestCase):
         d = float64()
         f = float32()
 
-        print (a/b).owner.op
-        assert isinstance((a/b).owner.op, IntDiv)
-        assert isinstance((b/a).owner.op, IntDiv)
+        print (a//b).owner.op
+        assert isinstance((a//b).owner.op, IntDiv)
+        assert isinstance((b//a).owner.op, IntDiv)
         assert isinstance((b/d).owner.op, TrueDiv)
         assert isinstance((b/f).owner.op, TrueDiv)
         assert isinstance((f/a).owner.op, TrueDiv)
