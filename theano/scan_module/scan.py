@@ -405,11 +405,11 @@ def scan( fn
             maxtap = numpy.max(seq['taps'])
             for k in seq['taps']:
                 # create one slice of the input
-                  # Later on, if we decide not to use scan because we are
-                  # going for just one step, it makes things easier if we
-                  # compute the correct outputs here. This way we can use
-                  # the output of the lambda expression directly to replace
-                  # the output of scan.
+                # Later on, if we decide not to use scan because we are
+                # going for just one step, it makes things easier if we
+                # compute the correct outputs here. This way we can use
+                # the output of the lambda expression directly to replace
+                # the output of scan.
 
                   # If not we need to use copies, that will be replaced at
                   # each frame by the corresponding slice
