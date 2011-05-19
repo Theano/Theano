@@ -1934,7 +1934,7 @@ class GpuAlloc(Op):
             str += "||CudaNdarray_HOST_DIMS(%(out)s)[%(idx)s]!=dims[%(idx)s]"%locals()
         str+="""){
         Py_XDECREF(%(out)s);
-        %(out)s= (CudaNdarray*)CudaNdarray_new_null();
+        %(out)s= (CudaNdarray*)CudaNdarray_New();
         CudaNdarray_alloc_contiguous(%(out)s, %(nd)s, dims);
     }
     if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
@@ -1952,7 +1952,7 @@ class GpuAlloc(Op):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 gpu_alloc = GpuAlloc()
 

@@ -22,7 +22,7 @@ class GpuDot22(Op):
         return Apply(self, [x,y], [x.type()])
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (1,1)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         x, y = inputs
@@ -48,7 +48,7 @@ class GpuDot22(Op):
             npy_intp dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
                 if (%(z)s)
@@ -90,7 +90,7 @@ class GpuDot22Scalar(Op):
         return Apply(self, [x,y,a], [x.type()])
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (1,1)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, y, a = inputs
@@ -122,7 +122,7 @@ class GpuDot22Scalar(Op):
             npy_intp dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
                 if (%(z)s)
@@ -436,7 +436,7 @@ class GpuDownsampleFactorMax(Op):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (2)
+        return (3)
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -473,7 +473,7 @@ class GpuDownsampleFactorMax(Op):
             || (CudaNdarray_HOST_DIMS(%(z)s)[3] != dims[3]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 4, dims))
             {
@@ -588,7 +588,7 @@ class GpuDownsampleFactorMaxGrad(Op):
         return Apply(self, [x, z, gz], [x.type()])
     def c_code_cache_version(self):
         #return ()
-        return (4,)
+        return (5,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -611,7 +611,7 @@ class GpuDownsampleFactorMaxGrad(Op):
             || (CudaNdarray_HOST_DIMS(%(gx)s)[3] != CudaNdarray_HOST_DIMS(%(x)s)[3]))
         {
             Py_XDECREF(%(gx)s);
-            %(gx)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(gx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(gx)s)
                 || CudaNdarray_alloc_contiguous(%(gx)s, 4, CudaNdarray_HOST_DIMS(%(x)s)))
             {

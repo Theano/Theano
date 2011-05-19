@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 13, verbose)
+    cache_version = ('debug', 14, verbose)
 
     def __init__(self, scalar_op, sync=True, inplace_pattern={}):
         """
@@ -888,7 +888,7 @@ nd_collapse_[i]=0;
         }
         if (NULL == %(oname)s)
         {
-            %(oname)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(oname)s = (CudaNdarray*)CudaNdarray_New();
             if (!%(oname)s)
             {
                 //error string already set

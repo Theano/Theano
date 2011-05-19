@@ -350,7 +350,7 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     // total_elements now contains the size of the array, in reals
     int total_size = total_elements * sizeof(real);
 
-    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
+    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_New();
     if (!rval)
     {
         PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to new_null failed");
@@ -448,7 +448,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
 
 PyObject * CudaNdarray_Copy(CudaNdarray * self)
 {
-    PyObject * rval = CudaNdarray_new_null();
+    PyObject * rval = CudaNdarray_New();
     if ((!rval) || (-1 == self->nd))
     {
         return rval;
@@ -509,7 +509,7 @@ PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask)
         PyErr_SetString(PyExc_TypeError, "length of reduce_mask must match self->nd");
         return NULL;
     }
-    CudaNdarray * self_sum = (CudaNdarray*)CudaNdarray_new_null();
+    CudaNdarray * self_sum = (CudaNdarray*)CudaNdarray_New();
     if (!self_sum)
     {
         return NULL;
@@ -666,9 +666,8 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     }
 
     // allocate new space (TODO: test to see if we can re-use old one)
-    CudaNdarray * rval = (CudaNdarray * )CudaNdarray_new_null();
-    if (!rval || CudaNdarray_alloc_contiguous(rval, rval_nd, rval_dims))
-    {
+    CudaNdarray * rval = (CudaNdarray * )CudaNdarray_New();
+    if (!rval || CudaNdarray_alloc_contiguous(rval, rval_nd, rval_dims)){
         Py_XDECREF(rval);
         free(rval_dims);
         return NULL;
@@ -754,7 +753,7 @@ PyObject * CudaNdarray_SetShapeI(CudaNdarray * self, PyObject *args)
 static PyObject *
 CudaNdarray_exp(CudaNdarray* self)
 {
-    CudaNdarray * rval = (CudaNdarray *)CudaNdarray_new_null();
+    CudaNdarray * rval = (CudaNdarray *)CudaNdarray_New();
     if ((NULL == rval) || CudaNdarray_alloc_contiguous(rval, self->nd, CudaNdarray_HOST_DIMS(self)))
     {
         Py_XDECREF(rval);
@@ -872,7 +871,7 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
     }
-    CudaNdarray * rval = (CudaNdarray *)CudaNdarray_new_null();
+    CudaNdarray * rval = (CudaNdarray *)CudaNdarray_New();
     if (!rval || CudaNdarray_alloc_contiguous(rval, self->nd, CudaNdarray_HOST_DIMS(self)))
     {
         Py_XDECREF(rval);
@@ -2061,7 +2060,7 @@ CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
         return NULL;
     }
 
-    rval = CudaNdarray_new_null();
+    rval = CudaNdarray_New();
 
     if (CudaNdarray_set_nd((CudaNdarray *)rval, nd))
     {
@@ -2136,7 +2135,7 @@ CudaNdarray_Dot(PyObject* _unused, PyObject* args)
         PyErr_SetString(PyExc_TypeError, "need 2d CudaNdarray arg for now");
         goto CudaNdarray_dot_fail;
     }
-    rval = CudaNdarray_new_null();
+    rval = CudaNdarray_New();
     if (!rval)
     {
         goto CudaNdarray_dot_fail;
@@ -2246,7 +2245,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         }
         else
         {
-            rval = (CudaNdarray*) CudaNdarray_new_null();
+            rval = (CudaNdarray*) CudaNdarray_New();
         }
         if (rval)
         {
@@ -2450,16 +2449,11 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self)
     }
     return c_contiguous;
 }
-PyObject *
-CudaNdarray_new_null()
-{
-    //TODO: this function is deprecated... do not use. Consider removing.
-    return CudaNdarray_New(-1);
-}
+
 PyObject *
 CudaNdarray_new_nd(int nd)
 {
-    CudaNdarray * rval = (CudaNdarray*) CudaNdarray_new_null();
+    CudaNdarray * rval = (CudaNdarray*) CudaNdarray_New();
     if (!rval || CudaNdarray_set_nd(rval, nd))
     {
         Py_XDECREF(rval);

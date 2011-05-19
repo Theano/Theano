@@ -81,7 +81,7 @@ struct CudaNdarray
  * Return a CudaNdarray whose 'nd' dimensions are all 0.
  */
 PyObject * 
-CudaNdarray_New(int nd);
+CudaNdarray_New(int nd=-1);
 
 /**
  * Return 1 for a CudaNdarray otw 0
@@ -297,11 +297,6 @@ CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
 
 
 /**
- * Allocate a new CudaNdarray with nd==-1
- */
-PyObject * CudaNdarray_new_null();
-
-/**
  * Allocate a new CudaNdarray with room for given number of dimensions
  *
  * No Storage space is allocated (and all dimensions are 0)
@@ -424,7 +419,7 @@ template<typename inttype>
 PyObject * 
 CudaNdarray_NewDims(int nd, const inttype * dims)
 {
-    CudaNdarray * rval = (CudaNdarray*)CudaNdarray_new_null();
+    CudaNdarray * rval = (CudaNdarray*)CudaNdarray_New();
     if (rval)
     {
         if (CudaNdarray_alloc_contiguous(rval, nd, dims))
