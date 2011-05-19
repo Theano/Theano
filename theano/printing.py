@@ -393,7 +393,7 @@ default_colorCodes = {'GpuFromHost' : 'red',
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
                high_contrast=False, cond_highlight = None, colorCodes = None,
-               max_label_size=50):
+               max_label_size=50, scan_graphs = False):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
@@ -412,6 +412,10 @@ def pydotprint(fct, outfile=None,
                 right branch, ops that are on both branches
                 As an alternative you can provide the node that represents
                 the lazy if
+    :param scan_graphs: if true it will plot the inner graph of each scan op
+                in files with the same name as the name given for the main
+                file to which the name of the scan op is concatenated and
+                some unique id
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
@@ -427,7 +431,6 @@ def pydotprint(fct, outfile=None,
     """
     if colorCodes is None:
         colorCodes = default_colorCodes
-
 
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
@@ -626,6 +629,27 @@ def pydotprint(fct, outfile=None,
     g.write(outfile, prog='dot', format=format)
 
     print 'The output file is available at',outfile
+    if scan_graphs:
+        scan_ops = [x for x in fct_env.toposort() if x.op.__class__.__name__ == 'Scan']
+        path, fn = os.path.split(outfile)
+        basename = fn.split('.')[0]
+        # Safe way of doing things .. a file name may contain multiple .
+        ext      = fn[len(basename):]
+
+
+        for idx, scan_op in enumerate(scan_ops):
+            # is there a change that name is not defined?
+            if hasattr(scan_op.op,'name'):
+                new_name = basename+'_'+scan_op.op.name+'_'+str(idx)
+            else:
+                new_name = basename+'_'+str(idx)
+            new_name = os.path.join(path, new_name+ext)
+            pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
+                       high_contrast, cond_highlight, colorCodes,
+                       max_label_size, scan_graphs)
+
+
+
 
 
 
