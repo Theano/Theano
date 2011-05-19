@@ -1804,6 +1804,8 @@ class Composite(ScalarOp):
             for n in env.nodes:
                 if hasattr(n.op,"name") and n.op.name is not None:
                     v=n.op.name
+                    if v.startswith("Composite"):
+                        v = v[len("Composite"):]
                 else: v=n.op.__class__.__name__
                 l.append(v)
             self.name="Composite{"+",".join(l)+"}"
