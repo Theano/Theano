@@ -49,6 +49,7 @@ def info(*msg):
 
 
 def safe_new(x):
+    x = tensor.as_tensor_variable(x)
     if cuda.cuda_available and isinstance(x.type, cuda.CudaNdarrayType):
         return tensor.TensorType(
             broadcastable = x.type.broadcastable
@@ -57,6 +58,7 @@ def safe_new(x):
         return x.type()
 
 def safe_to_cpu(x):
+    x = tensor.as_tensor_variable(x)
     if cuda.cuda_available and isinstance(x.type, cuda.CudaNdarrayType):
         return cuda.basic_ops.host_from_gpu(x)
     else:

@@ -411,9 +411,10 @@ def scan( fn
                 # the output of the lambda expression directly to replace
                 # the output of scan.
 
-                  # If not we need to use copies, that will be replaced at
-                  # each frame by the corresponding slice
-                nw_slice = seq['input'][0].type()
+                # If not we need to use copies, that will be replaced at
+                # each frame by the corresponding slice
+                _seq_val = tensor.as_tensor_variable(seq['input'])
+                nw_slice = _seq_val[0].type()
                 actual_slice = seq['input'][k-mintap]
 
 
@@ -574,7 +575,8 @@ def scan( fn
             for k in init_out['taps']:
                 # create a new slice
                 actual_nw_slice = init_out['initial'][k+mintap]
-                nw_slice = init_out['initial'][0].type()
+                _init_out_var = tensor.as_tensor_variable(init_out['initial'])
+                nw_slice = _init_out_var[0].type()
 
                 # give it a name or debugging and pretty printing
                 if getattr(init_out['initial'],'name', None) is not None:
