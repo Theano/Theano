@@ -573,11 +573,14 @@ class ShapeFeature(object):
 
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
+        # NOTE: This may cause problems bacause the shape is not asserted
+        #       there is an equivalent mechanism to do this, namely
+        #       specify_shape that one should use
         # If user provided size
-        elif ( hasattr(r.tag,'shape') and
-              r.tag.shape is not None and
-              r.tag.shape[i] is not None):
-            return T.constant(copy.copy(r.tag.shape[i]),dtype='int64')
+        #elif ( hasattr(r.tag,'shape') and
+        #      r.tag.shape is not None and
+        #      r.tag.shape[i] is not None):
+        #    return T.constant(copy.copy(r.tag.shape[i]),dtype='int64')
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
