@@ -230,7 +230,7 @@ def get_module_hash(module_file, key):
                  "ensure this piece of code is still valid (and this "
                  "AssertionError may be removed or modified to accomodate "
                  "this change)")
-    assert (c_link_key[0] == 'CLinker.cmodule_key', error_msg)
+    assert c_link_key[0] == 'CLinker.cmodule_key', error_msg
     to_hash = [source_hash]
     for key_element in c_link_key[1:]:
         if isinstance(key_element, tuple):
@@ -424,15 +424,15 @@ class ModuleCache(object):
                             continue
                         
                         if not isinstance(key_data, KeyData):
-                            # Backward-compatibility with older cache mechanism
-                            # that used single keys with no hash of the
-                            # compiled file.
-                            key_data = KeyData(
-                                    keys=set([key_data]),
-                                    module_hash=get_module_hash(entry, key_data),
-                                    key_pkl=key_pkl)
-                            debug("Updating cache key to new format", key_pkl)
-                            key_data.save_pkl()
+                            # This is some old cache data, that does not fit
+                            # the new cache format. It would be possible to
+                            # update it, but it is not entirely safe since we
+                            # do not know the config options that were used.
+                            # As a result, we delete it instead (which is also
+                            # simpler to implement).
+                            debug('Deleting deprecated cache entry', key_pkl)
+                            _rmtree(root, ignore_nocleanup=True)
+                            continue
 
                         # Find unversioned keys.
                         to_del = [key for key in key_data.keys if not key[0]]
@@ -740,9 +740,9 @@ class ModuleCache(object):
         self.clear_old()
         self.clear_unversioned()
 
-def _rmtree(parent):
+def _rmtree(parent, ignore_nocleanup=False):
     try:
-        if not config.nocleanup:
+        if ignore_nocleanup or not config.nocleanup:
             shutil.rmtree(parent)
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()
