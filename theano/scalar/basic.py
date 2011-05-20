@@ -12,8 +12,9 @@ If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 
-import math
+import math, warnings
 from copy import copy
+from itertools import imap
 
 import numpy, theano
 
@@ -26,11 +27,37 @@ builtin_complex = complex
 builtin_int = int
 builtin_float = float
 
+
+class ComplexError(Exception):
+    """Raised if complex numbers are used in an unsupported operation."""
+    pass
+
+class IntegerDivisionError(Exception):
+    """Raised if someone tries to divide integers with '/' instead of '//'."""
+    pass
+
+
 def upcast(dtype, *dtypes):
-    z = numpy.zeros((), dtype = dtype)
-    for dtype in dtypes:
-        z = z + numpy.zeros((), dtype = dtype)
-    return str(z.dtype)
+    # Should we try to keep float32 instead of float64? This is used so that
+    # for instance mixing int64 with float32 yields float32 instead of float64.
+    # Note that we store this boolean as a one-element list so that it can be
+    # modified within `make_array`.
+    keep_float32 = [(config.cast_policy == 'numpy+floatX' and
+                     config.floatX == 'float32')]
+    def make_array(dt):
+        if dt == 'float64':
+            # There is an explicit float64 dtype: we cannot keep float32.
+            keep_float32[0] = False
+        return numpy.zeros((), dtype=dt)
+    z = make_array(dtype)
+    for dt in dtypes:
+        z = z + make_array(dt=dt)
+    rval = str(z.dtype)
+    if rval == 'float64' and keep_float32[0]:
+        return 'float32'
+    else:
+        return rval
+
 
 def as_scalar(x, name = None):
     if isinstance(x, gof.Apply):
@@ -46,6 +73,7 @@ def as_scalar(x, name = None):
         return constant(x)
     except TypeError:
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
+
 
 def constant(x):
     # pass through numpy scalars, since they are already typed on purpose typically.
@@ -383,8 +411,9 @@ uint_types = uint8, uint16, uint32, uint64
 float_types = float32, float64
 complex_types = complex64, complex128
 
+discrete_types = int_types + uint_types
 continuous_types = float_types + complex_types
-
+ 
 class _scalar_py_operators:
 
     #UNARY
@@ -416,7 +445,8 @@ class _scalar_py_operators:
     def __sub__(self,other): return sub(self,other)
     def __mul__(self,other): return mul(self,other)
     def __div__(self,other): return div_proxy(self,other)
-    def __mod__(self,other): return mod(self,other)
+    def __floordiv__(self, other): return int_div(self, other)
+    def __mod__(self, other): return mod_check(self, other)
     def __pow__(self,other): return pow(self,other)
 
     #ARITHMETIC - RIGHT-OPERAND
@@ -994,32 +1024,74 @@ class Sub(BinaryScalarOp):
         return first_part, second_part
 sub = Sub(upcast_out, name = 'sub')
 
-def div_proxy(x, y):
-    """Proxy for either true_div or int_div, depending on types of x, y.
+
+def int_or_true_div(x_discrete, y_discrete):
     """
-    if as_scalar(x).type.dtype.startswith('int') and as_scalar(y).type.dtype.startswith('int'):
-        return int_div(x, y)
+    Return 'int' or 'true' depending on the type of division used for x / y.
+
+    :param x_discrete: True if `x` is discrete ([unsigned] integer).
+
+    :param y_discrete: True if `x` is discrete ([unsigned] integer).
+
+    :returns: 'int' if `x / y` should be an integer division, or `true` if it
+    should be a true division.
+
+    Raises an IntegerDivisionError if both `x_discrete` and `y_discrete` are
+    True and `config.int_division` is set to 'raise'.
+
+    This function is used by both scalar/basic.py and tensor.basic/py.
+    """
+    if (x_discrete and y_discrete):
+        if config.int_division == 'raise':
+            raise IntegerDivisionError(
+                "With `config.int_division` set to 'raise', dividing two "
+                "integer types with '/' is forbidden to avoid confusion "
+                "between integer and floating point divisions. Please "
+                "use // for integer division, or if you want a float result "
+                "either cast one of the arguments to a float or directly call "
+                "`x.__truediv__(y)`.")
+        elif config.int_division == 'int':
+            warnings.warn(
+                    "Division of two integer types with x / y is deprecated, "
+                    "please use x // y for an integer division "
+                    "(set `config.int_division = raise` to track the origin "
+                    "of this warning)",
+                    DeprecationWarning)
+            return 'int'
+        elif config.int_division == 'floatX':
+            return 'true'
+        else:
+            raise NotImplementedError(config.int_division)
     else:
-        return true_div(x, y)
+        return 'true'
+
+
+def div_proxy(x, y):
+    """Proxy for either true_div or int_div, depending on types of x, y."""
+    f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
+                                        as_scalar(y).type in discrete_types))
+    return f(x, y)
+
 
 class TrueDiv(BinaryScalarOp):
     def output_types(self, types):
-        if all(t not in continuous_types for t in types):
-            return [float64]
+        if all(t in discrete_types for t in types):
+            return [Scalar(config.floatX)]
         else:
             return super(TrueDiv, self).output_types(types)
     def impl(self, x, y):
         x = numpy.asarray(x)
         y = numpy.asarray(y)
-        if str(x.dtype).startswith('int') and str(y.dtype).startswith('int'):
-            return float(x) / y
+        if all(a.dtype in discrete_types for a in (x, y)):
+            return numpy.array(float(x) / y, dtype=config.floatX)
         else:
             return x / y
     def c_code(self, node, name, (x, y), (z, ), sub):
         #we generate good c code only when both are complex!
         if sum([node.inputs[0].type in complex_types, node.inputs[1].type in complex_types])==1:
             raise NotImplementedError('type not supported', type)
-        if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
+        if (node.inputs[0].type in discrete_types and
+            node.inputs[1].type in discrete_types):
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
@@ -1028,11 +1100,15 @@ class TrueDiv(BinaryScalarOp):
         if x.type in float_types:
             first_part = cast(gz / y, x.type.dtype)
         else:
+            assert x.type in discrete_types
             first_part = None
 
+        if y.type in complex_types:
+            raise NotImplementedError()
         if y.type in float_types:
             second_part = cast(-(gz * x) / (y * y), y.type.dtype)
         else:
+            assert y.type in discrete_types
             second_part = None
         return first_part, second_part
 true_div = TrueDiv(upcast_out, name = 'true_div')
@@ -1048,9 +1124,29 @@ int_div = IntDiv(upcast_out, name = 'int_div')
 
 floor_div = int_div
 
+
+def raise_complex_error():
+    raise ComplexError(
+                "Theano does not support the mod operator (%) on "
+                "complex numbers, since numpy deprecated it.")
+
+
+def mod_check(x, y):
+    if (as_scalar(x).type in complex_types or
+        as_scalar(y).type in complex_types):
+        # Currently forbidden.
+        raise_complex_error()
+    else:
+        return mod(x, y)
+
+
 class Mod(BinaryScalarOp):
+
     def impl(self, x, y):
+        if isinstance(x, numpy.complex) or isinstance(y, numpy.complex):
+            raise_complex_error()
         return x % y
+
     def c_code_cache_version(self):
         return (5,)
 
@@ -1060,20 +1156,34 @@ class Mod(BinaryScalarOp):
 
     def c_code(self, node, name, (x, y), (z, ), sub):
         """
-        We want the result to have the same sign as python, not the other implementaiton of mod.
+        We want the result to have the same sign as python, not the other implementation of mod.
         """
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
-        if t in int_types or t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64']:
+        if (str(t) in imap(str, discrete_types) or
+            t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64'] or
+            t in discrete_types):
+            # The above or's should not be needed anymore. However, for now we
+            # keep them out of safety, and verify they are useless with an
+            # assert.
+            assert str(t) in imap(str, discrete_types)
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)"%locals()
             x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)"%locals()
             x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)"%locals()
             x_mod_ymp = "THEANO_MACRO_MOD(-%(x)s, %(y)s)"%locals()
-        elif t in float_types or t in ['float32','float64']:
+        elif (str(t) in imap(str, float_types) or
+              t in ['float32','float64'] or
+              t in float_types):
+            # The above or's should not be needed anymore. However, for now we
+            # keep them out of safety, and verify they are useless with an
+            # assert.
+            assert str(t) in imap(str, float_types)
             x_mod_y = "fmod(%(x)s,%(y)s)"%locals()
             x_mod_ymm = "fmod(-%(x)s,-%(y)s)"%locals()
             x_mod_ypm = "fmod(%(x)s,-%(y)s)"%locals()
             x_mod_ymp = "fmod(-%(x)s,%(y)s)"%locals()
+        elif str(t) in imap(str, complex_types):
+            raise_complex_error()
         else:
             raise NotImplementedError('type not supported', type)
 
