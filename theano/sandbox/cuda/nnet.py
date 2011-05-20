@@ -172,7 +172,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 
     def c_code_cache_version(self):
         #return ()
-        return (2,)
+        return (3,)
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
