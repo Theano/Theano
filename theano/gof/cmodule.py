@@ -215,6 +215,9 @@ def get_module_hash(module_file, key):
         2. The compiler options defined in `key`.
     """
     source_code = os.path.join(os.path.dirname(module_file), 'mod.cpp')
+    if not os.path.exists(source_code):
+        source_code = os.path.join(os.path.dirname(module_file), 'mod.cu')
+        assert os.path.exists(source_code)
     source_hash = hash_from_file(source_code)
     c_link_key = key[1]
     # Currently, in order to catch potential bugs early, we are very
