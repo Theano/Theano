@@ -48,7 +48,8 @@ AddConfigVar('force_device',
 #The old all capital letter way of working is deprecated as it is not scalable.
 AddConfigVar('mode',
         "Default compilation mode",
-        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
+        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
+                'FAST_RUN_NOGC', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
 
 # Test whether or not gcc is present: disable C code if it is not
 try:
