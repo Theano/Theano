@@ -478,13 +478,16 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
 PyObject * 
 CudaNdarray_CreateArrayObj(CudaNdarray * self);
 
+PyObject * 
+CudaNdarray_ZEROS(int n, int * dims);
+
 /**
  * True iff the strides look like [dim[nd-2], dim[nd-3], ... , dim[0], 1]
  */
 bool CudaNdarray_is_c_contiguous(const CudaNdarray * self);
 
 int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
-
+int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray* A);
 
 int CudaNdarray_reduce_sum(CudaNdarray * self, CudaNdarray * A);
 int CudaNdarray_reduce_prod(CudaNdarray * self, CudaNdarray * A);

@@ -117,6 +117,31 @@ def test_gemm_no_inplace():
     assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
     assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
 
+def test_outer():
+    x = tcn.shared_constructor(my_rand(8,), 'x')
+    y = tcn.shared_constructor(my_rand(6,), 'y')
+
+    x_val = x.get_value().copy()
+    y_val = y.get_value().copy()
+
+    f = pfunc([], tensor.outer(x, y), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val, y_val), f())
+
+    f = pfunc([], tensor.outer(x[::2], y), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val[::2], y_val), f())
+
+    f = pfunc([], tensor.outer(x, y[::3]), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val, y_val[::3]), f())
+
+    f = pfunc([], tensor.outer(x[::2], y[::3]), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val[::2], y_val[::3]), f())
+
+    f = pfunc([], tensor.outer(x[::-1], y), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val[::-1], y_val), f())
+
+    f = pfunc([], tensor.outer(x, y[::-1]), mode=mode_with_gpu)
+    assert numpy.allclose(numpy.outer(x_val, y_val[::-1]), f())
+
 if 0:
     # This is commented out because it doesn't make sense...
     # tcn.blas has no op called DownsampleFactorMax

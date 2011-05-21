@@ -2717,6 +2717,48 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     return 0;
 }
 
+int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray * A) {
+  if (x->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg x to sger"); return -1; }
+  if (y->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg y to sger"); return -1; }
+  if (A->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg A to sger"); return -1; }
+
+  if ((CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(x)[0])
+      || (CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(y)[0])) {
+    PyErr_Format(PyExc_ValueError,
+		 "dimension mismatch in args to sger (%i)x(%i)->(%i,%i)",
+		 CudaNdarray_HOST_DIMS(x)[0],
+		 CudaNdarray_HOST_DIMS(y)[0],
+		 CudaNdarray_HOST_DIMS(A)[0],
+		 CudaNdarray_HOST_DIMS(A)[1]);
+      return -1;
+  }
+  
+  // Maybe this could work, but be safe for now
+  if (!CudaNdarray_is_c_contiguous(A)) {
+    PyErr_SetString(PyExc_NotImplementedError, "non-c continugous A in sger");
+    return -1;
+  }
+
+  // Same for this, be safe
+  assert (CudaNdarray_HOST_STRIDES(x)[0] >= 0);
+  assert (CudaNdarray_HOST_STRIDES(y)[0] >= 0);
+
+  // Since Sger expects A in col-major, we invert x and y to fake this.
+  cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
+	     CudaNdarray_DEV_DATA(y), CudaNdarray_HOST_STRIDES(y)[0],
+	     CudaNdarray_DEV_DATA(x), CudaNdarray_HOST_STRIDES(x)[0],
+	     CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
+  CNDA_THREAD_SYNC;
+
+  cudaError_t err = cudaGetLastError();
+  if (CUBLAS_STATUS_SUCCESS != err)
+    {
+      PyErr_Format(PyExc_RuntimeError, "cublasSger failed (%s)",cudaGetErrorString(err));
+      return -1;
+    }
+  return 0;
+}
+
 /**
  *
  * Precondition:
