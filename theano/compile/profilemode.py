@@ -86,9 +86,9 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot'
+                    raise RuntimeError(('A C Op raised an exception.  ProfileMode cannot'
                         ' tell you what it was though.  Use a standard mode such as'
-                        ' FAST_RUN_NOGC to correct the problem.'))
+                        ' FAST_RUN to correct the problem.'))
             else:
                 t0 = time.time()
                 th()
@@ -105,9 +105,9 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  PROFILE_MODE cannot'
+                    raise RuntimeError(('A C Op raised an exception.  ProfileMode cannot'
                         ' tell you what it was though.  Use a standard mode such as'
-                        ' FAST_RUN_NOGC to correct the problem.'))
+                        ' FAST_RUN to correct the problem.'))
             else:
                 t0 = time.time()
                 th()

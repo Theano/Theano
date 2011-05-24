@@ -49,7 +49,7 @@ AddConfigVar('force_device',
 AddConfigVar('mode',
         "Default compilation mode",
         EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
-                'FAST_RUN_NOGC', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
+                'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
 
 # Test whether or not gcc is present: disable C code if it is not
 try:
