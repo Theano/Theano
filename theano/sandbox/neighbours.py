@@ -285,7 +285,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode

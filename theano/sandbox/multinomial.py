@@ -146,7 +146,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform):
         return Apply(self, [pvals, unis], [pvals.type()])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_support_code_apply(self, node, nodename):
         return """
