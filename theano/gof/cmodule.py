@@ -408,18 +408,32 @@ class ModuleCache(object):
                         continue
                     if (time_now - last_access_time(entry)) < self.age_thresh_use:
                         debug('refresh adding', key_pkl)
-                        try:
-                            key_data = cPickle.load(open(key_pkl, 'rb'))
-                        except:
+                        def unpickle_failure():
                             info("ModuleCache.refresh() Failed to unpickle "
                                  "cache file", key_pkl)
+                        try:
+                            key_data = cPickle.load(open(key_pkl, 'rb'))
+                        except EOFError:
+                            # Happened once... not sure why (would be worth
+                            # investigating).
+                            unpickle_failure()
+                            warning("Erasing broken cache directory [EOF]", root)
+                            shutil.rmtree(root)
+                            continue
+                        except:
+                            # For now, raise exceptions, in order to be able to
+                            # figure out which exceptions should be caught.
+                            # TODO Make it more user-friendly by not raising
+                            # the exception.
+                            raise
+                            unpickle_failure()
                             if False:
-                                info("Erasing broken cache directory", key_pkl)
+                                info("Erasing broken cache directory", root)
                                 shutil.rmtree(root)
                             else:
                                 # This exception is often triggered by keys that contain
                                 # references to classes that have not yet been imported.  They are
-                                # not necessarily broken
+                                # not necessarily broken.
                                 pass
                             continue
                         
@@ -665,18 +679,27 @@ class ModuleCache(object):
             too_old_to_use = [(None, entry) for entry in too_old_to_use]
             time_now = time.time()
 
-            # the .items() is important here:
+            # the .iteritems() is important here:
             # we need to get a copy of the whole list of keys and entries
             items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy + too_old_to_use:
+            all_items = items_copy + too_old_to_use
+            # Since multiple keys may share the same entry, we turn this list
+            # of pairs into a dictionary that maps an entry to the list of keys
+            # that use it.
+            entry_to_keys = dict((entry, [])
+                                 for key, entry in all_items)
+            for key, entry in all_items:
+                entry_to_keys[entry].append(key)
+            for entry, keys in entry_to_keys.iteritems():
                 age = time_now - last_access_time(entry)
                 if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
                     # age_thresh_del are not currently in use by other processes, but that could be
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
-                    if key is not None:
-                        del self.entry_from_key[key]
+                    for key in keys:
+                        if key is not None:
+                            del self.entry_from_key[key]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     info("clear_old removing cache dir", parent)
