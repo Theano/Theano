@@ -648,7 +648,17 @@ class ModuleCache(object):
                 if not keep_lock:
                     compilelock.release_lock()
 
-            self.entry_from_key[key] = name
+            # Update map from key to module name for all keys associated to
+            # this same module.
+            assert key in key_data.keys
+            for k in key_data.keys:
+                if k in self.entry_from_key:
+                    # If we had already seen this key, then it should be
+                    # associated to the same module.
+                    assert self.entry_from_key[k] == name
+                else:
+                    self.entry_from_key[k] = name
+
             self.module_from_name[name] = module
 
             self.stats[2] += 1
