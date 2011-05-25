@@ -557,6 +557,7 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             hash_key = hash(key)
+            key_data = None
             # We have never seen this key before.
             # Acquire lock before creating things in the compile cache,
             # to avoid that other processes remove the compile dir while it
@@ -650,8 +651,14 @@ class ModuleCache(object):
 
             # Update map from key to module name for all keys associated to
             # this same module.
-            assert key in key_data.keys
-            for k in key_data.keys:
+            if key_data is None:
+                # Should only happen if unversioned.
+                assert not _version
+                all_keys = [key]
+            else:
+                assert key in key_data.keys
+                all_keys = key_data.keys
+            for k in all_keys:
                 if k in self.entry_from_key:
                     # If we had already seen this key, then it should be
                     # associated to the same module.
@@ -671,17 +678,22 @@ class ModuleCache(object):
 
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh_del=None): #default to a 31-day age_thresh_delold
+    def clear_old(self, age_thresh_del=None, get_lock=True):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
-        :param age_thresh_del: dynamic modules whose last access time is more than ``age_thresh_del``
-        seconds ago will be erased.
+        :param age_thresh_del: Dynamic modules whose last access time is more
+        than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
+        age if not provided.
+
+        :param get_lock: If True, then this function acquires and releases the
+        lock on the compile dir.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
 
-        compilelock.get_lock()
+        if get_lock:
+            compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
             # and get all module that are too old to use.(not loaded in self.entry_from_key)
@@ -716,62 +728,88 @@ class ModuleCache(object):
                     _rmtree(parent)
 
         finally:
-            compilelock.release_lock()
+            if get_lock:
+                compilelock.release_lock()
 
     def clear(self, unversioned_min_age=None):
         """
         Clear all the elements of the cache
         """
-        self.clear_old(-1.0)
-        self.clear_unversioned(min_age=unversioned_min_age)
+        compilelock.get_lock()
+        try:
+            self.clear_old(-1.0, get_lock=False)
+            self.clear_unversioned(min_age=unversioned_min_age, get_lock=False)
+        finally:
+            compilelock.release_lock()
 
-    def clear_unversioned(self, min_age=None):
-        """Delete unversioned dynamic modules from the internal dictionaries and from the
+    def clear_unversioned(self, min_age=None, get_lock=True):
+        """
+        Delete unversioned dynamic modules.
+        
+        They are deleted both from the internal dictionaries and from the
         filesystem.
+
+        :param min_age: Minimum age to be deleted, in seconds. Defaults to
+        7-day age if not provided.
+
+        :param get_lock: If True, then this function acquires and releases the
+        lock on the compile dir.
         """
         if min_age is None:
             min_age = self.age_thresh_del_unversioned
         items_copy = list(self.entry_from_key.iteritems())
-        for key, entry in items_copy:
-            version, rest = key
-            if not version:
-                del self.entry_from_key[key]
 
-                # entry is guaranteed to be in this dictionary,
-                # because an unversioned entry should never have been loaded via refresh
-                assert entry in self.module_from_name
+        if get_lock:
+            compilelock.get_lock()
 
-                del self.module_from_name[entry]
+        try:
+            for key, entry in items_copy:
+                version, rest = key
+                if not version:
+                    del self.entry_from_key[key]
 
-                parent = os.path.dirname(entry)
-                assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                info("clear_unversioned removing cache dir", parent)
-                _rmtree(parent)
+                    # entry is guaranteed to be in this dictionary,
+                    # because an unversioned entry should never have been loaded via refresh
+                    assert entry in self.module_from_name
 
-        time_now = time.time()
-        for filename in os.listdir(self.dirname):
-            if filename.startswith('tmp'):
-                try:
-                    open(os.path.join(self.dirname, filename, 'key.pkl')).close()
-                    has_key = True
-                except IOError:
-                    has_key = False
-                if not has_key:
-                    age = time_now - last_access_time(os.path.join(self.dirname, filename))
-                    # In normal case, the processus that created this directory
-                    # will delete it. However, if this processus crashes, it
-                    # will not be cleaned up.
-                    # As we don't know if this directory is still used, we wait
-                    # one week and suppose that the processus crashed, and we
-                    # take care of the clean-up.
-                    if age > min_age:
-                        info("clear_unversioned removing cache dir", filename)
-                        _rmtree(os.path.join(self.dirname, filename))
+                    del self.module_from_name[entry]
+
+                    parent = os.path.dirname(entry)
+                    assert parent.startswith(os.path.join(self.dirname, 'tmp'))
+                    info("clear_unversioned removing cache dir", parent)
+                    _rmtree(parent)
+
+            time_now = time.time()
+            for filename in os.listdir(self.dirname):
+                if filename.startswith('tmp'):
+                    try:
+                        open(os.path.join(self.dirname, filename, 'key.pkl')).close()
+                        has_key = True
+                    except IOError:
+                        has_key = False
+                    if not has_key:
+                        age = time_now - last_access_time(os.path.join(self.dirname, filename))
+                        # In normal case, the processus that created this directory
+                        # will delete it. However, if this processus crashes, it
+                        # will not be cleaned up.
+                        # As we don't know if this directory is still used, we wait
+                        # one week and suppose that the processus crashed, and we
+                        # take care of the clean-up.
+                        if age > min_age:
+                            info("clear_unversioned removing cache dir", filename)
+                            _rmtree(os.path.join(self.dirname, filename))
+        finally:
+            if get_lock:
+                compilelock.release_lock()
 
     def _on_atexit(self):
         #self.refresh()#refresh is called by clear_old(), this can be long for big directory
-        self.clear_old()
-        self.clear_unversioned()
+        compilelock.get_lock()
+        try:
+            self.clear_old(get_lock=False)
+            self.clear_unversioned(get_lock=False)
+        finally:
+            compilelock.release_lock()
 
 def _rmtree(parent, ignore_nocleanup=False):
     try:
