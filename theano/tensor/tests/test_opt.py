@@ -824,7 +824,7 @@ class test_fusion(unittest.TestCase):
         fail4=[]
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
             if gpu and (out_dtype!='float32' or any(i.dtype != 'float32' for i in g.owner.inputs)):
-                print "Skip test %d as the gpu code currently support only float32" % id
+                print "Skip test %d as the gpu code currently supports only float32" % id
                 continue
             print "new cases", id
 
