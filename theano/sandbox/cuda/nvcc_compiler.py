@@ -193,6 +193,16 @@ def nvcc_module_compile_str(
         except ValueError, e:
             done = True
 
+    # The fix below was suggested by Nicolas Pinto:
+    #   http://groups.google.com/group/theano-users/browse_thread/thread/c84bfe31bb411493
+    # TODO It is a bit hack-ish, is it possible to find a more generic fix?
+
+    # Remove last argument of python-config --ldflags if we are using
+    # MacPython 2.7.
+    fwk_str = 'Python.framework/Versions/2.7/Python'
+    if fwk_str in cmd:
+        cmd.pop(cmd.index(fwk_str))
+
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
     debug('Running cmd', ' '.join(cmd))
     orig_dir = os.getcwd()
