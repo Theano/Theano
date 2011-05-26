@@ -102,7 +102,7 @@ class CLinkerObject(object):
         raise utils.MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
 
     def c_code_cache_version(self):
-        """Return a tuple of integers indicating the version of this Op.
+        """Return a tuple of hashable objects indicating the version of this Op.
 
         An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
 
@@ -114,7 +114,7 @@ class CLinkerObject(object):
         return ()
 
     def c_code_cache_version_apply(self, node):
-        """Return a tuple of integers indicating the version of this Op.
+        """Return a tuple of hashable objects indicating the version of this Op.
 
         An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
 
