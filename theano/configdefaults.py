@@ -30,7 +30,11 @@ AddConfigVar('int_division',
 #gpuX mean use the gpu number X.
 AddConfigVar('device',
         "Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.",
-        EnumStr('cpu', 'gpu', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
+        EnumStr('cpu', 'gpu',
+            'gpu0', 'gpu1', 'gpu2', 'gpu3',
+            'gpu4', 'gpu5', 'gpu6', 'gpu7',
+            'gpu8', 'gpu9', 'gpu10', 'gpu11',
+            'gpu12', 'gpu13', 'gpu14', 'gpu15',
                 allow_override=False)
         )
 
@@ -39,7 +43,11 @@ AddConfigVar('init_gpu_device',
          "Unlike 'device', setting this option will NOT move computations, "
          "nor shared variables, to the specified GPU. "
          "It can be used to run GPU-specific tests on a particular GPU."),
-        EnumStr('', 'gpu', 'gpu0', 'gpu1', 'gpu2', 'gpu3',
+        EnumStr('', 'gpu',
+            'gpu0', 'gpu1', 'gpu2', 'gpu3',
+            'gpu4', 'gpu5', 'gpu6', 'gpu7',
+            'gpu8', 'gpu9', 'gpu10', 'gpu11',
+            'gpu12', 'gpu13', 'gpu14', 'gpu15',
                 allow_override=False)
         )
 
