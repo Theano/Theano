@@ -211,7 +211,7 @@ def get_module_hash(module_file, key):
     Return an MD5 hash that identifies a module.
 
     This hash takes into account:
-        1. The 'mod.cpp' file associated used to compile `module_file`.
+        1. The 'mod.cpp' or 'mod.cu' file used to compile `module_file`.
         2. The compiler options defined in `key`.
     """
     source_code = os.path.join(os.path.dirname(module_file), 'mod.cpp')
@@ -364,8 +364,12 @@ class ModuleCache(object):
                         warning("hash 1:", hash(k1))
 
     age_thresh_use = 60*60*24*24
-    """The default age threshold for `clear_old` (in seconds)
     """
+    The default age threshold (in seconds) for cache files we want to use.
+
+    Older modules will be deleted in ``clear_old``.
+    """
+
     def refresh(self):
         """Update self.entry_from_key by walking the cache directory structure.
 
@@ -473,7 +477,14 @@ class ModuleCache(object):
                                 # Assert that we have not already got this
                                 # entry somehow.
                                 assert entry not in self.module_from_name
-                                self.loaded_key_pkl.add(key_pkl)
+                            else:
+                                warning("The same cache key is associated to "
+                                        "different modules. This should not "
+                                        "be possible! We will re-use the first"
+                                        " module (%s) instead of the new one "
+                                        "(%s)." % (self.entry_from_key[key],
+                                                   entry))
+                        self.loaded_key_pkl.add(key_pkl)
 
                         # Remember the map from a module's hash to the KeyData
                         # object associated with it.
@@ -482,10 +493,9 @@ class ModuleCache(object):
                             # This should not happen anymore, but may happen
                             # with the previous cache mechanism, that did not
                             # ensure uniqueness of the compiled modules.
-                            # TODO Convert into an error in the future.
                             warning(
                                 "Found duplicated modules in the cache, you "
-                                "are probably using an old cache. Clear it "
+                                "may be using an old cache. Clear it "
                                 "with 'theano-cache clear' to benefit from "
                                 "recent cache optimizations.")
                         else:
@@ -578,7 +588,7 @@ class ModuleCache(object):
                     raise
 
                 name = module.__file__
-
+                
                 debug("Adding module to cache", key, name)
                 assert name.startswith(location)
                 assert name not in self.module_from_name
@@ -803,7 +813,7 @@ class ModuleCache(object):
                 compilelock.release_lock()
 
     def _on_atexit(self):
-        #self.refresh()#refresh is called by clear_old(), this can be long for big directory
+        # Note: no need to call refresh() since it is called by clear_old().
         compilelock.get_lock()
         try:
             self.clear_old(get_lock=False)
