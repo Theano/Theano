@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 14, verbose)
+    cache_version = (15, verbose)
 
     def __init__(self, scalar_op, sync=True, inplace_pattern={}):
         """
@@ -56,7 +56,7 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename, id(self), nd)
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (self.scalar_op.__class__.__name__,nodename, nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
         #declare inputs
@@ -159,10 +159,9 @@ class NaiveAlgo(object):
                 print >> sio, "//    Input  ", ipos, str(i.type)
             for ipos, i in enumerate(node.outputs):
                 print >> sio, "//    Output ", ipos, str(i.type)
-            print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(
+            print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
                     self.scalar_op.__class__.__name__,
                     nodename,
-                    id(self),
                     'tiling%i'%nd)
             if (nd):
                 print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
@@ -262,10 +261,9 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
                 self.scalar_op.__class__.__name__,
                 nodename,
-                id(self),
                 'tiling%i_less_registers'%nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
@@ -472,7 +470,6 @@ class NaiveAlgo(object):
         nd = node.outputs[0].type.ndim
         nb_inputs = len(node.inputs)
         nb_outputs = len(node.outputs)
-        id_self = id(self)
         d = dict()
         #input_params and output_params go into the function declaration/definition
         input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos)
@@ -512,7 +509,7 @@ class NaiveAlgo(object):
         """ %locals()
         if self.verbose:
             print >> sio, """
-                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << " dims"<< d << "\\n";
+                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s     w numEls" << numEls << " dims"<< d << "\\n";
             """ %locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
@@ -693,7 +690,7 @@ nd_collapse_[i]=0;
                 print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
 
 
-        def launch_Ccontiguous(nodename, id_self, scalar_op, sync=True):
+        def launch_Ccontiguous(nodename, scalar_op, sync=True):
             kernel_call_args = ["numEls"]
             for ipos in xrange(len(node.inputs)):
                 kernel_call_args.append("i%i_data"%ipos)
@@ -736,7 +733,7 @@ nd_collapse_[i]=0;
             else:
                 print >> sio, " return 0; " %locals()
 
-        def launch_General(nodename, id_self, scalar_op, force_nd, sync=True):
+        def launch_General(nodename, scalar_op, force_nd, sync=True):
             # kernel_call_args are used to invoke the cuda kernel
             local="local_"
             kernel_call_args = ["numEls"]
@@ -769,7 +766,7 @@ nd_collapse_[i]=0;
                 if (threads_per_block * n_blocks < numEls)
                     threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
 
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel_%(scalar_op)s_%(nodename)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 """ %locals()
             if sync:
                 print >> sio, """
@@ -791,11 +788,11 @@ nd_collapse_[i]=0;
         print >> sio, "if(numEls==0) return 0;"
         print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"
-        launch_Ccontiguous(nodename, id_self, scalar_op, self.sync)
+        launch_Ccontiguous(nodename, scalar_op, self.sync)
         print >> sio, "        } break;"
         for i in range(1, nd+1):
             print >> sio, "case "+str(i)+": {"
-            launch_General(nodename, id_self, scalar_op, i, self.sync)
+            launch_General(nodename, scalar_op, i, self.sync)
             print >> sio, "        } break;"
 
         print >> sio, "}"#end case
