@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = (15, verbose)
+    cache_version = (14, verbose)
 
     def __init__(self, scalar_op, sync=True, inplace_pattern={}):
         """
