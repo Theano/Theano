@@ -1201,7 +1201,8 @@ class Prod(CAReduce):
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
-        self.__dict__.update(dct)
+        super(Prod, self).__setstate__(dct)
+        # Add default value to be able to reload old pickled objects.
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
 
