@@ -585,11 +585,18 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
   the Theano installation directory (if you installed Nose manually as described
   above, this may only work in a MinGW shell).
   Please note that at this time, the test suite may be broken under Windows.
-  In particular, many tests may fail while running the test-suite,
+  In particular, many tests will probably fail while running the test-suite,
   due to insufficient memory resources (in which case you will probably get an
   error of the type ``"Not enough storage is available to
-  process this command"``): one workaround is to run nosetests
-  multiple times under individual subdirectories.
+  process this command"``). One workaround (which is not fully working either
+  at this point) is to go to your ``Theano\theano\tests`` directory and run
+  the following script (see documentation inside the script itself for more
+  information):
+
+  .. code-block:: bash
+
+      python run_individual_tests.py 100
+
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
