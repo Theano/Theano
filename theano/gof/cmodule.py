@@ -490,14 +490,13 @@ class ModuleCache(object):
                         # object associated with it.
                         mod_hash = key_data.module_hash
                         if mod_hash in self.module_hash_to_key_data:
-                            # This should not happen anymore, but may happen
-                            # with the previous cache mechanism, that did not
-                            # ensure uniqueness of the compiled modules.
+                            # This should not happen: a given module should
+                            # never be duplicated in the cache.
                             warning(
-                                "Found duplicated modules in the cache, you "
-                                "may be using an old cache. Clear it "
-                                "with 'theano-cache clear' to benefit from "
-                                "recent cache optimizations.")
+                                "Found duplicated modules in the cache! If "
+                                "you are unable to debug this issue, it is "
+                                "advised to at least clear your cache with "
+                                "'theano-cache clear'.")
                         else:
                             self.module_hash_to_key_data[mod_hash] = key_data
                     else:
