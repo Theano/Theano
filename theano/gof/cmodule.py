@@ -316,7 +316,7 @@ class ModuleCache(object):
     """Maps keys to the filename of a .so/.pyd.
     """
 
-    loaded_modules_hash = {}
+    module_hash_to_key_data = {}
     """Maps hash of a module's code to its corresponding KeyData object."""
 
     stats = []
@@ -340,7 +340,7 @@ class ModuleCache(object):
         self.dirname = dirname
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
-        self.loaded_modules_hash = dict(self.loaded_modules_hash)
+        self.module_hash_to_key_data = dict(self.module_hash_to_key_data)
         self.stats = [0, 0, 0]
         if force_fresh is not None:
             self.force_fresh = force_fresh
@@ -489,7 +489,7 @@ class ModuleCache(object):
                         # Remember the map from a module's hash to the KeyData
                         # object associated with it.
                         mod_hash = key_data.module_hash
-                        if mod_hash in self.loaded_modules_hash:
+                        if mod_hash in self.module_hash_to_key_data:
                             # This should not happen anymore, but may happen
                             # with the previous cache mechanism, that did not
                             # ensure uniqueness of the compiled modules.
@@ -499,7 +499,7 @@ class ModuleCache(object):
                                 "with 'theano-cache clear' to benefit from "
                                 "recent cache optimizations.")
                         else:
-                            self.loaded_modules_hash[mod_hash] = key_data
+                            self.module_hash_to_key_data[mod_hash] = key_data
                     else:
                         too_old_to_use.append(entry)
 
@@ -601,11 +601,11 @@ class ModuleCache(object):
                 # Check if we already know a module with the same hash.
                 duplicated_module = False
                 module_hash = get_module_hash(name, key)
-                if module_hash in self.loaded_modules_hash:
+                if module_hash in self.module_hash_to_key_data:
                     debug("Duplicated module! Will re-use the previous one")
                     duplicated_module = True
                     # Load the already existing module.
-                    key_data = self.loaded_modules_hash[module_hash]
+                    key_data = self.module_hash_to_key_data[module_hash]
                     module = self.module_from_key(
                             key=key_data.keys.__iter__().next(),
                             keep_lock=True)
@@ -649,7 +649,7 @@ class ModuleCache(object):
                             # Adding the key file to this set means it is a
                             # versioned key.
                             self.loaded_key_pkl.add(key_pkl)
-                            self.loaded_modules_hash[module_hash] = key_data
+                            self.module_hash_to_key_data[module_hash] = key_data
                         except cPickle.UnpicklingError:
                             warning('Cache failure due to un-loadable key',
                                     key)
