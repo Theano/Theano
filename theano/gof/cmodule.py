@@ -285,7 +285,7 @@ class KeyData(object):
             cPickle.dump(self, open(self.key_pkl, 'wb'),
                          protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
-            warning("Cache leak due to unpickle-able key data", key_data.keys)
+            warning("Cache leak due to unpickle-able key data", self.keys)
             os.remove(self.key_pkl)
             raise
 
