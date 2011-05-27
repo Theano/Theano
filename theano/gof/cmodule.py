@@ -274,9 +274,20 @@ class KeyData(object):
         self.save_pkl()
 
     def save_pkl(self):
-        """Dump this object into its `key_pkl` file."""
-        cPickle.dump(self, open(self.key_pkl, 'wb'),
-                     protocol=cPickle.HIGHEST_PROTOCOL)
+        """
+        Dump this object into its `key_pkl` file.
+
+        May raise a cPickle.PicklingError if such an exception is raised at
+        pickle time (in which case a warning is also displayed).
+        """
+        # Note that writing in binary mode is important under Windows.
+        try:
+            cPickle.dump(self, open(self.key_pkl, 'wb'),
+                         protocol=cPickle.HIGHEST_PROTOCOL)
+        except cPickle.PicklingError:
+            warning("Cache leak due to unpickle-able key data", key_data.keys)
+            os.remove(self.key_pkl)
+            raise
 
 
 class ModuleCache(object):
@@ -389,7 +400,7 @@ class ModuleCache(object):
                 key_pkl = os.path.join(root, 'key.pkl')
                 if key_pkl in self.loaded_key_pkl:
                     continue
-                elif 'delete.me' in files or len(files)==0:
+                elif 'delete.me' in files or not files:
                     # On NFS filesystems, it is impossible to delete a directory with open
                     # files in it.  So instead, some commands in this file will respond to a
                     # failed rmtree() by touching a 'delete.me' file.  This file is a message
@@ -397,8 +408,17 @@ class ModuleCache(object):
                     try:
                         shutil.rmtree(root)
                     except:
-                        # the directory is still in use??  We just leave it for future removal.
-                        pass
+                        # Maybe directory is still in use? We just leave it
+                        # for future removal (and make sure there is a
+                        # delete.me file in it).
+                        delete_me = os.path.join(root, 'delete.me')
+                        if not os.path.exists(delete_me):
+                            try:
+                                open(delete_me, 'w')
+                            except:
+                                # Giving up!
+                                warning("Cannot mark cache directory for "
+                                        "deletion: %s" % root)
                 elif 'key.pkl' in files:
                     try:
                         entry = module_name_from_dir(root)
@@ -622,17 +642,10 @@ class ModuleCache(object):
                             keys=set([key]),
                             module_hash=get_module_hash(name, key),
                             key_pkl=key_pkl)
-                    # Note that using a binary file is important under Windows.
-                    key_file = open(key_pkl, 'wb')
                     try:
-                        cPickle.dump(key_data, key_file,
-                                     cPickle.HIGHEST_PROTOCOL)
-                        key_file.close()
+                        key_data.save_pkl()
                         key_broken = False
                     except cPickle.PicklingError:
-                        key_file.close()
-                        os.remove(key_pkl)
-                        warning("Cache leak due to unpickle-able key", key)
                         key_broken = True
 
                     if not key_broken:
