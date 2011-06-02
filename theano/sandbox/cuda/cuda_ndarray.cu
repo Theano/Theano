@@ -354,7 +354,7 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_New();
     if (!rval)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to new_null failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to New failed");
         return NULL;
     }
 
@@ -2348,7 +2348,7 @@ CudaNdarray_New(int nd)
     CudaNdarray *self = (CudaNdarray *)CudaNdarrayType.tp_alloc(&CudaNdarrayType, 0);
     if (self == NULL)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_new_null failed to allocate self");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_New failed to allocate self");
         return NULL;
     }
     CudaNdarray_null_init(self);
@@ -3281,3 +3281,14 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
     return NULL;
 }
 
+/*
+  Local Variables:
+  mode:c++
+  c-basic-offset:4
+  c-file-style:"stroustrup"
+  c-file-offsets:((innamespace . 0)(inline-open . 0))
+  indent-tabs-mode:nil
+  fill-column:79
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:encoding=utf-8:textwidth=79 :
