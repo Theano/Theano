@@ -860,19 +860,19 @@ def local_gpu_join(node):
 
 #Commented out because it can result in shared = dimshuffle(gemm_inplace(dimshuffle(shared)))
 #which causes memory leaks (long term fix is to make the above not leak memory)
-#@local_optimizer([gpu_gemm_no_inplace])
-#def local_inplace_gemm(node):
-#    if node.op == gpu_gemm_no_inplace:
-#        return [gpu_gemm_inplace(*node.inputs)]
+@local_optimizer([gpu_gemm_no_inplace])
+def local_inplace_gemm(node):
+    if node.op == gpu_gemm_no_inplace:
+        return [gpu_gemm_inplace(*node.inputs)]
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
 # elemwise(step 71)
-#optdb.register('InplaceGpuBlasOpt',
-#        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
-#            max_use_ratio=5),
-#               70.0, 'fast_run', 'inplace')
+optdb.register('InplaceGpuBlasOpt',
+        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+            max_use_ratio=5),
+               70.0, 'fast_run', 'inplace')
 
 def get_device_type_sizes():
     """
