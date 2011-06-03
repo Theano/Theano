@@ -6,7 +6,7 @@ from theano.gof.cc import get_module_cache
 if len(sys.argv) == 1:
     print config.compiledir
 elif sys.argv[1] in ('clear'):
-    get_module_cache().clear(unversioned_min_age=-1)
+    get_module_cache().clear(unversioned_min_age=-1, clear_base_files=True)
 else:
     print 'command "%s" not recognized' % sys.argv[1]
     print 'Type "theano-cache" to print the cache location'

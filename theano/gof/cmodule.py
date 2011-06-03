@@ -762,16 +762,47 @@ class ModuleCache(object):
             if get_lock:
                 compilelock.release_lock()
 
-    def clear(self, unversioned_min_age=None):
+    def clear(self, unversioned_min_age=None, clear_base_files=False):
         """
-        Clear all the elements of the cache
+        Clear all elements in the cache.
+
+        :param unversioned_min_age: Forwarded to `clear_unversioned`. In
+        particular, you can set it to -1 in order to delete all unversioned
+        cached modules regardless of their age.
+
+        :clear_base_files: If True, then delete base directories 'cuda_ndarray'
+        and 'cutils_ext' if they are present. If False, those directories are
+        left intact.
         """
         compilelock.get_lock()
         try:
             self.clear_old(-1.0, get_lock=False)
             self.clear_unversioned(min_age=unversioned_min_age, get_lock=False)
+            if clear_base_files:
+                self.clear_base_files(get_lock=False)
         finally:
             compilelock.release_lock()
+
+    def clear_base_files(self, get_lock=True):
+        """
+        Delete base directories 'cuda_ndarray' and 'cutils_ext' if present.
+
+        :param get_lock: If True, then this function acquires then releases the
+        lock on the compile dir.
+        """
+        if get_lock:
+            compilelock.get_lock()
+        try:
+            for base_dir in ('cuda_ndarray', 'cutils_ext'):
+                to_delete = os.path.join(self.dirname, base_dir)
+                if os.path.isdir(to_delete):
+                    try:
+                        shutil.rmtree(to_delete)
+                    except:
+                        warning('Could not delete %s' % to_delete)
+        finally:
+            if get_lock:
+                compilelock.release_lock()
 
     def clear_unversioned(self, min_age=None, get_lock=True):
         """
