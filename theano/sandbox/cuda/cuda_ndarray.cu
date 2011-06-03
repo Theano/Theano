@@ -328,6 +328,7 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying data to host");
+        Py_DECREF(contiguous_self);
         Py_DECREF(rval);
         rval = NULL;
     }
@@ -353,7 +354,7 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_New();
     if (!rval)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to new_null failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: call to New failed");
         return NULL;
     }
 
@@ -2347,7 +2348,7 @@ CudaNdarray_New(int nd)
     CudaNdarray *self = (CudaNdarray *)CudaNdarrayType.tp_alloc(&CudaNdarrayType, 0);
     if (self == NULL)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_new_null failed to allocate self");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_New failed to allocate self");
         return NULL;
     }
     CudaNdarray_null_init(self);
@@ -2715,6 +2716,48 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         return -1;
     }
     return 0;
+}
+
+int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray * A) {
+  if (x->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg x to sger"); return -1; }
+  if (y->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg y to sger"); return -1; }
+  if (A->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg A to sger"); return -1; }
+
+  if ((CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(x)[0])
+      || (CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(y)[0])) {
+    PyErr_Format(PyExc_ValueError,
+		 "dimension mismatch in args to sger (%i)x(%i)->(%i,%i)",
+		 CudaNdarray_HOST_DIMS(x)[0],
+		 CudaNdarray_HOST_DIMS(y)[0],
+		 CudaNdarray_HOST_DIMS(A)[0],
+		 CudaNdarray_HOST_DIMS(A)[1]);
+      return -1;
+  }
+  
+  // Maybe this could work, but be safe for now
+  if (!CudaNdarray_is_c_contiguous(A)) {
+    PyErr_SetString(PyExc_NotImplementedError, "non-c continugous A in sger");
+    return -1;
+  }
+
+  // Same for this, be safe
+  assert (CudaNdarray_HOST_STRIDES(x)[0] >= 0);
+  assert (CudaNdarray_HOST_STRIDES(y)[0] >= 0);
+
+  // Since Sger expects A in col-major, we invert x and y to fake this.
+  cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
+	     CudaNdarray_DEV_DATA(y), CudaNdarray_HOST_STRIDES(y)[0],
+	     CudaNdarray_DEV_DATA(x), CudaNdarray_HOST_STRIDES(x)[0],
+	     CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
+  CNDA_THREAD_SYNC;
+
+  cudaError_t err = cudaGetLastError();
+  if (CUBLAS_STATUS_SUCCESS != err)
+    {
+      PyErr_Format(PyExc_RuntimeError, "cublasSger failed (%s)",cudaGetErrorString(err));
+      return -1;
+    }
+  return 0;
 }
 
 /**
@@ -3238,3 +3281,14 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
     return NULL;
 }
 
+/*
+  Local Variables:
+  mode:c++
+  c-basic-offset:4
+  c-file-style:"stroustrup"
+  c-file-offsets:((innamespace . 0)(inline-open . 0))
+  indent-tabs-mode:nil
+  fill-column:79
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:encoding=utf-8:textwidth=79 :

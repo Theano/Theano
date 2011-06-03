@@ -208,17 +208,25 @@ def module_name_from_dir(dirname):
 def get_module_hash(module_file, key):
 
     """
-    Return an MD5 hash that identifies a module.
+    Return an MD5 hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The 'mod.cpp' or 'mod.cu' file used to compile `module_file`.
-        2. The compiler options defined in `key`.
+        2. The version part of the key.
+        3. The compiler options defined in `key` (command line parameters and
+           libraries to link against).
     """
     source_code = os.path.join(os.path.dirname(module_file), 'mod.cpp')
     if not os.path.exists(source_code):
         source_code = os.path.join(os.path.dirname(module_file), 'mod.cu')
         assert os.path.exists(source_code)
-    source_hash = hash_from_file(source_code)
+    # `to_hash` will contain any element such that we know for sure that if
+    # it changes, then the module hash should be different.
+    # We start with the source code itself (stripping blanks might avoid
+    # recompiling after a basic indentation fix for instance).
+    to_hash = map(str.strip, open(source_code).readlines())
+    # Get the version part of the key.
+    to_hash += map(str, key[0])
     c_link_key = key[1]
     # Currently, in order to catch potential bugs early, we are very
     # convervative about the structure of the key and raise an exception
@@ -231,9 +239,10 @@ def get_module_hash(module_file, key):
                  "AssertionError may be removed or modified to accomodate "
                  "this change)")
     assert c_link_key[0] == 'CLinker.cmodule_key', error_msg
-    to_hash = [source_hash]
     for key_element in c_link_key[1:]:
         if isinstance(key_element, tuple):
+            # This should be the C++ compilation command line parameters or the
+            # libraries to link against.
             to_hash += list(key_element)
         elif isinstance(key_element, str):
             if key_element.startswith('md5:'):

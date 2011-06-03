@@ -4,6 +4,13 @@
 How to make a release
 ==================================================
 
+Update files
+============
+
+Update the NEWS.txt and move the old stuff in the HISTORY.txt file.
+To update the NEWS.txt file, check all ticket closed for this release
+and all commit log messages.
+
 Get a fresh copy of the repository
 ==================================
 

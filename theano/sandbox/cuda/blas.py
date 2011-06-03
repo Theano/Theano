@@ -247,6 +247,81 @@ class GpuGemm(Op):
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
+class GpuOuter(Op):
+    def make_node(self, x, y):
+        # we suppose type checking has been done, but make sure.
+        assert (x.type.ndim == 1 and y.type.ndim == 1 and
+                x.type.dtype == 'float32' and y.type.dtype == 'float32')
+
+        bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
+
+        outputs = [CudaNdarrayType(dtype='float32', broadcastable=bz)()]
+        return Apply(self, [x, y], outputs)
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def c_code_cache_version(self):
+        return (3,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # A = x * y'
+        x, y = inputs
+        A, = outputs
+        fail = sub['fail']
+        
+        return """
+        CudaNdarray *%(name)sx = NULL, *%(name)sy = NULL;
+        int %(name)sres;
+        
+        if (CudaNdarray_HOST_STRIDES(%(x)s)[0] < 0) {
+            %(name)sx = (CudaNdarray *)CudaNdarray_Copy(%(x)s);
+            if (!%(name)sx) {
+                %(fail)s;
+            }
+        } else {
+            %(name)sx = %(x)s;
+            Py_INCREF(%(name)sx);
+        }
+        if (CudaNdarray_HOST_STRIDES(%(y)s)[0] < 0) {
+            %(name)sy = (CudaNdarray *)CudaNdarray_Copy(%(y)s);
+            if (!%(name)sy) {
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        } else {
+            %(name)sy = %(y)s;
+            Py_INCREF(%(name)sy);
+        }
+        if (!(%(A)s &&
+              CudaNdarray_HOST_DIMS(%(A)s)[0] == CudaNdarray_HOST_DIMS(%(x)s)[0] &&
+              CudaNdarray_HOST_DIMS(%(A)s)[1] == CudaNdarray_HOST_DIMS(%(y)s)[0] &&
+              CudaNdarray_is_c_contiguous(%(A)s))) {
+            Py_XDECREF(%(A)s);
+            int dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[0];
+            %(A)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
+            if (!%(A)s) {
+                Py_DECREF(%(name)sy);
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        }
+
+        %(name)sres = CudaNdarray_sger(1.0, %(name)sx, %(name)sy, %(A)s);
+        Py_DECREF(%(name)sy);
+        Py_DECREF(%(name)sx);
+        if (%(name)sres) {
+            %(fail)s;
+        }
+        """%dict(x=x,y=y,A=A,fail=fail,name=name)
+
+gpu_outer = GpuOuter()
+        
 ##
 # Not really a BLAS operation, but whatever.
 #
