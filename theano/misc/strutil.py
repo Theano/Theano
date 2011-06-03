@@ -13,3 +13,32 @@ def renderString(string, dict):
             i+=1
         assert False
     return finalCode
+#
+
+def pretty_format(string):
+    lines = string.split('\n')
+
+    lines = [ strip_leading_white_space(line) for line in lines ]
+
+    indent = 0
+    for i in xrange(len(lines)):
+        indent -= lines[i].count('}')
+        if indent < 0:
+            indent = 0
+        #
+        lines[i] = ('    '*indent) + lines[i]
+        indent += lines[i].count('{')
+    #
+
+
+    rval = '\n'.join(lines)
+
+    return rval
+#
+
+def strip_leading_white_space(line):
+    while len(line) >0 and (line[0]==' ' or line[0]=='\t'):
+        line = line[1:]
+    #
+    return line
+#
