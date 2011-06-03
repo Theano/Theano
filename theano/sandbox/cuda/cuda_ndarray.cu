@@ -1790,6 +1790,19 @@ CudaNdarray_get_ndim(CudaNdarray *self, void *closure)
     return PyInt_FromLong(self->nd);
 }
 
+static PyObject *
+CudaNdarray_get_base(CudaNdarray *self, void *closure)
+{
+    PyObject * base = self->base;
+    if (!base)
+    {
+        // We cannot return a NULL pointer, use None instead
+        base = Py_None;
+    }
+    Py_INCREF(base);
+    return base;
+}
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape",
         (getter)CudaNdarray_get_shape,
@@ -1832,6 +1845,11 @@ static PyGetSetDef CudaNdarray_getset[] = {
         (getter)CudaNdarray_get_ndim,
         NULL,
         "The number of dimensions in this object.",
+        NULL},
+    {"base",
+        (getter)CudaNdarray_get_base,
+        NULL,
+        "If this ndarray is a view, base is the original ndarray.",
         NULL},
 
     {NULL, NULL, NULL, NULL}  /* Sentinel */
