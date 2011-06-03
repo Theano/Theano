@@ -85,11 +85,11 @@ def nvcc_module_compile_str(
     :param preargs: a list of extra compiler arguments
 
     :returns: dynamically-imported python module of the compiled code.
-    
+
     :note 1: On Windows 7 with nvcc 3.1 we need to compile in the real directory
              Otherwise nvcc never finish.
     """
-    
+
     if sys.platform=="win32":
         # Remove some compilation args that cl.exe does not understand.
         # cl.exe is the compiler used by nvcc on Windows.
@@ -110,7 +110,7 @@ def nvcc_module_compile_str(
     include_dirs = include_dirs + std_include_dirs()
     if os.path.abspath(os.path.split(__file__)[0]) not in include_dirs:
         include_dirs.append(os.path.abspath(os.path.split(__file__)[0]))
-    
+
     libs = std_libs() + libs
     if 'cudart' not in libs:
         libs.append('cudart')
@@ -126,11 +126,11 @@ def nvcc_module_compile_str(
 
 
     if sys.platform == 'darwin':
-        # On the mac, nvcc is not able to link using -framework Python, so we have 
+        # On the mac, nvcc is not able to link using -framework Python, so we have
         # manually add the correct library and paths
         darwin_python_lib = commands.getoutput('python-config --ldflags')
     else:
-        # sometimes, the linker cannot find -lpython so we need to tell it 
+        # sometimes, the linker cannot find -lpython so we need to tell it
         # explicitly where it is located
         # this returns somepath/lib/python2.x
         python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
@@ -152,14 +152,14 @@ def nvcc_module_compile_str(
             (module_name, get_lib_extension()))
 
     debug('Generating shared lib', lib_filename)
-    # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13', 
+    # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13',
     preargs1=[pa for pa in preargs if pa.startswith('-O') or pa.startswith('--maxrregcount=')]#nvcc argument
     preargs2=[pa for pa in preargs if pa not in preargs1]#other arguments
 
     cmd = [nvcc_path, '-shared', '-g'] + preargs1
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
-   
+
     if sys.platform!='win32':
         if local_bitwidth() == 64:
             cmd.append('-m64')
@@ -167,7 +167,7 @@ def nvcc_module_compile_str(
         else:
             cmd.append('-m32')
             preargs2.append('-m32')
-            
+
     if len(preargs2)>0:
         cmd.extend(['-Xcompiler', ','.join(preargs2)])
 
@@ -187,7 +187,7 @@ def nvcc_module_compile_str(
     cmd.extend(['-l%s'%l for l in libs])
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
-    
+
     if sys.platform == 'darwin':
         done = False
         while not done:
@@ -232,7 +232,7 @@ def nvcc_module_compile_str(
         nvcc_stdout, nvcc_stderr = p.communicate()[:2]
     finally:
         os.chdir(orig_dir)
-        
+
     if nvcc_stdout:
         # this doesn't happen to my knowledge
         print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
@@ -248,7 +248,7 @@ def nvcc_module_compile_str(
             continue
         _logger.info("NVCC: "+eline)
 
-    if p.returncode: 
+    if p.returncode:
         # filter the output from the compiler
         for l in nvcc_stderr.split('\n'):
             if not l:
@@ -260,7 +260,7 @@ def nvcc_module_compile_str(
                     continue
                 if l[l.index(':'):].startswith(': warning: label'):
                     continue
-            except: 
+            except:
                 pass
             print >> sys.stderr, l
         print >> sys.stderr, '==============================='
@@ -271,4 +271,3 @@ def nvcc_module_compile_str(
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()
     return dlimport(lib_filename)
-
