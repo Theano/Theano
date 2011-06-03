@@ -383,7 +383,7 @@ def local_gpu_gemm(node):
 def local_gpu_outer(node):
     """
     gpu_from_host(outer) -> gpu_outer(gpu_from_host)
-    
+
     outer(host_from_gpu) -> host_from_gpu(gpu_outer)
     """
     if node.op == gpu_from_host:
