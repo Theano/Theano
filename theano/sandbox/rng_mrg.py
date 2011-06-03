@@ -263,7 +263,7 @@ class mrg_uniform(mrg_uniform_base):
         if (%(size)s->dimensions[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, %(size)s->dimensions[0]);
+                %(ndim)s, int(%(size)s->dimensions[0]));
             %(fail)s
         }
         if (%(size)s->descr->type_num != PyArray_INT32)
@@ -589,6 +589,35 @@ class GPU_mrg_uniform(mrg_uniform_base):
     def c_code_cache_version(self):
         return (5,)
 
+
+def guess_n_streams(size, warn=True):
+    """
+    Return a guess at a good number of streams.
+    
+    :param warn: If True, warn when a guess cannot be made (in which case
+    we return 30 * 256).
+    """
+    # TODO: a smart way of choosing the number of streams, see #612.
+    # Note that this code was moved out of `MRG_RandomStreams` so that it can
+    # be easily accessed from tests, where we want to disable the warning.
+    if (isinstance(size, (tuple, list)) and
+        all([isinstance(i, int) for i in size])):
+        # We can make a guess.
+        r = 1
+        for s in size:
+            r *= s
+        if r > 6:
+            r = r/6 # chosen as fastest for rbm_benchmark
+        return r
+    else:
+        if warn:
+            assert False
+            print >> sys.stderr, (
+                    "MRG_RandomStreams Can't determine #streams from "
+                    "size (%s), guessing 30*256") % str(size)
+        return 30 * 256
+
+
 class MRG_RandomStreams(object):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
@@ -654,18 +683,7 @@ class MRG_RandomStreams(object):
         return rval
 
     def n_streams(self, size):
-        # TODO: a smart way of choosing the number of streams, see #612.
-        if isinstance(size, (tuple, list)) and all([isinstance(i,int) for i in size]):
-            r = 1
-            for s in size:
-                r *= s
-            if r > 6:
-                r = r/6 # chosen as fastest for rbm_benchmark
-            return r
-
-        print >> sys.stderr, ("MRG_RandomStreams Can't determine #streams from "
-                "size (%s), guessing 30*256")%str(size)
-        return 30*256
+        return guess_n_streams(size, warn=True)
 
     def pretty_return(self, node_rstate, new_rstate, sample):
         sample.rstate = node_rstate
@@ -674,7 +692,8 @@ class MRG_RandomStreams(object):
         node_rstate.default_update = new_rstate
         return sample
 
-    def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=config.floatX, nstreams=None):
+    def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype='floatX',
+                nstreams=None):
         """
         Sample a tensor of given size whose element from a uniform
         distribution between low and high.
@@ -683,10 +702,14 @@ class MRG_RandomStreams(object):
         ndim may be a plain integer to supplement the missing
         information.
 
-        :param: size: Can be a list of integer or Theano variable
+        :param size: Can be a list of integer or Theano variable
                 (ex: the shape of other Theano Variable)
-                TODO: can size be None?
+
+        :param dtype: The output data type.
         """
+        if dtype == 'floatX':
+            dtype = config.floatX
+
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
             assert all([isinstance(i,int) or isinstance(i,Variable)
@@ -728,16 +751,19 @@ class MRG_RandomStreams(object):
             raise NotImplementedError( 'Increase the size to match the broadcasting pattern of `low` and `high` arguments')
         return  r
 
-    def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64'):
+    def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
+                 nstreams=None):
         if n == 1:
-            if dtype=='float32' and self.use_cuda:
-                return cast(self.uniform(size=size, dtype=dtype) < p, dtype)
+            if dtype == 'float32' and self.use_cuda:
+                x = self.uniform(size=size, dtype=dtype, nstreams=nstreams)
             else:
-                return cast(self.uniform(size=size) < p, dtype)
+                x = self.uniform(size=size, nstreams=nstreams)
+            return cast(x < p, dtype)
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
-    def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64'):
+    def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
+                    nstreams=None):
         """
         Sample `n` (currently `n` needs to be 1) times from a multinomial
         distribution defined by probabilities pvals.
@@ -758,21 +784,30 @@ class MRG_RandomStreams(object):
                     ndim, size, pvals[:,0])
             assert ndim==1
             bcast = bcast+(pvals.type.broadcastable[-1],)
-            unis = self.uniform(size=size, ndim=1)
+            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialFromUniform(dtype)
             return op(pvals, unis)
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                 " implemented with n == 1 and pvals.ndim = 2"))
 
-    def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
+    def normal(self, size=None, avg=0.0, std=1.0, ndim=None,
+               dtype='floatX', nstreams=None):
         """
-        :param: size: Can be a list of integer or Theano variable(ex: the shape of other Theano Variable)
+        :param size: Can be a list of integers or Theano variables (ex: the
+        shape of another Theano Variable)
+
+        :param dtype: The output data type.
+
+        :param nstreams: Number of streams.
         """
         # We need an even number of ]0,1[ samples. Then we split them
         # in two halves. First half becomes our U1's for Box-Muller,
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+
+        if dtype == 'floatX':
+            dtype = config.floatX
 
         evened = False
         constant = False
@@ -786,14 +821,15 @@ class MRG_RandomStreams(object):
         else:
             #if even, don't change, if odd, +1
             n_samples = prod(size)+(prod(size)%2)
-        flattened = self.uniform(size=(n_samples,), dtype=dtype)
+        flattened = self.uniform(size=(n_samples,), dtype=dtype,
+                                 nstreams=nstreams)
 
         if constant:
-            U1 = flattened[:n_samples/2]
-            U2 = flattened[n_samples/2:]
+            U1 = flattened[:n_samples // 2]
+            U2 = flattened[n_samples // 2:]
         else:
-            U1 = flattened[:prod(flattened.shape)/2]
-            U2 = flattened[prod(flattened.shape)/2:]
+            U1 = flattened[:prod(flattened.shape) // 2]
+            U2 = flattened[prod(flattened.shape) // 2:]
 
         #normal_samples = zeros_like(flattened)
         sqrt_ln_U1 = sqrt(-2.0*log(U1))
