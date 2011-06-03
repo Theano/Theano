@@ -2492,11 +2492,19 @@ int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * bas
             return -1;
         }
     }
+    // Get the original base object (base.base.base...)
+    // TODO: check that base is indeed a CudaNdarray?
+    PyObject * orig_base = base;
+    while (((CudaNdarray*) orig_base)->base)
+    {
+        // base_base is itself a view
+        orig_base = ((CudaNdarray*) orig_base)->base;
+    }
     //N.B. XDECREF and XINCREF are no-ops for NULL pointers
-    if (self->base != base)
+    if (self->base != orig_base)
     {
         Py_XDECREF(self->base);
-        self->base = base;
+        self->base = orig_base;
         Py_XINCREF(self->base);
     }
     self->data_allocated = 0;
