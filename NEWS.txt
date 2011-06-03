@@ -1,11 +1,38 @@
 Modifications in the trunk since the last release
 
-In trunk since 0.3.1 release
-----------------------------
+Partial of what is in trunk since the last release
+--------------------------------------------------
+Deprecation:
+
+Bugs fixed:
+ * Bugfix in CudaNdarray.__iadd__. When it is not implemented, return the error.
+
+Crash fixed:
+ * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution crash.
+
+Optimization:
+ * Optimize 4 pattern of subtensor followed by subtensor.
+
 GPU:
  * Move to the gpu fused elemwise that have other dtype then float32 in them(except float64) if the input and output are float32.
    * This allow to move elemwise comparaison to the gpu if we cast it to float32 after that.
+ * Implemented CudaNdarray.ndim to have the same interface in ndarray.
 
+New features:
+ * ProfileMode
+    * profile the scan overhead
+    * simple hook system to add profiler
+    * reordered the output to be in the order of more general to more specific
+ * var[vector of index] now work, (grad work recursivly, the direct grad work inplace, gpu work)
+    * limitation: work only of the outer most dimensions.
+
+Documentation:
+
+Unit tests:
+ * Reuse test for subtensor of tensor for gpu tensor(more gpu test)
+
+Other:
+ * ?? a bug?? Correctly put the broadcast flag to True in the output var of a Rehapse op when we receive an int 1 in the new shape.
 
 Theano 0.3.1 (2011-02-21)
 ----------------------------
