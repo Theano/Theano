@@ -118,10 +118,6 @@ AddConfigVar('nvcc.fastmath',
         "",
         BoolParam(False))
 
-AddConfigVar('cuda.root',
-        "directory with bin/, lib/, include/ for cuda utilities",
-        StrParam(os.getenv('CUDA_ROOT', "/usr/local/cuda")))
-
 AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
         BoolParam(True))

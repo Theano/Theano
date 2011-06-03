@@ -10,12 +10,17 @@ _logger.setLevel(logging.WARN)
 from theano.configparser import config, AddConfigVar, StrParam
 
 AddConfigVar('nvcc.compiler_bindir',
-        "if defined, nvcc compiler driver will seek g++ and gcc in this directory",
+        "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
         StrParam(""))
 
 AddConfigVar('cuda.nvccflags',
         "Extra compiler flags for nvcc",
         StrParam(""))
+
+AddConfigVar('cuda.root',
+        "The directory with bin/, lib/, include/ for cuda utilities. Used to put this directory of nvidia lib in the compiled libraire. Usefull when people forget to update there LD_LIBRARY_PATH and LIBRARY_PATH environment variable. If AUTO, if nvcc is in the path, it will use one of this parent directory. Otherwise /usr/local/cuda. If empty, won't appen the directory in the compiled library",
+        StrParam(os.getenv('CUDA_ROOT', "AUTO")))
+
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
@@ -43,7 +48,7 @@ def is_nvcc_available():
         global nvcc_version
         nvcc_version = s[1]
         return True
-    except:
+    except Exception:
         #try to find nvcc into cuda.root
         p = os.path.join(config.cuda.root,'bin','nvcc')
         if os.path.exists(p):
@@ -51,6 +56,20 @@ def is_nvcc_available():
             nvcc_path = p
             return True
         else: return False
+
+def set_cuda_root():
+    import pdb;pdb.set_trace()
+    s = os.getenv("PATH")
+    if not s:
+        return
+    for dir in s.split(os.path.pathsep):
+        if os.path.exists(os.path.join(dir,"nvcc")):
+            config.cuda.root = os.path.split(dir)[0]
+            return
+
+if config.cuda.root == "AUTO":
+    set_cuda_root()
+
 is_nvcc_available()#to set nvcc_path correctly and get the version
 
 def nvcc_module_compile_str(
@@ -152,7 +171,7 @@ def nvcc_module_compile_str(
     if len(preargs2)>0:
         cmd.extend(['-Xcompiler', ','.join(preargs2)])
 
-    if os.path.exists(os.path.join(config.cuda.root,'lib')):
+    if config.cuda.root and os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
         if sys.platform != 'darwin':
             # the 64bit CUDA libs are in the same files as are named by the function above
