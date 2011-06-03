@@ -798,6 +798,7 @@ class ModuleCache(object):
                 if os.path.isdir(to_delete):
                     try:
                         shutil.rmtree(to_delete)
+                        debug('Deleted: %s' % to_delete)
                     except:
                         warning('Could not delete %s' % to_delete)
         finally:
