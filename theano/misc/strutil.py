@@ -11,5 +11,5 @@ def renderString(string, dict):
                 if str(F) == str(E):
                     raise Exception(string[0:i]+"<<<< caused exception "+str(F))
             i+=1
-        assert False	
+        assert False
     return finalCode

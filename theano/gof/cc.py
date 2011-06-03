@@ -1106,6 +1106,8 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
                 print >> sys.stderr, 'ERROR retrieving error_storage', error_storage
                 raise
 
+
+
             raise exc_type, exc_value, exc_trace
     execute.cthunk = cthunk
     return execute

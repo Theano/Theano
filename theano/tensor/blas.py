@@ -275,8 +275,8 @@ class GemmRelated(Op):
         if (Nx[1] != Ny[0])
         {
             PyErr_Format(PyExc_ValueError,
-                "Shape mismatch: x has %%ld cols but y has %%ld rows",
-                (long int)Nx[1], (long int)Ny[0]);
+                "Shape mismatch: x has %%ld cols (and %%ld rows) but y has %%ld rows (and %%ld cols)",
+                (long int)Nx[1], (long int)Nx[0], (long int)Ny[0], (long int)Ny[1]);
             %(fail)s;
         }
         if (Ny[1] != Nz[1])
