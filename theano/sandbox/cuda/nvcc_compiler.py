@@ -58,7 +58,6 @@ def is_nvcc_available():
         else: return False
 
 def set_cuda_root():
-    import pdb;pdb.set_trace()
     s = os.getenv("PATH")
     if not s:
         return
