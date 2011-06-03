@@ -328,7 +328,6 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying data to host");
-        Py_DECREF(contiguous_self);
         Py_DECREF(rval);
         rval = NULL;
     }
