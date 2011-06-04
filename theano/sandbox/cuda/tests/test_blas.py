@@ -80,7 +80,7 @@ def test_gemm():
     c = tensor.fmatrix('c')
 
     f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
-    assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
+    assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
     a0 = a.get_value() * 1.0
     print a0
