@@ -1670,7 +1670,9 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
     {
         // This case shouldn't happen, based on what I see in Subscript
         // but just in case it happens sometime in the future
-        PyErr_SetString(PyExc_RuntimeError, "__getitem__ must return a CudaNdarray that refers to the original CudaNdarray, not a copy.");
+
+        PyErr_Format(PyExc_RuntimeError, "__getitem__ must return a CudaNdarray that refers to the original CudaNdarray, not a copy. rval.base=%p o.base=%p o=%p",
+                     (((CudaNdarray*)rval)->base), ((CudaNdarray*)o)->base, o);
         Py_DECREF(rval);
         return -1;
     }
