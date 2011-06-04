@@ -1664,9 +1664,9 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
                  !(((CudaNdarray*)rval)->base) ||
                  // If the original array has no base, the base of the new
                  // array should be the original one
-                 (!((CudaNdarray*)o)->base && ((CudaNdarray*)rval)->base != o)
+                 (!((CudaNdarray*)o)->base && ((CudaNdarray*)rval)->base != o) ||
                  // Else, the two arrays should have the same base
-                 || ((CudaNdarray*)rval)->base != ((CudaNdarray*)o)->base))
+                 (((CudaNdarray*)o)->base && ((CudaNdarray*)rval)->base != ((CudaNdarray*)o)->base)))
     {
         // This case shouldn't happen, based on what I see in Subscript
         // but just in case it happens sometime in the future
