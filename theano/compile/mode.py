@@ -77,6 +77,7 @@ OPT_STABILIZE.position_cutoff = 1.5000001
 
 predefined_optimizers = {
     None    : lambda env: None,
+    'None'    : lambda env: None,
     'merge' : gof.MergeOptimizer(),
     'fast_run' : OPT_FAST_RUN,
     'fast_run_stable' : OPT_FAST_RUN_STABLE,
