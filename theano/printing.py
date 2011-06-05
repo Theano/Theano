@@ -665,8 +665,8 @@ def pydotprint(fct, outfile=None,
 def pydotprint_variables(vars,
                          outfile=None,
                          format='png',
-                         depth = -1,
-                         high_contrast = True, colorCodes = None,
+                         depth=-1,
+                         high_contrast=True, colorCodes=None,
                          max_label_size=50):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
