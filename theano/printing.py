@@ -392,7 +392,7 @@ default_colorCodes = {'GpuFromHost' : 'red',
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
-               high_contrast=False, cond_highlight = None, colorCodes = None,
+               high_contrast=True, cond_highlight = None, colorCodes = None,
                max_label_size=50, scan_graphs = False):
     """
     print to a file in png format the graph of op of a compile theano fct.
