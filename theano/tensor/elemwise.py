@@ -5,12 +5,11 @@ import numpy
 import elemwise_cgen as cgen
 import theano
 from theano import gof
-from theano.gof import Op
+from theano.gof import Apply, Op
 from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import pprint
 from theano.gof.python25 import all, any
-from theano.gof.apply_shape import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops
