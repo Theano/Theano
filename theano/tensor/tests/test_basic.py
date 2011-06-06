@@ -3584,7 +3584,13 @@ class TestARange(unittest.TestCase):
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
 
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            numpy_dtype = numpy.arange(numpy.array(1, dtype='int32')).dtype
+            assert out.dtype == numpy_dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
         assert numpy.all(f(0,5,1) == numpy.arange(0,5,1))
         assert numpy.all(f(2,11,4) == numpy.arange(2,11,4))
         assert numpy.all(f(-5,1,1) == numpy.arange(-5,1,1))
@@ -3598,13 +3604,28 @@ class TestARange(unittest.TestCase):
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
 
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            numpy_dtype = numpy.arange(numpy.array(0, dtype=start.dtype),
+                                       numpy.array(1, dtype=stop.dtype),
+                                       numpy.array(1, dtype=step.dtype)).dtype
+            assert out.dtype == numpy_dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
         arg_vals = [ (0,5,1), (2,11,4), (-5,1.1,1.2), (1.3,2,-2.1), (10,2,2) ]
         for arg_v in arg_vals:
             start_v, stop_v, step_v = arg_v
             start_v_, stop_v_, step_v_ = numpy.asarray(arg_v, dtype=start.type.dtype)
-            assert numpy.all(f(start_v_, stop_v_, step_v_) == \
-                    numpy.arange(start_v, stop_v, step_v, dtype=start.type.dtype))
+            f_val = f(start_v_, stop_v_, step_v_)
+            if config.cast_policy == 'custom':
+                expected_val = numpy.arange(start_v, stop_v, step_v,
+                                            dtype=start.type.dtype)
+            elif config.cast_policy in ('numpy', 'numpy+floatX'):
+                expected_val = numpy.arange(start_v_, stop_v_, step_v_)
+            else:
+                raise NotImplementedError(config.cast_policy)
+            assert numpy.all(f_val == expected_val)
 
     def test_float64(self):
         """Test arange constructor, on float64 outputs"""
@@ -3617,8 +3638,15 @@ class TestARange(unittest.TestCase):
         for arg_v in arg_vals:
             start_v, stop_v, step_v = arg_v
             start_v_, stop_v_, step_v_ = numpy.asarray(arg_v, dtype=start.type.dtype)
-            assert numpy.all(f(start_v_, stop_v_, step_v_) == \
-                    numpy.arange(start_v, stop_v, step_v, dtype=start.type.dtype))
+            f_val = f(start_v_, stop_v_, step_v_)
+            if config.cast_policy == 'custom':
+                expected_val = numpy.arange(start_v, stop_v, step_v,
+                                            dtype=start.type.dtype)
+            elif config.cast_policy in ('numpy', 'numpy+floatX'):
+                expected_val = numpy.arange(start_v_, stop_v_, step_v_)
+            else:
+                raise NotImplementedError(config.cast_policy)
+            assert numpy.all(f_val == expected_val)
 
     def test_default_step(self):
         """Test that arange constructor uses the correct default step"""
@@ -3761,8 +3789,8 @@ class TestARange(unittest.TestCase):
 
         start, stop, step = iscalars('start', 'stop', 'step')
         out1 = arange(start, stop, step)
-        out2 = arange(start, stop, step, dtype=start.type.dtype)
-        out3 = arange(start, stop, 2., dtype=start.type.dtype)
+        out2 = arange(start, stop, step, dtype=out1.dtype)
+        out3 = arange(start, stop, 2., dtype=out1.dtype)
         out4 = arange(start, stop, 2.)
 
         assert out1.owner.op is out2.owner.op
@@ -3780,7 +3808,16 @@ class TestARange(unittest.TestCase):
         assert len(f.maker.env.toposort())==7
 #7 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{float64}}(Elemwise{sub,no_inplace}.0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, step), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
 
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            numpy_dtype = numpy.arange(numpy.array(0, dtype=start.dtype),
+                                       numpy.array(1, dtype=stop.dtype),
+                                       numpy.array(1, dtype=step.dtype)).dtype
+            assert out.dtype == numpy_dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
+
         assert numpy.all(f(0,5,1) == len(numpy.arange(0,5,1)))
         assert numpy.all(f(2,11,4) == len(numpy.arange(2,11,4)))
         assert numpy.all(f(-5,1,1) == len(numpy.arange(-5,1,1)))
@@ -3811,7 +3848,16 @@ class TestARange(unittest.TestCase):
         assert len(f.maker.env.toposort())==2
         #[Elemwise{Cast{int64}}(stop), MakeVector(Elemwise{Cast{int64}}.0)]
 
-        assert out.dtype == start.type.dtype
+        if config.cast_policy == 'custom':
+            assert out.dtype == start.type.dtype
+        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+            numpy_dtype = numpy.arange(0,
+                                       numpy.array(1, dtype=stop.dtype),
+                                       1).dtype
+            assert out.dtype == numpy_dtype
+        else:
+            raise NotImplementedError(config.cast_policy)
+
         assert numpy.all(f(5) == len(numpy.arange(0,5)))
         assert numpy.all(f(11) == len(numpy.arange(0,11)))
         assert numpy.all(f(1) == len(numpy.arange(0,1)))

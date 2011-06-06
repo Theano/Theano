@@ -183,15 +183,15 @@ class test_canonize(unittest.TestCase):
 #            (fx*fy*(fx+fy+dz),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type add
 #            (dz*fy*(fx+fy),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type mul
             #check with dimshuffle of constant
-            (fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (2+fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
 #            (2*fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (2+fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (2*fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (2+fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (2*fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (fx*fy*2*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
 #            (fx*fy*(2+fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
-            (fx*fy*2*(fx+fy+fz+2),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+            (fx*fy*2*(fx+fy+fz+2),(fx,fy,fz),(fxv,fyv,fzv),2, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             #check with broadcast of row
 #            (fx+fy+fz+fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
@@ -220,6 +220,8 @@ class test_canonize(unittest.TestCase):
             mode._optimizer=gof.Query(["canonicalize"])
             mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
             for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      #we need the optimisation enabled, debug do this.
                                      mode=mode)
@@ -445,11 +447,11 @@ class test_canonize(unittest.TestCase):
             #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
-                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv],'float32'),
+                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
-                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv],'float32'),
+                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
-                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv],'float32'),
+                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -468,9 +470,9 @@ class test_canonize(unittest.TestCase):
             #test 2 * x / 2 -> x
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            ((2*dx)/2,[dx],[dxv],'float64'),
-                                                           ((2*fx)/2,[fx],[fxv],'float32'),
+                                                           ((2*fx)/2,[fx],[fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            ((2*dv)/2,[dv],[dvv],'float64'),
-                                                           ((2*fv)/2,[fv],[fvv],'float32'),
+                                                           ((2*fv)/2,[fv],[fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -484,11 +486,11 @@ class test_canonize(unittest.TestCase):
             #test x / abs(x) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (dx/abs(dx),[dx],[0.5-dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.5-fxv],'float32'),
+                                                           (fx/abs(fx),[fx],[0.5-fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (dx/abs(dx),[dx],[0.1*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.1*fxv],'float32'),
+                                                           (fx/abs(fx),[fx],[0.1*fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (dv/abs(dv),[dv],[0.5-dvv],'float64'),
-                                                           (fv/abs(fv),[fv],[0.5-fvv],'float32'),
+                                                           (fv/abs(fv),[fv],[0.5-fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -501,12 +503,15 @@ class test_canonize(unittest.TestCase):
             #test (2*x) / (3*abs(x)) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                     ((2*dx)/(3*abs(dx)),[dx],[0.5-dxv],'float64'),
-                    ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv],'float32'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                     ((2*dx)/(3*abs(dx)),[dx],[0.1*dxv],'float64'),
-                    ((2*fx)/(3*abs(fx)),[fx],[0.1*fxv],'float32'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.1*fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                     ((2*dv)/(3*abs(dv)),[dv],[0.5-dvv],'float64'),
-                    ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv],'float32'),
+                    ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 topo = f.maker.env.toposort()
@@ -2752,8 +2757,17 @@ def test_local_mul_to_neg():
     f1 = theano.function([a], -1*a)
     f2 = theano.function([a], -1.0*a)
     aval = numpy.random.randint(0,10,(2,2)).astype('int32')
-    assert f1(aval).dtype == a.dtype
-    assert f2(aval).dtype == 'float64'
+    if config.cast_policy == 'custom':
+        assert f1(aval).dtype == a.dtype
+        assert f2(aval).dtype == 'float64'
+    elif config.cast_policy == 'numpy':
+        assert f1(aval).dtype == str(numpy.array(0).dtype)
+        assert f2(aval).dtype == 'float64'
+    elif config.cast_policy == 'numpy+floatX':
+        assert f1(aval).dtype == str(numpy.array(0).dtype)
+        assert f2(aval).dtype == config.floatX
+    else:
+        raise NotImplementedError(config.cast_policy)
 
 def test_local_add_specialize():
 

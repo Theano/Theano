@@ -49,6 +49,17 @@ def multMatVect(v, A, m1, B, m2):
     r[3:] = matVecModM(B, v[3:], m2)
     return r
 
+def cast_if_untyped(x, dtype):
+    """Return `x` cast as a numpy scalar of type `dtype` if `x` is untyped."""
+    if hasattr(x, 'dtype'):
+        # `x` is already typed.
+        return x
+    else:
+        # We intend to do this on regular Python int / float objects.
+        assert isinstance(x, int) or isinstance(x, float)
+        return numpy.array(x, dtype=dtype)
+
+
 #MRG31k3p
 #generator constants :
 M1 = numpy.int32(2147483647)    #2^31 - 1
@@ -692,7 +703,7 @@ class MRG_RandomStreams(object):
         node_rstate.default_update = new_rstate
         return sample
 
-    def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype='floatX',
+    def uniform(self, size, low=0, high=1, ndim=None, dtype='floatX',
                 nstreams=None):
         """
         Sample a tensor of given size whose element from a uniform
@@ -702,6 +713,12 @@ class MRG_RandomStreams(object):
         ndim may be a plain integer to supplement the missing
         information.
 
+        :param low: Lower bound of the interval on which values are sampled.
+        If not already typed, it is cast into dtype.
+
+        :param high: Higher bound of the interval on which values are sampled.
+        If not already typed, it is cast into dtype.
+
         :param size: Can be a list of integer or Theano variable
                 (ex: the shape of other Theano Variable)
 
@@ -709,6 +726,11 @@ class MRG_RandomStreams(object):
         """
         if dtype == 'floatX':
             dtype = config.floatX
+
+        # We cast `low` and `high` into `dtype` to make sure we do not upcast
+        # e.g. float32 into float64.
+        low = cast_if_untyped(low, dtype)
+        high = cast_if_untyped(high, dtype)
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
@@ -749,6 +771,8 @@ class MRG_RandomStreams(object):
 
         if u.type.broadcastable != r.type.broadcastable:
             raise NotImplementedError( 'Increase the size to match the broadcasting pattern of `low` and `high` arguments')
+
+        assert r.dtype == dtype
         return  r
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
@@ -791,7 +815,7 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                 " implemented with n == 1 and pvals.ndim = 2"))
 
-    def normal(self, size=None, avg=0.0, std=1.0, ndim=None,
+    def normal(self, size=None, avg=0, std=1, ndim=None,
                dtype='floatX', nstreams=None):
         """
         :param size: Can be a list of integers or Theano variables (ex: the
@@ -808,6 +832,11 @@ class MRG_RandomStreams(object):
 
         if dtype == 'floatX':
             dtype = config.floatX
+
+        # We cast `avg` and `std` into `dtype` to make sure we do not upcast
+        # e.g. float32 into float64.
+        avg = cast_if_untyped(avg, dtype)
+        std = cast_if_untyped(std, dtype)
 
         evened = False
         constant = False
@@ -832,15 +861,15 @@ class MRG_RandomStreams(object):
             U2 = flattened[prod(flattened.shape) // 2:]
 
         #normal_samples = zeros_like(flattened)
-        sqrt_ln_U1 = sqrt(-2.0*log(U1))
+        sqrt_ln_U1 = sqrt(numpy.array(-2.0, dtype=dtype) * log(U1))
         # TypeError: 'TensorVariable' object does not support item assignment
         # so this doesn't work...
         #normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
         #normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
 
         # so trying this instead
-        first_half = sqrt_ln_U1 * cos(2.0*cast(numpy.pi,dtype)*U2)
-        second_half = sqrt_ln_U1 * sin(2.0*cast(numpy.pi,dtype)*U2)
+        first_half = sqrt_ln_U1 * cos(numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
+        second_half = sqrt_ln_U1 * sin(numpy.array(2.0 * numpy.pi, dtype=dtype)*U2)
         normal_samples = join(0, first_half, second_half)
 
         final_samples = None
@@ -856,6 +885,7 @@ class MRG_RandomStreams(object):
 
         final_samples = avg + std * final_samples
 
+        assert final_samples.dtype == dtype
         return final_samples
 
 @local_optimizer([None])
