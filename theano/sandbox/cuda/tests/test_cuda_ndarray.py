@@ -114,7 +114,7 @@ def test_exp():
 
 def test_copy():
     print >>sys.stdout, 'starting test_copy'
-    shape = (5,)
+    shape = (500,499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
     print >>sys.stdout, '.. creating device object'
@@ -131,7 +131,7 @@ def test_copy():
     assert numpy.allclose(a, numpy.asarray(d))
     b+=b
     assert numpy.allclose(a+a, numpy.asarray(b))
-    assert numpy.allclose(a+a, numpy.asarray(c))
+    assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
 def test_nvcc_bug():
