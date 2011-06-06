@@ -302,24 +302,32 @@ class ModuleCache(object):
     It is built to handle the case where multiple programs are also using instances of this
     class to manage the same directory.
 
+    The cache works on the basis of keys. Each key is mapped to only one
+    dynamic module, but multiple keys may be mapped to the same module (see
+    below for details).
 
-    The cache works on the basis of keys.  Keys are used to uniquely identify a dynamic module.
     Keys should be tuples of length 2: (version, rest)
     The ``rest`` can be anything hashable and picklable, that uniquely identifies the
     computation in the module.
 
     The ``version`` should be a hierarchy of tuples of integers.
-    If the ``version`` is either 0 or (), then the corresponding module is unversioned, and
-    will be deleted in an atexit() handler.
-    If the ``version`` is neither 0 nor (), then the module will be kept in the cache between
-    processes.
-
+    If the ``version`` is either 0 or (), then the key is unversioned, and its
+    corresponding module will be deleted in an atexit() handler if it is not
+    associated to another versioned key.
+    If the ``version`` is neither 0 nor (), then the module will be kept in the
+    cache between processes.
 
     An unversioned module is not deleted by the process that creates it.  Deleting such modules
     does not work on NFS filesystems because the tmpdir in which the library resides is in use
     until the end of the process' lifetime.  Instead, unversioned modules are left in their
     tmpdirs without corresponding .pkl files.  These modules and their directories are erased
     by subsequent processes' refresh() functions.
+
+    Two different keys are mapped to the same module when:
+        - They have the same version.
+        - They share the same compilation options in their ``rest`` part (see
+          ``CLinker.cmodule_key_`` for how this part is built).
+        - They share the same C code.
     """
 
     dirname = ""
