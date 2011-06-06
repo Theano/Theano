@@ -29,6 +29,7 @@ New features:
 Documentation:
 
 Unit tests:
+ * More strict float comparaison by default
  * Reuse test for subtensor of tensor for gpu tensor(more gpu test)
 
 Other:
