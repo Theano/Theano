@@ -205,26 +205,22 @@ def module_name_from_dir(dirname):
     return os.path.join(dirname, name)
 
 
-def get_module_hash(module_file, key):
+def get_module_hash(src_code, key):
 
     """
     Return an MD5 hash that uniquely identifies a module.
 
     This hash takes into account:
-        1. The 'mod.cpp' or 'mod.cu' file used to compile `module_file`.
+        1. The C source code of the module (`src_code`).
         2. The version part of the key.
         3. The compiler options defined in `key` (command line parameters and
            libraries to link against).
     """
-    source_code = os.path.join(os.path.dirname(module_file), 'mod.cpp')
-    if not os.path.exists(source_code):
-        source_code = os.path.join(os.path.dirname(module_file), 'mod.cu')
-        assert os.path.exists(source_code)
     # `to_hash` will contain any element such that we know for sure that if
     # it changes, then the module hash should be different.
     # We start with the source code itself (stripping blanks might avoid
     # recompiling after a basic indentation fix for instance).
-    to_hash = map(str.strip, open(source_code).readlines())
+    to_hash = map(str.strip, src_code.split('\n'))
     # Get the version part of the key.
     to_hash += map(str, key[0])
     c_link_key = key[1]
@@ -477,8 +473,8 @@ class ModuleCache(object):
                             # do not know the config options that were used.
                             # As a result, we delete it instead (which is also
                             # simpler to implement).
-                            debug('Deleting deprecated cache entry', key_pkl)
-                            _rmtree(root, ignore_nocleanup=True)
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg='deprecated cache entry')
                             continue
 
                         # Find unversioned keys.
@@ -571,9 +567,12 @@ class ModuleCache(object):
 
     def module_from_key(self, key, fn=None, keep_lock=False):
         """
-        :param fn: a callable object that will return a module for the key (it is called only if the key isn't in
-        the cache).  This function will be called with a single keyword argument "location"
-        that is a path on the filesystem wherein the function should write the module.
+        :param fn: A callable object that will return an iterable object when
+        called, such that the first element in this iterable object is the
+        source code of the module, and the last element is the module itself.
+        `fn` is called only if the key is not already in the cache, with
+        a single keyword argument `location` that is the path to the directory
+        where the module should be compiled.
         """
         rval = None
         try:
@@ -606,74 +605,87 @@ class ModuleCache(object):
             try:
                 location = dlimport_workdir(self.dirname)
                 #debug("LOCATION*", location)
-                try:
-                    module = fn(location=location)  # WILL FAIL FOR BAD C CODE
-                except Exception, e:
-                    _rmtree(location)
-                    #try:
-                    #except Exception, ee:
-                        #error('failed to cleanup location', location, ee)
-                    raise
 
-                name = module.__file__
-                
-                debug("Adding module to cache", key, name)
-                assert name.startswith(location)
-                assert name not in self.module_from_name
-                # Changing the hash of the key is not allowed during
-                # compilation. That is the only cause found that makes the
-                # following assert fail.
-                assert hash(key) == hash_key
-                assert key not in self.entry_from_key
+                compile_steps = fn(location=location).__iter__()
 
-                # Check if we already know a module with the same hash.
+                # Check if we already know a module with the same hash. If we
+                # do, then there is no need to even compile it.
                 duplicated_module = False
-                module_hash = get_module_hash(name, key)
+                # The first compilation step is to yield the source code.
+                src_code = compile_steps.next()
+                module_hash = get_module_hash(src_code, key)
                 if module_hash in self.module_hash_to_key_data:
                     debug("Duplicated module! Will re-use the previous one")
                     duplicated_module = True
                     # Load the already existing module.
                     key_data = self.module_hash_to_key_data[module_hash]
+                    # Note that we do not pass the `fn` argument, since it
+                    # should not be used considering that the module should
+                    # already be compiled.
                     module = self.module_from_key(
-                            key=key_data.keys.__iter__().next(),
-                            keep_lock=True)
+                            key=key_data.keys.__iter__().next())
+                    name = module.__file__
                     # Add current key to the set of keys associated to the same
                     # module.
                     key_data.add_key(key)
-                    # We can delete this module.
-                    debug("Deleting: ", os.path.dirname(name))
-                    shutil.rmtree(os.path.dirname(name))
-                    name = module.__file__
-
-                if not duplicated_module and _version: # save the key
-                    key_pkl = os.path.join(location, 'key.pkl')
-                    key_data = KeyData(
-                            keys=set([key]),
-                            module_hash=get_module_hash(name, key),
-                            key_pkl=key_pkl)
+                    # We can delete the work directory.
+                    _rmtree(location, ignore_nocleanup=True)
+                else:
                     try:
-                        key_data.save_pkl()
-                        key_broken = False
-                    except cPickle.PicklingError:
-                        key_broken = True
+                        # Will fail if there is an error compiling the C code.
+                        while True:
+                            try:
+                                # The module should be returned by the last
+                                # step of the compilation.
+                                module = compile_steps.next()
+                            except StopIteration:
+                                break
+                    except Exception, e:
+                        _rmtree(location)
+                        raise
 
-                    if not key_broken:
+                    # Obtain path to the '.so' module file.
+                    name = module.__file__
+                    
+                    debug("Adding module to cache", key, name)
+                    assert name.startswith(location)
+                    assert name not in self.module_from_name
+                    # Changing the hash of the key is not allowed during
+                    # compilation. That is the only cause found that makes the
+                    # following assert fail.
+                    assert hash(key) == hash_key
+                    assert key not in self.entry_from_key
+
+                    if _version: # save the key
+                        key_pkl = os.path.join(location, 'key.pkl')
+                        assert not os.path.exists(key_pkl)
+                        key_data = KeyData(
+                                keys=set([key]),
+                                module_hash=module_hash,
+                                key_pkl=key_pkl)
                         try:
-                            kd_from_file = cPickle.load(open(key_pkl, 'rb'))
-                            assert len(kd_from_file.keys) == 1
-                            key_from_file = kd_from_file.keys.__iter__().next()
-                            if key != key_from_file:
-                                raise Exception(
-                                    "key not equal to unpickled version (Hint:"
-                                    " verify the __eq__ and __hash__ functions"
-                                    " for your Ops", (key, key_from_file))
-                            # Adding the key file to this set means it is a
-                            # versioned key.
-                            self.loaded_key_pkl.add(key_pkl)
-                            self.module_hash_to_key_data[module_hash] = key_data
-                        except cPickle.UnpicklingError:
-                            warning('Cache failure due to un-loadable key',
-                                    key)
+                            key_data.save_pkl()
+                            key_broken = False
+                        except cPickle.PicklingError:
+                            key_broken = True
+
+                        if not key_broken:
+                            try:
+                                kd_from_file = cPickle.load(open(key_pkl, 'rb'))
+                                assert len(kd_from_file.keys) == 1
+                                key_from_file = kd_from_file.keys.__iter__().next()
+                                if key != key_from_file:
+                                    raise Exception(
+                                        "key not equal to unpickled version (Hint:"
+                                        " verify the __eq__ and __hash__ functions"
+                                        " for your Ops", (key, key_from_file))
+                                # Adding the key file to this set means it is a
+                                # versioned key.
+                                self.loaded_key_pkl.add(key_pkl)
+                                self.module_hash_to_key_data[module_hash] = key_data
+                            except cPickle.UnpicklingError:
+                                warning('Cache failure due to un-loadable key',
+                                        key)
 
             finally:
                 # Release lock if needed.
@@ -697,7 +709,12 @@ class ModuleCache(object):
                 else:
                     self.entry_from_key[k] = name
 
-            self.module_from_name[name] = module
+            if name in self.module_from_name:
+                # May happen if we are re-using an existing module.
+                assert duplicated_module
+                assert self.module_from_name[name] is module
+            else:
+                self.module_from_name[name] = module
 
             self.stats[2] += 1
             rval = module
@@ -709,22 +726,18 @@ class ModuleCache(object):
 
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh_del=None, get_lock=True):
+    def clear_old(self, age_thresh_del=None):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
         :param age_thresh_del: Dynamic modules whose last access time is more
         than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
         age if not provided.
-
-        :param get_lock: If True, then this function acquires and releases the
-        lock on the compile dir.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
 
-        if get_lock:
-            compilelock.get_lock()
+        compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
             # and get all module that are too old to use.(not loaded in self.entry_from_key)
@@ -755,12 +768,10 @@ class ModuleCache(object):
                             del self.entry_from_key[key]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    info("clear_old removing cache dir", parent)
-                    _rmtree(parent)
+                    _rmtree(parent, msg='old cache directory', level='info')
 
         finally:
-            if get_lock:
-                compilelock.release_lock()
+            compilelock.release_lock()
 
     def clear(self, unversioned_min_age=None, clear_base_files=False):
         """
@@ -776,22 +787,18 @@ class ModuleCache(object):
         """
         compilelock.get_lock()
         try:
-            self.clear_old(-1.0, get_lock=False)
-            self.clear_unversioned(min_age=unversioned_min_age, get_lock=False)
+            self.clear_old(-1.0)
+            self.clear_unversioned(min_age=unversioned_min_age)
             if clear_base_files:
-                self.clear_base_files(get_lock=False)
+                self.clear_base_files()
         finally:
             compilelock.release_lock()
 
-    def clear_base_files(self, get_lock=True):
+    def clear_base_files(self):
         """
         Delete base directories 'cuda_ndarray' and 'cutils_ext' if present.
-
-        :param get_lock: If True, then this function acquires then releases the
-        lock on the compile dir.
         """
-        if get_lock:
-            compilelock.get_lock()
+        compilelock.get_lock()
         try:
             for base_dir in ('cuda_ndarray', 'cutils_ext'):
                 to_delete = os.path.join(self.dirname, base_dir)
@@ -802,10 +809,9 @@ class ModuleCache(object):
                     except:
                         warning('Could not delete %s' % to_delete)
         finally:
-            if get_lock:
-                compilelock.release_lock()
+            compilelock.release_lock()
 
-    def clear_unversioned(self, min_age=None, get_lock=True):
+    def clear_unversioned(self, min_age=None):
         """
         Delete unversioned dynamic modules.
         
@@ -814,16 +820,12 @@ class ModuleCache(object):
 
         :param min_age: Minimum age to be deleted, in seconds. Defaults to
         7-day age if not provided.
-
-        :param get_lock: If True, then this function acquires and releases the
-        lock on the compile dir.
         """
         if min_age is None:
             min_age = self.age_thresh_del_unversioned
         items_copy = list(self.entry_from_key.iteritems())
 
-        if get_lock:
-            compilelock.get_lock()
+        compilelock.get_lock()
 
         try:
             for key, entry in items_copy:
@@ -839,8 +841,7 @@ class ModuleCache(object):
 
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    info("clear_unversioned removing cache dir", parent)
-                    _rmtree(parent)
+                    _rmtree(parent, msg='unversioned', level='info')
 
             time_now = time.time()
             for filename in os.listdir(self.dirname):
@@ -860,23 +861,27 @@ class ModuleCache(object):
                         # take care of the clean-up.
                         if age > min_age:
                             info("clear_unversioned removing cache dir", filename)
-                            _rmtree(os.path.join(self.dirname, filename))
+                            _rmtree(os.path.join(self.dirname, filename),
+                                    msg='unversioned', level='info')
         finally:
-            if get_lock:
-                compilelock.release_lock()
+            compilelock.release_lock()
 
     def _on_atexit(self):
         # Note: no need to call refresh() since it is called by clear_old().
         compilelock.get_lock()
         try:
-            self.clear_old(get_lock=False)
-            self.clear_unversioned(get_lock=False)
+            self.clear_old()
+            self.clear_unversioned()
         finally:
             compilelock.release_lock()
 
-def _rmtree(parent, ignore_nocleanup=False):
+def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug'):
     try:
         if ignore_nocleanup or not config.nocleanup:
+            log_msg = 'Deleting'
+            if msg:
+                log_msg += ' (%s)'
+            eval(level)('%s: %s' % (log_msg, parent))
             shutil.rmtree(parent)
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()

@@ -958,11 +958,30 @@ class CLinker(link.Linker):
 
     def compile_cmodule(self, location=None):
         """
-        This method is a callback for `ModuleCache.module_from_key`
+        Compile the module and return it.
+        """
+        # Go through all steps of the compilation process.
+        for step_result in self.compile_cmodule_by_step(location=location):
+            pass
+        # And return the output of the last step, which should be the module
+        # itself.
+        return step_result
+
+    def compile_cmodule_by_step(self, location=None):
+        """
+        This method is a callback for `ModuleCache.module_from_key`.
+
+        It is a generator (thus the 'by step'), so that:
+            - it first yields the module's C code
+            - it last yields the module itself
+            - it may yield other intermediate outputs in-between if needed
+              in the future (but this is not currently the case)
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.build_dynamic_module()
+        src_code = mod.code()
+        yield src_code
         get_lock()
         try:
             debug("LOCATION", location)
@@ -970,7 +989,7 @@ class CLinker(link.Linker):
             libs = self.libraries()
             preargs = self.compile_args()
             if c_compiler.__name__=='nvcc_module_compile_str' and config.lib.amdlibm:
-                #this lib don't work correctly with nvcc in device code.
+                # This lib does not work correctly with nvcc in device code.
                 if '<amdlibm.h>' in mod.includes:
                     mod.includes.remove('<amdlibm.h>')
                 if '-DREPLACE_WITH_AMDLIBM' in preargs:
@@ -980,7 +999,7 @@ class CLinker(link.Linker):
             try:
                 module = c_compiler(
                     module_name=mod.name,
-                    src_code = mod.code(),
+                    src_code=src_code,
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
@@ -992,8 +1011,7 @@ class CLinker(link.Linker):
         finally:
             release_lock()
 
-        return module
-
+        yield module
 
     def build_dynamic_module(self):
         """Return a cmodule.DynamicModule instance full of the code for our env.
@@ -1056,10 +1074,10 @@ class CLinker(link.Linker):
         except KeyError:
             key = None
         if key is None:
-            #if we can't get a key, then forget the cache mechanism
+            # If we can't get a key, then forget the cache mechanism.
             module = self.compile_cmodule()
         else:
-            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule, keep_lock=keep_lock)
+            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule_by_step, keep_lock=keep_lock)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments
