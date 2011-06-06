@@ -890,7 +890,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug'):
         if ignore_nocleanup or not config.nocleanup:
             log_msg = 'Deleting'
             if msg:
-                log_msg += ' (%s)'
+                log_msg += ' (%s)' % msg
             eval(level)('%s: %s' % (log_msg, parent))
             shutil.rmtree(parent)
     except Exception, e:
