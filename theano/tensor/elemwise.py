@@ -454,7 +454,7 @@ class Elemwise(Op):
         """
 
         inputs = map(as_tensor_variable, inputs)
-        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
+        shadow = self.scalar_op.make_node(*[Scalar(dtype=i.type.dtype)() for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -1201,7 +1201,8 @@ class Prod(CAReduce):
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
-        self.__dict__.update(dct)
+        super(Prod, self).__setstate__(dct)
+        # Add default value to be able to reload old pickled objects.
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
 

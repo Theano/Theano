@@ -7,6 +7,7 @@ from copy import copy
 import re #for set_compiledir
 import os, sys, StringIO
 
+
 if sys.version_info[:2] >= (2,5):
     import hashlib
     def hash_from_code(msg):
@@ -16,6 +17,13 @@ else:
     def hash_from_code(msg):
         return md5.new(msg).hexdigest()
 
+
+def hash_from_file(file_path):
+    """Return the MD5 hash of a file."""
+    return hash_from_code(open(file_path, 'rb').read())
+
+
+import theano
 from theano.gof.python25 import all
 from theano import config
 
@@ -43,6 +51,7 @@ import cmodule
 
 import logging
 _logger=logging.getLogger("theano.gof.cc")
+_logger.setLevel(logging.WARN)
 def info(*args):
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
@@ -791,7 +800,7 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries,
+            'CLinker.cmodule_key', compilation args, libraries, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -858,10 +867,16 @@ class CLinker(link.Linker):
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
 
-        # first we put the header, compile_args, library names into the signature
+        # First we put the header, compile_args, library names and config md5
+        # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+        # IMPORTANT: The 'md5' prefix is used to isolate the compilation
+        # parameters from the rest of the key. If you want to add more key
+        # elements, they should be before this md5 hash if and only if they
+        # can lead to a different compiled file with the same source code.
+        sig.append('md5:' + theano.configparser.get_config_md5())
 
         # technically this should only be appended for gcc-compiled Ops
         # and the flags of other compilers should be inserted here... but it's not clear how to
