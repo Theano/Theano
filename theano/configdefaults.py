@@ -16,8 +16,8 @@ AddConfigVar('floatX',
         )
 
 AddConfigVar('cast_policy',
-        "Rules for implicit type casting (until further notice, do not modify within a script, and clear your Theano cache whenever it is modified)",
-        EnumStr('custom', 'numpy+floatX', 'numpy'),
+        "Rules for implicit type casting",
+        EnumStr('numpy+floatX', 'numpy', 'default'),
         )
 
 AddConfigVar('int_division',
