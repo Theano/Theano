@@ -18,7 +18,7 @@ import theano
 from theano.tensor import (as_tensor_variable, blas, get_constant_value,
         patternbroadcast)
 from theano import Op, config
-from theano.gof.apply_shape import Apply
+from theano.gof import Apply
 from theano.gof.python25 import any
 
 imported_scipy_signal = False

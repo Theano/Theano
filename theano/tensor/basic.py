@@ -12,8 +12,7 @@ import numpy, theano
 #from copy import copy as python_copy
 
 from theano import gof, shared
-from theano.gof import Variable, Op, Type, Constant,  Value
-from theano.gof.apply_shape import Apply
+from theano.gof import Apply, Constant, Op, Type, Value, Variable
 
 from theano import gradient
 
@@ -287,7 +286,6 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
                     TensorType(dtype = x_.dtype, broadcastable = bcastable),
                     x_.copy(),
                     name=name)
-            rval.tag.shape = x_.shape
             return rval
         else:
             # leave the shape out of the type
@@ -3501,25 +3499,12 @@ class Join(Op):
 
 
     def infer_shape(self, node, ishapes):
-        # Join op should get at least two inputs to join
+        # ishapes[0] contains the size of the axis on which we join
+        # Join op should get at least one input to join
         assert len(ishapes) > 1
-        # Not sure this is needed anymore :( ... basically the apply_shape
-        # version of the apply node (i.e. the one defined in
-        # gof/apply_shape) calls infer_shape methods passing None to unknown
-        # inputs. It can handle NotImplementedError, so for now I just raise
-        # that whenever I get a None. Should we just remove gof/apply_shape
-        # if it is depricated ??
-        if ishapes[1] is None:
-            raise NotImplementedError
         n_dim = len(ishapes[1])
         for shape in ishapes[1:]:
-            if shape is None:
-                raise NotImplementedError
-            for shape_i in shape:
-                if shape_i is None:
-                    raise NotImplementedError
-            # at this point the inputs have been broadcasted so they should
-            # all have the same shape
+            assert shape is not None
             assert len(shape) == n_dim
 
         out_shapes = []
@@ -3837,9 +3822,6 @@ def reshape(x, newshape, ndim=None, name=None):
         ndim = get_vector_length(newshape)
     op = Reshape(ndim, name)
     rval = op(x, newshape)
-
-    if  isinstance(newshape, (list, tuple)):
-        rval.tag.shape = newshape
     return rval
 
 class Flatten(Op):
