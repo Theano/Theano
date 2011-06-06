@@ -671,18 +671,20 @@ class ModuleCache(object):
 
                         if not key_broken:
                             try:
-                                kd_from_file = cPickle.load(open(key_pkl, 'rb'))
-                                assert len(kd_from_file.keys) == 1
-                                key_from_file = kd_from_file.keys.__iter__().next()
+                                kd2 = cPickle.load(open(key_pkl, 'rb'))
+                                assert len(kd2.keys) == 1
+                                key_from_file = kd2.keys.__iter__().next()
                                 if key != key_from_file:
                                     raise Exception(
-                                        "key not equal to unpickled version (Hint:"
-                                        " verify the __eq__ and __hash__ functions"
-                                        " for your Ops", (key, key_from_file))
+                                        "Key not equal to unpickled version "
+                                        "(Hint: verify the __eq__ and "
+                                        "__hash__ functions for your Ops",
+                                        (key, key_from_file))
                                 # Adding the key file to this set means it is a
                                 # versioned key.
                                 self.loaded_key_pkl.add(key_pkl)
-                                self.module_hash_to_key_data[module_hash] = key_data
+                                self.module_hash_to_key_data[module_hash] = \
+                                                                    key_data
                             except cPickle.UnpicklingError:
                                 warning('Cache failure due to un-loadable key',
                                         key)
