@@ -2188,7 +2188,7 @@ CudaNdarray_Dot(PyObject* _unused, PyObject* args)
 }
 
 static PyObject *
-filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, strict)
+filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, strict, storage)
 {
     /*
      * TODO: DOC what this function should do in the various cases of
@@ -2282,10 +2282,10 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
                 Py_DECREF(rval);
                 rval = NULL;
             }
-            Py_DECREF(data);
-            Py_DECREF(py_data);
-            Py_DECREF(broadcastable);
         }
+        Py_DECREF(data);
+        Py_DECREF(py_data);
+        Py_DECREF(broadcastable);
         return (PyObject*)rval;
     }
 }
@@ -2489,6 +2489,11 @@ CudaNdarray_new_nd(int nd)
     }
     return (PyObject *) rval;
 }
+
+
+/**
+ * Initialize 'self' as a view of 'base', with memory storage 'data'
+ */
 
 int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base)
 {

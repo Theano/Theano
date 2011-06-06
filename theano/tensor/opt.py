@@ -6,7 +6,6 @@
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import copy
 import operator
 import itertools
 import sys
@@ -574,14 +573,6 @@ class ShapeFeature(object):
 
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
-        # NOTE: This may cause problems bacause the shape is not asserted
-        #       there is an equivalent mechanism to do this, namely
-        #       specify_shape that one should use
-        # If user provided size
-        #elif ( hasattr(r.tag,'shape') and
-        #      r.tag.shape is not None and
-        #      r.tag.shape[i] is not None):
-        #    return T.constant(copy.copy(r.tag.shape[i]),dtype='int64')
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
@@ -1101,7 +1092,6 @@ def local_alloc_elemwise(node):
     return [node.op(*new)]
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
-#TODO, var.tag.shape to propagate the shape and lower the overhead of this op
 #TODO, when all inputs can be optimized do all except one
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
@@ -2749,14 +2739,8 @@ register_specialize(local_mul_specialize)
 @gof.local_optimizer([T.add])
 def local_add_specialize(node):
     def fill_chain(v):
-        # Not sure why this happens .. but I did not had the time to look
-        # into it, it probably has something to do with the dtype I'm
-        # providing the tag.shape of my variable
         out = _fill_chain(v, node.inputs)
-        if out[0].dtype != node.outputs[0].dtype:
-            return [T.cast(out[0], dtype = node.outputs[0].dtype)]
-        else:
-            return out
+        return out
 
     #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
     if node.op == T.add:
