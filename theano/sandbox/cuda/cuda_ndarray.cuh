@@ -95,6 +95,12 @@ CudaNdarray_Check(const PyObject * ob);
 int 
 CudaNdarray_CheckExact(const PyObject * ob);
 
+/**
+ * Return true for a C-contiguous CudaNdarray, else false
+ */
+bool
+CudaNdarray_is_c_contiguous(const CudaNdarray * self);
+
 /****
  * Returns the number of elements necessary in host_structure and dev_structure for a given number of dimensions.
  */
@@ -386,13 +392,20 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
         size = size * dim[i];
     }
 
-    if (self->data_allocated != size)
+    if (CudaNdarray_is_c_contiguous(self) && (self->data_allocated == size))
     {
-        if (device_free(self->devdata))
+        return 0;
+    }
+    else
+    {
+        // If self is a view, do not try to free its memory
+        if (self->data_allocated && device_free(self->devdata))
         {
-            // Does this ever happen??  Do we need to set data_allocated or devdata to 0?
+            self->devdata = NULL;
+            self->data_allocated = 0;
             return -1;
         }
+
         assert(size>0);
         self->devdata = (float*)device_malloc(size*sizeof(real));
         if (!self->devdata)
