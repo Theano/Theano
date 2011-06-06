@@ -175,9 +175,9 @@ import theano and print the config variable, as in:
          that of numpy.
        * On mixed scalar / array operations, numpy tries to prevent the scalar
          from upcasting the array's type unless it is of a fundamentally
-         different type. However it is not practical to implement in Theano
-         a behavior similar to the one currently found in numpy, so Theano
-         does not attempt to do the same.
+         different type. Theano does not attempt to do the same at this point,
+         so you should be careful that scalars may upcast arrays when they
+         would not when using numpy.
 
 .. attribute:: int_division
 
