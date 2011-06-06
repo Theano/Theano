@@ -396,32 +396,37 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
     {
         return 0;
     }
-    else
-    {
-        // If self is a view, do not try to free its memory
-        if (self->data_allocated && device_free(self->devdata))
-        {
-            self->devdata = NULL;
-            self->data_allocated = 0;
-            return -1;
-        }
 
-        assert(size>0);
-        self->devdata = (float*)device_malloc(size*sizeof(real));
-        if (!self->devdata)
-        {
-            CudaNdarray_set_nd(self,-1);
-            self->data_allocated = 0;
-            self->devdata = 0;
-            return -1;
-        }
-        if (0)
-            fprintf(stderr,
-                "Allocated devdata %p (self=%p)\n",
-                self->devdata,
-                self);
-        self->data_allocated = size;
+    // The structure of self will be reused with newly allocated memory.
+    // If self was a view, we should remove the reference to its base.
+    // (If base was already NULL, the following has no effect.)
+    Py_XDECREF(self->base);
+    self->base = NULL;
+
+    // If self is a view, do not try to free its memory
+    if (self->data_allocated && device_free(self->devdata))
+    {
+        self->devdata = NULL;
+        self->data_allocated = 0;
+        return -1;
     }
+
+    assert(size>0);
+    self->devdata = (float*)device_malloc(size*sizeof(real));
+    if (!self->devdata)
+    {
+        CudaNdarray_set_nd(self,-1);
+        self->data_allocated = 0;
+        self->devdata = 0;
+        return -1;
+    }
+    if (0)
+        fprintf(stderr,
+            "Allocated devdata %p (self=%p)\n",
+            self->devdata,
+            self);
+    self->data_allocated = size;
+
     return 0;
 }
 
