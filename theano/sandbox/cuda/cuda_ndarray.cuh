@@ -26,7 +26,7 @@ typedef float real;
 #endif
 
 
-#ifndef SHARED_SIZE 
+#ifndef SHARED_SIZE
 #define SHARED_SIZE (16*1024)
 #endif
 
@@ -48,10 +48,10 @@ static T ceil_intdiv(T a, T b)
 /**
  * struct CudaNdarray
  *
- * This is a Python type.  
+ * This is a Python type.
  *
  */
-struct CudaNdarray 
+struct CudaNdarray
 {
     PyObject_HEAD
 
@@ -65,34 +65,34 @@ struct CudaNdarray
     /* Type-specific fields go here. */
     //GpuTensorType::VoidTensor * vt;
     int nd; //the number of dimensions of the tensor
-	// Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
+    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
     int * host_structure; //dim0, dim1, ... stride0, stride1, ...
     int data_allocated; //the number of bytes allocated for devdata
 
 
     //device pointers (allocated by cudaMalloc)
     int dev_structure_fresh;
-	//dev_structure should be accessed via macros, otherwise may not be synchronized
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...  
+    //dev_structure should be accessed via macros, otherwise may not be synchronized
+    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
 };
 
 /*
  * Return a CudaNdarray whose 'nd' dimensions are all 0.
  */
-PyObject * 
+PyObject *
 CudaNdarray_New(int nd=-1);
 
 /**
  * Return 1 for a CudaNdarray otw 0
  */
-int 
+int
 CudaNdarray_Check(const PyObject * ob);
 
 /**
  * Return 1 for a CudaNdarray otw 0
  */
-int 
+int
 CudaNdarray_CheckExact(const PyObject * ob);
 
 /**
@@ -104,7 +104,7 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self);
 /****
  * Returns the number of elements necessary in host_structure and dev_structure for a given number of dimensions.
  */
-int 
+int
 cnda_structure_size(int nd)
 {
     // dim0, dim1, ...
@@ -113,23 +113,23 @@ cnda_structure_size(int nd)
     return nd + nd + nd;
 }
 
-const int * 
+const int *
 CudaNdarray_HOST_DIMS(const CudaNdarray * self)
 {
     return self->host_structure;
 }
-const int * 
+const int *
 CudaNdarray_HOST_STRIDES(const CudaNdarray * self)
 {
     return self->host_structure + self->nd;
 }
-const int * 
+const int *
 CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self)
 {
     return self->host_structure + 2*self->nd;
 }
 
-void 
+void
 cnda_mark_dev_structure_dirty(CudaNdarray * self)
 {
     self->dev_structure_fresh = 0;
@@ -196,7 +196,7 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
  *
  *  Does not sync structure to host.
  */
-void 
+void
 CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
 {
     if ((idx >= self->nd) || (idx < 0) || (d < 0))
@@ -212,7 +212,7 @@ CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
         cnda_mark_dev_structure_dirty(self);
     }
 }
-void 
+void
 CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
 {
     if ((idx >= self->nd) || (idx < 0))
@@ -231,7 +231,7 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
  *
  *  This means: recalculate the log2dims and transfer structure to the card
  */
-int 
+int
 cnda_copy_structure_to_device(CudaNdarray * self)
 {
     cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
@@ -245,7 +245,7 @@ cnda_copy_structure_to_device(CudaNdarray * self)
     return 0;
 }
 
-const int * 
+const int *
 CudaNdarray_DEV_DIMS(CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
@@ -255,7 +255,7 @@ CudaNdarray_DEV_DIMS(CudaNdarray * self)
     }
     return self->dev_structure;
 }
-const int * 
+const int *
 CudaNdarray_DEV_STRIDES(CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
@@ -265,7 +265,7 @@ CudaNdarray_DEV_STRIDES(CudaNdarray * self)
     }
     return self->dev_structure + self->nd;
 }
-const int * 
+const int *
 CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
@@ -275,7 +275,7 @@ CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self)
     }
     return self->dev_structure + 2*self->nd;
 }
-float * 
+float *
 CudaNdarray_DEV_DATA(const CudaNdarray * self)
 {
     return self->devdata;
@@ -284,7 +284,7 @@ CudaNdarray_DEV_DATA(const CudaNdarray * self)
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
-int 
+int
 CudaNdarray_SIZE(const CudaNdarray *self)
 {
     if (self->nd == -1) return 0;
@@ -295,7 +295,7 @@ CudaNdarray_SIZE(const CudaNdarray *self)
     }
     return size;
 }
-static PyObject * 
+static PyObject *
 CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
 {
     return PyInt_FromLong(CudaNdarray_SIZE(self));
@@ -326,7 +326,7 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
             }
             self->dev_structure = NULL;
         }
-        if (self->host_structure) 
+        if (self->host_structure)
         {
             free(self->host_structure);
             self->host_structure = NULL;
@@ -429,7 +429,7 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
  * Return a CudaNdarray whose 'nd' dimensions are set to dims, and allocated.
  */
 template<typename inttype>
-PyObject * 
+PyObject *
 CudaNdarray_NewDims(int nd, const inttype * dims)
 {
     CudaNdarray * rval = (CudaNdarray*)CudaNdarray_New();
@@ -453,7 +453,7 @@ CudaNdarray_NewDims(int nd, const inttype * dims)
 int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base);
 int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
 {
-  return CudaNdarray_set_device_data(self, data, (PyObject *) base);
+    return CudaNdarray_set_device_data(self, data, (PyObject *) base);
 }
 
 /**
@@ -488,10 +488,10 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
  */
-PyObject * 
+PyObject *
 CudaNdarray_CreateArrayObj(CudaNdarray * self);
 
-PyObject * 
+PyObject *
 CudaNdarray_ZEROS(int n, int * dims);
 
 /**
@@ -512,7 +512,7 @@ int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pat
 void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 {
     fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d data_allocated=%d\n",
-	    self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
+            self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
     fprintf(fd, "\tHOST_DIMS:      ");
     for (int i = 0; i < self->nd; ++i)
     {
@@ -523,23 +523,23 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     {
         fprintf(fd, "%i\t", CudaNdarray_HOST_STRIDES(self)[i]);
     }
-    
+
     int data=0;
     fprintf(fd, "\n\tDEV_DIMS:      ");
     for (int i = 0; i < self->nd; ++i)
     {
         cublasGetVector(1, sizeof(int),
-			self->dev_structure+i, 1,
-			&data, 1);
-	fprintf(fd, "%i\t", data);
+                        self->dev_structure+i, 1,
+                        &data, 1);
+        fprintf(fd, "%i\t", data);
     }
     fprintf(fd, "\n\tDEV_STRIDES: ");
     for (int i = 0; i < self->nd; ++i)
     {
         cublasGetVector(1, sizeof(int),
-			self->dev_structure + self->nd+i, 1,
-			&data, 1);
-	fprintf(fd, "%i \t", data);
+                        self->dev_structure + self->nd+i, 1,
+                        &data, 1);
+        fprintf(fd, "%i \t", data);
     }
     fprintf(fd, "\n");
 }
