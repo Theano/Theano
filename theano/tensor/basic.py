@@ -3185,14 +3185,6 @@ class Split(Op):
     def __hash__(self):
         return hash(Split) ^ self.len_splits
 
-    def __call__(self, *inputs, **kwargs):
-        """Override Op.__call__ to suppress unpacking of output list
-
-        """
-        node = self.make_node(*inputs, **kwargs)
-        node.tag.trace = traceback.extract_stack()[:-1]
-        return node.outputs
-
     def make_node(self, x, axis, splits):
         """WRITEME"""
         x = as_tensor_variable(x)
@@ -3467,6 +3459,9 @@ class Join(Op):
             # assume that this is differentiable
             split = Split(len(tensors))
             split_gz = split(gz, axis, stack(*[shape(x)[axis] for x in tensors]))
+            # If there is only one split, it might not be in a list.
+            if not isinstance(split_gz, list):
+                split_gz = [split_gz]
             return [None] + split_gz
         else:
             # assume that this isn't differentiable
