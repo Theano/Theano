@@ -546,15 +546,15 @@ def test_sparse_shared_memory():
     m2 = random_lil((4,4), 'float32', 3).tocsr()
     x = SparseType('csr', dtype='float32')()
     y = SparseType('csr', dtype='float32')()
-   
+
     sdot = theano.sparse.structured_dot
     z = sdot(x*3,m1) + sdot(y*2, m2)
-    
+
     f = theano.function([theano.In(x,mutable=True),theano.In(y,mutable = True)],z, mode='FAST_RUN')
-    
+
     def f_(x,y,m1=m1,m2=m2):
-        return numpy.dot(x*3,m1) + numpy.dot(y*2,m2) 
-    
+        return numpy.dot(x*3,m1) + numpy.dot(y*2,m2)
+
     assert SparseType.may_share_memory(a,a) #This is trivial
     result  = f(a,a)
     result_ = f_(a,a)
