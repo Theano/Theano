@@ -323,7 +323,7 @@ class PureOp(object):
         """
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
-    
+
         if config.compute_test_value:
             # avoid circular import
             from theano.compile.sharedvalue import SharedVariable
@@ -350,14 +350,14 @@ class PureOp(object):
                     else:
                         # silently skip test
                         run_perform = False
-          
+
             # if all inputs have test-values, run the actual op
             if run_perform:
 
                 # compute output value once with test inputs to validate graph
                 output_storage = [[None] * len(node.outputs)]
                 node.op.perform(node, input_vals, output_storage)
-           
+
                 # add 'test_value' to output tags, so that downstream ops can use these
                 # numerical values as inputs to their perform method.
                 for (outval, node_output) in zip(output_storage, node.outputs):
