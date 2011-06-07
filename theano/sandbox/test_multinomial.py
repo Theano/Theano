@@ -3,7 +3,7 @@ import copy
 import numpy
 
 import theano
-from theano import tensor, function
+from theano import config, function, tensor
 import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
@@ -77,7 +77,14 @@ def test_multinomial_large():
         mval = f(pval,uval)
 
         assert mval.shape == pval.shape
-        assert mval.dtype == pval.dtype
+        if config.cast_policy == 'custom':
+            assert mval.dtype == pval.dtype
+        elif config.cast_policy == 'numpy+floatX':
+            assert mval.dtype == config.floatX
+        elif config.cast_policy == 'numpy':
+            assert mval.dtype == 'float64'
+        else:
+            raise NotImplementedError(config.cast_policy)
         assert numpy.allclose(mval.sum(axis=1), 2)
         asdf = numpy.asarray([0, 0, 2, 0])+0*pval
         assert numpy.allclose(mval, asdf) #broadcast over all rows

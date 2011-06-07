@@ -1,6 +1,4 @@
-
-import time
-import unittest
+import cPickle, time, unittest
 
 from theano.gof import Variable, Op
 from theano import gof
@@ -398,6 +396,14 @@ class test_Prod(unittest.TestCase):
         fn_debug = theano.function([x], mul1, mode=self.mode)
 
         fn_debug(a)
+
+    def test_pickle_bug(self):
+        # Regression test for bug fixed in 24d4fd291054.
+        o = Prod()
+        s = cPickle.dumps(o)
+        o = cPickle.loads(s)
+        cPickle.dumps(o)
+
 
 if __name__ == '__main__':
     #unittest.main()
