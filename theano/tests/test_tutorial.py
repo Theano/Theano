@@ -1,7 +1,7 @@
 """ test code snippet in the Theano tutorials.
 """
 
-import unittest
+import os, unittest
 import theano
 import theano.tensor as T
 from theano import function
@@ -722,6 +722,15 @@ class T_loading_and_saving(unittest.TestCase):
 
         mode_instance = theano.compile.mode.get_mode(None)
         if not isinstance(mode_instance, theano.compile.debugmode.DebugMode):
+            if os.path.exists('obj.save') or os.path.exists('objects.save'):
+                # We do not want to delete these files silently, in case for
+                # some reason they would be something else than test-generated
+                # files.
+                # Ideally we would save those files in a temporary directory...
+                raise AssertionError(
+                        'Please get rid of files obj.save and '
+                        'objects.save in directory %s' % os.getcwd())
+
             f = file('obj.save', 'wb')
             cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
             f.close()
@@ -746,6 +755,9 @@ class T_loading_and_saving(unittest.TestCase):
                 loaded_objects.append(cPickle.load(f))
             f.close()
 
+            # Cleanup created files.
+            os.remove('obj.save')
+            os.remove('objects.save')
 
 class T_modes(unittest.TestCase):
     ## All tests here belog to
