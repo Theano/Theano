@@ -200,3 +200,9 @@ AddConfigVar('warn.sum_sum_bug',
 AddConfigVar('warn.sum_div_dimshuffle_bug',
              "Warn if previous versions of Theano (between rev. 3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03) would have given incorrect result. This bug was triggered by sum of division of dimshuffled tensors.",
              BoolParam(default_0_3))
+
+AddConfigVar('compute_test_value',
+        "If True, Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
+        EnumStr(True, False, 'warn', 'err'))
+
+

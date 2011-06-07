@@ -6,12 +6,15 @@ import numpy.distutils
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler,
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer,
-        InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer, Apply)
+        InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
 import theano.scalar
 import basic as T
+
+
+from theano.gof.apply_shape import Apply
 
 #NB: this clobbers the builtin 'compile' symbol
 from theano import compile  #to register the optimizer built by this file
