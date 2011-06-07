@@ -1414,7 +1414,7 @@ def local_subtensor_merge(node):
                 # Following the suggested use of shape_feature which should
                 # consider the case when the compilation mode doesn't
                 # include the ShapeFeature
-                xhsape = x.shape
+                xshape = x.shape
                 ushape = u.shape
 
             merged_slices = []
