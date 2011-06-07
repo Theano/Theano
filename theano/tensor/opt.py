@@ -1391,7 +1391,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
 @gof.local_optimizer([])
 def local_subtensor_merge(node):
     """
-    Refractored optimization to deal with all cases  of tensor merging.
+    Refactored optimization to deal with all cases of tensor merging.
     Given a subgraph of the form Subtensor(Subtensor(u)), the optimization
     expresses all slices in a canonical form, and then merges them together.
     """
