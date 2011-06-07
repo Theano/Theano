@@ -8,7 +8,7 @@ compatible with `gof`'s :doc:`graph` routines.
 
 __docformat__ = "restructuredtext en"
 
-from .. import config
+from theano import config
 import graph
 import numpy
 import utils
@@ -326,7 +326,7 @@ class PureOp(object):
     
         if config.compute_test_value:
             # avoid circular import
-            from ..compile.sharedvalue import SharedVariable
+            from theano.compile.sharedvalue import SharedVariable
             run_perform = True
 
             # build test input-values
