@@ -106,20 +106,22 @@ class PycudaElemwiseSourceModuleOp(Op):
         otype = CudaNdarrayType(broadcastable=[False]*_inputs[0].type.ndim)
         assert self.nout == 1
 
-        #TODO change the scalar op with the good c_code!
         fct_name = "pycuda_elemwise_%s"%str(self.scalar_op)
         out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
         in_name = ["i"+str(id) for id in range(len(inputs))]
         out_name = ["o"+str(id) for id in range(self.nout)]
         c_code = self.scalar_op.c_code(out_node, "some_name", tuple([n+"[i]"for n in in_name]), tuple(n+"[i]"for n in out_name), {})
-        c_code_param = ", ".join([var.type.dtype_specs()[1]+" *"+name for var,name in zip(inputs,in_name) + zip(out_node.outputs,out_name)])
+        c_code_param = ", ".join([var.type.dtype_specs()[1]+" *"+name for var,name in zip(inputs,in_name) + zip(out_node.outputs,out_name)]+["int size"])
         mod = SourceModule("""
 #include<Python.h>
 #include <numpy/arrayobject.h>
   __global__ void %s(%s)
   {
-    int i = threadIdx.x + threadIdx.y*blockDim.x;
-    %s
+    int i = (blockIdx.x+blockIdx.y*gridDim.x)*(blockDim.x*blockDim.y);
+    i += threadIdx.x + threadIdx.y*blockDim.x;
+    if(i<size){
+        %s
+    }
   }
   """%(fct_name,c_code_param,c_code))
         self.pycuda_fct = mod.get_function(fct_name)
@@ -131,7 +133,16 @@ class PycudaElemwiseSourceModuleOp(Op):
         z, = out
         if z[0] is None or z[0].shape!=inputs[0].shape:
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
-        self.pycuda_fct(inputs[0],inputs[1],z[0], block=(inputs[0].shape[0],inputs[0].shape[1],1))
+        if inputs[0].shape != inputs[1].shape:
+            raise TypeError("PycudaElemwiseSourceModuleOp: inputs don't have the same shape!")
+
+        if inputs[0].size > 512:
+            grid = (int(numpy.ceil(inputs[0].size / 512.)),1)
+            block = (512,1,1)
+        else:
+            grid = (1,1)
+            block = (inputs[0].shape[0],inputs[0].shape[1],1)
+        self.pycuda_fct(inputs[0], inputs[1], z[0], numpy.intc(inputs[1].size), block=block, grid=grid)
 
 
 class PycudaElemwiseKernelOp(Op):

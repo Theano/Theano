@@ -24,23 +24,27 @@ else:
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 def test_pycuda_elemwise_source_module():
-    x=T.fmatrix('x')
-    y=T.fmatrix('y')
-    f=theano.function([x,y],x*y, mode=mode_with_gpu)
-    print f.maker.env.toposort()
-    f2 = theano.function([x,y],x*y, mode=mode_with_gpu.including("local_pycuda_gpu_elemwise"))
-    print f2.maker.env.toposort()
+    for shape in [(5,5), (10,49), (50,49),(500,501),(5000,5001)]:
+        for op in [theano.scalar.basic.mul, theano.scalar.basic.add]:
+            x=T.fmatrix('x')
+            y=T.fmatrix('y')
+            pycuda_op = PycudaElemwiseSourceModuleOp(op)
+            elemwise_op = theano.tensor.Elemwise(op)
+            f=theano.function([x,y], elemwise_op(x,y), mode=mode_with_gpu)
+            f2 = theano.function([x,y], theano.sandbox.cuda.host_from_gpu(pycuda_op(x,y)))
+            f3 = theano.function([x,y], elemwise_op(x,y),
+                                 mode=mode_with_gpu.including("local_pycuda_gpu_elemwise"))
 
-    assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
-    assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
+            assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
+            assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
+            assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f3.maker.env.toposort()])
 
-    val1 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
-    val2 = numpy.asarray(numpy.random.rand(5,5), dtype='float32')
-    #val1 = numpy.ones((5,5))
-    #val2 = numpy.arange(25).reshape(5,5)
-    assert (f(val1,val2) == f2(val1,val2)).all()
-    print f(val1,val2)
-    print f2(val1,val2)
+            val1 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+            val2 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+            assert (f(val1,val2) == f2(val1,val2)).all()
+            assert (f(val1,val2) == f3(val1,val2)).all()
+            #print f(val1,val2)
+            #print f2(val1,val2)
 
 def test_pycuda_elemwise_kernel():
     x=T.fmatrix('x')
