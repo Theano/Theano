@@ -538,7 +538,7 @@ def test_may_share_memory():
                     ]:
 
         assert SparseType.may_share_memory(a_,b_)==rep
-        
+
 def test_sparse_shared_memory():
     # Note : There are no inplace ops on sparse matrix yet. If  one is someday implemented, we could test it here.
     a = random_lil((3,4), 'float32', 3).tocsr()
