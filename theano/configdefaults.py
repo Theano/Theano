@@ -202,7 +202,5 @@ AddConfigVar('warn.sum_div_dimshuffle_bug',
              BoolParam(default_0_3))
 
 AddConfigVar('compute_test_value',
-        "If True, Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
-        EnumStr(False, True, 'warn', 'err'))
-
-
+        "If 'True', Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
+        EnumStr('False', 'True', 'warn', 'err'))

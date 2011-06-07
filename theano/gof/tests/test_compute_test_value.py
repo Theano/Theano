@@ -11,7 +11,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_variable_only(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = True
+            theano.config.compute_test_value = 'True'
 
             x = T.matrix('x')
             x.tag.test_value = numpy.random.rand(3,4)
@@ -40,7 +40,7 @@ class TestComputeTestValue(unittest.TestCase):
             y.tag.test_value = numpy.random.rand(4,5)
 
             # should skip computation of test value
-            theano.config.compute_test_value = False
+            theano.config.compute_test_value = 'False'
             z = T.dot(x,y)
             assert not hasattr(z.tag, 'test_value')
 
@@ -55,7 +55,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_string_var(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = True
+            theano.config.compute_test_value = 'True'
 
             x = T.matrix('x')
             x.tag.test_value = numpy.random.rand(3,4)
@@ -84,7 +84,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_shared(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = True
+            theano.config.compute_test_value = 'True'
 
             x = T.matrix('x')
             x.tag.test_value = numpy.random.rand(3,4)
@@ -105,7 +105,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_ndarray(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = True
+            theano.config.compute_test_value = 'True'
 
             x = numpy.random.rand(2,3)
             y = theano.shared(numpy.random.rand(3,6), 'y')
@@ -125,7 +125,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_constant(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = True
+            theano.config.compute_test_value = 'True'
 
             x = T.constant(numpy.random.rand(2,3))
             y = theano.shared(numpy.random.rand(3,6), 'y')

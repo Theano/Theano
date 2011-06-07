@@ -324,7 +324,7 @@ class PureOp(object):
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
 
-        if config.compute_test_value:
+        if config.compute_test_value != 'False':
             # avoid circular import
             from theano.compile.sharedvalue import SharedVariable
             run_perform = True
