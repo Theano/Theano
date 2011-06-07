@@ -841,6 +841,9 @@ def local_useless_alloc(node):
 @gof.local_optimizer([T._shape])
 def local_shape_to_shape_i(node):
     if node.op == T._shape:
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         return [shape_feature.make_vector_shape(node.inputs[0])]
 
@@ -866,6 +869,9 @@ def local_subtensor_make_vector(node):
     # [a,b,c][0:2] -> [a,b]
     # we can do this for constant indexes
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
@@ -1173,6 +1179,9 @@ def local_useless_subtensor(node):
     Remove Subtensor if it take the full input
     """
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_of = node.env.shape_feature.shape_of
         node_input_idx = 1
         for pos, idx in enumerate(node.op.idx_list):
@@ -1778,6 +1787,9 @@ if 0:
     @gof.local_optimizer([])
     def local_sum_over_empty(node):
         if isinstance(node.op, T.Sum):
+            # This optimization needs ShapeOpt and env.shape_feature
+            if not hasattr(node.env, 'shape_feature'):
+                return
             y, = node.outputs
             y_shape = node.env.shape_feature.shape_of[y]
 

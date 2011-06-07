@@ -1697,6 +1697,16 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_noshape not in h_ops
         assert identity_shape not in h_ops
 
+    def test_no_shapeopt(self):
+        # Test that a basic example works even when ShapeOpt is excluded
+        X = T.matrix()
+        expr = X.shape[0]
+
+        mode = theano.compile.get_default_mode().excluding('ShapeOpt')
+        f = theano.function([X], expr, mode=mode)
+        print f([[1, 2], [2, 3]])
+
+
 class test_assert(unittest.TestCase):
     def test0(self):
         x=T.scalar()
