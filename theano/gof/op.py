@@ -331,11 +331,9 @@ class PureOp(object):
 
             # build test input-values
             input_vals = []
-            for ins in inputs:
+            for ins in node.inputs:
                 if isinstance(ins, graph.Constant):
                     input_vals.append(ins.value)
-                elif isinstance(ins,numpy.ndarray):
-                    input_vals.append(ins)
                 elif isinstance(ins,SharedVariable):
                     input_vals.append(ins.get_value(borrow=True))
                 elif isinstance(ins,graph.Variable) and hasattr(ins.tag, 'test_value'):
