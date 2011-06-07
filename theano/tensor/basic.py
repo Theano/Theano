@@ -13,7 +13,8 @@ import numpy, theano
 #from copy import copy as python_copy
 
 from theano import gof, shared
-from theano.gof import Apply, Constant, Op, Type, Value, Variable
+from theano.gof import Variable, Op, Type, Constant,  Value
+from theano.gof.apply_shape import Apply
 
 from theano import gradient
 
@@ -340,6 +341,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
                     TensorType(dtype = x_.dtype, broadcastable = bcastable),
                     x_.copy(),
                     name=name)
+            rval.tag.shape = x_.shape
             return rval
         else:
             # leave the shape out of the type
@@ -3046,6 +3048,15 @@ class SubtensorPrinter:
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), SubtensorPrinter())
 
+def setsubtensor(x, y, idx_list, inplace=False):
+    print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
+    the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=True)
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+def incsubtensor(x, y, idx_list, inplace=False):
+    print >> sys.stderr, "tensor.incsubtensor is deprecated - please use inc_subtensor"
+    the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+
 def set_subtensor(x, y, inplace=False):
     """Return x with the given subtensor overwritten by y.
 
@@ -3569,12 +3580,25 @@ class Join(Op):
 
 
     def infer_shape(self, node, ishapes):
-        # ishapes[0] contains the size of the axis on which we join
-        # Join op should get at least one input to join
+        # Join op should get at least two inputs to join
         assert len(ishapes) > 1
+        # Not sure this is needed anymore :( ... basically the apply_shape
+        # version of the apply node (i.e. the one defined in
+        # gof/apply_shape) calls infer_shape methods passing None to unknown
+        # inputs. It can handle NotImplementedError, so for now I just raise
+        # that whenever I get a None. Should we just remove gof/apply_shape
+        # if it is depricated ??
+        if ishapes[1] is None:
+            raise NotImplementedError
         n_dim = len(ishapes[1])
         for shape in ishapes[1:]:
-            assert shape is not None
+            if shape is None:
+                raise NotImplementedError
+            for shape_i in shape:
+                if shape_i is None:
+                    raise NotImplementedError
+            # at this point the inputs have been broadcasted so they should
+            # all have the same shape
             assert len(shape) == n_dim
 
         out_shapes = []
@@ -3892,6 +3916,9 @@ def reshape(x, newshape, ndim=None, name=None):
         ndim = get_vector_length(newshape)
     op = Reshape(ndim, name)
     rval = op(x, newshape)
+
+    if  isinstance(newshape, (list, tuple)):
+        rval.tag.shape = newshape
     return rval
 
 class Flatten(Op):

@@ -8,9 +8,10 @@ compatible with `gof`'s :doc:`graph` routines.
 
 __docformat__ = "restructuredtext en"
 
+from .. import config
+import graph
+import numpy
 import utils
-from theano import config
-
 
 
 class CLinkerObject(object):
@@ -322,6 +323,46 @@ class PureOp(object):
         """
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
+    
+        if config.compute_test_value:
+            # avoid circular import
+            from ..compile.sharedvalue import SharedVariable
+            run_perform = True
+
+            # build test input-values
+            input_vals = []
+            for ins in inputs:
+                if isinstance(ins, graph.Constant):
+                    input_vals.append(ins.value)
+                elif isinstance(ins,numpy.ndarray):
+                    input_vals.append(ins)
+                elif isinstance(ins,SharedVariable):
+                    input_vals.append(ins.get_value(borrow=True))
+                elif isinstance(ins,graph.Variable) and hasattr(ins.tag, 'test_value'):
+                    input_vals.append(ins.tag.test_value)
+                else:
+                    # no test-value was specified, act accordingly
+                    if config.compute_test_value == 'warn':
+                        raise Warning('Cannot compute test value: input %s of Op %s missing default value')
+                        run_perform = False
+                    elif config.compute_test_value == 'err':
+                        raise ValueError('Cannot compute test value: input %s of Op %s missing default value')
+                    else:
+                        # silently skip test
+                        run_perform = False
+          
+            # if all inputs have test-values, run the actual op
+            if run_perform:
+
+                # compute output value once with test inputs to validate graph
+                output_storage = [[None] * len(node.outputs)]
+                node.op.perform(node, input_vals, output_storage)
+           
+                # add 'test_value' to output tags, so that downstream ops can use these
+                # numerical values as inputs to their perform method.
+                for (outval, node_output) in zip(output_storage, node.outputs):
+                    node_output.tag.test_value = outval[0]
+
         if self.default_output is not None:
             return node.outputs[self.default_output]
         else:
