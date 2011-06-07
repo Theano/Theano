@@ -171,11 +171,15 @@ class ConfigParam(object):
         So the value should be the same during all the execution
         """
         self.default = default
-        self.filter=filter
+        self.filter = filter
         self.allow_override = allow_override
         # N.B. --
         # self.fullname  # set by AddConfigVar
         # self.doc       # set by AddConfigVar
+
+        # Check that default is a valid value
+        if self.filter:
+            self.filter(self.default)
 
     def __get__(self, *args):
         #print "GETTING PARAM", self.fullname, self, args
@@ -203,6 +207,13 @@ class EnumStr(ConfigParam):
     def __init__(self, default, *options, **kwargs):
         self.default = default
         self.all = (default,) + options
+
+        # All options should be strings
+        for val in self.all:
+            if not isinstance(val, str):
+                raise ValueError('Valid values for an EnumStr parameter '
+                        'should be strings', val, type(val))
+
         def filter(val):
             if val in self.all:
                 return val
