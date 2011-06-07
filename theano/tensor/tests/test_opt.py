@@ -453,6 +453,9 @@ class test_canonize(unittest.TestCase):
                                                            (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
                                                            (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
@@ -474,6 +477,8 @@ class test_canonize(unittest.TestCase):
                                                            ((2*dv)/2,[dv],[dvv],'float64'),
                                                            ((2*fv)/2,[fv],[fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
@@ -486,11 +491,11 @@ class test_canonize(unittest.TestCase):
             #test x / abs(x) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (dx/abs(dx),[dx],[0.5-dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.5-fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (fx/abs(fx),[fx],[0.5-fxv], 'float32'),
                                                            (dx/abs(dx),[dx],[0.1*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.1*fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (fx/abs(fx),[fx],[0.1*fxv], 'float32'),
                                                            (dv/abs(dv),[dv],[0.5-dvv],'float64'),
-                                                           (fv/abs(fv),[fv],[0.5-fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (fv/abs(fv),[fv],[0.5-fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
