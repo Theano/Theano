@@ -372,6 +372,7 @@ class ModuleCache(object):
 
         self.refresh()
 
+        start = time.time()
         if check_for_broken_eq:
             for k0 in self.entry_from_key:
                 for k1 in self.entry_from_key:
@@ -386,6 +387,7 @@ class ModuleCache(object):
                         warning("Key 1:", k1)
                         warning("Entry 1:", self.entry_from_key[k1])
                         warning("hash 1:", hash(k1))
+        debug('Time needed to check broken equality / hash: %s' % (time.time() - start))
 
     age_thresh_use = 60*60*24*24
     """
@@ -403,6 +405,7 @@ class ModuleCache(object):
 
         Also, remove malformed cache directories.
         """
+        start_time = time.time()
         too_old_to_use = []
 
         compilelock.get_lock()
@@ -570,6 +573,8 @@ class ModuleCache(object):
 
         finally:
             compilelock.release_lock()
+
+        debug('Time needed to refresh cache: %s' % (time.time() - start_time))
 
         return too_old_to_use
 
