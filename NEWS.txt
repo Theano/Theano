@@ -3,37 +3,72 @@ Modifications in the trunk since the last release
 Partial of what is in trunk since the last release
 --------------------------------------------------
 Deprecation:
+ * tag.shape attribute deprecated (#633)
+ * FAST_RUN_NOGC mode deprecated
+ * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
 
 Bugs fixed:
  * Bugfix in CudaNdarray.__iadd__. When it is not implemented, return the error.
+ * Typo fixed in tensor/opt.py
+ * THEANO_FLAGS='optimizer=None' now works as expected
+ * Fixed memory leak in error handling on GPU-to-host copy
+ * Fix relating specifically to Python 2.7 on Mac OS X
+ * infer_shape can now handle Python longs
+ * Fixed behaviour of pydotprint's max_label_size option
 
 Crash fixed:
- * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution crash.
+ * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution
+   crash.
 
 Optimization:
  * Optimize 4 pattern of subtensor followed by subtensor.
+ * Gemm inplace optimization on the GPU re-enabled
 
 GPU:
- * Move to the gpu fused elemwise that have other dtype then float32 in them(except float64) if the input and output are float32.
-   * This allow to move elemwise comparaison to the gpu if we cast it to float32 after that.
+ * Move to the gpu fused elemwise that have other dtype then float32 in them
+   (except float64) if the input and output are float32.
+   * This allow to move elemwise comparisons to the GPU if we cast it to
+     float32 after that.
  * Implemented CudaNdarray.ndim to have the same interface in ndarray.
+ * Fixed slowdown caused by multiple chained views on CudaNdarray objects
+ * CudaNdarray_alloc_contiguous changed so as to never try to free
+   memory on a view: new "base" property
+ * Safer decref behaviour in CudaNdarray in case of failed allocations
+ * New GPU implementation of tensor.basic.outer
 
 New features:
  * ProfileMode
     * profile the scan overhead
     * simple hook system to add profiler
     * reordered the output to be in the order of more general to more specific
- * var[vector of index] now work, (grad work recursivly, the direct grad work inplace, gpu work)
+ * var[vector of index] now work, (grad work recursively, the direct grad
+   work inplace, gpu work)
     * limitation: work only of the outer most dimensions.
+ * test_value implementation to allow quick debugging at graph creation time
+ * cuda.root inferred if nvcc is on the path, otherwise defaults to
+   /usr/local/cuda
+ * Better graph printing for graphs involving a scan subgraph
+ *
 
 Documentation:
+ * Better commenting of cuda_ndarray.cu
+ * Fixes in the scan documentation: add missing declarations/print statements
+ * Better error message on failed __getitem__
+ * Updated documentation on profile mode
 
 Unit tests:
  * More strict float comparaison by default
  * Reuse test for subtensor of tensor for gpu tensor(more gpu test)
+ * Tests that check for aliased function inputs and assure appropriate copying
+   (#374)
+ * Better test of copies in CudaNdarray
+ * New tests relating to the new base pointer requirements
 
 Other:
- * ?? a bug?? Correctly put the broadcast flag to True in the output var of a Rehapse op when we receive an int 1 in the new shape.
+ * ?? a bug?? Correctly put the broadcast flag to True in the output var of
+   a Rehapse op when we receive an int 1 in the new shape.
+ * pydotprint: high contrast mode is now the default
+ * More compact printing (ignore leading "Composite" in op names)
 
 Theano 0.3.1 (2011-02-21)
 ----------------------------
