@@ -335,7 +335,7 @@ class PureOp(object):
                 if isinstance(ins, graph.Constant):
                     input_vals.append(ins.value)
                 elif isinstance(ins,SharedVariable):
-                    input_vals.append(ins.get_value(borrow=True))
+                    input_vals.append(ins.get_value(borrow=True, return_internal_type=True))
                 elif isinstance(ins,graph.Variable) and hasattr(ins.tag, 'test_value'):
                     # ensure that the test value is correct
                     input_vals.append(ins.type.filter(ins.tag.test_value))
