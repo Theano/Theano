@@ -154,7 +154,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: cast_policy
 
-    String value: either 'numpy+floatX', 'numpy' or 'custom'
+    String value: either 'numpy+floatX' or 'custom'
 
     Default: 'numpy+floatX'
 
@@ -163,13 +163,12 @@ import theano and print the config variable, as in:
     corresponds to a set of custom rules originally used in
     Theano (which can be partially customized, see e.g. the in-code help of
     ``tensor.NumpyAutocaster``), and is now deprecated.
-    The 'numpy' setting attempts to
-    mimic the numpy casting rules. The default value ('numpy+floatX') does
-    the same, except that
-    it prefers to use float32 numbers instead of float64 when ``config.floatX``
-    is set to 'float32'.
-    Note that both 'numpy' and 'numpy+floatX'
-    behave differently from numpy on purpose in the following situations:
+    The 'numpy+floatX' setting attempts to mimic the numpy casting rules,
+    although it prefers to use float32 numbers instead of float64 when
+    ``config.floatX`` is set to 'float32' and the user uses data that is not
+    explicitly typed as float64 (e.g. regular Python floats).
+    Note that 'numpy+floatX' currently also behaves differently from numpy in
+    the following situations:
        * Depending on the value of ``config.int_division``, the resulting type
          of a division of integer types with the ``/`` operator may not match
          that of numpy.

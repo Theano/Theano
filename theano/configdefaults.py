@@ -17,7 +17,15 @@ AddConfigVar('floatX',
 
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
-        EnumStr('numpy+floatX', 'numpy', 'custom'),
+        EnumStr('numpy+floatX', 'custom',
+                # The 'numpy' policy was originally planned to provide a smooth
+                # transition from numpy. It was meant to behave the same as
+                # numpy+floatX, but keeping float64 when numpy would. However
+                # the current implementation of some cast mechanisms makes it
+                # a bit more complex to add than what was expected, so it is
+                # currently not available.
+                #numpy,
+               ),
         )
 
 AddConfigVar('int_division',
