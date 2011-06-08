@@ -785,7 +785,7 @@ class test_fusion(unittest.TestCase):
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
             (fx-theano.tensor.true_div(fy,ftwo),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div#40
+            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #No c_code for int_div#40
             (fx-(fy/ftwo),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
@@ -805,10 +805,10 @@ class test_fusion(unittest.TestCase):
             (fx-fy+theano.tensor.round(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),
             (ix-iy+theano.tensor.iround(fz),(ix,iy,fz),(ixv,iyv,fzv),1,ixv-iyv+numpy.round(fzv),'int64'),
             # Bit op
-            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv|izv),'float64'),
-            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv^izv),'float64'),#60
-            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv&izv),'float64'),
-            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,fxv-(~iyv),'float64'),
+            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
+            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,fxv-(~iyv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             (fx-theano.tensor.cast(fy,dtype='float64'),(fx,fy),(fxv,fyv),1,
                               fxv-numpy.asarray(fyv,'float64'),'float64'),
@@ -834,6 +834,8 @@ class test_fusion(unittest.TestCase):
         fail3=[]
         fail4=[]
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+            if isinstance(out_dtype, dict):
+                out_dtype = out_dtype[config.cast_policy]
             if gpu and (out_dtype!='float32' or any(i.dtype != 'float32' for i in g.owner.inputs)):
                 print "Skip test %d as the gpu code currently supports only float32" % id
                 continue

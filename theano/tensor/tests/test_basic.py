@@ -3606,11 +3606,13 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == start.type.dtype
-        elif config.cast_policy in ('numpy', 'numpy+floatX'):
+        elif config.cast_policy == 'numpy':
             numpy_dtype = numpy.arange(numpy.array(0, dtype=start.dtype),
                                        numpy.array(1, dtype=stop.dtype),
                                        numpy.array(1, dtype=step.dtype)).dtype
             assert out.dtype == numpy_dtype
+        elif config.cast_policy == 'numpy+floatX':
+            assert out.dtype == config.floatX
         else:
             raise NotImplementedError(config.cast_policy)
         arg_vals = [ (0,5,1), (2,11,4), (-5,1.1,1.2), (1.3,2,-2.1), (10,2,2) ]
@@ -3622,7 +3624,8 @@ class TestARange(unittest.TestCase):
                 expected_val = numpy.arange(start_v, stop_v, step_v,
                                             dtype=start.type.dtype)
             elif config.cast_policy in ('numpy', 'numpy+floatX'):
-                expected_val = numpy.arange(start_v_, stop_v_, step_v_)
+                expected_val = numpy.arange(start_v_, stop_v_, step_v_,
+                                            dtype=out.dtype)
             else:
                 raise NotImplementedError(config.cast_policy)
             assert numpy.all(f_val == expected_val)
