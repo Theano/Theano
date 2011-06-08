@@ -2,8 +2,6 @@
 
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
-
-
 """
 
 __docformat__ = "restructuredtext en"
@@ -331,7 +329,7 @@ class PureOp(object):
 
             # build test input-values
             input_vals = []
-            for ins in node.inputs:
+            for i, ins in enumerate(node.inputs):
                 if isinstance(ins, graph.Constant):
                     input_vals.append(ins.value)
                 elif isinstance(ins,SharedVariable):
@@ -342,10 +340,11 @@ class PureOp(object):
                 else:
                     # no test-value was specified, act accordingly
                     if config.compute_test_value == 'warn':
-                        raise Warning('Cannot compute test value: input %s of Op %s missing default value')
+                        # TODO: use warnings.warn, http://docs.python.org/library/warnings.html#warnings.warn
+                        print >>sys.stderr, ('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
                         run_perform = False
                     elif config.compute_test_value == 'err':
-                        raise ValueError('Cannot compute test value: input %s of Op %s missing default value')
+                        raise ValueError('Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
                     else:
                         # silently skip test
                         run_perform = False
@@ -355,12 +354,23 @@ class PureOp(object):
 
                 # compute output value once with test inputs to validate graph
                 output_storage = [[None]] * len(node.outputs)
-                node.op.perform(node, input_vals, output_storage)
+                try:
+                    node.op.perform(node, input_vals, output_storage)
 
-                # add 'test_value' to output tags, so that downstream ops can use these
-                # numerical values as inputs to their perform method.
-                for (outval, node_output) in zip(output_storage, node.outputs):
-                    node_output.tag.test_value = outval[0]
+                    # add 'test_value' to output tags, so that downstream ops can use these
+                    # numerical values as inputs to their perform method.
+                    for (outval, node_output) in zip(output_storage, node.outputs):
+                        node_output.tag.test_value = outval[0]
+                except utils.MethodNotDefined, e:
+                    # This case happens when the perform method is not defined
+                    # for a certain Op.
+                    #TODO: use the c_thunk?
+                    if config.compute_test_value == 'warn':
+                        # TODO: use warnings.warn
+                        print >>sys.stderr, 'Warning, in compute_test_value:', type(e)
+                        print >>sys.stderr, e
+                    elif config.compute_test_value == 'err':
+                        raise
 
         if self.default_output is not None:
             return node.outputs[self.default_output]
