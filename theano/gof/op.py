@@ -353,7 +353,7 @@ class PureOp(object):
             if run_perform:
 
                 # compute output value once with test inputs to validate graph
-                output_storage = [[None] * len(node.outputs)]
+                output_storage = [[None]] * len(node.outputs)
                 node.op.perform(node, input_vals, output_storage)
 
                 # add 'test_value' to output tags, so that downstream ops can use these
