@@ -426,3 +426,23 @@ import theano and print the config variable, as in:
     means using the default, defined by :attr:`config.numpy.seterr_all`.
 
     This flag's value cannot be modified during the program execution.
+
+.. attribute:: config.compute_test_value
+
+    String Value: ``'off'``, ``'ignore'``, ``'warn'``, ``'raise'``.
+
+    Default: ``'off'``
+
+    Setting this attribute to something other than ``'off'`` activates a
+    debugging mechanism, where Theano executes the graph on-the-fly, as it is
+    being built. This allows the user to spot errors early on (such as
+    dimension mis-match), **before** optimizations are applied.
+   
+    Theano will execute the graph using the Constants and/or shared variables
+    provided by the user. Purely symbolic variables (e.g. x = T.dmatrix()) can be
+    augmented with test values, by writing to their ``'tag.test_value'``
+    attribute (e.g. x.tag.test_value = numpy.random.rand(5,4)).
+
+    ``'warn'`` will result in a UserWarning being raised when some Op inputs
+    do not contain an appropriate test value. ``'raise'`` will instead raise
+    an Exception when a problem is encountered during this debugging phase.
