@@ -337,7 +337,8 @@ class PureOp(object):
                 elif isinstance(ins,SharedVariable):
                     input_vals.append(ins.get_value(borrow=True))
                 elif isinstance(ins,graph.Variable) and hasattr(ins.tag, 'test_value'):
-                    input_vals.append(ins.tag.test_value)
+                    # ensure that the test value is correct
+                    input_vals.append(ins.type.filter(ins.tag.test_value))
                 else:
                     # no test-value was specified, act accordingly
                     if config.compute_test_value == 'warn':
