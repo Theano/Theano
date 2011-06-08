@@ -98,7 +98,7 @@ if 0:
             return x._as_CudaNdarrayVariable() #TODO: pass name and ndim arguments
         return as_tensor_variable(x, name, ndim)
 
-def as_tensor_variable(x, name = None, ndim=None):
+def as_tensor_variable(x, name=None, ndim=None):
     """Return `x`, transformed into a `TensorType`
 
     This function is often used by `make_node` methods of `Op` subclasses to
