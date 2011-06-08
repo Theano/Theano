@@ -6,7 +6,6 @@ from type import Type
 import sys, traceback
 from copy import copy
 from theano.gof.python25 import all
-import numpy
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
@@ -329,7 +328,7 @@ class LocalLinker(Linker):
         # 3. output storage
         # 4. thunks: list of nodes' functions in the order they will be run by the function in (1)
         # 5. order: list of nodes, in the order they will be run by the function in (1)
-        raise MethodNotDefined("make_all", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("make_all", type(self), self.__class__.__name__)
 
 def gc_helper(node_list):
     """
