@@ -7,6 +7,8 @@ import ConfigParser
 import logging
 import warnings
 
+import theano
+
 _logger = logging.getLogger('theano.config')
 
 class TheanoConfigWarning(Warning):
@@ -103,6 +105,21 @@ def _config_print(thing, buf):
         print >> buf, "    Value: ", cv.val
         print >> buf, ""
 
+
+def get_config_md5():
+    """
+    Return a string md5 of the current config options. It should be such that
+    we can safely assume that two different config setups will lead to two
+    different strings.
+
+    We only take into account config options for which `in_c_key` is True.
+    """
+    all_opts = sorted([c for c in _config_var_list if c.in_c_key],
+                      key=lambda cv: cv.fullname)
+    return theano.gof.cc.hash_from_code('\n'.join(
+                    ['%s = %s' % (cv.fullname, cv.val) for cv in all_opts]))
+
+
 class TheanoConfigParser(object):
     #properties are installed by AddConfigVar
     _i_am_a_config_class = True
@@ -110,6 +127,7 @@ class TheanoConfigParser(object):
         sio = StringIO.StringIO()
         _config_print(self.__class__, sio)
         return sio.getvalue()
+
 # N.B. all instances of TheanoConfigParser give access to the same properties.
 config = TheanoConfigParser()
 
@@ -124,17 +142,27 @@ config = TheanoConfigParser()
 # - The subtrees provide the same interface as the root
 # - ConfigParser subclasses control get/set of config properties to guard against craziness.
 
-def AddConfigVar(name, doc, configparam, root=config):
+def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     """Add a new variable to theano.config
 
     :type name: string for form "[section0.[section1.[etc]]].option"
     :param name: the full name for this configuration variable.
+
     :type doc: string
     :param doc: What does this variable specify?
+
     :type configparam: ConfigParam instance
-    :param configparam: an object for getting and setting this configuration  parameter
+    :param configparam: an object for getting and setting this configuration parameter
+
     :type root: object
-    :param root: used for recusive calls -- don't provide an argument for this parameter.
+    :param root: used for recusive calls -- do not provide an argument for this parameter.
+
+    :type in_c_key: boolean
+    :param in_c_key: If True, then whenever this config option changes, the
+    key associated to compiled C modules also changes, i.e. it may trigger a
+    compilation of these modules (this compilation will only be partial if it
+    turns out that the generated C code is unchanged). Set this option to False
+    only if you are confident this option should not affect C code compilation.
 
     :returns: None
     """
@@ -155,11 +183,13 @@ def AddConfigVar(name, doc, configparam, root=config):
         newroot = getattr(root, sections[0])
         if not getattr(newroot, '_i_am_a_config_class', False) or isinstance(newroot, type):
             raise TypeError('Internal config nodes must be config class instances', newroot)
-        return AddConfigVar('.'.join(sections[1:]), doc, configparam, root=newroot)
+        return AddConfigVar('.'.join(sections[1:]), doc, configparam,
+                            root=newroot, in_c_key=in_c_key)
     else:
         if hasattr(root, name):
             raise AttributeError('This name is already taken', configparam.fullname)
         configparam.doc = doc
+        configparam.in_c_key = in_c_key
         configparam.__get__() # trigger a read of the value from config files and env vars
         setattr(root.__class__, sections[0], configparam)
         _config_var_list.append(configparam)

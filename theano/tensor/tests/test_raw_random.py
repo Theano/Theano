@@ -185,7 +185,7 @@ class T_random_function(unittest.TestCase):
                 broadcastable=(False, True, True))()
         high = tensor.TensorType(dtype='float64',
                 broadcastable=(True, True, True, False))()
-        post_out2, out2 = uniform(rng_R, size=None, ndim=2, low=low, high=high)
+        post_out2, out2 = uniform(rng_R, size=None, ndim=2, low=low, high=high, dtype='float64')
         self.assertEqual(out2.ndim, 4)
         self.assertEqual(out2.broadcastable, (True,False,True,False))
 
@@ -585,7 +585,7 @@ class T_random_function(unittest.TestCase):
         rng_R = random_state_type()
         low = tensor.dvector()
         high = tensor.dcol()
-        post_r, out = uniform(rng_R, low=low, high=high)
+        post_r, out = uniform(rng_R, low=low, high=high, dtype='float64')
         assert out.ndim == 2
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
 

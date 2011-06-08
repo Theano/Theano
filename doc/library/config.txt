@@ -144,13 +144,54 @@ import theano and print the config variable, as in:
 
 .. attribute:: floatX
 
-    String value: either 'float64' or 'float32'.
+    String value: either 'float64' or 'float32'
 
     Default: 'float64'
 
     This sets the default dtype returned by tensor.matrix(), tensor.vector(),
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
+
+.. attribute:: cast_policy
+
+    String value: either 'numpy+floatX' or 'custom'
+
+    Default: 'numpy+floatX'
+
+    This specifies how data types are implicitly figured out in Theano, e.g. for
+    constants or in the results of arithmetic operations. The 'custom' value
+    corresponds to a set of custom rules originally used in
+    Theano (which can be partially customized, see e.g. the in-code help of
+    ``tensor.NumpyAutocaster``), and is now deprecated.
+    The 'numpy+floatX' setting attempts to mimic the numpy casting rules,
+    although it prefers to use float32 numbers instead of float64 when
+    ``config.floatX`` is set to 'float32' and the user uses data that is not
+    explicitly typed as float64 (e.g. regular Python floats).
+    Note that 'numpy+floatX' currently also behaves differently from numpy in
+    the following situations:
+       * Depending on the value of ``config.int_division``, the resulting type
+         of a division of integer types with the ``/`` operator may not match
+         that of numpy.
+       * On mixed scalar / array operations, numpy tries to prevent the scalar
+         from upcasting the array's type unless it is of a fundamentally
+         different type. Theano does not attempt to do the same at this point,
+         so you should be careful that scalars may upcast arrays when they
+         would not when using numpy.
+
+.. attribute:: int_division
+
+    String value: either 'int', 'floatX' or 'raise'
+
+    Default: 'int'
+
+    Specifies what to do when one tries to compute ``x / y``, where both ``x`` and
+    ``y`` are of integer types (possibly unsigned). 'int' means an integer is
+    returned (as in Python 2.X), but this behavior is deprecated. 'floatX'
+    returns a number of type given by ``config.floatX``. 'raise' is the safest
+    choice (and will become default in a future release of Theano) and raises
+    an error when one tries to do such an operation, enforcing the use of the
+    integer division operator (``//``) (if a float result is intended, either
+    cast one of the arguments to a float, or use ``x.__truediv__(y)``).
 
 .. attribute:: mode
 

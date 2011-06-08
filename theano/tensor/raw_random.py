@@ -384,7 +384,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
     return ret_indices
 
 
-def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.config.floatX):
+def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype='floatX'):
     """
     Sample from a uniform distribution between low and high.
 
@@ -394,12 +394,28 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.
     If size is None, the output shape will be determined by the shapes
     of low and high.
     """
-    low = tensor.as_tensor_variable(low)
-    high = tensor.as_tensor_variable(high)
+    if dtype == 'floatX':
+        dtype = theano.config.floatX
+    # Handle special case of untyped Python int / float: we cast them into
+    # `dtype` to ensure they cannot upcast the end result accidentally.
+    def as_tensor(x):
+        if isinstance(x, int) or isinstance(x, float):
+            return tensor.constant(x, dtype=dtype)
+        else:
+            return tensor.as_tensor_variable(x)
+    low = as_tensor(low)
+    high = as_tensor(high)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, low, high)
-    dtype = tensor.scal.upcast(dtype, low.dtype, high.dtype)
+    out_dtype = tensor.scal.upcast(dtype, low.dtype, high.dtype)
+    # It would be confusing if the resulting dtype was not the same as the one
+    # passed as argument to the function.
+    assert out_dtype == dtype, (
+            "Output dtype should be %s, but it would be %s given the provided "
+            "low (%s) and high (%s) arguments: cast those into a more "
+            "appropriate type to solve this issue" %
+            (dtype, out_dtype, low.dtype, high.dtype))
     op = RandomFunction('uniform',
-            tensor.TensorType(dtype=dtype, broadcastable=bcast) )
+            tensor.TensorType(dtype=out_dtype, broadcastable=bcast) )
     return op(random_state, size, low, high)
 
 def binomial(random_state, size=None, n=1, p=0.5, ndim=None, dtype='int64', prob=None):

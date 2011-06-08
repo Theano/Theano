@@ -7,6 +7,7 @@ from copy import copy
 import re #for set_compiledir
 import os, sys, StringIO
 
+
 if sys.version_info[:2] >= (2,5):
     import hashlib
     def hash_from_code(msg):
@@ -16,6 +17,13 @@ else:
     def hash_from_code(msg):
         return md5.new(msg).hexdigest()
 
+
+def hash_from_file(file_path):
+    """Return the MD5 hash of a file."""
+    return hash_from_code(open(file_path, 'rb').read())
+
+
+import theano
 from theano.gof.python25 import all
 from theano import config
 
@@ -43,6 +51,7 @@ import cmodule
 
 import logging
 _logger=logging.getLogger("theano.gof.cc")
+_logger.setLevel(logging.WARN)
 def info(*args):
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
@@ -791,7 +800,7 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries,
+            'CLinker.cmodule_key', compilation args, libraries, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -858,10 +867,16 @@ class CLinker(link.Linker):
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
 
-        # first we put the header, compile_args, library names into the signature
+        # First we put the header, compile_args, library names and config md5
+        # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+        # IMPORTANT: The 'md5' prefix is used to isolate the compilation
+        # parameters from the rest of the key. If you want to add more key
+        # elements, they should be before this md5 hash if and only if they
+        # can lead to a different compiled file with the same source code.
+        sig.append('md5:' + theano.configparser.get_config_md5())
 
         # technically this should only be appended for gcc-compiled Ops
         # and the flags of other compilers should be inserted here... but it's not clear how to
@@ -943,11 +958,30 @@ class CLinker(link.Linker):
 
     def compile_cmodule(self, location=None):
         """
-        This method is a callback for `ModuleCache.module_from_key`
+        Compile the module and return it.
+        """
+        # Go through all steps of the compilation process.
+        for step_result in self.compile_cmodule_by_step(location=location):
+            pass
+        # And return the output of the last step, which should be the module
+        # itself.
+        return step_result
+
+    def compile_cmodule_by_step(self, location=None):
+        """
+        This method is a callback for `ModuleCache.module_from_key`.
+
+        It is a generator (thus the 'by step'), so that:
+            - it first yields the module's C code
+            - it last yields the module itself
+            - it may yield other intermediate outputs in-between if needed
+              in the future (but this is not currently the case)
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.build_dynamic_module()
+        src_code = mod.code()
+        yield src_code
         get_lock()
         try:
             debug("LOCATION", location)
@@ -955,7 +989,7 @@ class CLinker(link.Linker):
             libs = self.libraries()
             preargs = self.compile_args()
             if c_compiler.__name__=='nvcc_module_compile_str' and config.lib.amdlibm:
-                #this lib don't work correctly with nvcc in device code.
+                # This lib does not work correctly with nvcc in device code.
                 if '<amdlibm.h>' in mod.includes:
                     mod.includes.remove('<amdlibm.h>')
                 if '-DREPLACE_WITH_AMDLIBM' in preargs:
@@ -965,7 +999,7 @@ class CLinker(link.Linker):
             try:
                 module = c_compiler(
                     module_name=mod.name,
-                    src_code = mod.code(),
+                    src_code=src_code,
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
@@ -977,8 +1011,7 @@ class CLinker(link.Linker):
         finally:
             release_lock()
 
-        return module
-
+        yield module
 
     def build_dynamic_module(self):
         """Return a cmodule.DynamicModule instance full of the code for our env.
@@ -1041,10 +1074,10 @@ class CLinker(link.Linker):
         except KeyError:
             key = None
         if key is None:
-            #if we can't get a key, then forget the cache mechanism
+            # If we can't get a key, then forget the cache mechanism.
             module = self.compile_cmodule()
         else:
-            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule, keep_lock=keep_lock)
+            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule_by_step, keep_lock=keep_lock)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments
