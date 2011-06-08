@@ -10,6 +10,7 @@ from theano import config
 import graph
 import numpy
 import utils
+import warnings
 import logging
 from theano import config
 from env import Env
@@ -327,7 +328,7 @@ class PureOp(object):
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
 
-        if config.compute_test_value != 'False':
+        if config.compute_test_value != 'off':
             # avoid circular import
             from theano.compile.sharedvalue import SharedVariable
             run_perform = True
@@ -345,14 +346,15 @@ class PureOp(object):
                 else:
                     # no test-value was specified, act accordingly
                     if config.compute_test_value == 'warn':
-                        # TODO: use warnings.warn, http://docs.python.org/library/warnings.html#warnings.warn
-                        print >>sys.stderr, ('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
+                        warnings.warn('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node), stacklevel=2)
                         run_perform = False
-                    elif config.compute_test_value == 'err':
+                    elif config.compute_test_value == 'raise':
                         raise ValueError('Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
-                    else:
+                    elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
+                    else:
+                        raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
 
             # if all inputs have test-values, run the actual op
             if run_perform:
@@ -371,10 +373,8 @@ class PureOp(object):
                     # for a certain Op.
                     #TODO: use the c_thunk?
                     if config.compute_test_value == 'warn':
-                        # TODO: use warnings.warn
-                        print >>sys.stderr, 'Warning, in compute_test_value:', type(e)
-                        print >>sys.stderr, e
-                    elif config.compute_test_value == 'err':
+                        warnings.warn('Warning, in compute_test_value:' + type(e), stacklevel=2)
+                    elif config.compute_test_value == 'raise':
                         raise
 
         if self.default_output is not None:
