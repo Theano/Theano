@@ -27,10 +27,11 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer, pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_constant_value
+from basic import get_constant_value, ShapeError
 
 
 # Utilities
+
 
 def out2in(*local_opts):
     """WRITEME """
@@ -528,7 +529,7 @@ class ShapeFeature(object):
     the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
     particular sizes.
 
-    If you can determine the shape only in some case, return NotImplementedError when you can't
+    In cases where you cannot figure out the shape, raise a ShapeError.
 
     .. note::
 
@@ -719,8 +720,15 @@ class ShapeFeature(object):
 
         try:
             o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
-        except NotImplementedError:
+        except ShapeError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+        except NotImplementedError, e:
+            raise NotImplementedError(
+                    'Code called by infer_shape failed raising a '
+                    'NotImplementedError. Raising NotImplementedError to '
+                    'indicate that a shape cannot be computed is no longer '
+                    'supported, and one should now use tensor.ShapeError '
+                    'instead. The original exception message is: %s' % e)
         except Exception, e:
             _logger.error('Failed to infer_shape from Op %s.\nInput shapes:%s\nException encountered during infer_shape: %s\nException message: %s\nTraceback: %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
@@ -3427,11 +3435,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
+        As part of specialization, we fuse two consecutive elemwise Ops of the
+        same shape.
 
-        For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
-        The number of dimension is validated at call time by theano itself.
-
+        For mixed dtype, we let the Composite op do the cast. It lets the C
+        compiler do the cast.
+        The number of dimensions is validated at call time by theano itself.
         """
         # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
         # TODO: use broadcast flag?
@@ -3547,7 +3556,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if new_nb_input != len(inputs) or len(s_inputs) != len(inputs):
             raise Exception("""Something has gone wrong with the elemwise
 fusion optimization. We skip this optimization. You can ignore this message,
-your code will run correctly, but maybe slower.""")
+your code will run correctly, but may be slower.""")
 
         otype = node.outputs[0].type
         s_new_out=node.op.scalar_op(*s_g)
