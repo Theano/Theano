@@ -479,6 +479,35 @@ def test_gemm_factor():
     assert [(1.0, X), (1.0, Y)] == _factor_canonicalized([(1.0, X), (1.0, Y)])
     assert [(2.0, X)] == _factor_canonicalized([(1.0, X),(1.0, X)])
 
+def test_upcasting_scalar_nogemv():
+    # Test that the optimization does not crash when the scale has an incorrect
+    # dtype, and forces upcasting of the result
+    v = T.fvector('v')
+    w = T.fmatrix('w')
+    t = T.fvector('t')
+    alpha = T.dscalar('a')
+
+    rval = T.dot(w, v) * alpha + t
+
+    f = theano.function([w, v, t, alpha], rval)
+    t = f.maker.env.toposort()
+    assert numpy.sum([isinstance(n.op, Gemv) for n in t]) == 0
+    theano.printing.debugprint(f, print_type=True)
+
+def test_upcasting_scalar_nogemm():
+    # Test that the optimization does not crash when the scale has an incorrect
+    # dtype, and forces upcasting of the result
+    v = T.fmatrix('v')
+    w = T.fmatrix('w')
+    t = T.fmatrix('t')
+    alpha = T.dscalar('a')
+
+    rval = T.dot(w, v) * alpha + t
+
+    f = theano.function([w, v, t, alpha], rval)
+    t = f.maker.env.toposort()
+    assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
+    theano.printing.debugprint(f, print_type=True)
 
 def test_gemm_nested():
     X,Y,Z,a,b = T.dmatrix('X'), T.dmatrix('Y'), T.dmatrix('Z'), T.dscalar('a'), T.dscalar('b')

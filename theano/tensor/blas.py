@@ -822,9 +822,14 @@ def _factor_canonicalized(lst):
     # once i has touched a list element, it is permantent
     lst = list(lst)
     #print 'FACTOR', lst
-    #for (a,b) in lst:
-        #theano.printing.debugprint(a)
-        #theano.printing.debugprint(b)
+    #for t in lst:
+    #    if not isinstance(t, (list, tuple)):
+    #        t = (t,)
+    #    for e in t:
+    #        try:
+    #            theano.printing.debugprint(e)
+    #        except TypeError:
+    #            print e, type(e)
     i = 0
     while i < len(lst)-1:
         try:
@@ -904,9 +909,8 @@ def _gemm_from_node2(node):
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
         #print "RVAL", rval
-        if rval:
-            assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
-        return rval
+        if rval and (rval[0].type == node.outputs[0].type):
+            return rval
 
 class GemmOptimizer(Optimizer):
     """Graph optimizer for inserting Gemm operations"""
