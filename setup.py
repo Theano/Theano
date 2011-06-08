@@ -105,12 +105,13 @@ if not release:
 
     a = open(filename, 'w')
     try:
-        a.write(cnt % {'version': VERSION,
-                       'full_version' : FULL_VERSION,
-                       'hg_revision' : HG_REVISION,
-                       'isrelease': str(ISRELEASED)})
-    except Exception, e:
-        print e
+    	try:
+        	a.write(cnt % {'version': VERSION,
+                       	'full_version' : FULL_VERSION,
+                       	'hg_revision' : HG_REVISION,
+                       	'isrelease': str(ISRELEASED)})
+    	except Exception, e:
+        	print e
     finally:
         a.close()
 
