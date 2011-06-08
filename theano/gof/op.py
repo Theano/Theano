@@ -444,6 +444,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         :param no_recycling: list of variables for which it is forbidden to
                 reuse memory allocated by a previous call.
+
+        :note: If the thunk consults the storage_map on every call, it is safe
+            for it to ignore the no_recycling argument, because elements of the
+            no_recycling list will have a value of None in the storage map.  If
+            the thunk can potentially cache return values (like CLinker does),
+            then it must not do so for variables in the no_recycling list.
         """
         logger = logging.getLogger('theano.Op')
 
