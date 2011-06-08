@@ -112,7 +112,7 @@ Misc
 ----
 The sparse equivalent of dmatrix is csc_matrix and csr_matrix.
 
-:api:`TrueDot` vs. :api:`StructuredDot`
+:api:`Dot` vs. :api:`StructuredDot`
 ----------------------------------------
 
 Often when you use a sparse matrix it is because there is a meaning to the

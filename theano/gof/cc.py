@@ -1207,54 +1207,21 @@ class OpWiseCLinker(link.LocalLinker):
             else:
                 post_thunk_old_storage = None
 
+            compute_map = {}
+            for k in storage_map:
+                compute_map[k] = [k.owner is None]
+
             thunks = []
+            for node in order:
+                # Maker sure we use the C version of the code whenever
+                # possible
+                node._op_use_c_code = True
+                thunks += [node.op.make_thunk(node,
+                                        storage_map,
+                                        compute_map,
+                                        no_recycling)]
+
             for node_idx, node in enumerate(order):
-                node_input_storage = [storage_map[r] for r in node.inputs]
-                node_output_storage = [storage_map[r] for r in node.outputs]
-                debug('Compiling node %i of graph' % node_idx)
-                thunk = None
-                # If the op don't override the c_code function, we don't try
-                # to generate a cthunk! Otherwise we won't find it in the compilation cache
-                # and try to compile it. This will get the lock even if we don't need it!
-                if node.op.c_code.im_func is not op.Op.c_code.im_func:
-                    try:
-                        e = Env(*graph.clone(node.inputs, node.outputs))
-                        if self.allow_gc:
-                            # if we allow garbage collection of intermediate nodes
-                            # we must forbid this C implementatio from cacheing its own
-                            # reference to its output
-                            node_no_recycling = e.outputs
-                        else:
-                            node_no_recycling = [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling]
-                        cl = CLinker().accept(e, node_no_recycling)
-
-                        debug('Trying CLinker.make_thunk')
-                        thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                            input_storage = node_input_storage,
-                            output_storage = node_output_storage,
-                            keep_lock=getattr(get_lock,"n_lock",0) != orig_n_lock)
-                        assert callable(thunk)
-                        thunk.inputs = node_input_storage
-                        thunk.outputs = node_output_storage
-                        thunks.append(thunk)
-                        do_python_thunk = False
-                    except (NotImplementedError, utils.MethodNotDefined):
-                        thunk = None
-
-                if thunk is None:
-                    if self.fallback_on_perform:
-                        debug('Falling back on perform')
-                        p = node.op.perform
-                        # default arguments are stored in the closure of `thunk`
-                        def thunk(p=p, i=node_input_storage, o=node_output_storage,n=node):
-                            return p(n, [x[0] for x in i], o)
-                        #thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
-                        thunk.inputs = node_input_storage
-                        thunk.outputs = node_output_storage
-                        thunk.perform = p
-                        thunks.append(thunk)
-                    else:
-                        raise NotImplementedError("We where not able to use c_code and perform code for this node", node)
 
                 if self.allow_gc:
                     post_thunk_old_storage.append([storage_map[input]

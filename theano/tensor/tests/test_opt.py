@@ -2674,9 +2674,9 @@ def test_make_vector():
 
 
         s = mv.sum()
-        gb = T.grad(s, b, assume_continuously_differentiable=True)
-        gi = T.grad(s, i, assume_continuously_differentiable=True)
-        gd = T.grad(s, d, assume_continuously_differentiable=True)
+        gb = T.grad(s, b, disconnected_inputs='ignore')
+        gi = T.grad(s, i, disconnected_inputs='ignore')
+        gd = T.grad(s, d, disconnected_inputs='ignore')
         #print 'gb =', gb
         #print 'gi =', gi
         #print 'gd =', gd

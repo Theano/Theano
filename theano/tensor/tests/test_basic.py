@@ -3346,7 +3346,7 @@ class test_grad(unittest.TestCase):
         o = test_grad.O()
         a1 = o.make_node()
         g = grad(a1.outputs[0], a1.outputs[1],
-                 assume_continuously_differentiable = True)
+                 disconnected_inputs='ignore')
         self.assertTrue(g.owner.op == fill)
         self.assertTrue(g.owner.inputs[1].data == 0)
         self.assertRaises(ValueError, grad, a1.outputs[0], 'wtf')
@@ -3356,7 +3356,7 @@ class test_grad(unittest.TestCase):
         o = test_grad.O()
         a1 = o.make_node()
         g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')],
-                        assume_continuously_differentiable = True)
+                        disconnected_inputs='ignore')
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
         self.assertTrue(g2.owner.op == fill)
@@ -3366,7 +3366,7 @@ class test_grad(unittest.TestCase):
         """Ensure that a zero gradient has the proper shape."""
         x = dmatrix()
         f = theano.function([x], grad(dscalar(), x,
-                                      assume_continuously_differentiable= True))
+                                      disconnected_inputs='ignore'))
         a = numpy.ones((3, 7))
         self.assertTrue((f(a) == 0).all())  # Zero gradient.
         self.assertTrue(a.shape == f(a).shape)  # With proper shape.
