@@ -503,7 +503,7 @@ def pydotprint(fct, outfile=None,
             dstr = 'val='+str(numpy.asarray(var.data))
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            varstr = '%s [%s]'% (dstr, str(var.type))
+            varstr = '%s %s'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
             if var_with_name_simple:
                 varstr = input_update[var].variable.name
@@ -709,7 +709,7 @@ def pydotprint_variables(vars,
             dstr = 'val='+str(var.data)
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            varstr = '%s [%s]'% (dstr, str(var.type))
+            varstr = '%s %s'% (dstr, str(var.type))
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
