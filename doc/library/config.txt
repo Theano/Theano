@@ -156,13 +156,13 @@ import theano and print the config variable, as in:
 
     String value: either 'numpy+floatX' or 'custom'
 
-    Default: 'numpy+floatX'
+    Default: 'custom'
 
     This specifies how data types are implicitly figured out in Theano, e.g. for
     constants or in the results of arithmetic operations. The 'custom' value
     corresponds to a set of custom rules originally used in
     Theano (which can be partially customized, see e.g. the in-code help of
-    ``tensor.NumpyAutocaster``), and is now deprecated.
+    ``tensor.NumpyAutocaster``), and will be deprecated in the future.
     The 'numpy+floatX' setting attempts to mimic the numpy casting rules,
     although it prefers to use float32 numbers instead of float64 when
     ``config.floatX`` is set to 'float32' and the user uses data that is not
@@ -176,7 +176,8 @@ import theano and print the config variable, as in:
          from upcasting the array's type unless it is of a fundamentally
          different type. Theano does not attempt to do the same at this point,
          so you should be careful that scalars may upcast arrays when they
-         would not when using numpy.
+         would not when using numpy. This behavior should change in the near
+         future.
 
 .. attribute:: int_division
 
