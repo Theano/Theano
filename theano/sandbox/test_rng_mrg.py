@@ -593,4 +593,3 @@ def test_multinomial():
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
         numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
-
