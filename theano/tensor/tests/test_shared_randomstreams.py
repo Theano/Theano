@@ -409,7 +409,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         random = RandomStreams(utt.fetch_seed())
         low = tensor.dvector()
         high = tensor.dcol()
-        out = random.uniform(low=low, high=high)
+        out = random.uniform(low=low, high=high, dtype='float64')
         assert out.ndim == 2
         f = function([low, high], out)
 
