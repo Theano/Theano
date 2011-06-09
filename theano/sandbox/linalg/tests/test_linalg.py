@@ -2,7 +2,7 @@
 import numpy
 from theano import tensor, function
 
-from .ops import *
+from theano.sandbox.linalg.ops import *
 
 if 0:
     def test_cholesky():
