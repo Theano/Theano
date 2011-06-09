@@ -1,7 +1,6 @@
 import numpy
 
-from theano.gof import Variable, Op, utils, Type, Constant,  Value
-from theano.tensor.tsor_apply import Apply
+from theano.gof import Variable, Op, utils, Type, Constant,  Value, Apply
 
 from theano.tensor import as_tensor_variable, dot, DimShuffle
 from theano import tensor
