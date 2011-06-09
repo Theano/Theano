@@ -323,7 +323,8 @@ class ModuleCache(object):
     tmpdirs without corresponding .pkl files.  These modules and their directories are erased
     by subsequent processes' refresh() functions.
 
-    Two different keys are mapped to the same module when:
+    Two different keys are mapped to the same module when all conditions below
+    are met:
         - They have the same version.
         - They share the same compilation options in their ``rest`` part (see
           ``CLinker.cmodule_key_`` for how this part is built).
