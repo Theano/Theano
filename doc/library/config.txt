@@ -167,8 +167,10 @@ import theano and print the config variable, as in:
     although it prefers to use float32 numbers instead of float64 when
     ``config.floatX`` is set to 'float32' and the user uses data that is not
     explicitly typed as float64 (e.g. regular Python floats).
-    Note that 'numpy+floatX' currently also behaves differently from numpy in
-    the following situations:
+    Note that 'numpy+floatX' is not currently behaving exactly as planned (it
+    is a work-in-progress), and thus you should consider it as experimental.
+    At the moment it behaves differently from numpy in the following
+    situations:
        * Depending on the value of ``config.int_division``, the resulting type
          of a division of integer types with the ``/`` operator may not match
          that of numpy.
