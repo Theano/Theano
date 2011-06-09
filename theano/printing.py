@@ -392,8 +392,10 @@ default_colorCodes = {'GpuFromHost' : 'red',
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
-               high_contrast=True, cond_highlight = None, colorCodes = None,
-               max_label_size=50, scan_graphs = False):
+               high_contrast=True, cond_highlight=None, colorCodes=None,
+               max_label_size=50, scan_graphs=False,
+               var_with_name_simple=False
+               ):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
@@ -493,14 +495,20 @@ def pydotprint(fct, outfile=None,
             return var_str[var]
 
         if var.name is not None:
-            varstr = 'name='+var.name+" "+str(var.type)
+            if var_with_name_simple:
+                varstr = var.name
+            else:
+                varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
             dstr = 'val='+str(numpy.asarray(var.data))
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
             varstr = '%s [%s]'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
-            varstr = input_update[var].variable.name+" "+str(var.type)
+            if var_with_name_simple:
+                varstr = input_update[var].variable.name
+            else:
+                varstr = input_update[var].variable.name+" "+str(var.type)
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
@@ -667,7 +675,8 @@ def pydotprint_variables(vars,
                          format='png',
                          depth=-1,
                          high_contrast=True, colorCodes=None,
-                         max_label_size=50):
+                         max_label_size=50,
+                         var_with_name_simple=False):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
 
@@ -692,7 +701,10 @@ def pydotprint_variables(vars,
             return var_str[var]
 
         if var.name is not None:
-            varstr = 'name='+var.name
+            if var_with_name_simple:
+                varstr = var.name
+            else:
+                varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
             dstr = 'val='+str(var.data)
             if '\n' in dstr:
