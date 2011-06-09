@@ -413,7 +413,7 @@ complex_types = complex64, complex128
 
 discrete_types = int_types + uint_types
 continuous_types = float_types + complex_types
- 
+
 class _scalar_py_operators:
 
     #UNARY
