@@ -1,6 +1,8 @@
-
 import numpy
+
+import theano
 from theano import tensor, function
+from theano.tensor.basic import _allclose
 
 from theano.sandbox.linalg.ops import *
 
@@ -33,7 +35,7 @@ def test_inverse_correctness():
     #todo: unittest randomseed
     rng = numpy.random.RandomState(12345)
 
-    r = rng.randn(4,4)
+    r = rng.randn(4,4).astype(theano.config.floatX)
 
     x = tensor.matrix()
     xi = matrix_inverse(x)
@@ -45,8 +47,8 @@ def test_inverse_correctness():
     rir = numpy.dot(ri,r)
     rri = numpy.dot(r,ri)
 
-    assert numpy.allclose(numpy.identity(4), rir), rir
-    assert numpy.allclose(numpy.identity(4), rri), rri
+    assert _allclose(numpy.identity(4), rir), rir
+    assert _allclose(numpy.identity(4), rri), rri
 
 def test_inverse_grad():
 
