@@ -411,7 +411,10 @@ class ProfileMode(Mode):
                     apply_time, op_cimpl, message, outputs_size,
                     other_time)
 
-        if outputs_size:
+        if not outputs_size:
+            print """\nProfile of Theano intermediate memory disabled.
+ To enabled, put the Theano flag ProfileMode.profile_memory to True."""
+        else:
             fct_memory={}#env->dict(node->(outputs size))
             var_mem = {}
             for node,val in outputs_size.items():
@@ -421,6 +424,7 @@ class ProfileMode(Mode):
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
+            print "(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)"
             nb_skipped = 0
             for env,nodes_mem in fct_memory.iteritems():
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])

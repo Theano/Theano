@@ -2630,7 +2630,7 @@ def mod_check(x, y):
     if (as_tensor_variable(x).dtype in complex_dtypes or
         as_tensor_variable(y).dtype in complex_dtypes):
         # Currently forbidden.
-        scal.raise_complex_error()
+        raise scal.Mod.complex_error
     else:
         return mod(x, y)
 

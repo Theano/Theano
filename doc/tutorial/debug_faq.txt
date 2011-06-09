@@ -17,10 +17,10 @@ Isolating the problem/Testing Theano compiler
 You can run your Theano function in a DebugMode(:ref:`using_debugmode`). This test the Theano optimizations and help to find where NaN, inf and other problem come from.
 
 
-Can I get Theano to test my graph incrementally, as it's being built ?
------------------------------------------------------------------------
+Interactive Debugger
+--------------------
 
-Yes ! As of v.0.4.0, Theano has a new mechanism by which graphs are executed
+As of v.0.4.0, Theano has a new mechanism by which graphs are executed
 on-the-fly, before a theano.function is ever compiled. Since optimizations
 haven't been applied at this stage, it is easy for the user to locate the
 source of this bug. This functionality is enabled through the config flag
