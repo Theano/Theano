@@ -1056,7 +1056,8 @@ def int_or_true_div(x_discrete, y_discrete):
                     "please use x // y for an integer division "
                     "(set `config.int_division = raise` to track the origin "
                     "of this warning)",
-                    DeprecationWarning)
+                    DeprecationWarning,
+                    stacklevel=4)
             return 'int'
         elif config.int_division == 'floatX':
             return 'true'
