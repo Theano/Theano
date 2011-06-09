@@ -57,6 +57,7 @@ class TestComputeTestValue(unittest.TestCase):
             self.assertRaises(UserWarning, T.dot, x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
+            warnings.resetwarnings()
 
     def test_string_var(self):
         orig_compute_test_value = theano.config.compute_test_value
