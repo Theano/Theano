@@ -844,6 +844,16 @@ class T_random_function(unittest.TestCase):
         assert numpy.all(abs(val1) <= 1)
 
 
+    def test_dtype_normal_uniform_687(self):
+        # Regression test for #687.
+        rng_R = random_state_type()
+        assert uniform(rng_R, low=tensor.constant(0, dtype='float64'),
+                       dtype='float32')[1].dtype == 'float32'
+
+        assert normal(rng_R, avg=tensor.constant(0, dtype='float64'),
+                      dtype='float32')[1].dtype == 'float32'
+
+
 if __name__ == '__main__':
     from theano.tests import main
     main("test_raw_random")
