@@ -1126,26 +1126,23 @@ int_div = IntDiv(upcast_out, name = 'int_div')
 floor_div = int_div
 
 
-def raise_complex_error():
-    raise ComplexError(
-                "Theano does not support the mod operator (%) on "
-                "complex numbers, since numpy deprecated it.")
-
-
 def mod_check(x, y):
     if (as_scalar(x).type in complex_types or
         as_scalar(y).type in complex_types):
         # Currently forbidden.
-        raise_complex_error()
+        raise Mod.complex_error
     else:
         return mod(x, y)
 
 
 class Mod(BinaryScalarOp):
+    complex_error = ComplexError(
+                "Theano does not support the mod operator (%) on "
+                "complex numbers, since numpy deprecated it.")
 
     def impl(self, x, y):
         if isinstance(x, numpy.complex) or isinstance(y, numpy.complex):
-            raise_complex_error()
+            raise self.complex_error
         return x % y
 
     def c_code_cache_version(self):
@@ -1184,7 +1181,7 @@ class Mod(BinaryScalarOp):
             x_mod_ypm = "fmod(%(x)s,-%(y)s)"%locals()
             x_mod_ymp = "fmod(-%(x)s,%(y)s)"%locals()
         elif str(t) in imap(str, complex_types):
-            raise_complex_error()
+            raise self.complex_error
         else:
             raise NotImplementedError('type not supported', type)
 
