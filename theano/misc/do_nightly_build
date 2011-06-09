@@ -10,7 +10,10 @@ ls ${COMPILEDIR}|wc -l
 FLAGS=warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,compiledir=${COMPILEDIR}
 export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 
-cd ${ROOT_CWD}
+cd ${ROOT_CWD}/Theano
+hg summary
+cd ..
+
 echo "executing nosetests with mode=FAST_COMPILE"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} Theano
 echo "nb element in the compiledir:"
