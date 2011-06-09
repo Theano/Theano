@@ -3771,7 +3771,7 @@ class TestARange(unittest.TestCase):
                 else:
                     # Follow numpy.
                     assert arange_dtype == numpy_dtype
-                
+
                 # Test with two arguments.
                 for stop_dtype in get_numeric_types():
                     arange_dtype = arange(
