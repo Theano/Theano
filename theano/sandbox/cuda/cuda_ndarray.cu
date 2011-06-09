@@ -2049,6 +2049,7 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
 PyObject *
 CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
 {
+    int verbose = 0;
     PyObject *gpu_ptr = NULL;
     PyObject *shapes = NULL;
     PyObject *strides = NULL;
@@ -2062,7 +2063,7 @@ CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
     if (! PyArg_ParseTuple(args, "OOOO", &gpu_ptr, &shapes, &strides, &base))
         return NULL;
 
-    printf("In CudaNdarray_from_gpu_pointer\n");
+    if (verbose) printf("In CudaNdarray_from_gpu_pointer\n");
     if (!PyLong_Check(gpu_ptr))
     {
         PyErr_Format(PyExc_Exception, "CudaNdarray_from_gpu_pointer: The gpu pointor is not an long");
@@ -2133,7 +2134,7 @@ CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
         Py_DECREF(dim_);
         Py_DECREF(strd_);
     }
-    printf("CudaNdarray_from_gpu_pointer normal return\n");
+    if (verbose) printf("CudaNdarray_from_gpu_pointer normal return\n");
     return rval;
 }
 
