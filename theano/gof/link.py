@@ -401,7 +401,7 @@ class PerformLinker(LocalLinker):
         for node in order:
             # Maker sure we don't use C version of the code, but rather only
             # the python version
-            node._op_use_c_code = False
+            node.op._op_use_c_code = False
             thunks += [node.op.make_thunk(node,
                                     storage_map,
                                     compute_map,
