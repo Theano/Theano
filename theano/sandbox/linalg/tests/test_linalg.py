@@ -7,7 +7,7 @@ from theano.sandbox.linalg.ops import *
 if 0:
     def test_cholesky():
         #TODO: test upper and lower triangular
-        #todo: unittest randomseed 
+        #todo: unittest randomseed
         rng = numpy.random.RandomState(1234)
 
         r = rng.randn(5,5)
@@ -61,4 +61,3 @@ def test_det_grad():
 
     r = rng.randn(5,5)
     tensor.verify_grad(det, [r], rng=numpy.random)
-
