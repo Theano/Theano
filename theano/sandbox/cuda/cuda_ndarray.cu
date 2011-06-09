@@ -2509,12 +2509,15 @@ int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * bas
         }
     }
     // Get the original base object (base.base.base...)
-    // TODO: check that base is indeed a CudaNdarray?
     PyObject * orig_base = base;
-    while (((CudaNdarray*) orig_base)->base)
+    // base is not always a CudaNdarray. It can be a GpuArray from pycuda, ...
+    if (orig_base && CudaNdarray_Check(orig_base))
     {
-        // base_base is itself a view
-        orig_base = ((CudaNdarray*) orig_base)->base;
+        while (((CudaNdarray*) orig_base)->base)
+        {
+            // base_base is itself a view
+            orig_base = ((CudaNdarray*) orig_base)->base;
+        }
     }
     //N.B. XDECREF and XINCREF are no-ops for NULL pointers
     if (self->base != orig_base)
