@@ -5,7 +5,7 @@ import theano
 from theano import tensor, config
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
-from theano.sandbox.cuda import cuda_available, cuda_enabled
+from theano.sandbox.cuda import cuda_available
 from theano.gof.python25 import any
 
 if cuda_available:
@@ -44,7 +44,7 @@ def test_deterministic():
     sample_size = (10, 20)
 
     test_use_cuda = [False]
-    if cuda_enabled:
+    if cuda_available:
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
@@ -77,7 +77,7 @@ def test_consistency_randomstreams():
     n_substreams = 7
 
     test_use_cuda = [False]
-    if cuda_enabled:
+    if cuda_available:
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
@@ -576,12 +576,13 @@ def test_multinomial():
 
     sys.stdout.flush()
 
-    if mode != 'FAST_COMPILE' and cuda_enabled:
+    if mode != 'FAST_COMPILE' and cuda_available:
         print ''
         print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
         pvals = numpy.asarray(pvals, dtype='float32')
-        n = R.multinomial(pvals=pvals, dtype='float32')
+        # We give the number of streams to avoid a warning.
+        n = R.multinomial(pvals=pvals, dtype='float32', nstreams=30 * 256)
         assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
         f = theano.function([], theano.Out(
             theano.sandbox.cuda.basic_ops.gpu_from_host(n),
