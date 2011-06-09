@@ -655,16 +655,12 @@ def test_local_merge_abs():
     assert len(f.maker.env.toposort())==2
 
 
-
 def test_mixeddiv():
-    """Test that int division raises an exception."""
+    """Test that int division is preserved"""
     i = iscalar()
     d = dscalar()
-    try:
-        0 == function([i,d], d*(i/(i+1)))(3, 1.0)
-        assert False
-    except theano.scalar.IntegerDivisionError:
-        pass
+    assert 0 == function([i, d], d * (i // (i + 1)))(3, 1.0)
+
 
 def test_const_type_in_mul_canonizer():
     input = dmatrix()
