@@ -604,7 +604,7 @@ class GPU_mrg_uniform(mrg_uniform_base):
 def guess_n_streams(size, warn=True):
     """
     Return a guess at a good number of streams.
-    
+
     :param warn: If True, warn when a guess cannot be made (in which case
     we return 30 * 256).
     """
