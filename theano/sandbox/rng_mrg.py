@@ -622,7 +622,6 @@ def guess_n_streams(size, warn=True):
         return r
     else:
         if warn:
-            assert False
             print >> sys.stderr, (
                     "MRG_RandomStreams Can't determine #streams from "
                     "size (%s), guessing 30*256") % str(size)
