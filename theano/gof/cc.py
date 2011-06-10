@@ -1215,7 +1215,7 @@ class OpWiseCLinker(link.LocalLinker):
             for node in order:
                 # Maker sure we use the C version of the code whenever
                 # possible
-                node._op_use_c_code = True
+                node.op._op_use_c_code = True
                 thunks += [node.op.make_thunk(node,
                                         storage_map,
                                         compute_map,
