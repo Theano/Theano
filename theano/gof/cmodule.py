@@ -462,11 +462,9 @@ class ModuleCache(object):
                             shutil.rmtree(root)
                             continue
                         except:
-                            # For now, raise exceptions, in order to be able to
-                            # figure out which exceptions should be caught.
-                            # TODO Make it more user-friendly by not raising
-                            # the exception.
-                            raise
+                            # TODO Note that in a development version, it may
+                            # be better to raise exceptions instead of silently
+                            # catching them.
                             unpickle_failure()
                             if False:
                                 info("Erasing broken cache directory", root)
