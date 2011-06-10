@@ -506,9 +506,9 @@ def pydotprint(fct, outfile=None,
             varstr = '%s %s'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
             if var_with_name_simple:
-                varstr = input_update[var].variable.name
+                varstr = input_update[var].variable.name+" UPDATE"
             else:
-                varstr = input_update[var].variable.name+" "+str(var.type)
+                varstr = input_update[var].variable.name+" UPDATE "+str(var.type)
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
