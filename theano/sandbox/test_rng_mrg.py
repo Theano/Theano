@@ -351,6 +351,9 @@ def test_uniform():
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
         # Note: we specify `nstreams` to avoid a warning.
+        # TODO Look for all occurrences of `guess_n_streams` and `30 * 256`
+        # for such situations: it would be better to instead filter the
+        # warning using the warning module.
         u = R.uniform(size=size,
                       nstreams=rng_mrg.guess_n_streams(size, warn=False))
         f = theano.function(var_input, u, mode=mode)
