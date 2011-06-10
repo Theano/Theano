@@ -611,6 +611,33 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert val1.dtype == 'int8'
         assert numpy.all(abs(val1) <= 1)
 
+    def test_default_dtype(self):
+        random = RandomStreams(utt.fetch_seed())
+        low = tensor.dscalar()
+        high = tensor.dscalar()
+
+        # Should not silently downcast from low and high
+        out0 = random.uniform(low=low, high=high, size=(42,))
+        assert out0.dtype == 'float64'
+        f0 = function([low, high], out0)
+        val0 = f0(-2.1, 3.1)
+        assert val0.dtype == 'float64'
+
+        # Should downcast, since asked explicitly
+        out1 = random.uniform(low=low, high=high, size=(42,), dtype='float32')
+        assert out1.dtype == 'float32'
+        f1 = function([low, high], out1)
+        val1 = f1(-1.1, 1.1)
+        assert val1.dtype == 'float32'
+
+        # Should use floatX
+        lowf = tensor.fscalar()
+        highf = tensor.fscalar()
+        outf = random.uniform(low=lowf, high=highf, size=(42,))
+        assert outf.dtype == config.floatX
+        ff = function([lowf, highf], outf)
+        valf = ff(numpy.float32(-0.1), numpy.float32(0.3))
+        assert valf.dtype == config.floatX
 
     def test_shared_constructor_borrow(self):
         rng = numpy.random.RandomState(123)
