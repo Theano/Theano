@@ -493,7 +493,13 @@ def create(window_size=3,
                 reconstruction_cost_function = quadratic,
                 tie_weights = False
             )
-    model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
+
+    backup = config.warn.sum_div_dimshuffle_bug
+    config.warn.sum_div_dimshuffle_bug = False
+    try:
+        model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
+    finally:
+        config.warn.sum_div_dimshuffle_bug = backup
     return model
 
 def create_realistic(window_size=3,#7,

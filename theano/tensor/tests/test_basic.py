@@ -254,17 +254,23 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
         def test_grad(self):
             if skip:
                 raise SkipTest(skip)
-            for testname, inputs in self.grad.items():
-                inputs = [copy(input) for input in inputs]
-                inputrs = [value(input) for input in inputs]
-                try:
-                    utt.verify_grad(self.op, inputs, mode=self.mode, rel_tol=_grad_rtol)
-                except:
-                    type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
-                        % (self.op, testname, inputs)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
+            # Disable old warning that may be triggered by this test.
+            backup = config.warn.config.warn.sum_div_dimshuffle_bug
+            config.warn.config.warn.sum_div_dimshuffle_bug = False
+            try:
+                for testname, inputs in self.grad.items():
+                    inputs = [copy(input) for input in inputs]
+                    inputrs = [value(input) for input in inputs]
+                    try:
+                        utt.verify_grad(self.op, inputs, mode=self.mode, rel_tol=_grad_rtol)
+                    except:
+                        type, exc_value, traceback = sys.exc_info()
+                        err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
+                            % (self.op, testname, inputs)
+                        exc_value.args = exc_value.args + (err_msg, )
+                        raise type, exc_value, traceback
+            finally:
+                config.warn.config.warn.sum_div_dimshuffle_bug = backup
 
     Checker.__name__ = name
     return Checker
