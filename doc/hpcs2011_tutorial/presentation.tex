@@ -61,7 +61,7 @@ HPCS 2011, Montr\'eal
 \begin{center}
 \textcolor{red}{\huge{GPU Programming made Easy}}\\
 \vfill
-\small{\it presented by}\\
+%\small{\it presented by}\\
 \large{Fr\'ed\'eric Bastien}\\
 \vfill
 %\begin{spacing}{0.9}
@@ -239,7 +239,7 @@ HPCS 2011, Montr\'eal
 
 \frame{
   \frametitle{What is your background ?}
-  Do you have experinece with :
+  Do you have experience with :
   \begin{itemize}
   \item Python
   \item NumPy / SciPy / Matlab
@@ -261,7 +261,7 @@ HPCS 2011, Montr\'eal
     \item Indentation for block delimiters
     \item Dynamic type and memory management
     \item Dictionary \texttt{d=\{'var1':'value1', 'var2':42, ...\}}
-    %\item List comprehension: [i+3 for i in range(10)] not used in the tutorial
+    \item List comprehension: [i+3 for i in range(10)] not used in the tutorial
   \end{itemize}
 }
 
@@ -280,7 +280,7 @@ HPCS 2011, Montr\'eal
     \item \texttt{numpy.random.rand(4,5) * numpy.random.rand(5)} $\Rightarrow$ mat(4,5)
     \end{itemize}
   \item Tools for integrating C/C++ and Fortran code
-  \item Linear algebra, Fourier transform and random number capable
+  \item Linear algebra, Fourier transform and pseudorandom number generation
   \end{itemize}
 
 
@@ -364,7 +364,7 @@ HPCS 2011, Montr\'eal
   \begin{itemize}
   \item Rearranges high-level expressions 
   \item Produces customized low-level code
-  \item Can use a variety of backend technologies (GPU,...)
+  \item Uses a variety of backend technologies (GPU,...)
   \end{itemize}
 
   \vfill
@@ -502,8 +502,8 @@ cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to
 \item T.grad works symbolically: takes and returns a Theano variable
 \item T.grad can be compared to a macro: it can be applied multiple times
 \item T.grad takes scalar costs only
-\item Simple recipe allows to compute efficiently vector * Jacobian and vector * Hessian
-\item We are working on the missing optimizations to be able to compute efficently the full Jabobian and Hessian
+\item Simple recipe allows to compute efficiently vector $\times$ Jacobian and vector $\times$ Hessian
+\item We are working on the missing optimizations to be able to compute efficently the full Jabobian and Hessian and Jacobians $\times$ vector
 \end{itemize}
 \end{frame}
 
@@ -581,14 +581,12 @@ train = theano.function(
   \begin{itemize}
   \item \# Dimensions
     \begin{itemize}
-    \item T.scalar, T.vector
-    \item T.matrix, T.row, T.col
-    \item T.tensor3, T.tensor4
+    \item T.scalar, T.vector, T.matrix, T.tensor3, T.tensor4
     \end{itemize}
   \item Dtype
     \begin{itemize}
-    \item T.[fdczbwil]row (float32, float64, complex64, complex128, int8, int16, int32, int64)
-    \item T.row $\to$ floatX dtype
+    \item T.[fdczbwil]vector (float32, float64, complex64, complex128, int8, int16, int32, int64)
+    \item T.vector $\to$ floatX dtype
     \item floatX: configurable dtype that can be float32 or float64.
     \end{itemize}
   
@@ -602,8 +600,14 @@ train = theano.function(
 
 \frame{
   \frametitle{Creating symbolic variables: Broadcastability}
-  Remember what I said about broadcasting? How to add a row to all rows of a matrix? 
   \begin{itemize}
+  \item Remember what I said about broadcasting? 
+  \item How to add a row to all rows of a matrix? 
+  \item How to add a column to all columns of a matrix? 
+  \end{itemize}
+  \vfill
+  \begin{itemize}
+  \item T.row, T.col
   \item Must be specidied when creating the varible.
   \item The only shorcut with broadcastable dimensions are: {\bf T.row} and {\bf T.col}
   \item All are shortcuts to: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
@@ -621,11 +625,10 @@ Example:
 \end{itemize}
 
 Competitors: NumPy + SciPy, MATLAB, EBLearn, Torch5, numexpr
-% COMMENT: Might want to say that EBLearn and Torch5 are specialized libraries written by
-% practitioners specifically for these tasks, rest are our own implementations
-
-% Also brief explanation of numexpr: "similar to Theano, 'virtual machine' for array-based expressions'
-% but less features implemented
+\begin{itemize}
+\item EBLearn, Torch5: specialized libraries written by practitioners specifically for these tasks
+\item numexpr: similar to Theano, 'virtual machine' for elemwise expressions
+\end{itemize}
 }
 
 \frame{
@@ -639,7 +642,7 @@ Multi-Layer Perceptron: 60x784 matrix times 784x500 matrix, tanh, times 500x10 m
 
 \frame{
 \frametitle{Benchmark Convolutional Network}
-Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled to 6x50x50, tanh, convolution with 16 6x7x7 filter, elementwise tanh, matrix multiply, elementwise, then in reverse % COMMENT: what does last elementwise mean?
+Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled to 6x50x50, tanh, convolution with 16 6x7x7 filter, elementwise tanh, matrix multiply, softmax elementwise, then in reverse
 \begin{center}
 \includegraphics[width=3.in]{pics/conv.pdf}
 \end{center}
@@ -871,13 +874,13 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 \begin{Verbatim}
 >>> theano.printing.pydotprint_variables(prediction)
 \end{Verbatim}
-\includegraphics[width=2.0in]{pics/logreg_pydotprint_prediction.png}
-% COMMENT: Requires graphviz, you should mention that
+\includegraphics[width=1.9in]{pics/logreg_pydotprint_prediction.png}
 \end{frame}
 
 \begin{frame}[fragile]
 \frametitle{Picture Printing of Graphs}
 \begin{Verbatim}
+All pydotprint* requires graphviz and pydot
 >>> theano.printing.pydotprint(predict)
 \end{Verbatim}
 \includegraphics[width=4in]{pics/logreg_pydotprint_predic.png}
@@ -959,9 +962,7 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 \item The advantage of using ``scan`` over for loops
   \begin{itemize}
   \item The number of iterations to be part of the symbolic graph
-  \item Minimizes GPU transfers if GPU is involved % TODO:FB:  I don't understand it?
-  % COMMENT: I think it means that the result of each iteration does not need to be copied
-  % to host but this is also true for shared variables
+  \item Minimizes GPU transfers if GPU is involved
   \item Compute gradients through sequential steps
   \item Slightly faster then using a for loop in Python with a compiled Theano function 
   \item Can lower the overall memory usage by detecting the actual amount of memory needed
@@ -1149,7 +1150,7 @@ multiply_them(
 
 \frame{
 \frametitle{GpuArray}
-No support for strided memory.
+TODO: No support for strided memory.
 }
 
 \section{Extending Theano}
@@ -1163,8 +1164,6 @@ No support for strided memory.
 \end{itemize}
 \begin{itemize}
 \item Inputs and Outputs are lists of Theano variables
-% COMMENT: this is kind of obvious so I commented it out
-%\item Can navigate through the graph from any point to any point
 \end{itemize}
 \begin{center}
 \includegraphics[width=3.5in]{pics/apply_node.pdf}
@@ -1263,8 +1262,8 @@ class PyCUDADoubleOp(theano.Op):
 \begin{Verbatim}
     def make_thunk(self, node, storage_map, _, _2):
         mod = SourceModule( THE_C_CODE )
-        pycuda_fct = mod.get_function("my_fct")
 
+        pycuda_fct = mod.get_function("my_fct")
         inputs = [ storage_map[v] for v in node.inputs]
         outputs = [ storage_map[v] for v in node.outputs]
         def thunk():
@@ -1320,7 +1319,7 @@ print numpy.asarray(f(xv))
 \begin{itemize}
 \item Currently there are at least 4 different GPU array data structures in use by Python packages
   \begin{itemize}
-  \item CudaNdarray(Theano), GPUArray(PyCUDA), CUDAMatrix(cudamat), GPUArray(PyOpenCL), ...
+  \item CudaNdarray (Theano), GPUArray (PyCUDA), CUDAMatrix (cudamat), GPUArray (PyOpenCL), ...
   \item There are even more if we include other languages
   \end{itemize}
 \item All of them are a subset of the functionality of \texttt{numpy.ndarray} on the GPU
@@ -1369,6 +1368,19 @@ print numpy.asarray(f(xv))
   \item It {\bf works} and is {\bf used in the real world} by academic researchers \textit{and} industry 
   \end{itemize}
 }
-% COMMENT: it is often customary to have a slide with thank yous to the audience and to funding agencies and stuff at the end, I don't know
-% which ones provided funding... NSERC? CIFAR?
+
+\frame{
+  \frametitle{Thanks}
+  \begin{itemize}
+  \item Thanks for attending this tutorial
+    \vfill
+  \item Thanks to our agencies that resources for this projects: Calcul Qu\'ebec, CIFAR, Compute Canada, FQRNT, MITACS, NSERC, SciNet, SHARCNET, Ubisoft and WestGrid.
+  \end{itemize}
+}
+
+\frame{
+%  \frametitle{}
+\center{\huge{Questions/Comments?}}
+}
+
 \end{document}
