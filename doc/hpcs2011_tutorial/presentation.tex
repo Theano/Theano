@@ -12,11 +12,38 @@
 
 \logo{\includegraphics[width=.8in]{pics/UdeM_NoirBleu_logo_Marie_crop.pdf}}
 % Standard LaTeX stuff - note the optional abbreviated title being provided
+
+%% ALL that presentation slide are not used! We use a normal frame for that.
 \title[GPU Programming made Easy]{GPU Programming made Easy}
-\author[LISA lab]{Fr\'ed\'eric Bastien, Machine Learning Laboratory}
+\author[LISA lab]{Fr\'ed\'eric Bastien \\
+Laboratoire d'Informatique des Syst\`emes Adaptatifs \\
+D\'epartement d'informatique et de recherche op\'erationelle}
 
 \date{
-James Bergstra, Olivier Breuleux, Frederic Bastien, Pascal Lamblin, Razvan Pascanu, Guillaume Desjardins, Joseph Turian, David Warde-Farley, Olivier Delalleau, Arnaud Bergeron, Josh Bleecher Snyder, Ian Goodfellow, Fran\c{c}ois Savard, Xavier Glorot, Douglas Eck, Dumitru Erhan, Michael Mandel, Philippe Hamel,  Simon Lemieux,  Thierry Bertin-Mahieux, Yoshua Bengio
+James Bergstra, Olivier Breuleux, Frederic Bastien, 
+\vfill
+\vfill
+
+{\small 
+Arnaud Bergeron, 
+Yoshua Bengio,
+Thierry Bertin-Mahieux, 
+Josh Bleecher Snyder, 
+Olivier Delalleau, 
+Guillaume Desjardins, 
+Douglas Eck, 
+Dumitru Erhan, 
+Xavier Glorot, 
+Ian Goodfellow, 
+Philippe Hamel,  
+Pascal Lamblin, 
+Simon Lemieux,  
+Michael Mandel, 
+Razvan Pascanu, 
+Fran\c{c}ois Savard, 
+Joseph Turian, 
+David Warde-Farley
+}
 
 Presented on June 13\textsuperscript{th} 2011\\
 HPCS 2011, Montr\'eal
@@ -28,8 +55,50 @@ HPCS 2011, Montr\'eal
 \begin{document}
 
 
-\frame{\titlepage}
+%\frame{\titlepage}
+\frame{
+\vfill
+\begin{center}
+\textcolor{red}{\huge{GPU Programming made Easy}}\\
+\vfill
+\small{\it presented by}\\
+\large{Fr\'ed\'eric Bastien}\\
+\vfill
+%\begin{spacing}{0.9}
+{\small Laboratoire d'Informatique des Syst\`emes Adaptatifs}\\
+{\small D\'epartement d'informatique et de recherche op\'erationelle}\\
+%{\small Université de Montr\'eal}
+%\end{spacing}
+\vfill
+James Bergstra, Olivier Breuleux, Frederic Bastien, 
+\vfill
+{\footnotesize%\small 
+Arnaud Bergeron, 
+Yoshua Bengio,
+Thierry Bertin-Mahieux, 
+Josh Bleecher Snyder, 
+Olivier Delalleau, 
+Guillaume Desjardins, 
+Douglas Eck, 
+Dumitru Erhan, 
+Xavier Glorot, 
+Ian Goodfellow, 
+Philippe Hamel,  
+Pascal Lamblin, 
+Simon Lemieux,  
+Michael Mandel, 
+Razvan Pascanu, 
+Fran\c{c}ois Savard, 
+Joseph Turian, 
+David Warde-Farley
+}
+\vfill
+Presented on June 13\textsuperscript{th} 2011\\
+HPCS 2011, Montr\'eal
+\end{center}
 
+\includegraphics[width=.6in]{pics/lisabook_logo_text_3.png}
+}
 
 \section{Overview}
 \subsection{Overview}
@@ -39,13 +108,13 @@ HPCS 2011, Montr\'eal
   \item Introduction
     \begin{itemize}
     \item Why Scripting for GPUs?
-    \item Theano vs. PyCUDA
+    \item Theano vs. PyCUDA vs. PyOpenCL vs. CUDA
     \item Python in 1 slide
     \item NumPy in 1 slide
     \end{itemize}
   \item Theano
     \begin{itemize}
-    \item Intro
+    \item Introduction
     \item Simple example
     \item Real example
     \item Benchmarks
@@ -55,6 +124,8 @@ HPCS 2011, Montr\'eal
 
 \frame{
   \frametitle{Overview 2}
+%  \begin{tabular}{lcr}
+
   \begin{itemize}
   \item Advanced Theano
     \begin{itemize}
@@ -65,20 +136,19 @@ HPCS 2011, Montr\'eal
     \item Scan (For-Loop generalization)
     \item GPU
     \item Exercises/break
-    \end{itemize}
+    \end{itemize} %& \includegraphics[width=1.in]{pics/theano_logo.png}
   \item PyCUDA
     \begin{itemize}
-    \item Intro
+    \item Introduction
     \item Example
     \item PyCUDA + Theano
     \item Exercises
-    \end{itemize}
+    \end{itemize} %& \includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}
   \item GpuNdArray
   \item Conclusion
   \end{itemize}
+%  \end{tabular} 
   \begin{tabular}{lcr}
-    \imagetop{\includegraphics[width=.4in]{pics/lisabook_logo_text2.png}} & 
-%%    \imagetop{\includegraphics[width=.2in]{pics/white.png}}&
     \imagetop{\includegraphics[width=1.in]{pics/theano_logo.png}}&
     \imagetop{\includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}}
   \end{tabular} 
@@ -96,7 +166,7 @@ HPCS 2011, Montr\'eal
 \subsection{Introduction}
 \frame{
   \frametitle{Why GPU}
-\begin{itemize}
+  \begin{itemize}
   \item Faster, cheaper, more efficient power usage
   \item How much faster? I have seen numbers from 100x slower to 1000x faster.
     \begin{itemize}
@@ -104,18 +174,22 @@ HPCS 2011, Montr\'eal
     \item How the benchmark is done
       \begin{itemize}
       \item Quality of implementation
+      \item How much time was spent optimizing CPU vs GPU code
       \item How much time spent optimizing CPU vs GPU code
       \end{itemize}
-    \item Theory: 
+    \item In Theory: 
       \begin{itemize}
       \item Intel Core i7 980 XE (107Gf/s float64) 6 cores
       \item NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32) 480 cores
       \item NVIDIA GTX580 (1.5Tf/s float32) 512 cores
       \end{itemize}
     \end{itemize}
-  \item With Theano, up to 100x can be seen as we don't generate multi-core code on CPU (except for calls to GEMM)
-  % COMMENT: whether GEMM is parallel depends on your BLAS, right?
-  \item If you see 1000x, it means the benchmark is not fair
+  \item Theano goes up to 100x faster on th GPU because we don't use multiple core on CPU
+    \begin{itemize}
+  \item With Theano, up to 100x can be seen as we don't generate multi-core code on CPU
+    \item Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
+    \end{itemize}
+  \item If you see 1000x, it probably means the benchmark is not fair
 \end{itemize}
 
 }
@@ -132,11 +206,8 @@ HPCS 2011, Montr\'eal
   \item CPU: largely restricted to control
     \begin{itemize}
     \item Optimized for sequential code and \textit{low latency} (rather than high throughput)
-    \item tasks (1000/sec)
+    \item Tasks (1000/sec)
     \item Scripting fast enough
-    \item Theano = Mathematical expression compiler
-    \item Python + CUDA = PyCUDA
-    \item Python + OpenCL = PyOpenCL
     \end{itemize}
   \end{itemize}
 }
@@ -153,13 +224,13 @@ HPCS 2011, Montr\'eal
       \begin{itemize}
       \item C extension by NVIDA that allow to code and use GPU
       \end{itemize}
-    \item PyCUDA
+    \item PyCUDA (Python + CUDA)
       \begin{itemize}
         \item Python interface to CUDA
         \item Memory management of GPU objects
         \item Compilation of code for the low-level driver
       \end{itemize}
-    \item PyOpenCL
+    \item PyOpenCL (Python + OpenCL)
       \begin{itemize}
       \item PyCUDA for OpenCL
       \end{itemize}
@@ -322,6 +393,7 @@ HPCS 2011, Montr\'eal
   \item Driven over 40 research papers over the last few years
   \item Active mailing list with participants from outside our lab
   \item Good user documentation
+  \item Some(lots?) of users beyond our lab.
   \item Many contributors (some from outside our lab)
   \item Deep Learning Tutorials
   \item Unofficial RPMs for Mandriva
@@ -361,6 +433,7 @@ print f([0,1,2])              {\color{gray} # prints `array([0,2,1026])`}
   \end{itemize}
 }
 
+\subsection{Real Example}
 \frame{
   \frametitle{A Real Example: Logistic Regression}
   \begin{itemize}
@@ -373,36 +446,56 @@ print f([0,1,2])              {\color{gray} # prints `array([0,2,1026])`}
 
 \begin{frame}[fragile]
   \frametitle{A Real Example: Logistic Regression}
-
 \begin{Verbatim}[commandchars=\\\{\}]
 import numpy
 import theano
 import theano.tensor as T
 rng = numpy.random
 
-# Declare Theano symbolic variables
+N = 400
+feats = 784
+D = (rng.randn(N, feats), rng.randint(size=N,low=0, high=2))
+training_steps = 10
+\end{Verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{A Real Example: Logistic Regression}
+\begin{Verbatim}[commandchars=\\\{\}]
+{\color{gray}# Declare Theano symbolic variables}
 x = T.matrix("x")
 y = T.vector("y")
 \codeHighlight{w = theano.shared(rng.randn(100), name="w")}
 \codeHighlight{b = theano.shared(0., name="b")}
 print "Initial model:"
 print w.get_value(), b.get_value()
-
 \end{Verbatim}
 \end{frame}
 
-\subsection{Real Example}
 \begin{frame}[fragile]
   \frametitle{A Real Example: Logistic Regression}
 \begin{Verbatim}[commandchars=\\\{\}]
+{\color{gray}# Declare Theano symbolic variables}
+{\color{gray}x = T.matrix("x")}
+{\color{gray}y = T.vector("y")}
+{\color{gray}w = theano.shared(rng.randn(100), name="w")}
+{\color{gray}b = theano.shared(0., name="b")}
+{\color{gray}print "Initial model:"}
+{\color{gray}print w.get_value(), b.get_value()}
 
-# Construct Theano expression graph
+{\color{gray}# Construct Theano expression graph}
 p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))     {\color{gray}# Probability under model that target = 1}
 prediction = p_1 > 0.5                    {\color{gray}# The thresholded prediction: 0 or 1}
 xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) {\color{gray}# Cross-entropy loss function}
 cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to optimize}
 \codeHighlight{gw,gb = T.grad(cost, [w,b])}
+\end{Verbatim}
+\end{frame}
 
+
+\begin{frame}[fragile]
+  \frametitle{A Real Example: Logistic Regression}
+\begin{Verbatim}[commandchars=\\\{\}]
 
 \end{Verbatim}
 \begin{itemize}
@@ -417,19 +510,17 @@ cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to
 \begin{frame}[fragile]
   \frametitle{A Real Example: Logistic Regression}
 \begin{Verbatim}[commandchars=\\\{\}]
-# Compile expressions to functions
+{\color{gray}# Compile}
 train = theano.function(
             inputs=[x,y],
             \codeHighlight{outputs=[prediction, xent]},
             \codeHighlight{updates=\{w:w-0.1*gw, b:b-0.1*gb\}})
 predict = theano.function(inputs=[x], outputs=prediction)
 
-N = 4
-feats = 100
-D = (rng.randn(N, feats), rng.randint(size=4,low=0, high=2))
-training_steps = 10
+{\color{gray}# Train}
 for i in range(training_steps):
     pred, err = train(D[0], D[1])
+
 print "Final model:"
 print w.get_value(), b.get_value()
 print "target values for D:", D[1]
@@ -440,14 +531,12 @@ print "prediction on D:", predict(D[0])
 \begin{frame}[fragile]
   \frametitle{A Real Example: optimization}
 \begin{Verbatim}[commandchars=\\\{\}]
-{\color{gray}# Construct Theano expression graph}
 p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))
 xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1)
 prediction = p_1 > 0.5
 cost = xent.mean() + 0.01*(w**2).sum()
 gw,gb = T.grad(cost, [w,b])
 
-{\color{gray}# Compile expressions to functions}
 train = theano.function(
             inputs=[x,y],
             outputs=[prediction, xent],
@@ -488,15 +577,36 @@ train = theano.function(
 \end{frame}
 
 \frame{
-  \frametitle{\# Dimensions, dtype and broadcastability}
+  \frametitle{Creating symbolic variables}
   \begin{itemize}
-  \item T.scalar, T.vector, T.matrix, T.row, T.col
-  \item T.row(floatX), T.[fdczbwil]row (float32, float64, complex64, complex128, int8, int16, int32, int64)
+  \item \# Dimensions
+    \begin{itemize}
+    \item T.scalar, T.vector
+    \item T.matrix, T.row, T.col
+    \item T.tensor3, T.tensor4
+    \end{itemize}
+  \item Dtype
+    \begin{itemize}
+    \item T.[fdczbwil]row (float32, float64, complex64, complex128, int8, int16, int32, int64)
+    \item T.row $\to$ floatX dtype
+    \item floatX: configurable dtype that can be float32 or float64.
+    \end{itemize}
+  
+  \item Custom variable
+    \begin{itemize}
+    \item All are shortcuts to: T.tensor(dtype, broadcastable=[False]*nd)
+    \item Other dtype: uint[8,16,32,64], floatX
+    \end{itemize}
   \end{itemize}
+}
+
+\frame{
+  \frametitle{Creating symbolic variables: Broadcastability}
+  Remember what I said about broadcasting? How to add a row to all rows of a matrix? 
   \begin{itemize}
-  \item All are shortcuts to: T.tensor(dtype, broadcastable=([False,True])*nd)
-  \item Other dtype: uint[8,16,32,64]
-  \item floatX: configurable dtype that can be float32 or float64.
+  \item Must be specidied when creating the varible.
+  \item The only shorcut with broadcastable dimensions are: {\bf T.row} and {\bf T.col}
+  \item All are shortcuts to: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
   \end{itemize}
 }
 
@@ -558,25 +668,6 @@ Theano can be configured with flags. They can be defined in two ways
 \end{itemize}
 }
 
-\frame{
-% COMMENT: Might want to skip this or put it nearer to the end
-\frametitle{Theano Graph}
-\begin{itemize}
-\item Theano works with symbolic graphs
-\item Those graphs are bi-partite graphs (graph with 2 types of nodes)
-\item Those 2 nodes types are Apply and Variable nodes
-\end{itemize}
-\begin{itemize}
-\item Inputs and Outputs are lists of Theano variables
-% COMMENT: this is kind of obvious so I commented it out
-%\item Can navigate through the graph from any point to any point
-\end{itemize}
-\begin{center}
-\includegraphics[width=3.5in]{pics/apply_node.pdf}
-\end{center}
-
-
-}
 \subsection{Pipeline}
 \frame{
 \frametitle{Compilation Pipeline}
@@ -813,11 +904,6 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
   \item Checks many things that Op should/shouldn't do
   \item Executes both the Python and C code versions
   \end{itemize}
-\item Run with the flag \texttt{mode=FAST\_COMPILE}
-  \begin{itemize}
-  \item Few optimizations
-  \item Run Python code (better error messages and can be debugged interactively in the Python debugger)
-  \end{itemize}
 \item Run with the Theano flag \texttt{compute\_test\_value = {``off'', ``ignore'', ``warn'', ``raise''}}
   \begin{itemize}
   \item Run the code as we create the graph
@@ -825,6 +911,11 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
   \item Makes it easier to identify where the problem is in \textit{your} code
   \item Use the value of constants and shared variables directly
   \item For pure symbolic variables uses \texttt{x.tag.test\_value = numpy.random.rand(5,10)}
+  \end{itemize}
+\item Run with the flag \texttt{mode=FAST\_COMPILE}
+  \begin{itemize}
+  \item Few optimizations
+  \item Run Python code (better error messages and can be debugged interactively in the Python debugger)
   \end{itemize}
 \end{itemize}
 }
@@ -868,7 +959,7 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 \item The advantage of using ``scan`` over for loops
   \begin{itemize}
   \item The number of iterations to be part of the symbolic graph
-  \item Minimizes GPU transfers if GPU is involved % FB:  I don't understand it?
+  \item Minimizes GPU transfers if GPU is involved % TODO:FB:  I don't understand it?
   % COMMENT: I think it means that the result of each iteration does not need to be copied
   % to host but this is also true for shared variables
   \item Compute gradients through sequential steps
@@ -954,6 +1045,10 @@ print calculate_polynomial(test_coeff, 3)
 \item Intel Core i7 980 XE(107Gf/s float64) (1050\$)
 \item NVIDIA C2050(515 Gf/s float64, 1Tf/s float32), compute capability 2.0 (2400\$) 6 cores/12 threads
 \item NVIDIA GTX580(1.5Tf/s float32), compute capability 2.0 (500\$) 512 cores
+\end{itemize}
+Computer in the class
+\begin{itemize}
+\item Intel Xeon X3450(?TODO) (383\$)
 \item NVIDIA Quadro FX 580(71GF/s single), compute capability 1.1 (140\$ But 'profesionnal card'), 32 cores
 \end{itemize}
 
@@ -968,6 +1063,10 @@ print calculate_polynomial(test_coeff, 3)
 
 \frame{
 \frametitle{Theano Exercises}
+TODO
+
+source /groups/h/hpc2011/bin/GPU.csh
+hg clone http://hg.assembla.com/theano Theano
 \begin{itemize}
 \item Run the simple example
 \item Run the real example
@@ -1053,28 +1152,46 @@ multiply_them(
 No support for strided memory.
 }
 
-\subsection{PyCUDA + Theano}
+\section{Extending Theano}
+\subsection{Theano}
+\frame{
+\frametitle{Theano Graph}
+\begin{itemize}
+\item Theano works with symbolic graphs
+\item Those graphs are bi-partite graphs (graph with 2 types of nodes)
+\item Those 2 nodes types are Apply and Variable nodes
+\end{itemize}
+\begin{itemize}
+\item Inputs and Outputs are lists of Theano variables
+% COMMENT: this is kind of obvious so I commented it out
+%\item Can navigate through the graph from any point to any point
+\end{itemize}
+\begin{center}
+\includegraphics[width=3.5in]{pics/apply_node.pdf}
+\end{center}
+}
+
 \begin{frame}[fragile]
 \frametitle{Theano Op Contract}
-\begin{Verbatim}
+\begin{Verbatim}[commandchars=\\\{\}]
 class MyOp(Op):
     def __eq__(self, other):
     def __hash__(self):
     def __str__(self):
     def make_node(self, *inputs):
 
-Python implementation:
+{\color{gray}# Python implementation:}
     def perform(self, node, inputs_storage, outputs_storage):
 
-C implementation: [see the Theano web site]
+{\color{gray}# C implementation:} [see theano web site]
 
-others implementation (pycuda, ...):
+{\color{gray}# others implementation (pycuda, ...):}
      def make_thunk(self, node, storage_map, _, _2):
 
-optional:
+{\color{gray}# optional:}
     def __init__(self, ...):
     def grad(self, inputs, g):
-    def infer_shape(node, (i0_shapes, i1_shapes, ...))
+    def infer_shape(node, (i0_shapes, ...))
 \end{Verbatim}
 \end{frame}
 
@@ -1116,6 +1233,7 @@ print out
 \end{Verbatim}
 \end{frame}
 
+\subsection{Theano+PyCUDA}
 \begin{frame}[fragile]
 \frametitle{Theano+PyCUDA Op Example}
 \begin{Verbatim}
@@ -1247,7 +1365,7 @@ print numpy.asarray(f(xv))
   \begin{itemize}
   \item I presented a tool that tries to be the holy grail in computing: {\bf easy to code} and {\bf fast to execute}!
   \item Generates fast, custom CPU code \textit{and} GPU code
-  \item You can easily wrap existing GPU code with Theano
+  \item You can easily wrap existing CPU/GPU code with Theano
   \item It {\bf works} and is {\bf used in the real world} by academic researchers \textit{and} industry 
   \end{itemize}
 }
