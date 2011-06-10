@@ -154,8 +154,11 @@ outdated!""")
     import cuda_ndarray
 
 
-def use(device, force=False, default_to_move_computation_to_gpu = True,
-        move_shared_float32_to_gpu = True):
+def use(device,
+        force=False,
+        default_to_move_computation_to_gpu=True,
+        move_shared_float32_to_gpu=True,
+        enable_cuda=True):
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
@@ -191,7 +194,9 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
             use.device_number = device
-            cuda_enabled = True
+
+            if enable_cuda:
+                cuda_enabled = True
             print >> sys.stderr, "Using gpu device %d: %s" % (active_device_number(), active_device_name())
         except (EnvironmentError, ValueError), e:
             _logger.error(("ERROR: Not using GPU."
@@ -251,4 +256,5 @@ elif config.init_gpu_device:
     use(device=config.init_gpu_device,
         force=config.force_device,
         default_to_move_computation_to_gpu=False,
-        move_shared_float32_to_gpu=False)
+        move_shared_float32_to_gpu=False,
+        enable_cuda=False)
