@@ -384,7 +384,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
     return ret_indices
 
 
-def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype='floatX'):
+def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=None):
     """
     Sample from a uniform distribution between low and high.
 
@@ -393,18 +393,21 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype='floatX
 
     If size is None, the output shape will be determined by the shapes
     of low and high.
+
+    If dtype is not specified, it will be inferred from the dtype of
+    low and high, but will be at least as precise as floatX.
     """
-    if dtype == 'floatX':
-        dtype = theano.config.floatX
-    low = tensor.cast(tensor.as_tensor_variable(low), dtype)
-    high = tensor.cast(tensor.as_tensor_variable(high), dtype)
+    low = tensor.as_tensor_variable(low)
+    high = tensor.as_tensor_variable(high)
+    if dtype is None:
+        dtype = tensor.scal.upcast(theano.config.floatX, low.dtype, high.dtype)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, low, high)
     op = RandomFunction('uniform',
-            tensor.TensorType(dtype=dtype, broadcastable=bcast) )
+            tensor.TensorType(dtype=dtype, broadcastable=bcast))
     return op(random_state, size, low, high)
 
 
-def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype='floatX'):
+def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=None):
     """
     Sample from a normal distribution centered on avg with
     the specified standard deviation (std).
@@ -414,11 +417,14 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype='floatX')
 
     If size is None, the output shape will be determined by the shapes
     of avg and std.
+
+    If dtype is not specified, it will be inferred from the dtype of
+    avg and std, but will be at least as precise as floatX.
     """
-    if dtype == 'floatX':
-        dtype = theano.config.floatX
-    avg = tensor.cast(tensor.as_tensor_variable(avg), dtype)
-    std = tensor.cast(tensor.as_tensor_variable(std), dtype)
+    avg = tensor.as_tensor_variable(avg)
+    std = tensor.as_tensor_variable(std)
+    if dtype == None:
+        dtype = tensor.scal.upcast(theano.config.floatX, avg.dtype, std.dtype)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, avg, std)
     op = RandomFunction('normal',
             tensor.TensorType(dtype=dtype, broadcastable=bcast))
@@ -722,7 +728,7 @@ class RandomStreamsBase(object):
             print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
         return self.gen(binomial, size, n, p, ndim=ndim, dtype=dtype)
 
-    def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.config.floatX):
+    def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=None):
         """
         Sample a tensor of given size whose element from a uniform
         distribution between low and high.
@@ -733,7 +739,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(uniform, size, low, high, ndim=ndim, dtype=dtype)
 
-    def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=theano.config.floatX):
+    def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=None):
         """
         Sample from a normal distribution centered on avg with
         the specified standard deviation (std).
