@@ -937,9 +937,14 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
-        start_optimizer = time.time()
-        optimizer(env)
-        end_optimizer = time.time()
+        compute_test_value_orig = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = "ignore"
+            start_optimizer = time.time()
+            optimizer(env)
+            end_optimizer = time.time()
+        finally:
+            theano.config.compute_test_value = compute_test_value_orig
         mode.optimizer_time += end_optimizer - start_optimizer
         _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 
