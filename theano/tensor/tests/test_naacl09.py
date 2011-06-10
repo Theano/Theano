@@ -26,7 +26,7 @@ class QuadraticDenoisingAA(module.Module):
     WRITEME
 
     Abstract base class. Requires subclass with functions:
-    
+
     - build_corrupted_input()
 
     Introductory article about this model WRITEME.
@@ -193,7 +193,7 @@ class QuadraticDenoisingAA(module.Module):
         if (input_size is None) ^ (hidden_size is None):
             raise ValueError("Must specify input_size and hidden_size or neither.")
         super(QuadraticDenoisingAA, self)._instance_initialize(obj, {})
-        
+
         obj.random.initialize()
         R = N.random.RandomState(unittest_tools.fetch_seed(seed))
         if input_size is not None:
@@ -312,7 +312,7 @@ class Module_Nclass(module.FancyModule):
         sum_xent = T.sum(xent)
 
         self.softmax = softmax
-        self.argmax = argmax 
+        self.argmax = argmax
         self.max_pr = max_pr
         self.sum_xent = sum_xent
 
@@ -341,7 +341,7 @@ class Module_Nclass(module.FancyModule):
                     #updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
 
 class ConvolutionalMLP(module.FancyModule):
-    def __init__(self, 
+    def __init__(self,
             window_size,
             n_quadratic_filters,
             activation_function,
@@ -417,8 +417,8 @@ class ConvolutionalMLP(module.FancyModule):
                 zip(input_pretraining_params, input_pretraining_gradients) \
                 + zip(hidden_pretraining_params, hidden_pretraining_gradients))
 
-        self.pretraining_update = module.Method(self.inputs, 
-                [input_pretraining_cost, hidden_pretraining_cost], 
+        self.pretraining_update = module.Method(self.inputs,
+                [input_pretraining_cost, hidden_pretraining_cost],
                 pretraining_updates)
 
         finetuning_params = \
@@ -464,7 +464,7 @@ class ConvolutionalMLP(module.FancyModule):
             assert (i.w2 == self.input_representations[0].w2).all()
             assert (i.b1 == self.input_representations[0].b1).all()
             assert (i.b2 == self.input_representations[0].b2).all()
-            assert N.all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
+            assert N.all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters))
 
         self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size),
                 hidden_size=self.hidden_representation_size, noise_level=noise_level,
@@ -472,16 +472,16 @@ class ConvolutionalMLP(module.FancyModule):
 
         self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(2**30))
 
-def create(window_size=3, 
-        input_dimension=9, 
-        output_vocabsize=8, 
-        n_quadratic_filters=2, 
-        token_representation_size=5, 
-        concatenated_representation_size=7, 
-        lr=0.01, 
-        seed=123, 
-        noise_level=0.2, 
-        qfilter_relscale=0.1, 
+def create(window_size=3,
+        input_dimension=9,
+        output_vocabsize=8,
+        n_quadratic_filters=2,
+        token_representation_size=5,
+        concatenated_representation_size=7,
+        lr=0.01,
+        seed=123,
+        noise_level=0.2,
+        qfilter_relscale=0.1,
         compile_mode=None):
     """ Create a convolutional model. """
     activation_function = T.tanh
@@ -503,15 +503,15 @@ def create(window_size=3,
     return model
 
 def create_realistic(window_size=3,#7,
-        input_dimension=200, 
-        output_vocabsize=23, 
-        n_quadratic_filters=2, 
-        token_representation_size=150, 
-        concatenated_representation_size=400, 
-        lr=0.001, 
-        seed=123, 
-        noise_level=0.2, 
-        qfilter_relscale=0.1, 
+        input_dimension=200,
+        output_vocabsize=23,
+        n_quadratic_filters=2,
+        token_representation_size=150,
+        concatenated_representation_size=400,
+        lr=0.001,
+        seed=123,
+        noise_level=0.2,
+        qfilter_relscale=0.1,
         compile_mode=None):
     """ Create a convolutional model. """
     activation_function = T.tanh
@@ -531,7 +531,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     print "BUILDING MODEL"
     import time
     t = time.time()
-    
+
     if optimizer:
         mode = theano.Mode(linker='c|py', optimizer=optimizer)
     else: mode = get_default_mode()
@@ -539,7 +539,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     if mode.__class__.__name__ == 'DebugMode':
         iters_per_unsup=1
         iters_per_sup =1
-        
+
     if realistic:
         m = create_realistic(compile_mode=mode)
     else:
@@ -602,7 +602,7 @@ def real_main():
     test_naacl_model()
 
 def profile_main():
-    # This is the main function for profiling 
+    # This is the main function for profiling
     # We've renamed our original main() above to real_main()
     import cProfile, pstats, StringIO
     prof = cProfile.Profile()
