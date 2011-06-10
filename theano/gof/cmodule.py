@@ -375,9 +375,16 @@ class ModuleCache(object):
 
         start = time.time()
         if check_for_broken_eq:
+            # Speed up comparison by only comparing keys for which the version
+            # part is equal (since the version part is supposed to be made of
+            # integer tuples, we can assume its hash is properly implemented).
+            version_to_keys = {}
+            for key in self.entry_from_key:
+                version_to_keys.setdefault(key[0], []).append(key)
             for k0 in self.entry_from_key:
-                for k1 in self.entry_from_key:
-                    if k0 == k1 and not (k0 is k1):
+                # Compare `k0` to all keys `k1` with the same version part.
+                for k1 in version_to_keys[k0[0]]:
+                    if k0 is not k1 and k0 == k1:
                         warning(("The __eq__ and __hash__ functions are broken for some element"
                                 " in the following two keys. The cache mechanism will say that"
                                 " graphs like this need recompiling, when they could have been"
