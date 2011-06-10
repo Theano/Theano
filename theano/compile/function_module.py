@@ -939,7 +939,7 @@ class FunctionMaker(object):
         # optimize the env
         compute_test_value_orig = theano.config.compute_test_value
         try:
-            theano.config.compute_test_value = "ignore"
+            theano.config.compute_test_value = "off"
             start_optimizer = time.time()
             optimizer(env)
             end_optimizer = time.time()
