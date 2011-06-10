@@ -2049,6 +2049,7 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
 PyObject *
 CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
 {
+    int verbose = 0;
     PyObject *gpu_ptr = NULL;
     PyObject *shapes = NULL;
     PyObject *strides = NULL;
@@ -2062,7 +2063,7 @@ CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
     if (! PyArg_ParseTuple(args, "OOOO", &gpu_ptr, &shapes, &strides, &base))
         return NULL;
 
-    printf("In CudaNdarray_from_gpu_pointer\n");
+    if (verbose) printf("In CudaNdarray_from_gpu_pointer\n");
     if (!PyLong_Check(gpu_ptr))
     {
         PyErr_Format(PyExc_Exception, "CudaNdarray_from_gpu_pointer: The gpu pointor is not an long");
@@ -2133,7 +2134,7 @@ CudaNdarray_from_gpu_pointer(PyObject* _unused, PyObject* args)
         Py_DECREF(dim_);
         Py_DECREF(strd_);
     }
-    printf("CudaNdarray_from_gpu_pointer normal return\n");
+    if (verbose) printf("CudaNdarray_from_gpu_pointer normal return\n");
     return rval;
 }
 
@@ -2188,7 +2189,7 @@ CudaNdarray_Dot(PyObject* _unused, PyObject* args)
 }
 
 static PyObject *
-filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, strict)
+filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, strict, storage)
 {
     /*
      * TODO: DOC what this function should do in the various cases of
@@ -2282,10 +2283,10 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
                 Py_DECREF(rval);
                 rval = NULL;
             }
-            Py_DECREF(data);
-            Py_DECREF(py_data);
-            Py_DECREF(broadcastable);
         }
+        Py_DECREF(data);
+        Py_DECREF(py_data);
+        Py_DECREF(broadcastable);
         return (PyObject*)rval;
     }
 }
@@ -2490,6 +2491,11 @@ CudaNdarray_new_nd(int nd)
     return (PyObject *) rval;
 }
 
+
+/**
+ * Initialize 'self' as a view of 'base', with memory storage 'data'
+ */
+
 int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base)
 {
     if (self->data_allocated)
@@ -2503,12 +2509,15 @@ int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * bas
         }
     }
     // Get the original base object (base.base.base...)
-    // TODO: check that base is indeed a CudaNdarray?
     PyObject * orig_base = base;
-    while (((CudaNdarray*) orig_base)->base)
+    // base is not always a CudaNdarray. It can be a GpuArray from pycuda, ...
+    if (orig_base && CudaNdarray_Check(orig_base))
     {
-        // base_base is itself a view
-        orig_base = ((CudaNdarray*) orig_base)->base;
+        while (((CudaNdarray*) orig_base)->base)
+        {
+            // base_base is itself a view
+            orig_base = ((CudaNdarray*) orig_base)->base;
+        }
     }
     //N.B. XDECREF and XINCREF are no-ops for NULL pointers
     if (self->base != orig_base)

@@ -185,7 +185,7 @@ class T_random_function(unittest.TestCase):
                 broadcastable=(False, True, True))()
         high = tensor.TensorType(dtype='float64',
                 broadcastable=(True, True, True, False))()
-        post_out2, out2 = uniform(rng_R, size=None, ndim=2, low=low, high=high)
+        post_out2, out2 = uniform(rng_R, size=None, ndim=2, low=low, high=high, dtype='float64')
         self.assertEqual(out2.ndim, 4)
         self.assertEqual(out2.broadcastable, (True,False,True,False))
 
@@ -585,7 +585,7 @@ class T_random_function(unittest.TestCase):
         rng_R = random_state_type()
         low = tensor.dvector()
         high = tensor.dcol()
-        post_r, out = uniform(rng_R, low=low, high=high)
+        post_r, out = uniform(rng_R, low=low, high=high, dtype='float64')
         assert out.ndim == 2
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
 
@@ -842,6 +842,16 @@ class T_random_function(unittest.TestCase):
         rng1, val1 = f(rng0, 255, 257)
         assert val1.dtype == 'int8'
         assert numpy.all(abs(val1) <= 1)
+
+
+    def test_dtype_normal_uniform_687(self):
+        # Regression test for #687.
+        rng_R = random_state_type()
+        assert uniform(rng_R, low=tensor.constant(0, dtype='float64'),
+                       dtype='float32')[1].dtype == 'float32'
+
+        assert normal(rng_R, avg=tensor.constant(0, dtype='float64'),
+                      dtype='float32')[1].dtype == 'float32'
 
 
 if __name__ == '__main__':

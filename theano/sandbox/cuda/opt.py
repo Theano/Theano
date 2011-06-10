@@ -553,7 +553,7 @@ def local_gpu_advanced_incsubtensor1(node):
                                                gpu_from_host(y), *coords)]
 
     # Should not execute for GpuAdvancedIncSubtensor1
-    if node.op.__class__ is tensor.AdvancedSubtensor1:
+    if node.op.__class__ is tensor.AdvancedSubtensor1 and node.inputs[0].dtype=="float32":
         x, y  = node.inputs[0:2]
         coords = node.inputs[2:]
         go_gpu = False
@@ -585,7 +585,7 @@ def local_gpu_incsubtensor(node):
                 gpu_from_host(x),
                 gpu_from_host(y),
                 *coords)]
-    if type(node.op) == tensor.IncSubtensor:
+    if type(node.op) == tensor.IncSubtensor and node.inputs[0].dtype=="float32":
         x, y = node.inputs[0:2]
         assert isinstance(x.type, tensor.TensorType)
         assert isinstance(y.type, tensor.TensorType)

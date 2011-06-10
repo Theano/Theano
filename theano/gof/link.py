@@ -6,7 +6,6 @@ from type import Type
 import sys, traceback
 from copy import copy
 from theano.gof.python25 import all
-import numpy
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
@@ -329,7 +328,7 @@ class LocalLinker(Linker):
         # 3. output storage
         # 4. thunks: list of nodes' functions in the order they will be run by the function in (1)
         # 5. order: list of nodes, in the order they will be run by the function in (1)
-        raise MethodNotDefined("make_all", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("make_all", type(self), self.__class__.__name__)
 
 def gc_helper(node_list):
     """
@@ -391,9 +390,22 @@ class PerformLinker(LocalLinker):
         order = list(env.toposort())
         no_recycling = self.no_recycling
 
-        thunks = []
-
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
+
+
+        compute_map = {}
+        for k in storage_map:
+            compute_map[k] = [k.owner is None]
+
+        thunks = []
+        for node in order:
+            # Maker sure we don't use C version of the code, but rather only
+            # the python version
+            node.op._op_use_c_code = False
+            thunks += [node.op.make_thunk(node,
+                                    storage_map,
+                                    compute_map,
+                                    no_recycling)]
 
         computed, last_user = gc_helper(order)
         if self.allow_gc:
@@ -402,18 +414,6 @@ class PerformLinker(LocalLinker):
             post_thunk_old_storage = None
 
         for node in order:
-            node_input_storage = tuple(storage_map[input] for input in node.inputs)
-            node_output_storage = tuple(storage_map[output] for output in node.outputs)
-            p = node.op.perform
-            # Thunk is meant to be called without arguments.
-            # The arguments are given in the lambda expression so that they are saved in the lambda expression.
-            # Using the closure in a simple way didn't work.
-            thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
-            thunk.inputs = node_input_storage
-            thunk.outputs = node_output_storage
-            thunk.perform = p
-            thunks.append(thunk)
-
             if self.allow_gc:
                 post_thunk_old_storage.append([storage_map[input]
                     for input in node.inputs

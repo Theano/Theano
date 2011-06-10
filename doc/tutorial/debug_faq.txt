@@ -17,6 +17,132 @@ Isolating the problem/Testing Theano compiler
 You can run your Theano function in a DebugMode(:ref:`using_debugmode`). This test the Theano optimizations and help to find where NaN, inf and other problem come from.
 
 
+Interactive Debugger
+--------------------
+
+As of v.0.4.0, Theano has a new mechanism by which graphs are executed
+on-the-fly, before a theano.function is ever compiled. Since optimizations
+haven't been applied at this stage, it is easy for the user to locate the
+source of this bug. This functionality is enabled through the config flag
+``theano.config.compute_test_value``. Its use is best shown through the
+following example.
+
+
+.. code-block:: python
+
+    # compute_test_value is 'off' by default, meaning this feature is inactive
+    theano.config.compute_test_value = 'off'
+
+    # configure shared variables
+    W1val = numpy.random.rand(2,10,10).astype(theano.config.floatX)
+    W1 = theano.shared(W1val, 'W1')
+    W2val = numpy.random.rand(15,20).astype(theano.config.floatX)
+    W2 = theano.shared(W2val, 'W2')
+
+    # input which will be of shape (5,10)
+    x  = T.matrix('x')
+
+    # transform the shared variable in some way. Theano does not
+    # know off hand that the matrix func_of_W1 has shape (20,10)
+    func_of_W1 = W1.dimshuffle(2,0,1).flatten(2).T
+
+    # source of error: dot product of 5x10 with 20x10
+    h1 = T.dot(x,func_of_W1)  
+
+    # do more stuff
+    h2 = T.dot(h1,W2.T)  
+
+    # compile and call the actual function
+    f = theano.function([x], h2)
+    f(numpy.random.rand(5,10))
+   
+Running the above code generates the following error message:
+
+.. code-block:: bash
+
+    Definition in: 
+      File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 1102, in apply
+        lopt_change = self.process_node(env, node, lopt)
+      File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 882, in process_node
+        replacements = lopt.transform(node)
+      File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/blas.py", line 1030, in local_dot_to_dot22
+        return [_dot22(*node.inputs)]
+      File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/op.py", line 324, in __call__
+        self.add_tag_trace(node)
+    For the full definition stack trace set the Theano flags traceback.limit to -1
+
+    Traceback (most recent call last):
+      File "test.py", line 29, in <module>
+        f(numpy.random.rand(5,10))
+      File "/u/desjagui/workspace/PYTHON/theano/compile/function_module.py", line 596, in __call__
+        self.fn()
+      File "/u/desjagui/workspace/PYTHON/theano/gof/link.py", line 288, in streamline_default_f
+        raise_with_op(node)
+      File "/u/desjagui/workspace/PYTHON/theano/gof/link.py", line 284, in streamline_default_f
+        thunk()
+      File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/cc.py", line 1111, in execute
+        raise exc_type, exc_value, exc_trace
+    ValueError: ('Shape mismatch: x has 10 cols but y has 20 rows', 
+    _dot22(x, <TensorType(float64, matrix)>), [_dot22.0], 
+    _dot22(x, InplaceDimShuffle{1,0}.0), 'Sequence id of Apply node=4')
+
+Needless to say the above is not very informative and does not provide much in
+the way of guidance. However, by instrumenting the code ever so slightly, we
+can get Theano to give us the exact source of the error.
+
+.. code-block:: python
+
+    # enable on-the-fly graph computations
+    theano.config.compute_test_value = 'warn'
+
+    ...
+
+    # input which will be of shape (5,10)
+    x  = T.matrix('x')
+    # provide Theano with a default test-value
+    x.tag.test_value = numpy.random.rand(5,10)
+
+In the above, we're tagging the symbolic matrix ``x`` with a special test
+value. This allows Theano to evaluate symbolic expressions on-the-fly (by
+calling the ``perform`` method of each Op), as they are being defined. Sources
+of error can thus be identified with much more precision and much earlier in
+the compilation pipeline. For example, running the above code yields the
+following error message, which properly identifies line 23 as the culprit.
+
+.. code-block:: bash
+
+    Traceback (most recent call last):
+      File "test2.py", line 23, in <module>
+        h1 = T.dot(x,func_of_W1)  
+      File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/op.py", line 360, in __call__
+        node.op.perform(node, input_vals, output_storage)
+      File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/basic.py", line 4458, in perform
+        z[0] = numpy.asarray(numpy.dot(x, y))
+    ValueError: ('matrices are not aligned', (5, 10), (20, 10))
+
+The compute_test_value mechanism works as follows:
+
+* Theano Constants and SharedVariable are used as is. No need to instrument them.
+* A Theano ``Variable`` (i.e. ``dmatrix``, ``vector``, etc.) should be
+  given a special test value through the attribute ``tag.test_value``.
+* Theano automatically instruments intermediate results. As such, any quantity
+  derived from ``x`` will be given a `tag.test_value` automatically.
+
+`compute_test_value` can take the following values:
+
+* ``off``: default behavior. This debugging mechanism is inactive.
+* ``raise``: compute test values on the fly. Any variable for which a test
+  value is required, but not provided by the user, is treated as an error. An
+  exception is raised accordingly.
+* ``warn``: idem, but a warning is issued instead of an Exception.
+* ``ignore``: silently ignore the computation of intermediate test values, if a
+  variable is missing a test value.
+
+.. note::
+  This feature is currently not compatible with ``Scan`` and also with Ops
+  which do not implement a ``perform`` method.
+
+
 How do I print an intermediate value in a Function/Method?
 ----------------------------------------------------------
 

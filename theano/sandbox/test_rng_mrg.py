@@ -5,7 +5,7 @@ import theano
 from theano import tensor, config
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
-from theano.sandbox.cuda import cuda_available, cuda_enabled
+from theano.sandbox.cuda import cuda_available
 from theano.gof.python25 import any
 
 if cuda_available:
@@ -44,7 +44,7 @@ def test_deterministic():
     sample_size = (10, 20)
 
     test_use_cuda = [False]
-    if cuda_enabled:
+    if cuda_available:
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
@@ -77,7 +77,7 @@ def test_consistency_randomstreams():
     n_substreams = 7
 
     test_use_cuda = [False]
-    if cuda_enabled:
+    if cuda_available:
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
@@ -350,7 +350,9 @@ def test_uniform():
         print 'ON CPU with size=(%s):'%str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
-        u = R.uniform(size=size)
+        # Note: we specify `nstreams` to avoid a warning.
+        u = R.uniform(size=size,
+                      nstreams=rng_mrg.guess_n_streams(size, warn=False))
         f = theano.function(var_input, u, mode=mode)
         assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform)
                     for node in f.maker.env.toposort()])
@@ -366,7 +368,8 @@ def test_uniform():
             print ''
             print 'ON GPU with size=(%s):'%str(size)
             R = MRG_RandomStreams(234, use_cuda=True)
-            u = R.uniform(size=size, dtype='float32')
+            u = R.uniform(size=size, dtype='float32',
+                          nstreams=rng_mrg.guess_n_streams(size, warn=False))
             assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
             f = theano.function(var_input, theano.Out(
                     theano.sandbox.cuda.basic_ops.gpu_from_host(u),
@@ -421,7 +424,9 @@ def test_binomial():
             print ''
             print 'ON CPU with size=(%s) and mean(%d):'%(str(size),mean)
             R = MRG_RandomStreams(234, use_cuda=False)
-            u = R.binomial(size=size, p=mean)
+            # Note: we specify `nstreams` to avoid a warning.
+            u = R.binomial(size=size, p=mean,
+                           nstreams=rng_mrg.guess_n_streams(size, warn=False))
             f = theano.function(var_input, u, mode=mode)
             theano.printing.debugprint(f)
             out = f(*input)
@@ -433,7 +438,9 @@ def test_binomial():
                 print ''
                 print 'ON GPU with size=(%s) and mean(%d):'%(str(size),mean)
                 R = MRG_RandomStreams(234, use_cuda=True)
-                u = R.binomial(size=size, p=mean, dtype='float32')
+                u = R.binomial(size=size, p=mean, dtype='float32',
+                               nstreams=rng_mrg.guess_n_streams(size,
+                                                                warn=False))
                 assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
                 f = theano.function(var_input, theano.Out(
                         theano.sandbox.cuda.basic_ops.gpu_from_host(u),
@@ -478,7 +485,9 @@ def test_normal0():
         print 'ON CPU:'
 
         R = MRG_RandomStreams(234, use_cuda=False)
-        n = R.normal(size=size, avg=avg, std=std)
+        # Note: we specify `nstreams` to avoid a warning.
+        n = R.normal(size=size, avg=avg, std=std,
+                     nstreams=rng_mrg.guess_n_streams(size, warn=False))
         f = theano.function(var_input, n, mode=mode)
         theano.printing.debugprint(f)
         out  = f(*input)
@@ -491,7 +500,8 @@ def test_normal0():
             print ''
             print 'ON GPU:'
             R = MRG_RandomStreams(234, use_cuda=True)
-            n = R.normal(size=size, avg=avg, std=std, dtype='float32')
+            n = R.normal(size=size, avg=avg, std=std, dtype='float32',
+                         nstreams=rng_mrg.guess_n_streams(size, warn=False))
             assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
             f = theano.function(var_input, theano.Out(
                 theano.sandbox.cuda.basic_ops.gpu_from_host(n),
@@ -532,7 +542,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
         avg_pvals += ival
     avg_pvals/= steps
 
-    print 'random?[:10]\n', f()[:10]
+    print 'random?[:10]\n', numpy.asarray(f()[:10])
     print prefix, 'mean', avg_pvals
     print numpy.mean(abs(avg_pvals - target_pvals))# < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
     print prefix, 'time', dt
@@ -557,7 +567,8 @@ def test_multinomial():
     pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
     pvals = numpy.apply_along_axis(lambda row : row/numpy.sum(row), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
-    m = R.multinomial(pvals=pvals, dtype=config.floatX)
+    # Note: we specify `nstreams` to avoid a warning.
+    m = R.multinomial(pvals=pvals, dtype=config.floatX, nstreams=30 * 256)
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
     out = f()
@@ -565,20 +576,21 @@ def test_multinomial():
 
     sys.stdout.flush()
 
-    if mode != 'FAST_COMPILE' and cuda_enabled:
+    if mode != 'FAST_COMPILE' and cuda_available:
         print ''
         print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
         pvals = numpy.asarray(pvals, dtype='float32')
-        n = R.multinomial(pvals=pvals, dtype='float32')
+        # We give the number of streams to avoid a warning.
+        n = R.multinomial(pvals=pvals, dtype='float32', nstreams=30 * 256)
         assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-        f = theano.function([], theano.Out(
-            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-            borrow=True), mode=mode_.including('gpu'))
+        f = theano.function(
+                [],
+                theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+                mode=mode_.including('gpu'))
 
         theano.printing.debugprint(f)
         gpu_out = f()
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
         numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
-

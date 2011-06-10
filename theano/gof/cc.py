@@ -7,6 +7,7 @@ from copy import copy
 import re #for set_compiledir
 import os, sys, StringIO
 
+
 if sys.version_info[:2] >= (2,5):
     import hashlib
     def hash_from_code(msg):
@@ -16,6 +17,13 @@ else:
     def hash_from_code(msg):
         return md5.new(msg).hexdigest()
 
+
+def hash_from_file(file_path):
+    """Return the MD5 hash of a file."""
+    return hash_from_code(open(file_path, 'rb').read())
+
+
+import theano
 from theano.gof.python25 import all
 from theano import config
 
@@ -43,6 +51,7 @@ import cmodule
 
 import logging
 _logger=logging.getLogger("theano.gof.cc")
+_logger.setLevel(logging.WARN)
 def info(*args):
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
@@ -791,7 +800,7 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries,
+            'CLinker.cmodule_key', compilation args, libraries, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -858,10 +867,16 @@ class CLinker(link.Linker):
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
 
-        # first we put the header, compile_args, library names into the signature
+        # First we put the header, compile_args, library names and config md5
+        # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+        # IMPORTANT: The 'md5' prefix is used to isolate the compilation
+        # parameters from the rest of the key. If you want to add more key
+        # elements, they should be before this md5 hash if and only if they
+        # can lead to a different compiled file with the same source code.
+        sig.append('md5:' + theano.configparser.get_config_md5())
 
         # technically this should only be appended for gcc-compiled Ops
         # and the flags of other compilers should be inserted here... but it's not clear how to
@@ -943,11 +958,30 @@ class CLinker(link.Linker):
 
     def compile_cmodule(self, location=None):
         """
-        This method is a callback for `ModuleCache.module_from_key`
+        Compile the module and return it.
+        """
+        # Go through all steps of the compilation process.
+        for step_result in self.compile_cmodule_by_step(location=location):
+            pass
+        # And return the output of the last step, which should be the module
+        # itself.
+        return step_result
+
+    def compile_cmodule_by_step(self, location=None):
+        """
+        This method is a callback for `ModuleCache.module_from_key`.
+
+        It is a generator (thus the 'by step'), so that:
+            - it first yields the module's C code
+            - it last yields the module itself
+            - it may yield other intermediate outputs in-between if needed
+              in the future (but this is not currently the case)
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.build_dynamic_module()
+        src_code = mod.code()
+        yield src_code
         get_lock()
         try:
             debug("LOCATION", location)
@@ -955,7 +989,7 @@ class CLinker(link.Linker):
             libs = self.libraries()
             preargs = self.compile_args()
             if c_compiler.__name__=='nvcc_module_compile_str' and config.lib.amdlibm:
-                #this lib don't work correctly with nvcc in device code.
+                # This lib does not work correctly with nvcc in device code.
                 if '<amdlibm.h>' in mod.includes:
                     mod.includes.remove('<amdlibm.h>')
                 if '-DREPLACE_WITH_AMDLIBM' in preargs:
@@ -965,7 +999,7 @@ class CLinker(link.Linker):
             try:
                 module = c_compiler(
                     module_name=mod.name,
-                    src_code = mod.code(),
+                    src_code=src_code,
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
@@ -977,8 +1011,7 @@ class CLinker(link.Linker):
         finally:
             release_lock()
 
-        return module
-
+        yield module
 
     def build_dynamic_module(self):
         """Return a cmodule.DynamicModule instance full of the code for our env.
@@ -1041,10 +1074,10 @@ class CLinker(link.Linker):
         except KeyError:
             key = None
         if key is None:
-            #if we can't get a key, then forget the cache mechanism
+            # If we can't get a key, then forget the cache mechanism.
             module = self.compile_cmodule()
         else:
-            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule, keep_lock=keep_lock)
+            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule_by_step, keep_lock=keep_lock)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments
@@ -1174,54 +1207,21 @@ class OpWiseCLinker(link.LocalLinker):
             else:
                 post_thunk_old_storage = None
 
+            compute_map = {}
+            for k in storage_map:
+                compute_map[k] = [k.owner is None]
+
             thunks = []
+            for node in order:
+                # Maker sure we use the C version of the code whenever
+                # possible
+                node._op_use_c_code = True
+                thunks += [node.op.make_thunk(node,
+                                        storage_map,
+                                        compute_map,
+                                        no_recycling)]
+
             for node_idx, node in enumerate(order):
-                node_input_storage = [storage_map[r] for r in node.inputs]
-                node_output_storage = [storage_map[r] for r in node.outputs]
-                debug('Compiling node %i of graph' % node_idx)
-                thunk = None
-                # If the op don't override the c_code function, we don't try
-                # to generate a cthunk! Otherwise we won't find it in the compilation cache
-                # and try to compile it. This will get the lock even if we don't need it!
-                if node.op.c_code.im_func is not op.Op.c_code.im_func:
-                    try:
-                        e = Env(*graph.clone(node.inputs, node.outputs))
-                        if self.allow_gc:
-                            # if we allow garbage collection of intermediate nodes
-                            # we must forbid this C implementatio from cacheing its own
-                            # reference to its output
-                            node_no_recycling = e.outputs
-                        else:
-                            node_no_recycling = [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling]
-                        cl = CLinker().accept(e, node_no_recycling)
-
-                        debug('Trying CLinker.make_thunk')
-                        thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                            input_storage = node_input_storage,
-                            output_storage = node_output_storage,
-                            keep_lock=getattr(get_lock,"n_lock",0) != orig_n_lock)
-                        assert callable(thunk)
-                        thunk.inputs = node_input_storage
-                        thunk.outputs = node_output_storage
-                        thunks.append(thunk)
-                        do_python_thunk = False
-                    except (NotImplementedError, utils.MethodNotDefined):
-                        thunk = None
-
-                if thunk is None:
-                    if self.fallback_on_perform:
-                        debug('Falling back on perform')
-                        p = node.op.perform
-                        # default arguments are stored in the closure of `thunk`
-                        def thunk(p=p, i=node_input_storage, o=node_output_storage,n=node):
-                            return p(n, [x[0] for x in i], o)
-                        #thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
-                        thunk.inputs = node_input_storage
-                        thunk.outputs = node_output_storage
-                        thunk.perform = p
-                        thunks.append(thunk)
-                    else:
-                        raise NotImplementedError("We where not able to use c_code and perform code for this node", node)
 
                 if self.allow_gc:
                     post_thunk_old_storage.append([storage_map[input]

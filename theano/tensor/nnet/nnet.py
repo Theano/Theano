@@ -11,7 +11,7 @@ from theano.tensor import basic as tensor
 from theano.tensor import elemwise, dmatrix, fmatrix, dvector, fvector
 from theano.tensor import opt
 from theano.compile import optdb
-from theano.gof.apply_shape import Apply
+from theano.gof import Apply
 
 from theano.tensor.nnet.sigm import sigmoid, softplus
 

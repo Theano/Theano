@@ -5,12 +5,11 @@ import numpy
 import elemwise_cgen as cgen
 import theano
 from theano import gof
-from theano.gof import Op
+from theano.gof import Apply, Op
 from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import pprint
 from theano.gof.python25 import all, any
-from theano.gof.apply_shape import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -454,7 +453,7 @@ class Elemwise(Op):
         """
 
         inputs = map(as_tensor_variable, inputs)
-        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
+        shadow = self.scalar_op.make_node(*[Scalar(dtype=i.type.dtype)() for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -1201,7 +1200,8 @@ class Prod(CAReduce):
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
-        self.__dict__.update(dct)
+        super(Prod, self).__setstate__(dct)
+        # Add default value to be able to reload old pickled objects.
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
 

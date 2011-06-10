@@ -2,16 +2,20 @@
 
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
-
-
 """
 
 __docformat__ = "restructuredtext en"
 
-from .. import config
+from theano import config
 import graph
 import numpy
 import utils
+import warnings
+import logging
+from theano import config
+from env import Env
+import graph
+import cc
 
 
 class CLinkerObject(object):
@@ -323,45 +327,64 @@ class PureOp(object):
         """
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
-    
-        if config.compute_test_value:
+
+        if config.compute_test_value != 'off':
             # avoid circular import
-            from ..compile.sharedvalue import SharedVariable
+            from theano.compile.sharedvalue import SharedVariable
             run_perform = True
 
             # build test input-values
             input_vals = []
-            for ins in inputs:
+            for i, ins in enumerate(node.inputs):
                 if isinstance(ins, graph.Constant):
                     input_vals.append(ins.value)
-                elif isinstance(ins,numpy.ndarray):
-                    input_vals.append(ins)
                 elif isinstance(ins,SharedVariable):
-                    input_vals.append(ins.get_value(borrow=True))
+                    input_vals.append(ins.get_value(borrow=True, return_internal_type=True))
                 elif isinstance(ins,graph.Variable) and hasattr(ins.tag, 'test_value'):
-                    input_vals.append(ins.tag.test_value)
+                    # ensure that the test value is correct
+                    input_vals.append(ins.type.filter(ins.tag.test_value))
                 else:
                     # no test-value was specified, act accordingly
                     if config.compute_test_value == 'warn':
-                        raise Warning('Cannot compute test value: input %s of Op %s missing default value')
+                        warnings.warn('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node), stacklevel=2)
                         run_perform = False
-                    elif config.compute_test_value == 'err':
-                        raise ValueError('Cannot compute test value: input %s of Op %s missing default value')
-                    else:
+                    elif config.compute_test_value == 'raise':
+                        raise ValueError('Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
+                    elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
-          
+                    else:
+                        raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
+
             # if all inputs have test-values, run the actual op
             if run_perform:
 
+                # Original values should not be destroyed:
+                # copy the values of the inputs in destroy_map
+                destroyed_inputs_idx = []
+                if getattr(node.op, 'destroy_map', None):
+                    for i_pos_list in node.op.destroy_map.itervalues():
+                        destroyed_inputs_idx.extend(i_pos_list)
+                for i in destroyed_inputs_idx:
+                    input_vals[i] = input_vals[i].copy()
+
                 # compute output value once with test inputs to validate graph
-                output_storage = [[None] * len(node.outputs)]
-                node.op.perform(node, input_vals, output_storage)
-           
-                # add 'test_value' to output tags, so that downstream ops can use these
-                # numerical values as inputs to their perform method.
-                for (outval, node_output) in zip(output_storage, node.outputs):
-                    node_output.tag.test_value = outval[0]
+                output_storage = [[None]] * len(node.outputs)
+                try:
+                    node.op.perform(node, input_vals, output_storage)
+
+                    # add 'test_value' to output tags, so that downstream ops can use these
+                    # numerical values as inputs to their perform method.
+                    for (outval, node_output) in zip(output_storage, node.outputs):
+                        node_output.tag.test_value = outval[0]
+                except utils.MethodNotDefined, e:
+                    # This case happens when the perform method is not defined
+                    # for a certain Op.
+                    #TODO: use the c_thunk?
+                    if config.compute_test_value == 'warn':
+                        warnings.warn('Warning, in compute_test_value:' + type(e), stacklevel=2)
+                    elif config.compute_test_value == 'raise':
+                        raise
 
         if self.default_output is not None:
             return node.outputs[self.default_output]
@@ -405,4 +428,82 @@ class PureOp(object):
 
 class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""
-    pass
+    def __new__(cls, *args, **kwargs):
+        # this function exists to silently and transparently ensure that all
+        # existing Ops get a _op_use_c_code attribute
+        obj = object.__new__(cls, *args, **kwargs)
+        if not hasattr(obj, '_op_use_c_code'):
+            obj._op_use_c_code = True
+        return obj
+
+    def __init__(self, use_c_code=True):
+        self._op_use_c_code = use_c_code
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        """
+        :param node: something previously returned by self.make_node
+
+        :param storage_map: dict variable -> one-element-list where a computed
+                value for this variable may be found.
+
+        :param compute_map: dict variable -> one-element-list where a boolean
+                value will be found.  The boolean indicates whether the
+                variable's storage_map container contains a valid value (True)
+                or if it has not been computed yet (False).
+
+        :param no_recycling: list of variables for which it is forbidden to
+                reuse memory allocated by a previous call.
+
+        :note: If the thunk consults the storage_map on every call, it is safe
+            for it to ignore the no_recycling argument, because elements of the
+            no_recycling list will have a value of None in the storage map.  If
+            the thunk can potentially cache return values (like CLinker does),
+            then it must not do so for variables in the no_recycling list.
+        """
+        logger = logging.getLogger('theano.Op')
+
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
+        node_input_compute = [compute_map[r] for r in node.inputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
+        #logger.debug('Compiling node %i of graph' % node_idx)
+        if self._op_use_c_code:
+            try:
+                e = Env(*graph.clone(node.inputs, node.outputs))
+
+                e_no_recycling = [new_o
+                        for (new_o, old_o) in zip(e.outputs, node.outputs)
+                        if old_o in no_recycling]
+                cl = cc.CLinker().accept(e,
+                        no_recycling=e_no_recycling)
+
+                logger.debug('Trying CLinker.make_thunk')
+                fill_storage, node_input_filters, node_output_filters = cl.make_thunk(
+                    input_storage = node_input_storage,
+                    output_storage = node_output_storage)
+                def rval():
+                    fill_storage()
+                    for o in node.outputs:
+                        compute_map[o][0] = True
+                rval.cthunk = fill_storage.cthunk
+                rval.inputs = node_input_storage
+                rval.outputs = node_output_storage
+                rval.lazy = False
+                return rval
+            except (NotImplementedError, utils.MethodNotDefined):
+                logger.debug('Falling back on perform')
+
+        # condition: either there was no c_code, or it failed
+
+        p = node.op.perform
+        # default arguments are stored in the closure of `rval`
+        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+            r = p(n, [x[0] for x in i], o)
+            for o in node.outputs:
+                compute_map[o][0] = True
+            return r
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.perform = p
+        rval.lazy = False
+        return rval

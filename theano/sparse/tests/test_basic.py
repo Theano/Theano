@@ -10,7 +10,7 @@ except ImportError:
     pass#the variable enable_sparse will be used to disable the test file.
 
 import theano
-from theano import compile
+from theano import compile, config
 from theano.sparse import enable_sparse
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
@@ -239,8 +239,18 @@ class T_AddMul(unittest.TestCase):
             self.assertRaises(NotImplementedError, add, a_sv, c_dv)
             self.assertRaises(NotImplementedError, add, c_sv, a_dv)
 
-            # mul upcasts the dense input if needed
-            self.assertRaises(NotImplementedError, mul, a_sv, b_dv)
+            # mul may upcast the dense input if needed
+            if (config.cast_policy in ('custom', 'numpy') or
+                (config.cast_policy == 'numpy+floatX' and
+                 config.floatX == 'float64')):
+                # The result should be a float64 (not implemented).
+                self.assertRaises(NotImplementedError, mul, a_sv, b_dv)
+            elif (config.cast_policy == 'numpy+floatX' and
+                  config.floatX == 'float32'):
+                # The result should be a float32.
+                assert mul(a_sv, b_dv).dtype == 'float32'
+            else:
+                raise NotImplementedError()
             self.assertRaises(NotImplementedError, mul, b_sv, a_dv)
             assert mul(b_sv, c_dv).dtype == 'int32'
             self.assertRaises(NotImplementedError, mul, c_sv, b_dv)
@@ -538,6 +548,31 @@ def test_may_share_memory():
                     ]:
 
         assert SparseType.may_share_memory(a_,b_)==rep
+
+def test_sparse_shared_memory():
+    # Note : There are no inplace ops on sparse matrix yet. If  one is someday implemented, we could test it here.
+    a = random_lil((3,4), 'float32', 3).tocsr()
+    m1 = random_lil((4,4), 'float32', 3).tocsr()
+    m2 = random_lil((4,4), 'float32', 3).tocsr()
+    x = SparseType('csr', dtype='float32')()
+    y = SparseType('csr', dtype='float32')()
+
+    sdot = theano.sparse.structured_dot
+    # We use typed float32 constants to make sure there will be no upcasting,
+    # regardless of config.cast_policy.
+    fthree = tensor.constant(3, dtype='float32')
+    ftwo = tensor.constant(2, dtype='float32')
+    z = sdot(x*fthree,m1) + sdot(y*ftwo, m2)
+
+    f = theano.function([theano.In(x,mutable=True),theano.In(y,mutable = True)],z, mode='FAST_RUN')
+
+    def f_(x,y,m1=m1,m2=m2):
+        return numpy.dot(x*3,m1) + numpy.dot(y*2,m2)
+
+    assert SparseType.may_share_memory(a,a) #This is trivial
+    result  = f(a,a)
+    result_ = f_(a,a)
+    assert (result_.todense() == result.todense()).all()
 
 import theano.tensor.tests.test_sharedvar
 test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(

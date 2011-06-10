@@ -358,7 +358,7 @@ class T_SharedRandomStreams(unittest.TestCase):
     def test_vector_arguments(self):
         random = RandomStreams(utt.fetch_seed())
         low = tensor.dvector()
-        out = random.uniform(low=low, high=1)
+        out = random.uniform(low=low, high=1, dtype='float64')
         assert out.ndim == 1
         f = function([low], out)
 
@@ -372,7 +372,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val1 == numpy_val1)
 
         high = tensor.vector()
-        outb = random.uniform(low=low, high=high)
+        outb = random.uniform(low=low, high=high, dtype='float64')
         assert outb.ndim == 1
         fb = function([low, high], outb)
 
@@ -388,7 +388,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         #self.assertRaises(ValueError, fb, [-4., -2], [-1])
 
         size = tensor.lvector()
-        outc = random.uniform(low=low, high=high, size=size, ndim=1)
+        outc = random.uniform(low=low, high=high, size=size, ndim=1, dtype='float64')
         fc = function([low, high, size], outc)
 
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
@@ -409,7 +409,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         random = RandomStreams(utt.fetch_seed())
         low = tensor.dvector()
         high = tensor.dcol()
-        out = random.uniform(low=low, high=high)
+        out = random.uniform(low=low, high=high, dtype='float64')
         assert out.ndim == 2
         f = function([low, high], out)
 
@@ -431,7 +431,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         random = RandomStreams(utt.fetch_seed())
         low = tensor.dvector()
         high = tensor.dvector()
-        out = random.uniform(low=low, high=high)
+        out = random.uniform(low=low, high=high, dtype='float64')
         assert out.ndim == 1
         f = function([low, high], out)
 
@@ -455,7 +455,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
-        g = function([low, high], random.uniform(low=low, high=high, size=(3,)))
+        g = function([low, high], random.uniform(low=low, high=high, size=(3,), dtype='float64'))
         val2 = g(low_val, high_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
@@ -509,19 +509,19 @@ class T_SharedRandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = f(avg_val, std_val)
         numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
-        assert numpy.all(val0 == numpy_val0)
+        assert numpy.allclose(val0, numpy_val0)
 
         # arguments of size (2,)
         val1 = f(avg_val[:-1], std_val[:-1])
         numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val1, numpy_val1)
 
         # Specifying the size explicitly
         g = function([avg, std], random.normal(avg=avg, std=std, size=(3,)))
         val2 = g(avg_val, std_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
-        assert numpy.all(val2 == numpy_val2)
+        assert numpy.allclose(val2, numpy_val2)
         self.assertRaises(ValueError, g, avg_val[:-1], std_val[:-1])
 
     def test_random_integers_vector(self):

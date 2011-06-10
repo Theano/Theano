@@ -6,7 +6,6 @@
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import copy
 import operator
 import itertools
 import sys
@@ -28,10 +27,11 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer, pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_constant_value
+from basic import get_constant_value, ShapeError
 
 
 # Utilities
+
 
 def out2in(*local_opts):
     """WRITEME """
@@ -529,7 +529,7 @@ class ShapeFeature(object):
     the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
     particular sizes.
 
-    If you can determine the shape only in some case, return NotImplementedError when you can't
+    In cases where you cannot figure out the shape, raise a ShapeError.
 
     .. note::
 
@@ -573,14 +573,6 @@ class ShapeFeature(object):
 
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
-        # NOTE: This may cause problems bacause the shape is not asserted
-        #       there is an equivalent mechanism to do this, namely
-        #       specify_shape that one should use
-        # If user provided size
-        #elif ( hasattr(r.tag,'shape') and
-        #      r.tag.shape is not None and
-        #      r.tag.shape[i] is not None):
-        #    return T.constant(copy.copy(r.tag.shape[i]),dtype='int64')
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
@@ -728,8 +720,15 @@ class ShapeFeature(object):
 
         try:
             o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
-        except NotImplementedError:
+        except ShapeError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+        except NotImplementedError, e:
+            raise NotImplementedError(
+                    'Code called by infer_shape failed raising a '
+                    'NotImplementedError. Raising NotImplementedError to '
+                    'indicate that a shape cannot be computed is no longer '
+                    'supported, and one should now use tensor.ShapeError '
+                    'instead. The original exception message is: %s' % e)
         except Exception, e:
             _logger.error('Failed to infer_shape from Op %s.\nInput shapes:%s\nException encountered during infer_shape: %s\nException message: %s\nTraceback: %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
@@ -850,6 +849,9 @@ def local_useless_alloc(node):
 @gof.local_optimizer([T._shape])
 def local_shape_to_shape_i(node):
     if node.op == T._shape:
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         return [shape_feature.make_vector_shape(node.inputs[0])]
 
@@ -875,6 +877,9 @@ def local_subtensor_make_vector(node):
     # [a,b,c][0:2] -> [a,b]
     # we can do this for constant indexes
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
@@ -1093,7 +1098,6 @@ def local_alloc_elemwise(node):
     return [node.op(*new)]
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
-#TODO, var.tag.shape to propagate the shape and lower the overhead of this op
 #TODO, when all inputs can be optimized do all except one
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
@@ -1183,6 +1187,9 @@ def local_useless_subtensor(node):
     Remove Subtensor if it take the full input
     """
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_of = node.env.shape_feature.shape_of
         node_input_idx = 1
         for pos, idx in enumerate(node.op.idx_list):
@@ -1414,7 +1421,7 @@ def local_subtensor_merge(node):
                 # Following the suggested use of shape_feature which should
                 # consider the case when the compilation mode doesn't
                 # include the ShapeFeature
-                xhsape = x.shape
+                xshape = x.shape
                 ushape = u.shape
 
             merged_slices = []
@@ -1788,6 +1795,9 @@ if 0:
     @gof.local_optimizer([])
     def local_sum_over_empty(node):
         if isinstance(node.op, T.Sum):
+            # This optimization needs ShapeOpt and env.shape_feature
+            if not hasattr(node.env, 'shape_feature'):
+                return
             y, = node.outputs
             y_shape = node.env.shape_feature.shape_of[y]
 
@@ -2741,14 +2751,8 @@ register_specialize(local_mul_specialize)
 @gof.local_optimizer([T.add])
 def local_add_specialize(node):
     def fill_chain(v):
-        # Not sure why this happens .. but I did not had the time to look
-        # into it, it probably has something to do with the dtype I'm
-        # providing the tag.shape of my variable
         out = _fill_chain(v, node.inputs)
-        if out[0].dtype != node.outputs[0].dtype:
-            return [T.cast(out[0], dtype = node.outputs[0].dtype)]
-        else:
-            return out
+        return out
 
     #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
     if node.op == T.add:
@@ -3431,11 +3435,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
+        As part of specialization, we fuse two consecutive elemwise Ops of the
+        same shape.
 
-        For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
-        The number of dimension is validated at call time by theano itself.
-
+        For mixed dtype, we let the Composite op do the cast. It lets the C
+        compiler do the cast.
+        The number of dimensions is validated at call time by theano itself.
         """
         # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
         # TODO: use broadcast flag?
@@ -3551,7 +3556,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if new_nb_input != len(inputs) or len(s_inputs) != len(inputs):
             raise Exception("""Something has gone wrong with the elemwise
 fusion optimization. We skip this optimization. You can ignore this message,
-your code will run correctly, but maybe slower.""")
+your code will run correctly, but may be slower.""")
 
         otype = node.outputs[0].type
         s_new_out=node.op.scalar_op(*s_g)

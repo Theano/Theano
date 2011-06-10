@@ -557,7 +557,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
   You do not need to do the following now, because it is not usually needed, but if
   later on, when running Theano, you see an error message that looks like:
-    *error: 'assert' was not declared in this scope*
+  *error: 'assert' was not declared in this scope*
   then you will have to add another section:
 
     .. code-block:: cfg
