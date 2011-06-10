@@ -359,6 +359,15 @@ class PureOp(object):
             # if all inputs have test-values, run the actual op
             if run_perform:
 
+                # Original values should not be destroyed:
+                # copy the values of the inputs in destroy_map
+                destroyed_inputs_idx = []
+                if getattr(node.op, 'destroy_map', None):
+                    for i_pos_list in node.op.destroy_map.itervalues():
+                        destroyed_inputs_idx.extend(i_pos_list)
+                for i in destroyed_inputs_idx:
+                    input_vals[i] = input_vals[i].copy()
+
                 # compute output value once with test inputs to validate graph
                 output_storage = [[None]] * len(node.outputs)
                 try:
