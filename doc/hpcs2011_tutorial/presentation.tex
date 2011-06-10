@@ -829,15 +829,16 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
   \begin{itemize}
   \item Amortize it with functions over big input or reuse functions
   \end{itemize}
-\item Execution overhead (We have something in a branch that lowers it)
+\item Execution overhead
   \begin{itemize}
   \item Needs a certain number of operations to be useful
+  \item We started working on this in a branch
   \end{itemize}
 \item Compilation time super linear to the size of the graph. 
   \begin{itemize}
-  \item A few hundreds node OK
-  \item You can disable some optimizations to make it faster with bigger graphs
-  \item When this happened to us, it always indicated a problem in the graph
+  \item A few hundreds nodes is fine
+  \item Disabling a few optimizations can speed up compilation
+  \item Usually too many nodes indicates a problem with the graph
   \end{itemize}
 \end{itemize}
 
@@ -856,9 +857,14 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
   over a list, given an initial state of ``z=0``.
 \item Often a for-loop can be expressed as a ``scan()`` operation, and
   ``scan`` is the closest that Theano comes to looping. 
-\item The advantage of using ``scan`` over for loops is that it allows
-  the number of iterations to be part of the symbolic graph.
-\item calls: ``scan()``, ``map()``, ``reduce()``, ``foldl()``, ``foldr()``.
+\item The advantage of using ``scan`` over for loops
+  \begin{itemize}
+  \item The number of iterations to be part of the symbolic graph
+  \item Minimizes GPU transfers if GPU is involved FB:  I don't understand it?
+  \item Compute gradients through it
+  \item Slightly faster then using a for loop in python with a compiled theano function 
+  \item Can lower the overall memory usage by detecting the actual amount of memory needed
+  \end{itemize}
 \end{itemize}
 }
 
@@ -968,12 +974,12 @@ print calculate_polynomial(test_coeff, 3)
 \frametitle{Intro}
 Authors: Andreas Kl\"{o}ckner
 
-PyCUDA lets you access Nvidia's CUDA parallel computation API from Python. Several wrappers of the CUDA API already exist. So what's so special about PyCUDA?
 \begin{itemize}
+\item PyCUDA can access Nvidia's CUDA parallel computation API from Python
 \item Object cleanup tied to lifetime of objects (RAII, Resource Acquisition Is Initialization).
   \begin{itemize}
   \item Makes it much easier to write correct, leak- and crash-free code
-  \item PyCUDA knows about dependencies, too, so (for example) it won't detach from a context before all memory allocated in it is also freed
+  \item PyCUDA knows about dependencies(for e.g.. it won't detach from a context before all memory allocated in it is also freed)
   \end{itemize}
 \item Convenience
   \begin{itemize}
