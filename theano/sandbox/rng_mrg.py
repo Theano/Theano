@@ -622,6 +622,10 @@ def guess_n_streams(size, warn=True):
         return r
     else:
         if warn:
+            # TODO We should use the logging (or warnings) module, not
+            # sys.stderr.
+            # It's also easier to use those module to filter out that message
+            # in the tests.
             print >> sys.stderr, (
                     "MRG_RandomStreams Can't determine #streams from "
                     "size (%s), guessing 30*256") % str(size)
