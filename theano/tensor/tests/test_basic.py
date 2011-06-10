@@ -255,8 +255,8 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
             if skip:
                 raise SkipTest(skip)
             # Disable old warning that may be triggered by this test.
-            backup = config.warn.config.warn.sum_div_dimshuffle_bug
-            config.warn.config.warn.sum_div_dimshuffle_bug = False
+            backup = config.warn.sum_div_dimshuffle_bug
+            config.warn.sum_div_dimshuffle_bug = False
             try:
                 for testname, inputs in self.grad.items():
                     inputs = [copy(input) for input in inputs]
@@ -270,7 +270,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                         exc_value.args = exc_value.args + (err_msg, )
                         raise type, exc_value, traceback
             finally:
-                config.warn.config.warn.sum_div_dimshuffle_bug = backup
+                config.warn.sum_div_dimshuffle_bug = backup
 
     Checker.__name__ = name
     return Checker
