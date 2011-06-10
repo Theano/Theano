@@ -542,7 +542,7 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_r
         avg_pvals += ival
     avg_pvals/= steps
 
-    print 'random?[:10]\n', f()[:10]
+    print 'random?[:10]\n', numpy.asarray(f()[:10])
     print prefix, 'mean', avg_pvals
     print numpy.mean(abs(avg_pvals - target_pvals))# < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
     print prefix, 'time', dt
@@ -584,9 +584,10 @@ def test_multinomial():
         # We give the number of streams to avoid a warning.
         n = R.multinomial(pvals=pvals, dtype='float32', nstreams=30 * 256)
         assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-        f = theano.function([], theano.Out(
-            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-            borrow=True), mode=mode_.including('gpu'))
+        f = theano.function(
+                [],
+                theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+                mode=mode_.including('gpu'))
 
         theano.printing.debugprint(f)
         gpu_out = f()
