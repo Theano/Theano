@@ -949,10 +949,6 @@ SecondBroadcastTester = makeTester(
                             )
                         )
 
-def_mode = get_default_mode()
-print >>sys.stderr,'default mode:', def_mode
-grmbl_mode = def_mode.excluding('local_fill_to_alloc')
-print >>sys.stderr,'grmbl mode:', grmbl_mode
 SecondSameRankTester = makeTester(
                             name='SecondSameRankTester',
                             op=second,
@@ -967,9 +963,7 @@ SecondSameRankTester = makeTester(
                             bad_runtime=dict(itertools.chain(
                                 multi_dtype_checks((4, 5), (5, 4)),
                                 multi_dtype_checks((1, 5), (5, 4)),
-                            )),
-                            #mode=get_default_mode().excluding('local_fill_to_alloc')
-                            mode=grmbl_mode
+                            ))
                         )
 
 def test_eye():
