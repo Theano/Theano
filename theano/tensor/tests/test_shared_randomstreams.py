@@ -509,19 +509,19 @@ class T_SharedRandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = f(avg_val, std_val)
         numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
-        assert numpy.all(val0 == numpy_val0)
+        assert numpy.allclose(val0, numpy_val0)
 
         # arguments of size (2,)
         val1 = f(avg_val[:-1], std_val[:-1])
         numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val1, numpy_val1)
 
         # Specifying the size explicitly
         g = function([avg, std], random.normal(avg=avg, std=std, size=(3,)))
         val2 = g(avg_val, std_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
-        assert numpy.all(val2 == numpy_val2)
+        assert numpy.allclose(val2, numpy_val2)
         self.assertRaises(ValueError, g, avg_val[:-1], std_val[:-1])
 
     def test_random_integers_vector(self):
