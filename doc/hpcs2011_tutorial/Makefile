@@ -1,0 +1,2 @@
+all:
+	pdflatex presentation.tex
