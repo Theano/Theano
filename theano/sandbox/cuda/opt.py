@@ -518,7 +518,7 @@ def local_gpu_subtensor(node):
     if isinstance(node.op, tensor.Subtensor):
         x  = node.inputs[0]
         coords = node.inputs[1:]
-        if x.owner and x.owner.op == host_from_gpu:
+        if x.owner and x.owner.op == host_from_gpu and x.dtype == "float32":
             gpu_x, = x.owner.inputs
             return [host_from_gpu(GpuSubtensor(node.op.idx_list)(gpu_x, *coords))]
     return False
@@ -535,7 +535,7 @@ def local_gpu_advanced_subtensor1(node):
     if node.op.__class__ is tensor.AdvancedSubtensor1:
         x  = node.inputs[0]
         coords = node.inputs[1:]
-        if x.owner and x.owner.op == host_from_gpu:
+        if x.owner and x.owner.op == host_from_gpu and x.dtype == "float32":
             gpu_x, = x.owner.inputs
             return [host_from_gpu(GpuAdvancedSubtensor1()(gpu_x, *coords))]
     return False
