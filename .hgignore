@@ -8,6 +8,14 @@ syntax: glob
 *.so
 *.sw?
 *~
+*.aux
+*.log
+*.nav
+*.out
+*.pdf
+*.snm
+*.toc
+*.vrb
 Theano.egg-info
 \#*\#
 build
