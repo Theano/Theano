@@ -727,7 +727,13 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 theano.printing.debugprint(f)
                 raise
 
-            g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
+            backup = config.warn.sum_div_dimshuffle_bug
+            config.warn.sum_div_dimshuffle_bug = False
+            try:
+                g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
+            finally:
+                config.warn.sum_div_dimshuffle_bug = backup
+
             print_graph(g)
             try:
                 ops = [node.op for node in g.maker.env.toposort()]
@@ -879,9 +885,13 @@ def test_argmax_pushdown():
             [x],
             [out])
 
+    backup = config.warn.argmax_pushdown_bug
     config.warn.argmax_pushdown_bug = False
-    theano.compile.mode.optdb.query(
-            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+    try:
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(env)
+    finally:
+        config.warn.argmax_pushdown_bug = backup
 
     #print 'AFTER'
     #for node in env.toposort():
@@ -923,9 +933,13 @@ def test_argmax_pushdown_bias():
             [x,b],
             [out])
 
+    backup = config.warn.argmax_pushdown_bug
     config.warn.argmax_pushdown_bug = False
-    theano.compile.mode.optdb.query(
-            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+    try:
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(env)
+    finally:
+        config.warn.argmax_pushdown_bug = backup
 
     #print 'AFTER'
     #for node in env.toposort():
@@ -1020,7 +1034,12 @@ class Test_softmax_opt:
 
         # test that function contains softmax and softmaxgrad
         w = T.matrix()
-        g = theano.function([c,w],T.grad((p_y*w).sum(), c))
+        backup = config.warn.sum_div_dimshuffle_bug
+        config.warn.sum_div_dimshuffle_bug = False
+        try:
+            g = theano.function([c,w],T.grad((p_y*w).sum(), c))
+        finally:
+            config.warn.sum_div_dimshuffle_bug = backup
         g_ops = [n.op for n in g.maker.env.toposort()]
         print '--- g ='
         printing.debugprint(g)
@@ -1042,7 +1061,12 @@ class Test_softmax_opt:
         printing.debugprint(f)
 
         # test that function contains softmax and no div.
-        g = theano.function([c],T.grad(p_y.sum(), c))
+        backup = config.warn.sum_div_dimshuffle_bug
+        config.warn.sum_div_dimshuffle_bug = False
+        try:
+            g = theano.function([c],T.grad(p_y.sum(), c))
+        finally:
+            config.warn.sum_div_dimshuffle_bug = backup
         printing.debugprint(g)
         raise SkipTest('Optimization not enabled for the moment')
 
@@ -1056,7 +1080,12 @@ class Test_softmax_opt:
         printing.debugprint(f)
 
         # test that function contains softmax and no div.
-        g = theano.function([c], T.grad(p_y.sum(), c))
+        backup = config.warn.sum_div_dimshuffle_bug
+        config.warn.sum_div_dimshuffle_bug = False
+        try:
+            g = theano.function([c], T.grad(p_y.sum(), c))
+        finally:
+            config.warn.sum_div_dimshuffle_bug = backup
         printing.debugprint(g)
         raise SkipTest('Optimization not enabled for the moment')
 

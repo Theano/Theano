@@ -2511,33 +2511,41 @@ class T_local_sum(unittest.TestCase):
         assert numpy.allclose(f(input),input.sum())
 
 
+        backup = config.warn.sum_sum_bug
         config.warn.sum_sum_bug = False
-        f = theano.function([a],a.sum(0).sum(0).sum(0),mode=self.mode)
-        assert len(f.maker.env.nodes)==1
-        assert numpy.allclose(f(input),input.sum())
+        try:
+            f = theano.function([a],a.sum(0).sum(0).sum(0),mode=self.mode)
+            assert len(f.maker.env.nodes)==1
+            assert numpy.allclose(f(input),input.sum())
+        finally:
+            config.warn.sum_sum_bug = backup
 
     def test_local_sum_sum(self):
         a=T.tensor3()
         input=numpy.arange(3*3*3, dtype=config.floatX).reshape(3,3,3)
         dims=[(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]
 
+        backup = config.warn.sum_sum_bug
         config.warn.sum_sum_bug = False
-        for d,dd in dims:
-            f = theano.function([a],a.sum(d).sum(dd),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum(dd))
-            assert len(f.maker.env.nodes)==1
-        for d,dd in dims:
-            f = theano.function([a],a.sum(d).sum(dd).sum(0),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum(dd).sum(0))
-            assert len(f.maker.env.nodes)==1
-        for d in [0,1,2]:
-            f = theano.function([a],a.sum(d).sum(None),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum())
-            assert len(f.maker.env.nodes)==1
-        for d in [0,1,2]:
-            f = theano.function([a],a.sum(None).sum(),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum())
-            assert len(f.maker.env.nodes)==1
+        try:
+            for d,dd in dims:
+                f = theano.function([a],a.sum(d).sum(dd),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum(dd))
+                assert len(f.maker.env.nodes)==1
+            for d,dd in dims:
+                f = theano.function([a],a.sum(d).sum(dd).sum(0),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum(dd).sum(0))
+                assert len(f.maker.env.nodes)==1
+            for d in [0,1,2]:
+                f = theano.function([a],a.sum(d).sum(None),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum())
+                assert len(f.maker.env.nodes)==1
+            for d in [0,1,2]:
+                f = theano.function([a],a.sum(None).sum(),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum())
+                assert len(f.maker.env.nodes)==1
+        finally:
+            config.warn.sum_sum_bug = backup
 
     def test_local_sum_alloc(self):
         a=T.dtensor3()
@@ -2567,13 +2575,17 @@ class T_local_sum(unittest.TestCase):
                 assert len(f.maker.env.nodes)==nb_nodes[2]
                 assert f.maker.env.toposort()[-1].op==T.alloc
 
+            backup = config.warn.sum_sum_bug
             config.warn.sum_sum_bug = False
-            for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
-                f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
-                print f.maker.env.toposort()
-                assert numpy.allclose(f(input),n_like(input).sum(d).sum(dd))
-                assert len(f.maker.env.nodes)==nb_nodes[3]
-                assert f.maker.env.toposort()[-1].op==T.alloc
+            try:
+                for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
+                    f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
+                    print f.maker.env.toposort()
+                    assert numpy.allclose(f(input),n_like(input).sum(d).sum(dd))
+                    assert len(f.maker.env.nodes)==nb_nodes[3]
+                    assert f.maker.env.toposort()[-1].op==T.alloc
+            finally:
+                config.warn.sum_sum_bug = backup
 
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
@@ -2627,16 +2639,20 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         c_val = rng.randn(2,2,2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
+        backup = config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug
         config.warn.sum_sum_bug = False
         config.warn.sum_div_dimshuffle_bug = False
-        for i,s in enumerate(sums):
-            print i
-            f = theano.function([a,b,c,d], s, mode=self.mode)
-            theano.printing.debugprint(f)
-            g = f.maker.env.toposort()
-            #print 'g =', g
-            assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
-            f(a_val, b_val, c_val, d_val)
+        try:
+            for i,s in enumerate(sums):
+                print i
+                f = theano.function([a,b,c,d], s, mode=self.mode)
+                theano.printing.debugprint(f)
+                g = f.maker.env.toposort()
+                #print 'g =', g
+                assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
+                f(a_val, b_val, c_val, d_val)
+        finally:
+            config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug = backup
 
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
