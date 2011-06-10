@@ -6,6 +6,9 @@ Deprecation:
  * tag.shape attribute deprecated (#633)
  * FAST_RUN_NOGC mode deprecated
  * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
+ * Dividing integers with / is deprecated: use // for integer division, or
+   cast one of the integers to a float type if you want a float result (you may
+   also change this behavior with config.int_division).
 
 Bugs fixed:
  * Bugfix in CudaNdarray.__iadd__. When it is not implemented, return the error.
@@ -15,6 +18,12 @@ Bugs fixed:
  * Fix relating specifically to Python 2.7 on Mac OS X
  * infer_shape can now handle Python longs
  * Fixed behaviour of pydotprint's max_label_size option
+ * Trying to compute x % y with one or more arguments being complex now
+   raises an error.
+ * The output of random samples computed with uniform(..., dtype=...) is
+   guaranteed to be of the specified dtype instead of potentially being of a
+   higher-precision dtype.
+ * Python 2.4 syntax fixes.
 
 Crash fixed:
  * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution
@@ -35,6 +44,7 @@ GPU:
    memory on a view: new "base" property
  * Safer decref behaviour in CudaNdarray in case of failed allocations
  * New GPU implementation of tensor.basic.outer
+ * Multinomial random variates now available on GPU
 
 New features:
  * ProfileMode
@@ -48,13 +58,24 @@ New features:
  * cuda.root inferred if nvcc is on the path, otherwise defaults to
    /usr/local/cuda
  * Better graph printing for graphs involving a scan subgraph
- *
+ * Casting behavior is closer to numpy by default, and can be controlled
+   through config.cast_policy.
+ * Smarter C module cache, avoiding erroneous usage of the wrong C
+   implementation when some options change, and avoiding recompiling the
+   same module multiple times in some situations.
+ * The "theano-cache clear" command now clears the cache more thoroughly.
+ * More extensive linear algebra ops (CPU only) that wrap scipy.linalg
+   now available in the sandbox.
+ * CUDA devices 4 - 16 should now be available if present.
+ * infer_shape support for the View op, better infer_shape support in Scan
 
 Documentation:
  * Better commenting of cuda_ndarray.cu
  * Fixes in the scan documentation: add missing declarations/print statements
  * Better error message on failed __getitem__
  * Updated documentation on profile mode
+ * Better documentation of testing on Windows
+ * Better documentation of the 'run_individual_tests' script
 
 Unit tests:
  * More strict float comparaison by default
@@ -63,6 +84,10 @@ Unit tests:
    (#374)
  * Better test of copies in CudaNdarray
  * New tests relating to the new base pointer requirements
+ * Better scripts to run tests individually or in batches
+ * Some tests are now run whenever cuda is available and not just when it has
+   been enabled before
+ * Tests display less pointless warnings.
 
 Other:
  * ?? a bug?? Correctly put the broadcast flag to True in the output var of
