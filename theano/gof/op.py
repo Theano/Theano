@@ -507,4 +507,3 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
-
