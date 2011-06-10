@@ -949,6 +949,8 @@ SecondBroadcastTester = makeTester(
                             )
                         )
 
+# We exclude local_fill_to_alloc because it optimizes the "second" node
+# away from the graph.
 SecondSameRankTester = makeTester(
                             name='SecondSameRankTester',
                             op=second,
@@ -963,7 +965,8 @@ SecondSameRankTester = makeTester(
                             bad_runtime=dict(itertools.chain(
                                 multi_dtype_checks((4, 5), (5, 4)),
                                 multi_dtype_checks((1, 5), (5, 4)),
-                            ))
+                            )),
+                            mode=get_default_mode().excluding('local_fill_to_alloc')
                         )
 
 def test_eye():
