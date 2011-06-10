@@ -238,7 +238,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     raise type, exc_value, traceback
 
                 try:
-                    f = inplace_func(inputrs, node.outputs)
+                    f = inplace_func(inputrs, node.outputs, mode=mode)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
