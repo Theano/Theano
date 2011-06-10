@@ -475,7 +475,7 @@ class ModuleCache(object):
                                 # not necessarily broken.
                                 pass
                             continue
-                        
+
                         if not isinstance(key_data, KeyData):
                             # This is some old cache data, that does not fit
                             # the new cache format. It would be possible to
@@ -658,7 +658,7 @@ class ModuleCache(object):
 
                     # Obtain path to the '.so' module file.
                     name = module.__file__
-                    
+
                     debug("Adding module to cache", key, name)
                     assert name.startswith(location)
                     assert name not in self.module_from_name
@@ -828,7 +828,7 @@ class ModuleCache(object):
     def clear_unversioned(self, min_age=None):
         """
         Delete unversioned dynamic modules.
-        
+
         They are deleted both from the internal dictionaries and from the
         filesystem.
 
