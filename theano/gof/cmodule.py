@@ -520,12 +520,12 @@ class ModuleCache(object):
                                 # entry somehow.
                                 assert entry not in self.module_from_name
                             else:
-                                warning("The same cache key is associated to "
-                                        "different modules. This should not "
-                                        "be possible! We will re-use the first"
-                                        " module (%s) instead of the new one "
-                                        "(%s)." % (self.entry_from_key[key],
-                                                   entry))
+                                info("The same cache key is associated to "
+                                     "different modules. This may happen "
+                                     "if different processes compiled the "
+                                     "same module independently. We will "
+                                     "use %s instead of %s." %
+                                     (self.entry_from_key[key], entry))
                         self.loaded_key_pkl.add(key_pkl)
 
                         # Remember the map from a module's hash to the KeyData
@@ -534,11 +534,10 @@ class ModuleCache(object):
                         if mod_hash in self.module_hash_to_key_data:
                             # This should not happen: a given module should
                             # never be duplicated in the cache.
-                            warning(
-                                "Found duplicated modules in the cache! If "
-                                "you are unable to debug this issue, it is "
-                                "advised to at least clear your cache with "
-                                "'theano-cache clear'.")
+                            info(
+                                "Found duplicated modules in the cache! This "
+                                "may happen if different processes compiled "
+                                "the same module independently.")
                         else:
                             self.module_hash_to_key_data[mod_hash] = key_data
                     else:
