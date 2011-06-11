@@ -971,4 +971,3 @@ def scan( fn
         scan_out_list = None
 
     return (scan_out_list, update_map)
-
