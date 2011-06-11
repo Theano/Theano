@@ -102,22 +102,21 @@ HPCS 2011, Montr\'eal
 
 \section{Overview}
 \subsection{Motivation}
-\frame{
+\begin{frame}
   \frametitle{Theano Goal}
 \begin{itemize}
-\item Tries to be the {\bf holy grail} in computing: {\it easy to code} and {\it fast to execute}!
+\item Tries to be the {\bf holy grail} in computing: {\it easy to code} and {\it fast to execute} !
 \item Only on mathematical expression
 \item So you won't have:
   \begin{itemize}
   \item Function call inside a theano function
   \item Structure, enum
   \item Dynamic type (Theano is Fully taped)
-  \item Goto
   \item ...
-  \item And don't do coffee!
+  \item And don't do coffee! \includegraphics[width=1.3in]{pics/Caffeine_Machine_no_background_red.png}
   \end{itemize}
 \end{itemize}
-}
+\end{frame}
 
 \frame{
   \frametitle{Faster on CPU and GPU}
@@ -200,12 +199,23 @@ HPCS 2011, Montr\'eal
     \item Scan (For-Loop generalization)
     \item Known Limitations
     \end{itemize} %& \includegraphics[width=1.in]{pics/theano_logo.png}
+  \begin{tabular}{lcr}
+    \imagetop{\includegraphics[width=1.in]{pics/theano_logo.png}}&
+    %\imagetop{\includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}}
+  \end{tabular}
+  \end{itemize}
+}
+
+\frame{
+  \frametitle{Overview 3}
+  \begin{itemize}
   \item PyCUDA
     \begin{itemize}
     \item Introduction
     \item Example
 % PyCUDA Exercices
-    \end{itemize} %& \includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}
+    \end{itemize}
+  \item CUDA Overview
   \item Extending Theano
     \begin{itemize}
     \item Theano Graph
@@ -213,24 +223,23 @@ HPCS 2011, Montr\'eal
     \item Op Example
     \item Theano + PyCUDA Op Example
 % Theano+PyCUDA Exercises
-    \end{itemize} %& \includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}
+    \end{itemize}
 
   \item PyCUDA + Theano
   \item GpuNdArray
   \item Conclusion
   \end{itemize}
-%  \end{tabular} 
   \begin{tabular}{lcr}
-    \imagetop{\includegraphics[width=1.in]{pics/theano_logo.png}}&
+    %\imagetop{\includegraphics[width=1.in]{pics/theano_logo.png}}&
     \imagetop{\includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}}
   \end{tabular} 
 }
 
 \frame{
-  \frametitle{Won't cover}
+  \frametitle{Overview 4}
   \begin{itemize}
-  \item How to write (low-level) GPU code
-  \item How to optimize GPU code
+  \item Only high level overview of CUDA
+  \item Don't talk about how to optimize GPU code
   \end{itemize}
 }
 
@@ -247,7 +256,6 @@ HPCS 2011, Montr\'eal
       \begin{itemize}
       \item Quality of implementation
       \item How much time was spent optimizing CPU vs GPU code
-      \item How much time spent optimizing CPU vs GPU code
       \end{itemize}
     \item In Theory: 
       \begin{itemize}
@@ -258,7 +266,6 @@ HPCS 2011, Montr\'eal
     \end{itemize}
   \item Theano goes up to 100x faster on th GPU because we don't use multiple core on CPU
     \begin{itemize}
-  \item With Theano, up to 100x can be seen as we don't generate multi-core code on CPU
     \item Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
     \end{itemize}
   \item If you see 1000x, it probably means the benchmark is not fair
@@ -333,7 +340,7 @@ HPCS 2011, Montr\'eal
     \item Indentation for block delimiters
     \item Dynamic type and memory management
     \item Dictionary \texttt{d=\{'var1':'value1', 'var2':42, ...\}}
-    \item List comprehension: [i+3 for i in range(10)] not used in the tutorial
+    \item List comprehension: [i+3 for i in range(10)]
   \end{itemize}
 }
 
@@ -395,7 +402,6 @@ HPCS 2011, Montr\'eal
   \frametitle{Description}
   \begin{itemize}
   \item Mathematical expression compiler
-  \item Statically typed and purely functional
   \item Dynamic C/CUDA code generation
   \item Efficient symbolic differentiation
     \begin{itemize}
@@ -405,28 +411,28 @@ HPCS 2011, Montr\'eal
     \begin{itemize}
     \item Gives the right answer for $\log(1+x)$ even if x is really tiny.
     \end{itemize}
-  \item Extensive unit-testing and self-verification
-    \begin{itemize}
-    \item Detects and diagnoses many types of errors
-    \end{itemize}
-  \item Expressions mimic NumPy's syntax \& semantics
   \item Works on Linux, Mac and Windows
-  \end{itemize}
-}
-
-\frame{
-  \frametitle{Description 2}
-  \begin{itemize}    
   \item Transparent use of a GPU
     \begin{itemize}
     \item float32 only for now (working on other data types)
     \item Doesn't work on Windows for now
     \item On GPU data-intensive calculations are typically between 6.5x and 44x faster. We've seen speedups up to 140x
+    \end{itemize}  \end{itemize}
+}
+
+\frame{
+  \frametitle{Description 2}
+  \begin{itemize}    
+  \item Extensive unit-testing and self-verification
+    \begin{itemize}
+    \item Detects and diagnoses many types of errors
     \end{itemize}
   \item On CPU, common machine learning algorithms are 1.6x to 7.5x faster than competitive alternatives 
     \begin{itemize}
     \item including specialized implementations in C/C++, NumPy, SciPy, and Matlab
     \end{itemize}
+  \item Expressions mimic NumPy's syntax \& semantics
+  \item Statically typed and purely functional
   \item Some sparse operations (CPU only)
   \item The project was started by James Bergstra and Olivier Breuleux
   \item For the past 1-2 years, I have replaced Olivier as lead contributor
@@ -702,7 +708,7 @@ Now modif the code to run with floatX=float32
   \vfill
   \begin{itemize}
   \item T.row, T.col
-  \item Must be specidied when creating the varible.
+  \item Must be specified when creating the variable.
   \item The only shorcut with broadcastable dimensions are: {\bf T.row} and {\bf T.col}
   \item All are shortcuts to: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
   \end{itemize}
@@ -842,26 +848,6 @@ Rest of the time since import 1.623s 60.2%
 \end{Verbatim}
 \end{frame}
 
-\frame{
-\frametitle{GPU Programming: Gains and Losses}
-\begin
-Gains
-Memory Bandwidth (140GB/s vs 12 GB/s)
-Compute Bandwidth( Peak: 1 TF/s vs 0.1 TF/s in float)
-Data-parallel programming
-
-Losses:
-No performance portability guaranty
-?!?Data size influence the implementation
-Cheap branches
-Fine-grained malloc/free*
-Recursion*
-Function pointers*
-IEEE 754FP compliance*
-
-* Less problematic with new hardware (NVIDIA Fermi)
-{\color{gray}[slide from Andreas Kl\"{o}ckner]}
-}
 \begin{frame}[fragile]
 \frametitle{Profile Mode: Function Summary}
 Theano outputs:
@@ -1274,11 +1260,72 @@ multiply_them(
 \end{Verbatim}
 \end{frame}
 
+%\frame{
+%\frametitle{GpuArray}
+%TODO: No support for strided memory.
+%}
+
+\section{CUDA}
+\subsection{CUDA Overview}
+\frame{
+\frametitle{GPU Programming: Gains and Losses: TODO}
+\begin{itemize}
+\item Gains:
+\begin{itemize}
+\item Memory Bandwidth (140GB/s vs 12 GB/s)
+\item Compute Bandwidth( Peak: 1 TF/s vs 0.1 TF/s in float)
+\item Data-parallel programming
+\end{itemize}
+
+\item Losses:
+\begin{itemize}
+\item No performance portability guaranty
+\item Data size influence more the implementation code on GPU
+\item Cheap branches
+\item Fine-grained malloc/free*
+\item Recursion*
+\item Function pointers*
+\item IEEE 754FP compliance*
+\end{itemize}
+\end{itemize}
+
+* Less problematic with new hardware (NVIDIA Fermi)
+
+\small{\color{gray}[slide from Andreas Kl\"{o}ckner]}
+}
+
+\frame{
+\frametitle{CPU vs GPU Architecture}
+%\begin{center}
+\includegraphics[width=4.7in]{pics/CPU_VS_GPU.png}
+
+\small{\color{gray}Source NVIDIA CUDA\_C\_Programming\_Guide.pdf document}
+%\end{center}
+}
+
+\frame{
+\frametitle{Different GPU Block Repartition}
+\begin{center}
+\includegraphics[width=3.2in]{pics/bloc_repartition.png}
+
+\small{\color{gray}Source NVIDIA CUDA\_C\_Programming\_Guide.pdf document}
+\end{center}
+}
+
+\frame{
+\frametitle{GPU thread structure}
+\begin{center}
+\includegraphics[width=2.7in]{pics/grid_block_thread.png}
+
+\small{\color{gray}Source NVIDIA CUDA\_C\_Programming\_Guide.pdf document}
+\end{center}
+}
+
 \begin{frame}
 \frametitle{PyCUDA Exercises}
 \begin{itemize}
 \item Run the example
-\item Modify it to work for a matrix of 200 $\times$ 200
+\item Modify it to work for a matrix of 20 $\times$ 10
 \end{itemize}
 \end{frame}
 
@@ -1291,11 +1338,6 @@ multiply_them(
 %\end{itemize}
 %\end{frame}
 
-
-\frame{
-\frametitle{GpuArray}
-TODO: No support for strided memory.
-}
 
 \section{Extending Theano}
 \subsection{Theano}
