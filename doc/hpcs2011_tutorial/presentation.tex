@@ -156,8 +156,10 @@ HPCS 2011, Montr\'eal
   \item {\bf Exercises as we go}
   \item Introduction
     \begin{itemize}
+%Why GPU
     \item Why Scripting for GPUs?
     \item Theano vs. PyCUDA vs. PyOpenCL vs. CUDA
+%What is your background
     \item Python in 1 slide
     \item NumPy in 1 slide
     \end{itemize}
@@ -165,8 +167,17 @@ HPCS 2011, Montr\'eal
     \begin{itemize}
     \item Introduction
     \item Simple example
+% gpu for exercices
+% Exercises 1 and how to download the files
     \item Real example
-    \item Benchmarks
+% More info on T.grad
+% Where are the optimization in the example?
+% Exercises 2
+
+    \item Symbolic Variables
+    \item GPU
+% Exercises 3
+    \item Benchmarks % MLP, Convolucion, Elemwise
     \end{itemize}
   \end{itemize}
 }
@@ -179,19 +190,32 @@ HPCS 2011, Montr\'eal
   \item Advanced Theano
     \begin{itemize}
     \item Compilation Pipeline
+    \item Inplace Optimization
+    \item Theano Flags
     \item Profiling
-    \item Printing
+%exercises 4
+    \item Drawing/Printing Theano Graph
     \item Debugging
     \item break?
-    \item GPU
     \item Scan (For-Loop generalization)
+    \item Known Limitations
     \end{itemize} %& \includegraphics[width=1.in]{pics/theano_logo.png}
   \item PyCUDA
     \begin{itemize}
     \item Introduction
     \item Example
-    \item PyCUDA + Theano
+% PyCUDA Exercices
     \end{itemize} %& \includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}
+  \item Extending Theano
+    \begin{itemize}
+    \item Theano Graph
+    \item Op Contract
+    \item Op Example
+    \item Theano + PyCUDA Op Example
+% Theano+PyCUDA Exercises
+    \end{itemize} %& \includegraphics[width=.6in]{pics/pycuda-logo-crop.pdf}
+
+  \item PyCUDA + Theano
   \item GpuNdArray
   \item Conclusion
   \end{itemize}
@@ -361,6 +385,9 @@ HPCS 2011, Montr\'eal
   \item Announcements mailing list: http://groups.google.com/group/theano-announce
   \item User mailing list: http://groups.google.com/group/theano-users
   \item Deep Learning Tutorials: http://www.deeplearning.net/tutorial/
+
+    \vfill 
+  \item Installation: https://deeplearning.net/software/theano/install.html
   \end{itemize}
 }
 
@@ -468,6 +495,7 @@ Computer in the class
 \begin{itemize}
 \item Intel Xeon X3450 (?56? flops/s, 383\$, 4 cores)
 \item NVIDIA Quadro FX 580 (71GF/s single, 140\$, 32 cores), compute capability 1.1, 'profesionnal card'
+% BLAS on the cpu took 48s, 4s on the GPU
 \end{itemize}
 
 %Device 0: "Quadro FX 580"
@@ -762,12 +790,26 @@ Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled 
 }
 
 \section{Advanced Theano}
-\subsection{Pipeline}
+\subsection{Optimizations}
 \frame{
 \frametitle{Compilation Pipeline}
 \begin{center}
 \includegraphics[width=2.7in]{pics/pipeline.pdf}
 \end{center}
+}
+
+\frame{
+\frametitle{Inplace Optimization}
+\begin{itemize}
+\item 2 type of inplace operations:
+  \begin{itemize}
+  \item An op that return a view on its inputs
+  \item An op that write the output on the inputs memory space
+  \end{itemize}
+\item This allow some memory optimization
+\item The Op must tell to theano if they work inplace
+\item Inplace Op add constraints to the order of execution
+\end{itemize}
 }
 
 \subsection{Theano Flags}
@@ -800,6 +842,26 @@ Rest of the time since import 1.623s 60.2%
 \end{Verbatim}
 \end{frame}
 
+\frame{
+\frametitle{GPU Programming: Gains and Losses}
+\begin
+Gains
+Memory Bandwidth (140GB/s vs 12 GB/s)
+Compute Bandwidth( Peak: 1 TF/s vs 0.1 TF/s in float)
+Data-parallel programming
+
+Losses:
+No performance portability guaranty
+?!?Data size influence the implementation
+Cheap branches
+Fine-grained malloc/free*
+Recursion*
+Function pointers*
+IEEE 754FP compliance*
+
+* Less problematic with new hardware (NVIDIA Fermi)
+{\color{gray}[slide from Andreas Kl\"{o}ckner]}
+}
 \begin{frame}[fragile]
 \frametitle{Profile Mode: Function Summary}
 Theano outputs:
@@ -1033,29 +1095,6 @@ All pydotprint* requires graphviz and pydot
 \end{itemize}
 }
 
-\frame{
-\frametitle{Known Limitations}
-\begin{itemize}
-\item Compilation phase distinct from execution phase
-\item Compilation time can be significant
-  \begin{itemize}
-  \item Amortize it with functions over big input or reuse functions
-  \end{itemize}
-\item Execution overhead
-  \begin{itemize}
-  \item Needs a certain number of operations to be useful
-  \item We have started working on this in a branch
-  \end{itemize}
-\item Compilation time superlinear in the size of the graph. 
-  \begin{itemize}
-  \item A few hundreds nodes is fine
-  \item Disabling a few optimizations can speed up compilation
-  \item Usually too many nodes indicates a problem with the graph
-  \end{itemize}
-\end{itemize}
-
-}
-
 \subsection{Loops}
 \frame{
 \frametitle{Scan}
@@ -1133,8 +1172,41 @@ print calculate_polynomial(test_coeff, 3)
 \end{itemize}
 }
 
+\frame{
+\frametitle{Known Limitations}
+\begin{itemize}
+\item Compilation phase distinct from execution phase
+\item Compilation time can be significant
+  \begin{itemize}
+  \item Amortize it with functions over big input or reuse functions
+  \end{itemize}
+\item Execution overhead
+  \begin{itemize}
+  \item Needs a certain number of operations to be useful
+  \item We have started working on this in a branch
+  \end{itemize}
+\item Compilation time superlinear in the size of the graph. 
+  \begin{itemize}
+  \item A few hundreds nodes is fine
+  \item Disabling a few optimizations can speed up compilation
+  \item Usually too many nodes indicates a problem with the graph
+  \end{itemize}
+\item Lazy evaluation in a branch (We try to merge this summer)
+\end{itemize}
+
+}
+
 \section{PyCUDA}
 \subsection{PyCUDA}
+
+\begin{frame}[fragile]
+\frametitle{PyCUDA}
+\begin{center}
+\includegraphics[width=2.5in]{pics/pycuda-logo-crop.pdf}
+\end{center}
+\end{frame}
+
+
 \frame{
 \frametitle{Intro}
 Authors: Andreas Kl\"{o}ckner
@@ -1210,6 +1282,16 @@ multiply_them(
 \end{itemize}
 \end{frame}
 
+%\begin{frame}
+%\frametitle{PyCUDA Exercises:TODO MOVE?!?!?}
+%\begin{itemize}
+%\item Run the example
+%\item Modify it to multiple two matrix (rename it to MulMatrix)
+%\item Modify it to multiple two inputs with arbitrary number of dimensions
+%\end{itemize}
+%\end{frame}
+
+
 \frame{
 \frametitle{GpuArray}
 TODO: No support for strided memory.
@@ -1233,7 +1315,7 @@ TODO: No support for strided memory.
 }
 
 \begin{frame}[fragile]
-\frametitle{Theano Op Contract}
+\frametitle{Op Contract}
 \begin{Verbatim}[commandchars=\\\{\}]
 class MyOp(Op):
     def __eq__(self, other):
@@ -1257,7 +1339,7 @@ class MyOp(Op):
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Theano Op Example}
+\frametitle{Op Example}
 \begin{Verbatim}
 import theano
 
@@ -1292,15 +1374,6 @@ assert numpy.allclose(inp*2, out)
 print inp
 print out
 \end{Verbatim}
-\end{frame}
-
-\begin{frame}
-\frametitle{PyCUDA Exercises}
-\begin{itemize}
-\item Run the example
-\item Modify it to multiple two matrix (rename it to MulMatrix)
-\item Modify it to multiple two inputs with arbitrary number of dimensions
-\end{itemize}
 \end{frame}
 
 \subsection{Theano+PyCUDA}
