@@ -1,8 +1,9 @@
+import os, sys, traceback, warnings
+
 import numpy
 import unittest
 
 import theano
-import warnings
 from theano import config
 from theano import tensor as T
 from theano.tensor.basic import _allclose
@@ -164,7 +165,7 @@ class TestComputeTestValue(unittest.TestCase):
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
-    def notest_scan(self):
+    def test_scan(self):
         """
         Do not run this test as the compute_test_value mechanism is known not to work with Scan.
         TODO: fix scan to work with compute_test_value
@@ -172,15 +173,16 @@ class TestComputeTestValue(unittest.TestCase):
         orig_compute_test_value = theano.config.compute_test_value
         try:
             theano.config.compute_test_value = 'raise'
+            #theano.config.compute_test_value = 'warn'
             k = T.iscalar("k")
             A = T.vector("A")
             k.tag.test_value = 3
             A.tag.test_value = numpy.random.rand(5)
 
             def fx(prior_result, A):
-                return prior_results * A
+                return prior_result * A
             # Symbolic description of the result
-            result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
+            result, updates = theano.scan(fn=fx,
                                           outputs_info=T.ones_like(A),
                                           non_sequences=A,
                                           n_steps=k)
@@ -190,5 +192,83 @@ class TestComputeTestValue(unittest.TestCase):
             # notice this and not waste memory saving them.
             final_result = result[-1]
             assert hasattr(final_result.tag, 'test_value')
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value
+
+    def test_scan_err1(self):
+        # This test should fail when building fx for the first time
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = 'raise'
+
+            k = T.iscalar("k")
+            A = T.matrix("A")
+            k.tag.test_value = 3
+            A.tag.test_value = numpy.random.rand(5,3)
+
+            def fx(prior_result, A):
+                return T.dot(prior_result, A)
+
+            # Since we have to inspect the traceback,
+            # we cannot simply use self.assertRaises()
+            try:
+                theano.scan(
+                        fn=fx,
+                        outputs_info=T.ones_like(A),
+                        non_sequences=A,
+                        n_steps=k)
+                assert False
+            except ValueError, e:
+                # Get traceback
+                tb = sys.exc_info()[2]
+                # Get frame info 3 layers up
+                frame_info = traceback.extract_tb(tb)[-3]
+                # We should be in the "fx" function defined above
+                assert os.path.split(frame_info[0])[1] == 'test_compute_test_value.py'
+                assert frame_info[2] == 'fx'
+
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value
+
+    def test_scan_err2(self):
+        # This test should not fail when building fx for the first time,
+        # but when calling the scan's perform()
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = 'raise'
+
+            k = T.iscalar("k")
+            A = T.matrix("A")
+            k.tag.test_value = 3
+            A.tag.test_value = numpy.random.rand(5,3)
+
+            def fx(prior_result, A):
+                return T.dot(prior_result, A)
+
+            self.assertRaises(ValueError,
+                    theano.scan,
+                    fn=fx,
+                    outputs_info=T.ones_like(A.T),
+                    non_sequences=A,
+                    n_steps=k)
+
+            # Since we have to inspect the traceback,
+            # we cannot simply use self.assertRaises()
+            try:
+                theano.scan(
+                        fn=fx,
+                        outputs_info=T.ones_like(A.T),
+                        non_sequences=A,
+                        n_steps=k)
+                assert False
+            except ValueError, e:
+                # Get traceback
+                tb = sys.exc_info()[2]
+                # Get last frame info
+                frame_info = traceback.extract_tb(tb)[-1]
+                # We should be in scan_op.py, function 'perform'
+                assert os.path.split(frame_info[0])[1] == 'scan_op.py'
+                assert frame_info[2] == 'perform'
+
         finally:
             theano.config.compute_test_value = orig_compute_test_value

@@ -39,6 +39,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
+import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -413,10 +414,21 @@ def scan( fn
 
                 # If not we need to use copies, that will be replaced at
                 # each frame by the corresponding slice
-                _seq_val = tensor.as_tensor_variable(seq['input'])
-                nw_slice = _seq_val[0].type()
                 actual_slice = seq['input'][k-mintap]
+                _seq_val = tensor.as_tensor_variable(seq['input'])
+                _seq_val_slice = _seq_val[k-mintap]
+                nw_slice = _seq_val_slice.type()
 
+                # Try to transfer test_value to the new variable
+                if config.compute_test_value != 'off':
+                    try:
+                        nw_slice.tag.test_value = gof.Op._get_test_value(_seq_val_slice)
+                    except AttributeError, e:
+                        if config.compute_test_value != 'ignore':
+                            # No need to print a warning or raise an error now,
+                            # it will be done when fn will be called.
+                            info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing'), e)
 
                 # Add names to slices for debugging and pretty printing ..
                 # that is if the input already has a name
@@ -450,6 +462,7 @@ def scan( fn
                 inner_seqs.append( nw_slice )
                 inner_slices.append( actual_slice )
                 n_seqs += 1
+
 
     # Since we've added all sequences now we need to level them up based on
     # n_steps or their different shapes
@@ -533,8 +546,21 @@ def scan( fn
 
             actual_arg = init_out['initial']
             arg = safe_new(init_out['initial'])
+
+            # Try to transfer test_value to the new variable
+            if config.compute_test_value != 'off':
+                try:
+                    arg.tag.test_value = gof.Op._get_test_value(actual_arg)
+                except AttributeError, e:
+                    if config.compute_test_value != 'ignore':
+                        # No need to print a warning or raise an error now,
+                        # it will be done when fn will be called.
+                        info(('Cannot compute test value for the inner '
+                            'function of scan, input value missing'), e)
+
             if getattr(init_out['initial'],'name', None) is not None:
                 arg.name = init_out['initial'].name+'[t-1]'
+
             # We need now to allocate space for storing the output and copy
             # the initial state over. We do this using the expand function
             # defined in scan utils
@@ -576,7 +602,19 @@ def scan( fn
                 # create a new slice
                 actual_nw_slice = init_out['initial'][k+mintap]
                 _init_out_var = tensor.as_tensor_variable(init_out['initial'])
-                nw_slice = _init_out_var[0].type()
+                _init_out_var_slice = _init_out_var[k+mintap]
+                nw_slice = _init_out_var_slice.type()
+
+                # Try to transfer test_value to the new variable
+                if config.compute_test_value != 'off':
+                    try:
+                        nw_slice.tag.test_value = Op._get_test_value(_init_out_var_slice)
+                    except AttributeError, e:
+                        if config.compute_test_value != 'ignore':
+                            # No need to print a warning or raise an error now,
+                            # it will be done when fn will be called.
+                            info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing.'), e)
 
                 # give it a name or debugging and pretty printing
                 if getattr(init_out['initial'],'name', None) is not None:
