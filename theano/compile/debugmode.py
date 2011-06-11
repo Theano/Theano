@@ -1414,8 +1414,14 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         for i in xrange(mode.stability_patience):
             env, additional_outputs, equivalence_tracker = _optcheck_env(expanded_inputs, outputs, accept_inplace)
             env.equivalence_tracker = equivalence_tracker
+
             # optimize the env
-            optimizer(env)
+            compute_test_value_orig = theano.config.compute_test_value
+            try:
+                theano.config.compute_test_value = "off"
+                optimizer(env)
+            finally:
+                theano.config.compute_test_value = compute_test_value_orig
 
             theano.compile.function_module.insert_deepcopy(env, inputs, outputs+additional_outputs)
 
