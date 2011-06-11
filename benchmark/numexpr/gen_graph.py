@@ -188,10 +188,10 @@ def execs_timeit_2vector(exprs, fname=None):
         pylab.subplots_adjust(wspace=0.25, hspace=0.25)
         #legend=[]
         #plot = fig.add_subplot(1,len(exprs),idx)
-        speedup = [t[0].min()/t[1].min() for t in time]
+        speedup = [t["numpy"].min()/t["numexpr"].min() for t in time]
 
-        pylab.semilogx(nb_calls, speedup, linewidth=1.0, linestyle = '--', color='r')
-        speedup = [t[0].min()/t[2].min() for t in time]
+        pylab.semilogx(nb_calls, speedup, linewidth=1.0,  color='r')
+        speedup = [t["numpy"].min()/t["theano"].min() for t in time]
         pylab.semilogx(nb_calls, speedup, linewidth=1.0, color = 'b')
         pylab.grid(True)
         if (idx == 2) or (idx == 3):
