@@ -167,8 +167,7 @@ class TestComputeTestValue(unittest.TestCase):
 
     def test_scan(self):
         """
-        Do not run this test as the compute_test_value mechanism is known not to work with Scan.
-        TODO: fix scan to work with compute_test_value
+        Test the compute_test_value mechanism Scan.
         """
         orig_compute_test_value = theano.config.compute_test_value
         try:
@@ -177,7 +176,7 @@ class TestComputeTestValue(unittest.TestCase):
             k = T.iscalar("k")
             A = T.vector("A")
             k.tag.test_value = 3
-            A.tag.test_value = numpy.random.rand(5)
+            A.tag.test_value = numpy.random.rand(5).astype(config.floatX)
 
             def fx(prior_result, A):
                 return prior_result * A
@@ -204,7 +203,7 @@ class TestComputeTestValue(unittest.TestCase):
             k = T.iscalar("k")
             A = T.matrix("A")
             k.tag.test_value = 3
-            A.tag.test_value = numpy.random.rand(5,3)
+            A.tag.test_value = numpy.random.rand(5,3).astype(config.floatX)
 
             def fx(prior_result, A):
                 return T.dot(prior_result, A)
@@ -240,7 +239,7 @@ class TestComputeTestValue(unittest.TestCase):
             k = T.iscalar("k")
             A = T.matrix("A")
             k.tag.test_value = 3
-            A.tag.test_value = numpy.random.rand(5,3)
+            A.tag.test_value = numpy.random.rand(5,3).astype(config.floatX)
 
             def fx(prior_result, A):
                 return T.dot(prior_result, A)
