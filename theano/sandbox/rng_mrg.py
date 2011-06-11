@@ -5,7 +5,7 @@ Generator code in SSJ package (L'Ecuyer & Simard)
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
-import sys
+import sys, warnings
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
@@ -622,13 +622,10 @@ def guess_n_streams(size, warn=True):
         return r
     else:
         if warn:
-            # TODO We should use the logging (or warnings) module, not
-            # sys.stderr.
-            # It's also easier to use those module to filter out that message
-            # in the tests.
-            print >> sys.stderr, (
+            warnings.warn((
                     "MRG_RandomStreams Can't determine #streams from "
-                    "size (%s), guessing 30*256") % str(size)
+                    "size (%s), guessing 30*256") % str(size),
+                    stacklevel=3)
         return 30 * 256
 
 
