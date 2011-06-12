@@ -164,13 +164,6 @@ class Scan(Op):
         # function that we set in case none was given
         self.info['name'] = self.name
 
-        wrapped_inputs  = [Param(x,borrow=True) for x in inputs ]
-        wrapped_outputs = [Out(x, borrow=True) for x in outputs ]
-        self.fn = function(wrapped_inputs,
-                           wrapped_outputs,
-                           mode = self.mode_instance,
-                           name = self.name )
-        self.mask = [ 0 for x in xrange(self.n_shared_outs) ]
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -178,11 +171,14 @@ class Scan(Op):
                   self.n_mit_sot +
                   self.n_sit_sot +
                   self.n_nit_sot )
-        for i in xrange(slices, slices+self.n_shared_outs):
-            if isinstance(self.fn.maker.env.outputs[i].owner.op,
-                          ViewOp):
-                self.mask[i-slices] = 1
-
+        wrapped_inputs  = [Param(x, borrow=True) for x in inputs ]
+        wrapped_outputs = [Out(x, borrow=True) for x in
+                           outputs[:slices] ]
+        wrapped_outputs += outputs[slices:]
+        self.fn = function(wrapped_inputs,
+                           wrapped_outputs,
+                           mode = self.mode_instance,
+                           name = self.name )
 
         # Pre-computing some values to speed up perform
         self.mintaps   = [ numpy.min(x) for x in self.tap_array]
@@ -599,12 +595,6 @@ class Scan(Op):
                     del tmp
 
 
-        for idx,val in enumerate(self.mask):
-            if val == 1:
-                if hasattr(outs[end+idx][0], 'copy'):
-                    outs[end + idx][0] = outs[end+idx][0].copy()
-                else:
-                    outs[end + idx][0] = copy.deepcopy(outs[end+idx][0])
         t_call = time.time() - t0_call
 
         if hasattr(self.fn.maker.mode,'fct_call_time'):
