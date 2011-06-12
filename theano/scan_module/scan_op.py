@@ -138,8 +138,6 @@ class Scan(Op):
                               self.n_sit_sot ):
                 self.destroy_map[idx] = [idx + 1 + self.n_seqs]
 
-        # I consider all inputs of the inner function non mutable
-        nonmutable = range(len(inputs))
 
         mode_instance = compile.mode.get_mode(self.mode)
         # if the default mode is used, and that mode is ProfileMode
