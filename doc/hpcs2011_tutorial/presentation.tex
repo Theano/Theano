@@ -449,12 +449,12 @@ HPCS 2011, Montr\'eal
   \vfill
   Writing the code is faster because:
   \begin{itemize}
-  \item High-level language allows to concentrate on the algorithm
-  \item Automatic optimization
+  \item High-level language allows to {\bf concentrate on the algorithm}
+  \item Theano do {\bf automatic optimization}
     \begin{itemize}
     \item No need to manually optimize for each algorithm you want to test
     \end{itemize}
-  \item Automatic efficient symbolic differentiation
+  \item Theano do {\bf automatic efficient symbolic differentiation}
     \begin{itemize}
     \item No need to manually differentiate your functions (tedious \& error-prone for complicated expressions!)
     \end{itemize}    
@@ -910,10 +910,8 @@ Op-wise summary:
     0.6%   98.1%  0.000s  0.026s  1.69e-05s      10  1 Alloc
     0.4%   98.5%  0.000s  0.026s  1.02e-05s *    10  1 Elemwise{Composite{
         exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)]
-    0.3%   98.8%  0.000s  0.026s  8.80e-06s *    10  1 Elemwise{
-        ScalarSigmoid}[(0, 0)]
     0.2%   99.0%  0.000s  0.026s  2.40e-06s *    21  3 InplaceDimShuffle{x}
-   ... (remaining 10 Apply account for 1.0%(0.00s) of the runtime)
+   ... (remaining 11 Apply account for 1.3%(0.00s) of the runtime)
 (*) Op is running a c implementation
 \end{Verbatim}
 \end{frame}
@@ -934,7 +932,8 @@ Apply-wise summary:
     1.4%   97.5%  0.000s  0.025s 3.63e-05s  10   9 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}(y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
     0.6%   98.1%  0.000s  0.026s 1.69e-05s  10  10 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
     0.4%   98.5%  0.000s  0.026s 1.02e-05s  10  13 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, InplaceDimShuffle{x}.0)
-   ... (remaining 14 Apply instances account for 1.5%(0.00s) of the runtime)
+   ... (remaining 14 Apply instances account for 
+       1.5%(0.00s) of the runtime)
 \end{Verbatim}
 \end{frame}
 
@@ -1090,7 +1089,7 @@ All pydotprint* requires graphviz and pydot
 \item Run with the flag \texttt{mode=FAST\_COMPILE}
   \begin{itemize}
   \item Few optimizations
-  \item Run Python code (better error messages and can be debugged interactively in the Python debugger)
+  \item Run Python code (better error messages and can be debugged \\ interactively in the Python debugger)
   \end{itemize}
 \end{itemize}
 }
@@ -1114,7 +1113,7 @@ All pydotprint* requires graphviz and pydot
   \item Minimizes GPU transfers if GPU is involved
   \item Compute gradients through sequential steps
   \item Slightly faster then using a for loop in Python with a compiled Theano function 
-  \item Can lower the overall memory usage by detecting the actual amount of memory needed
+  \item Can lower the overall memory usage by detecting the actual \\ amount of memory needed
   \end{itemize}
 \end{itemize}
 }
