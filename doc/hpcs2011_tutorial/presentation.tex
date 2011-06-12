@@ -106,14 +106,14 @@ HPCS 2011, Montr\'eal
   \frametitle{Theano Goal}
 \begin{itemize}
 \item Tries to be the {\bf holy grail} in computing: {\it easy to code} and {\it fast to execute} !
-\item Only on mathematical expression
+\item Only on mathematical expressions
 \item So you won't have:
   \begin{itemize}
   \item Function call inside a theano function
   \item Structure, enum
-  \item Dynamic type (Theano is Fully taped)
+  \item Dynamic type (Theano is Fully typed)
   \item ...
-  \item And don't do coffee! \includegraphics[width=1.3in]{pics/Caffeine_Machine_no_background_red.png}
+  \item And doesn't do coffee! \includegraphics[width=1.3in]{pics/Caffeine_Machine_no_background_red.png}
   \end{itemize}
 \end{itemize}
 \end{frame}
@@ -239,7 +239,7 @@ HPCS 2011, Montr\'eal
   \frametitle{Overview 4}
   \begin{itemize}
   \item Only high level overview of CUDA
-  \item Don't talk about how to optimize GPU code
+  \item Won't talk about how to optimize GPU code
   \end{itemize}
 }
 
@@ -340,7 +340,7 @@ HPCS 2011, Montr\'eal
     \item Indentation for block delimiters
     \item Dynamic type and memory management
     \item Dictionary \texttt{d=\{'var1':'value1', 'var2':42, ...\}}
-    \item List comprehension: [i+3 for i in range(10)]
+    \item List comprehension: \texttt{[i+3 for i in range(10)]}
   \end{itemize}
 }
 
@@ -441,7 +441,7 @@ HPCS 2011, Montr\'eal
 
 \frame{
   \frametitle{Why Theano is better}
-  Executing the code is faster because:
+  Executing the code is faster because Theano:
   \begin{itemize}
   \item Rearranges high-level expressions 
   \item Produces customized low-level code
@@ -486,7 +486,7 @@ print f([0,1,2])              {\color{gray} # prints `array([0,2,1026])`}
 
   Symbolic programming
   \begin{itemize}
-  \item Paradigm change: people need to use it to understand it
+  \item Paradigm shift: people need to use it to understand it
   \end{itemize}
 }
 
@@ -497,7 +497,7 @@ print f([0,1,2])              {\color{gray} # prints `array([0,2,1026])`}
 \item NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32, 2400\$, 480 cores), compute capability 2.0
 \item NVIDIA GTX580 (1.5Tf/s float32, 500\$, 512 cores), compute capability 2.0
 \end{itemize}
-Computer in the class
+Computers in the class
 \begin{itemize}
 \item Intel Xeon X3450 (?56? flops/s, 383\$, 4 cores)
 \item NVIDIA Quadro FX 580 (71GF/s single, 140\$, 32 cores), compute capability 1.1, 'profesionnal card'
@@ -593,7 +593,7 @@ cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to
 \item T.grad can be compared to a macro: it can be applied multiple times
 \item T.grad takes scalar costs only
 \item Simple recipe allows to compute efficiently vector $\times$ Jacobian and vector $\times$ Hessian
-\item We are working on the missing optimizations to be able to compute efficently the full Jabobian and Hessian and Jacobians $\times$ vector
+\item We are working on the missing optimizations to be able to compute efficently the full Jacobian and Hessian and Jacobian $\times$ vector
 \end{itemize}
 \end{frame}
 
@@ -657,7 +657,7 @@ gw,gb = T.grad(cost, [w,b])
 train = theano.function(
             inputs=[x,y],
             outputs=[prediction, xent],
-\codeHighlight{# w-0.1*gw: GEMV with the dot in th grad}
+\codeHighlight{# w-0.1*gw: GEMV with the dot in the grad}
             updates=\{w:w-0.1*gw, b:b-0.1*gb\})
 
 \end{Verbatim}
@@ -672,7 +672,7 @@ train = theano.function(
 python logreg_example.py
 \end{Verbatim}
 \vfill
-Now modif the code to run with floatX=float32
+Now modify the code to run with floatX=float32
 \end{frame}
 
 \subsection{Symbolic Variables}
@@ -743,7 +743,7 @@ Now modif the code to run with floatX=float32
 \frametitle{Exercises 3}
 
 \begin{itemize}
-\item Now modif the code to run with floatX=float32 on GPU
+\item Now modify the code to run with floatX=float32 on GPU
 \item Run the code on the GPU
 \item Time with: \texttt{time python file.py}
 \end{itemize}
@@ -791,7 +791,7 @@ Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled 
 \item Dashed Red: numexpr (without MKL)
 \end{itemize}
 \begin{center}
-\includegraphics[width=3.in]{pics/multiple_graph.pdf}
+\includegraphics[width=2.8in]{pics/multiple_graph.pdf}
 \end{center}
 }
 
@@ -812,8 +812,8 @@ Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled 
   \item An op that return a view on its inputs
   \item An op that write the output on the inputs memory space
   \end{itemize}
-\item This allow some memory optimization
-\item The Op must tell to theano if they work inplace
+\item This allows some memory optimization
+\item The Op must tell Theano if they work inplace
 \item Inplace Op add constraints to the order of execution
 \end{itemize}
 }
@@ -1177,7 +1177,7 @@ print calculate_polynomial(test_coeff, 3)
   \item Disabling a few optimizations can speed up compilation
   \item Usually too many nodes indicates a problem with the graph
   \end{itemize}
-\item Lazy evaluation in a branch (We try to merge this summer)
+\item Lazy evaluation in a branch (We will try to merge this summer)
 \end{itemize}
 
 }
@@ -1268,7 +1268,7 @@ multiply_them(
 \section{CUDA}
 \subsection{CUDA Overview}
 \frame{
-\frametitle{GPU Programming: Gains and Losses: TODO}
+\frametitle{GPU Programming: Gains and Losses}
 \begin{itemize}
 \item Gains:
 \begin{itemize}
@@ -1367,9 +1367,7 @@ class MyOp(Op):
 
 {\color{gray}# Python implementation:}
     def perform(self, node, inputs_storage, outputs_storage):
-
 {\color{gray}# C implementation:} [see theano web site]
-
 {\color{gray}# others implementation (pycuda, ...):}
      def make_thunk(self, node, storage_map, _, _2):
 
