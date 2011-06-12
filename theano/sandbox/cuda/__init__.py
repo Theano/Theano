@@ -133,6 +133,8 @@ if cuda_available:
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
         warning("WARNING: cuda_ndarray was loaded from",
                 cuda_ndarray.cuda_ndarray.__file__,
+                "but Theano expected to load it from",
+                cuda_ndarray_so,
                 """This is not expected as theano should compile it
  automatically for you. Do you have a directory called cuda_ndarray in your
 LD_LIBRARY_PATH environment variable? If so, please remove it as it is

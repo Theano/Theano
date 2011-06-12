@@ -707,6 +707,12 @@ class ModuleCache(object):
                                 warning('Cache failure due to un-loadable key',
                                         key)
 
+            except OSError, e:
+                error(e)
+                if e.errno == 31:
+                    error('There are', len(os.listdir(config.compiledir)),
+                            'files in', config.compiledir)
+                raise
             finally:
                 # Release lock if needed.
                 if not keep_lock:
