@@ -570,14 +570,12 @@ print w.get_value(), b.get_value()
 {\color{gray}y = T.vector("y")}
 {\color{gray}w = theano.shared(rng.randn(100), name="w")}
 {\color{gray}b = theano.shared(0., name="b")}
-{\color{gray}print "Initial model:"}
-{\color{gray}print w.get_value(), b.get_value()}
 
 {\color{gray}# Construct Theano expression graph}
-p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))     {\color{gray}# Probability under model that target = 1}
-prediction = p_1 > 0.5                    {\color{gray}# The thresholded prediction: 0 or 1}
-xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) {\color{gray}# Cross-entropy loss function}
-cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to optimize}
+p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))    {\color{gray}# Probability that target = 1}
+prediction = p_1 > 0.5                   {\color{gray}# The prediction thresholded}
+xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1){\color{gray}# Cross-entropy loss function}
+cost = xent.mean() + 0.01*(w**2).sum()   {\color{gray}# The cost to minimize}
 \codeHighlight{gw,gb = T.grad(cost, [w,b])}
 \end{Verbatim}
 \end{frame}
@@ -600,6 +598,14 @@ cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to
 \begin{frame}[fragile]
   \frametitle{A Real Example: Logistic Regression}
 \begin{Verbatim}[commandchars=\\\{\}]
+{\color{gray}x = T.matrix("x")}
+{\color{gray}y = T.vector("y")}
+{\color{gray}w = theano.shared(rng.randn(100), name="w")}
+{\color{gray}b = theano.shared(0., name="b")}
+{\color{gray}p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))}
+{\color{gray}prediction = p_1 > 0.5}
+{\color{gray}xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1)}
+{\color{gray}cost = xent.mean() + 0.01*(w**2).sum()}
 {\color{gray}gw,gb = T.grad(cost, [w,b])}
 
 {\color{gray}# Compile}
@@ -608,7 +614,12 @@ train = theano.function(
             \codeHighlight{outputs=[prediction, xent]},
             \codeHighlight{updates=\{w:w-0.1*gw, b:b-0.1*gb\}})
 predict = theano.function(inputs=[x], outputs=prediction)
+\end{Verbatim}
+\end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{A Real Example: Logistic Regression}
+\begin{Verbatim}[commandchars=\\\{\}]
 {\color{gray}# Train}
 for i in range(training_steps):
     pred, err = train(D[0], D[1])
