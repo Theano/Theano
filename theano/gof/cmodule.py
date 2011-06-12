@@ -40,6 +40,17 @@ def debug(*args):
 METH_VARARGS="METH_VARARGS"
 METH_NOARGS="METH_NOARGS"
 
+def debug_counter(name, every=1):
+    """Debug counter to know how often we go through some piece of code.
+
+    This is a utility function one may use when debugging. Usage example:
+        debug_counter('I want to know how often I run this line')
+    """
+    setattr(debug_counter, name, getattr(debug_counter, name, 0) + 1)
+    n = getattr(debug_counter, name)
+    if n % every == 0:
+        print >>sys.stderr, "debug_counter [%s]: %s" % (name, n)
+
 class ExtFunction(object):
     """A C function to put into a DynamicModule """
 
@@ -221,8 +232,9 @@ def get_module_hash(src_code, key):
     # We start with the source code itself (stripping blanks might avoid
     # recompiling after a basic indentation fix for instance).
     to_hash = map(str.strip, src_code.split('\n'))
-    # Get the version part of the key.
-    to_hash += map(str, key[0])
+    # Get the version part of the key (ignore if unversioned).
+    if key[0]:
+        to_hash += map(str, key[0])
     c_link_key = key[1]
     # Currently, in order to catch potential bugs early, we are very
     # convervative about the structure of the key and raise an exception
@@ -272,11 +284,12 @@ class KeyData(object):
         self.module_hash = module_hash
         self.key_pkl = key_pkl
 
-    def add_key(self, key):
-        """Add a key to the `keys` set, and update the pickled file."""
+    def add_key(self, key, save_pkl=True):
+        """Add a key to the `keys` set, and update pickled file if asked to."""
         assert key not in self.keys
         self.keys.add(key)
-        self.save_pkl()
+        if save_pkl:
+            self.save_pkl()
 
     def save_pkl(self):
         """
@@ -622,8 +635,14 @@ class ModuleCache(object):
             # are done writing in the cache file or after raising an exception.
             try:
                 location = dlimport_workdir(self.dirname)
-                #debug("LOCATION*", location)
+            except OSError, e:
+                error(e)
+                if e.errno == 31:
+                    error('There are', len(os.listdir(config.compiledir)),
+                            'files in', config.compiledir)
+                raise
 
+            try:
                 compile_steps = fn(location=location).__iter__()
 
                 # Check if we already know a module with the same hash. If we
@@ -644,23 +663,23 @@ class ModuleCache(object):
                             key=key_data.keys.__iter__().next())
                     name = module.__file__
                     # Add current key to the set of keys associated to the same
-                    # module.
-                    key_data.add_key(key)
+                    # module. We only save the KeyData object of versioned
+                    # modules.
+                    key_data.add_key(key, save_pkl=bool(_version))
                     # We can delete the work directory.
                     _rmtree(location, ignore_nocleanup=True)
+
                 else:
-                    try:
-                        # Will fail if there is an error compiling the C code.
-                        while True:
-                            try:
-                                # The module should be returned by the last
-                                # step of the compilation.
-                                module = compile_steps.next()
-                            except StopIteration:
-                                break
-                    except Exception, e:
-                        _rmtree(location)
-                        raise
+                    # Will fail if there is an error compiling the C code.
+                    # The exception will be caught and the work dir will be
+                    # deleted.
+                    while True:
+                        try:
+                            # The module should be returned by the last
+                            # step of the compilation.
+                            module = compile_steps.next()
+                        except StopIteration:
+                            break
 
                     # Obtain path to the '.so' module file.
                     name = module.__file__
@@ -674,19 +693,29 @@ class ModuleCache(object):
                     assert hash(key) == hash_key
                     assert key not in self.entry_from_key
 
+                    key_pkl = os.path.join(location, 'key.pkl')
+                    assert not os.path.exists(key_pkl)
+                    key_data = KeyData(
+                            keys=set([key]),
+                            module_hash=module_hash,
+                            key_pkl=key_pkl)
+
                     if _version: # save the key
-                        key_pkl = os.path.join(location, 'key.pkl')
-                        assert not os.path.exists(key_pkl)
-                        key_data = KeyData(
-                                keys=set([key]),
-                                module_hash=module_hash,
-                                key_pkl=key_pkl)
                         try:
                             key_data.save_pkl()
                             key_broken = False
                         except cPickle.PicklingError:
                             key_broken = True
+                            # Remove key from the KeyData object, to make sure
+                            # we never try to save it again.
+                            # We still keep the KeyData object and save it so
+                            # that the module can be re-used in the future.
+                            key_data.keys = set()
+                            key_data.save_pkl()
 
+                        # TODO We should probably have a similar sanity check
+                        # when we add a new key to an existing KeyData object,
+                        # not just when we create a brand new one.
                         if not key_broken:
                             try:
                                 kd2 = cPickle.load(open(key_pkl, 'rb'))
@@ -698,21 +727,30 @@ class ModuleCache(object):
                                         "(Hint: verify the __eq__ and "
                                         "__hash__ functions for your Ops",
                                         (key, key_from_file))
-                                # Adding the key file to this set means it is a
-                                # versioned key.
-                                self.loaded_key_pkl.add(key_pkl)
-                                self.module_hash_to_key_data[module_hash] = \
-                                                                    key_data
                             except cPickle.UnpicklingError:
                                 warning('Cache failure due to un-loadable key',
                                         key)
 
-            except OSError, e:
-                error(e)
-                if e.errno == 31:
-                    error('There are', len(os.listdir(config.compiledir)),
-                            'files in', config.compiledir)
+                        # Adding the KeyData file to this set means it is a
+                        # versioned module.
+                        self.loaded_key_pkl.add(key_pkl)
+
+                    # Map the new module to its KeyData object. Note that we
+                    # need to do it regardless of whether the key is versioned
+                    # or not if we want to be able to re-use this module inside
+                    # the same process.
+                    self.module_hash_to_key_data[module_hash] = key_data
+
+            except:
+                # TODO try / except / finally is not Python2.4-friendly.
+                # This may happen e.g. when an Op has no C implementation. In
+                # any case, we do not want to keep around the temporary work
+                # directory, as it may cause trouble if we create too many of
+                # these. The 'ignore_if_missing' flag is set just in case this
+                # directory would have already been deleted.
+                _rmtree(location, ignore_if_missing=True)
                 raise
+
             finally:
                 # Release lock if needed.
                 if not keep_lock:
@@ -720,13 +758,13 @@ class ModuleCache(object):
 
             # Update map from key to module name for all keys associated to
             # this same module.
-            if key_data is None:
-                # Should only happen if unversioned.
-                assert not _version
+            all_keys = key_data.keys
+            if not all_keys:
+                # Should only happen for broken keys.
+                assert key_broken
                 all_keys = [key]
             else:
                 assert key in key_data.keys
-                all_keys = key_data.keys
             for k in all_keys:
                 if k in self.entry_from_key:
                     # If we had already seen this key, then it should be
@@ -849,15 +887,32 @@ class ModuleCache(object):
         """
         if min_age is None:
             min_age = self.age_thresh_del_unversioned
-        items_copy = list(self.entry_from_key.iteritems())
 
         compilelock.get_lock()
-
         try:
-            for key, entry in items_copy:
-                version, rest = key
+            for key_data in self.module_hash_to_key_data.itervalues():
+                if not key_data.keys:
+                    # May happen for broken versioned keys.
+                    continue
+                for key_idx, key in enumerate(key_data.keys):
+                    version, rest = key
+                    if version:
+                        # Since the version is included in the module hash,
+                        # it should not be possible to mix versioned and
+                        # unversioned keys in the same KeyData object.
+                        assert key_idx == 0
+                        break
                 if not version:
-                    del self.entry_from_key[key]
+                    first_entry = None
+                    for key in key_data.keys:
+                        entry = self.entry_from_key[key]
+                        if first_entry is None:
+                            first_entry = entry
+                        else:
+                            # All keys in the same KeyData object should have
+                            # been mapped to the same module file.
+                            assert entry == first_entry
+                        del self.entry_from_key[key]
 
                     # entry is guaranteed to be in this dictionary,
                     # because an unversioned entry should never have been loaded via refresh
@@ -868,6 +923,11 @@ class ModuleCache(object):
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     _rmtree(parent, msg='unversioned', level='info')
+
+            # Sanity check: all unversioned keys should have been removed at
+            # this point.
+            for key in self.entry_from_key:
+                assert key[0]
 
             time_now = time.time()
             for filename in os.listdir(self.dirname):
@@ -886,9 +946,8 @@ class ModuleCache(object):
                         # one week and suppose that the processus crashed, and we
                         # take care of the clean-up.
                         if age > min_age:
-                            info("clear_unversioned removing cache dir", filename)
                             _rmtree(os.path.join(self.dirname, filename),
-                                    msg='unversioned', level='info')
+                                    msg='old unversioned', level='info')
         finally:
             compilelock.release_lock()
 
@@ -901,7 +960,10 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
 
-def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug'):
+def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
+            ignore_if_missing=False):
+    if ignore_if_missing and not os.path.exists(parent):
+        return
     try:
         if ignore_nocleanup or not config.nocleanup:
             log_msg = 'Deleting'
