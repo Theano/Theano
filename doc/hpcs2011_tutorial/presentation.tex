@@ -221,11 +221,9 @@ HPCS 2011, Montr\'eal
     \item Theano Graph
     \item Op Contract
     \item Op Example
-    \item Theano + PyCUDA Op Example
+    \item Theano + PyCUDA
 % Theano+PyCUDA Exercises
     \end{itemize}
-
-  \item PyCUDA + Theano
   \item GpuNdArray
   \item Conclusion
   \end{itemize}
@@ -347,7 +345,7 @@ HPCS 2011, Montr\'eal
 \frame{
   \frametitle{NumPy in 1 Slide}
   \begin{itemize}
-  \item Base scientific computing package on the CPU
+  \item Base scientific computing package in Python on the CPU
   \item A powerful N-dimensional array object
     \begin{itemize}
     \item ndarray.\{ndim, shape, size, dtype, itemsize, stride\}
@@ -401,7 +399,7 @@ HPCS 2011, Montr\'eal
 \frame{
   \frametitle{Description}
   \begin{itemize}
-  \item Mathematical expression compiler
+  \item Mathematical symbolic expression compiler
   \item Dynamic C/CUDA code generation
   \item Efficient symbolic differentiation
     \begin{itemize}
@@ -516,11 +514,13 @@ Computers in the class
 \begin{frame}[fragile]
   \frametitle{Exercises 1}
   \begin{Verbatim}
-    source /groups/h/hpc2011/bin/GPU.csh
-    hg clone http://hg.assembla.com/theano Theano
-    cd Theano/doc/hpcs2011_tutorial
-    python simple_example.py
+source /groups/h/hpc2011/bin/GPU.csh
+hg clone http://hg.assembla.com/theano Theano
+cd Theano/doc/hpcs2011_tutorial
+python simple_example.py
   \end{Verbatim}
+  \vfill
+Modify and execute the example to do this expression: a**2 + b**2 + 2*a*b
 \end{frame}
 
 \subsection{Real Example}
@@ -600,6 +600,8 @@ cost = xent.mean() + 0.01*(w**2).sum()    {\color{gray}# The (penalized) cost to
 \begin{frame}[fragile]
   \frametitle{A Real Example: Logistic Regression}
 \begin{Verbatim}[commandchars=\\\{\}]
+{\color{gray}gw,gb = T.grad(cost, [w,b])}
+
 {\color{gray}# Compile}
 train = theano.function(
             inputs=[x,y],
@@ -646,8 +648,8 @@ Where are those optimization applied?
   \frametitle{A Real Example: optimization!}
 \begin{Verbatim}[commandchars=\\\{\}]
 p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))
-xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1)
 \codeHighlight{# 1 / (1 + T.exp(var)) -> sigmoid(var)}
+xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1)
 \codeHighlight{# Log(1-sigmoid(var)) -> -sigmoid(var)}
 
 prediction = p_1 > 0.5
@@ -672,7 +674,9 @@ train = theano.function(
 python logreg_example.py
 \end{Verbatim}
 \vfill
-Now modify the code to run with floatX=float32
+Modify and execute the example to run on CPU with floatX=float32
+
+* You will need to use: theano.config.floatX and ndarray.astype("str")
 \end{frame}
 
 \subsection{Symbolic Variables}
@@ -707,10 +711,9 @@ Now modify the code to run with floatX=float32
   \end{itemize}
   \vfill
   \begin{itemize}
-  \item T.row, T.col
-  \item Must be specified when creating the variable.
+  \item Broadcastability must be specified when creating the variable.
   \item The only shorcut with broadcastable dimensions are: {\bf T.row} and {\bf T.col}
-  \item All are shortcuts to: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
+  \item For all others: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
   \end{itemize}
 }
 
@@ -743,7 +746,7 @@ Now modify the code to run with floatX=float32
 \frametitle{Exercises 3}
 
 \begin{itemize}
-\item Now modify the code to run with floatX=float32 on GPU
+\item Modify and execute the code to run with floatX=float32 on GPU
 \item Run the code on the GPU
 \item Time with: \texttt{time python file.py}
 \end{itemize}
@@ -809,7 +812,7 @@ Convolutional Network: 256x256 images convolved with 6 7x7 filters, downsampled 
 \begin{itemize}
 \item 2 type of inplace operations:
   \begin{itemize}
-  \item An op that return a view on its inputs
+  \item An op that return a view on its inputs (e.g. reshape, inplace transpose)
   \item An op that write the output on the inputs memory space
   \end{itemize}
 \item This allows some memory optimization
@@ -835,14 +838,14 @@ To replace the default mode with this mode, use the Theano flags \texttt{mode=Pr
 
 To enable the memory profiling use the flags \texttt{ProfileMode.profile\_memory=True} 
 \begin{Verbatim}
-
 Time since import 2.697s
 Theano compile time: 1.046s (38.8% since import)
     Optimization time: 0.804s
     Linker time: 0.230s
 Theano fct call 0.028s (1.0% since import)
    Theano Op time 0.026s 1.0%(since import) 93.7%(of fct call)
-   Theano function overhead in ProfileMode 0.002s 0.1%(since import) 6.3%(of fct call)
+   Theano function overhead in ProfileMode 0.002s 0.1%(since import) 
+                                                  6.3%(of fct call)
 11 Theano fct call, 0.003s per call
 Rest of the time since import 1.623s 60.2%
 \end{Verbatim}
@@ -1325,7 +1328,7 @@ multiply_them(
 \frametitle{PyCUDA Exercises}
 \begin{itemize}
 \item Run the example
-\item Modify it to work for a matrix of 20 $\times$ 10
+\item Modify and execute it to work for a matrix of 20 $\times$ 10
 \end{itemize}
 \end{frame}
 
@@ -1490,12 +1493,12 @@ print numpy.asarray(f(xv))
 \begin{frame}
 \frametitle{Theano + PyCUDA Exercises}
 \begin{itemize}
-\item Modify the example multiple two matrix: $x * y$
-\item Modify the example to return 2 outputs: $x + y$ and $x - y$
+\item Modify and execute the example to multiple two matrix: $x * y$
+\item Modify and execute the example to return 2 outputs: $x + y$ and $x - y$
   \begin{itemize}
   \item Our current elemwise fusion generate computation with only 1 outputs
   \end{itemize}
-\item Modify the example to support stride? (Don't force the input to be c contiguous)
+\item Modify and execute the example to support stride? (Don't force the input to be c contiguous)
 \end{itemize}
 \end{frame}
 
