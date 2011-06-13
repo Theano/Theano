@@ -285,9 +285,15 @@ class KeyData(object):
         self.key_pkl = key_pkl
 
     def add_key(self, key, save_pkl=True):
-        """Add a key to the `keys` set, and update pickled file if asked to."""
+        """Add a key to self.keys, and update pickled file if asked to."""
         assert key not in self.keys
         self.keys.add(key)
+        if save_pkl:
+            self.save_pkl()
+
+    def remove_key(self, key, save_pkl=True):
+        """Remove a key from self.keys, and update pickled file if asked to."""
+        self.keys.remove(key)
         if save_pkl:
             self.save_pkl()
 
@@ -596,7 +602,7 @@ class ModuleCache(object):
 
         return too_old_to_use
 
-    def module_from_key(self, key, fn=None, keep_lock=False):
+    def module_from_key(self, key, fn=None, keep_lock=False, key_data=None):
         """
         :param fn: A callable object that will return an iterable object when
         called, such that the first element in this iterable object is the
@@ -604,17 +610,34 @@ class ModuleCache(object):
         `fn` is called only if the key is not already in the cache, with
         a single keyword argument `location` that is the path to the directory
         where the module should be compiled.
-        """
-        rval = None
-        try:
-            _version, _rest = key
-        except:
-            raise ValueError("Invalid key. key must have form (version, rest)", key)
-        if key in self.entry_from_key:
-            # we have seen this key either in this process or previously
-            #debug('OLD KEY HASH', hash(key), hash(key[1][0]), key[1][0])
-            name = self.entry_from_key[key]
 
+        :param key_data: If not None, it should be a KeyData object and the
+        key parameter should be None. In this case, we use the info from the
+        KeyData object to recover the module, rather than the key itself. Note
+        that this implies the module already exists (and may or may not have
+        already been loaded).
+        """
+        # We should only use one of the two ways to get a module.
+        assert key_data is None or key is None
+        rval = None
+        if key is not None:
+            try:
+                _version, _rest = key
+            except:
+                raise ValueError(
+                        "Invalid key. key must have form (version, rest)", key)
+        name = None
+        if key is not None and key in self.entry_from_key:
+            # We have seen this key either in this process or previously.
+            name = self.entry_from_key[key]
+        if key_data is not None:
+            # A KeyData object was provided, which means the module already
+            # exists and can be found in the same directory as the KeyData
+            # pickled file (note that this will work even if key_data was not
+            # actually saved, e.g. in the case of broken keys).
+            name = module_name_from_dir(os.path.dirname(key_data.key_pkl))
+        if name is not None:
+            # This is an existing module we can recover.
             if name not in self.module_from_name:
                 debug('loading name', name)
                 self.module_from_name[name] = dlimport(name)
@@ -659,13 +682,22 @@ class ModuleCache(object):
                     # Note that we do not pass the `fn` argument, since it
                     # should not be used considering that the module should
                     # already be compiled.
-                    module = self.module_from_key(
-                            key=key_data.keys.__iter__().next())
+                    module = self.module_from_key(key=None, key_data=key_data)
                     name = module.__file__
                     # Add current key to the set of keys associated to the same
                     # module. We only save the KeyData object of versioned
                     # modules.
-                    key_data.add_key(key, save_pkl=bool(_version))
+                    try:
+                        key_data.add_key(key, save_pkl=bool(_version))
+                    except cPickle.PicklingError:
+                        # This should only happen if we tried to save the
+                        # pickled file.
+                        assert _version
+                        # The key we are trying to add is broken: we will not
+                        # add it after all.
+                        key_data.remove_key(key)
+                        key_broken = True
+
                     # We can delete the work directory.
                     _rmtree(location, ignore_nocleanup=True)
 
