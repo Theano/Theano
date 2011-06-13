@@ -194,7 +194,9 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         setattr(root.__class__, sections[0], configparam)
         _config_var_list.append(configparam)
 
+
 class ConfigParam(object):
+
     def __init__(self, default, filter=None,  allow_override=True):
         """
         If allow_override is False, we can't change the value after the import of Theano.
@@ -207,9 +209,11 @@ class ConfigParam(object):
         # self.fullname  # set by AddConfigVar
         # self.doc       # set by AddConfigVar
 
-        # Check that default is a valid value
-        if self.filter:
-            self.filter(self.default)
+        # Note that we do not call `self.filter` on the default value: this
+        # will be done automatically in AddConfigVar, potentially with a
+        # more appropriate user-provided default value.
+        # Calling `filter` here may actually be harmful if the default value is
+        # invalid and causes a crash or has unwanted side effects.
 
     def __get__(self, *args):
         #print "GETTING PARAM", self.fullname, self, args
@@ -223,7 +227,7 @@ class ConfigParam(object):
         return self.val
 
     def __set__(self, cls, val):
-        if not self.allow_override and hasattr(self,'val'):
+        if not self.allow_override and hasattr(self, 'val'):
             raise Exception("Can't change the value of this config parameter after initialization!")
         #print "SETTING PARAM", self.fullname,(cls), val
         if self.filter:
@@ -231,7 +235,9 @@ class ConfigParam(object):
         else:
             self.val = val
 
-    deleter=None
+    # TODO What is this for?
+    deleter = None
+
 
 class EnumStr(ConfigParam):
     def __init__(self, default, *options, **kwargs):
