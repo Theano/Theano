@@ -900,7 +900,7 @@ class ModuleCache(object):
                         key_data.delete_keys_from(self.entry_from_key)
                         del self.module_hash_to_key_data[key_data.module_hash]
                         if key_data.key_pkl in self.loaded_key_pkl:
-                            del self.loaded_key_pkl[key_data.key_pkl]
+                            self.loaded_key_pkl.remove(key_data.key_pkl)
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     _rmtree(parent, msg='old cache directory', level='info')
