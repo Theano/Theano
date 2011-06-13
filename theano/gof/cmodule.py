@@ -323,6 +323,25 @@ class KeyData(object):
             self.entry = module_name_from_dir(os.path.dirname(self.key_pkl))
         return self.entry
 
+    def delete_keys_from(self, entry_from_key, do_manual_check=True):
+        """
+        Delete from entry_from_key all keys associated to this KeyData object.
+
+        Note that broken keys will not appear in the keys field, so we also
+        manually look for keys associated to the same entry, unless
+        do_manual_check is False.
+        """
+        entry = self.get_entry()
+        for key in self.keys:
+            del entry_from_key[key]
+        if do_manual_check:
+            to_del = []
+            for key, key_entry in entry_from_key.iteritems():
+                if key_entry == entry:
+                    to_del.append(key)
+            for key in to_del:
+                del entry_from_key[key]
+
 
 class ModuleCache(object):
     """Interface to the cache of dynamically compiled modules on disk
@@ -433,7 +452,7 @@ class ModuleCache(object):
     Older modules will be deleted in ``clear_old``.
     """
 
-    def refresh(self):
+    def refresh(self, delete_if_unpickle_failure=False):
         """Update self.entry_from_key by walking the cache directory structure.
 
         Add entries that are not in the entry_from_key dictionary.
@@ -441,6 +460,10 @@ class ModuleCache(object):
         Remove entries which have been removed from the filesystem.
 
         Also, remove malformed cache directories.
+
+        :param delete_if_unpickle_failure: If True, cache entries for which
+        trying to unpickle the KeyData file fails with an unknown exception
+        will be deleted.
         """
         start_time = time.time()
         too_old_to_use = []
@@ -492,19 +515,21 @@ class ModuleCache(object):
                             key_data = cPickle.load(open(key_pkl, 'rb'))
                         except EOFError:
                             # Happened once... not sure why (would be worth
-                            # investigating).
+                            # investigating if it ever happens again).
                             unpickle_failure()
-                            warning("Erasing broken cache directory [EOF]", root)
-                            shutil.rmtree(root)
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg='broken cache directory [EOF]',
+                                    level='warning')
                             continue
                         except:
                             # TODO Note that in a development version, it may
                             # be better to raise exceptions instead of silently
                             # catching them.
                             unpickle_failure()
-                            if False:
-                                info("Erasing broken cache directory", root)
-                                shutil.rmtree(root)
+                            if delete_if_unpickle_failure:
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='broken cache directory',
+                                        level='info')
                             else:
                                 # This exception is often triggered by keys that contain
                                 # references to classes that have not yet been imported.  They are
@@ -573,32 +598,36 @@ class ModuleCache(object):
                         too_old_to_use.append(entry)
 
 
-            # remove entries that are not in the filesystem
-            items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy:
+            # Remove entries that are not in the filesystem.
+            items_copy = list(self.module_hash_to_key_data.iteritems())
+            for module_hash, key_data in items_copy:
                 try:
-                    # test to see that the file is [present and] readable
-                    open(entry).close()
+                    # Test to see that the file is [present and] readable.
+                    open(key_data.get_entry()).close()
                     gone = False
                 except IOError:
                     gone = True
                 if gone:
-                    # assert that we didn't have one of the deleted files
+                    # Assert that we did not have one of the deleted files
                     # loaded up and in use.
-                    # If so, it should not have been deleted.  This should be considered a
-                    # failure of the OTHER process, that deleted it.
+                    # If so, it should not have been deleted. This should be
+                    # considered a failure of the OTHER process, that deleted
+                    # it.
                     if entry in self.module_from_name:
-                        warning("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
+                        warning("A module that was loaded by this "
+                                "ModuleCache can no longer be read from file "
+                                "%s... this could lead to problems." % entry)
                         del self.module_from_name[entry]
 
                     info("deleting ModuleCache entry", entry)
-                    del self.entry_from_key[key]
+                    key_data.delete_keys_from(self.entry_from_key)
+                    del self.module_hash_to_key_data[module_hash]
                     if key[0]:
                         # this is a versioned entry, so should have been on disk
                         # Something weird happened to cause this, so we are responding by
                         # printing a warning, removing evidence that we ever saw this mystery
                         # key.
-                        pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
+                        pkl_file_to_remove = key_data.key_pkl
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
                             # So it is normal that this happen from time to time.
@@ -829,22 +858,26 @@ class ModuleCache(object):
 
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh_del=None):
+    def clear_old(self, age_thresh_del=None, delete_if_unpickle_failure=False):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
         :param age_thresh_del: Dynamic modules whose last access time is more
         than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
         age if not provided.
+
+        :param delete_if_unpickle_failure: See help of refresh() method.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
 
         compilelock.get_lock()
         try:
-            # update the age of modules that have been accessed by other processes
-            # and get all module that are too old to use.(not loaded in self.entry_from_key)
-            too_old_to_use = self.refresh()
+            # Update the age of modules that have been accessed by other
+            # processes and get all module that are too old to use
+            # (not loaded in self.entry_from_key).
+            too_old_to_use = self.refresh(
+                    delete_if_unpickle_failure=delete_if_unpickle_failure)
             time_now = time.time()
 
             # Build list of module files and associated keys.
@@ -864,9 +897,10 @@ class ModuleCache(object):
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
                     if key_data is not None:
-                        for keys in key_data.keys:
-                            del self.entry_from_key[key]
+                        key_data.delete_keys_from(self.entry_from_key)
                         del self.module_hash_to_key_data[key_data.module_hash]
+                        if key_data.key_pkl in self.loaded_key_pkl:
+                            del self.loaded_key_pkl[key_data.key_pkl]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     _rmtree(parent, msg='old cache directory', level='info')
@@ -874,7 +908,8 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
 
-    def clear(self, unversioned_min_age=None, clear_base_files=False):
+    def clear(self, unversioned_min_age=None, clear_base_files=False,
+              delete_if_unpickle_failure=False):
         """
         Clear all elements in the cache.
 
@@ -882,13 +917,17 @@ class ModuleCache(object):
         particular, you can set it to -1 in order to delete all unversioned
         cached modules regardless of their age.
 
-        :clear_base_files: If True, then delete base directories 'cuda_ndarray'
-        and 'cutils_ext' if they are present. If False, those directories are
-        left intact.
+        :param clear_base_files: If True, then delete base directories
+        'cuda_ndarray' and 'cutils_ext' if they are present. If False, those
+        directories are left intact.
+
+        :param delete_if_unpickle_failure: See help of refresh() method.
         """
         compilelock.get_lock()
         try:
-            self.clear_old(-1.0)
+            self.clear_old(
+                    age_thresh_del=-1.0,
+                    delete_if_unpickle_failure=delete_if_unpickle_failure)
             self.clear_unversioned(min_age=unversioned_min_age)
             if clear_base_files:
                 self.clear_base_files()
@@ -926,8 +965,9 @@ class ModuleCache(object):
             min_age = self.age_thresh_del_unversioned
 
         compilelock.get_lock()
+        all_key_datas = self.module_hash_to_key_data.values()
         try:
-            for key_data in self.module_hash_to_key_data.itervalues():
+            for key_data in all_key_datas:
                 if not key_data.keys:
                     # May happen for broken versioned keys.
                     continue
@@ -940,22 +980,18 @@ class ModuleCache(object):
                         assert key_idx == 0
                         break
                 if not version:
-                    first_entry = None
-                    for key in key_data.keys:
-                        entry = self.entry_from_key[key]
-                        if first_entry is None:
-                            first_entry = entry
-                        else:
-                            # All keys in the same KeyData object should have
-                            # been mapped to the same module file.
-                            assert entry == first_entry
-                        del self.entry_from_key[key]
-
-                    # entry is guaranteed to be in this dictionary,
-                    # because an unversioned entry should never have been loaded via refresh
+                    # Note that unversioned keys cannot be broken, so we can
+                    # set do_manual_check to False to speed things up.
+                    key_data.delete_keys_from(self.entry_from_key,
+                                              do_manual_check=False)
+                    entry = key_data.get_entry()
+                    # Entry is guaranteed to be in this dictionary, because
+                    # an unversioned entry should never have been loaded via
+                    # refresh.
                     assert entry in self.module_from_name
 
                     del self.module_from_name[entry]
+                    del self.module_hash_to_key_data[key_data.module_hash]
 
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
