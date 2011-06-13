@@ -838,30 +838,30 @@ class ModuleCache(object):
             # update the age of modules that have been accessed by other processes
             # and get all module that are too old to use.(not loaded in self.entry_from_key)
             too_old_to_use = self.refresh()
-            too_old_to_use = [(None, entry) for entry in too_old_to_use]
             time_now = time.time()
 
-            # the .iteritems() is important here:
-            # we need to get a copy of the whole list of keys and entries
-            items_copy = list(self.entry_from_key.iteritems())
-            all_items = items_copy + too_old_to_use
-            # Since multiple keys may share the same entry, we turn this list
-            # of pairs into a dictionary that maps an entry to the list of keys
-            # that use it.
-            entry_to_keys = dict((entry, [])
-                                 for key, entry in all_items)
-            for key, entry in all_items:
-                entry_to_keys[entry].append(key)
-            for entry, keys in entry_to_keys.iteritems():
+            # Build list of module files and associated keys.
+            entry_to_key_data = dict((entry, None) for entry in too_old_to_use)
+            for key_data in self.module_hash_to_key_data.itervalues():
+                # TODO We should probably save the entry path directly in
+                # the KeyData objects to avoid additional disk access.
+                entry = module_name_from_dir(os.path.dirname(key_data.key_pkl))
+                # Since we loaded this file, it should not be in
+                # too_old_to_use.
+                assert entry not in entry_to_key_data
+                entry_to_key_data[entry] = key_data
+
+            for entry, key_data in entry_to_key_data.iteritems():
                 age = time_now - last_access_time(entry)
                 if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
                     # age_thresh_del are not currently in use by other processes, but that could be
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
-                    for key in keys:
-                        if key is not None:
+                    if key_data is not None:
+                        for keys in key_data.keys:
                             del self.entry_from_key[key]
+                        del self.module_hash_to_key_data[key_data.module_hash]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                     _rmtree(parent, msg='old cache directory', level='info')
