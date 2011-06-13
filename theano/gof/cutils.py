@@ -12,7 +12,7 @@ if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
 # compile the cutils_ext module simultaneously.
 try:
     # If we load a previously-compiled version, config.compiledir should
-    # by in sys.path
+    # be in sys.path.
     if config.compiledir not in sys.path:
         sys.path.append(config.compiledir)
     from cutils_ext.cutils_ext import *
