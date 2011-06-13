@@ -1,7 +1,8 @@
 Modifications in the trunk since the last release
 
-Partial of what is in trunk since the last release
+Theano 0.4.0rc4 (2011-06-13)
 --------------------------------------------------
+
 Deprecation:
  * tag.shape attribute deprecated (#633)
  * FAST_RUN_NOGC mode deprecated
@@ -90,9 +91,7 @@ Unit tests:
  * Tests display less pointless warnings.
 
 Other:
- * ?? a bug?? Correctly put the broadcast flag to True in the output var of
-   a Rehapse op when we receive an int 1 in the new shape.
+ * Correctly put the broadcast flag to True in the output var of
+   a Reshape op when we receive an int 1 in the new shape.
  * pydotprint: high contrast mode is now the default
  * More compact printing (ignore leading "Composite" in op names)
-
-(To be continued...)
