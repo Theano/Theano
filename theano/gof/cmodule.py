@@ -216,6 +216,27 @@ def module_name_from_dir(dirname):
     return os.path.join(dirname, name)
 
 
+def is_same_entry(entry_1, entry_2):
+    """
+    Return True iff both paths can be considered to point to the same module.
+
+    This is the case if and only if at least one of these conditions holds:
+        - They are equal.
+        - There real paths are equal.
+        - They share the same temporary work directory and module file name.
+    """
+    if entry_1 == entry_2:
+        return True
+    if os.path.realpath(entry_1) == os.path.realpath(entry_2):
+        return True
+    if (os.path.basename(entry_1) == os.path.basename(entry_2) and
+        (os.path.basename(os.path.dirname(entry_1)) ==
+         os.path.basename(os.path.dirname(entry_2))) and
+        os.path.basename(os.path.dirname(entry_1).startswith('tmp'))):
+        return True
+    return False
+
+
 def get_module_hash(src_code, key):
 
     """
@@ -548,6 +569,22 @@ class ModuleCache(object):
                             _rmtree(root, ignore_nocleanup=True,
                                     msg='deprecated cache entry')
                             continue
+
+                        # Check the path to the module stored in the KeyData
+                        # object matches the path to `entry`. There may be
+                        # a mismatch e.g. due to symlinks, or some directory
+                        # being renamed since last time cache was created.
+                        kd_entry = key_data.get_entry()
+                        if kd_entry != entry:
+                            if is_same_entry(entry, kd_entry):
+                                # Update KeyData object.
+                                key_data.entry = entry
+                            else:
+                                # This is suspicious. Better get rid of it.
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='module file path mismatch',
+                                        level='info')
+                                continue
 
                         # Find unversioned keys.
                         to_del = [key for key in key_data.keys if not key[0]]
