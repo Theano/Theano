@@ -6,7 +6,7 @@ rng = numpy.random
 N = 400
 feats = 784
 D = (rng.randn(N, feats).astype(theano.config.floatX), rng.randint(size=N,low=0, high=2).astype(theano.config.floatX))
-training_steps = 10
+training_steps = 100
 
 # Declare Theano symbolic variables
 x = T.matrix("x")
@@ -30,10 +30,20 @@ gw,gb = T.grad(cost, [w,b])
 train = theano.function(
             inputs=[x,y],
             outputs=[prediction, xent],
-            updates={w:w-0.1*gw, b:b-0.1*gb},
+            updates={w:w-0.01*gw, b:b-0.01*gb},
             name = "train")
 predict = theano.function(inputs=[x], outputs=prediction,
             name = "predict")
+
+if any( [x.op.__class__.__name__=='Gemv' for x in train.maker.env.toposort()]):
+    print 'Used the cpu'
+elif any( [x.op.__class__.__name__=='GpuGemm' for x in train.maker.env.toposort()]):
+    print 'Used the gpu'
+else:
+    print 'ERROR, not able to tell if theano used the cpu or the gpu'
+    print train.maker.env.toposort()
+
+
 
 for i in range(training_steps):
     pred, err = train(D[0], D[1])

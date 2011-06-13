@@ -522,7 +522,7 @@ rng = numpy.random
 N = 400
 feats = 784
 D = (rng.randn(N, feats), rng.randint(size=N,low=0, high=2))
-training_steps = 10
+training_steps = 100
 \end{Verbatim}
 \end{frame}
 
@@ -752,7 +752,7 @@ Computers in the class
   \end{itemize}
   \vfill
   \begin{itemize}
-  \item Broadcastability must be specified when creating the variable.
+  \item Broadcastability must be specified when creating the variable
   \item The only shorcut with broadcastable dimensions are: {\bf T.row} and {\bf T.col}
   \item For all others: T.tensor(dtype, broadcastable={\bf ([False or True])*nd})
   \end{itemize}
@@ -1337,7 +1337,7 @@ multiply_them(
 \begin{frame}
 \frametitle{PyCUDA Exercises}
 \begin{itemize}
-\item Run the example
+\item Run the example in the file pycuda_simple.py
 \item Modify and execute it to work for a matrix of 20 $\times$ 10
 \end{itemize}
 \end{frame}
