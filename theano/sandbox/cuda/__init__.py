@@ -76,7 +76,7 @@ if os.path.exists(cuda_ndarray_so):
 if not compile_cuda_ndarray:
     try:
         # If we load a previously-compiled version, config.compiledir should
-        # by in sys.path
+        # be in sys.path.
         if config.compiledir not in sys.path:
             sys.path.append(config.compiledir)
         from cuda_ndarray.cuda_ndarray import *
