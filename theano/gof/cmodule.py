@@ -482,7 +482,8 @@ class ModuleCache(object):
                     # failed rmtree() by touching a 'delete.me' file.  This file is a message
                     # for a future process to try deleting the directory.
                     try:
-                        shutil.rmtree(root)
+                        _rmtree(root, ignore_nocleanup=True,
+                                msg="delete.me found in dir")
                     except:
                         # Maybe directory is still in use? We just leave it
                         # for future removal (and make sure there is a
@@ -503,8 +504,8 @@ class ModuleCache(object):
                             # Under /tmp, file are removed periodically by the os.
                             # So it is normal that this happens from time to time.
                             warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
-                        info("Erasing broken cache directory", key_pkl)
-                        shutil.rmtree(root)
+                        _rmtree(root, ignore_nocleanup=True,
+                                msg="missing module file", level="info")
                         continue
                     if (time_now - last_access_time(entry)) < self.age_thresh_use:
                         debug('refresh adding', key_pkl)
@@ -553,19 +554,16 @@ class ModuleCache(object):
                         if to_del:
                             warning("ModuleCache.refresh() Found unversioned "
                                     "key in cache, removing it.", key_pkl)
-                            if len(to_del) == len(key_data.keys):
-                                # All keys were unversioned.
-                                info("Erasing broken cache directory", key_pkl)
-                                shutil.rmtree(root)
-                                continue
-                            else:
-                                # Fix the pickled file to only keep the
-                                # versioned keys.
-                                info("Fixing broken cache directory", key_pkl)
-                                key_data.keys = set(
-                                        [key for key in key_data.keys
-                                         if key[0]])
-                                key_data.save_pkl()
+                            # Since the version is in the module hash, all
+                            # keys should be unversioned.
+                            if len(to_del) != len(key_data.keys):
+                                warning('Found a mix of unversioned and '
+                                        'versioned keys for the same '
+                                        'module', key_pkl)
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg="unversioned key(s) in cache",
+                                    level='info')
+                            continue
 
                         for key in key_data.keys:
                             if key not in self.entry_from_key:
