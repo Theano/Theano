@@ -16,10 +16,10 @@ class T_extending(unittest.TestCase):
     ## All tests here belong to files in
     ## http://deeplearning.net/software/theano/extending
     ## Theano/doc/extending/*.txt
-    ## Any change you do here also add it to the tutorial !
-    ## This belongs to an entire folder since code-snippeds are connected
+    ## Any change you do here also add it to the tutorial!
+    ## This belongs to an entire folder since code-snippets are connected
     ## from one file to another .. and they do not make sense on their
-    ## on
+    ## own.
 
     def test_extending_1(self):
 
