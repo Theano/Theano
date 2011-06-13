@@ -31,7 +31,7 @@ def is_valid_compiledir(path):
         open(os.path.join(path, '__init__.py'), 'w').close()
     except:
         return False
-    
+
     return True
 
 AddConfigVar('base_compiledir',
