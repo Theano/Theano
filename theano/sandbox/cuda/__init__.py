@@ -75,6 +75,10 @@ if os.path.exists(cuda_ndarray_so):
     compile_cuda_ndarray = date>=os.stat(cuda_ndarray_so)[stat.ST_MTIME]
 if not compile_cuda_ndarray:
     try:
+        # If we load a previously-compiled version, config.compiledir should
+        # by in sys.path
+        if config.compiledir not in sys.path:
+            sys.path.append(config.compiledir)
         from cuda_ndarray.cuda_ndarray import *
     except ImportError:
         compile_cuda_ndarray = True

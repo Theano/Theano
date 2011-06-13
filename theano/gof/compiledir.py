@@ -29,8 +29,6 @@ def is_valid_compiledir(path):
         # returned -1 for an unknown reason; the alternate approach here worked
         # in all cases... it was weird.
         open(os.path.join(path, '__init__.py'), 'w').close()
-        if path not in sys.path:
-            sys.path.append(path)
     except:
         return False
     
