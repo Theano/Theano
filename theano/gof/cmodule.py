@@ -268,7 +268,7 @@ class KeyData(object):
 
     """Used to store the key information in the cache."""
 
-    def __init__(self, keys, module_hash, key_pkl):
+    def __init__(self, keys, module_hash, key_pkl, entry):
         """
         Constructor.
 
@@ -283,6 +283,7 @@ class KeyData(object):
         self.keys = keys
         self.module_hash = module_hash
         self.key_pkl = key_pkl
+        self.entry = entry
 
     def add_key(self, key, save_pkl=True):
         """Add a key to self.keys, and update pickled file if asked to."""
@@ -312,6 +313,15 @@ class KeyData(object):
             warning("Cache leak due to unpickle-able key data", self.keys)
             os.remove(self.key_pkl)
             raise
+
+    def get_entry(self):
+        """Return path to the module file."""
+        # TODO This method may be removed in the future (e.g. in 0.5) since
+        # its only purpose is to make sure that old KeyData objects created
+        # before the 'entry' field was added are properly handled.
+        if not hasattr(self, 'entry'):
+            self.entry = module_name_from_dir(os.path.dirname(self.key_pkl))
+        return self.entry
 
 
 class ModuleCache(object):
@@ -630,12 +640,8 @@ class ModuleCache(object):
         if key is not None and key in self.entry_from_key:
             # We have seen this key either in this process or previously.
             name = self.entry_from_key[key]
-        if key_data is not None:
-            # A KeyData object was provided, which means the module already
-            # exists and can be found in the same directory as the KeyData
-            # pickled file (note that this will work even if key_data was not
-            # actually saved, e.g. in the case of broken keys).
-            name = module_name_from_dir(os.path.dirname(key_data.key_pkl))
+        elif key_data is not None:
+            name = key_data.get_entry()
         if name is not None:
             # This is an existing module we can recover.
             if name not in self.module_from_name:
@@ -730,7 +736,8 @@ class ModuleCache(object):
                     key_data = KeyData(
                             keys=set([key]),
                             module_hash=module_hash,
-                            key_pkl=key_pkl)
+                            key_pkl=key_pkl,
+                            entry=name)
 
                     if _version: # save the key
                         try:
@@ -843,9 +850,7 @@ class ModuleCache(object):
             # Build list of module files and associated keys.
             entry_to_key_data = dict((entry, None) for entry in too_old_to_use)
             for key_data in self.module_hash_to_key_data.itervalues():
-                # TODO We should probably save the entry path directly in
-                # the KeyData objects to avoid additional disk access.
-                entry = module_name_from_dir(os.path.dirname(key_data.key_pkl))
+                entry = key_data.get_entry()
                 # Since we loaded this file, it should not be in
                 # too_old_to_use.
                 assert entry not in entry_to_key_data
