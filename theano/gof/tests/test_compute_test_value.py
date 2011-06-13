@@ -55,10 +55,15 @@ class TestComputeTestValue(unittest.TestCase):
             # test that a warning is raised if required
             theano.config.compute_test_value = 'warn'
             warnings.simplefilter('error', UserWarning)
-            self.assertRaises(UserWarning, T.dot, x, y)
+            try:
+                self.assertRaises(UserWarning, T.dot, x, y)
+            finally:
+                # Restore the default behavior.
+                # TODO There is a cleaner way to do this in Python 2.6, once
+                # Theano drops support of Python 2.4 and 2.5.
+                warnings.simplefilter('default', UserWarning)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
-            warnings.resetwarnings()
 
     def test_string_var(self):
         orig_compute_test_value = theano.config.compute_test_value
