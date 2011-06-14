@@ -992,18 +992,31 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Delete base directories 'cuda_ndarray' and 'cutils_ext' if present.
+        Remove base directories 'cuda_ndarray' and 'cutils_ext' if present.
+
+        Note that we do not delete them outright because it may not work on
+        some systems due to these modules being currently in use. Instead we
+        rename them with the '.delete.me' extension, to mark them to be deleted
+        next time we clear the cache.
         """
         compilelock.get_lock()
         try:
             for base_dir in ('cuda_ndarray', 'cutils_ext'):
-                to_delete = os.path.join(self.dirname, base_dir)
+                to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
                         shutil.rmtree(to_delete)
                         debug('Deleted: %s' % to_delete)
                     except:
                         warning('Could not delete %s' % to_delete)
+                        continue
+                to_rename = os.path.join(self.dirname, base_dir)
+                if os.path.isdir(to_rename):
+                    try:
+                        shutil.move(to_rename, to_delete)
+                    except:
+                        warning('Could not move %s to %s' %
+                                (to_rename, to_delete))
         finally:
             compilelock.release_lock()
 
