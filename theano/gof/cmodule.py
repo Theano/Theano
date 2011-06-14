@@ -775,7 +775,8 @@ class ModuleCache(object):
                         key_data.remove_key(key)
                         key_broken = True
 
-                    if not key_broken and self.check_for_broken_eq:
+                    if (_version and not key_broken and
+                        self.check_for_broken_eq):
                         self.check_key(key, key_data.key_pkl)
 
                     # We can delete the work directory.
