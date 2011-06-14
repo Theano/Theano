@@ -1163,18 +1163,19 @@ class _Linker(gof.link.LocalLinker):
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0], client_node=node)
 
+                    ## On the first call to thunk_py(), its output storage will be None
                     if thunk_py:
-                        debug(i, "DEBUGMODE running thunk_py")
+                        debug(i, "DEBUGMODE running thunk_py with None as output storage")
                         try:
                             thunk_py()
                         except utils.MethodNotDefined:
                             thunk_py = None #shouldn't have put it into the list in the first place
+
                     if thunk_py:
                         # check output values for type-correctness
                         for r in node.outputs:
                             if not r.type.is_valid_value(storage_map[r][0]):
                                 raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
-                            #if r in r_vals:
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                                       clobber_dr_vals=True, perform='py',
@@ -1182,17 +1183,77 @@ class _Linker(gof.link.LocalLinker):
 
                         _check_viewmap(node, storage_map)
 
-                        # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
-                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
-                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
-                        sys.stdout.flush()
-
-                        #retrieve each output from the storage_map
+                        # Retrieve each output from the storage_map
+                        # The return values of this first run will be the reference ones
                         for r in node.outputs:
                             assert r not in r_vals
                             # print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                             r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
+
+                        ## Then, try to use different output storages
+                        # reuse_output: use a copy of the same storage returned the first time
+                        # TODO: optimization warning if the storage in reuse_outputs
+                        # is not reused
+                        # c_cont_output: use a c-continuous ndarray (for TensorType, else None)
+                        # f_cont_output: use a fortran-continuous ndarray (for TensorType, else None)
+                        # TODO: Sparse, Scalar
+                        # TODO: wrong shape, more stride patterns
+                        reuse_outputs = {}
+                        c_cont_outputs = {}
+                        f_cont_outputs = {}
+                        for r in node.outputs:
+                            r_val = r_vals[r]
+                            reuse_outputs[r] = _lessbroken_deepcopy(r_val)
+                            if isinstance(r.type, TensorType):
+                                c_cont_outputs[r] = numpy.empty(
+                                        shape=r_val.shape,
+                                        dtype=r_val.dtype,
+                                        order='C')
+                                f_cont_outputs[r] = numpy.empty(
+                                        shape=r_val.shape,
+                                        dtype=r_val.dtype,
+                                        order='F')
+
+                        for out_map in (reuse_outputs, c_cont_outputs, f_cont_outputs):
+                            if len(out_map) == 0:
+                                # All storages are None, no need to test that again
+                                continue
+
+                            # Copy the inputs over again
+                            for r in node.inputs:
+                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+                            # Copy the appropriate output storages
+                            for r in node.outputs:
+                                storage_map[r][0] = out_map.get(r, None)
+
+                            thunk_py()
+
+                            # Check outputs
+                            for r in node.outputs:
+                                if not r.type.is_valid_value(storage_map[r][0]):
+                                    raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
+
+                            _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                                          clobber_dr_vals=False, perform='py',
+                                          warn_input_not_reused=False)
+
+                            _check_viewmap(node, storage_map)
+
+                            for r in node.outputs:
+                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                    # TODO: indicate it is not a C/Py problem
+                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+
+                            # Clear storage_map
+                            for r in node.outputs:
+                                storage_map[r][0] = None
+
+                        # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
+                        sys.stdout.flush()
 
                     if thunk_c:
 
@@ -1219,6 +1280,7 @@ class _Linker(gof.link.LocalLinker):
                             clobber = False
 
                         debug(i, "DEBUGMODE running thunk_c")
+                        ## First time, with None in output_storage
                         try:
                             thunk_c()
                         except:
@@ -1241,11 +1303,7 @@ class _Linker(gof.link.LocalLinker):
 
                         _check_viewmap(node, storage_map)
 
-                        # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
-                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
-                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
-                        sys.stdout.flush()
-
+                        # Check with Python result
                         for r in node.outputs:
                             if r in r_vals:
                                 #print >> sys.stderr, i, "DEBUGMODE clearing output", r
@@ -1261,6 +1319,71 @@ class _Linker(gof.link.LocalLinker):
                                 r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
+
+                        ## Then, try to use different output storages
+                        # TODO: factorize that code with the one for Python above
+                        reuse_outputs = {}
+                        c_cont_outputs = {}
+                        f_cont_outputs = {}
+                        for r in node.outputs:
+                            r_val = r_vals[r]
+                            reuse_outputs[r] = _lessbroken_deepcopy(r_val)
+                            if isinstance(r.type, TensorType):
+                                c_cont_outputs[r] = numpy.empty(
+                                        shape=r_val.shape,
+                                        dtype=r_val.dtype,
+                                        order='C')
+                                f_cont_outputs[r] = numpy.empty(
+                                        shape=r_val.shape,
+                                        dtype=r_val.dtype,
+                                        order='F')
+
+                        for out_map in (reuse_outputs, c_cont_outputs, f_cont_outputs):
+                            if len(out_map) == 0:
+                                # All storages are None, no need to test that again
+                                continue
+
+                            # Copy the inputs over again
+                            for r in node.inputs:
+                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+                            # Copy the appropriate output storages
+                            for r in node.outputs:
+                                #storage_map[r][0] = out_map.get(r, None)
+                                if r in out_map:
+                                    storage_map[r][0] = out_map[r]
+                                else:
+                                    print 'not tensor?', r
+
+                            try:
+                                thunk_c()
+                            except:
+                                raise_with_op(node)
+
+                            # Check outputs
+                            for r in node.outputs:
+                                if not r.type.is_valid_value(storage_map[r][0]):
+                                    raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
+
+                            _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                                          clobber_dr_vals=False, perform='c',
+                                          warn_input_not_reused=False)
+
+                            _check_viewmap(node, storage_map)
+
+                            for r in node.outputs:
+                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                    # TODO: indicate it is not a C/Py problem
+                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+
+                            # Clear storage map
+                            for r in node.outputs:
+                                storage_map[r][0] = None
+
+                        # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
+                        sys.stdout.flush()
 
 
                     # we're done with this thunk
