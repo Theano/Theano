@@ -171,10 +171,10 @@ HPCS 2011, Montr\'eal
     \item Real example
 % More info on T.grad
 % Where are the optimization in the example?
-% Exercises 2
+% Exercises 2: logreg\_example.py
     \item Theano Flags
     \item GPU
-% Exercises 3
+% Exercises 3: logreg\_example.py on the gpu
     \item Symbolic Variables
     \item Differentiation Details
     \item Benchmarks % MLP, Convolucion, Elemwise
@@ -193,10 +193,11 @@ HPCS 2011, Montr\'eal
     \item Compilation Pipeline
     \item Inplace Optimization
     \item Profiling
-%exercises 4
+%exercises 4: ProfileMode on logreg\_example, CPU vs GPU
     \item Drawing/Printing Theano Graph
     \item Debugging
     \item Scan (For-Loop generalization)
+%exercises 5: about scan
     \item Known Limitations
     \end{itemize} %& \includegraphics[width=1.in]{pics/theano_logo.png}
   \begin{tabular}{lcr}
@@ -213,7 +214,7 @@ HPCS 2011, Montr\'eal
     \begin{itemize}
     \item Introduction
     \item Example
-% PyCUDA Exercices
+% Exercices 6: pycuda_simple.py
     \end{itemize}
   \item CUDA Overview
   \item Extending Theano
@@ -221,8 +222,9 @@ HPCS 2011, Montr\'eal
     \item Theano Graph
     \item Op Contract
     \item Op Example
+% Exercises 7: double.py
     \item Theano + PyCUDA
-% Theano+PyCUDA Exercises
+% Exercises 8: pycuda_double_op.py
     \end{itemize}
   \item GpuNdArray
   \item Conclusion
@@ -657,7 +659,7 @@ Theano can be configured with flags. They can be defined in two ways
 python logreg_example.py
 \end{Verbatim}
 \vfill
-Modify and execute the example to run on CPU with floatX=float32
+Modify and execute the example in the file logreg\_example.py to run on CPU with floatX=float32
 
 * You will need to use: theano.config.floatX and ndarray.astype("str")
 \end{frame}
@@ -715,7 +717,6 @@ Computers in the class
 
 \begin{itemize}
 \item Modify and execute the code to run with floatX=float32 on GPU
-\item Run the code on the GPU
 \item Time with: \texttt{time python file.py}
 \end{itemize}
 \end{frame}
@@ -1167,7 +1168,8 @@ print calculate_polynomial(test_coeff, 3)
 \frame{
 \frametitle{Exercises 5}
 \begin{itemize}
-\item Scan: modify the polynomial example to have the reduction done by scan
+\item Run the example in the file scan\_pow.py and scan\_poly.py
+\item Modify and execute the polynomial example to have the reduction done by scan
 \end{itemize}
 }
 
@@ -1335,9 +1337,9 @@ multiply_them(
 }
 
 \begin{frame}
-\frametitle{PyCUDA Exercises}
+\frametitle{Exercises 6}
 \begin{itemize}
-\item Run the example in the file pycuda_simple.py
+\item Run the example in the file pycuda\_simple.py
 \item Modify and execute it to work for a matrix of 20 $\times$ 10
 \end{itemize}
 \end{frame}
@@ -1429,6 +1431,18 @@ print out
 \end{Verbatim}
 \end{frame}
 
+\begin{frame}
+\frametitle{Exercises 7}
+\begin{itemize}
+\item Run the code in the file double\_op.py.
+\item Modify and execute to compute: $x * y$
+\item Modify and execute the example to return 2 outputs: $x + y$ and $x - y$
+  \begin{itemize}
+  \item Our current elemwise fusion generate computation with only 1 outputs
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
 \subsection{Theano+PyCUDA}
 \begin{frame}[fragile]
 \frametitle{Theano+PyCUDA Op Example}
@@ -1501,8 +1515,9 @@ print numpy.asarray(f(xv))
 \end{frame}
 
 \begin{frame}
-\frametitle{Theano + PyCUDA Exercises}
+\frametitle{Exercises 8}
 \begin{itemize}
+\item Run the example in the file pycuda\_double\_op.py
 \item Modify and execute the example to multiple two matrix: $x * y$
 \item Modify and execute the example to return 2 outputs: $x + y$ and $x - y$
   \begin{itemize}
