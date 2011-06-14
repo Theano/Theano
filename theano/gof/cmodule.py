@@ -430,9 +430,9 @@ class ModuleCache(object):
     def __init__(self, dirname, force_fresh=None, check_for_broken_eq=True,
                  do_refresh=True):
         """
-        :param check_for_broken_eq: A bad __eq__ implemenation can break this cache mechanism.
-        This option turns on a not-too-expensive sanity check during the load of an old cache
-        file.
+        :param check_for_broken_eq: A bad __eq__ implementation can break this
+        cache mechanism. This option turns on a not-too-expensive sanity check
+        every time a new key is added to the cache.
 
         :param do_refresh: If True, then the ``refresh`` method will be called
         in the constructor.
@@ -445,34 +445,12 @@ class ModuleCache(object):
         if force_fresh is not None:
             # TODO Where is / was `force_fresh` used?
             self.force_fresh = force_fresh
+        self.check_for_broken_eq = check_for_broken_eq
         self.loaded_key_pkl = set()
+        self.time_spent_in_check_key = 0
 
         if do_refresh:
             self.refresh()
-
-        start = time.time()
-        if check_for_broken_eq:
-            # Speed up comparison by only comparing keys for which the version
-            # part is equal (since the version part is supposed to be made of
-            # integer tuples, we can assume its hash is properly implemented).
-            version_to_keys = {}
-            for key in self.entry_from_key:
-                version_to_keys.setdefault(key[0], []).append(key)
-            for k0 in self.entry_from_key:
-                # Compare `k0` to all keys `k1` with the same version part.
-                for k1 in version_to_keys[k0[0]]:
-                    if k0 is not k1 and k0 == k1:
-                        warning(("The __eq__ and __hash__ functions are broken for some element"
-                                " in the following two keys. The cache mechanism will say that"
-                                " graphs like this need recompiling, when they could have been"
-                                " retrieved:"))
-                        warning("Key 0:", k0)
-                        warning("Entry 0:", self.entry_from_key[k0])
-                        warning("hash 0:", hash(k0))
-                        warning("Key 1:", k1)
-                        warning("Entry 1:", self.entry_from_key[k1])
-                        warning("hash 1:", hash(k1))
-        debug('Time needed to check broken equality / hash: %s' % (time.time() - start))
 
     age_thresh_use = 60*60*24*24
     """
@@ -559,19 +537,18 @@ class ModuleCache(object):
                                     level='warning')
                             continue
                         except:
-                            # TODO Note that in a development version, it may
-                            # be better to raise exceptions instead of silently
-                            # catching them.
                             unpickle_failure()
                             if delete_if_problem:
                                 _rmtree(root, ignore_nocleanup=True,
                                         msg='broken cache directory',
                                         level='info')
                             else:
-                                # This exception is often triggered by keys that contain
-                                # references to classes that have not yet been imported.  They are
-                                # not necessarily broken.
-                                # TODO But is there a reason to keep them?
+                                # This exception is often triggered by keys
+                                # that contain references to classes that have
+                                # not yet been imported (e.g. when running two
+                                # different Theano-based scripts). They are not
+                                # necessarily broken, but we cannot load them
+                                # here.
                                 pass
                             continue
 
@@ -788,6 +765,7 @@ class ModuleCache(object):
                     # modules.
                     try:
                         key_data.add_key(key, save_pkl=bool(_version))
+                        key_broken = False
                     except cPickle.PicklingError:
                         # This should only happen if we tried to save the
                         # pickled file.
@@ -796,6 +774,9 @@ class ModuleCache(object):
                         # add it after all.
                         key_data.remove_key(key)
                         key_broken = True
+
+                    if not key_broken and self.check_for_broken_eq:
+                        self.check_key(key, key_data.key_pkl)
 
                     # We can delete the work directory.
                     _rmtree(location, ignore_nocleanup=True,
@@ -846,23 +827,8 @@ class ModuleCache(object):
                             key_data.keys = set()
                             key_data.save_pkl()
 
-                        # TODO We should probably have a similar sanity check
-                        # when we add a new key to an existing KeyData object,
-                        # not just when we create a brand new one.
-                        if not key_broken:
-                            try:
-                                kd2 = cPickle.load(open(key_pkl, 'rb'))
-                                assert len(kd2.keys) == 1
-                                key_from_file = kd2.keys.__iter__().next()
-                                if key != key_from_file:
-                                    raise Exception(
-                                        "Key not equal to unpickled version "
-                                        "(Hint: verify the __eq__ and "
-                                        "__hash__ functions for your Ops",
-                                        (key, key_from_file))
-                            except cPickle.UnpicklingError:
-                                warning('Cache failure due to un-loadable key',
-                                        key)
+                        if not key_broken and self.check_for_broken_eq:
+                            self.check_key(key, key_pkl)
 
                         # Adding the KeyData file to this set means it is a
                         # versioned module.
@@ -918,6 +884,31 @@ class ModuleCache(object):
             rval = module
         #debug('stats', self.stats, sum(self.stats))
         return rval
+
+    def check_key(self, key, key_pkl):
+        """
+        Perform checks to detect broken __eq__ / __hash__ implementations.
+
+        :param key: The key to be checked.
+        :param key_pkl: Its associated pickled file containing a KeyData.
+        """
+        start_time = time.time()
+        # Verify that when we reload the KeyData from the pickled file, the
+        # same key can be found in it, and is not equal to more than one
+        # other key.
+        key_data = cPickle.load(open(key_pkl, 'rb'))
+        found = sum(key == other_key for other_key in key_data.keys)
+        msg = ''
+        if found == 0:
+            msg = 'Key not found in unpickled KeyData file'
+        elif found > 1:
+            msg = 'Multiple equal keys found in unpickled KeyData file'
+        if msg:
+            raise AssertionError(
+                    "%s. Verify the __eq__ and __hash__ functions of your "
+                    "Ops. The file is: %s. The key is: %s" %
+                    (msg, key_pkl, key))
+        self.time_spent_in_check_key += time.time() - start_time
 
     age_thresh_del = 60*60*24*31#31 days
     age_thresh_del_unversioned = 60*60*24*7#7 days
@@ -1097,6 +1088,7 @@ class ModuleCache(object):
             self.clear_unversioned()
         finally:
             compilelock.release_lock()
+        debug('Time spent checking keys: %s' % self.time_spent_in_check_key)
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
             ignore_if_missing=False):
