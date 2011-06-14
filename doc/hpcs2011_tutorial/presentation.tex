@@ -524,7 +524,7 @@ rng = numpy.random
 N = 400
 feats = 784
 D = (rng.randn(N, feats), rng.randint(size=N,low=0, high=2))
-training_steps = 100
+training_steps = 10000
 \end{Verbatim}
 \end{frame}
 
@@ -850,16 +850,16 @@ To replace the default mode with this mode, use the Theano flags \texttt{mode=Pr
 
 To enable the memory profiling use the flags \texttt{ProfileMode.profile\_memory=True} 
 \begin{Verbatim}
-Time since import 2.697s
-Theano compile time: 1.046s (38.8% since import)
-    Optimization time: 0.804s
-    Linker time: 0.230s
-Theano fct call 0.028s (1.0% since import)
-   Theano Op time 0.026s 1.0%(since import) 93.7%(of fct call)
-   Theano function overhead in ProfileMode 0.002s 0.1%(since import) 
-                                                  6.3%(of fct call)
-11 Theano fct call, 0.003s per call
-Rest of the time since import 1.623s 60.2%
+Time since import 33.456s
+Theano compile time: 1.023s (3.1% since import)
+    Optimization time: 0.789s
+    Linker time: 0.221s
+Theano fct call 30.878s (92.3% since import)
+   Theano Op time 29.411s 87.9%(since import) 95.3%(of fct call)
+   Theano function overhead in ProfileMode 1.466s 4.4%(since import)
+                                                  4.7%(of fct call)
+10001 Theano fct call, 0.003s per call
+Rest of the time since import 1.555s 4.6%
 \end{Verbatim}
 \end{frame}
 
@@ -870,8 +870,8 @@ Theano outputs:
 \begin{Verbatim}
 Theano fct summary:
 <% total fct time> <total time> <time per call> <nb call> <fct name>
-   97.2% 0.027s 2.70e-03s 10 train
-    2.8% 0.001s 7.84e-04s 1 predict
+   100.0% 30.877s 3.09e-03s 10000 train
+    0.0% 0.000s 4.06e-04s 1 predict
 \end{Verbatim}
 \end{frame}
 
@@ -884,13 +884,13 @@ Single Op-wise summary:
 <% of local_time spent on this kind of Op> <cumulative %> 
     <self seconds> <cumulative seconds> <time per call> <nb_call>
     <nb_op> <nb_apply> <Op name>
-   82.0%   82.0%  0.021s  0.021s  2.13e-03s      10  1  1 <Gemv>
-   14.1%   96.1%  0.004s  0.025s  3.33e-04s      11  1  2 <Dot>
-    2.9%   98.9%  0.001s  0.026s  8.24e-06s *    91 10 10 <Elemwise>
-    0.6%   99.6%  0.000s  0.026s  1.69e-05s      10  1  1 <Alloc>
-    0.3%   99.9%  0.000s  0.026s  2.43e-06s *    31  2  4 <DimShuffle>
-    0.1%  100.0%  0.000s  0.026s  1.91e-06s *    10  1  1 <Sum>
-    0.0%  100.0%  0.000s  0.026s  1.19e-06s *    10  1  1 <Shape_i>
+   87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1  1 <Gemv>
+    9.7%   97.0%  2.843s  28.515s  2.84e-04s   10001  1  2 <Dot>
+    2.4%   99.3%  0.691s  29.206s  7.68e-06s * 90001 10 10 <Elemwise>
+    0.4%   99.7%  0.127s  29.334s  1.27e-05s   10000  1  1 <Alloc>
+    0.2%   99.9%  0.053s  29.386s  1.75e-06s * 30001  2  4 <DimShuffle>
+    0.0%  100.0%  0.014s  29.400s  1.40e-06s * 10000  1  1 <Sum>
+    0.0%  100.0%  0.011s  29.411s  1.10e-06s * 10000  1  1 <Shape_i>
 (*) Op is running a c implementation
 \end{Verbatim}
 \end{frame}
@@ -904,15 +904,15 @@ Op-wise summary:
 <% of local_time spent on this kind of Op> <cumulative %>
     <self seconds> <cumulative seconds> <time per call>
     <nb_call> <nb apply> <Op name>
-   82.0%   82.0%  0.021s  0.021s  2.13e-03s      10  1 Gemv{inplace}
-   14.1%   96.1%  0.004s  0.025s  3.33e-04s      11  2 dot
-    1.4%   97.5%  0.000s  0.025s  3.63e-05s *    10  1 Elemwise{Composite{
+   87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1 Gemv{inplace}
+    9.7%   97.0%  2.843s  28.515s  2.84e-04s   10001  2 dot
+    1.3%   98.2%  0.378s  28.893s  3.78e-05s * 10000  1 Elemwise{Composite{
         scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}
-    0.6%   98.1%  0.000s  0.026s  1.69e-05s      10  1 Alloc
-    0.4%   98.5%  0.000s  0.026s  1.02e-05s *    10  1 Elemwise{Composite{
+    0.4%   98.7%  0.127s  29.021s  1.27e-05s   10000  1 Alloc
+    0.3%   99.0%  0.092s  29.112s  9.16e-06s * 10000  1 Elemwise{Composite{
         exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)]
-    0.2%   99.0%  0.000s  0.026s  2.40e-06s *    21  3 InplaceDimShuffle{x}
-   ... (remaining 11 Apply account for 1.3%(0.00s) of the runtime)
+    0.1%   99.3%  0.033s  29.265s  1.66e-06s * 20001  3 InplaceDimShuffle{x}
+   ... (remaining 11 Apply account for 0.7%(0.00s) of the runtime)
 (*) Op is running a c implementation
 \end{Verbatim}
 \end{frame}
@@ -926,15 +926,15 @@ Apply-wise summary:
 <% of local_time spent at this position> <cumulative %%>
     <apply time> <cumulative seconds> <time per call>
     <nb_call> <Apply position> <Apply Op name>
-   82.0%   82.0%  0.021s  0.021s 2.13e-03s  10  15 Gemv{inplace}(
-        w, TensorConstant{-0.1}, InplaceDimShuffle{1,0}.0, Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)].0, TensorConstant{0.998})
-   11.5%   93.4%  0.003s  0.024s 2.99e-04s  10   1 dot(x, w)
-    2.6%   96.1%  0.001s  0.025s 6.81e-04s  1   1 dot(x, w)
-    1.4%   97.5%  0.000s  0.025s 3.63e-05s  10   9 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}(y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-    0.6%   98.1%  0.000s  0.026s 1.69e-05s  10  10 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
-    0.4%   98.5%  0.000s  0.026s 1.02e-05s  10  13 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, InplaceDimShuffle{x}.0)
+   87.3%   87.3%  25.672s  25.672s 2.57e-03s  10000  15 Gemv{inplace}(
+        w, TensorConstant{-0.01}, InplaceDimShuffle{1,0}.0, Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)].0, TensorConstant{0.9998})
+    9.7%   97.0%  2.843s  28.515s 2.84e-04s  10000   1 dot(x, w)
+    1.3%   98.2%  0.378s  28.893s 3.78e-05s  10000   9 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}(y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
+    0.4%   98.7%  0.127s  29.020s 1.27e-05s  10000  10 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
+    0.3%   99.0%  0.092s  29.112s 9.16e-06s  10000  13 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, InplaceDimShuffle{x}.0)
+    0.3%   99.3%  0.080s  29.192s 7.99e-06s  10000  11 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)](Elemwise{neg,no_inplace}.0)
    ... (remaining 14 Apply instances account for 
-       1.5%(0.00s) of the runtime)
+       0.7%(0.00s) of the runtime)
 \end{Verbatim}
 \end{frame}
 
@@ -980,6 +980,7 @@ Test them first, as they are not guaranteed to always provide a speedup.
 \begin{itemize}
 \item In the last exercises, do you see a speed up with the GPU?
 \item Where does it come from? (Use ProfileMode)
+\item Is there something we can do to speed up the GPU version?
 \end{itemize}
 \end{frame}
 
