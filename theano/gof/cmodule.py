@@ -1008,14 +1008,14 @@ class ModuleCache(object):
                     try:
                         shutil.rmtree(to_delete)
                         debug('Deleted: %s' % to_delete)
-                    except:
+                    except Exception:
                         warning('Could not delete %s' % to_delete)
                         continue
                 to_rename = os.path.join(self.dirname, base_dir)
                 if os.path.isdir(to_rename):
                     try:
                         shutil.move(to_rename, to_delete)
-                    except:
+                    except Exception:
                         warning('Could not move %s to %s' %
                                 (to_rename, to_delete))
         finally:
