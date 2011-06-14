@@ -63,8 +63,12 @@ def error(*args):
 
 from theano.gof.callcache import CallCache
 
-def get_module_cache():
-    return cmodule.get_module_cache(config.compiledir)
+def get_module_cache(init_args=None):
+    """
+    :param init_args: If not None, the (k, v) pairs in this dictionary will
+    be forwarded to the ModuleCache constructor as keyword arguments.
+    """
+    return cmodule.get_module_cache(config.compiledir, init_args=init_args)
 
 _persistent_module_cache = None
 def get_persistent_module_cache():

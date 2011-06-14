@@ -427,11 +427,15 @@ class ModuleCache(object):
     """set of all key.pkl files that have been loaded.
     """
 
-    def __init__(self, dirname, force_fresh=None, check_for_broken_eq=True):
+    def __init__(self, dirname, force_fresh=None, check_for_broken_eq=True,
+                 do_refresh=True):
         """
         :param check_for_broken_eq: A bad __eq__ implemenation can break this cache mechanism.
         This option turns on a not-too-expensive sanity check during the load of an old cache
         file.
+
+        :param do_refresh: If True, then the ``refresh`` method will be called
+        in the constructor.
         """
         self.dirname = dirname
         self.module_from_name = dict(self.module_from_name)
@@ -443,7 +447,8 @@ class ModuleCache(object):
             self.force_fresh = force_fresh
         self.loaded_key_pkl = set()
 
-        self.refresh()
+        if do_refresh:
+            self.refresh()
 
         start = time.time()
         if check_for_broken_eq:
@@ -566,6 +571,7 @@ class ModuleCache(object):
                                 # This exception is often triggered by keys that contain
                                 # references to classes that have not yet been imported.  They are
                                 # not necessarily broken.
+                                # TODO But is there a reason to keep them?
                                 pass
                             continue
 
@@ -1111,11 +1117,21 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
                 warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
 
 _module_cache = None
-def get_module_cache(dirname, force_fresh=None):
+def get_module_cache(dirname, force_fresh=None, init_args=None):
+    """
+    :param init_args: If not None, the (k, v) pairs in this dictionary will
+    be forwarded to the ModuleCache constructor as keyword arguments.
+    """
     global _module_cache
+    if init_args is None:
+        init_args = {}
     if _module_cache is None:
-        _module_cache = ModuleCache(dirname, force_fresh=force_fresh)
+        _module_cache = ModuleCache(dirname, force_fresh=force_fresh,
+                                    **init_args)
         atexit.register(_module_cache._on_atexit)
+    elif init_args:
+        warning('Ignoring init arguments for module cache because it was '
+                'created prior to this call')
     if _module_cache.dirname != dirname:
         warning("Returning module cache instance with different dirname than you requested")
     return _module_cache

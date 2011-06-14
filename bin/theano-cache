@@ -6,10 +6,11 @@ from theano.gof.cc import get_module_cache
 if len(sys.argv) == 1:
     print config.compiledir
 elif sys.argv[1] in ('clear'):
-    # TODO Note that there is a double refresh when running the line below, it
-    # should be optimized to refresh the cache only once.
-    get_module_cache().clear(unversioned_min_age=-1, clear_base_files=True,
-                             delete_if_problem=True)
+    # We skip the refresh on module cache creation because the refresh will
+    # be done when calling clear afterwards.
+    cache = get_module_cache(init_args=dict(do_refresh=False))
+    cache.clear(unversioned_min_age=-1, clear_base_files=True,
+                delete_if_problem=True)
 else:
     print 'command "%s" not recognized' % sys.argv[1]
     print 'Type "theano-cache" to print the cache location'
