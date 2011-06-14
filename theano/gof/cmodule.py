@@ -798,7 +798,8 @@ class ModuleCache(object):
                         key_broken = True
 
                     # We can delete the work directory.
-                    _rmtree(location, ignore_nocleanup=True)
+                    _rmtree(location, ignore_nocleanup=True,
+                            msg='temporary workdir of duplicated module')
 
                 else:
                     # Will fail if there is an error compiling the C code.
@@ -880,7 +881,8 @@ class ModuleCache(object):
                 # directory, as it may cause trouble if we create too many of
                 # these. The 'ignore_if_missing' flag is set just in case this
                 # directory would have already been deleted.
-                _rmtree(location, ignore_if_missing=True)
+                _rmtree(location, ignore_if_missing=True,
+                        msg='exception -- typically means no C implementation')
                 raise
 
             finally:
