@@ -21,7 +21,9 @@ since 2007.  But it is also approachable enough to be used in the classroom
     :scale: 75%
     :align: left
 
-**NEW!** You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
+**NEW!** `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
+
+You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
 
   `Transparent GPU Computing With Theano`_.
   James Bergstra, SciPy 2010, June 30, 2010.
