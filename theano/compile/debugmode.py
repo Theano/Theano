@@ -1128,7 +1128,7 @@ class _Linker(gof.link.LocalLinker):
 
 
                 # Debug Mode complains if someone provides memory buffers
-                # for the otuputs ( where the linker can choose to store the
+                # for the outputs (where the linker can choose to store the
                 # outputs). Since this is what scan does by default, we will
                 # delete the output_storage for now. This code is going to
                 # change when someone decides to go over the debug code

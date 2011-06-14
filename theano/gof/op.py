@@ -194,8 +194,13 @@ class CLinkerOp(CLinkerObject):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
-           is either NULL or is unchanged from the end of the previous execution.
+           variables.  This pointer could be NULL, or contain an object of the right
+           Type (in the Theano sense) to store the output of the computation.
+           For instance, for a TensorVariable, it will be a Numpy ndarray with
+           the right number of dimensions, and the right dtype. However, its
+           shape, or stride pattern, could not be adequate.
+           It could be unchanged from the end of the previous execution, or allocated
+           by another Op, or by the Mode.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -224,8 +229,13 @@ class CLinkerOp(CLinkerObject):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
-           is either NULL or is unchanged from the end of the previous execution.
+           variables.  This pointer could be NULL, or contain an object of the right
+           Type (in the Theano sense) to store the output of the computation.
+           For instance, for a TensorVariable, it will be a Numpy ndarray with
+           the right number of dimensions, and the right dtype. However, its
+           shape, or stride pattern, could not be adequate.
+           It could be unchanged from the end of the previous execution, or allocated
+           by another Op, or by the Mode.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -431,9 +441,13 @@ class PureOp(object):
              list of mutable 1-element lists (do not change the length of these lists)
 
         The `output_storage` list might contain data. If an element of
-        output_storage is not None, it is guaranteed that it was produced
-        by a previous call to impl and impl is free to reuse it as it
-        sees fit.
+        output_storage is not None, it has to be of the right type,
+        for instance, for a TensorVariable, it has to be a Numpy ndarray,
+        with the right number of dimensions, and the correct dtype.
+        Its shape and stride pattern, can be arbitrary. It not is
+        guaranteed that it was produced by a previous call to impl. It
+        could be allocated by another Op impl is free to reuse it as it
+        sees fit, or to discard it and allocate new memory.
 
         :Exceptions:
          - `MethodNotDefined`: the subclass does not override this method
