@@ -1290,7 +1290,7 @@ class Cast(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
     def grad(self, (x, ), (gz, )):
-        if x.type in continuous_types:
+        if x.type in continuous_types and self.o_type in continuous_types:
             return [cast(gz, x.type.dtype)]
         else:
             return None,
