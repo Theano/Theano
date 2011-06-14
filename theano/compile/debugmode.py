@@ -1025,6 +1025,9 @@ class _Linker(gof.link.LocalLinker):
             #can't import at toplevel because of circular import
             # TODO: don't do this ugly hacky way of setting the filter_checks_isfinite
             from theano.tensor import TensorType #to set filter_check_isfinite
+            from theano.sandbox.cuda import cuda_available, CudaNdarrayType
+            if cuda_available:
+                from theano.sandbox.cuda import CudaNdarray
         env = self.env
         input_storage_ = input_storage
         output_storage_ = output_storage
@@ -1214,6 +1217,10 @@ class _Linker(gof.link.LocalLinker):
                                         shape=r_val.shape,
                                         dtype=r_val.dtype,
                                         order='F')
+                            elif isinstance(r.type, CudaNdarrayType):
+                                # CudaNdarray supports only C-contiguous
+                                c_cont_outputs[r] = CudaNdarray.zeros(
+                                        r_val.shape)
 
                         for out_map in (reuse_outputs, c_cont_outputs, f_cont_outputs):
                             if len(out_map) == 0:
