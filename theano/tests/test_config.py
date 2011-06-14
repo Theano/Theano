@@ -11,10 +11,6 @@ class T_config(unittest.TestCase):
     def test_invalid_default(self):
         # Ensure an invalid default value found in the Theano code only causes
         # a crash if it is not overridden by the user.
-        # TODO Note that currently, an invalid default value may still cause a
-        # crash if the user intends to override it inside the Python code with
-        # ``config.option = new_value``, instead of e.g. in the .theanorc. We
-        # may want to improve on this in the future.
 
         def filter(val):
             if val == 'invalid':
