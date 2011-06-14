@@ -397,9 +397,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
 
     if (shplen == 0)
     {
-        PyErr_SetString(PyExc_ValueError,
-            "CudaNdarray_Zeros: empty shape not allowed");
-        return NULL;
+        return CudaNdarray_ZEROS(0, NULL);
     }
 
     int* newdims = (int *)malloc(sizeof(int) * shplen);
@@ -426,9 +424,9 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         int shp_el = PyInt_AsLong(shp_el_obj);
         Py_DECREF(shp_el_obj);
 
-        if (shp_el <= 0)
+        if (shp_el < 0)
         {
-            PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: shape must not contain 0 (or negative value) for size of a dimension");
+            PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: shape must contain only non-negative values for size of a dimension");
             free(newdims);
             return NULL;
         }
