@@ -1,6 +1,8 @@
 """Generate and compile C modules for Python,
 """
-import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, shutil, stat
+import atexit, cPickle, logging, operator, os, shutil, stat, StringIO
+import subprocess, sys, tempfile, time
+
 import distutils.sysconfig
 
 import numpy.distutils #TODO: TensorType should handle this
@@ -437,6 +439,7 @@ class ModuleCache(object):
         self.module_hash_to_key_data = dict(self.module_hash_to_key_data)
         self.stats = [0, 0, 0]
         if force_fresh is not None:
+            # TODO Where is / was `force_fresh` used?
             self.force_fresh = force_fresh
         self.loaded_key_pkl = set()
 
@@ -473,7 +476,7 @@ class ModuleCache(object):
     Older modules will be deleted in ``clear_old``.
     """
 
-    def refresh(self, delete_if_unpickle_failure=False):
+    def refresh(self, delete_if_problem=False):
         """Update self.entry_from_key by walking the cache directory structure.
 
         Add entries that are not in the entry_from_key dictionary.
@@ -482,9 +485,12 @@ class ModuleCache(object):
 
         Also, remove malformed cache directories.
 
-        :param delete_if_unpickle_failure: If True, cache entries for which
-        trying to unpickle the KeyData file fails with an unknown exception
-        will be deleted.
+        :param delete_if_problem: If True, cache entries that do not seem
+        correct are deleted without taking additional precautions. This
+        includes:
+            - Those for which unpickling the KeyData file fails with an
+              unknown exception.
+            - Duplicated modules, regardless of their age.
         """
         start_time = time.time()
         too_old_to_use = []
@@ -493,7 +499,11 @@ class ModuleCache(object):
         try:
             # add entries that are not in the entry_from_key dictionary
             time_now = time.time()
-            for root, dirs, files in os.walk(self.dirname):
+            # Go through directories in alphabetical order to ensure consistent
+            # behavior.
+            root_dirs_files = sorted(os.walk(self.dirname),
+                                     key=operator.itemgetter(0))
+            for root, dirs, files in root_dirs_files:
                 key_pkl = os.path.join(root, 'key.pkl')
                 if key_pkl in self.loaded_key_pkl:
                     continue
@@ -548,7 +558,7 @@ class ModuleCache(object):
                             # be better to raise exceptions instead of silently
                             # catching them.
                             unpickle_failure()
-                            if delete_if_unpickle_failure:
+                            if delete_if_problem:
                                 _rmtree(root, ignore_nocleanup=True,
                                         msg='broken cache directory',
                                         level='info')
@@ -602,6 +612,31 @@ class ModuleCache(object):
                                     level='info')
                             continue
 
+                        mod_hash = key_data.module_hash
+                        if mod_hash in self.module_hash_to_key_data:
+                            # This may happen when two processes running
+                            # simultaneously compiled the same module, one
+                            # after the other. We delete one once it is old
+                            # enough (to be confident there is no other process
+                            # using it), or if `delete_if_problem` is True.
+                            # Note that it is important to walk through
+                            # directories in alphabetical order so as to make
+                            # sure all new processes only use the first one.
+                            age = time.time() - last_access_time(entry)
+                            if delete_if_problem or age > self.age_thresh_del:
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='duplicated module',
+                                        level='debug')
+                            else:
+                                debug('Found duplicated module not old enough '
+                                      'yet to be deleted (age: %s): %s' %
+                                      (age, entry))
+                            continue
+
+                        # Remember the map from a module's hash to the KeyData
+                        # object associated with it.
+                        self.module_hash_to_key_data[mod_hash] = key_data
+
                         for key in key_data.keys:
                             if key not in self.entry_from_key:
                                 self.entry_from_key[key] = entry
@@ -609,26 +644,14 @@ class ModuleCache(object):
                                 # entry somehow.
                                 assert entry not in self.module_from_name
                             else:
-                                info("The same cache key is associated to "
-                                     "different modules. This may happen "
-                                     "if different processes compiled the "
-                                     "same module independently. We will "
-                                     "use %s instead of %s." %
-                                     (self.entry_from_key[key], entry))
+                                warning(
+                                    "The same cache key is associated to "
+                                    "different modules (%s and %s). This "
+                                    "is not supposed to happen! You may "
+                                    "need to manually delete your cache "
+                                    "directory to fix this." %
+                                    (self.entry_from_key[key], entry))
                         self.loaded_key_pkl.add(key_pkl)
-
-                        # Remember the map from a module's hash to the KeyData
-                        # object associated with it.
-                        mod_hash = key_data.module_hash
-                        if mod_hash in self.module_hash_to_key_data:
-                            # This should not happen: a given module should
-                            # never be duplicated in the cache.
-                            info(
-                                "Found duplicated modules in the cache! This "
-                                "may happen if different processes compiled "
-                                "the same module independently.")
-                        else:
-                            self.module_hash_to_key_data[mod_hash] = key_data
                     else:
                         too_old_to_use.append(entry)
 
@@ -893,7 +916,7 @@ class ModuleCache(object):
 
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh_del=None, delete_if_unpickle_failure=False):
+    def clear_old(self, age_thresh_del=None, delete_if_problem=False):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
@@ -901,7 +924,7 @@ class ModuleCache(object):
         than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
         age if not provided.
 
-        :param delete_if_unpickle_failure: See help of refresh() method.
+        :param delete_if_problem: See help of refresh() method.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
@@ -911,8 +934,7 @@ class ModuleCache(object):
             # Update the age of modules that have been accessed by other
             # processes and get all module that are too old to use
             # (not loaded in self.entry_from_key).
-            too_old_to_use = self.refresh(
-                    delete_if_unpickle_failure=delete_if_unpickle_failure)
+            too_old_to_use = self.refresh(delete_if_problem=delete_if_problem)
             time_now = time.time()
 
             # Build list of module files and associated keys.
@@ -944,7 +966,7 @@ class ModuleCache(object):
             compilelock.release_lock()
 
     def clear(self, unversioned_min_age=None, clear_base_files=False,
-              delete_if_unpickle_failure=False):
+              delete_if_problem=False):
         """
         Clear all elements in the cache.
 
@@ -956,13 +978,13 @@ class ModuleCache(object):
         'cuda_ndarray' and 'cutils_ext' if they are present. If False, those
         directories are left intact.
 
-        :param delete_if_unpickle_failure: See help of refresh() method.
+        :param delete_if_problem: See help of refresh() method.
         """
         compilelock.get_lock()
         try:
             self.clear_old(
                     age_thresh_del=-1.0,
-                    delete_if_unpickle_failure=delete_if_unpickle_failure)
+                    delete_if_problem=delete_if_problem)
             self.clear_unversioned(min_age=unversioned_min_age)
             if clear_base_files:
                 self.clear_base_files()
