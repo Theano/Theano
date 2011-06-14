@@ -419,16 +419,11 @@ class ModuleCache(object):
     """A list with counters for the number of hits, loads, compiles issued by module_from_key()
     """
 
-    force_fresh = False
-    """True -> Ignore previously-compiled modules
-    """
-
     loaded_key_pkl = set()
     """set of all key.pkl files that have been loaded.
     """
 
-    def __init__(self, dirname, force_fresh=None, check_for_broken_eq=True,
-                 do_refresh=True):
+    def __init__(self, dirname, check_for_broken_eq=True, do_refresh=True):
         """
         :param check_for_broken_eq: A bad __eq__ implementation can break this
         cache mechanism. This option turns on a not-too-expensive sanity check
@@ -442,9 +437,6 @@ class ModuleCache(object):
         self.entry_from_key = dict(self.entry_from_key)
         self.module_hash_to_key_data = dict(self.module_hash_to_key_data)
         self.stats = [0, 0, 0]
-        if force_fresh is not None:
-            # TODO Where is / was `force_fresh` used?
-            self.force_fresh = force_fresh
         self.check_for_broken_eq = check_for_broken_eq
         self.loaded_key_pkl = set()
         self.time_spent_in_check_key = 0
@@ -1125,7 +1117,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
                 warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
 
 _module_cache = None
-def get_module_cache(dirname, force_fresh=None, init_args=None):
+def get_module_cache(dirname, init_args=None):
     """
     :param init_args: If not None, the (k, v) pairs in this dictionary will
     be forwarded to the ModuleCache constructor as keyword arguments.
@@ -1134,8 +1126,7 @@ def get_module_cache(dirname, force_fresh=None, init_args=None):
     if init_args is None:
         init_args = {}
     if _module_cache is None:
-        _module_cache = ModuleCache(dirname, force_fresh=force_fresh,
-                                    **init_args)
+        _module_cache = ModuleCache(dirname, **init_args)
         atexit.register(_module_cache._on_atexit)
     elif init_args:
         warning('Ignoring init arguments for module cache because it was '
