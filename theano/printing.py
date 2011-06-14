@@ -544,6 +544,8 @@ def pydotprint(fct, outfile=None,
             idx = ' id='+str(topo.index(node))
             if len(applystr)+len(idx) > max_label_size:
                 applystr = applystr[:max_label_size-3-len(idx)]+idx+'...'
+            else:
+                applystr = applystr + idx
         elif len(applystr) > max_label_size:
             applystr = applystr[:max_label_size-3]+'...'
 
