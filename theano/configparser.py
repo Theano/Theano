@@ -235,9 +235,6 @@ class ConfigParam(object):
         else:
             self.val = val
 
-    # TODO What is this for?
-    deleter = None
-
 
 class EnumStr(ConfigParam):
     def __init__(self, default, *options, **kwargs):
