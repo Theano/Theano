@@ -814,6 +814,8 @@ def scan( fn
 
     ## Step 5.6 all shared variables with no update rules
     def new_variable( v ):
+        if isinstance(new_variable, tensor.Constant):
+            return v.clone()
         new_v = safe_new(v)
         if getattr(v,'name', None) is not None:
             new_v.name = v.name + '_copy'
