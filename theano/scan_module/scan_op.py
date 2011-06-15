@@ -593,6 +593,12 @@ class Scan(Op):
                     outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx]-pdx] = tmp
                     del tmp
+            # This would normally happen only when doing truncated
+            # backpropagation through time. In such a scenarion Scan is
+            # expected to return 0 for all entries for which the gradient is
+            # not actually computed
+            elif store_steps[idx] > n_steps - self.mintaps[idx]:
+                outs[idx][0][n_steps-self.mintaps[idx]:] = 0
 
 
         t_call = time.time() - t0_call
