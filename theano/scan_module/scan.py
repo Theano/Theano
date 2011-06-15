@@ -812,7 +812,7 @@ def scan( fn
     other_scan_args  += [ arg for arg in non_seqs
                         if not isinstance(arg, SharedVariable) ]
 
-    ## Step 5.6 all shared variables with no update rules
+    ## Step 5.6 all non sequences including shared variables with no update rules
     def new_variable( v ):
         if isinstance(new_variable, tensor.Constant):
             return v.clone()
