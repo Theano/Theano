@@ -734,115 +734,117 @@ class ModuleCache(object):
                 raise
 
             try:
-                compile_steps = fn(location=location).__iter__()
+                # Embedding two try statements for Python 2.4 compatibility
+                # (cannot do try / except / finally).
+                try:
+                    compile_steps = fn(location=location).__iter__()
 
-                # Check if we already know a module with the same hash. If we
-                # do, then there is no need to even compile it.
-                duplicated_module = False
-                # The first compilation step is to yield the source code.
-                src_code = compile_steps.next()
-                module_hash = get_module_hash(src_code, key)
-                if module_hash in self.module_hash_to_key_data:
-                    debug("Duplicated module! Will re-use the previous one")
-                    duplicated_module = True
-                    # Load the already existing module.
-                    key_data = self.module_hash_to_key_data[module_hash]
-                    # Note that we do not pass the `fn` argument, since it
-                    # should not be used considering that the module should
-                    # already be compiled.
-                    module = self.module_from_key(key=None, key_data=key_data)
-                    name = module.__file__
-                    # Add current key to the set of keys associated to the same
-                    # module. We only save the KeyData object of versioned
-                    # modules.
-                    try:
-                        key_data.add_key(key, save_pkl=bool(_version))
-                        key_broken = False
-                    except cPickle.PicklingError:
-                        # This should only happen if we tried to save the
-                        # pickled file.
-                        assert _version
-                        # The key we are trying to add is broken: we will not
-                        # add it after all.
-                        key_data.remove_key(key)
-                        key_broken = True
-
-                    if (_version and not key_broken and
-                        self.check_for_broken_eq):
-                        self.check_key(key, key_data.key_pkl)
-
-                    # We can delete the work directory.
-                    _rmtree(location, ignore_nocleanup=True,
-                            msg='temporary workdir of duplicated module')
-
-                else:
-                    # Will fail if there is an error compiling the C code.
-                    # The exception will be caught and the work dir will be
-                    # deleted.
-                    while True:
+                    # Check if we already know a module with the same hash. If we
+                    # do, then there is no need to even compile it.
+                    duplicated_module = False
+                    # The first compilation step is to yield the source code.
+                    src_code = compile_steps.next()
+                    module_hash = get_module_hash(src_code, key)
+                    if module_hash in self.module_hash_to_key_data:
+                        debug("Duplicated module! Will re-use the previous one")
+                        duplicated_module = True
+                        # Load the already existing module.
+                        key_data = self.module_hash_to_key_data[module_hash]
+                        # Note that we do not pass the `fn` argument, since it
+                        # should not be used considering that the module should
+                        # already be compiled.
+                        module = self.module_from_key(key=None, key_data=key_data)
+                        name = module.__file__
+                        # Add current key to the set of keys associated to the same
+                        # module. We only save the KeyData object of versioned
+                        # modules.
                         try:
-                            # The module should be returned by the last
-                            # step of the compilation.
-                            module = compile_steps.next()
-                        except StopIteration:
-                            break
-
-                    # Obtain path to the '.so' module file.
-                    name = module.__file__
-
-                    debug("Adding module to cache", key, name)
-                    assert name.startswith(location)
-                    assert name not in self.module_from_name
-                    # Changing the hash of the key is not allowed during
-                    # compilation. That is the only cause found that makes the
-                    # following assert fail.
-                    assert hash(key) == hash_key
-                    assert key not in self.entry_from_key
-
-                    key_pkl = os.path.join(location, 'key.pkl')
-                    assert not os.path.exists(key_pkl)
-                    key_data = KeyData(
-                            keys=set([key]),
-                            module_hash=module_hash,
-                            key_pkl=key_pkl,
-                            entry=name)
-
-                    if _version: # save the key
-                        try:
-                            key_data.save_pkl()
+                            key_data.add_key(key, save_pkl=bool(_version))
                             key_broken = False
                         except cPickle.PicklingError:
+                            # This should only happen if we tried to save the
+                            # pickled file.
+                            assert _version
+                            # The key we are trying to add is broken: we will not
+                            # add it after all.
+                            key_data.remove_key(key)
                             key_broken = True
-                            # Remove key from the KeyData object, to make sure
-                            # we never try to save it again.
-                            # We still keep the KeyData object and save it so
-                            # that the module can be re-used in the future.
-                            key_data.keys = set()
-                            key_data.save_pkl()
 
-                        if not key_broken and self.check_for_broken_eq:
-                            self.check_key(key, key_pkl)
+                        if (_version and not key_broken and
+                            self.check_for_broken_eq):
+                            self.check_key(key, key_data.key_pkl)
 
-                        # Adding the KeyData file to this set means it is a
-                        # versioned module.
-                        self.loaded_key_pkl.add(key_pkl)
+                        # We can delete the work directory.
+                        _rmtree(location, ignore_nocleanup=True,
+                                msg='temporary workdir of duplicated module')
 
-                    # Map the new module to its KeyData object. Note that we
-                    # need to do it regardless of whether the key is versioned
-                    # or not if we want to be able to re-use this module inside
-                    # the same process.
-                    self.module_hash_to_key_data[module_hash] = key_data
+                    else:
+                        # Will fail if there is an error compiling the C code.
+                        # The exception will be caught and the work dir will be
+                        # deleted.
+                        while True:
+                            try:
+                                # The module should be returned by the last
+                                # step of the compilation.
+                                module = compile_steps.next()
+                            except StopIteration:
+                                break
 
-            except:
-                # TODO try / except / finally is not Python2.4-friendly.
-                # This may happen e.g. when an Op has no C implementation. In
-                # any case, we do not want to keep around the temporary work
-                # directory, as it may cause trouble if we create too many of
-                # these. The 'ignore_if_missing' flag is set just in case this
-                # directory would have already been deleted.
-                _rmtree(location, ignore_if_missing=True,
-                        msg='exception -- typically means no C implementation')
-                raise
+                        # Obtain path to the '.so' module file.
+                        name = module.__file__
+
+                        debug("Adding module to cache", key, name)
+                        assert name.startswith(location)
+                        assert name not in self.module_from_name
+                        # Changing the hash of the key is not allowed during
+                        # compilation. That is the only cause found that makes the
+                        # following assert fail.
+                        assert hash(key) == hash_key
+                        assert key not in self.entry_from_key
+
+                        key_pkl = os.path.join(location, 'key.pkl')
+                        assert not os.path.exists(key_pkl)
+                        key_data = KeyData(
+                                keys=set([key]),
+                                module_hash=module_hash,
+                                key_pkl=key_pkl,
+                                entry=name)
+
+                        if _version: # save the key
+                            try:
+                                key_data.save_pkl()
+                                key_broken = False
+                            except cPickle.PicklingError:
+                                key_broken = True
+                                # Remove key from the KeyData object, to make sure
+                                # we never try to save it again.
+                                # We still keep the KeyData object and save it so
+                                # that the module can be re-used in the future.
+                                key_data.keys = set()
+                                key_data.save_pkl()
+
+                            if not key_broken and self.check_for_broken_eq:
+                                self.check_key(key, key_pkl)
+
+                            # Adding the KeyData file to this set means it is a
+                            # versioned module.
+                            self.loaded_key_pkl.add(key_pkl)
+
+                        # Map the new module to its KeyData object. Note that we
+                        # need to do it regardless of whether the key is versioned
+                        # or not if we want to be able to re-use this module inside
+                        # the same process.
+                        self.module_hash_to_key_data[module_hash] = key_data
+
+                except:
+                    # This may happen e.g. when an Op has no C implementation. In
+                    # any case, we do not want to keep around the temporary work
+                    # directory, as it may cause trouble if we create too many of
+                    # these. The 'ignore_if_missing' flag is set just in case this
+                    # directory would have already been deleted.
+                    _rmtree(location, ignore_if_missing=True,
+                            msg='exception -- typically means no C implementation')
+                    raise
 
             finally:
                 # Release lock if needed.
