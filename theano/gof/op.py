@@ -460,7 +460,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def __new__(cls, *args, **kwargs):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
-        obj = object.__new__(cls, *args, **kwargs)
+        obj = object.__new__(cls)
         if not hasattr(obj, '_op_use_c_code'):
             obj._op_use_c_code = True
         return obj
