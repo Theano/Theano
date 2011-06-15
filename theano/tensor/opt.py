@@ -2565,7 +2565,15 @@ register_canonicalize(local_mul_zero)
 @gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
     if node.op == T.true_div and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
-        return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
+        out = node.outputs[0]
+        new_out = T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))
+        # The ones could have forced upcasting
+        if new_out.dtype != out.dtype:
+            new_out = T.cast(new_out, dtype=out.dtype)
+        # The ones could have forced a specific length
+        if new_out.type != out.type:
+            new_out = broadcast_like(new_out, out, node.env)
+        return [new_out]
     else:
         return False
 register_specialize(local_div_to_inv)

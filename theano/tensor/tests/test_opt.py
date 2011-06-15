@@ -2862,6 +2862,23 @@ def test_local_scalar_tensor_scalar():
         assert len(cast_nodes) == 0
         f(0)
 
+def test_local_div_to_inv():
+    num_len_s = tensor.lscalar('num_len')
+    denom_s = tensor.scalar('denom')
+
+    num_v = tensor.alloc(1, num_len_s)
+    denom_m = denom_s.dimshuffle('x', 'x')
+
+    out = num_v / denom_m
+    theano.printing.debugprint(out, print_type=True)
+    print out.broadcastable
+    assert numpy.all(out.broadcastable == (True, False))
+
+    f = theano.function([num_len_s, denom_s], out)
+    out_val = f(3, 2.)
+    assert out_val.shape == (1, 3)
+    assert numpy.allclose(out_val, 0.5)
+
 if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
