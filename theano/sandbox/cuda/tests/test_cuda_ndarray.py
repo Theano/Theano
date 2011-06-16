@@ -1,14 +1,17 @@
 import time, copy, sys, unittest
-
-
-from theano.tests import unittest_tools as utt
-import theano
-import theano.sandbox.cuda as cuda_ndarray
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
+
+import numpy
+
+import theano
+import theano.sandbox.cuda as cuda_ndarray
+from theano.tensor.basic import _allclose
+from theano.tests import unittest_tools as utt
+
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
-import numpy
+
 
 def advantage(cpu_dt, gpu_dt):
     """
