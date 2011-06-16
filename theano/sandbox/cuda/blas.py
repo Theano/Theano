@@ -272,11 +272,11 @@ class GpuOuter(Op):
         x, y = inputs
         A, = outputs
         fail = sub['fail']
-        
+
         return """
         CudaNdarray *%(name)sx = NULL, *%(name)sy = NULL;
         int %(name)sres;
-        
+
         if (CudaNdarray_HOST_STRIDES(%(x)s)[0] < 0) {
             %(name)sx = (CudaNdarray *)CudaNdarray_Copy(%(x)s);
             if (!%(name)sx) {
@@ -335,7 +335,7 @@ class GpuOuter(Op):
         """%dict(x=x,y=y,A=A,fail=fail,name=name)
 
 gpu_outer = GpuOuter()
-        
+
 ##
 # Not really a BLAS operation, but whatever.
 #
