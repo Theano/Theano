@@ -265,7 +265,7 @@ class GpuOuter(Op):
         return hash(type(self))
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         # A = x * y'
@@ -306,6 +306,20 @@ class GpuOuter(Op):
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[0];
             %(A)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
             if (!%(A)s) {
+                Py_DECREF(%(name)sy);
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        }
+        else
+        {
+            // sger accumulates into A. We need to zero it first.
+            int total_size = (sizeof(real) *
+                                CudaNdarray_HOST_DIMS(%(A)s)[0] *
+                                CudaNdarray_HOST_DIMS(%(A)s)[1]);
+            if (cudaSuccess != cudaMemset(%(A)s->devdata, 0, total_size))
+            {
+                PyErr_Format(PyExc_MemoryError, "GpuOuter: Error memsetting %%d bytes of device memory.", total_size);
                 Py_DECREF(%(name)sy);
                 Py_DECREF(%(name)sx);
                 %(fail)s;
