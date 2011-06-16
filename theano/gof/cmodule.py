@@ -28,7 +28,7 @@ def local_bitwidth():
     return len('%x' % maxint) * 4
 
 _logger=logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.WARN)
 
 def error(*args):
     _logger.error("ERROR: "+' '.join(str(a) for a in args))
