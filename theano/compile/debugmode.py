@@ -11,7 +11,8 @@ from theano import gof
 from theano.gof import Env, graph, utils, link
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.configparser import config, AddConfigVar, IntParam, BoolParam
+from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
+        StrParam)
 from theano.compile.function_module import (FunctionMaker,
         Function,
         infer_reuse_pattern,
@@ -47,8 +48,13 @@ AddConfigVar('DebugMode.warn_input_not_reused',
         BoolParam(True))
 
 AddConfigVar('DebugMode.check_preallocated_output',
-        'Test thunks with pre-allocated memory as output storage.',
-        BoolParam(False))
+        ('Test thunks with pre-allocated memory as output storage. '
+         'This is a list of strings separated by ":". Valid values are: '
+         '"previous" (previously-returned memory), '
+         '"c_contiguous", "f_contiguous", '
+         '"neg_strides" (negative strides), and '
+         '"ALL" (all of the above).'),
+        StrParam(''))
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")
@@ -819,6 +825,109 @@ def _find_bad_optimizations2(order, reasons, r_vals):
 
 _find_bad_optimizations = _find_bad_optimizations0
 
+def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
+        storage_map, r_vals, dr_vals, perform, active_order_set):
+    '''Try to apply thunk() on different output storages'''
+
+    # To avoid circular imports
+    from theano.tensor import TensorType
+    from theano.sandbox.cuda import cuda_available, CudaNdarrayType
+    if cuda_available:
+        from theano.sandbox.cuda import CudaNdarray
+
+    # List of (name, map) pairs of the settings to test
+    prealloc_maps = []
+    # TODO: Sparse, Scalar
+    # TODO: wrong shape, more stride patterns
+
+    # reuse_output: use a copy of the same storage returned the first time
+    # TODO: optimization warning if the storage in reuse_outputs
+    # is not reused
+    if 'previous' in prealloc_modes or 'ALL' in prealloc_modes:
+        reuse_outputs = {}
+        for r in node.outputs:
+            # We want to reuse the exact same memory buffer,
+            # so we keep the copy in r_vals
+            new_r = _lessbroken_deepcopy(r_vals[r])
+            reuse_outputs[r] = r_vals[r]
+            r_vals[r] = new_r
+
+        prealloc_maps.append(('previous', reuse_outputs))
+
+    # c_cont_output: use a c-continuous array
+    # (for TensorType and CudaNdarray, else None)
+    if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
+        c_cont_outputs = {}
+        for r in node.outputs:
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                # Build a C-contiguous buffer
+                new_buf = numpy.zeros(
+                        shape=r_vals[r].shape,
+                        dtype=r_vals[r].dtype,
+                        order='C')
+                new_buf += def_val
+                if isinstance(r.type, CudaNdarrayType):
+                    new_buf = CudaNdarray(new_buf)
+                c_cont_outputs[r] = new_buf
+
+        if len(c_cont_outputs):
+            prealloc_maps.append(('c_contiguous', c_cont_outputs))
+
+    # f_cont_output: use a fortran-continuous ndarray
+    # (for TensorType, only)
+    if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
+        f_cont_outputs = {}
+        for r in node.outputs:
+            if isinstance(r.type, TensorType):
+                new_buf = numpy.zeros(
+                        shape=r_vals[r].shape,
+                        dtype=r_vals[r].dtype,
+                        order='F')
+                new_buf += def_val
+                f_cont_outputs[r] = new_buf
+
+        if len(f_cont_outputs):
+            prealloc_maps.append(('f_contiguous', f_cont_outputs))
+
+    if 'neg_strides' in prealloc_maps:
+        raise NotImplementedError('Negative strides in check_preallocated_output')
+
+    for (name, out_map) in prealloc_maps:
+
+        # Copy the inputs over again
+        for r in node.inputs:
+            storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+        # Get the appropriate output storages
+        # (no copy)
+        for r in node.outputs:
+            storage_map[r][0] = out_map.get(r, None)
+
+        thunk()
+
+        # Check outputs
+        for r in node.outputs:
+            if not r.type.is_valid_value(storage_map[r][0]):
+                raise InvalidValueError(r, storage_map[r][0],
+                        hint='%s with %s output' % (perform, name),
+                        specific_hint=r.type.value_validity_msg(storage_map[r][0]))
+
+        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                      clobber_dr_vals=False,
+                      perform='%s with output %s' % (perform, name),
+                      warn_input_not_reused=False)
+
+        _check_viewmap(node, storage_map)
+
+        for r in node.outputs:
+            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                # TODO: indicate it is not a C/Py problem
+                raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+
+        # Clear storage_map
+        for r in node.outputs:
+            storage_map[r][0] = None
+
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
 
@@ -1029,9 +1138,7 @@ class _Linker(gof.link.LocalLinker):
             #can't import at toplevel because of circular import
             # TODO: don't do this ugly hacky way of setting the filter_checks_isfinite
             from theano.tensor import TensorType #to set filter_check_isfinite
-            from theano.sandbox.cuda import cuda_available, CudaNdarrayType
-            if cuda_available:
-                from theano.sandbox.cuda import CudaNdarray
+            from theano import tests # for config.unittests.rseed
         env = self.env
         input_storage_ = input_storage
         output_storage_ = output_storage
@@ -1092,6 +1199,13 @@ class _Linker(gof.link.LocalLinker):
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
+        # Precompute some things for storage pre-allocation
+        prealloc_modes = config.DebugMode.check_preallocated_output.split(':')
+        try:
+            def_val = int(config.unittests.rseed)
+        except ValueError:
+            def_val = 666
+
         #####
         # This is the function that runs when you evaluate the graph
         #####
@@ -1133,14 +1247,8 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
 
-
-                # Debug Mode complains if someone provides memory buffers
-                # for the outputs (where the linker can choose to store the
-                # outputs). Since this is what scan does by default, we will
-                # delete the output_storage for now. This code is going to
-                # change when someone decides to go over the debug code
-                # again, and try to include checks for such behaviour as
-                # well.
+                # TODO: store them in another map, and test the thunks on
+                # them as output storages.
                 for r in storage_map:
                     if r in env.outputs:
                         storage_map[r][0] = None
@@ -1199,68 +1307,16 @@ class _Linker(gof.link.LocalLinker):
                             storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
                         if config.DebugMode.check_preallocated_output:
-                            ## Then, try to use different output storages
-                            # reuse_output: use a copy of the same storage returned the first time
-                            # TODO: optimization warning if the storage in reuse_outputs
-                            # is not reused
-                            # c_cont_output: use a c-continuous ndarray (for TensorType, else None)
-                            # f_cont_output: use a fortran-continuous ndarray (for TensorType, else None)
-                            # TODO: Sparse, Scalar
-                            # TODO: wrong shape, more stride patterns
-                            reuse_outputs = {}
-                            c_cont_outputs = {}
-                            f_cont_outputs = {}
-                            for r in node.outputs:
-                                r_val = r_vals[r]
-                                reuse_outputs[r] = _lessbroken_deepcopy(r_val)
-                                if isinstance(r.type, TensorType):
-                                    c_cont_outputs[r] = numpy.empty(
-                                            shape=r_val.shape,
-                                            dtype=r_val.dtype,
-                                            order='C')
-                                    f_cont_outputs[r] = numpy.empty(
-                                            shape=r_val.shape,
-                                            dtype=r_val.dtype,
-                                            order='F')
-                                elif isinstance(r.type, CudaNdarrayType):
-                                    # CudaNdarray supports only C-contiguous
-                                    c_cont_outputs[r] = CudaNdarray.zeros(
-                                            r_val.shape)
-
-                            for out_map in (reuse_outputs, c_cont_outputs, f_cont_outputs):
-                                if len(out_map) == 0:
-                                    # All storages are None, no need to test that again
-                                    continue
-
-                                # Copy the inputs over again
-                                for r in node.inputs:
-                                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-
-                                # Copy the appropriate output storages
-                                for r in node.outputs:
-                                    storage_map[r][0] = out_map.get(r, None)
-
-                                thunk_py()
-
-                                # Check outputs
-                                for r in node.outputs:
-                                    if not r.type.is_valid_value(storage_map[r][0]):
-                                        raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
-
-                                _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                              clobber_dr_vals=False, perform='py',
-                                              warn_input_not_reused=False)
-
-                                _check_viewmap(node, storage_map)
-
-                                for r in node.outputs:
-                                    if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                        # TODO: indicate it is not a C/Py problem
-                                        raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
-
-                                # Clear storage_map
-                                for r in node.outputs:
-                                    storage_map[r][0] = None
+                            _check_preallocated_output(
+                                    node=node,
+                                    thunk=thunk_py,
+                                    prealloc_modes=prealloc_modes,
+                                    def_val=def_val,
+                                    storage_map=storage_map,
+                                    r_vals=r_vals,
+                                    dr_vals=dr_vals,
+                                    perform='py',
+                                    active_order_set=active_order_set)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1332,65 +1388,21 @@ class _Linker(gof.link.LocalLinker):
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
                         if config.DebugMode.check_preallocated_output:
-                            ## Then, try to use different output storages
-                            # TODO: factorize that code with the one for Python above
-                            reuse_outputs = {}
-                            c_cont_outputs = {}
-                            f_cont_outputs = {}
-                            for r in node.outputs:
-                                r_val = r_vals[r]
-                                reuse_outputs[r] = _lessbroken_deepcopy(r_val)
-                                if isinstance(r.type, TensorType):
-                                    c_cont_outputs[r] = numpy.empty(
-                                            shape=r_val.shape,
-                                            dtype=r_val.dtype,
-                                            order='C')
-                                    f_cont_outputs[r] = numpy.empty(
-                                            shape=r_val.shape,
-                                            dtype=r_val.dtype,
-                                            order='F')
-
-                            for out_map in (reuse_outputs, c_cont_outputs, f_cont_outputs):
-                                if len(out_map) == 0:
-                                    # All storages are None, no need to test that again
-                                    continue
-
-                                # Copy the inputs over again
-                                for r in node.inputs:
-                                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-
-                                # Copy the appropriate output storages
-                                for r in node.outputs:
-                                    #storage_map[r][0] = out_map.get(r, None)
-                                    if r in out_map:
-                                        storage_map[r][0] = out_map[r]
-                                    else:
-                                        print 'not tensor?', r
-
+                            def thunk():
                                 try:
                                     thunk_c()
                                 except:
                                     raise_with_op(node)
-
-                                # Check outputs
-                                for r in node.outputs:
-                                    if not r.type.is_valid_value(storage_map[r][0]):
-                                        raise InvalidValueError(r, storage_map[r][0], hint='perform output', specific_hint = r.type.value_validity_msg(storage_map[r][0]))
-
-                                _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                              clobber_dr_vals=False, perform='c',
-                                              warn_input_not_reused=False)
-
-                                _check_viewmap(node, storage_map)
-
-                                for r in node.outputs:
-                                    if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                        # TODO: indicate it is not a C/Py problem
-                                        raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
-
-                                # Clear storage map
-                                for r in node.outputs:
-                                    storage_map[r][0] = None
+                            _check_preallocated_output(
+                                    node=node,
+                                    thunk=thunk,
+                                    prealloc_modes=prealloc_modes,
+                                    def_val=def_val,
+                                    storage_map=storage_map,
+                                    r_vals=r_vals,
+                                    dr_vals=dr_vals,
+                                    perform='c code',
+                                    active_order_set=active_order_set)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
