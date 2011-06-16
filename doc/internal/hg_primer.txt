@@ -9,8 +9,8 @@ hg is the unix command that runs `Mercurial` the revision control system.
 
 As a user of Theano, the commands you need to know are:
 
-``hg clone 'ssh://projects@pylearn.org/hg/Theano'``
-    Download the freshest version of the code from the remote respository.
+``hg clone 'https://hg.assembla.com/theano'``
+    Download the freshest version of the code from the remote repository.
 
 ``hg pull -u``
     Update your files to the freshest versions from the remote repository.
