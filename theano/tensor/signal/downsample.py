@@ -126,10 +126,14 @@ class DownsampleFactorMax(Op):
         z, = out
         if len(x.shape)!=4:
             raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
-        if z[0] is None:
-            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border)) -float('inf')
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
+        if (z[0] is None) or (z[0].shape != z_shape):
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border))
             z[0] = theano._asarray(z[0], dtype=x.dtype)
         zz=z[0]
+
+        ## zz needs to be initialized with -inf for the following to work
+        zz -= float('inf')
         ds0, ds1 = self.ds
         if self.ignore_border:
             x_usable2 = (x.shape[2] / ds0 * ds0)
