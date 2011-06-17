@@ -1005,7 +1005,8 @@ class ModuleCache(object):
                             self.loaded_key_pkl.remove(key_data.key_pkl)
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    _rmtree(parent, msg='old cache directory', level='info')
+                    _rmtree(parent, msg='old cache directory', level='info',
+                            ignore_nocleanup=True)
 
         finally:
             compilelock.release_lock()
@@ -1110,7 +1111,8 @@ class ModuleCache(object):
 
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    _rmtree(parent, msg='unversioned', level='info')
+                    _rmtree(parent, msg='unversioned', level='info',
+                            ignore_nocleanup=True)
 
             # Sanity check: all unversioned keys should have been removed at
             # this point.
@@ -1135,7 +1137,8 @@ class ModuleCache(object):
                         # take care of the clean-up.
                         if age > min_age:
                             _rmtree(os.path.join(self.dirname, filename),
-                                    msg='old unversioned', level='info')
+                                    msg='old unversioned', level='info',
+                                    ignore_nocleanup=True)
         finally:
             compilelock.release_lock()
 
