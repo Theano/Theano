@@ -584,7 +584,8 @@ class TensorType(Type):
                     # We use the `values_eq` static function from TensorType
                     # to handle NaN values.
                     if TensorType.values_eq(data, converted_data,
-                                            force_same_dtype=False):
+                                            force_same_dtype=False,
+                                            convert_as_array=True):
                         data = converted_data
                     else:
                         # Do not print a too long description of data
@@ -664,7 +665,10 @@ class TensorType(Type):
             return False
 
     @staticmethod
-    def values_eq(a, b, force_same_dtype=True):
+    def values_eq(a, b, force_same_dtype=True, convert_as_array=False):
+        if convert_as_array:
+            a = numpy.asarray(a)
+            b = numpy.asarray(b)
         #TODO: check to see if the dtype and shapes must match
         #      for now, we err on safe side...
         if a.shape != b.shape:
