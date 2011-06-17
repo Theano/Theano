@@ -443,7 +443,7 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
-.. attribute:: numpy.seterr_invalid
+.. attribute:: config.numpy.seterr_invalid
 
     String Value: ``'None'``, ``'ignore'``, ``'warn'``, ``'raise'``,
     ``'call'``, ``'print'``, ``'log'``
