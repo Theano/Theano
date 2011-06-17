@@ -194,7 +194,7 @@ class test_CAReduce(unittest.TestCase):
             if tosum is None: tosum = range(len(xsh))
             f = copy(linker).accept(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
-            
+
             if not "int" in dtype:
                 xv = numpy.asarray(xv,dtype=dtype)
             else:
