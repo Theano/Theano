@@ -10,6 +10,9 @@ Deprecation:
  * Dividing integers with / is deprecated: use // for integer division, or
    cast one of the integers to a float type if you want a float result (you may
    also change this behavior with config.int_division).
+ * Removed (already deprecated) sandbox/compile module
+ * Removed (already deprecated) incsubtensor and setsubtensor functions,
+   inc_subtensor and set_subtensor are to be used instead.
 
 Bugs fixed:
  * Bugfix in CudaNdarray.__iadd__. When it is not implemented, return the error.
@@ -24,11 +27,14 @@ Bugs fixed:
  * The output of random samples computed with uniform(..., dtype=...) is
    guaranteed to be of the specified dtype instead of potentially being of a
    higher-precision dtype.
+ * The perform() method of DownsampleFactorMax did not give the right result
+   when reusing output storage.
  * Python 2.4 syntax fixes.
 
 Crash fixed:
  * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution
    crash.
+ * Some optimizations crashed when "ShapeOpt" was disabled.
 
 Optimization:
  * Optimize 4 pattern of subtensor followed by subtensor.
@@ -52,6 +58,8 @@ New features:
     * profile the scan overhead
     * simple hook system to add profiler
     * reordered the output to be in the order of more general to more specific
+ * DebugMode now checks Ops with different patterns of preallocated memory,
+   configured by config.DebugMode.check_preallocated_output.
  * var[vector of index] now work, (grad work recursively, the direct grad
    work inplace, gpu work)
     * limitation: work only of the outer most dimensions.
@@ -59,8 +67,8 @@ New features:
  * cuda.root inferred if nvcc is on the path, otherwise defaults to
    /usr/local/cuda
  * Better graph printing for graphs involving a scan subgraph
- * Casting behavior is closer to numpy by default, and can be controlled
-   through config.cast_policy.
+ * Casting behavior can be controlled through config.cast_policy,
+   new (experimental) mode.
  * Smarter C module cache, avoiding erroneous usage of the wrong C
    implementation when some options change, and avoiding recompiling the
    same module multiple times in some situations.
@@ -69,6 +77,10 @@ New features:
    now available in the sandbox.
  * CUDA devices 4 - 16 should now be available if present.
  * infer_shape support for the View op, better infer_shape support in Scan
+ * tensor.grad now gives an error by default when computing the gradient
+   wrt a node that is disconnected from the cost (not in the graph, or
+   no continuous path from that op to the cost).
+ * New tensor.isnan and isinf functions.
 
 Documentation:
  * Better commenting of cuda_ndarray.cu
@@ -93,5 +105,6 @@ Unit tests:
 Other:
  * Correctly put the broadcast flag to True in the output var of
    a Reshape op when we receive an int 1 in the new shape.
- * pydotprint: high contrast mode is now the default
+ * pydotprint: high contrast mode is now the default, option to print
+   more compact node names.
  * More compact printing (ignore leading "Composite" in op names)
