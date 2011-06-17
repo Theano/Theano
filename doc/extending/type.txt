@@ -32,10 +32,11 @@ default values.
       reference to ``value`` (i.e. casting prohibited).
       If ``strict`` is False, then casting may happen, but downcasting should
       only be used in two situations:
-          * if ``allow_downcast`` is True
-          * if ``allow_downcast`` is ``None`` and the default behavior for this
-            type allows downcasting for the given ``value`` (this behavior is
-            type-dependent, you may decide what your own type does by default)
+
+      * if ``allow_downcast`` is True
+      * if ``allow_downcast`` is ``None`` and the default behavior for this
+        type allows downcasting for the given ``value`` (this behavior is
+        type-dependent, you may decide what your own type does by default)
 
       We need to define ``filter`` with three arguments. The second argument
       must be called ``strict`` (Theano often calls it by keyword) and must

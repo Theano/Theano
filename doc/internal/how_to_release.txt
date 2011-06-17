@@ -42,9 +42,8 @@ Tag the release
 ===============
 
 You will need to commit the previous changes, tag the resulting version, and
-push that into the original repository::
-
-Tag the release. The syntax is something like the following::
+push that into the original repository. The syntax is something like the
+following::
 
     hg commit -m"modifications for 0.X release" setup.py doc/conf.py NEWS.txt
     hg tag 0.X
@@ -89,9 +88,11 @@ Account jaberg is listed as submitter.
 1. log in as jaberg to mloss
 2. search for theano and click the logo
 3. press 'update this project' on the left and change
+
   - the version number
   - the download link
-  - the description of what has changed 
+  - the description of what has changed
+
 4. press save
 
 Make sure the "what's changed" text isn't too long because it will show up on

@@ -350,12 +350,11 @@ will always be ``12``.
 Reference
 =========
 
-.. automodule:: theano.scan
+.. automodule:: theano.scan_module
 
 .. autofunction:: theano.map
 .. autofunction:: theano.reduce
 .. autofunction:: theano.foldl
 .. autofunction:: theano.foldr
 .. autofunction:: theano.scan
-    :noindex:
 
