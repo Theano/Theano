@@ -30,7 +30,7 @@ ls ${COMPILEDIR}|wc -l
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
 echo "executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
-THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3 ${NOSETESTS} Theano
+THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} Theano
 
 echo "nb element in the compiledir:"
 ls ${COMPILEDIR}|wc -l
