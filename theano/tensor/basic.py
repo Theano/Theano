@@ -1354,10 +1354,10 @@ class TensorConstantSignature(tuple):
                     (self.no_nan.mask.all() or
                      (self.no_nan == other.no_nan).all()))
         else:
-            # Simple case where we do not need to take care of NaN / Inf values
-            # (note that if there are NaN or Inf values in d1, this will return
+            # Simple case where we do not need to worry about NaN values.
+            # (note that if there are NaN values in d1, this will return
             # False, which is why we do not bother with testing `other.has_nan`
-            # in the `if` above).
+            # here).
             return (self.sum == other.sum) and numpy.all(d0 == d1)
 
     def __hash__(self):
