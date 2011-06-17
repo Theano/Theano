@@ -585,7 +585,7 @@ class TensorType(Type):
                     # to handle NaN values.
                     if TensorType.values_eq(numpy.asarray(data),
                                             converted_data,
-                                            force_same_dtype=False)
+                                            force_same_dtype=False):
                         data = converted_data
                     else:
                         # Do not print a too long description of data
