@@ -34,8 +34,9 @@ except ImportError:
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
 
-def inplace_func(inputs, outputs, mode=get_default_mode(),
-        allow_input_downcast=False):
+def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False):
+    if mode is None:
+        mode = get_default_mode()
     return function(inputs, outputs,
             mode=mode,
             allow_input_downcast=allow_input_downcast,
