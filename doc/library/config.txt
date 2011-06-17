@@ -171,6 +171,7 @@ import theano and print the config variable, as in:
     is a work-in-progress), and thus you should consider it as experimental.
     At the moment it behaves differently from numpy in the following
     situations:
+
     * Depending on the value of ``config.int_division``, the resulting type
       of a division of integer types with the ``/`` operator may not match
       that of numpy.
@@ -365,10 +366,11 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.DebugMode.check_preallocated_output
 
-    Default: 'ALL'
+    Default: ``'ALL'``
 
     A list of kinds of preallocated memory to use as output buffers for
     each Op's computations, separated by ``:``. Implemented modes are:
+
     * ``"previous"``: reuse previously-returned memory,
     * ``"c_contiguous"``: newly-allocated C-contiguous memory,
     * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
