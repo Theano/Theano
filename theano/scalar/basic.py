@@ -780,7 +780,7 @@ neq = NEQ()
 
 class IsNan(FixedLogicalComparison):
     def impl(self, x):
-        return theano._asarray(numpy.isnan(x), dtype='int8')
+        return numpy.isnan(x)
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
@@ -790,7 +790,7 @@ isnan = IsNan()
 
 class IsInf(FixedLogicalComparison):
     def impl(self, x):
-        return theano._asarray(numpy.isinf(x), dtype='int8')
+        return numpy.isinf(x)
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
