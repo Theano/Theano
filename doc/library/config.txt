@@ -171,15 +171,15 @@ import theano and print the config variable, as in:
     is a work-in-progress), and thus you should consider it as experimental.
     At the moment it behaves differently from numpy in the following
     situations:
-       * Depending on the value of ``config.int_division``, the resulting type
-         of a division of integer types with the ``/`` operator may not match
-         that of numpy.
-       * On mixed scalar / array operations, numpy tries to prevent the scalar
-         from upcasting the array's type unless it is of a fundamentally
-         different type. Theano does not attempt to do the same at this point,
-         so you should be careful that scalars may upcast arrays when they
-         would not when using numpy. This behavior should change in the near
-         future.
+    * Depending on the value of ``config.int_division``, the resulting type
+      of a division of integer types with the ``/`` operator may not match
+      that of numpy.
+    * On mixed scalar / array operations, numpy tries to prevent the scalar
+      from upcasting the array's type unless it is of a fundamentally
+      different type. Theano does not attempt to do the same at this point,
+      so you should be careful that scalars may upcast arrays when they
+      would not when using numpy. This behavior should change in the near
+      future.
 
 .. attribute:: int_division
 
