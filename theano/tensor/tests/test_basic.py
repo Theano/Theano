@@ -1182,7 +1182,14 @@ def test_nan_inf_constant_signature():
 
     # Also test that nan !=0 and nan != nan.
     x = tensor.scalar()
-    f = theano.function([x], eq(x, numpy.nan))
+    mode = get_default_mode()
+    if isinstance(mode, theano.compile.debugmode.DebugMode):
+        # Disable the check preventing usage of NaN / Inf values.
+        # We first do a copy of the mode to avoid side effects on other tests.
+        mode = copy(mode)
+        mode.check_isfinite = False
+    f = theano.function([x], eq(x, numpy.nan), mode=mode)
+
     assert f(0) == 0
     assert f(numpy.nan) == 0
 
