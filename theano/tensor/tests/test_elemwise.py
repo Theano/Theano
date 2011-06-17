@@ -425,7 +425,7 @@ class test_IsInf_IsNan(unittest.TestCase):
             self.mode = copy(self.mode)
             self.mode.check_isfinite = False
 
-    def run_test(self, isfunc):
+    def run_isfunc(self, isfunc):
         for input in (self.scalar, self.vector):
             theano_isfunc = theano.function([input],
                                             getattr(tensor, isfunc)(input),
@@ -439,10 +439,10 @@ class test_IsInf_IsNan(unittest.TestCase):
                 assert (theano_isfunc(x) == numpy_isfunc(x)).all()
 
     def test_isinf(self):
-        return self.run_test('isinf')
+        return self.run_isfunc('isinf')
 
     def test_isnan(self):
-        return self.run_test('isnan')
+        return self.run_isfunc('isnan')
 
 
 if __name__ == '__main__':
