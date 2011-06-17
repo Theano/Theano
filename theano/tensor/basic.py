@@ -1338,19 +1338,71 @@ class TensorConstantSignature(tuple):
         except:
             return False
         #N.B. compare shape to ensure no broadcasting in ==
-        #N.B. compare elementwise last because it is the most expensive check
-        return (t0 == t1) and (d0.shape == d1.shape) \
-                and (self.sum == other.sum) and (numpy.all(d0 == d1))
+        if t0 != t1 or d0.shape != d1.shape:
+            return False
+        no_nan = self.no_nan # Ensure has_nan is computed.
+        # Note that in the comparisons below, the elementwise comparisons
+        # come last because they are the most expensive checks.
+        if self.has_nan:
+            other_no_nan = other.no_nan
+            return (other.has_nan and
+                    self.sum == other.sum and
+                    (self.no_nan.mask == other.no_nan.mask).all() and
+                    # Note that the second test below (==) may crash e.g. for
+                    # a single scalar NaN value, so we do not run it when all
+                    # values are missing.
+                    (self.no_nan.mask.all() or
+                     (self.no_nan == other.no_nan).all()))
+        else:
+            # Simple case where we do not need to take care of NaN / Inf values
+            # (note that if there are NaN or Inf values in d1, this will return
+            # False, which is why we do not bother with testing `other.has_nan`
+            # in the `if` above).
+            return (self.sum == other.sum) and numpy.all(d0 == d1)
+
     def __hash__(self):
         t, d = self
         return hashtype(self) ^ hash(t) ^ hash(d.shape) ^ hash(self.sum)
+
     def _get_sum(self):
+        """Compute sum of non NaN / Inf values in the array."""
         try:
             return self._sum
-        except:
-            self._sum = self[1].sum()
+        except AttributeError:
+            self._sum = self.no_nan.sum()
+            if self.has_nan and self.no_nan.mask.all():
+                # In this case the sum is not properly computed by numpy.
+                self._sum = 0
+            if numpy.isinf(self._sum) or numpy.isnan(self._sum):
+                # NaN may happen when there are both -inf and +inf values.
+                if self.has_nan:
+                    # Filter both NaN and Inf values.
+                    mask = self.no_nan.mask + numpy.isinf(self[1])
+                else:
+                    # Filter only Inf values.
+                    mask = numpy.isinf(self[1])
+                if mask.all():
+                    self._sum = 0
+                else:
+                    self._sum = numpy.ma.masked_array(self[1], mask).sum()
+                # At this point there should be no more NaN.
+                assert not numpy.isnan(self._sum)
         return self._sum
     sum = property(_get_sum)
+
+    def _get_no_nan(self):
+        try:
+            return self._no_nan
+        except AttributeError:
+            nan_mask = numpy.isnan(self[1])
+            if nan_mask.any():
+                self._no_nan = numpy.ma.masked_array(self[1], nan_mask)
+                self.has_nan = True
+            else:
+                self._no_nan = self[1]
+                self.has_nan = False
+        return self._no_nan
+    no_nan = property(_get_no_nan)
 
 
 class TensorConstant(_tensor_py_operators, Constant):
@@ -1367,7 +1419,10 @@ class TensorConstant(_tensor_py_operators, Constant):
 
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
+
+
 TensorType.Constant = TensorConstant
+
 
 class TensorValue(_tensor_py_operators, Value):
     """Subclass to add the tensor operators to the basic `Value` class.

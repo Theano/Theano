@@ -1152,6 +1152,34 @@ def test_tensor_values_eq_approx():
     b=numpy.asarray([-numpy.inf,-1,0,1,numpy.inf,6])
     assert not TensorType.values_eq_approx(a,b,allow_remove_nan=False)
 
+
+def test_nan_inf_constant_signature():
+    # Test that the signature of a constant tensor containing NaN and Inf
+    # values is correct.
+    test_constants = [
+            [numpy.nan, numpy.inf, 0, 1],
+            [numpy.nan, numpy.inf, -numpy.inf, 1],
+            [0, numpy.inf, -numpy.inf, 1],
+            [0, 3, -numpy.inf, 1],
+            [0, 3, numpy.inf, 1],
+            [numpy.nan, 3, 4, 1],
+            [0, 3, 4, 1],
+            numpy.nan,
+            numpy.inf,
+            -numpy.inf,
+            0,
+            1,
+            ]
+    n = len(test_constants)
+    # We verify that signatures of two rows i, j in the matrix above are
+    # equal if and only if i == j.
+    for i in xrange(n):
+        for j in xrange(n):
+            x = constant(test_constants[i])
+            y = constant(test_constants[j])
+            assert (x.signature() == y.signature()) == (i == j)
+
+
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
         s = shape(numpy.ones((5, 3)))
