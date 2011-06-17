@@ -360,7 +360,32 @@ import theano and print the config variable, as in:
 .. attribute:: config.DebugMode
 
     This section contains various attributes configuring the behaviour
-    of mode :class:`~debugmode.DebugMode`.
+    of mode :class:`~debugmode.DebugMode`. See directly this section
+    for the documentation of more configuration options.
+
+.. attribute:: config.DebugMode.check_preallocated_output
+
+    Default: 'ALL'
+
+    A list of kinds of preallocated memory to use as output buffers for
+    each Op's computations, separated by ``:``. Implemented modes are:
+    * ``"previous"``: reuse previously-returned memory,
+    * ``"c_contiguous"``: newly-allocated C-contiguous memory,
+    * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
+    * ``"ALL"``: placeholder for all of the above.
+
+.. attribute:: config.DebugMode.warn_input_not_reused
+
+    Bool value, default: True
+
+    Generate a warning when the destroy_map or view_map tell that an op work
+    inplace, but the op did not reuse the input for its output.
+
+.. attribute:: config.numpy
+
+    This section contains different attributes for configuring numpy's
+    behaviour, described by `numpy.seterr
+    <http://docs.scipy.org/doc/numpy/reference/generated/numpy.seterr.html>`__.
 
 .. attribute:: config.numpy.seterr_all
 
