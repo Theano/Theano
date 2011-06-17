@@ -1179,6 +1179,12 @@ def test_nan_inf_constant_signature():
             y = constant(test_constants[j])
             assert (x.signature() == y.signature()) == (i == j)
 
+    # Also test that nan !=0 and nan != nan.
+    x = tensor.scalar()
+    f = theano.function([x], eq(x, numpy.nan))
+    assert f(0) == 0
+    assert f(numpy.nan) == 0
+
 
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
