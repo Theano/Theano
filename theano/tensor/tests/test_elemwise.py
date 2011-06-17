@@ -6,6 +6,7 @@ from theano import gof
 from theano.scalar import *
 
 from theano import tensor
+from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import *
 from theano.tests import unittest_tools
 
@@ -403,6 +404,45 @@ class test_Prod(unittest.TestCase):
         s = cPickle.dumps(o)
         o = cPickle.loads(s)
         cPickle.dumps(o)
+
+
+class test_IsInf_IsNan(unittest.TestCase):
+
+    def setUp(self):
+        self.test_vals = map(numpy.array, [
+            0,
+            1,
+            numpy.nan,
+            numpy.inf,
+            -numpy.inf,
+            [numpy.nan, numpy.inf, -numpy.inf, 0, 1, -1],
+            ])
+        self.scalar = tensor.scalar()
+        self.vector = tensor.vector()
+        self.mode = get_default_mode()
+        if isinstance(self.mode, theano.compile.debugmode.DebugMode):
+            # Disable the check preventing usage of NaN / Inf values.
+            self.mode = copy(self.mode)
+            self.mode.check_isfinite = False
+
+    def run_test(self, isfunc):
+        for input in (self.scalar, self.vector):
+            theano_isfunc = theano.function([input],
+                                            getattr(tensor, isfunc)(input),
+                                            mode=self.mode)
+            numpy_isfunc = getattr(numpy, isfunc)
+            for x in self.test_vals:
+                if ((x.ndim == 0 and input is not self.scalar) or
+                    (x.ndim == 1 and input is not self.vector)):
+                    # We only test with the appropriate input type.
+                    continue
+                assert (theano_isfunc(x) == numpy_isfunc(x)).all()
+
+    def test_isinf(self):
+        return self.run_test('isinf')
+
+    def test_isnan(self):
+        return self.run_test('isnan')
 
 
 if __name__ == '__main__':

@@ -672,6 +672,12 @@ class UnaryScalarOp(ScalarOp):
     nin = 1
 
 class BinaryScalarOp(ScalarOp):
+    # One may define in subclasses the following fields:
+    #   - `identity`: for an associative operation, identity corresponds to
+    #     the neutral element. For instance, it will be 0 for addition, 1 for
+    #     multiplication, True for "and", False for "or".
+    #   - `commutative`: whether op(a, b) == op(b, a)
+    #   - `associative`: whether op(op(a, b), c) == op(a, op(b, c))
     nin = 2
 
 
@@ -684,6 +690,15 @@ class LogicalComparison(BinaryScalarOp):
         return [int8]
     def grad(self, inputs, output_gradients):
         return [None, None]
+
+class FixedLogicalComparison(UnaryScalarOp):
+    """
+    Comparison to a fixed value.
+    """
+    def output_types(self, *input_dtypes):
+        return [int8]
+    def grad(self, inputs, output_gradients):
+        return [None]
 
 class LT(LogicalComparison):
     identity = False
@@ -749,6 +764,7 @@ class EQ(LogicalComparison):
         return "%(z)s = (%(x)s == %(y)s);" % locals()
 eq = EQ()
 
+
 class NEQ(LogicalComparison):
     identity = False
     commutative = True
@@ -760,6 +776,30 @@ class NEQ(LogicalComparison):
             raise NotImplementedError()
         return "%(z)s = (%(x)s != %(y)s);" % locals()
 neq = NEQ()
+
+
+class IsNan(FixedLogicalComparison):
+    def impl(self, x):
+        return theano._asarray(numpy.isnan(x), dtype='int8')
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError()
+        return "%(z)s = isnan(%(x)s);" % locals()
+isnan = IsNan()
+
+
+class IsInf(FixedLogicalComparison):
+    def impl(self, x):
+        return theano._asarray(numpy.isinf(x), dtype='int8')
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError()
+        # Note that the C isinf returns -1 for -Inf and +1 for +Inf, while
+        # numpy simply returns True: we mimic numpy's behavior here, thus
+        # the absolute value.
+        return "%(z)s = abs(isinf(%(x)s));" % locals()
+isinf = IsInf()
+
 
 class InRange(LogicalComparison):
     nin = 3

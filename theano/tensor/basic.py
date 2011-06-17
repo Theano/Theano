@@ -581,7 +581,10 @@ class TensorType(Type):
                     # data has to be converted.
                     # Check that this conversion is lossless
                     converted_data = theano._asarray(data, self.dtype)
-                    if numpy.all(data == converted_data):
+                    # We use the `values_eq` static function from TensorType
+                    # to handle NaN values.
+                    if TensorType.values_eq(data, converted_data,
+                                            force_same_dtype=False):
                         data = converted_data
                     else:
                         # Do not print a too long description of data
@@ -661,12 +664,12 @@ class TensorType(Type):
             return False
 
     @staticmethod
-    def values_eq(a, b):
+    def values_eq(a, b, force_same_dtype=True):
         #TODO: check to see if the dtype and shapes must match
         #      for now, we err on safe side...
         if a.shape != b.shape:
             return False
-        if a.dtype != b.dtype:
+        if force_same_dtype and a.dtype != b.dtype:
             return False
         a_eq_b = (a==b)
         r = numpy.all(a_eq_b)
@@ -2049,6 +2052,14 @@ def eq(a, b):
 @_scal_elemwise_with_nfunc('not_equal', 2, 1)
 def neq(a, b):
     """a != b"""
+
+@_scal_elemwise_with_nfunc('isnan', 1, 1)
+def isnan(a):
+    """isnan(a)"""
+
+@_scal_elemwise_with_nfunc('isinf', 1, 1)
+def isinf(a):
+    """isinf(a)"""
 
 
 ##########################
