@@ -34,7 +34,7 @@ Their seam new format planed for scipy 0.7.x:
     ``bsr_matrix``
         Block Compressed Row (BSR). From their doc: The Block Compressed Row (BSR) format is very similar to the Compressed Sparse Row (CSR) format. BSR is appropriate for sparse matrices with dense sub matrices like the last example below. Block matrices often arise in vector-valued finite element discretizations. In such cases, BSR is considerably more efficient than CSR and CSC for many sparse arithmetic operations.
     ``dia_matrix``
-    Sparse matrix with DIAgonal storage
+        Sparse matrix with DIAgonal storage
 
 There are four member variables that comprise a compressed matrix ``sp`` (for at least csc, csr and bsr):
 
@@ -86,16 +86,16 @@ See the example below for details.
 
 Several things should be learned from the above example:
 
-    * We actually use the wrong sparse matrix type. In fact, it is the
-      *rows* that are sparse, not the columns. So, it would have been
-      better to use ``sp = scipy.sparse.csr_matrix((5, 10))``.
-    * We should have actually created the matrix as a ``lil_matrix``,
-      which is more efficient for inserts. Afterwards, we should convert
-      to the appropriate compressed format.
-    * `sp.indptr[0] = 0` and `sp.indptr[1] = 2`, which means that
-      column 0 contains sp.data[0:2], i.e. the first two non-zero values.
-    * `sp.indptr[3] = 2` and `sp.indptr[4] = 3`, which means that column
-      3 contains sp.data[2:3], i.e. the third non-zero value.
+* We actually use the wrong sparse matrix type. In fact, it is the
+  *rows* that are sparse, not the columns. So, it would have been
+  better to use ``sp = scipy.sparse.csr_matrix((5, 10))``.
+* We should have actually created the matrix as a ``lil_matrix``,
+  which is more efficient for inserts. Afterwards, we should convert
+  to the appropriate compressed format.
+* `sp.indptr[0] = 0` and `sp.indptr[1] = 2`, which means that
+  column 0 contains sp.data[0:2], i.e. the first two non-zero values.
+* `sp.indptr[3] = 2` and `sp.indptr[4] = 3`, which means that column
+  3 contains sp.data[2:3], i.e. the third non-zero value.
 
 TODO: Rewrite this documentation to do things in a smarter way.
 
