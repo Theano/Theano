@@ -1883,7 +1883,7 @@ class Composite(ScalarOp):
         super(Composite,out).__init__(output_types_preference, name)
         return out
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, rehash=True):
         self.inputs=copy(inputs)
         self.outputs=copy(outputs)
 
@@ -1964,7 +1964,8 @@ class Composite(ScalarOp):
         self.env = env
         self.inputs_type = tuple([input.type for input in self.env.inputs])
         self.outputs_type = tuple([output.type for output in self.env.outputs])
-        self._rehash()
+        if rehash:
+            self._rehash()
 
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:
@@ -2015,6 +2016,7 @@ class Composite(ScalarOp):
         if not isinstance(other, self.__class__): return False
         if self.nin!=other.nin or self.nout != other.nout: return False
         return self._hashval == other._hashval
+        # TODO The second `return` is useless. Should there be an `and`?
         return self._cmodule_key == other._cmodule_key
 
     def _rehash(self):
@@ -2034,6 +2036,9 @@ class Composite(ScalarOp):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        #we must call init to set env and _impls again.
-        #otherwise self.perform won't work.
-        self.__init__(self.inputs, self.outputs)
+        # We must call init to set env and _impls again, as otherwise
+        # self.perform will not work.
+        # However, we should not call `_rehash` because it may yield a
+        # different hash if some config options have changed, which would make
+        # the loaded object look different from the original.
+        self.__init__(self.inputs, self.outputs, rehash=False)
