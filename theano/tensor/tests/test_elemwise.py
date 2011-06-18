@@ -409,14 +409,14 @@ class test_Prod(unittest.TestCase):
 class test_IsInf_IsNan(unittest.TestCase):
 
     def setUp(self):
-        self.test_vals = map(numpy.array, [
+        self.test_vals = [numpy.array(x, dtype=config.floatX) for x in [
             0,
             1,
             numpy.nan,
             numpy.inf,
             -numpy.inf,
             [numpy.nan, numpy.inf, -numpy.inf, 0, 1, -1],
-            ])
+            ]]
         self.scalar = tensor.scalar()
         self.vector = tensor.vector()
         self.mode = get_default_mode()
