@@ -17,7 +17,6 @@ elif sys.argv[1] in ('clear'):
                 delete_if_problem=True)
     # Print a warning if some cached modules were not removed, so that the user
     # knows he should manually delete them to properly clear the cache.
-    items = sorted(os.listdir(config.compiledir))
     items = [item for item in sorted(os.listdir(cache.dirname))
                   if item.startswith('tmp')]
     if items:
