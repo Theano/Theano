@@ -374,7 +374,8 @@ import theano and print the config variable, as in:
     * ``"previous"``: reuse previously-returned memory,
     * ``"c_contiguous"``: newly-allocated C-contiguous memory,
     * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
-    * ``"ALL"``: placeholder for all of the above.
+    * ``"ALL"``: placeholder for all of the above,
+    * ``""``: Do not test with preallocated memory.
 
 .. attribute:: config.DebugMode.warn_input_not_reused
 
