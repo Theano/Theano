@@ -5,7 +5,6 @@ Theano 0.4.0rc4 (2011-06-13)
 
 Deprecation:
  * tag.shape attribute deprecated (#633)
- * FAST_RUN_NOGC mode deprecated
  * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
  * Dividing integers with / is deprecated: use // for integer division, or
    cast one of the integers to a float type if you want a float result (you may
@@ -15,30 +14,27 @@ Deprecation:
    inc_subtensor and set_subtensor are to be used instead.
 
 Bugs fixed:
- * Bugfix in CudaNdarray.__iadd__. When it is not implemented, return the error.
- * Typo fixed in tensor/opt.py
+ * In CudaNdarray.__{iadd,idiv}__, when it is not implemented, return the error.
  * THEANO_FLAGS='optimizer=None' now works as expected
  * Fixed memory leak in error handling on GPU-to-host copy
  * Fix relating specifically to Python 2.7 on Mac OS X
  * infer_shape can now handle Python longs
- * Fixed behaviour of pydotprint's max_label_size option
  * Trying to compute x % y with one or more arguments being complex now
    raises an error.
  * The output of random samples computed with uniform(..., dtype=...) is
    guaranteed to be of the specified dtype instead of potentially being of a
    higher-precision dtype.
  * The perform() method of DownsampleFactorMax did not give the right result
-   when reusing output storage.
- * Python 2.4 syntax fixes.
+   when reusing output storage. This happen only if you use the Theano flags 
+   'linker=c|py_nogc' or manually specify the mode to be 'c|py_nogc'.
 
 Crash fixed:
  * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution
    crash.
- * Some optimizations crashed when "ShapeOpt" was disabled.
+ * Some optimizations crashed when the "ShapeOpt" optimization was disabled.
 
 Optimization:
- * Optimize 4 pattern of subtensor followed by subtensor.
- * Gemm inplace optimization on the GPU re-enabled
+ * Optimize all subtensor followed by subtensor.
 
 GPU:
  * Move to the gpu fused elemwise that have other dtype then float32 in them
@@ -63,7 +59,9 @@ New features:
  * var[vector of index] now work, (grad work recursively, the direct grad
    work inplace, gpu work)
     * limitation: work only of the outer most dimensions.
- * test_value implementation to allow quick debugging at graph creation time
+ * New way to test the graph as we build it. Allow to easily find the source
+   of shape mismatch error:
+   `http://deeplearning.net/software/theano/tutorial/debug_faq.html#interactive-debugger`__
  * cuda.root inferred if nvcc is on the path, otherwise defaults to
    /usr/local/cuda
  * Better graph printing for graphs involving a scan subgraph
@@ -77,6 +75,7 @@ New features:
    now available in the sandbox.
  * CUDA devices 4 - 16 should now be available if present.
  * infer_shape support for the View op, better infer_shape support in Scan
+ * infer_shape supported in all case of subtensor
  * tensor.grad now gives an error by default when computing the gradient
    wrt a node that is disconnected from the cost (not in the graph, or
    no continuous path from that op to the cost).
@@ -107,4 +106,5 @@ Other:
    a Reshape op when we receive an int 1 in the new shape.
  * pydotprint: high contrast mode is now the default, option to print
    more compact node names.
+ * pydotprint: How trunk label that are too long.
  * More compact printing (ignore leading "Composite" in op names)
