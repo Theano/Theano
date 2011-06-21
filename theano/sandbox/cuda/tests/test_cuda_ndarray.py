@@ -815,7 +815,9 @@ def test_setitem_rightvalue_ndarray_fails():
 
 def test_zeros_basic():
     # 3d
-    for shp in [(3,4,5), (300,), ()]:
+    for shp in [(3,4,5), (300,), (), (0,7)]:
+        ## TODO these shape do not work:
+        # (3,0), (4,1,5)
         _a = cuda_ndarray.CudaNdarray.zeros(shp)
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
