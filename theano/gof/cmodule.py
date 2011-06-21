@@ -846,7 +846,12 @@ class ModuleCache(object):
                                 key_pkl=key_pkl,
                                 entry=name)
 
-                        if _version: # save the key
+                        # Note that we only save KeyData objects associated to
+                        # versioned modules. So for unversioned key, the
+                        # `key_pkl` field of the KeyData object will be a
+                        # non-existing file (which does not matter since it
+                        # will not be accessed).
+                        if _version:
                             try:
                                 key_data.save_pkl()
                                 key_broken = False
