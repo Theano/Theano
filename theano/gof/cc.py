@@ -813,7 +813,10 @@ class CLinker(link.Linker):
 
         The signature is a tuple, some elements of which are sub-tuples.
 
-        The outer tuple has a brief header, followed by elements for every node in the
+        The outer tuple has a brief header, containing the compilation options
+        passed to the compiler, the libraries to link against, an md5 hash
+        of theano.config (for all config options where "in_c_key" is True).
+        It is followed by elements for every node in the
         topological ordering of `self.env`.
 
         If the Op of any Apply in the Env does not have c_code_cache_ok()==True, then this

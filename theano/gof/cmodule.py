@@ -402,24 +402,36 @@ class ModuleCache(object):
 
     The cache works on the basis of keys. Each key is mapped to only one
     dynamic module, but multiple keys may be mapped to the same module (see
-    below for details).
+    below for details). Each module is a dynamic library file, that Python
+    can import.
 
-    Keys should be tuples of length 2: (version, rest)
-    The ``rest`` can be anything hashable and picklable, that uniquely identifies the
-    computation in the module.
+    The cache contains one directory for each module, containing:
+    - the dynamic library file itself (.so/.pyd),
+    - an empty __init__.py file, so Python can import it,
+    - a file containing the source code for the module (mod.cpp/mod.cu),
+    - a key.pkl file, containing a KeyData object with all the keys
+    associated with that module,
+    - possibly a delete.me file, meaning this directory has been marked
+    for deletion.
+
+    Keys should be tuples of length 2: (version, rest). The
+    ``rest`` can be anything hashable and picklable, that uniquely
+    identifies the computation in the module. The key is returned by
+    ``CLinker.cmodule_key_``.
 
     The ``version`` should be a hierarchy of tuples of integers.
     If the ``version`` is either 0 or (), then the key is unversioned, and its
-    corresponding module will be deleted in an atexit() handler if it is not
-    associated to another versioned key.
+    corresponding module will be marked for deletion in an atexit() handler.
     If the ``version`` is neither 0 nor (), then the module will be kept in the
     cache between processes.
 
-    An unversioned module is not deleted by the process that creates it.  Deleting such modules
-    does not work on NFS filesystems because the tmpdir in which the library resides is in use
-    until the end of the process' lifetime.  Instead, unversioned modules are left in their
-    tmpdirs without corresponding .pkl files.  These modules and their directories are erased
-    by subsequent processes' refresh() functions.
+    An unversioned module is not always deleted by the process that
+    creates it.  Deleting such modules may not work on NFS filesystems
+    because the tmpdir in which the library resides is in use until the
+    end of the process' lifetime.  In this case, unversioned modules
+    are left in their tmpdirs without corresponding .pkl files.  These
+    modules and their directories are erased by subsequent processes'
+    refresh() functions.
 
     Two different keys are mapped to the same module when all conditions below
     are met:
@@ -427,6 +439,8 @@ class ModuleCache(object):
         - They share the same compilation options in their ``rest`` part (see
           ``CLinker.cmodule_key_`` for how this part is built).
         - They share the same C code.
+    These three elements uniquely identify a module, and are summarized
+    in a single "module hash".
     """
 
     dirname = ""
@@ -443,7 +457,7 @@ class ModuleCache(object):
     """Maps a part-of-key to all keys that share this same part."""
 
     module_hash_to_key_data = {}
-    """Maps hash of a module's code to its corresponding KeyData object."""
+    """Maps a module hash to its corresponding KeyData object."""
 
     stats = []
     """A list with counters for the number of hits, loads, compiles issued by module_from_key()
@@ -483,20 +497,19 @@ class ModuleCache(object):
     """
 
     def refresh(self, delete_if_problem=False):
-        """Update self.entry_from_key by walking the cache directory structure.
+        """Update cache data by walking the cache directory structure.
 
-        Add entries that are not in the entry_from_key dictionary.
-
+        Load key.pkl files that have not been loaded yet.
         Remove entries which have been removed from the filesystem.
-
         Also, remove malformed cache directories.
 
-        :param delete_if_problem: If True, cache entries that do not seem
-        correct are deleted without taking additional precautions. This
-        includes:
+        :param delete_if_problem: If True, cache entries that meet one of those
+        two conditions are deleted:
             - Those for which unpickling the KeyData file fails with an
               unknown exception.
             - Duplicated modules, regardless of their age.
+
+        :returns: a list of modules of age higher than self.age_thresh_use.
         """
         start_time = time.time()
         too_old_to_use = []
@@ -602,7 +615,8 @@ class ModuleCache(object):
                                         level='info')
                                 continue
 
-                        # Find unversioned keys.
+                        # Find unversioned keys from other processes.
+                        # TODO: check if this can happen at all
                         to_del = [key for key in key_data.keys if not key[0]]
                         if to_del:
                             warning("ModuleCache.refresh() Found unversioned "
@@ -666,6 +680,9 @@ class ModuleCache(object):
                     else:
                         too_old_to_use.append(entry)
 
+                # If the compilation failed, no key.pkl is in that
+                # directory, but a mod.* should be there.
+                # We do nothing here.
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
