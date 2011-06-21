@@ -47,6 +47,15 @@ AddConfigVar('DebugMode.warn_input_not_reused',
          ),
         BoolParam(True))
 
+def is_valid_check_preallocated_output_param(param):
+    if not isinstance(param, str):
+        return False
+    valid = ["previous", "c_contiguous", "f_contiguous", "neg_strides", "ALL", ""]
+    for p in param.split(":"):
+        if p not in valid:
+            return False
+    return True
+
 AddConfigVar('DebugMode.check_preallocated_output',
         ('Test thunks with pre-allocated memory as output storage. '
          'This is a list of strings separated by ":". Valid values are: '
@@ -54,7 +63,7 @@ AddConfigVar('DebugMode.check_preallocated_output',
          '"c_contiguous", "f_contiguous", '
          '"neg_strides" (negative strides), and '
          '"ALL" (all of the above).'),
-        StrParam('ALL'))
+        StrParam('ALL', is_valid=is_valid_check_preallocated_output_param))
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")
