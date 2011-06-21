@@ -555,7 +555,7 @@ class ModuleCache(object):
                                     msg='broken cache directory [EOF]',
                                     level='warning')
                             continue
-                        except:
+                        except Exception:
                             unpickle_failure()
                             if delete_if_problem:
                                 _rmtree(root, ignore_nocleanup=True,
@@ -731,7 +731,7 @@ class ModuleCache(object):
         if key is not None:
             try:
                 _version, _rest = key
-            except:
+            except (TypeError, ValueError):
                 raise ValueError(
                         "Invalid key. key must have form (version, rest)", key)
         name = None
