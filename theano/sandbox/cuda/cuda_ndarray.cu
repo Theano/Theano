@@ -390,7 +390,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
     if(!shape)
     {
         PyErr_SetString(PyExc_TypeError, "CudaNdarray_Zeros: function takes at least 1 argument (0 given)");
-        return NULL;        
+        return NULL;
     }
     if(!PySequence_Check(shape))
     {
