@@ -814,15 +814,22 @@ def test_setitem_rightvalue_ndarray_fails():
         assert True
 
 def test_zeros_basic():
-    # 3d
     for shp in [(3,4,5), (300,), (), (0,7)]:
-        ## TODO these shape do not work:
-        # (3,0), (4,1,5)
         _a = cuda_ndarray.CudaNdarray.zeros(shp)
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
         assert _a.shape == _n.shape
         assert all(_a._strides == numpy.asarray(_n.strides)/4)
+
+    # TODO:The following don't have the same stride!
+    #      This should be fixed with the new GpuNdArray.
+    for shp in [(3,0), (4,1,5)]:
+        _a = cuda_ndarray.CudaNdarray.zeros(shp)
+        _n = numpy.zeros(shp, dtype="float32")
+        assert numpy.allclose(numpy.asarray(_a), _n)
+        assert _a.shape == _n.shape
+
+
     try:
         _n = numpy.zeros()
     except TypeError:
