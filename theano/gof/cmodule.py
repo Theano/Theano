@@ -527,25 +527,8 @@ class ModuleCache(object):
                 if key_pkl in self.loaded_key_pkl:
                     continue
                 elif 'delete.me' in files or not files:
-                    # On NFS filesystems, it is impossible to delete a directory with open
-                    # files in it.  So instead, some commands in this file will respond to a
-                    # failed rmtree() by touching a 'delete.me' file.  This file is a message
-                    # for a future process to try deleting the directory.
-                    try:
-                        _rmtree(root, ignore_nocleanup=True,
-                                msg="delete.me found in dir")
-                    except:
-                        # Maybe directory is still in use? We just leave it
-                        # for future removal (and make sure there is a
-                        # delete.me file in it).
-                        delete_me = os.path.join(root, 'delete.me')
-                        if not os.path.exists(delete_me):
-                            try:
-                                open(delete_me, 'w')
-                            except:
-                                # Giving up!
-                                warning("Cannot mark cache directory for "
-                                        "deletion: %s" % root)
+                    _rmtree(root, ignore_nocleanup=True,
+                            msg="delete.me found in dir")
                 elif 'key.pkl' in files:
                     try:
                         entry = module_name_from_dir(root)
@@ -1175,6 +1158,10 @@ class ModuleCache(object):
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
             ignore_if_missing=False):
+    # On NFS filesystems, it is impossible to delete a directory with open
+    # files in it.  So instead, some commands in this file will respond to a
+    # failed rmtree() by touching a 'delete.me' file.  This file is a message
+    # for a future process to try deleting the directory.
     if ignore_if_missing and not os.path.exists(parent):
         return
     try:
