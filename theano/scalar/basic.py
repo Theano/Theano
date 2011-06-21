@@ -1923,7 +1923,7 @@ class Composite(ScalarOp):
         super(Composite,out).__init__(output_types_preference, name)
         return out
 
-    def __init__(self, inputs, outputs, rehash=True):
+    def __init__(self, inputs, outputs):
         self.inputs=copy(inputs)
         self.outputs=copy(outputs)
 
@@ -2004,8 +2004,7 @@ class Composite(ScalarOp):
         self.env = env
         self.inputs_type = tuple([input.type for input in self.env.inputs])
         self.outputs_type = tuple([output.type for output in self.env.outputs])
-        if rehash:
-            self._rehash()
+        self._rehash()
 
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:
@@ -2078,7 +2077,4 @@ class Composite(ScalarOp):
         self.__dict__.update(d)
         # We must call init to set env and _impls again, as otherwise
         # self.perform will not work.
-        # However, we should not call `_rehash` because it may yield a
-        # different hash if some config options have changed, which would make
-        # the loaded object look different from the original.
-        self.__init__(self.inputs, self.outputs, rehash=False)
+        self.__init__(self.inputs, self.outputs)
