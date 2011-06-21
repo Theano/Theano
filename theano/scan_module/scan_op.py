@@ -602,6 +602,9 @@ class Scan(Op):
 
 
         t_call = time.time() - t0_call
+        # NOTE: make this match what's in function_module.Function
+        # and this little string helps us to find this spot:
+        # "PROFILE_CODE"
 
         if hasattr(self.fn.maker.mode,'fct_call_time'):
             self.fn.maker.mode.fct_call_time[self.fn] += t_fn

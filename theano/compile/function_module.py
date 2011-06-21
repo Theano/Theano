@@ -627,6 +627,12 @@ class Function(object):
                     value = value.storage[0]
                 self[i] = value
 
+        #
+        # NOTE: This logic needs to be replicated in
+        #       scan.
+        #       grep for 'PROFILE_CODE'
+        #
+
         dt_call=time.time()-t0
         if hasattr(self.maker.mode,'fct_call_time'):
             self.maker.mode.fct_call_time[self] += dt_call
