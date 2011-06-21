@@ -761,17 +761,16 @@ class ModuleCache(object):
             # This try/finally block ensures that the lock is released once we
             # are done writing in the cache file or after raising an exception.
             try:
-                location = dlimport_workdir(self.dirname)
-            except OSError, e:
-                error(e)
-                if e.errno == 31:
-                    error('There are', len(os.listdir(config.compiledir)),
-                            'files in', config.compiledir)
-                raise
-
-            try:
                 # Embedding two try statements for Python 2.4 compatibility
                 # (cannot do try / except / finally).
+                try:
+                    location = dlimport_workdir(self.dirname)
+                except OSError, e:
+                    error(e)
+                    if e.errno == 31:
+                        error('There are', len(os.listdir(config.compiledir)),
+                                'files in', config.compiledir)
+                    raise
                 try:
                     compile_steps = fn(location=location).__iter__()
 
