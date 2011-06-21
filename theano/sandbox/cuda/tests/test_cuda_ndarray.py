@@ -813,13 +813,26 @@ def test_setitem_rightvalue_ndarray_fails():
         #print e
         assert True
 
-def test_zeros_basic_3d_tensor():
-    _a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
-    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((3,4,5)))
-
-def test_zeros_basic_vector():
-    _a = cuda_ndarray.CudaNdarray.zeros((300,))
-    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((300,)))
+def test_zeros_basic():
+    # 3d
+    for shp in [(3,4,5), (300,), ()]:
+        _a = cuda_ndarray.CudaNdarray.zeros(shp)
+        _n = numpy.zeros(shp, dtype="float32")
+        assert numpy.allclose(numpy.asarray(_a), _n)
+        assert _a.shape == _n.shape
+        assert all(_a._strides == numpy.asarray(_n.strides)/4)
+    try:
+        _n = numpy.zeros()
+    except TypeError:
+        pass
+    else:
+        raise Exception("An error was expected!")
+    try:
+        _a = cuda_ndarray.CudaNdarray.zeros()
+    except TypeError:
+        pass
+    else:
+        raise Exception("An error was expected!")
 
 
 def test_base():
