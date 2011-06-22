@@ -65,6 +65,7 @@ class T_scipy(unittest.TestCase):
         for i in range(training_steps):
             pred, err = train(D[0], D[1])
 
+
 if __name__ == '__main__':
     unittest.main()
 
