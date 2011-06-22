@@ -1,8 +1,9 @@
 """Pretty-printing (pprint()), the 'Print' Op, debugprint() and pydotprint().
 They all allow different way to print a graph or the result of an Op in a graph(Print Op)
 """
-import sys, os, StringIO
 from copy import copy
+import logging
+import sys, os, StringIO
 
 import numpy
 
@@ -13,6 +14,12 @@ from gof import Op, Apply
 from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
+
+_logger=logging.getLogger("theano.tensor.basic")
+def _info(*msg):
+    _logger.info(' '.join(msg))
+def _warn(*msg):
+    _logger.warn(' '.join(msg))
 
 def debugprint(obj, depth=-1, print_type=False, file=None):
     """Print a computation graph to file
@@ -464,10 +471,15 @@ def pydotprint(fct, outfile=None,
         c1 = pd.Cluster('Left')
         c2 = pd.Cluster('Right')
         c3 = pd.Cluster('Middle')
+        cond = None
         for node in fct_env.toposort():
             if node.op.__class__.__name__=='Cond' and node.op.name == cond_highlight:
                 cond = node
+        if cond is None:
+            _warn("pydotprint: cond_highlight is set but there is no Cond node in the graph")
+            cond_highlight = None
 
+    if cond_highlight is not None:
         def recursive_pass(x,ls):
             if not x.owner:
                 return ls
