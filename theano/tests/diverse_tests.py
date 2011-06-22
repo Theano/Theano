@@ -13,19 +13,32 @@ from theano.tests  import unittest_tools as utt
   should ensure that it will remain operational
 '''
 
-class T_diverse(unittest.TestCase):
+class T_scipy(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
+        self.orig_floatX = theano.config.floatX
+    def tearDown(self):
+        theano.config.floatX = self.orig_floatX
 
 
-    def scipy_paper_example1(self):
+    def test_scipy_paper_example1(self):
         a = theano.tensor.vector('a') # declare variable
         b = a + a**10                 # build expression
         f = theano.function([a], b)   # compile function
         assert numpy.all(f([0,1,2]) == numpy.array([0,2,1026]))
 
-    def scipy_papaer_example2(self):
+    def test_scipy_paper_example2(self):
         ''' This just sees if things compile well and if they run '''
+        # PREAMPBLE
+        T = theano.tensor
+        shared = theano.shared
+        function = theano.function
+        rng = numpy.random
+        theano.config.floatX='float64'
+
+        #
+        # ACTUAL SCRIPT FROM PAPER
+
         x = T.matrix()
         y = T.vector()
         w = shared(rng.randn(100))
