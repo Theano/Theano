@@ -496,12 +496,15 @@ class ModuleCache(object):
     Older modules will be deleted in ``clear_old``.
     """
 
-    def refresh(self, delete_if_problem=False):
+    def refresh(self, age_thresh_use=None, delete_if_problem=False):
         """Update cache data by walking the cache directory structure.
 
         Load key.pkl files that have not been loaded yet.
         Remove entries which have been removed from the filesystem.
         Also, remove malformed cache directories.
+
+        :param age_thresh_use: Do not use modules olther than this.
+        Defaults to self.age_thresh_use.
 
         :param delete_if_problem: If True, cache entries that meet one of those
         two conditions are deleted:
@@ -509,8 +512,10 @@ class ModuleCache(object):
               unknown exception.
             - Duplicated modules, regardless of their age.
 
-        :returns: a list of modules of age higher than self.age_thresh_use.
+        :returns: a list of modules of age higher than age_thresh_use.
         """
+        if age_thresh_use is None:
+            age_thresh_use = self.age_thresh_use
         start_time = time.time()
         too_old_to_use = []
 
@@ -540,7 +545,7 @@ class ModuleCache(object):
                         _rmtree(root, ignore_nocleanup=True,
                                 msg="missing module file", level="info")
                         continue
-                    if (time_now - last_access_time(entry)) < self.age_thresh_use:
+                    if (time_now - last_access_time(entry)) < age_thresh_use:
                         debug('refresh adding', key_pkl)
                         def unpickle_failure():
                             info("ModuleCache.refresh() Failed to unpickle "
@@ -978,39 +983,35 @@ class ModuleCache(object):
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
 
+        # Ensure that the too_old_to_use list return by refresh() will
+        # contain all modules older thatn age_thresh_del.
+        if age_thresh_del < self.age_thresh_use:
+            info("Clearing modules that were not deemed to old to use:",
+                    "age_thresh_del=%d," % age_thresh_del,
+                    "self.age_thresh_use=%d" % self.age_thresh_use)
+            age_thresh_use = age_thresh_del
+        else:
+            age_thresh_use = None
+
         compilelock.get_lock()
         try:
             # Update the age of modules that have been accessed by other
             # processes and get all module that are too old to use
             # (not loaded in self.entry_from_key).
-            too_old_to_use = self.refresh(delete_if_problem=delete_if_problem)
-            time_now = time.time()
+            too_old_to_use = self.refresh(
+                    age_thresh_use=age_thresh_use,
+                    delete_if_problem=delete_if_problem)
 
-            # Build list of module files and associated keys.
-            entry_to_key_data = dict((entry, None) for entry in too_old_to_use)
-            for key_data in self.module_hash_to_key_data.itervalues():
-                entry = key_data.get_entry()
-                # Since we loaded this file, it should not be in
-                # too_old_to_use.
-                assert entry not in entry_to_key_data
-                entry_to_key_data[entry] = key_data
-
-            for entry, key_data in entry_to_key_data.iteritems():
-                age = time_now - last_access_time(entry)
-                if age > age_thresh_del:
-                    # TODO: we are assuming that modules that haven't been accessed in over
-                    # age_thresh_del are not currently in use by other processes, but that could be
-                    # false for long-running jobs...
-                    assert entry not in self.module_from_name
-                    if key_data is not None:
-                        key_data.delete_keys_from(self.entry_from_key)
-                        del self.module_hash_to_key_data[key_data.module_hash]
-                        if key_data.key_pkl in self.loaded_key_pkl:
-                            self.loaded_key_pkl.remove(key_data.key_pkl)
-                    parent = os.path.dirname(entry)
-                    assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    _rmtree(parent, msg='old cache directory', level='info',
-                            ignore_nocleanup=True)
+            for entry in too_old_to_use:
+                # TODO: we are assuming that modules that haven't been
+                # accessed in over age_thresh_del are not currently in
+                # use by other processes, but that could be false for
+                # long-running jobs, or if age_thresh_del < 0.
+                assert entry not in self.module_from_name
+                parent = os.path.dirname(entry)
+                assert parent.startswith(os.path.join(self.dirname, 'tmp'))
+                _rmtree(parent, msg='old cache directory', level='info',
+                        ignore_nocleanup=True)
 
         finally:
             compilelock.release_lock()
