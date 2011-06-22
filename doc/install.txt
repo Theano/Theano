@@ -64,7 +64,7 @@ The following libraries and software are optional:
         To download bleeding-edge versions of Theano.
 
     `pydot <https://code.google.com/p/pydot/>`_
-    	To be able to make picture of Theano computation graph.
+        To be able to make picture of Theano computation graph.
 
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution. Only NVIDIA GPUs using
@@ -355,7 +355,8 @@ Mac
 - If the above required libraries are not already installed on your Mac,
   one option is first, to install `MacPorts <http://www.macports.org/>`__.
 
-- Then, in order to install one or more of the required libraries, use "port install", e.g. as follows:
+- Then, in order to install one or more of the required libraries, use
+    "port install", e.g. as follows:
 
     .. code-block:: bash
 
@@ -363,7 +364,8 @@ Mac
 
     This will install all the required Theano dependencies.  Note that
     compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
-    good BLAS implementation) and NumPy, so these will be installed for you automatically.
+    good BLAS implementation) and NumPy, so these will be installed for you
+    automatically.
 
 - You might have some old versions of gcc, SciPy, NumPy, Python installed on
   your system, perhaps via Xcode. It is a good idea to use **either** the
