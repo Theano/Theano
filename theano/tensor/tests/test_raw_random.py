@@ -49,11 +49,14 @@ class T_random_function(unittest.TestCase):
         rng_R = random_state_type()
 
         # use make_node to override some of the self.args
-        post_r2, out2 = rf2(rng_R, (4,), -2, 2)
-        post_r2_4, out2_4 = rf2(rng_R, (4,), -4.0, 2)
-        post_r2_4_4, out2_4_4 = rf2(rng_R, (4,), -4.0, 4.0)
-        post_r4, out4 = rf4(rng_R, (4,), -4, 4)
+        post_r2,     out2     = rf2(rng_R, (4,), -2, 2) # NOT INPLACE
+        post_r4,     out4     = rf4(rng_R, (4,), -4, 4) # INPLACE
+        post_r2_4,   out2_4   = rf2(rng_R, (4,), -4.0, 2) # NOT INPLACE
+        post_r2_4_4, out2_4_4 = rf2(rng_R, (4,), -4.0, 4.0) # NOT INPLACE
 
+        # configure out4 to be computed inplace
+        # The update expression means that the random state rng_R will
+        # be maintained by post_r4
         f = compile.function(
                 [compile.In(rng_R,
                             value=numpy.random.RandomState(utt.fetch_seed()),
@@ -65,9 +68,25 @@ class T_random_function(unittest.TestCase):
         f2, f4, f2_4, f2_4_4 = f()
         f2b, f4b, f2_4b, f2_4_4b = f()
 
-        assert numpy.allclose(f2*2, f4)
-        assert numpy.allclose(f2_4_4, f4)
-        assert not numpy.allclose(f4, f4b)
+        print f2
+        print f4
+        print f2_4
+        print f2_4_4
+
+        #print f2b
+        #print f4b
+        #print f2_4b
+        #print f2_4_4b
+
+        # setting bounds is same as multiplying by 2
+        assert numpy.allclose(f2*2, f4), (f2, f4)
+
+        # retrieving from non-inplace generator
+        # is same as inplace one for first call
+        assert numpy.allclose(f2_4_4, f4), (f2_4_4, f4)
+
+        # f4 changes from call to call, that the update has worked
+        assert not numpy.allclose(f4, f4b), (f4, f4b)
 
     def test_inplace_optimization(self):
         """Test that FAST_RUN includes the random_make_inplace optimization"""
