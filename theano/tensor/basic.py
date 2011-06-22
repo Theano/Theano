@@ -666,7 +666,7 @@ class TensorType(Type):
 
     @staticmethod
     def values_eq(a, b, force_same_dtype=True):
-        #TODO: check to see if the dtype and shapes must match
+        #TODO: check to see if the shapes must match
         #      for now, we err on safe side...
         if a.shape != b.shape:
             return False
