@@ -63,6 +63,9 @@ The following libraries and software are optional:
     `Mercurial <http://mercurial.selenic.com/>`_
         To download bleeding-edge versions of Theano.
 
+    `pydot <https://code.google.com/p/pydot/>`_
+    	To be able to make picture of Theano computation graph.
+
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution. Only NVIDIA GPUs using
         32-bit floating point numbers are currently supported.
