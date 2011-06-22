@@ -25,7 +25,7 @@ def filter_compiledir(path):
     valid = True
     if not os.access(path, os.R_OK | os.W_OK):
         try:
-            os.makedirs(path, 0770) #read-write-execute for this user only
+            os.makedirs(path, 0770) #read-write-execute for user and group
         except OSError, e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
