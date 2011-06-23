@@ -401,11 +401,15 @@ class PerformLinker(LocalLinker):
         for node in order:
             # Maker sure we don't use C version of the code, but rather only
             # the python version
-            node.op._op_use_c_code = False
-            thunks += [node.op.make_thunk(node,
+            old_value = node.op._op_use_c_code
+            try:
+                node.op._op_use_c_code = False
+                thunks += [node.op.make_thunk(node,
                                     storage_map,
                                     compute_map,
                                     no_recycling)]
+            finally:
+                node.op._op_use_c_code = old_value
 
         computed, last_user = gc_helper(order)
         if self.allow_gc:
