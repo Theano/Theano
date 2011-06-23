@@ -1089,6 +1089,6 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                         v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
                         scan_op_time/v*100), node
                 else:
-                    print ' The node took 0s, so we can not compute the overhead'
+                    print ' The node took 0s, so we can not compute the overhead', node
         print '    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
             total_super_scan_time, total_scan_fct_time, total_scan_op_time, total_scan_fct_time/total_super_scan_time*100, total_scan_op_time/total_super_scan_time*100)
