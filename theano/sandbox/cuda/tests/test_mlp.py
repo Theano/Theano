@@ -358,8 +358,11 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
     if verbose:
-        for i, n in enumerate(train.maker.env.toposort()):
-            print i, n
+        theano.printing.debugprint(train)
+    if use_gpu:
+        # Check that GpuConv is used
+        topo = train.maker.env.toposort()
+        assert len([n for n in topo if isinstance(n.op, tcn.blas.GpuConv)]) > 0
 
     shape_target = (n_batch,n_out)
     return train, params, shape_img, shape_target, mode

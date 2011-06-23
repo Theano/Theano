@@ -32,15 +32,26 @@ default values.
       reference to ``value`` (i.e. casting prohibited).
       If ``strict`` is False, then casting may happen, but downcasting should
       only be used in two situations:
-          * if ``allow_downcast`` is True
-          * if ``allow_downcast`` is ``None`` and the default behavior for this
-            type allows downcasting for the given ``value`` (this behavior is
-            type-dependent, you may decide what your own type does by default)
+
+      * if ``allow_downcast`` is True
+      * if ``allow_downcast`` is ``None`` and the default behavior for this
+        type allows downcasting for the given ``value`` (this behavior is
+        type-dependent, you may decide what your own type does by default)
 
       We need to define ``filter`` with three arguments. The second argument
       must be called ``strict`` (Theano often calls it by keyword) and must
       have a default value of ``False``. The third argument must be called
       ``allow_downcast`` and must have a default value of ``None``.
+
+    .. method:: filter_inplace(value, storage, strict=False, allow_downcast=None)
+
+      If filter_inplace is defined, it will be called instead of
+      filter() This is to allow reusing the old allocated memory. As
+      of this writing this is used only when we transfer new data to a
+      shared variable on the gpu.
+
+      ``storage`` will be the old value. i.e. The old numpy array,
+      CudaNdarray, ...
 
     .. method:: is_valid_value(value)
 

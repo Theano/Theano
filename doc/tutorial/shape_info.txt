@@ -19,17 +19,18 @@ Currently shape informations are used for 2 things in Theano:
   method.
 
   ex:
-.. code-block:: python
 
-   import theano
-   x = theano.tensor.matrix('x')
-   f = theano.function([x], (x**2).shape)
-   theano.printing.debugprint(f)
-   #MakeVector [@43860304] ''   2
-   # |Shape_i{0} [@43424912] ''   1
-   # | |x [@43423568]
-   # |Shape_i{1} [@43797968] ''   0
-   # | |x [@43423568]
+  .. code-block:: python
+
+     import theano
+     x = theano.tensor.matrix('x')
+     f = theano.function([x], (x**2).shape)
+     theano.printing.debugprint(f)
+     #MakeVector [@43860304] ''   2
+     # |Shape_i{0} [@43424912] ''   1
+     # | |x [@43423568]
+     # |Shape_i{1} [@43797968] ''   0
+     # | |x [@43423568]
 
 The output of this compiled function do not contain any multiplication
 or power. Theano has removed them to compute directly the shape of the

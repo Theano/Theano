@@ -2,15 +2,20 @@
 
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
-
-
 """
 
 __docformat__ = "restructuredtext en"
 
-import utils
 from theano import config
-
+import graph
+import numpy
+import utils
+import warnings
+import logging
+from theano import config
+from env import Env
+import graph
+import cc
 
 
 class CLinkerObject(object):
@@ -189,8 +194,13 @@ class CLinkerOp(CLinkerObject):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
-           is either NULL or is unchanged from the end of the previous execution.
+           variables.  This pointer could be NULL, or contain an object of the right
+           Type (in the Theano sense) to store the output of the computation.
+           For instance, for a TensorVariable, it will be a Numpy ndarray with
+           the right number of dimensions, and the right dtype. However, its
+           shape, or stride pattern, could not be adequate.
+           It could be unchanged from the end of the previous execution, or allocated
+           by another Op, or by the Mode.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -219,8 +229,13 @@ class CLinkerOp(CLinkerObject):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
-           is either NULL or is unchanged from the end of the previous execution.
+           variables.  This pointer could be NULL, or contain an object of the right
+           Type (in the Theano sense) to store the output of the computation.
+           For instance, for a TensorVariable, it will be a Numpy ndarray with
+           the right number of dimensions, and the right dtype. However, its
+           shape, or stride pattern, could not be adequate.
+           It could be unchanged from the end of the previous execution, or allocated
+           by another Op, or by the Mode.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -303,6 +318,28 @@ class PureOp(object):
         """
         raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
 
+    @classmethod
+    def _get_test_value(cls, v):
+        """
+        Extract test value from variable v. Raises AttributeError if there is none.
+
+        For a Constant, the test value is v.value.
+        For a Shared variable, it is the internal value.
+        For another Variable, it is the content of v.tag.test_value.
+        """
+        # avoid circular import
+        from theano.compile.sharedvalue import SharedVariable
+
+        if isinstance(v, graph.Constant):
+            return v.value
+        elif isinstance(v, SharedVariable):
+            return v.get_value(borrow=True, return_internal_type=True)
+        elif isinstance(v, graph.Variable) and hasattr(v.tag, 'test_value'):
+            # ensure that the test value is correct
+            return v.type.filter(v.tag.test_value)
+
+        raise AttributeError('%s has not test value' % v)
+
     def __call__(self, *inputs, **kwargs):
         """Optional: Return some or all output[s] of `make_node`.
 
@@ -322,6 +359,58 @@ class PureOp(object):
         """
         node = self.make_node(*inputs, **kwargs)
         self.add_tag_trace(node)
+
+        if config.compute_test_value != 'off':
+            run_perform = True
+
+            # build test input-values
+            input_vals = []
+            for i, ins in enumerate(node.inputs):
+                try:
+                    input_vals.append(self._get_test_value(ins))
+                except AttributeError:
+                    # no test-value was specified, act accordingly
+                    if config.compute_test_value == 'warn':
+                        warnings.warn('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node), stacklevel=2)
+                        run_perform = False
+                    elif config.compute_test_value == 'raise':
+                        raise ValueError('Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
+                    elif config.compute_test_value == 'ignore':
+                        # silently skip test
+                        run_perform = False
+                    else:
+                        raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
+
+            # if all inputs have test-values, run the actual op
+            if run_perform:
+
+                # Original values should not be destroyed:
+                # copy the values of the inputs in destroy_map
+                destroyed_inputs_idx = []
+                if getattr(node.op, 'destroy_map', None):
+                    for i_pos_list in node.op.destroy_map.itervalues():
+                        destroyed_inputs_idx.extend(i_pos_list)
+                for i in destroyed_inputs_idx:
+                    input_vals[i] = input_vals[i].copy()
+
+                # compute output value once with test inputs to validate graph
+                output_storage = [[None]] * len(node.outputs)
+                try:
+                    node.op.perform(node, input_vals, output_storage)
+
+                    # add 'test_value' to output tag, so that downstream ops can use these
+                    # numerical values as inputs to their perform method.
+                    for (outval, node_output) in zip(output_storage, node.outputs):
+                        node_output.tag.test_value = outval[0]
+                except utils.MethodNotDefined, e:
+                    # This case happens when the perform method is not defined
+                    # for a certain Op.
+                    #TODO: use the c_thunk?
+                    if config.compute_test_value == 'warn':
+                        warnings.warn('Warning, in compute_test_value:' + type(e), stacklevel=2)
+                    elif config.compute_test_value == 'raise':
+                        raise
+
         if self.default_output is not None:
             return node.outputs[self.default_output]
         else:
@@ -352,9 +441,13 @@ class PureOp(object):
              list of mutable 1-element lists (do not change the length of these lists)
 
         The `output_storage` list might contain data. If an element of
-        output_storage is not None, it is guaranteed that it was produced
-        by a previous call to impl and impl is free to reuse it as it
-        sees fit.
+        output_storage is not None, it has to be of the right type,
+        for instance, for a TensorVariable, it has to be a Numpy ndarray,
+        with the right number of dimensions, and the correct dtype.
+        Its shape and stride pattern, can be arbitrary. It not is
+        guaranteed that it was produced by a previous call to impl. It
+        could be allocated by another Op impl is free to reuse it as it
+        sees fit, or to discard it and allocate new memory.
 
         :Exceptions:
          - `MethodNotDefined`: the subclass does not override this method
@@ -364,4 +457,82 @@ class PureOp(object):
 
 class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""
-    pass
+    def __new__(cls, *args, **kwargs):
+        # this function exists to silently and transparently ensure that all
+        # existing Ops get a _op_use_c_code attribute
+        obj = object.__new__(cls)
+        if not hasattr(obj, '_op_use_c_code'):
+            obj._op_use_c_code = True
+        return obj
+
+    def __init__(self, use_c_code=True):
+        self._op_use_c_code = use_c_code
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        """
+        :param node: something previously returned by self.make_node
+
+        :param storage_map: dict variable -> one-element-list where a computed
+                value for this variable may be found.
+
+        :param compute_map: dict variable -> one-element-list where a boolean
+                value will be found.  The boolean indicates whether the
+                variable's storage_map container contains a valid value (True)
+                or if it has not been computed yet (False).
+
+        :param no_recycling: list of variables for which it is forbidden to
+                reuse memory allocated by a previous call.
+
+        :note: If the thunk consults the storage_map on every call, it is safe
+            for it to ignore the no_recycling argument, because elements of the
+            no_recycling list will have a value of None in the storage map.  If
+            the thunk can potentially cache return values (like CLinker does),
+            then it must not do so for variables in the no_recycling list.
+        """
+        logger = logging.getLogger('theano.Op')
+
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
+        node_input_compute = [compute_map[r] for r in node.inputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
+        #logger.debug('Compiling node %i of graph' % node_idx)
+        if self._op_use_c_code:
+            try:
+                e = Env(*graph.clone(node.inputs, node.outputs))
+
+                e_no_recycling = [new_o
+                        for (new_o, old_o) in zip(e.outputs, node.outputs)
+                        if old_o in no_recycling]
+                cl = cc.CLinker().accept(e,
+                        no_recycling=e_no_recycling)
+
+                logger.debug('Trying CLinker.make_thunk')
+                fill_storage, node_input_filters, node_output_filters = cl.make_thunk(
+                    input_storage = node_input_storage,
+                    output_storage = node_output_storage)
+                def rval():
+                    fill_storage()
+                    for o in node.outputs:
+                        compute_map[o][0] = True
+                rval.cthunk = fill_storage.cthunk
+                rval.inputs = node_input_storage
+                rval.outputs = node_output_storage
+                rval.lazy = False
+                return rval
+            except (NotImplementedError, utils.MethodNotDefined):
+                logger.debug('Falling back on perform')
+
+        # condition: either there was no c_code, or it failed
+
+        p = node.op.perform
+        # default arguments are stored in the closure of `rval`
+        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+            r = p(n, [x[0] for x in i], o)
+            for o in node.outputs:
+                compute_map[o][0] = True
+            return r
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.perform = p
+        rval.lazy = False
+        return rval

@@ -75,6 +75,10 @@ if os.path.exists(cuda_ndarray_so):
     compile_cuda_ndarray = date>=os.stat(cuda_ndarray_so)[stat.ST_MTIME]
 if not compile_cuda_ndarray:
     try:
+        # If we load a previously-compiled version, config.compiledir should
+        # be in sys.path.
+        if config.compiledir not in sys.path:
+            sys.path.append(config.compiledir)
         from cuda_ndarray.cuda_ndarray import *
     except ImportError:
         compile_cuda_ndarray = True
@@ -133,6 +137,8 @@ if cuda_available:
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
         warning("WARNING: cuda_ndarray was loaded from",
                 cuda_ndarray.cuda_ndarray.__file__,
+                "but Theano expected to load it from",
+                cuda_ndarray_so,
                 """This is not expected as theano should compile it
  automatically for you. Do you have a directory called cuda_ndarray in your
 LD_LIBRARY_PATH environment variable? If so, please remove it as it is
@@ -154,8 +160,11 @@ outdated!""")
     import cuda_ndarray
 
 
-def use(device, force=False, default_to_move_computation_to_gpu = True,
-        move_shared_float32_to_gpu = True):
+def use(device,
+        force=False,
+        default_to_move_computation_to_gpu=True,
+        move_shared_float32_to_gpu=True,
+        enable_cuda=True):
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
@@ -191,7 +200,9 @@ def use(device, force=False, default_to_move_computation_to_gpu = True,
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
             use.device_number = device
-            cuda_enabled = True
+
+            if enable_cuda:
+                cuda_enabled = True
             print >> sys.stderr, "Using gpu device %d: %s" % (active_device_number(), active_device_name())
         except (EnvironmentError, ValueError), e:
             _logger.error(("ERROR: Not using GPU."
@@ -251,4 +262,5 @@ elif config.init_gpu_device:
     use(device=config.init_gpu_device,
         force=config.force_device,
         default_to_move_computation_to_gpu=False,
-        move_shared_float32_to_gpu=False)
+        move_shared_float32_to_gpu=False,
+        enable_cuda=False)

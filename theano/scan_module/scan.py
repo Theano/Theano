@@ -39,6 +39,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
+import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -104,11 +105,11 @@ def scan( fn
 
         .. code-block:: python
 
-            scan(fn, sequences = [ dict( Sequence1, taps = [-3,2,-1])
+            scan(fn, sequences = [ dict(input= Sequence1, taps = [-3,2,-1])
                                  , Sequence2
-                                 , dict( Sequence3, taps = 3) ]
-                   , outputs_info = [ dict( Output1, taps = [-3,-5])
-                                    , dict( Output2, taps = None)
+                                 , dict(input =  Sequence3, taps = 3) ]
+                   , outputs_info = [ dict(initial =  Output1, taps = [-3,-5])
+                                    , dict(initial = Output2, taps = None)
                                     , Output3 ]
                    , non_sequences = [ Argument1, Argument 2])
 
@@ -371,7 +372,7 @@ def scan( fn
                     # ^ explicitly provided a None for taps
                     warning (' Output %s ( index %d) has a initial state '
                              ' but taps is explicitly set to None ' % (
-                                 outs_info[i]['initial'].name
+                                 getattr(outs_info[i]['initial'],'name','None')
                                  , i) )
                 outs_info[i]['taps'] = [-1]
         else:
@@ -405,19 +406,33 @@ def scan( fn
             maxtap = numpy.max(seq['taps'])
             for k in seq['taps']:
                 # create one slice of the input
-                  # Later on, if we decide not to use scan because we are
-                  # going for just one step, it makes things easier if we
-                  # compute the correct outputs here. This way we can use
-                  # the output of the lambda expression directly to replace
-                  # the output of scan.
+                # Later on, if we decide not to use scan because we are
+                # going for just one step, it makes things easier if we
+                # compute the correct outputs here. This way we can use
+                # the output of the lambda expression directly to replace
+                # the output of scan.
 
-                  # If not we need to use copies, that will be replaced at
-                  # each frame by the corresponding slice
-                nw_slice = seq['input'][0].type()
+                # If not we need to use copies, that will be replaced at
+                # each frame by the corresponding slice
                 actual_slice = seq['input'][k-mintap]
+                _seq_val = tensor.as_tensor_variable(seq['input'])
+                _seq_val_slice = _seq_val[k-mintap]
+                nw_slice = _seq_val_slice.type()
+
+                # Try to transfer test_value to the new variable
+                if config.compute_test_value != 'off':
+                    try:
+                        nw_slice.tag.test_value = gof.Op._get_test_value(_seq_val_slice)
+                    except AttributeError, e:
+                        if config.compute_test_value != 'ignore':
+                            # No need to print a warning or raise an error now,
+                            # it will be done when fn will be called.
+                            info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing'), e)
+
                 # Add names to slices for debugging and pretty printing ..
                 # that is if the input already has a name
-                if seq['input'].name:
+                if getattr(seq['input'],'name', None) is not None:
                     if k > 0:
                         nw_name = seq['input'].name + '[t+%d]'%k
                     elif k == 0:
@@ -448,6 +463,7 @@ def scan( fn
                 inner_slices.append( actual_slice )
                 n_seqs += 1
 
+
     # Since we've added all sequences now we need to level them up based on
     # n_steps or their different shapes
     lengths_vec = []
@@ -477,7 +493,7 @@ def scan( fn
 
     # Add names -- it helps a lot when debugging
     for (nw_seq, seq) in zip(scan_seqs, seqs):
-        if seq['input'].name:
+        if getattr(seq['input'],'name', None) is not None:
             nw_seq.name = seq['input'].name + '[%d:]'%k
 
     # Conventions :
@@ -530,8 +546,21 @@ def scan( fn
 
             actual_arg = init_out['initial']
             arg = safe_new(init_out['initial'])
-            if init_out['initial'].name:
+
+            # Try to transfer test_value to the new variable
+            if config.compute_test_value != 'off':
+                try:
+                    arg.tag.test_value = gof.Op._get_test_value(actual_arg)
+                except AttributeError, e:
+                    if config.compute_test_value != 'ignore':
+                        # No need to print a warning or raise an error now,
+                        # it will be done when fn will be called.
+                        info(('Cannot compute test value for the inner '
+                            'function of scan, input value missing'), e)
+
+            if getattr(init_out['initial'],'name', None) is not None:
                 arg.name = init_out['initial'].name+'[t-1]'
+
             # We need now to allocate space for storing the output and copy
             # the initial state over. We do this using the expand function
             # defined in scan utils
@@ -572,10 +601,23 @@ def scan( fn
             for k in init_out['taps']:
                 # create a new slice
                 actual_nw_slice = init_out['initial'][k+mintap]
-                nw_slice = init_out['initial'][0].type()
+                _init_out_var = tensor.as_tensor_variable(init_out['initial'])
+                _init_out_var_slice = _init_out_var[k+mintap]
+                nw_slice = _init_out_var_slice.type()
+
+                # Try to transfer test_value to the new variable
+                if config.compute_test_value != 'off':
+                    try:
+                        nw_slice.tag.test_value = Op._get_test_value(_init_out_var_slice)
+                    except AttributeError, e:
+                        if config.compute_test_value != 'ignore':
+                            # No need to print a warning or raise an error now,
+                            # it will be done when fn will be called.
+                            info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing.'), e)
 
                 # give it a name or debugging and pretty printing
-                if init_out['initial'].name:
+                if getattr(init_out['initial'],'name', None) is not None:
                     if k > 0:
                         nw_slice.name = ( init_out['initial'].name +
                                             '[t+%d]'%k )
@@ -742,7 +784,7 @@ def scan( fn
     for input in dummy_f.maker.expanded_inputs:
         if isinstance(input.variable, SharedVariable) and input.update:
             new_var = safe_new(input.variable)
-            if input.variable.name:
+            if getattr(input.variable,'name', None) is not None:
                 new_var.name = input.variable.name + '_copy'
             shared_inner_inputs.append( new_var )
             shared_scan_inputs.append( input.variable )
@@ -770,10 +812,12 @@ def scan( fn
     other_scan_args  += [ arg for arg in non_seqs
                         if not isinstance(arg, SharedVariable) ]
 
-    ## Step 5.6 all shared variables with no update rules
+    ## Step 5.6 all non sequences including shared variables with no update rules
     def new_variable( v ):
+        if isinstance(new_variable, tensor.Constant):
+            return v.clone()
         new_v = safe_new(v)
-        if v.name:
+        if getattr(v,'name', None) is not None:
             new_v.name = v.name + '_copy'
         return new_v
     other_inner_args += [ new_variable(arg) for arg in non_seqs
@@ -929,4 +973,3 @@ def scan( fn
         scan_out_list = None
 
     return (scan_out_list, update_map)
-

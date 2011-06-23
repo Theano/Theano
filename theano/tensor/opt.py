@@ -9,7 +9,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 import operator
 import itertools
 import sys
-
+import traceback
 import numpy
 import numpy as N #guys... please don't do this in the library :(
 
@@ -27,10 +27,11 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer, pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_constant_value
+from basic import get_constant_value, ShapeError
 
 
 # Utilities
+
 
 def out2in(*local_opts):
     """WRITEME """
@@ -528,7 +529,7 @@ class ShapeFeature(object):
     the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
     particular sizes.
 
-    If you can determine the shape only in some case, return NotImplementedError when you can't
+    In cases where you cannot figure out the shape, raise a ShapeError.
 
     .. note::
 
@@ -566,16 +567,18 @@ class ShapeFeature(object):
     sometimes Theano constants?? That would be confusing.
 
     """
-    def shape_i(self, i):
-        def op_deco(r):
-            if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
-                return self.lscalar_one
-            else:
-                return Shape_i(i)(r)
-        return op_deco
+
+    def shape_ir(self, i, r):
+        #TODO: Write a doc string for this method
+
+        if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
+            return self.lscalar_one
+        else:
+            return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
-        return tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])
+        #TODO: Write a doc string for this method
+        return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
         rval = []
@@ -592,7 +595,7 @@ class ShapeFeature(object):
         if s_i == 1:
             # don't make the optimizer merge a zillion ones together
             return self.lscalar_one
-        if type(s_i) is int or isinstance(s_i, numpy.integer):
+        if type(s_i) in (int,long) or isinstance(s_i, numpy.integer):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
@@ -689,10 +692,13 @@ class ShapeFeature(object):
     def on_attach(self, env):
         assert not hasattr(env, 'shape_feature')
         env.shape_feature = self
-        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-        self.scheduled = {} # Variable ->
+        # Must be local to the object as otherwise we reuse the same
+        # variable for multiple env!
         self.lscalar_one = T.constant(1, dtype='int64')
         assert self.lscalar_one.type == T.lscalar
+
+        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        self.scheduled = {} # Variable ->
         for node in env.toposort():
             self.on_import(env, node)
 
@@ -714,12 +720,19 @@ class ShapeFeature(object):
 
         try:
             o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
-        except NotImplementedError:
+        except ShapeError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+        except NotImplementedError, e:
+            raise NotImplementedError(
+                    'Code called by infer_shape failed raising a '
+                    'NotImplementedError. Raising NotImplementedError to '
+                    'indicate that a shape cannot be computed is no longer '
+                    'supported, and one should now use tensor.ShapeError '
+                    'instead. The original exception message is: %s' % e)
         except Exception, e:
-            _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+            _logger.error('Failed to infer_shape from Op %s.\nInput shapes:%s\nException encountered during infer_shape: %s\nException message: %s\nTraceback: %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
-                type(e), str(e)))
+                type(e), str(e), traceback.format_exc()))
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
 
         # this is packed information
@@ -836,6 +849,9 @@ def local_useless_alloc(node):
 @gof.local_optimizer([T._shape])
 def local_shape_to_shape_i(node):
     if node.op == T._shape:
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         return [shape_feature.make_vector_shape(node.inputs[0])]
 
@@ -861,6 +877,9 @@ def local_subtensor_make_vector(node):
     # [a,b,c][0:2] -> [a,b]
     # we can do this for constant indexes
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_feature = node.env.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
@@ -1079,7 +1098,6 @@ def local_alloc_elemwise(node):
     return [node.op(*new)]
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
-#TODO, var.tag.shape to propagate the shape and lower the overhead of this op
 #TODO, when all inputs can be optimized do all except one
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
@@ -1169,6 +1187,9 @@ def local_useless_subtensor(node):
     Remove Subtensor if it take the full input
     """
     if isinstance(node.op, T.Subtensor):
+        # This optimization needs ShapeOpt and env.shape_feature
+        if not hasattr(node.env, 'shape_feature'):
+            return
         shape_of = node.env.shape_feature.shape_of
         node_input_idx = 1
         for pos, idx in enumerate(node.op.idx_list):
@@ -1377,7 +1398,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
 @gof.local_optimizer([])
 def local_subtensor_merge(node):
     """
-    Refractored optimization to deal with all cases  of tensor merging.
+    Refactored optimization to deal with all cases of tensor merging.
     Given a subgraph of the form Subtensor(Subtensor(u)), the optimization
     expresses all slices in a canonical form, and then merges them together.
     """
@@ -1400,7 +1421,7 @@ def local_subtensor_merge(node):
                 # Following the suggested use of shape_feature which should
                 # consider the case when the compilation mode doesn't
                 # include the ShapeFeature
-                xhsape = x.shape
+                xshape = x.shape
                 ushape = u.shape
 
             merged_slices = []
@@ -1774,6 +1795,9 @@ if 0:
     @gof.local_optimizer([])
     def local_sum_over_empty(node):
         if isinstance(node.op, T.Sum):
+            # This optimization needs ShapeOpt and env.shape_feature
+            if not hasattr(node.env, 'shape_feature'):
+                return
             y, = node.outputs
             y_shape = node.env.shape_feature.shape_of[y]
 
@@ -2541,7 +2565,15 @@ register_canonicalize(local_mul_zero)
 @gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
     if node.op == T.true_div and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
-        return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
+        out = node.outputs[0]
+        new_out = T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))
+        # The ones could have forced upcasting
+        if new_out.dtype != out.dtype:
+            new_out = T.cast(new_out, dtype=out.dtype)
+        # The ones could have forced a specific length
+        if new_out.type != out.type:
+            new_out = broadcast_like(new_out, out, node.env)
+        return [new_out]
     else:
         return False
 register_specialize(local_div_to_inv)
@@ -2727,7 +2759,8 @@ register_specialize(local_mul_specialize)
 @gof.local_optimizer([T.add])
 def local_add_specialize(node):
     def fill_chain(v):
-        return _fill_chain(v, node.inputs)
+        out = _fill_chain(v, node.inputs)
+        return out
 
     #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
     if node.op == T.add:
@@ -3410,11 +3443,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
+        As part of specialization, we fuse two consecutive elemwise Ops of the
+        same shape.
 
-        For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
-        The number of dimension is validated at call time by theano itself.
-
+        For mixed dtype, we let the Composite op do the cast. It lets the C
+        compiler do the cast.
+        The number of dimensions is validated at call time by theano itself.
         """
         # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
         # TODO: use broadcast flag?
@@ -3530,7 +3564,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         if new_nb_input != len(inputs) or len(s_inputs) != len(inputs):
             raise Exception("""Something has gone wrong with the elemwise
 fusion optimization. We skip this optimization. You can ignore this message,
-your code will run correctly, but maybe slower.""")
+your code will run correctly, but may be slower.""")
 
         otype = node.outputs[0].type
         s_new_out=node.op.scalar_op(*s_g)

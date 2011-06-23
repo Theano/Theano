@@ -172,7 +172,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 
     def c_code_cache_version(self):
         #return ()
-        return (2,)
+        return (3,)
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
@@ -191,7 +191,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
         #return ()
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -221,7 +221,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
             || (CudaNdarray_HOST_DIMS(%(dx)s)[1] != CudaNdarray_HOST_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
-            %(dx)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(dx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(dx)s)
                 || CudaNdarray_alloc_contiguous(%(dx)s, 2, CudaNdarray_HOST_DIMS(%(sm)s)))
             {
@@ -309,7 +309,7 @@ class GpuSoftmax (Op):
         return shape
     def c_code_cache_version(self):
         #return ()
-        return (2,) + inline_softmax.code_version
+        return (3,) + inline_softmax.code_version
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -325,7 +325,7 @@ class GpuSoftmax (Op):
             || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 2, CudaNdarray_HOST_DIMS(%(x)s)))
             {
@@ -398,7 +398,7 @@ class GpuSoftmaxWithBias (Op):
         return  [shape[0]]
     def c_code_cache_version(self):
         #return ()
-        return (2,) + inline_softmax.code_version
+        return (3,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -426,7 +426,7 @@ class GpuSoftmaxWithBias (Op):
             || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 2, CudaNdarray_HOST_DIMS(%(x)s)))
             {

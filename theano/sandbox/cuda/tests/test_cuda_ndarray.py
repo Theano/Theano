@@ -1,14 +1,17 @@
 import time, copy, sys, unittest
-
-
-from theano.tests import unittest_tools as utt
-import theano
-import theano.sandbox.cuda as cuda_ndarray
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
+
+import numpy
+
+import theano
+import theano.sandbox.cuda as cuda_ndarray
+from theano.tensor.basic import _allclose
+from theano.tests import unittest_tools as utt
+
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
-import numpy
+
 
 def advantage(cpu_dt, gpu_dt):
     """
@@ -114,7 +117,7 @@ def test_exp():
 
 def test_copy():
     print >>sys.stdout, 'starting test_copy'
-    shape = (5,)
+    shape = (500,499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
     print >>sys.stdout, '.. creating device object'
@@ -227,7 +230,7 @@ def test_dot():
     b0 = cuda_ndarray.CudaNdarray(a0)
     b1 = cuda_ndarray.CudaNdarray(a1)
 
-    assert numpy.allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
+    assert _allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
 
 
     a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
@@ -237,7 +240,7 @@ def test_dot():
     transposed = cuda_ndarray.dimshuffle(b1,(1,0))
     cuda_version  =  cuda_ndarray.dot(b0,  transposed)
 
-    assert numpy.allclose( numpy_version,  cuda_version)
+    assert _allclose(numpy_version, cuda_version)
 
     a1 = theano._asarray(rng.randn(7, 6), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
@@ -246,12 +249,15 @@ def test_dot():
     a0 = theano._asarray(rng.randn(7, 4), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
 
-    assert numpy.allclose(numpy.dot(a0.T, a1), cuda_ndarray.dot( cuda_ndarray.dimshuffle(b0,(1,0)), b1))
+    assert _allclose(numpy.dot(a0.T, a1),
+            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0,(1,0)), b1))
 
     a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
 
-    assert numpy.allclose(numpy.dot(a0.T, a1.T), cuda_ndarray.dot( cuda_ndarray.dimshuffle(b0,(1,0)), cuda_ndarray.dimshuffle(b1,(1,0) ) ) )
+    assert _allclose(numpy.dot(a0.T, a1.T),
+            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0,(1,0)),
+                             cuda_ndarray.dimshuffle(b1,(1,0))))
 
 
 def test_sum():
@@ -807,13 +813,53 @@ def test_setitem_rightvalue_ndarray_fails():
         #print e
         assert True
 
-def test_zeros_basic_3d_tensor():
-    _a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
-    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((3,4,5)))
+def test_zeros_basic():
+    for shp in [(3,4,5), (300,), (), (0,7)]:
+        _a = cuda_ndarray.CudaNdarray.zeros(shp)
+        _n = numpy.zeros(shp, dtype="float32")
+        assert numpy.allclose(numpy.asarray(_a), _n)
+        assert _a.shape == _n.shape
+        assert all(_a._strides == numpy.asarray(_n.strides)/4)
 
-def test_zeros_basic_vector():
-    _a = cuda_ndarray.CudaNdarray.zeros((300,))
-    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((300,)))
+    # TODO:The following don't have the same stride!
+    #      This should be fixed with the new GpuNdArray.
+    for shp in [(3,0), (4,1,5)]:
+        _a = cuda_ndarray.CudaNdarray.zeros(shp)
+        _n = numpy.zeros(shp, dtype="float32")
+        assert numpy.allclose(numpy.asarray(_a), _n)
+        assert _a.shape == _n.shape
+
+
+    try:
+        _n = numpy.zeros()
+    except TypeError:
+        pass
+    else:
+        raise Exception("An error was expected!")
+    try:
+        _a = cuda_ndarray.CudaNdarray.zeros()
+    except TypeError:
+        pass
+    else:
+        raise Exception("An error was expected!")
+
+
+def test_base():
+    # Test that the 'base' attribute of a CudaNdarray is the one
+    # built initially, not an intermediate one.
+    a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
+    for i in xrange(5):
+        b = a[:]
+    assert b.base is a
+
+    c = a[0]
+    d = c[:,0]
+    print d.shape
+    assert c.base is a
+    assert d.base is a
+
+    e = b.reshape((5,2,2,3))
+    assert e.base is a
 
 
 if __name__ == '__main__':

@@ -348,13 +348,20 @@ def makeSharedTester(shared_constructor_,
                     action='ignore',
                     message='The .value property of shared variables is deprecated.'
                     )
-            nd += 1
-            old_data = x_shared.container.storage[0]
-            x_shared.value = nd
-            assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
-            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
-            # restore the warning filters
-            warnings.resetwarnings()
+            try:
+                nd += 1
+                old_data = x_shared.container.storage[0]
+                x_shared.value = nd
+                assert numpy.allclose(self.ref_fct(x_shared.value), self.ref_fct(self.cast_value(nd)))
+                assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
+            finally:
+                # Restore the default behavior.
+                # TODO There is a cleaner way to do this in Python 2.6, once
+                # Theano drops support of Python 2.4 and 2.5.
+                warnings.filterwarnings(
+                    action='default',
+                    message='The .value property of shared variables is deprecated.'
+                    )
 
             # Test by set_value with borrow=False
             nd += 1

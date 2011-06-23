@@ -14,7 +14,7 @@ class Images2Neibs(Op):
     def __init__(self, mode='valid'):
         """
         Modes:
-            valid : Reshapes the input as a a 2D tensor where each row is a pooling example. 
+            valid : Reshapes the input as a a 2D tensor where each row is a pooling example.
                 Requires an input that is a multiple of the pooling factor (in each direction)
             ignore_borders : Same as valid, but will ignore the borders if the shape(s) of the input
                 is not a multiple of the pooling factor(s)
@@ -246,13 +246,13 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
 
-    new_neib_shape = T.stack( original_shape[-1]/neib_shape[1], neib_shape[1] )
+    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1], neib_shape[1])
     output_2d = images2neibs(neibs.dimshuffle('x','x',0,1), new_neib_shape, mode=mode)
-    
+
     if mode == 'ignore_borders':
         valid_shape = list(original_shape)
-        valid_shape[2]  = valid_shape[2] / neib_shape[0] * neib_shape[0]
-        valid_shape[3]  = valid_shape[3] / neib_shape[1] * neib_shape[1]
+        valid_shape[2]  = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
+        valid_shape[3]  = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
         output_4d = output_2d.reshape(valid_shape)
         #padding the borders with zeros
         for d in [2,3]:
@@ -261,7 +261,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
             output_4d = T.concatenate([output_4d,T.zeros(pad_shape)],axis=d)
     else:
         output_4d = output_2d.reshape(original_shape)
-    
+
     return output_4d
 
 
@@ -285,7 +285,7 @@ class GpuImages2Neibs(Images2Neibs):
                                                                 dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode
@@ -539,7 +539,7 @@ class GpuImages2Neibs(Images2Neibs):
             dim3 n_blocks(std::min(32*1024,nb_block));
             int n_shared = 0;
 
-	    void (*f)(int, int, int ,int,
+            void (*f)(int, int, int ,int,
                       int, int, int ,int,
                       int, int,
                       int, int, int, int,
@@ -591,4 +591,3 @@ def use_gpu_images2neibs(node):
 
 if cuda_available:
     register_gpu_opt()(use_gpu_images2neibs)
-

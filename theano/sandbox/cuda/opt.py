@@ -14,7 +14,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, gpu_outer, GpuConv)
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
         GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import (
@@ -380,6 +380,29 @@ def local_gpu_gemm(node):
 
 @register_opt()
 @local_optimizer([])
+def local_gpu_outer(node):
+    """
+    gpu_from_host(outer) -> gpu_outer(gpu_from_host)
+
+    outer(host_from_gpu) -> host_from_gpu(gpu_outer)
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op == tensor.basic.outer:
+            x, y = host_input.owner.inputs
+            # gpu_outer will refuse to work with float64 so future-proof
+            if x.type.dtype == 'float32' and y.type.dtype == 'float32':
+                return [gpu_outer(gpu_from_host(x), gpu_from_host(y))]
+    if node.op == tensor.basic.outer:
+        x, y = node.inputs
+        x_on_gpu = (x.owner and x.owner.op == host_from_gpu and x.type.dtype == 'float32')
+        y_on_gpu = (y.owner and y.owner.op == host_from_gpu and x.type.dtype == 'float32')
+        if x_on_gpu or y_on_gpu:
+            return [host_from_gpu(gpu_outer(as_cuda_ndarray_variable(x), as_cuda_ndarray_variable(y)))]
+    return False
+
+@register_opt()
+@local_optimizer([])
 def local_gpu_sum(node):
     if isinstance(node.op, tensor.elemwise.CAReduce):
         if node.op.scalar_op == scal.add:
@@ -495,7 +518,7 @@ def local_gpu_subtensor(node):
     if isinstance(node.op, tensor.Subtensor):
         x  = node.inputs[0]
         coords = node.inputs[1:]
-        if x.owner and x.owner.op == host_from_gpu:
+        if x.owner and x.owner.op == host_from_gpu and x.dtype == "float32":
             gpu_x, = x.owner.inputs
             return [host_from_gpu(GpuSubtensor(node.op.idx_list)(gpu_x, *coords))]
     return False
@@ -512,7 +535,7 @@ def local_gpu_advanced_subtensor1(node):
     if node.op.__class__ is tensor.AdvancedSubtensor1:
         x  = node.inputs[0]
         coords = node.inputs[1:]
-        if x.owner and x.owner.op == host_from_gpu:
+        if x.owner and x.owner.op == host_from_gpu and x.dtype == "float32":
             gpu_x, = x.owner.inputs
             return [host_from_gpu(GpuAdvancedSubtensor1()(gpu_x, *coords))]
     return False
@@ -530,7 +553,7 @@ def local_gpu_advanced_incsubtensor1(node):
                                                gpu_from_host(y), *coords)]
 
     # Should not execute for GpuAdvancedIncSubtensor1
-    if node.op.__class__ is tensor.AdvancedSubtensor1:
+    if node.op.__class__ is tensor.AdvancedSubtensor1 and node.inputs[0].dtype=="float32":
         x, y  = node.inputs[0:2]
         coords = node.inputs[2:]
         go_gpu = False
@@ -562,7 +585,7 @@ def local_gpu_incsubtensor(node):
                 gpu_from_host(x),
                 gpu_from_host(y),
                 *coords)]
-    if type(node.op) == tensor.IncSubtensor:
+    if type(node.op) == tensor.IncSubtensor and node.inputs[0].dtype=="float32":
         x, y = node.inputs[0:2]
         assert isinstance(x.type, tensor.TensorType)
         assert isinstance(y.type, tensor.TensorType)
@@ -835,6 +858,8 @@ def local_gpu_join(node):
             return [replacement_node]
 
 
+#Commented out because it can result in shared = dimshuffle(gemm_inplace(dimshuffle(shared)))
+#which causes memory leaks (long term fix is to make the above not leak memory)
 @local_optimizer([gpu_gemm_no_inplace])
 def local_inplace_gemm(node):
     if node.op == gpu_gemm_no_inplace:
@@ -850,6 +875,10 @@ optdb.register('InplaceGpuBlasOpt',
                70.0, 'fast_run', 'inplace')
 
 def get_device_type_sizes():
+    """
+    :return:(gpu ptr size, cpu ptr size, int sizes(gpu and cpu))
+    :return type: tuple
+    """
     if hasattr(get_device_type_sizes, 'rval'):
         return get_device_type_sizes.rval
     gpu_ptr_size = 8
@@ -857,9 +886,10 @@ def get_device_type_sizes():
     int_size = 8
     try:
 
-        #RETURN (gpu ptr size, cpu ptr size, int sizes)
         t = cuda_ndarray.cuda_ndarray.ptr_int_size()
-        gpu_ptr_size, cpu_ptr_size, int_size = t
+        gpu_ptr_size, cpu_ptr_size, int_size, gpu_int_size = t
+        assert int_size == gpu_int_size
+        del gpu_int_size
         del t
     except Exception, e:
         _logger.warning(("OPTIMIZATION WARNING: "

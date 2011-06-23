@@ -123,9 +123,18 @@ ProfileMode
 
 Beside checking for errors, another important task is to profile your
 code. For this Theano uses a special mode called ProfileMode which has
-to be passed as an argument to :func:`theano.function <function.function>`. Using the ProfileMode is a three-step process.
+to be passed as an argument to :func:`theano.function <function.function>`. 
+Using the ProfileMode is a three-step process.
 
-To change the default to it, put the theano flags mode to PROFILE_MODE.
+.. note::
+
+    To change the default to it, put the Theano flags
+    :attr:`config.mode` to ProfileMode.  In that case, when the python
+    process exit, it will automatically print the profiling
+    information on the stdout.
+
+    The memory profile of the output of each apply node can be enabled with the 
+    Theano flag :attr:`config.ProfileMode.profile_memory`.
 
 Creating a ProfileMode Instance
 -------------------------------

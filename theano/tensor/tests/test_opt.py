@@ -183,15 +183,15 @@ class test_canonize(unittest.TestCase):
 #            (fx*fy*(fx+fy+dz),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type add
 #            (dz*fy*(fx+fy),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type mul
             #check with dimshuffle of constant
-            (fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (2+fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
 #            (2*fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (2+fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
-            (2*fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (2+fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (2*fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (fx*fy*2*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
 #            (fx*fy*(2+fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
-            (fx*fy*2*(fx+fy+fz+2),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+            (fx*fy*2*(fx+fy+fz+2),(fx,fy,fz),(fxv,fyv,fzv),2, {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             #check with broadcast of row
 #            (fx+fy+fz+fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
@@ -220,6 +220,8 @@ class test_canonize(unittest.TestCase):
             mode._optimizer=gof.Query(["canonicalize"])
             mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
             for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      #we need the optimisation enabled, debug do this.
                                      mode=mode)
@@ -445,12 +447,15 @@ class test_canonize(unittest.TestCase):
             #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
-                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv],'float32'),
+                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
-                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv],'float32'),
+                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
-                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv],'float32'),
+                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
@@ -468,10 +473,12 @@ class test_canonize(unittest.TestCase):
             #test 2 * x / 2 -> x
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            ((2*dx)/2,[dx],[dxv],'float64'),
-                                                           ((2*fx)/2,[fx],[fxv],'float32'),
+                                                           ((2*fx)/2,[fx],[fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                            ((2*dv)/2,[dv],[dvv],'float64'),
-                                                           ((2*fv)/2,[fv],[fvv],'float32'),
+                                                           ((2*fv)/2,[fv],[fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
@@ -484,11 +491,11 @@ class test_canonize(unittest.TestCase):
             #test x / abs(x) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                            (dx/abs(dx),[dx],[0.5-dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.5-fxv],'float32'),
+                                                           (fx/abs(fx),[fx],[0.5-fxv], 'float32'),
                                                            (dx/abs(dx),[dx],[0.1*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.1*fxv],'float32'),
+                                                           (fx/abs(fx),[fx],[0.1*fxv], 'float32'),
                                                            (dv/abs(dv),[dv],[0.5-dvv],'float64'),
-                                                           (fv/abs(fv),[fv],[0.5-fvv],'float32'),
+                                                           (fv/abs(fv),[fv],[0.5-fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -501,12 +508,15 @@ class test_canonize(unittest.TestCase):
             #test (2*x) / (3*abs(x)) -> sign(x)
             for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
                     ((2*dx)/(3*abs(dx)),[dx],[0.5-dxv],'float64'),
-                    ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv],'float32'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.5-fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                     ((2*dx)/(3*abs(dx)),[dx],[0.1*dxv],'float64'),
-                    ((2*fx)/(3*abs(fx)),[fx],[0.1*fxv],'float32'),
+                    ((2*fx)/(3*abs(fx)),[fx],[0.1*fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                     ((2*dv)/(3*abs(dv)),[dv],[0.5-dvv],'float64'),
-                    ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv],'float32'),
+                    ((2*fv)/(3*abs(fv)),[fv],[0.5-fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
+
+                if isinstance(out_dtype, dict):
+                    out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 topo = f.maker.env.toposort()
@@ -645,12 +655,12 @@ def test_local_merge_abs():
     assert len(f.maker.env.toposort())==2
 
 
-
 def test_mixeddiv():
     """Test that int division is preserved"""
     i = iscalar()
     d = dscalar()
-    assert 0 == function([i,d], d*(i/(i+1)))(3, 1.0)
+    assert 0 == function([i, d], d * (i // (i + 1)))(3, 1.0)
+
 
 def test_const_type_in_mul_canonizer():
     input = dmatrix()
@@ -715,6 +725,7 @@ class test_fusion(unittest.TestCase):
         izv = theano._asarray(my_init(shp,num=70),dtype='int32')
         fwx=fw+fx
         ftanx = theano.tensor.tan(fx)
+        ftwo = tensor.constant(2, dtype='float32')
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#0
             (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),#1
@@ -733,12 +744,12 @@ class test_fusion(unittest.TestCase):
             (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),
             (fx*fy*fz*fw+fx+fy+fz+fw,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv,'float32'),#15
             #test with constant
-            ((fw+fx)+(fy+fz)+2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
-            (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+fx)+(fy+fz)+ ftwo,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            (((fw+fx)+ftwo+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+ftwo+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+fy)+ftwo+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            (fw+(fx+(fy+fz)+ftwo),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
+            (ftwo+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             #mix float32 and float64
             (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),1,dwv+fxv+fyv+fzv+2,'float64'),
             (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),1,fwv+dwv+fyv+fzv+2,'float64'),
@@ -768,10 +779,10 @@ class test_fusion(unittest.TestCase):
             (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),#35
             (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.true_div(fy,2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
+            (fx-theano.tensor.true_div(fy,ftwo),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div#40
-            (fx-(fy/2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
+            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #No c_code for int_div#40
+            (fx-(fy/ftwo),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
             (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
@@ -790,10 +801,10 @@ class test_fusion(unittest.TestCase):
             (fx-fy+theano.tensor.round(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),
             (ix-iy+theano.tensor.iround(fz),(ix,iy,fz),(ixv,iyv,fzv),1,ixv-iyv+numpy.round(fzv),'int64'),
             # Bit op
-            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv|izv),'float64'),
-            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv^izv),'float64'),#60
-            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv&izv),'float64'),
-            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,fxv-(~iyv),'float64'),
+            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
+            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,izv),1,fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,fxv-(~iyv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             (fx-theano.tensor.cast(fy,dtype='float64'),(fx,fy),(fxv,fyv),1,
                               fxv-numpy.asarray(fyv,'float64'),'float64'),
@@ -819,8 +830,10 @@ class test_fusion(unittest.TestCase):
         fail3=[]
         fail4=[]
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+            if isinstance(out_dtype, dict):
+                out_dtype = out_dtype[config.cast_policy]
             if gpu and (out_dtype!='float32' or any(i.dtype != 'float32' for i in g.owner.inputs)):
-                print "Skip test %d as the gpu code currently support only float32" % id
+                print "Skip test %d as the gpu code currently supports only float32" % id
                 continue
             print "new cases", id
 
@@ -831,7 +844,8 @@ class test_fusion(unittest.TestCase):
                     out=f(*val_inputs)
                 t1=time.time()
             else:
-                out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
+                out = shared_fn(numpy.zeros(shp, dtype=out_dtype), 'out')
+                assert out.dtype == g.dtype
                 f = function(sym_inputs,[],updates=[(out, g)],mode=mode)
                 t0=time.time()
                 for x in range(nb_repeat):
@@ -1697,6 +1711,16 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_noshape not in h_ops
         assert identity_shape not in h_ops
 
+    def test_no_shapeopt(self):
+        # Test that a basic example works even when ShapeOpt is excluded
+        X = T.matrix()
+        expr = X.shape[0]
+
+        mode = theano.compile.get_default_mode().excluding('ShapeOpt')
+        f = theano.function([X], expr, mode=mode)
+        print f([[1, 2], [2, 3]])
+
+
 class test_assert(unittest.TestCase):
     def test0(self):
         x=T.scalar()
@@ -2487,31 +2511,41 @@ class T_local_sum(unittest.TestCase):
         assert numpy.allclose(f(input),input.sum())
 
 
-        f = theano.function([a],a.sum(0).sum(0).sum(0),mode=self.mode)
-        assert len(f.maker.env.nodes)==1
-        assert numpy.allclose(f(input),input.sum())
+        backup = config.warn.sum_sum_bug
+        config.warn.sum_sum_bug = False
+        try:
+            f = theano.function([a],a.sum(0).sum(0).sum(0),mode=self.mode)
+            assert len(f.maker.env.nodes)==1
+            assert numpy.allclose(f(input),input.sum())
+        finally:
+            config.warn.sum_sum_bug = backup
 
     def test_local_sum_sum(self):
         a=T.tensor3()
         input=numpy.arange(3*3*3, dtype=config.floatX).reshape(3,3,3)
         dims=[(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]
 
-        for d,dd in dims:
-            f = theano.function([a],a.sum(d).sum(dd),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum(dd))
-            assert len(f.maker.env.nodes)==1
-        for d,dd in dims:
-            f = theano.function([a],a.sum(d).sum(dd).sum(0),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum(dd).sum(0))
-            assert len(f.maker.env.nodes)==1
-        for d in [0,1,2]:
-            f = theano.function([a],a.sum(d).sum(None),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum(d).sum())
-            assert len(f.maker.env.nodes)==1
-        for d in [0,1,2]:
-            f = theano.function([a],a.sum(None).sum(),mode=self.mode)
-            assert numpy.allclose(f(input),input.sum())
-            assert len(f.maker.env.nodes)==1
+        backup = config.warn.sum_sum_bug
+        config.warn.sum_sum_bug = False
+        try:
+            for d,dd in dims:
+                f = theano.function([a],a.sum(d).sum(dd),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum(dd))
+                assert len(f.maker.env.nodes)==1
+            for d,dd in dims:
+                f = theano.function([a],a.sum(d).sum(dd).sum(0),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum(dd).sum(0))
+                assert len(f.maker.env.nodes)==1
+            for d in [0,1,2]:
+                f = theano.function([a],a.sum(d).sum(None),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum(d).sum())
+                assert len(f.maker.env.nodes)==1
+            for d in [0,1,2]:
+                f = theano.function([a],a.sum(None).sum(),mode=self.mode)
+                assert numpy.allclose(f(input),input.sum())
+                assert len(f.maker.env.nodes)==1
+        finally:
+            config.warn.sum_sum_bug = backup
 
     def test_local_sum_alloc(self):
         a=T.dtensor3()
@@ -2541,12 +2575,17 @@ class T_local_sum(unittest.TestCase):
                 assert len(f.maker.env.nodes)==nb_nodes[2]
                 assert f.maker.env.toposort()[-1].op==T.alloc
 
-            for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
-                f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
-                print f.maker.env.toposort()
-                assert numpy.allclose(f(input),n_like(input).sum(d).sum(dd))
-                assert len(f.maker.env.nodes)==nb_nodes[3]
-                assert f.maker.env.toposort()[-1].op==T.alloc
+            backup = config.warn.sum_sum_bug
+            config.warn.sum_sum_bug = False
+            try:
+                for d, dd in [(0,0),(1,0),(2,0),(0,1),(1,1),(2,1)]:
+                    f = theano.function([a],t_like(a).sum(d).sum(dd),mode=mode)
+                    print f.maker.env.toposort()
+                    assert numpy.allclose(f(input),n_like(input).sum(d).sum(dd))
+                    assert len(f.maker.env.nodes)==nb_nodes[3]
+                    assert f.maker.env.toposort()[-1].op==T.alloc
+            finally:
+                config.warn.sum_sum_bug = backup
 
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
@@ -2600,14 +2639,20 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         c_val = rng.randn(2,2,2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
-        for i,s in enumerate(sums):
-            print i
-            f = theano.function([a,b,c,d], s, mode=self.mode)
-            theano.printing.debugprint(f)
-            g = f.maker.env.toposort()
-            #print 'g =', g
-            assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
-            f(a_val, b_val, c_val, d_val)
+        backup = config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug
+        config.warn.sum_sum_bug = False
+        config.warn.sum_div_dimshuffle_bug = False
+        try:
+            for i,s in enumerate(sums):
+                print i
+                f = theano.function([a,b,c,d], s, mode=self.mode)
+                theano.printing.debugprint(f)
+                g = f.maker.env.toposort()
+                #print 'g =', g
+                assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
+                f(a_val, b_val, c_val, d_val)
+        finally:
+            config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug = backup
 
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
@@ -2641,9 +2686,9 @@ def test_make_vector():
 
 
         s = mv.sum()
-        gb = T.grad(s, b, assume_continuously_differentiable=True)
-        gi = T.grad(s, i, assume_continuously_differentiable=True)
-        gd = T.grad(s, d, assume_continuously_differentiable=True)
+        gb = T.grad(s, b, disconnected_inputs='ignore')
+        gi = T.grad(s, i, disconnected_inputs='ignore')
+        gd = T.grad(s, d, disconnected_inputs='ignore')
         #print 'gb =', gb
         #print 'gi =', gi
         #print 'gd =', gd
@@ -2743,8 +2788,17 @@ def test_local_mul_to_neg():
     f1 = theano.function([a], -1*a)
     f2 = theano.function([a], -1.0*a)
     aval = numpy.random.randint(0,10,(2,2)).astype('int32')
-    assert f1(aval).dtype == a.dtype
-    assert f2(aval).dtype == 'float64'
+    if config.cast_policy == 'custom':
+        assert f1(aval).dtype == a.dtype
+        assert f2(aval).dtype == 'float64'
+    elif config.cast_policy == 'numpy':
+        assert f1(aval).dtype == str(numpy.array(0).dtype)
+        assert f2(aval).dtype == 'float64'
+    elif config.cast_policy == 'numpy+floatX':
+        assert f1(aval).dtype == str(numpy.array(0).dtype)
+        assert f2(aval).dtype == config.floatX
+    else:
+        raise NotImplementedError(config.cast_policy)
 
 def test_local_add_specialize():
 
@@ -2807,6 +2861,23 @@ def test_local_scalar_tensor_scalar():
                                      tensor.ScalarFromTensor))]
         assert len(cast_nodes) == 0
         f(0)
+
+def test_local_div_to_inv():
+    num_len_s = tensor.lscalar('num_len')
+    denom_s = tensor.scalar('denom')
+
+    num_v = tensor.alloc(1, num_len_s)
+    denom_m = denom_s.dimshuffle('x', 'x')
+
+    out = num_v / denom_m
+    theano.printing.debugprint(out, print_type=True)
+    print out.broadcastable
+    assert numpy.all(out.broadcastable == (True, False))
+
+    f = theano.function([num_len_s, denom_s], out)
+    out_val = f(3, 2.)
+    assert out_val.shape == (1, 3)
+    assert numpy.allclose(out_val, 0.5)
 
 if __name__ == '__main__':
 #    unittest.main()

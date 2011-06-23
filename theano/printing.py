@@ -1,8 +1,9 @@
 """Pretty-printing (pprint()), the 'Print' Op, debugprint() and pydotprint().
 They all allow different way to print a graph or the result of an Op in a graph(Print Op)
 """
-import sys, os, StringIO
 from copy import copy
+import logging
+import sys, os, StringIO
 
 import numpy
 
@@ -13,6 +14,12 @@ from gof import Op, Apply
 from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
+
+_logger=logging.getLogger("theano.tensor.basic")
+def _info(*msg):
+    _logger.info(' '.join(msg))
+def _warn(*msg):
+    _logger.warn(' '.join(msg))
 
 def debugprint(obj, depth=-1, print_type=False, file=None):
     """Print a computation graph to file
@@ -392,8 +399,10 @@ default_colorCodes = {'GpuFromHost' : 'red',
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
-               high_contrast=False, cond_highlight = None, colorCodes = None,
-               max_label_size=50):
+               high_contrast=True, cond_highlight=None, colorCodes=None,
+               max_label_size=50, scan_graphs=False,
+               var_with_name_simple=False
+               ):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
@@ -401,6 +410,8 @@ def pydotprint(fct, outfile=None,
     :param outfile: the output file where to put the graph.
     :param compact: if True, will remove intermediate var that don't have name.
     :param format: the file format of the output.
+    :param with_ids: Print the toposort index of the node in the node name.
+                     and an index number in the variable ellipse.
     :param high_contrast: if true, the color that describes the respective
             node is filled with its corresponding color, instead of coloring
             the border
@@ -412,6 +423,11 @@ def pydotprint(fct, outfile=None,
                 right branch, ops that are on both branches
                 As an alternative you can provide the node that represents
                 the lazy if
+    :param scan_graphs: if true it will plot the inner graph of each scan op
+                in files with the same name as the name given for the main
+                file to which the name of the scan op is concatenated and
+                the index in the toposort of the scan.
+                This index can be printed in the graph with the option with_ids.
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
@@ -427,7 +443,6 @@ def pydotprint(fct, outfile=None,
     """
     if colorCodes is None:
         colorCodes = default_colorCodes
-
 
     if outfile is None:
         outfile = os.path.join(config.compiledir,'theano.pydotprint.' +
@@ -456,10 +471,15 @@ def pydotprint(fct, outfile=None,
         c1 = pd.Cluster('Left')
         c2 = pd.Cluster('Right')
         c3 = pd.Cluster('Middle')
+        cond = None
         for node in fct_env.toposort():
             if node.op.__class__.__name__=='Cond' and node.op.name == cond_highlight:
                 cond = node
+        if cond is None:
+            _warn("pydotprint: cond_highlight is set but there is no Cond node in the graph")
+            cond_highlight = None
 
+    if cond_highlight is not None:
         def recursive_pass(x,ls):
             if not x.owner:
                 return ls
@@ -487,20 +507,28 @@ def pydotprint(fct, outfile=None,
             return var_str[var]
 
         if var.name is not None:
-            varstr = 'name='+var.name+" "+str(var.type)
+            if var_with_name_simple:
+                varstr = var.name
+            else:
+                varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
             dstr = 'val='+str(numpy.asarray(var.data))
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            varstr = '%s [%s]'% (dstr, str(var.type))
+            varstr = '%s %s'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
-            varstr = input_update[var].variable.name+" "+str(var.type)
+            if var_with_name_simple:
+                varstr = input_update[var].variable.name+" UPDATE"
+            else:
+                varstr = input_update[var].variable.name+" UPDATE "+str(var.type)
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
         if (varstr in all_strings) or with_ids:
-            varstr += ' id=' + str(len(var_str))
-        if len(varstr) > max_label_size:
+            idx = ' id=' + str(len(var_str))
+            if len(varstr)+len(idx) > max_label_size:
+                varstr = varstr[:max_label_size-3-len(idx)]+idx+'...'
+        elif len(varstr) > max_label_size:
             varstr = varstr[:max_label_size-3]+'...'
         var_str[var]=varstr
         all_strings.add(varstr)
@@ -523,11 +551,16 @@ def pydotprint(fct, outfile=None,
             else: pf = time*100/mode.fct_call_time[fct]
             prof_str='   (%.3fs,%.3f%%,%.3f%%)'%(time,pt,pf)
         applystr = str(node.op).replace(':','_')
-        if len(applystr)>max_label_size:
-            applystr = applystr[:max_label_size-3]+'...'
-        if (applystr in all_strings) or with_ids:
-            applystr = applystr+'    id='+str(topo.index(node))
         applystr += prof_str
+        if (applystr in all_strings) or with_ids:
+            idx = ' id='+str(topo.index(node))
+            if len(applystr)+len(idx) > max_label_size:
+                applystr = applystr[:max_label_size-3-len(idx)]+idx+'...'
+            else:
+                applystr = applystr + idx
+        elif len(applystr) > max_label_size:
+            applystr = applystr[:max_label_size-3]+'...'
+
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
         return applystr
@@ -626,6 +659,27 @@ def pydotprint(fct, outfile=None,
     g.write(outfile, prog='dot', format=format)
 
     print 'The output file is available at',outfile
+    if scan_graphs:
+        scan_ops = [(idx, x) for idx,x in enumerate(fct_env.toposort()) if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        path, fn = os.path.split(outfile)
+        basename = '.'.join(fn.split('.')[:-1])
+        # Safe way of doing things .. a file name may contain multiple .
+        ext      = fn[len(basename):]
+
+
+        for idx, scan_op in scan_ops:
+            # is there a chance that name is not defined?
+            if hasattr(scan_op.op,'name'):
+                new_name = basename+'_'+scan_op.op.name+'_'+str(idx)
+            else:
+                new_name = basename+'_'+str(idx)
+            new_name = os.path.join(path, new_name+ext)
+            pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
+                       high_contrast, cond_highlight, colorCodes,
+                       max_label_size, scan_graphs)
+
+
+
 
 
 
@@ -633,9 +687,10 @@ def pydotprint(fct, outfile=None,
 def pydotprint_variables(vars,
                          outfile=None,
                          format='png',
-                         depth = -1,
-                         high_contrast = True, colorCodes = None,
-                         max_label_size=50):
+                         depth=-1,
+                         high_contrast=True, colorCodes=None,
+                         max_label_size=50,
+                         var_with_name_simple=False):
     ''' Identical to pydotprint just that it starts from a variable instead
     of a compiled function. Could be useful ? '''
 
@@ -660,12 +715,15 @@ def pydotprint_variables(vars,
             return var_str[var]
 
         if var.name is not None:
-            varstr = 'name='+var.name
+            if var_with_name_simple:
+                varstr = var.name
+            else:
+                varstr = 'name='+var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
             dstr = 'val='+str(var.data)
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
-            varstr = '%s [%s]'% (dstr, str(var.type))
+            varstr = '%s %s'% (dstr, str(var.type))
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)

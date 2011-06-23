@@ -46,9 +46,9 @@ AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
-MINOR               = 3
-MICRO               = 1
-SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
+MINOR               = 4
+MICRO               = 0
+SUFFIX              = "rc4"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -105,12 +105,13 @@ if not release:
 
     a = open(filename, 'w')
     try:
-        a.write(cnt % {'version': VERSION,
-                       'full_version' : FULL_VERSION,
-                       'hg_revision' : HG_REVISION,
-                       'isrelease': str(ISRELEASED)})
-    except Exception, e:
-        print e
+    	try:
+        	a.write(cnt % {'version': VERSION,
+                       	'full_version' : FULL_VERSION,
+                       	'hg_revision' : HG_REVISION,
+                       	'isrelease': str(ISRELEASED)})
+    	except Exception, e:
+        	print e
     finally:
         a.close()
 

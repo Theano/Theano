@@ -1,6 +1,4 @@
-
-import time
-import unittest
+import cPickle, time, unittest
 
 from theano.gof import Variable, Op
 from theano import gof
@@ -8,6 +6,7 @@ from theano import gof
 from theano.scalar import *
 
 from theano import tensor
+from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import *
 from theano.tests import unittest_tools
 
@@ -172,7 +171,7 @@ class test_CAReduce(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def with_linker(self, linker, scalar_op = add):
+    def with_linker(self, linker, scalar_op = add, dtype="floatX"):
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
@@ -188,11 +187,18 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 0), ()),
                            ((), None),
                            ((), ())]:
-            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+            if dtype == "floatX":
+                dtype = theano.config.floatX
+            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             e = CAReduce(scalar_op, axis = tosum)(x)
             if tosum is None: tosum = range(len(xsh))
             f = copy(linker).accept(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
+
+            if not "int" in dtype:
+                xv = numpy.asarray(xv,dtype=dtype)
+            else:
+                xv = numpy.asarray(xv<0.5,dtype=dtype)
             zv = xv
             numpy_raised = False
             if len(tosum)>1 and any([a<0 for a in tosum]):
@@ -224,27 +230,38 @@ class test_CAReduce(unittest.TestCase):
                     numpy_raised=True
             elif scalar_op == or_:
                 for axis in reversed(sorted(tosum)):
-                    zv = numpy.any(zv, axis)
+                    zv = numpy.bitwise_or.reduce(zv, axis)
             elif scalar_op == and_:
                 for axis in reversed(sorted(tosum)):
-                    zv = numpy.all(zv, axis)
+                    zv = numpy.bitwise_and.reduce(zv, axis)
+            elif scalar_op == xor:
+                # There is no identity value for the xor function
+                # So we can't support shape of dimensions 0.
+                if numpy.prod(zv.shape)==0:
+                    continue
+                for axis in reversed(sorted(tosum)):
+                    zv = numpy.bitwise_xor.reduce(zv, axis)
             else:
                 raise Exception("Test for CAReduce with scalar_op %s not implemented"%str(scalar_op))
             if scalar_op in [maximum,minimum] and numpy_raised:
                 try:
-                    f(xv)
+                    out = f(xv)
+                    assert out.dtype == dtype
                 except ValueError:
                     pass
                 else:
                     self.fail()
             else:
-                self.assertTrue((numpy.abs(f(xv) - zv) < 1e-10).all())
+                #numpy.{all,any} return bool type.
+                if scalar_op in [and_, or_]:
+                    zv = numpy.asarray(zv, dtype=dtype)
+                self.assertTrue(numpy.allclose(f(xv), zv))
 
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker,gof.PerformLinker):
-                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+                x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
                 e = CAReduce(scalar_op, axis = tosum)(x)
                 if tosum is None: tosum = range(len(xsh))
                 f = copy(linker).accept(Env([x], [e.shape])).make_function()
@@ -252,24 +269,27 @@ class test_CAReduce(unittest.TestCase):
                     assert all(f(xv)== zv.shape)
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker(), add)
-        self.with_linker(gof.PerformLinker(), mul)
-        self.with_linker(gof.PerformLinker(), maximum)
-        self.with_linker(gof.PerformLinker(), minimum)
-        #need other dtype then real
-        #self.with_linker(gof.PerformLinker(), or_)
-        #self.with_linker(gof.PerformLinker(), and_)
+        for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
+            self.with_linker(gof.PerformLinker(), add, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), mul, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), maximum, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), minimum, dtype=dtype)
+        for dtype in ["int8", "uint8"]:
+            self.with_linker(gof.PerformLinker(), or_, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), and_, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), xor, dtype=dtype)
 
     def test_c(self):
-        self.with_linker(gof.CLinker(), add)
-        self.with_linker(gof.CLinker(), mul)
-        self.with_linker(gof.CLinker(), maximum)
-        self.with_linker(gof.CLinker(), minimum)
-
-        #need other dtype then real
-        #no c_code for or_, and_
-        #self.with_linker(gof.CLinker(), or_)
-        #self.with_linker(gof.CLinker(), and_)
+        for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
+            self.with_linker(gof.CLinker(), add, dtype=dtype)
+            self.with_linker(gof.CLinker(), mul, dtype=dtype)
+        for dtype in ["floatX", "int8", "uint8"]:
+            self.with_linker(gof.CLinker(), minimum, dtype=dtype)
+            self.with_linker(gof.CLinker(), maximum, dtype=dtype)
+        for dtype in ["int8", "uint8"]:
+            self.with_linker(gof.CLinker(), or_, dtype=dtype)
+            self.with_linker(gof.CLinker(), and_, dtype=dtype)
+            self.with_linker(gof.CLinker(), xor, dtype=dtype)
 
 
 class test_Prod(unittest.TestCase):
@@ -377,6 +397,53 @@ class test_Prod(unittest.TestCase):
         fn_debug = theano.function([x], mul1, mode=self.mode)
 
         fn_debug(a)
+
+    def test_pickle_bug(self):
+        # Regression test for bug fixed in 24d4fd291054.
+        o = Prod()
+        s = cPickle.dumps(o)
+        o = cPickle.loads(s)
+        cPickle.dumps(o)
+
+
+class test_IsInf_IsNan(unittest.TestCase):
+
+    def setUp(self):
+        self.test_vals = [numpy.array(x, dtype=config.floatX) for x in [
+            0,
+            1,
+            numpy.nan,
+            numpy.inf,
+            -numpy.inf,
+            [numpy.nan, numpy.inf, -numpy.inf, 0, 1, -1],
+            ]]
+        self.scalar = tensor.scalar()
+        self.vector = tensor.vector()
+        self.mode = get_default_mode()
+        if isinstance(self.mode, theano.compile.debugmode.DebugMode):
+            # Disable the check preventing usage of NaN / Inf values.
+            self.mode = copy(self.mode)
+            self.mode.check_isfinite = False
+
+    def run_isfunc(self, isfunc):
+        for input in (self.scalar, self.vector):
+            theano_isfunc = theano.function([input],
+                                            getattr(tensor, isfunc)(input),
+                                            mode=self.mode)
+            numpy_isfunc = getattr(numpy, isfunc)
+            for x in self.test_vals:
+                if ((x.ndim == 0 and input is not self.scalar) or
+                    (x.ndim == 1 and input is not self.vector)):
+                    # We only test with the appropriate input type.
+                    continue
+                assert (theano_isfunc(x) == numpy_isfunc(x)).all()
+
+    def test_isinf(self):
+        return self.run_isfunc('isinf')
+
+    def test_isnan(self):
+        return self.run_isfunc('isnan')
+
 
 if __name__ == '__main__':
     #unittest.main()

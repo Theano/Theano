@@ -5,12 +5,11 @@ import numpy
 import elemwise_cgen as cgen
 import theano
 from theano import gof
-from theano.gof import Op
+from theano.gof import Apply, Op
 from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import pprint
 from theano.gof.python25 import all, any
-from theano.gof.apply_shape import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -454,7 +453,7 @@ class Elemwise(Op):
         """
 
         inputs = map(as_tensor_variable, inputs)
-        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
+        shadow = self.scalar_op.make_node(*[Scalar(dtype=i.type.dtype)() for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -662,7 +661,7 @@ class Elemwise(Op):
         try:
             variables = ufunc(*ufunc_args)
         except Exception, e:
-            errormsg = 'Failed calling ufunc for op', self.scalar_op,\
+            errormsg = 'While computing '+str(node.outputs)+': Failed calling ufunc for op', self.scalar_op,\
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
             raise
@@ -1056,6 +1055,9 @@ class CAReduce(Op):
                 scal_name = 'maximum'
                 if input.type.dtype in ["float32","float64"]:
                     identity = "-__builtin_inf()"
+                elif input.type.dtype.startswith("uint"):
+                    # numpy1.5.1 don't define NPY_MIN_UINT*
+                    identity = "0"
                 else:
                     identity = "NPY_MIN_"+str(input.type.dtype).upper()
             if self.scalar_op == scalar.minimum:
@@ -1198,7 +1200,8 @@ class Prod(CAReduce):
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
-        self.__dict__.update(dct)
+        super(Prod, self).__setstate__(dct)
+        # Add default value to be able to reload old pickled objects.
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
 

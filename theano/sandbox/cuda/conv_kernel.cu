@@ -280,6 +280,8 @@ conv_patch( float* img, float* kern, float* out,
  * 
  * nkern: the number of kernel, used to compute the output image to store the result
  * nstack: the size of the stack, used to compute the image to load.
+ * dx: patch stride rows(1 for normal convolution)
+ * dy: patch stride cols(1 for normal convolution)
  * template flipped_kern: if true, we "flip" the kernel as in a real convolution, else we don't
  * template accumulate: if true, we add the result, else we override the result
  * template KERN_WIDTH: if 0, will work for any kern_wid, else it specialyse to this kern_wid as an optimization
@@ -287,19 +289,19 @@ conv_patch( float* img, float* kern, float* out,
  * template kern_c_contiguous_2d: if true, the kernel have are collon and row contiguous
  * template split: if true, each thread generate more then 1 output pixel, but use more registers.
  * template preload_full_kern: if true, we load the full kernel in shared memory, else, we load 1 row at a time.
+ * template subsample: if false, remove some computation needed when dx or dy!=1.
  */
-template<bool flipped_kern, bool accumulate, int KERN_WIDTH, bool img_c_contiguous_2d, bool kern_c_contiguous_2d, bool split, bool preload_full_kern>
+template<bool flipped_kern, bool accumulate, int KERN_WIDTH, bool img_c_contiguous_2d, bool kern_c_contiguous_2d, bool split, bool preload_full_kern, bool subsample>
 __global__ void
 conv_patch_stack( float* img, float* kern, float* out,
 		  int img_len, int img_wid, int kern_len, int kern_wid,
+		  int out_len, int out_wid,
 		  int nkern, int nstack, int img_stride_col,int img_stride_row,
 		  int img_stride_stack, int img_stride_batch,
 		  int kern_stride_col, int kern_stride_row,
-		  int kern_stride_stack, int kern_stride_nkern)
+		  int kern_stride_stack, int kern_stride_nkern, int dx, int dy)
 {
-  int __shared__ out_len, out_wid, nb_thread_id;
-  out_len = img_len - kern_len + 1;
-  out_wid = img_wid - kern_wid + 1;
+  int __shared__ nb_thread_id;
   nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
 
   extern __shared__ float s_data[];
@@ -346,7 +348,11 @@ conv_patch_stack( float* img, float* kern, float* out,
 	  const float* idx_kern;
 	  if(preload_full_kern) idx_kern=&d_kern[row*kern_wid];
 	  else idx_kern=d_kern;
-	  const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
+	  const float* idx_in;
+	  if(subsample)
+	    idx_in=&d_img[(row+out_row*dx)*img_wid+out_col*dy];
+	  else
+	    idx_in=&d_img[(row+out_row)*img_wid+out_col];
 	  
 	  convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
 	}
@@ -368,7 +374,7 @@ conv_patch_stack( float* img, float* kern, float* out,
 
       //TODO: inverse the out_row and stack loop to don't load the date as frequently!
       //TODO: do this happen elsewhere?
-      for(int out_row=ty;out_row<out_len_max;out_row+=blockDim.y){
+      for(;out_row<out_len_max;out_row+=blockDim.y){
 	float sum = 0.0f;
 	for (int stack = 0;stack<nstack;stack++){
 	  //TODO: load only the part of the image needed or put the partial result in shared memory
@@ -397,7 +403,11 @@ conv_patch_stack( float* img, float* kern, float* out,
 	    const float* idx_kern;
 	    if(preload_full_kern) idx_kern=&d_kern[row*kern_wid];
 	    else idx_kern=d_kern;
-	    const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
+	    const float* idx_in;
+	    if(subsample)
+	      idx_in=&d_img[(row+out_row*dx)*img_wid+out_col*dy];
+	    else
+	      idx_in=&d_img[(row+out_row)*img_wid+out_col];
 	    
 	    //if needed as on Fermi as reading out of bound index from shared memory generate an error.
 	    //Not needed on generation before as they worked anyway. Removing the if generate the good code

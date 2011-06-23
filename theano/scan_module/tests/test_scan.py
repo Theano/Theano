@@ -6,6 +6,8 @@ import theano
 import theano.sandbox.rng_mrg
 from theano import tensor
 from theano.tests  import unittest_tools as utt
+from theano.compile.pfunc import rebuild_collect_shared
+
 
 '''
   Questions and notes about scan that should be answered :
@@ -162,7 +164,29 @@ def scan_project_sum(*args, **kwargs):
 def asarrayX(value):
     return theano._asarray(value, dtype=theano.config.floatX)
 
+def clone_optimized_graph(f):
+    maker_ins = [x for x in f.maker.env.inputs if not isinstance(x,
+                                                                 theano.tensor.sharedvar.SharedVariable)]
+    inps, outs, _ = rebuild_collect_shared(f.maker.env.outputs,
+                                           maker_ins,
+                                           copy_inputs_over = False)
+    ins = [x for x in inps if not isinstance(x, theano.tensor.sharedvar.SharedVariable)]
+    return (ins, outs)
 
+def grab_scan_node(output):
+    if output.owner is None:
+        return None
+    if output.owner.op.__class__.__name__=='Scan':
+        return [output.owner]
+    rval =[]
+    for i in output.owner.inputs:
+        ri = grab_scan_node(i)
+        if ri is not None:
+            rval += ri
+    if rval is []:
+        return None
+    else:
+        return rval
 
 class T_Scan(unittest.TestCase):
 #class T_Scan(object):
@@ -2035,6 +2059,73 @@ class T_Scan(unittest.TestCase):
         memory.set_value(mem_val.copy())
         f2_vals = f2(x_val)
         assert numpy.allclose(f_vals, f2_vals)
+
+
+    def test_reduce_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.reduce(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+        mode = theano.compile.mode.FAST_RUN
+        mode = mode.excluding('inplace')
+        f1 = theano.function([],o, mode= mode)
+        inputs, outputs = clone_optimized_graph(f1)
+
+        scan_nodes = grab_scan_node(outputs[0])
+        assert scan_nodes is not None
+        scan_node = scan_nodes[0]
+        f1 = theano.function(inputs, scan_node.inputs[2])
+        assert f1().shape[0] == 1
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
+
+
+    def test_foldl_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.foldl(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+
+        mode = theano.compile.mode.FAST_RUN
+        mode = mode.excluding('inplace')
+        f1 = theano.function([],o, mode= mode)
+        inputs, outputs = clone_optimized_graph(f1)
+
+        scan_nodes = grab_scan_node(outputs[0])
+        assert scan_nodes is not None
+        scan_node = scan_nodes[0]
+        f1 = theano.function(inputs, scan_node.inputs[2])
+        assert f1().shape[0] == 1
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
+
+    def test_foldr_memory_consumption(self):
+
+        x = theano.shared( numpy.asarray(
+            numpy.random.uniform(size=(10,)),dtype = theano.config.floatX))
+        o,_ = theano.foldr(lambda v,acc : acc+v, x,
+                           theano.tensor.constant(numpy.asarray(0.,dtype=theano.config.floatX))
+                            )
+
+        mode = theano.compile.mode.FAST_RUN
+        mode = mode.excluding('inplace')
+        f1 = theano.function([],o, mode= mode)
+        inputs, outputs = clone_optimized_graph(f1)
+
+        scan_nodes = grab_scan_node(outputs[0])
+        assert scan_nodes is not None
+        scan_node = scan_nodes[0]
+        f1 = theano.function(inputs, scan_node.inputs[2])
+        assert f1().shape[0] == 1
+        gx = theano.tensor.grad(o, x)
+        f2 = theano.function([],gx)
+        assert numpy.allclose( f2(), numpy.ones((10,)))
 
 if __name__ == '__main__':
     #'''

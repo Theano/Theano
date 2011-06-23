@@ -53,6 +53,10 @@ def rebuild_collect_shared( outputs
                                "updates" nor in "no_default_updates".
 
     """
+
+    if isinstance(outputs,tuple):
+        outputs = list(outputs)
+
     ## This function implements similar functionality as graph.clone
     ## and it should be merged with that
     clone_d = {}

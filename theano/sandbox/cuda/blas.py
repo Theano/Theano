@@ -22,7 +22,7 @@ class GpuDot22(Op):
         return Apply(self, [x,y], [x.type()])
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (1,1)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         x, y = inputs
@@ -48,7 +48,7 @@ class GpuDot22(Op):
             npy_intp dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
                 if (%(z)s)
@@ -90,7 +90,7 @@ class GpuDot22Scalar(Op):
         return Apply(self, [x,y,a], [x.type()])
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (1,1)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, y, a = inputs
@@ -122,7 +122,7 @@ class GpuDot22Scalar(Op):
             npy_intp dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
                 if (%(z)s)
@@ -247,6 +247,95 @@ class GpuGemm(Op):
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
+class GpuOuter(Op):
+    def make_node(self, x, y):
+        # we suppose type checking has been done, but make sure.
+        assert (x.type.ndim == 1 and y.type.ndim == 1 and
+                x.type.dtype == 'float32' and y.type.dtype == 'float32')
+
+        bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
+
+        outputs = [CudaNdarrayType(dtype='float32', broadcastable=bz)()]
+        return Apply(self, [x, y], outputs)
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def c_code_cache_version(self):
+        return (4,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # A = x * y'
+        x, y = inputs
+        A, = outputs
+        fail = sub['fail']
+
+        return """
+        CudaNdarray *%(name)sx = NULL, *%(name)sy = NULL;
+        int %(name)sres;
+
+        if (CudaNdarray_HOST_STRIDES(%(x)s)[0] < 0) {
+            %(name)sx = (CudaNdarray *)CudaNdarray_Copy(%(x)s);
+            if (!%(name)sx) {
+                %(fail)s;
+            }
+        } else {
+            %(name)sx = %(x)s;
+            Py_INCREF(%(name)sx);
+        }
+        if (CudaNdarray_HOST_STRIDES(%(y)s)[0] < 0) {
+            %(name)sy = (CudaNdarray *)CudaNdarray_Copy(%(y)s);
+            if (!%(name)sy) {
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        } else {
+            %(name)sy = %(y)s;
+            Py_INCREF(%(name)sy);
+        }
+        if (!(%(A)s &&
+              CudaNdarray_HOST_DIMS(%(A)s)[0] == CudaNdarray_HOST_DIMS(%(x)s)[0] &&
+              CudaNdarray_HOST_DIMS(%(A)s)[1] == CudaNdarray_HOST_DIMS(%(y)s)[0] &&
+              CudaNdarray_is_c_contiguous(%(A)s))) {
+            Py_XDECREF(%(A)s);
+            int dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[0];
+            %(A)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
+            if (!%(A)s) {
+                Py_DECREF(%(name)sy);
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        }
+        else
+        {
+            // sger accumulates into A. We need to zero it first.
+            int total_size = (sizeof(real) *
+                                CudaNdarray_HOST_DIMS(%(A)s)[0] *
+                                CudaNdarray_HOST_DIMS(%(A)s)[1]);
+            if (cudaSuccess != cudaMemset(%(A)s->devdata, 0, total_size))
+            {
+                PyErr_Format(PyExc_MemoryError, "GpuOuter: Error memsetting %%d bytes of device memory.", total_size);
+                Py_DECREF(%(name)sy);
+                Py_DECREF(%(name)sx);
+                %(fail)s;
+            }
+        }
+
+        %(name)sres = CudaNdarray_sger(1.0, %(name)sx, %(name)sy, %(A)s);
+        Py_DECREF(%(name)sy);
+        Py_DECREF(%(name)sx);
+        if (%(name)sres) {
+            %(fail)s;
+        }
+        """%dict(x=x,y=y,A=A,fail=fail,name=name)
+
+gpu_outer = GpuOuter()
+
 ##
 # Not really a BLAS operation, but whatever.
 #
@@ -363,7 +452,7 @@ class GpuConv(Op):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,13) # raise this whenever modifying any of the support_code_files
+        return (0,15) # raise this whenever modifying any of the support_code_files
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of these files
@@ -436,7 +525,7 @@ class GpuDownsampleFactorMax(Op):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (1)
+        return (3)
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -462,7 +551,7 @@ class GpuDownsampleFactorMax(Op):
             dims[3] += (xdim3%%(%(ds1)s)?1:0);
         }
         if(dims[3]>512){
-            PyErr_SetString(PyExc_ValueError, "last dimention bigger then 512. This case is not implemented.");
+            PyErr_Format(PyExc_ValueError, "GpuDownsampleFactorMax: last dimention size of %%d is bigger then 512. This case is not implemented.", dims[3]);
             %(fail)s;
         }
 
@@ -473,7 +562,7 @@ class GpuDownsampleFactorMax(Op):
             || (CudaNdarray_HOST_DIMS(%(z)s)[3] != dims[3]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 4, dims))
             {
@@ -588,7 +677,7 @@ class GpuDownsampleFactorMaxGrad(Op):
         return Apply(self, [x, z, gz], [x.type()])
     def c_code_cache_version(self):
         #return ()
-        return (3,)
+        return (5,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -611,7 +700,7 @@ class GpuDownsampleFactorMaxGrad(Op):
             || (CudaNdarray_HOST_DIMS(%(gx)s)[3] != CudaNdarray_HOST_DIMS(%(x)s)[3]))
         {
             Py_XDECREF(%(gx)s);
-            %(gx)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(gx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(gx)s)
                 || CudaNdarray_alloc_contiguous(%(gx)s, 4, CudaNdarray_HOST_DIMS(%(x)s)))
             {
@@ -625,7 +714,8 @@ class GpuDownsampleFactorMaxGrad(Op):
             // make sure we cover every x row when ignore border isset and there's a border present to be ignored
             int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
             dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
-            dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
+            dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
+
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(%(z)s)[0],
                 CudaNdarray_HOST_DIMS(%(z)s)[1],
@@ -705,32 +795,44 @@ class GpuDownsampleFactorMaxGrad(Op):
 
             for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
             {
-                if (%(ignore_border)s && x_col >= ds1 * D3)
-                {
-                    // This happens only if x_col was ignored (via ignore_border)
-                    // TODO: if ignore_border is False, this is impossible and we don't even
-                    //       need to generate this code.
+                for(int col_iter = 0; col_iter * blockDim.x <= xD3 ; col_iter++){
+                    //The if inside is to don't do the division if we need only 1 col_iter
+                    if(blockDim.x != xD3)
+                    {
+                        x_col = threadIdx.x + col_iter * blockDim.x;
+                        z_col = x_col/ds1;
+                    }
 
-                    my_gz = 0.0f;
-                    //any fp number suffices for my_z, so we don't even need to set it to
-                    //anything in particular.
-                }
-                else
-                {
-                    // this is effectively:
-                    // my_gz = gz[image_row][image_col][z_row][z_col]
-                    // my_z  = z[image_row][image_col][z_row][z_col]
-                    my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + z_col*gzS3];
-                    my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
-                }
+                    if (%(ignore_border)s && x_col >= ds1 * D3)
+                    {
+                        // This happens only if x_col was ignored (via ignore_border)
+                        // TODO: if ignore_border is False, this is impossible and we don't even
+                        //       need to generate this code.
 
-                for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
-                {
-                    // this is effectively:
-                    // gx[image_row][image_col][x_row][x_col]
-                    //   = (my_z == x[image_row][image_col][x_row][x_col]) ? my_gz : 0.0f;
-                    gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
-                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
+                        my_gz = 0.0f;
+                        //any fp number suffices for my_z, so we don't even need to set it to
+                        //anything in particular.
+                    }
+                    else
+                    {
+                        // this is effectively:
+                        // my_gz = gz[image_row][image_col][z_row][z_col]
+                        // my_z  = z[image_row][image_col][z_row][z_col]
+                        my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 + z_col*gzS3];
+                        my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
+                    }
+                    if(x_col<xD3){
+                        for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
+                        {
+                            // this is effectively:
+                            // gx[image_row][image_col][x_row][x_col]
+                            //   = (my_z == x[image_row][image_col][x_row][x_col]) ? my_gz : 0.0f;
+                            gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
+                               = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
+                        }
+                    //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col] = -999;
+}
+
                 }
             }
         }

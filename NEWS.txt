@@ -1,82 +1,110 @@
 Modifications in the trunk since the last release
 
-In trunk since 0.3.1 release
-----------------------------
-GPU:
- * Move to the gpu fused elemwise that have other dtype then float32 in them(except float64) if the input and output are float32.
-   * This allow to move elemwise comparaison to the gpu if we cast it to float32 after that.
-
-
-Theano 0.3.1 (2011-02-21)
-----------------------------
+Theano 0.4.0rc4 (2011-06-13)
+--------------------------------------------------
 
 Deprecation:
- * The theano shared variable attribute `value` is deprecated, use `get_value()` or `set_value()`!
-    See http://deeplearning.net/software/theano/tutorial/aliasing.html
+ * tag.shape attribute deprecated (#633)
+ * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
+ * Dividing integers with / is deprecated: use // for integer division, or
+   cast one of the integers to a float type if you want a float result (you may
+   also change this behavior with config.int_division).
+ * Removed (already deprecated) sandbox/compile module
+ * Removed (already deprecated) incsubtensor and setsubtensor functions,
+   inc_subtensor and set_subtensor are to be used instead.
 
 Bugs fixed:
- * The random number generator in theano/sandbox/rng_mrg.py did not always return the same sequence of number on the CPU and GPU.
-    * In some cases, there was a (possibly large) fraction of non-random garbage in the returned sequence.
-
- * In python mode (not the default mode) when input of elemwise operation was an empty ndarray, we were not returning an empty ndarray.
- * Scan cached the number of steps. This caused no problem because each time you called scan the number of steps would got refreshed.
-   The problem was when you called ScanGrad which would use the cached number of steps without refreshing it.
-   To be affected by this bug, one would have to compile two graph, one that would contain a Scan and the other the corresponding GradScan, and
-   call the first function to cache the number of steps, and then call the second function with a different number of steps.
- * In GpuConv, errors in conv_patch_stack_reduce when the entire kernel doesn't fit into shared memory.
-   The error was not found before as the impact was less then the relative tolerance of 1e-3. Now the relative tolerance is 1e-5.
+ * In CudaNdarray.__{iadd,idiv}__, when it is not implemented, return the error.
+ * THEANO_FLAGS='optimizer=None' now works as expected
+ * Fixed memory leak in error handling on GPU-to-host copy
+ * Fix relating specifically to Python 2.7 on Mac OS X
+ * infer_shape can now handle Python longs
+ * Trying to compute x % y with one or more arguments being complex now
+   raises an error.
+ * The output of random samples computed with uniform(..., dtype=...) is
+   guaranteed to be of the specified dtype instead of potentially being of a
+   higher-precision dtype.
+ * The perform() method of DownsampleFactorMax did not give the right result
+   when reusing output storage. This happen only if you use the Theano flags 
+   'linker=c|py_nogc' or manually specify the mode to be 'c|py_nogc'.
 
 Crash fixed:
- * Add a feature to not have an exception that makes Theano crash when taking the gradient on DimShuffle in some particular case.
- * Compilation crash for GpuElemwise with tensor with high number of dimensions (~6 or more).
- * Disabled C code generator that make gcc crash on complex type.
- * Crash in optimization when an Op has no input.
- * Output shape is now computed correctly for matrix-vector multiplication on GPU.
- * In Scan, when using numbers as inputs, not symbolic variables.
- * In GradScan, when there is only 1 inputs in the Scan.
- * In GpuSum, bug in calculation of n_blocks for the 10 pattern. (Sum on the row of a matrix)
- * Some segfault at exit with GPU code.
+ * Work around a bug in gcc 4.3.0 that make the compilation of 2d convolution
+   crash.
+ * Some optimizations crashed when the "ShapeOpt" optimization was disabled.
 
 Optimization:
- * New SpecifyShape op that allow to pass more shape info in the graph.
- * Speed up gemv by a work around scipy gemv slowness when the matrix is in C order (the default).
- * Remove join of only 1 element.
- * During optimization, consider one more case in get_constant_value.
+ * Optimize all subtensor followed by subtensor.
 
 GPU:
- * cuda_shared.value = X now works inplace!
-     * cuda_shared_var.set_value(new_ndarray) will overwrite the old value inplace in the most common case.
- * Allow to create a CudaNdarraySharedVariable from a CudaNdarray.
- * New init_gpu_device theano flags.
- * Fuse GpuElemwise more often (in the case where there are so many inputs that fusing them all would bust the 256 bytes limit of parameter to gpu function).
- * CPU join of only 1 element that was not moved to the GPU.
+ * Move to the gpu fused elemwise that have other dtype then float32 in them
+   (except float64) if the input and output are float32.
+   * This allow to move elemwise comparisons to the GPU if we cast it to
+     float32 after that.
+ * Implemented CudaNdarray.ndim to have the same interface in ndarray.
+ * Fixed slowdown caused by multiple chained views on CudaNdarray objects
+ * CudaNdarray_alloc_contiguous changed so as to never try to free
+   memory on a view: new "base" property
+ * Safer decref behaviour in CudaNdarray in case of failed allocations
+ * New GPU implementation of tensor.basic.outer
+ * Multinomial random variates now available on GPU
 
 New features:
- * tensor.reshape now makes dimensions of length 1 broadcastable.
- * tensor.prod now implements the gradient.
- * DebugMode now warns if an Op declared itself as returning a view of the input but did not do so.
-    * This behaviour is a problem, because it can block other Ops from being inplace on the same inputs. This could lower the reuse of memory.
- * Sparse.structured_dot now works when both matrices are sparse
- * Sparse type is now supported by the shape op, and the ShapeFeature optimizer works correctly with them.
- * New 3D convolution ops, with CPU and GPU implementations.
- * New colors in pydotprint.
+ * ProfileMode
+    * profile the scan overhead
+    * simple hook system to add profiler
+    * reordered the output to be in the order of more general to more specific
+ * DebugMode now checks Ops with different patterns of preallocated memory,
+   configured by config.DebugMode.check_preallocated_output.
+ * var[vector of index] now work, (grad work recursively, the direct grad
+   work inplace, gpu work)
+    * limitation: work only of the outer most dimensions.
+ * New way to test the graph as we build it. Allow to easily find the source
+   of shape mismatch error:
+   `http://deeplearning.net/software/theano/tutorial/debug_faq.html#interactive-debugger`__
+ * cuda.root inferred if nvcc is on the path, otherwise defaults to
+   /usr/local/cuda
+ * Better graph printing for graphs involving a scan subgraph
+ * Casting behavior can be controlled through config.cast_policy,
+   new (experimental) mode.
+ * Smarter C module cache, avoiding erroneous usage of the wrong C
+   implementation when some options change, and avoiding recompiling the
+   same module multiple times in some situations.
+ * The "theano-cache clear" command now clears the cache more thoroughly.
+ * More extensive linear algebra ops (CPU only) that wrap scipy.linalg
+   now available in the sandbox.
+ * CUDA devices 4 - 16 should now be available if present.
+ * infer_shape support for the View op, better infer_shape support in Scan
+ * infer_shape supported in all case of subtensor
+ * tensor.grad now gives an error by default when computing the gradient
+   wrt a node that is disconnected from the cost (not in the graph, or
+   no continuous path from that op to the cost).
+ * New tensor.isnan and isinf functions.
 
 Documentation:
- * Documented lib.amdlibm and (new) init_gpu_device config variables.
- * A new page (was done for 0.3 but an error was hiding it on the web page) on the memory aliasing contract of Theano.
- * Revision to the Windows installation instructions.
- * The cuda documentation is now generated on the web server.
- * Better documentation of .theanorc and its sections.
+ * Better commenting of cuda_ndarray.cu
+ * Fixes in the scan documentation: add missing declarations/print statements
+ * Better error message on failed __getitem__
+ * Updated documentation on profile mode
+ * Better documentation of testing on Windows
+ * Better documentation of the 'run_individual_tests' script
 
 Unit tests:
- * Stop usage of deprecated functions or syntax in the unit tests.
- * Better testing of GPU convolution nets.
- * Make more tests able to use different random seeds.
- * Tests of sparse now use default mode, not a hard-coded one.
- * Remove some tests of unimplemented features.
+ * More strict float comparaison by default
+ * Reuse test for subtensor of tensor for gpu tensor(more gpu test)
+ * Tests that check for aliased function inputs and assure appropriate copying
+   (#374)
+ * Better test of copies in CudaNdarray
+ * New tests relating to the new base pointer requirements
+ * Better scripts to run tests individually or in batches
+ * Some tests are now run whenever cuda is available and not just when it has
+   been enabled before
+ * Tests display less pointless warnings.
 
 Other:
- * The name of compiledir now includes the Python version to make it easier for people with many Python versions
- * Added theano.tensor.std as a shortcut to sqrt(var(input=input, axis=axis)).
- * Whitespace, tabulation and indentation clean-up in the code.
- * Better detection of memory sharing between variables.
+ * Correctly put the broadcast flag to True in the output var of
+   a Reshape op when we receive an int 1 in the new shape.
+ * pydotprint: high contrast mode is now the default, option to print
+   more compact node names.
+ * pydotprint: How trunk label that are too long.
+ * More compact printing (ignore leading "Composite" in op names)

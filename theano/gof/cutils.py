@@ -1,4 +1,4 @@
-import os
+import os, sys
 from compilelock import get_lock, release_lock
 from theano import config
 
@@ -11,6 +11,10 @@ if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
 # directory. This is important to prevent multiple processes from trying to
 # compile the cutils_ext module simultaneously.
 try:
+    # If we load a previously-compiled version, config.compiledir should
+    # be in sys.path.
+    if config.compiledir not in sys.path:
+        sys.path.append(config.compiledir)
     from cutils_ext.cutils_ext import *
 except ImportError:
     import cmodule

@@ -29,12 +29,23 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
     }
-    if (subsample_rows==1 && subsample_cols==1)
+    
+    if (verbose>1)
     {
-        //TODO: rethink these asserts in light of the difference between physical and logical dimensions
-        assert (CudaNdarray_HOST_DIMS(out)[2] == CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1);
-        assert (CudaNdarray_HOST_DIMS(out)[3] == CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1);
+        fprintf(stderr, "INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
+        fprintf(stderr, "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
+                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
+                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
+        fprintf(stderr, "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
+                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
+                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
+        fprintf(stderr, "INFO:   subsample_rows=%d, subsample_cols=%d\n", subsample_rows, subsample_cols);
     }
+
+    //Check the output size is valid
+    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows));
+    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols));
+
     assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
     assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
     assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
@@ -99,17 +110,6 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       kern_data_unflipped=&(kern->devdata[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
-    if (verbose>1)
-    {
-        fprintf(stderr, "INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
-        fprintf(stderr, "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
-        fprintf(stderr, "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
-    }
-    
     //if we remove the restriction img_size_byte+kern_size_byte>8*1024, we can enter in condition where we will lower the occupency due to shared memory and/or registers.
     if ((version == -1) && (out_size<64 || img_size_byte+kern_size_byte>8*1024) && out_size<=256){
       //condition for exec 
@@ -163,8 +163,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                                 cudaGetErrorString(sts));
         }
     }
-    if (!subsample &&
-	out_contiguous &&
+    if (out_contiguous &&
 	(version==1||version==3||version==11||version==12||version==-1) &&
 	(version!=1 || out_size<512) &&//Maximum of 512 theads by block
 	out_wid<512 &&//Maximum of 512 theads by block
@@ -190,33 +189,51 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 		  int, int, int, int,
 		  int, int, int, int,
 		  int, int, int, int,
+		  int, int, int, int,
 		  int, int);
 
 #define CONV_PATCH_STACK_SPECIAL(kern_wid) \
-	if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true>;} \
-	else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true>;} \
-	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true>;}\
-	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true>;}\
-	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true>;}\
-	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true>;}\
-	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true>;}\
-	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true>;}\
-	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false>;}\
-	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false>;}\
-	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false>;}\
-	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false>;}\
-	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false>;} \
-	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false>;} \
-	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false>;} \
-	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false>;}
+	if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,true>;} \
+	else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,true>;} \
+	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,true>;}\
+	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,true>;}\
+	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,true>;}\
+	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,true>;}\
+	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,true>;}\
+	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,true>;}\
+	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,true>;}\
+	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,true>;}\
+	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,true>;}\
+	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,true>;}\
+	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,true>;} \
+	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,true>;} \
+	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,true>;} \
+	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,true>;} \
+	else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,false>;} \
+	else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,false>;} \
+	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,false>;}\
+	else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,false>;}\
+	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,false>;}\
+	else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,false>;}\
+	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,false>;}\
+	else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,false>;}\
+	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,false>;}\
+	else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,false>;}\
+	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,false>;}\
+	else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,false>;}\
+	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,false>;} \
+	else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,false>;} \
+	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,false>;} \
+	else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,false>;}
 
 	CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
 	f<<< grid, threads, shared_size>>>
 	     (img->devdata, kern->devdata, out->devdata,
-	      img_len, img_wid, kern_len, kern_wid, nkern, nstack,
+	      img_len, img_wid, kern_len, kern_wid, 
+	      out_len, out_wid, nkern, nstack,
 	      img_stride_col, img_stride_row, img_stride_stack,
 	      img_stride_batch, kern_stride_col, kern_stride_row,
-	      kern_stride_stack, kern_stride_nkern);
+	      kern_stride_stack, kern_stride_nkern, subsample_rows, subsample_cols);
 
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
@@ -226,13 +243,15 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	      fprintf(stderr,
                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
 		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
-		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i\n",
+		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i,",
+		     " subsample_rows=%i, subsample_cols=%i\n",
 		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
 		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-		     nb_split, preload_full_kernel);
+		     nb_split, preload_full_kernel, subsample_rows, subsample_cols);
             if (verbose) fprintf(stderr,
-                    "INFO: used 'conv_patch_stack' version with nb_split=%i and preload_full_kernel=%i\n",
-				nb_split,preload_full_kernel);
+                    "INFO: used 'conv_patch_stack' version with nb_split=%i and preload_full_kernel=%i,"
+				 " subsample_rows=%i, subsample_cols=%i\n",
+				 nb_split,preload_full_kernel, subsample_rows, subsample_cols);
             work_complete = true;
         }
         else
@@ -240,10 +259,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if (verbose)
 	      fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
 		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
-		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i\n",
+		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i,",
+		     " subsample_rows=%i, subsample_cols=%i\n",
 		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
 		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-		     nb_split, preload_full_kernel);
+		     nb_split, preload_full_kernel, subsample_rows, subsample_cols);
             if (verbose) fprintf(stderr, "INFO: impl 'conv_patch_stack' failed (%s), trying next implementation\n",
                                 cudaGetErrorString(sts));
         }
@@ -635,20 +655,20 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (1)
         {
             if (verbose) fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
+            if (verbose>1) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
                     nbatch, CudaNdarray_HOST_DIMS(img)[1], img_len, img_wid,
                     img->devdata,
                     CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3]);
-            if (verbose) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
+            if (verbose>1) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
                     nkern, nstack, kern_len, kern_wid,
                     kern->devdata,
                     CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3]
                         );
-            if (verbose) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
+            if (verbose>1) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
                     CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1], out_len, out_wid,
                     out->devdata,
                     CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3]);
-            if (verbose) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
+            if (verbose>1) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
         }
         conv_reference_valid<<<n_blocks, n_threads>>>( nbatch, nkern, CudaNdarray_HOST_DIMS(img)[1],
                 img_len, img_wid,
@@ -701,12 +721,10 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
     }
-    if (0)
-    {
-        //TODO: rethink these to use physical / logical dimensions, subsampling, offsets, etc.
-        assert (CudaNdarray_HOST_DIMS(out)[2] == CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1);
-        assert (CudaNdarray_HOST_DIMS(out)[3] == CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1);
-    }
+    // check the size of the output matrix
+    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1, subsample_rows));
+    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1, subsample_cols));
+
     assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
     assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
     assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);

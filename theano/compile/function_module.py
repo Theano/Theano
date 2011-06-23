@@ -520,8 +520,14 @@ class Function(object):
                             allow_downcast=s.allow_downcast)
 
                 except Exception, e:
-                    e.args = tuple(list(e.args)+["Bad input argument at index %d" % i])
+                    function_name="theano function"
+                    if self.name:
+                        function_name += 'with name "'+self.name+'" '
+                    #end if
+                    e.args = tuple(list(e.args)+["Bad input argument to "+function_name+" at index %d" % i])
                     raise
+                #end except
+            #end if
             s.provided += 1
             i+=1
 
@@ -620,6 +626,12 @@ class Function(object):
                 if isinstance(value, gof.Container):
                     value = value.storage[0]
                 self[i] = value
+
+        #
+        # NOTE: This logic needs to be replicated in
+        #       scan.
+        #       grep for 'PROFILE_CODE'
+        #
 
         dt_call=time.time()-t0
         if hasattr(self.maker.mode,'fct_call_time'):
@@ -931,9 +943,14 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
-        start_optimizer = time.time()
-        optimizer(env)
-        end_optimizer = time.time()
+        compute_test_value_orig = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = "off"
+            start_optimizer = time.time()
+            optimizer(env)
+            end_optimizer = time.time()
+        finally:
+            theano.config.compute_test_value = compute_test_value_orig
         mode.optimizer_time += end_optimizer - start_optimizer
         _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 

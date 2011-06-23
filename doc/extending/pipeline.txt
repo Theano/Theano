@@ -108,7 +108,7 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
     The compile cache is based upon the C++ code of the graph to be compiled.
     So, if you change compilation configuration variables, such as
     :attr:`config.blas.ldflags`, you will need to manually remove your compile cache,
-    using ``Theano/bin/theano-compiledir clear``
+    using ``Theano/bin/theano-cache clear``
 
     Theano also implements a lock mechanism that prevents
     multiple compilations within the same compilation directory (to avoid

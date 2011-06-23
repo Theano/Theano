@@ -16,7 +16,7 @@ import copy
 import itertools
 import logging
 import numpy
-import sys
+import time, sys
 
 from theano.compile import SharedVariable, function, Param, Out
 from theano.compile.function_module import ViewOp, DeepCopyOp
@@ -138,8 +138,6 @@ class Scan(Op):
                               self.n_sit_sot ):
                 self.destroy_map[idx] = [idx + 1 + self.n_seqs]
 
-        # I consider all inputs of the inner function non mutable
-        nonmutable = range(len(inputs))
 
         mode_instance = compile.mode.get_mode(self.mode)
         # if the default mode is used, and that mode is ProfileMode
@@ -166,13 +164,6 @@ class Scan(Op):
         # function that we set in case none was given
         self.info['name'] = self.name
 
-        wrapped_inputs  = [Param(x,borrow=True) for x in inputs ]
-        wrapped_outputs = [Out(x, borrow=True) for x in outputs ]
-        self.fn = function(wrapped_inputs,
-                           wrapped_outputs,
-                           mode = self.mode_instance,
-                           name = self.name )
-        self.mask = [ 0 for x in xrange(self.n_shared_outs) ]
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -180,11 +171,14 @@ class Scan(Op):
                   self.n_mit_sot +
                   self.n_sit_sot +
                   self.n_nit_sot )
-        for i in xrange(slices, slices+self.n_shared_outs):
-            if isinstance(self.fn.maker.env.outputs[i].owner.op,
-                          ViewOp):
-                self.mask[i-slices] = 1
-
+        wrapped_inputs  = [Param(x, borrow=True) for x in inputs ]
+        wrapped_outputs = [Out(x, borrow=True) for x in
+                           outputs[:slices] ]
+        wrapped_outputs += outputs[slices:]
+        self.fn = function(wrapped_inputs,
+                           wrapped_outputs,
+                           mode = self.mode_instance,
+                           name = self.name )
 
         # Pre-computing some values to speed up perform
         self.mintaps   = [ numpy.min(x) for x in self.tap_array]
@@ -226,10 +220,10 @@ class Scan(Op):
         for idx in xrange(self.n_seqs):
             if inputs[1+idx].dtype != self.inputs[idx].dtype:
                 raise ValueError(err_msg1%( 'Sequence'
-                                       , inputs[1+idx].name
+                                       , str(inputs[1+idx])
                                        , idx
                                        , inputs[1+idx].dtype
-                                       , self.inputs[idx].name
+                                       , str(self.inputs[idx])
                                        , self.inputs[idx].dtype) )
 
         # Check that this 3 things have the same dtype for mit_mot:
@@ -246,10 +240,10 @@ class Scan(Op):
             for k in self.tap_array[index-start]:
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
-                                               , inputs[index].name
+                                               , str(inputs[index])
                                                , index
                                                , inputs[index].dtype
-                                               , self.inputs[index_i].name
+                                               , str(self.inputs[index_i])
                                                , self.inputs[index_i].dtype) )
                 index_i += 1
             for k in self.mit_mot_out_slices[index-start]:
@@ -266,14 +260,14 @@ class Scan(Op):
             for k in self.tap_array[index-start]:
                 if inputs[index].dtype != self.inputs[index_i].dtype:
                     raise ValueError(err_msg1%( 'Initial state'
-                                               , inputs[index].name
+                                               , str(inputs[index])
                                                , index
                                                , inputs[index].dtype
-                                               , self.inputs[index_i].name
+                                               , str(self.inputs[index_i])
                                                , self.inputs[index_i].dtype) )
                 index_i += 1
             if inputs[index].dtype != self.outputs[index_o].dtype:
-                raise ValueError(err_msg2%( inputs[index].name
+                raise ValueError(err_msg2%( str(inputs[index])
                                            , index
                                            , inputs[index].dtype
                                            , self.outputs[index_o].dtype) )
@@ -287,7 +281,7 @@ class Scan(Op):
         while index < end:
             if (hasattr(inputs[index],'dtype') and
                 inputs[index].dtype != self.outputs[index_o].dtype):
-                raise ValueError(err_msg2%( inputs[index].name
+                raise ValueError(err_msg2%( str(inputs[index])
                                            , index
                                            , inputs[index].dtype
                                            , self.outputs[index_o].dtype) )
@@ -379,6 +373,8 @@ class Scan(Op):
         """
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
+        t0_call = time.time()
+        t_fn = 0
         n_steps  = args[0]
         seqs = []
         if n_steps < 0:
@@ -505,8 +501,10 @@ class Scan(Op):
                 output_storage[idx+offset].storage[0] = None
 
             # 5. compute outputs
+            t0_fn = time.time()
             fn()
-
+            dt_fn = time.time() - t0_fn
+            t_fn += dt_fn
             offset_out = 0
             # 5.1 Copy over the values for mit_mot outputs
             for j in xrange(self.n_mit_mot):
@@ -595,14 +593,27 @@ class Scan(Op):
                     outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx]-pdx] = tmp
                     del tmp
+            # This would normally happen only when doing truncated
+            # backpropagation through time. In such a scenarion Scan is
+            # expected to return 0 for all entries for which the gradient is
+            # not actually computed
+            elif store_steps[idx] > n_steps - self.mintaps[idx]:
+                outs[idx][0][n_steps-self.mintaps[idx]:] = 0
 
 
-        for idx,val in enumerate(self.mask):
-            if val == 1:
-                if hasattr(outs[end+idx][0], 'copy'):
-                    outs[end + idx][0] = outs[end+idx][0].copy()
-                else:
-                    outs[end + idx][0] = copy.deepcopy(outs[end+idx][0])
+        t_call = time.time() - t0_call
+        # NOTE: make this match what's in function_module.Function
+        # and this little string helps us to find this spot:
+        # "PROFILE_CODE"
+
+        if hasattr(self.fn.maker.mode,'fct_call_time'):
+            self.fn.maker.mode.fct_call_time[self.fn] += t_fn
+            self.fn.maker.mode.fct_call[self.fn] += n_steps
+
+        self.fn.maker.mode.call_time += t_fn
+        self.fn.maker.mode.fn_time += t_fn
+        self.t_call = t_call
+        self.t_fn = t_fn
 
 
     ### Infer Shape
@@ -693,27 +704,44 @@ class Scan(Op):
         if not( type(scan_outputs) in (list,tuple)):
             scan_outputs = [scan_outputs]
         # 3. un-group / unzip the inputs
-        seqs   = self.inputs[:self.n_seqs]
+        # Note ! We don't want to use the actual same variable as the ones
+        # used by the original scan, rather create clones of them
+
+        def new_var(x):
+            nw_x = x.type()
+            if x.name:
+                nw_x.name=x.name +'grad_copy'
+            return nw_x
+
+
+        self_inputs = [new_var(x) for x in self.inputs ]
+        givens = {}
+        for new_x, x in zip(self_inputs, self.inputs):
+            givens[x] = new_x
+        self_outputs = scan_utils.clone(self.outputs, replace=givens)
+
+
+        seqs   = self_inputs[:self.n_seqs]
 
         offset        = self.n_seqs
         n_ins_mit_mot = numpy.sum([0] + [ len(self.tap_array[x]) for x
                                    in xrange(self.n_mit_mot) ])
-        outs_mit_mot  = self.inputs[offset:offset+n_ins_mit_mot]
+        outs_mit_mot  = self_inputs[offset:offset+n_ins_mit_mot]
 
         offset       += n_ins_mit_mot
         n_ins_mit_sot = numpy.sum([0] + [ len(self.tap_array[x]) for x
                                    in xrange( self.n_mit_mot
                                              , self.n_mit_mot+self.n_mit_sot)])
-        outs_mit_sot          = self.inputs[offset:offset+n_ins_mit_sot]
+        outs_mit_sot          = self_inputs[offset:offset+n_ins_mit_sot]
         offset               += n_ins_mit_sot
-        outs_sit_sot          = self.inputs[offset:offset+self.n_sit_sot]
+        outs_sit_sot          = self_inputs[offset:offset+self.n_sit_sot]
         offset               += self.n_sit_sot
-        old_scan_shared_ins   = self.inputs[offset:offset+self.n_shared_outs]
+        old_scan_shared_ins   = self_inputs[offset:offset+self.n_shared_outs]
         out_offset            = ( self.n_mit_mot_outs
                                  + self.n_mit_sot
                                  + self.n_nit_sot
                                  + self.n_sit_sot )
-        old_scan_shared_outs  = self.outputs[out_offset:]
+        old_scan_shared_outs  = self_outputs[out_offset:]
         arg_offset = ( 1
                       + self.n_seqs
                       + self.n_mit_mot
@@ -721,7 +749,7 @@ class Scan(Op):
                       + self.n_sit_sot)
         old_scan_init = args[arg_offset: arg_offset+self.n_shared_outs]
         offset       += self.n_shared_outs
-        other_args    = self.inputs[offset:]
+        other_args    = self_inputs[offset:]
 
 
         # 4. Collect (possibly) differentiable inputs
@@ -744,7 +772,7 @@ class Scan(Op):
                + self.n_mit_sot
                + self.n_sit_sot
                + self.n_nit_sot )
-        clean_outputs    = self.outputs[:end]
+        clean_outputs    = self_outputs[:end]
         g_outs_no_shared = g_outs[:end]
 
         # 7.1. empty lists to hold gradients
@@ -780,7 +808,7 @@ class Scan(Op):
                 g_out_slices.append(g_outs_no_shared[dx][0])
             else:
                 g_out_slices.append(None)
-            if out.name:
+            if getattr(out,'name',None) is not None:
                 inner_g_out.name = 'g_'+out.name
             else:
                 inner_g_out.name = 'g_'+str(dx)
@@ -858,7 +886,7 @@ class Scan(Op):
                     nw_seq = seq[dim_offset +k -mintap: -(maxtap -k)]
                 else:
                     nw_seq = seq[dim_offset +k -mintap: ]
-                if seq.name:
+                if getattr(seq,'name', None) is not None:
                     nw_seq.name = seq.name + '[%d:]'%k
                 scan_seqs.append(nw_seq)
 
@@ -1002,7 +1030,7 @@ class Scan(Op):
                   + self.n_sit_sot
                   + self.n_shared_outs )
 
-        inner_other_args = self.inputs[offset:]
+        inner_other_args = self_inputs[offset:]
         inner_gfn_ins  = ( inner_seqs         +
                           inner_mit_mot       +
                           scan_shared_ins     +
@@ -1051,13 +1079,16 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_scan_op_time = 0
         for (_,node),v in apply_time.items():
             if isinstance(node.op, Scan):
-                scan_fct_time = sum(node.op.mode_instance.fct_call_time.values())
-                scan_op_time = sum(node.op.mode_instance.local_time)
-                total_super_scan_time += v
-                total_scan_fct_time += scan_fct_time
-                total_scan_op_time += scan_op_time
-                print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
-                    v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
-                    scan_op_time/v*100), node
+                if v> 0:
+                    scan_fct_time = node.op.mode_instance.fn_time
+                    scan_op_time = sum(node.op.mode_instance.local_time)
+                    total_super_scan_time += v
+                    total_scan_fct_time += scan_fct_time
+                    total_scan_op_time += scan_op_time
+                    print '    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
+                        v, scan_fct_time, scan_op_time, scan_fct_time/v*100,
+                        scan_op_time/v*100), node
+                else:
+                    print ' The node took 0s, so we can not compute the overhead'
         print '    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%'%(
             total_super_scan_time, total_scan_fct_time, total_scan_op_time, total_scan_fct_time/total_super_scan_time*100, total_scan_op_time/total_super_scan_time*100)

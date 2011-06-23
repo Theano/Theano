@@ -1,5 +1,5 @@
 """
-This file implement 3 different version of the elemwise op on the gpu. Only NaiveAlgo is used and it is not very naive now. 
+This file implement 3 different version of the elemwise op on the gpu. Only NaiveAlgo is used and it is not very naive now.
 
 The elemwise fct are also used with scalar operation! So it can happen that ndim is 0 as with all scalar type.
 """
@@ -33,14 +33,14 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
             l+=[value_str%ipos]
         else: l+=[data_str%ipos]
     return l
-        
+
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 13, verbose)
+    cache_version = (14, verbose)
 
     def __init__(self, scalar_op, sync=True, inplace_pattern={}):
-        """ 
+        """
         :param scalar_op: the scalar operation to execute on each element.
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
@@ -56,7 +56,7 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename, id(self), nd)
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (self.scalar_op.__class__.__name__,nodename, nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
         #declare inputs
@@ -109,7 +109,7 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
                 , get_str_list_logical_scalar(node)
-                , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)]
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
         print >> sio, "    }"
@@ -159,10 +159,9 @@ class NaiveAlgo(object):
                 print >> sio, "//    Input  ", ipos, str(i.type)
             for ipos, i in enumerate(node.outputs):
                 print >> sio, "//    Output ", ipos, str(i.type)
-            print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(
+            print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
                     self.scalar_op.__class__.__name__,
-                    nodename, 
-                    id(self),
+                    nodename,
                     'tiling%i'%nd)
             if (nd):
                 print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
@@ -191,7 +190,7 @@ class NaiveAlgo(object):
                 print >> sio, "    shared_dims[%i] = dim%i;" % (ipos, ipos)
             print >> sio, "    }"
             print >> sio, "    __syncthreads();"
-        
+
 
             if (nd == 4):
                 print >> sio, """
@@ -208,7 +207,7 @@ class NaiveAlgo(object):
                 """
             else:
                 raise NotImplementedError()
-            
+
             for ipos, i in enumerate(node.inputs):
                 if not _logical_scalar(i):
                     print >> sio, "        const float * ii_i%i_data = i%i_data;" % (ipos, ipos)
@@ -229,7 +228,7 @@ class NaiveAlgo(object):
                         [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                     , nodename + '_scalar_'
                     , get_str_list_logical_scalar(node, value_str='value0[%i]')
-                    , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                    , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)]
                     , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
             print >> sio, "       ", task_code
 
@@ -262,10 +261,9 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
                 self.scalar_op.__class__.__name__,
-                nodename, 
-                id(self),
+                nodename,
                 'tiling%i_less_registers'%nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
@@ -365,8 +363,8 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
-                , ['i%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.inputs)] 
-                , ['o%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.outputs)] 
+                , ['i%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.inputs)]
+                , ['o%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.outputs)]
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
 
         if nd == 4:
@@ -397,7 +395,7 @@ class NaiveAlgo(object):
                 end_while(1)
                 inc_ptrs(0, 'gridDim.x')
             end_while(0)
-            
+
         print >> sio, "}"
         print sio.getvalue()
         return sio.getvalue()
@@ -421,7 +419,7 @@ class NaiveAlgo(object):
         print >> sio, "\t)\n{"
         print >> sio, "    const int idx = blockIdx.x * blockDim.x + threadIdx.x;"
         print >> sio, "    const int numThreads = blockDim.x * gridDim.x;"
-       
+
         # For each input that is a scalar which has been broadcasted to a tensor,
         #     load it into a local variable
         for ipos, i in enumerate(node.inputs):
@@ -438,9 +436,9 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
-                #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)] 
+                #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)]
                 , get_str_list_logical_scalar(node, data_str='i%i_data[i]')
-                , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)] 
+                , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)]
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
         print >> sio, "    }"
@@ -454,10 +452,10 @@ class NaiveAlgo(object):
         # This function serves three main goals:
         #
         # The first is stride unpacking:
-        # it accepts input and output arguments as 
-        #    float * , int* 
+        # it accepts input and output arguments as
+        #    float * , int*
         # pairs, and it constructs a kernel function call where inputs and arguments are named
-        # like 
+        # like
         #    float *, int, int, int ...
         #
         # The second is to recognize when any dimensions can be collapsed as
@@ -472,18 +470,17 @@ class NaiveAlgo(object):
         nd = node.outputs[0].type.ndim
         nb_inputs = len(node.inputs)
         nb_outputs = len(node.outputs)
-        id_self = id(self)
         d = dict()
         #input_params and output_params go into the function declaration/definition
-        input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos) 
+        input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.inputs)))
-        output_params = ", ".join("float * o%i_data, const int * o%i_str"%(ipos, ipos) 
+        output_params = ", ".join("float * o%i_data, const int * o%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.outputs)))
 
         #input_args and output_args go into the recursive call.
-        input_args = ", ".join("i%i_data, i%i_str"%(ipos, ipos) 
+        input_args = ", ".join("i%i_data, i%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.inputs)))
-        output_args = ", ".join("o%i_data, o%i_str"%(ipos, ipos) 
+        output_args = ", ".join("o%i_data, o%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.outputs)))
 
         prod_dims = '*'.join(["dims[%i]"%di for di in xrange(nd)]+['1'])
@@ -512,20 +509,20 @@ class NaiveAlgo(object):
         """ %locals()
         if self.verbose:
             print >> sio, """
-                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << " dims"<< d << "\\n";
+                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s     w numEls" << numEls << " dims"<< d << "\\n";
             """ %locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
         if self.verbose>1:
             for ipos in xrange(len(node.inputs)):
                 print >> sio, """
-                std::cerr << "   %(ipos)s data strides" << 
+                std::cerr << "   %(ipos)s data strides" <<
                 """ %locals() + " << ' ' <<  ".join(["i%s_data"%ipos]
                 + list("i%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
 
             for ipos in xrange(len(node.outputs)):
                 print >> sio, """
-                std::cerr << "   %(ipos)s data strides" << 
+                std::cerr << "   %(ipos)s data strides" <<
                 """ %locals() + " << ' ' <<  ".join(["o%s_data"%ipos]
                     + list("o%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
     # collapse dimension that are broadcast in all inputs.
@@ -559,7 +556,7 @@ class NaiveAlgo(object):
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
             print >> sio, 'std::cerr << "\\n";'
-                
+
             for ipos in xrange(len(node.inputs)):
                 print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
@@ -567,7 +564,7 @@ class NaiveAlgo(object):
 
         print >> sio, """
         for(int id=0;id<nd_collapse;id++){
-          
+
           bool all_broadcast=true;
           for(int input_id=0;input_id<%(nb_inputs)s;input_id++){
             if(local_str[input_id][id]!=0 || local_dims[id]!=1) all_broadcast= false;
@@ -600,7 +597,7 @@ class NaiveAlgo(object):
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
             print >> sio, 'std::cerr << "\\n";'
-                
+
             for ipos in xrange(len(node.inputs)):
                 print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
@@ -622,12 +619,12 @@ nd_collapse_[i]=0;
                 """ %locals()
                 if self.verbose>1:
                     print >>sio, """
-                    std::cerr<< "nd_collapse_%(ipos)s "<< 
+                    std::cerr<< "nd_collapse_%(ipos)s "<<
                     """%locals()
                     print >>sio, ' << " " << '.join(["nd_collapse_%(ipos)s["%locals()+str(i)+"]" for i in range(nd)])
                     print >>sio, '<< "\\n";'
                     print >>sio, """
-                    std::cerr<< "nd_collapse_ "<< 
+                    std::cerr<< "nd_collapse_ "<<
                     """%locals()
                     print >>sio, ' << " " << '.join(["nd_collapse_["%locals()+str(i)+"]" for i in range(nd)])
                     print >>sio, '<< "\\n";'
@@ -693,7 +690,7 @@ nd_collapse_[i]=0;
                 print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
 
 
-        def launch_Ccontiguous(nodename, id_self, scalar_op, sync=True):
+        def launch_Ccontiguous(nodename, scalar_op, sync=True):
             kernel_call_args = ["numEls"]
             for ipos in xrange(len(node.inputs)):
                 kernel_call_args.append("i%i_data"%ipos)
@@ -721,14 +718,14 @@ nd_collapse_[i]=0;
                 print >> sio, """
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err) 
+                if( cudaSuccess != err)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
-                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err), 
+                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err),
                          n_blocks, threads_per_block,
                          "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
-                
+
                 }
                 %(verb)s
                 return 0;
@@ -736,7 +733,7 @@ nd_collapse_[i]=0;
             else:
                 print >> sio, " return 0; " %locals()
 
-        def launch_General(nodename, id_self, scalar_op, force_nd, sync=True):
+        def launch_General(nodename, scalar_op, force_nd, sync=True):
             # kernel_call_args are used to invoke the cuda kernel
             local="local_"
             kernel_call_args = ["numEls"]
@@ -755,9 +752,9 @@ nd_collapse_[i]=0;
                     """%locals()
                 print >> sio, "std::cerr << "+ ' << " " << '.join(kernel_call_args)+' << "\\n";'
                 #std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
-                
+
             kernel_call_args = ", ".join(kernel_call_args)
-            
+
             print >> sio, """
                 //first use at least a full warp
                 int threads_per_block = std::min(numEls, (unsigned int)32); //WARP SIZE
@@ -769,21 +766,21 @@ nd_collapse_[i]=0;
                 if (threads_per_block * n_blocks < numEls)
                     threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
 
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel_%(scalar_op)s_%(nodename)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 """ %locals()
             if sync:
                 print >> sio, """
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err) 
+                if( cudaSuccess != err)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
-                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err), 
+                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err),
                          n_blocks, threads_per_block,
                          "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
-                
-                }                         
+
+                }
                 return 0;
                 """ %locals()
             else:
@@ -791,13 +788,13 @@ nd_collapse_[i]=0;
         print >> sio, "if(numEls==0) return 0;"
         print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"
-        launch_Ccontiguous(nodename, id_self, scalar_op, self.sync)
+        launch_Ccontiguous(nodename, scalar_op, self.sync)
         print >> sio, "        } break;"
         for i in range(1, nd+1):
             print >> sio, "case "+str(i)+": {"
-            launch_General(nodename, id_self, scalar_op, i, self.sync)
+            launch_General(nodename, scalar_op, i, self.sync)
             print >> sio, "        } break;"
-                                   
+
         print >> sio, "}"#end case
         print >> sio, "return -2;"  # should not get to this point
         print >> sio, "}"#end fct
@@ -864,7 +861,7 @@ nd_collapse_[i]=0;
             if ((!(broadcasts_%(iname)s[i] && CudaNdarray_HOST_DIMS(%(iname)s)[i] == 1))&& (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
-                PyErr_Format(PyExc_ValueError, "GpuElemwise. Input dimension mis-match.[%%i] == %%i, where output has size %%i",
+                PyErr_Format(PyExc_ValueError, "GpuElemwise. Input dimension mis-match. One of your inputs has shape[%%i] == %%i, but the output's size on that axis is %%i.",
                     i,
                     CudaNdarray_HOST_DIMS(%(iname)s)[i],
                     dims[i]
@@ -888,9 +885,9 @@ nd_collapse_[i]=0;
         }
         if (NULL == %(oname)s)
         {
-            %(oname)s = (CudaNdarray*)CudaNdarray_new_null();
+            %(oname)s = (CudaNdarray*)CudaNdarray_New();
             if (!%(oname)s)
-            { 
+            {
                 //error string already set
                 %(fail)s;
             }
@@ -923,9 +920,9 @@ nd_collapse_[i]=0;
         //std::cerr << "ELEMWISE NEW %(oname)s nd" << %(oname)s->nd << "\\n";
         //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
         """ % locals()
-                
+
         print >> sio, """
-        { 
+        {
             //new block so that failure gotos don't skip over variable initialization
             //std::cerr << "calling callkernel\\n";
             if (callkernel_%(nodename)s(1, 0, dims

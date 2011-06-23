@@ -21,7 +21,9 @@ since 2007.  But it is also approachable enough to be used in the classroom
     :scale: 75%
     :align: left
 
-**NEW!** You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
+**NEW!** `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
+
+You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
 
   `Transparent GPU Computing With Theano`_.
   James Bergstra, SciPy 2010, June 30, 2010.
@@ -86,7 +88,7 @@ You can download the latest `PDF documentation <http://deeplearning.net/software
 
 Check out how Theano can be used for Machine Learning: `Deep Learning Tutorials <http://www.deeplearning.net/tutorial>`_.
 
-Theano was featured at `SciPy 2010 <http://www.iro.umontreal.ca/~lisa/publications2/index.php/publications/show/461>`_.
+Theano was featured at `SciPy 2010 <http://www.iro.umontreal.ca/~lisa/publications2/index.php/publications/show/461>`__.
 
 Community
 =========
@@ -102,11 +104,11 @@ Community
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* Register and post to `theano-announce`_ if you want to be keep informed on important change on theano(low volume).
+* Register to `theano-announce`_ if you want to be kept informed on important change on theano(low volume).
 
-* Register and post to `theano-buildbot`_ if you want to receive our daily buildbot email.
+* Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask/view questions/answers at `metaoptimize/qa/tags/theano/`_ (it's like stack overflow for machine learning)
+* Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
 
 * We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__
 

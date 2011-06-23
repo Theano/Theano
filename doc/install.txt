@@ -63,6 +63,9 @@ The following libraries and software are optional:
     `Mercurial <http://mercurial.selenic.com/>`_
         To download bleeding-edge versions of Theano.
 
+    `pydot <https://code.google.com/p/pydot/>`_
+        To be able to make picture of Theano computation graph.
+
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution. Only NVIDIA GPUs using
         32-bit floating point numbers are currently supported.
@@ -352,7 +355,8 @@ Mac
 - If the above required libraries are not already installed on your Mac,
   one option is first, to install `MacPorts <http://www.macports.org/>`__.
 
-- Then, in order to install one or more of the required libraries, use "port install", e.g. as follows:
+- Then, in order to install one or more of the required libraries, use
+    "port install", e.g. as follows:
 
     .. code-block:: bash
 
@@ -360,7 +364,8 @@ Mac
 
     This will install all the required Theano dependencies.  Note that
     compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
-    good BLAS implementation) and NumPy, so these will be installed for you automatically.
+    good BLAS implementation) and NumPy, so these will be installed for you
+    automatically.
 
 - You might have some old versions of gcc, SciPy, NumPy, Python installed on
   your system, perhaps via Xcode. It is a good idea to use **either** the
@@ -557,7 +562,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
   You do not need to do the following now, because it is not usually needed, but if
   later on, when running Theano, you see an error message that looks like:
-    *error: 'assert' was not declared in this scope*
+  *error: 'assert' was not declared in this scope*
   then you will have to add another section:
 
     .. code-block:: cfg
@@ -585,11 +590,13 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
   the Theano installation directory (if you installed Nose manually as described
   above, this may only work in a MinGW shell).
   Please note that at this time, the test suite may be broken under Windows.
-  In particular, many tests may fail while running the test-suite,
+  In particular, many tests will probably fail while running the test-suite,
   due to insufficient memory resources (in which case you will probably get an
   error of the type ``"Not enough storage is available to
-  process this command"``): one workaround is to run nosetests
-  multiple times under individual subdirectories.
+  process this command"``). A script named ``run_individual_tests.py`` found
+  in ``Theano\theano\tests`` is under development as a workaround, but is not
+  fully functional yet.
+
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~

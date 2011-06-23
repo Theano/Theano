@@ -61,7 +61,7 @@ class Kouh2008(object):
             dtype = x_list[0].dtype
         n_terms = len(x_list)
 
-        def shared_uniform(low, high, size, name): 
+        def shared_uniform(low, high, size, name):
             return _shared_uniform(rng, low, high, size, dtype, name)
 
         use_softmax_w = True
@@ -86,7 +86,7 @@ class Kouh2008(object):
             raise ValueError('exponent range must have low <= high')
 
         p_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='p')
-        q_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='q') 
+        q_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='q')
         r_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='r')
         k_unbounded = shared_uniform(low=-0.2, high=0.2, size=(n_out,), name='k') # biases
 
@@ -122,7 +122,7 @@ class Kouh2008(object):
         """Return a KouhLayer instance with random parameters
 
         The parameters are drawn on a range [typically] suitable for fine-tuning by gradient
-        descent. 
+        descent.
 
 
         :param input: a tensor of shape (n_examples, n_in)
@@ -137,7 +137,7 @@ class Kouh2008(object):
         many 'simple cell' responses.
 
         :param eps: this amount is added to the softplus of filter responses as a baseline
-        firing rate (that prevents a subsequent error from ``pow(0, p)``) 
+        firing rate (that prevents a subsequent error from ``pow(0, p)``)
 
         :returns: KouhLayer instance with freshly-allocated random weights.
 
@@ -149,7 +149,7 @@ class Kouh2008(object):
             dtype = input.dtype
         _logger.debug('dtype %s' % dtype)
 
-        def shared_uniform(low, high, size, name): 
+        def shared_uniform(low, high, size, name):
             return _shared_uniform(rng, low, high, size, dtype, name)
 
         f_list = [shared_uniform(low=-2.0/numpy.sqrt(n_in), high=2.0/numpy.sqrt(n_in), size=(n_in, n_out), name='f_%i'%i)
@@ -232,7 +232,7 @@ class Config(object):
     if dtype2=='floatX':
         import theano.config as c
         dtype2 = c.config.get('scalar.floatX')
-        
+
     rng_seed = 23498
 
     n_hid = 300
@@ -273,7 +273,7 @@ if 0:
             # Skip test if cuda_ndarray is not available.
             from nose.plugins.skip import SkipTest
             import theano.sandbox.cuda as cuda_ndarray
-            if cuda_ndarray.cuda_enabled == False:
+            if not cuda_ndarray.cuda_available:
                 raise SkipTest('Optional package cuda disabled')
             import theano.sandbox.cuda
             theano.sandbox.cuda.use()

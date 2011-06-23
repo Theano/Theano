@@ -1,11 +1,15 @@
 """Generate and compile C modules for Python,
 """
-import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, shutil, stat
-import distutils.sysconfig
-from theano.configparser import config
-import numpy.distutils #TODO: TensorType should handle this
-import sys
+import atexit, cPickle, logging, operator, os, shutil, stat, StringIO
+import subprocess, sys, tempfile, time
 
+import distutils.sysconfig
+
+import numpy.distutils #TODO: TensorType should handle this
+import theano
+
+from theano.configparser import config
+from theano.gof.cc import hash_from_code, hash_from_file
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
 
 from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
@@ -37,6 +41,17 @@ def debug(*args):
 
 METH_VARARGS="METH_VARARGS"
 METH_NOARGS="METH_NOARGS"
+
+def debug_counter(name, every=1):
+    """Debug counter to know how often we go through some piece of code.
+
+    This is a utility function one may use when debugging. Usage example:
+        debug_counter('I want to know how often I run this line')
+    """
+    setattr(debug_counter, name, getattr(debug_counter, name, 0) + 1)
+    n = getattr(debug_counter, name)
+    if n % every == 0:
+        print >>sys.stderr, "debug_counter [%s]: %s" % (name, n)
 
 class ExtFunction(object):
     """A C function to put into a DynamicModule """
@@ -202,6 +217,182 @@ def module_name_from_dir(dirname):
     name, = [file for file in files if file.endswith('.so') or file.endswith('.pyd')]
     return os.path.join(dirname, name)
 
+
+def is_same_entry(entry_1, entry_2):
+    """
+    Return True iff both paths can be considered to point to the same module.
+
+    This is the case if and only if at least one of these conditions holds:
+        - They are equal.
+        - There real paths are equal.
+        - They share the same temporary work directory and module file name.
+    """
+    if entry_1 == entry_2:
+        return True
+    if os.path.realpath(entry_1) == os.path.realpath(entry_2):
+        return True
+    if (os.path.basename(entry_1) == os.path.basename(entry_2) and
+        (os.path.basename(os.path.dirname(entry_1)) ==
+         os.path.basename(os.path.dirname(entry_2))) and
+        os.path.basename(os.path.dirname(entry_1).startswith('tmp'))):
+        return True
+    return False
+
+
+def get_module_hash(src_code, key):
+
+    """
+    Return an MD5 hash that uniquely identifies a module.
+
+    This hash takes into account:
+        1. The C source code of the module (`src_code`).
+        2. The version part of the key.
+        3. The compiler options defined in `key` (command line parameters and
+           libraries to link against).
+    """
+    # `to_hash` will contain any element such that we know for sure that if
+    # it changes, then the module hash should be different.
+    # We start with the source code itself (stripping blanks might avoid
+    # recompiling after a basic indentation fix for instance).
+    to_hash = map(str.strip, src_code.split('\n'))
+    # Get the version part of the key (ignore if unversioned).
+    if key[0]:
+        to_hash += map(str, key[0])
+    c_link_key = key[1]
+    # Currently, in order to catch potential bugs early, we are very
+    # convervative about the structure of the key and raise an exception
+    # if it does not match exactly what we expect. In the future we may
+    # modify this behavior to be less strict and be able to accomodate
+    # changes to the key in an automatic way.
+    # Note that if the key structure changes, the `get_safe_part` fucntion
+    # below may also need to be modified.
+    error_msg = ("This should not happen unless someone modified the code "
+                 "that defines the CLinker key, in which case you should "
+                 "ensure this piece of code is still valid (and this "
+                 "AssertionError may be removed or modified to accomodate "
+                 "this change)")
+    assert c_link_key[0] == 'CLinker.cmodule_key', error_msg
+    for key_element in c_link_key[1:]:
+        if isinstance(key_element, tuple):
+            # This should be the C++ compilation command line parameters or the
+            # libraries to link against.
+            to_hash += list(key_element)
+        elif isinstance(key_element, str):
+            if key_element.startswith('md5:'):
+                # This is the md5 hash of the config options. We can stop
+                # here.
+                break
+            else:
+                raise AssertionError(error_msg)
+        else:
+            raise AssertionError(error_msg)
+    return hash_from_code('\n'.join(to_hash))
+
+
+def get_safe_part(key):
+    """
+    Return a tuple containing a subset of `key`, to be used to find equal keys.
+
+    This tuple should only contain objects whose __eq__ and __hash__ methods
+    can be trusted (currently: the version part of the key, as well as the
+    md5 hash of the config options).
+    It is used to reduce the amount of key comparisons one has to go through
+    in order to find broken keys (i.e. keys with bad implementations of __eq__
+    or __hash__).
+    """
+    version = key[0]
+    # This function should only be called on versioned keys.
+    assert version
+
+    # Find the md5 hash part.
+    c_link_key = key[1]
+    for key_element in c_link_key[1:]:
+        if isinstance(key_element, str) and key_element.startswith('md5:'):
+            md5 = key_element[4:]
+            break
+
+    return key[0] + (md5, )
+
+
+class KeyData(object):
+
+    """Used to store the key information in the cache."""
+
+    def __init__(self, keys, module_hash, key_pkl, entry):
+        """
+        Constructor.
+
+        :param keys: Set of keys that are associated to the exact same module.
+
+        :param module_hash: Hash identifying the module (it should hash both
+        the code and the compilation options).
+
+        :param key_pkl: Path to the file in which this KeyData object should be
+        pickled.
+        """
+        self.keys = keys
+        self.module_hash = module_hash
+        self.key_pkl = key_pkl
+        self.entry = entry
+
+    def add_key(self, key, save_pkl=True):
+        """Add a key to self.keys, and update pickled file if asked to."""
+        assert key not in self.keys
+        self.keys.add(key)
+        if save_pkl:
+            self.save_pkl()
+
+    def remove_key(self, key, save_pkl=True):
+        """Remove a key from self.keys, and update pickled file if asked to."""
+        self.keys.remove(key)
+        if save_pkl:
+            self.save_pkl()
+
+    def save_pkl(self):
+        """
+        Dump this object into its `key_pkl` file.
+
+        May raise a cPickle.PicklingError if such an exception is raised at
+        pickle time (in which case a warning is also displayed).
+        """
+        # Note that writing in binary mode is important under Windows.
+        try:
+            cPickle.dump(self, open(self.key_pkl, 'wb'),
+                         protocol=cPickle.HIGHEST_PROTOCOL)
+        except cPickle.PicklingError:
+            warning("Cache leak due to unpickle-able key data", self.keys)
+            os.remove(self.key_pkl)
+            raise
+
+    def get_entry(self):
+        """Return path to the module file."""
+        # TODO This method may be removed in the future (e.g. in 0.5) since
+        # its only purpose is to make sure that old KeyData objects created
+        # before the 'entry' field was added are properly handled.
+        if not hasattr(self, 'entry'):
+            self.entry = module_name_from_dir(os.path.dirname(self.key_pkl))
+        return self.entry
+
+    def delete_keys_from(self, entry_from_key, do_manual_check=True):
+        """
+        Delete from entry_from_key all keys associated to this KeyData object.
+
+        Note that broken keys will not appear in the keys field, so we also
+        manually look for keys associated to the same entry, unless
+        do_manual_check is False.
+        """
+        entry = self.get_entry()
+        for key in self.keys:
+            del entry_from_key[key]
+        if do_manual_check:
+            to_del = []
+            for key, key_entry in entry_from_key.iteritems():
+                if key_entry == entry:
+                    to_del.append(key)
+            for key in to_del:
+                del entry_from_key[key]
+
+
 class ModuleCache(object):
     """Interface to the cache of dynamically compiled modules on disk
 
@@ -209,24 +400,47 @@ class ModuleCache(object):
     It is built to handle the case where multiple programs are also using instances of this
     class to manage the same directory.
 
+    The cache works on the basis of keys. Each key is mapped to only one
+    dynamic module, but multiple keys may be mapped to the same module (see
+    below for details). Each module is a dynamic library file, that Python
+    can import.
 
-    The cache works on the basis of keys.  Keys are used to uniquely identify a dynamic module.
-    Keys should be tuples of length 2: (version, rest)
-    The ``rest`` can be anything hashable and picklable, that uniquely identifies the
-    computation in the module.
+    The cache contains one directory for each module, containing:
+    - the dynamic library file itself (.so/.pyd),
+    - an empty __init__.py file, so Python can import it,
+    - a file containing the source code for the module (mod.cpp/mod.cu),
+    - a key.pkl file, containing a KeyData object with all the keys
+    associated with that module,
+    - possibly a delete.me file, meaning this directory has been marked
+    for deletion.
+
+    Keys should be tuples of length 2: (version, rest). The
+    ``rest`` can be anything hashable and picklable, that uniquely
+    identifies the computation in the module. The key is returned by
+    ``CLinker.cmodule_key_``.
 
     The ``version`` should be a hierarchy of tuples of integers.
-    If the ``version`` is either 0 or (), then the corresponding module is unversioned, and
-    will be deleted in an atexit() handler.
-    If the ``version`` is neither 0 nor (), then the module will be kept in the cache between
-    processes.
+    If the ``version`` is either 0 or (), then the key is unversioned, and its
+    corresponding module will be marked for deletion in an atexit() handler.
+    If the ``version`` is neither 0 nor (), then the module will be kept in the
+    cache between processes.
 
+    An unversioned module is not always deleted by the process that
+    creates it.  Deleting such modules may not work on NFS filesystems
+    because the tmpdir in which the library resides is in use until the
+    end of the process' lifetime.  In this case, unversioned modules
+    are left in their tmpdirs without corresponding .pkl files.  These
+    modules and their directories are erased by subsequent processes'
+    refresh() functions.
 
-    An unversioned module is not deleted by the process that creates it.  Deleting such modules
-    does not work on NFS filesystems because the tmpdir in which the library resides is in use
-    until the end of the process' lifetime.  Instead, unversioned modules are left in their
-    tmpdirs without corresponding .pkl files.  These modules and their directories are erased
-    by subsequent processes' refresh() functions.
+    Two different keys are mapped to the same module when all conditions below
+    are met:
+        - They have the same version.
+        - They share the same compilation options in their ``rest`` part (see
+          ``CLinker.cmodule_key_`` for how this part is built).
+        - They share the same C code.
+    These three elements uniquely identify a module, and are summarized
+    in a single "module hash".
     """
 
     dirname = ""
@@ -239,149 +453,255 @@ class ModuleCache(object):
     """Maps keys to the filename of a .so/.pyd.
     """
 
+    similar_keys = {}
+    """Maps a part-of-key to all keys that share this same part."""
+
+    module_hash_to_key_data = {}
+    """Maps a module hash to its corresponding KeyData object."""
+
     stats = []
     """A list with counters for the number of hits, loads, compiles issued by module_from_key()
-    """
-
-    force_fresh = False
-    """True -> Ignore previously-compiled modules
     """
 
     loaded_key_pkl = set()
     """set of all key.pkl files that have been loaded.
     """
 
-    def __init__(self, dirname, force_fresh=None, check_for_broken_eq=True):
+    def __init__(self, dirname, check_for_broken_eq=True, do_refresh=True):
         """
-        :param check_for_broken_eq: A bad __eq__ implemenation can break this cache mechanism.
-        This option turns on a not-too-expensive sanity check during the load of an old cache
-        file.
+        :param check_for_broken_eq: A bad __eq__ implementation can break this
+        cache mechanism. This option turns on a not-too-expensive sanity check
+        every time a new key is added to the cache.
+
+        :param do_refresh: If True, then the ``refresh`` method will be called
+        in the constructor.
         """
         self.dirname = dirname
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
+        self.module_hash_to_key_data = dict(self.module_hash_to_key_data)
+        self.similar_keys = dict(self.similar_keys)
         self.stats = [0, 0, 0]
-        if force_fresh is not None:
-            self.force_fresh = force_fresh
+        self.check_for_broken_eq = check_for_broken_eq
         self.loaded_key_pkl = set()
+        self.time_spent_in_check_key = 0
 
-        self.refresh()
-
-        if check_for_broken_eq:
-            for k0 in self.entry_from_key:
-                for k1 in self.entry_from_key:
-                    if k0 == k1 and not (k0 is k1):
-                        warning(("The __eq__ and __hash__ functions are broken for some element"
-                                " in the following two keys. The cache mechanism will say that"
-                                " graphs like this need recompiling, when they could have been"
-                                " retrieved:"))
-                        warning("Key 0:", k0)
-                        warning("Entry 0:", self.entry_from_key[k0])
-                        warning("hash 0:", hash(k0))
-                        warning("Key 1:", k1)
-                        warning("Entry 1:", self.entry_from_key[k1])
-                        warning("hash 1:", hash(k1))
+        if do_refresh:
+            self.refresh()
 
     age_thresh_use = 60*60*24*24
-    """The default age threshold for `clear_old` (in seconds)
     """
-    def refresh(self):
-        """Update self.entry_from_key by walking the cache directory structure.
+    The default age threshold (in seconds) for cache files we want to use.
 
-        Add entries that are not in the entry_from_key dictionary.
+    Older modules will be deleted in ``clear_old``.
+    """
 
+    def refresh(self, age_thresh_use=None, delete_if_problem=False):
+        """Update cache data by walking the cache directory structure.
+
+        Load key.pkl files that have not been loaded yet.
         Remove entries which have been removed from the filesystem.
-
         Also, remove malformed cache directories.
+
+        :param age_thresh_use: Do not use modules olther than this.
+        Defaults to self.age_thresh_use.
+
+        :param delete_if_problem: If True, cache entries that meet one of those
+        two conditions are deleted:
+            - Those for which unpickling the KeyData file fails with an
+              unknown exception.
+            - Duplicated modules, regardless of their age.
+
+        :returns: a list of modules of age higher than age_thresh_use.
         """
+        if age_thresh_use is None:
+            age_thresh_use = self.age_thresh_use
+        start_time = time.time()
         too_old_to_use = []
 
         compilelock.get_lock()
         try:
             # add entries that are not in the entry_from_key dictionary
             time_now = time.time()
-            for root, dirs, files in os.walk(self.dirname):
-                if os.path.join(root, 'key.pkl') in self.loaded_key_pkl:
+            # Go through directories in alphabetical order to ensure consistent
+            # behavior.
+            root_dirs_files = sorted(os.walk(self.dirname),
+                                     key=operator.itemgetter(0))
+            for root, dirs, files in root_dirs_files:
+                key_pkl = os.path.join(root, 'key.pkl')
+                if key_pkl in self.loaded_key_pkl:
                     continue
-                elif 'delete.me' in files or len(files)==0:
-                    # On NFS filesystems, it is impossible to delete a directory with open
-                    # files in it.  So instead, some commands in this file will respond to a
-                    # failed rmtree() by touching a 'delete.me' file.  This file is a message
-                    # for a future process to try deleting the directory.
-                    try:
-                        shutil.rmtree(root)
-                    except:
-                        # the directory is still in use??  We just leave it for future removal.
-                        pass
+                elif 'delete.me' in files or not files:
+                    _rmtree(root, ignore_nocleanup=True,
+                            msg="delete.me found in dir")
                 elif 'key.pkl' in files:
-                    key_pkl = os.path.join(root, 'key.pkl')
                     try:
                         entry = module_name_from_dir(root)
                     except ValueError: # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
-                            # So it is normal that this happen from time to time.
+                            # So it is normal that this happens from time to time.
                             warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
-                        info("Erasing broken cache directory", key_pkl)
-                        shutil.rmtree(root)
+                        _rmtree(root, ignore_nocleanup=True,
+                                msg="missing module file", level="info")
                         continue
-                    if (time_now - last_access_time(entry))<self.age_thresh_use:
+                    if (time_now - last_access_time(entry)) < age_thresh_use:
                         debug('refresh adding', key_pkl)
+                        def unpickle_failure():
+                            info("ModuleCache.refresh() Failed to unpickle "
+                                 "cache file", key_pkl)
                         try:
-                            key = cPickle.load(open(key_pkl, 'rb'))
-                        except:
-                            info("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
-                            if 0:
-                                info("Erasing broken cache directory", key_pkl)
-                                shutil.rmtree(root)
+                            key_data = cPickle.load(open(key_pkl, 'rb'))
+                        except EOFError:
+                            # Happened once... not sure why (would be worth
+                            # investigating if it ever happens again).
+                            unpickle_failure()
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg='broken cache directory [EOF]',
+                                    level='warning')
+                            continue
+                        except Exception:
+                            unpickle_failure()
+                            if delete_if_problem:
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='broken cache directory',
+                                        level='info')
                             else:
-                                ## This exception is often triggered by keys that contain
-                                # references to classes that have not yet been imported.  They are
-                                # not necessarily broken
+                                # This exception is often triggered by keys
+                                # that contain references to classes that have
+                                # not yet been imported (e.g. when running two
+                                # different Theano-based scripts). They are not
+                                # necessarily broken, but we cannot load them
+                                # here.
                                 pass
                             continue
 
-                        if not key[0]: #if the version is False
-                            warning("ModuleCache.refresh() Found unversioned key in cache, deleting it.", key_pkl)
-                            info("Erasing broken cache directory", key_pkl)
-                            shutil.rmtree(root)
+                        if not isinstance(key_data, KeyData):
+                            # This is some old cache data, that does not fit
+                            # the new cache format. It would be possible to
+                            # update it, but it is not entirely safe since we
+                            # do not know the config options that were used.
+                            # As a result, we delete it instead (which is also
+                            # simpler to implement).
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg='deprecated cache entry')
                             continue
 
-                        if key not in self.entry_from_key:
-                            self.entry_from_key[key] = entry
-                            # assert that we haven't already got this entry somehow
-                            assert entry not in self.module_from_name
-                            self.loaded_key_pkl.add(key_pkl)
+                        # Check the path to the module stored in the KeyData
+                        # object matches the path to `entry`. There may be
+                        # a mismatch e.g. due to symlinks, or some directory
+                        # being renamed since last time cache was created.
+                        kd_entry = key_data.get_entry()
+                        if kd_entry != entry:
+                            if is_same_entry(entry, kd_entry):
+                                # Update KeyData object.
+                                key_data.entry = entry
+                            else:
+                                # This is suspicious. Better get rid of it.
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='module file path mismatch',
+                                        level='info')
+                                continue
+
+                        # Find unversioned keys from other processes.
+                        # TODO: check if this can happen at all
+                        to_del = [key for key in key_data.keys if not key[0]]
+                        if to_del:
+                            warning("ModuleCache.refresh() Found unversioned "
+                                    "key in cache, removing it.", key_pkl)
+                            # Since the version is in the module hash, all
+                            # keys should be unversioned.
+                            if len(to_del) != len(key_data.keys):
+                                warning('Found a mix of unversioned and '
+                                        'versioned keys for the same '
+                                        'module', key_pkl)
+                            _rmtree(root, ignore_nocleanup=True,
+                                    msg="unversioned key(s) in cache",
+                                    level='info')
+                            continue
+
+                        mod_hash = key_data.module_hash
+                        if mod_hash in self.module_hash_to_key_data:
+                            # This may happen when two processes running
+                            # simultaneously compiled the same module, one
+                            # after the other. We delete one once it is old
+                            # enough (to be confident there is no other process
+                            # using it), or if `delete_if_problem` is True.
+                            # Note that it is important to walk through
+                            # directories in alphabetical order so as to make
+                            # sure all new processes only use the first one.
+                            age = time.time() - last_access_time(entry)
+                            if delete_if_problem or age > self.age_thresh_del:
+                                _rmtree(root, ignore_nocleanup=True,
+                                        msg='duplicated module',
+                                        level='debug')
+                            else:
+                                debug('Found duplicated module not old enough '
+                                      'yet to be deleted (age: %s): %s' %
+                                      (age, entry))
+                            continue
+
+                        # Remember the map from a module's hash to the KeyData
+                        # object associated with it.
+                        self.module_hash_to_key_data[mod_hash] = key_data
+
+                        for key in key_data.keys:
+                            if key not in self.entry_from_key:
+                                self.entry_from_key[key] = entry
+                                # Assert that we have not already got this
+                                # entry somehow.
+                                assert entry not in self.module_from_name
+                                # Store safe part of versioned keys.
+                                if key[0]:
+                                    self.similar_keys.setdefault(
+                                            get_safe_part(key),
+                                            []).append(key)
+                            else:
+                                warning(
+                                    "The same cache key is associated to "
+                                    "different modules (%s and %s). This "
+                                    "is not supposed to happen! You may "
+                                    "need to manually delete your cache "
+                                    "directory to fix this." %
+                                    (self.entry_from_key[key], entry))
+                        self.loaded_key_pkl.add(key_pkl)
                     else:
                         too_old_to_use.append(entry)
 
+                # If the compilation failed, no key.pkl is in that
+                # directory, but a mod.* should be there.
+                # We do nothing here.
 
-            # remove entries that are not in the filesystem
-            items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy:
+            # Remove entries that are not in the filesystem.
+            items_copy = list(self.module_hash_to_key_data.iteritems())
+            for module_hash, key_data in items_copy:
                 try:
-                    # test to see that the file is [present and] readable
-                    open(entry).close()
+                    # Test to see that the file is [present and] readable.
+                    open(key_data.get_entry()).close()
                     gone = False
                 except IOError:
                     gone = True
                 if gone:
-                    # assert that we didn't have one of the deleted files
+                    # Assert that we did not have one of the deleted files
                     # loaded up and in use.
-                    # If so, it should not have been deleted.  This should be considered a
-                    # failure of the OTHER process, that deleted it.
+                    # If so, it should not have been deleted. This should be
+                    # considered a failure of the OTHER process, that deleted
+                    # it.
                     if entry in self.module_from_name:
-                        warning("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
+                        warning("A module that was loaded by this "
+                                "ModuleCache can no longer be read from file "
+                                "%s... this could lead to problems." % entry)
                         del self.module_from_name[entry]
 
                     info("deleting ModuleCache entry", entry)
-                    del self.entry_from_key[key]
+                    key_data.delete_keys_from(self.entry_from_key)
+                    del self.module_hash_to_key_data[module_hash]
                     if key[0]:
                         # this is a versioned entry, so should have been on disk
                         # Something weird happened to cause this, so we are responding by
                         # printing a warning, removing evidence that we ever saw this mystery
                         # key.
-                        pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
+                        pkl_file_to_remove = key_data.key_pkl
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
                             # So it is normal that this happen from time to time.
@@ -391,24 +711,42 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
 
+        debug('Time needed to refresh cache: %s' % (time.time() - start_time))
+
         return too_old_to_use
 
-    def module_from_key(self, key, fn=None, keep_lock=False):
+    def module_from_key(self, key, fn=None, keep_lock=False, key_data=None):
         """
-        :param fn: a callable object that will return a module for the key (it is called only if the key isn't in
-        the cache).  This function will be called with a single keyword argument "location"
-        that is a path on the filesystem wherein the function should write the module.
-        """
-        rval = None
-        try:
-            _version, _rest = key
-        except:
-            raise ValueError("Invalid key. key must have form (version, rest)", key)
-        if key in self.entry_from_key:
-            # we have seen this key either in this process or previously
-            #debug('OLD KEY HASH', hash(key), hash(key[1][0]), key[1][0])
-            name = self.entry_from_key[key]
+        :param fn: A callable object that will return an iterable object when
+        called, such that the first element in this iterable object is the
+        source code of the module, and the last element is the module itself.
+        `fn` is called only if the key is not already in the cache, with
+        a single keyword argument `location` that is the path to the directory
+        where the module should be compiled.
 
+        :param key_data: If not None, it should be a KeyData object and the
+        key parameter should be None. In this case, we use the info from the
+        KeyData object to recover the module, rather than the key itself. Note
+        that this implies the module already exists (and may or may not have
+        already been loaded).
+        """
+        # We should only use one of the two ways to get a module.
+        assert key_data is None or key is None
+        rval = None
+        if key is not None:
+            try:
+                _version, _rest = key
+            except (TypeError, ValueError):
+                raise ValueError(
+                        "Invalid key. key must have form (version, rest)", key)
+        name = None
+        if key is not None and key in self.entry_from_key:
+            # We have seen this key either in this process or previously.
+            name = self.entry_from_key[key]
+        elif key_data is not None:
+            name = key_data.get_entry()
+        if name is not None:
+            # This is an existing module we can recover.
             if name not in self.module_from_name:
                 debug('loading name', name)
                 self.module_from_name[name] = dlimport(name)
@@ -419,165 +757,420 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             hash_key = hash(key)
-            # we have never seen this key before
+            key_data = None
+            # We have never seen this key before.
             # Acquire lock before creating things in the compile cache,
-            # to avoid that other processes remove the compile dire while it
-            # is still empty
+            # to avoid that other processes remove the compile dir while it
+            # is still empty.
             compilelock.get_lock()
-            location = dlimport_workdir(self.dirname)
-            #debug("LOCATION*", location)
+            # This try/finally block ensures that the lock is released once we
+            # are done writing in the cache file or after raising an exception.
             try:
-                module = fn(location=location)  # WILL FAIL FOR BAD C CODE
-            except Exception, e:
-                _rmtree(location)
+                # Embedding two try statements for Python 2.4 compatibility
+                # (cannot do try / except / finally).
+                try:
+                    location = dlimport_workdir(self.dirname)
+                except OSError, e:
+                    error(e)
+                    if e.errno == 31:
+                        error('There are', len(os.listdir(config.compiledir)),
+                                'files in', config.compiledir)
+                    raise
+                try:
+                    compile_steps = fn(location=location).__iter__()
+
+                    # Check if we already know a module with the same hash. If we
+                    # do, then there is no need to even compile it.
+                    duplicated_module = False
+                    # The first compilation step is to yield the source code.
+                    src_code = compile_steps.next()
+                    module_hash = get_module_hash(src_code, key)
+                    if module_hash in self.module_hash_to_key_data:
+                        debug("Duplicated module! Will re-use the previous one")
+                        duplicated_module = True
+                        # Load the already existing module.
+                        key_data = self.module_hash_to_key_data[module_hash]
+                        # Note that we do not pass the `fn` argument, since it
+                        # should not be used considering that the module should
+                        # already be compiled.
+                        module = self.module_from_key(key=None, key_data=key_data)
+                        name = module.__file__
+                        # Add current key to the set of keys associated to the same
+                        # module. We only save the KeyData object of versioned
+                        # modules.
+                        try:
+                            key_data.add_key(key, save_pkl=bool(_version))
+                            key_broken = False
+                        except cPickle.PicklingError:
+                            # This should only happen if we tried to save the
+                            # pickled file.
+                            assert _version
+                            # The key we are trying to add is broken: we will not
+                            # add it after all.
+                            key_data.remove_key(key)
+                            key_broken = True
+
+                        if (_version and not key_broken and
+                            self.check_for_broken_eq):
+                            self.check_key(key, key_data.key_pkl)
+
+                        # We can delete the work directory.
+                        _rmtree(location, ignore_nocleanup=True,
+                                msg='temporary workdir of duplicated module')
+
+                    else:
+                        # Will fail if there is an error compiling the C code.
+                        # The exception will be caught and the work dir will be
+                        # deleted.
+                        while True:
+                            try:
+                                # The module should be returned by the last
+                                # step of the compilation.
+                                module = compile_steps.next()
+                            except StopIteration:
+                                break
+
+                        # Obtain path to the '.so' module file.
+                        name = module.__file__
+
+                        debug("Adding module to cache", key, name)
+                        assert name.startswith(location)
+                        assert name not in self.module_from_name
+                        # Changing the hash of the key is not allowed during
+                        # compilation. That is the only cause found that makes the
+                        # following assert fail.
+                        assert hash(key) == hash_key
+                        assert key not in self.entry_from_key
+
+                        key_pkl = os.path.join(location, 'key.pkl')
+                        assert not os.path.exists(key_pkl)
+                        key_data = KeyData(
+                                keys=set([key]),
+                                module_hash=module_hash,
+                                key_pkl=key_pkl,
+                                entry=name)
+
+                        # Note that we only save KeyData objects associated to
+                        # versioned modules. So for unversioned key, the
+                        # `key_pkl` field of the KeyData object will be a
+                        # non-existing file (which does not matter since it
+                        # will not be accessed).
+                        if _version:
+                            try:
+                                key_data.save_pkl()
+                                key_broken = False
+                            except cPickle.PicklingError:
+                                key_broken = True
+                                # Remove key from the KeyData object, to make sure
+                                # we never try to save it again.
+                                # We still keep the KeyData object and save it so
+                                # that the module can be re-used in the future.
+                                key_data.keys = set()
+                                key_data.save_pkl()
+
+                            if not key_broken and self.check_for_broken_eq:
+                                self.check_key(key, key_pkl)
+
+                            # Adding the KeyData file to this set means it is a
+                            # versioned module.
+                            self.loaded_key_pkl.add(key_pkl)
+
+                        # Map the new module to its KeyData object. Note that we
+                        # need to do it regardless of whether the key is versioned
+                        # or not if we want to be able to re-use this module inside
+                        # the same process.
+                        self.module_hash_to_key_data[module_hash] = key_data
+
+                except:
+                    # This may happen e.g. when an Op has no C implementation. In
+                    # any case, we do not want to keep around the temporary work
+                    # directory, as it may cause trouble if we create too many of
+                    # these. The 'ignore_if_missing' flag is set just in case this
+                    # directory would have already been deleted.
+                    _rmtree(location, ignore_if_missing=True,
+                            msg='exception -- typically means no C implementation')
+                    raise
+
+            finally:
+                # Release lock if needed.
                 if not keep_lock:
                     compilelock.release_lock()
-                #try:
-                #except Exception, ee:
-                    #error('failed to cleanup location', location, ee)
-                raise
 
-            if not keep_lock:
-                compilelock.release_lock()
-            name = module.__file__
+            # Update map from key to module name for all keys associated to
+            # this same module.
+            all_keys = key_data.keys
+            if not all_keys:
+                # Should only happen for broken keys.
+                assert key_broken
+                all_keys = [key]
+            else:
+                assert key in key_data.keys
+            for k in all_keys:
+                if k in self.entry_from_key:
+                    # If we had already seen this key, then it should be
+                    # associated to the same module.
+                    assert self.entry_from_key[k] == name
+                else:
+                    self.entry_from_key[k] = name
+                    if _version:
+                        self.similar_keys.setdefault(get_safe_part(k),
+                                                     []).append(key)
 
-            debug("Adding module to cache", key, name)
-            assert name.startswith(location)
-            assert name not in self.module_from_name
-#Changing the hash of the key is not allowed during compilation
-#That is the only cause found that make the last assert fail.
-            assert hash(key)==hash_key
-            assert key not in self.entry_from_key
-
-            assert key not in self.entry_from_key
-            if _version: # save they key
-                key_pkl = os.path.join(location, 'key.pkl')
-                # Note that using a binary file is important under Windows.
-                key_file = open(key_pkl, 'wb')
-                try:
-                    cPickle.dump(key, key_file, cPickle.HIGHEST_PROTOCOL)
-                    key_file.close()
-                    key_broken = False
-                except cPickle.PicklingError:
-                    key_file.close()
-                    os.remove(key_pkl)
-                    warning("Cache leak due to unpickle-able key", key)
-                    key_broken = True
-
-                if not key_broken:
-                    try:
-                        key_from_file = cPickle.load(open(key_pkl, 'rb'))
-                        if key != key_from_file:
-                            raise Exception("key not equal to unpickled version (Hint: verify the __eq__ and __hash__ functions for your Ops", (key, key_from_file))
-                        self.loaded_key_pkl.add(key_pkl) # adding the key file to this set means it is a versioned key
-                    except cPickle.UnpicklingError:
-                        warning('Cache failure due to un-loadable key', key)
-            self.entry_from_key[key] = name
-            self.module_from_name[name] = module
+            if name in self.module_from_name:
+                # May happen if we are re-using an existing module.
+                assert duplicated_module
+                assert self.module_from_name[name] is module
+            else:
+                self.module_from_name[name] = module
 
             self.stats[2] += 1
             rval = module
         #debug('stats', self.stats, sum(self.stats))
         return rval
 
+    def check_key(self, key, key_pkl):
+        """
+        Perform checks to detect broken __eq__ / __hash__ implementations.
+
+        :param key: The key to be checked.
+        :param key_pkl: Its associated pickled file containing a KeyData.
+        """
+        start_time = time.time()
+        # Verify that when we reload the KeyData from the pickled file, the
+        # same key can be found in it, and is not equal to more than one
+        # other key.
+        key_data = cPickle.load(open(key_pkl, 'rb'))
+        found = sum(key == other_key for other_key in key_data.keys)
+        msg = ''
+        if found == 0:
+            msg = 'Key not found in unpickled KeyData file'
+        elif found > 1:
+            msg = 'Multiple equal keys found in unpickled KeyData file'
+        if msg:
+            raise AssertionError(
+                    "%s. Verify the __eq__ and __hash__ functions of your "
+                    "Ops. The file is: %s. The key is: %s" %
+                    (msg, key_pkl, key))
+        # Also verify that there exists no other loaded key that would be equal
+        # to this key. In order to speed things up, we only compare to keys
+        # with the same version part and config md5, since we can assume this
+        # part of the key is not broken.
+        for other in self.similar_keys.get(get_safe_part(key), []):
+            if other is not key and other == key and hash(other) != hash(key):
+                raise AssertionError(
+                    "Found two keys that are equal but have a different hash. "
+                    "Verify the __eq__ and __hash__ functions of your Ops. "
+                    "The keys are:\n  %s\nand\n  %s\n(found in %s)." %
+                    (other, key, key_pkl))
+
+        self.time_spent_in_check_key += time.time() - start_time
+
     age_thresh_del = 60*60*24*31#31 days
-    age_thresh_del_unversionned = 60*60*24*7#7 days
+    age_thresh_del_unversioned = 60*60*24*7#7 days
 
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh_del=None): #default to a 31-day age_thresh_delold
+    def clear_old(self, age_thresh_del=None, delete_if_problem=False):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
-        :param age_thresh_del: dynamic modules whose last access time is more than ``age_thresh_del``
-        seconds ago will be erased.
+        :param age_thresh_del: Dynamic modules whose last access time is more
+        than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
+        age if not provided.
+
+        :param delete_if_problem: See help of refresh() method.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
 
+        # Ensure that the too_old_to_use list return by refresh() will
+        # contain all modules older thatn age_thresh_del.
+        if age_thresh_del < self.age_thresh_use:
+            info("Clearing modules that were not deemed to old to use:",
+                    "age_thresh_del=%d," % age_thresh_del,
+                    "self.age_thresh_use=%d" % self.age_thresh_use)
+            age_thresh_use = age_thresh_del
+        else:
+            age_thresh_use = None
+
         compilelock.get_lock()
         try:
-            # update the age of modules that have been accessed by other processes
-            # and get all module that are too old to use.(not loaded in self.entry_from_key)
-            too_old_to_use = self.refresh()
-            too_old_to_use = [(None,entry) for entry in too_old_to_use]
-            time_now = time.time()
+            # Update the age of modules that have been accessed by other
+            # processes and get all module that are too old to use
+            # (not loaded in self.entry_from_key).
+            too_old_to_use = self.refresh(
+                    age_thresh_use=age_thresh_use,
+                    delete_if_problem=delete_if_problem)
 
-            # the .items() is important here:
-            # we need to get a copy of the whole list of keys and entries
-            items_copy = list(self.entry_from_key.iteritems())
-            for key, entry in items_copy+too_old_to_use:
-                age = time_now - last_access_time(entry)
-                if age > age_thresh_del:
-                    # TODO: we are assuming that modules that haven't been accessed in over
-                    # age_thresh_del are not currently in use by other processes, but that could be
-                    # false for long-running jobs...
-                    assert entry not in self.module_from_name
-                    if key is not None:
-                        del self.entry_from_key[key]
-                    parent = os.path.dirname(entry)
-                    assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    info("clear_old removing cache dir", parent)
-                    _rmtree(parent)
+            for entry in too_old_to_use:
+                # TODO: we are assuming that modules that haven't been
+                # accessed in over age_thresh_del are not currently in
+                # use by other processes, but that could be false for
+                # long-running jobs, or if age_thresh_del < 0.
+                assert entry not in self.module_from_name
+                parent = os.path.dirname(entry)
+                assert parent.startswith(os.path.join(self.dirname, 'tmp'))
+                _rmtree(parent, msg='old cache directory', level='info',
+                        ignore_nocleanup=True)
 
         finally:
             compilelock.release_lock()
 
-    def clear(self):
+    def clear(self, unversioned_min_age=None, clear_base_files=False,
+              delete_if_problem=False):
         """
-        Clear all the elements of the cache
-        """
-        self.clear_old(-1.0)
-        self.clear_unversioned()
+        Clear all elements in the cache.
 
-    def clear_unversioned(self):
-        """Delete unversioned dynamic modules from the internal dictionaries and from the
+        :param unversioned_min_age: Forwarded to `clear_unversioned`. In
+        particular, you can set it to -1 in order to delete all unversioned
+        cached modules regardless of their age.
+
+        :param clear_base_files: If True, then delete base directories
+        'cuda_ndarray' and 'cutils_ext' if they are present. If False, those
+        directories are left intact.
+
+        :param delete_if_problem: See help of refresh() method.
+        """
+        compilelock.get_lock()
+        try:
+            self.clear_old(
+                    age_thresh_del=-1.0,
+                    delete_if_problem=delete_if_problem)
+            self.clear_unversioned(min_age=unversioned_min_age)
+            if clear_base_files:
+                self.clear_base_files()
+        finally:
+            compilelock.release_lock()
+
+    def clear_base_files(self):
+        """
+        Remove base directories 'cuda_ndarray' and 'cutils_ext' if present.
+
+        Note that we do not delete them outright because it may not work on
+        some systems due to these modules being currently in use. Instead we
+        rename them with the '.delete.me' extension, to mark them to be deleted
+        next time we clear the cache.
+        """
+        compilelock.get_lock()
+        try:
+            for base_dir in ('cuda_ndarray', 'cutils_ext'):
+                to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
+                if os.path.isdir(to_delete):
+                    try:
+                        shutil.rmtree(to_delete)
+                        debug('Deleted: %s' % to_delete)
+                    except Exception:
+                        warning('Could not delete %s' % to_delete)
+                        continue
+                to_rename = os.path.join(self.dirname, base_dir)
+                if os.path.isdir(to_rename):
+                    try:
+                        shutil.move(to_rename, to_delete)
+                    except Exception:
+                        warning('Could not move %s to %s' %
+                                (to_rename, to_delete))
+        finally:
+            compilelock.release_lock()
+
+    def clear_unversioned(self, min_age=None):
+        """
+        Delete unversioned dynamic modules.
+
+        They are deleted both from the internal dictionaries and from the
         filesystem.
+
+        :param min_age: Minimum age to be deleted, in seconds. Defaults to
+        7-day age if not provided.
         """
-        items_copy = list(self.entry_from_key.iteritems())
-        for key, entry in items_copy:
-            version, rest = key
-            if not version:
-                del self.entry_from_key[key]
+        if min_age is None:
+            min_age = self.age_thresh_del_unversioned
 
-                # entry is guaranteed to be in this dictionary,
-                # because an unversioned entry should never have been loaded via refresh
-                assert entry in self.module_from_name
+        compilelock.get_lock()
+        all_key_datas = self.module_hash_to_key_data.values()
+        try:
+            for key_data in all_key_datas:
+                if not key_data.keys:
+                    # May happen for broken versioned keys.
+                    continue
+                for key_idx, key in enumerate(key_data.keys):
+                    version, rest = key
+                    if version:
+                        # Since the version is included in the module hash,
+                        # it should not be possible to mix versioned and
+                        # unversioned keys in the same KeyData object.
+                        assert key_idx == 0
+                        break
+                if not version:
+                    # Note that unversioned keys cannot be broken, so we can
+                    # set do_manual_check to False to speed things up.
+                    key_data.delete_keys_from(self.entry_from_key,
+                                              do_manual_check=False)
+                    entry = key_data.get_entry()
+                    # Entry is guaranteed to be in this dictionary, because
+                    # an unversioned entry should never have been loaded via
+                    # refresh.
+                    assert entry in self.module_from_name
 
-                del self.module_from_name[entry]
+                    del self.module_from_name[entry]
+                    del self.module_hash_to_key_data[key_data.module_hash]
 
-                parent = os.path.dirname(entry)
-                assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                info("clear_unversioned removing cache dir", parent)
-                _rmtree(parent)
+                    parent = os.path.dirname(entry)
+                    assert parent.startswith(os.path.join(self.dirname, 'tmp'))
+                    _rmtree(parent, msg='unversioned', level='info',
+                            ignore_nocleanup=True)
 
-        time_now = time.time()
-        for filename in os.listdir(self.dirname):
-            if filename.startswith('tmp'):
-                try:
-                    open(os.path.join(self.dirname, filename, 'key.pkl')).close()
-                    has_key = True
-                except IOError:
-                    has_key = False
-                if not has_key:
-                    age = time_now - last_access_time(os.path.join(self.dirname, filename))
-                    #In normal case, the processus that created this directory will delete it
-                    #In case this processus crash, it won't be cleaned up.
-                    #As we don't know how to know if this directory is still used
-                    #we wait 1 weak and suppose that the processus crashed
-                    #and we do the clean up for it.
-                    if age > self.age_thresh_del_unversionned:
-                        info("clear_unversioned removing cache dir", filename)
-                        _rmtree(os.path.join(self.dirname, filename))
+            # Sanity check: all unversioned keys should have been removed at
+            # this point.
+            for key in self.entry_from_key:
+                assert key[0]
+
+            time_now = time.time()
+            for filename in os.listdir(self.dirname):
+                if filename.startswith('tmp'):
+                    try:
+                        open(os.path.join(self.dirname, filename, 'key.pkl')).close()
+                        has_key = True
+                    except IOError:
+                        has_key = False
+                    if not has_key:
+                        age = time_now - last_access_time(os.path.join(self.dirname, filename))
+                        # In normal case, the processus that created this directory
+                        # will delete it. However, if this processus crashes, it
+                        # will not be cleaned up.
+                        # As we don't know if this directory is still used, we wait
+                        # one week and suppose that the processus crashed, and we
+                        # take care of the clean-up.
+                        if age > min_age:
+                            _rmtree(os.path.join(self.dirname, filename),
+                                    msg='old unversioned', level='info',
+                                    ignore_nocleanup=True)
+        finally:
+            compilelock.release_lock()
 
     def _on_atexit(self):
-        #self.refresh()#refresh is called by clear_old(), this can be long for big directory
-        self.clear_old()
-        self.clear_unversioned()
+        # Note: no need to call refresh() since it is called by clear_old().
+        compilelock.get_lock()
+        try:
+            self.clear_old()
+            self.clear_unversioned()
+        finally:
+            compilelock.release_lock()
+        debug('Time spent checking keys: %s' % self.time_spent_in_check_key)
 
-def _rmtree(parent):
+def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
+            ignore_if_missing=False):
+    # On NFS filesystems, it is impossible to delete a directory with open
+    # files in it.  So instead, some commands in this file will respond to a
+    # failed rmtree() by touching a 'delete.me' file.  This file is a message
+    # for a future process to try deleting the directory.
+    if ignore_if_missing and not os.path.exists(parent):
+        return
     try:
-        if not config.nocleanup:
+        if ignore_nocleanup or not config.nocleanup:
+            log_msg = 'Deleting'
+            if msg:
+                log_msg += ' (%s)' % msg
+            eval(level)('%s: %s' % (log_msg, parent))
             shutil.rmtree(parent)
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()
@@ -589,11 +1182,20 @@ def _rmtree(parent):
                 warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
 
 _module_cache = None
-def get_module_cache(dirname, force_fresh=None):
+def get_module_cache(dirname, init_args=None):
+    """
+    :param init_args: If not None, the (k, v) pairs in this dictionary will
+    be forwarded to the ModuleCache constructor as keyword arguments.
+    """
     global _module_cache
+    if init_args is None:
+        init_args = {}
     if _module_cache is None:
-        _module_cache = ModuleCache(dirname, force_fresh=force_fresh)
+        _module_cache = ModuleCache(dirname, **init_args)
         atexit.register(_module_cache._on_atexit)
+    elif init_args:
+        warning('Ignoring init arguments for module cache because it was '
+                'created prior to this call')
     if _module_cache.dirname != dirname:
         warning("Returning module cache instance with different dirname than you requested")
     return _module_cache

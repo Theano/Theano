@@ -255,6 +255,60 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
+    def test_non_contiguous(self):
+        # Like test_transposes but with matrices without any
+        # continuous dimension
+        A = self.rand(4,4,3)
+        B = self.rand(4,4,3)
+        C = self.rand(4,4,3)
+
+        def t(z, x, y, a=1.0, b=0.0, l='c|py', dt='float64'):
+            z, a, x, y, b = [theano._asarray(p, dtype=dt) for p in z, a, x, y, b]
+            z_orig = z.copy()
+            z_after = numpy.zeros_like(z_orig)
+            for i in xrange(3):
+                z_after[:,:,i] = self._gemm(z[:,:,i], a, x[:,:,i], y[:,:,i], b)
+
+            tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
+            for i in xrange(3):
+                f_i = inplace_func([],
+                        gemm_inplace(tz[:,:,i], ta, tx[:,:,i], ty[:,:,i], tb),
+                        mode=compile.Mode(optimizer=None, linker=l))
+                for j in xrange(3):
+                    # tz will not _always_ be overwritten,
+                    # and adding update={...} in the call to function()
+                    # will create cycles, so we update by hand.
+                    z_i = f_i()
+                    z = tz.get_value(borrow=True, return_internal_type=True)
+                    z[:,:,i] = z_i
+
+                    self.assertTrue(
+                            _approx_eq(z_after[:,:,i],
+                                       tz.get_value(borrow=True)[:,:,i]),
+                            (z_orig[:,:,i], z_after[:,:,i],
+                                z[:,:,i], z_after[:,:,i] - z[:,:,i]))
+
+                tz_i = gemm_no_inplace(tz[:,:,i], ta, tx[:,:,i], ty[:,:,i], tb)
+                g_i = theano.function([], tz_i,
+                        updates={tz:T.set_subtensor(tz[:,:,i], tz_i)},
+                        mode=compile.Mode(optimizer=None, linker=l))
+                for j in xrange(3):
+                    g_i()
+                    self.assertTrue(
+                            _approx_eq(z_after[:,:,i],
+                                       tz.get_value(borrow=True)[:,:,i]),
+                            (z_orig[:,:,i], z_after[:,:,i],
+                                z[:,:,i], z_after[:,:,i] - z[:,:,i]))
+
+        t(C, A, B)
+        t(C.transpose((1,0,2)), A, B)
+        t(C, A.transpose((1,0,2)), B, dt='float32')
+        t(C, A, B.transpose((1,0,2)))
+        t(C.transpose((1,0,2)), A.transpose((1,0,2)), B)
+        t(C, A.transpose((1,0,2)), B.transpose((1,0,2)), dt='float32')
+        t(C.transpose((1,0,2)), A, B.transpose((1,0,2)))
+        t(C.transpose((1,0,2)), A.transpose((1,0,2)), B.transpose((1,0,2)), dt='float32')
+
 def test_res_is_a():
     X,Y,Z,a,b = XYZab()
 
@@ -479,6 +533,35 @@ def test_gemm_factor():
     assert [(1.0, X), (1.0, Y)] == _factor_canonicalized([(1.0, X), (1.0, Y)])
     assert [(2.0, X)] == _factor_canonicalized([(1.0, X),(1.0, X)])
 
+def test_upcasting_scalar_nogemv():
+    # Test that the optimization does not crash when the scale has an incorrect
+    # dtype, and forces upcasting of the result
+    v = T.fvector('v')
+    w = T.fmatrix('w')
+    t = T.fvector('t')
+    alpha = T.dscalar('a')
+
+    rval = T.dot(w, v) * alpha + t
+
+    f = theano.function([w, v, t, alpha], rval)
+    t = f.maker.env.toposort()
+    assert numpy.sum([isinstance(n.op, Gemv) for n in t]) == 0
+    theano.printing.debugprint(f, print_type=True)
+
+def test_upcasting_scalar_nogemm():
+    # Test that the optimization does not crash when the scale has an incorrect
+    # dtype, and forces upcasting of the result
+    v = T.fmatrix('v')
+    w = T.fmatrix('w')
+    t = T.fmatrix('t')
+    alpha = T.dscalar('a')
+
+    rval = T.dot(w, v) * alpha + t
+
+    f = theano.function([w, v, t, alpha], rval)
+    t = f.maker.env.toposort()
+    assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
+    theano.printing.debugprint(f, print_type=True)
 
 def test_gemm_nested():
     X,Y,Z,a,b = T.dmatrix('X'), T.dmatrix('Y'), T.dmatrix('Z'), T.dscalar('a'), T.dscalar('b')

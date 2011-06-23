@@ -6,15 +6,12 @@ import numpy.distutils
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler,
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer,
-        InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
+        InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer, Apply)
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
 import theano.scalar
 import basic as T
-
-
-from theano.gof.apply_shape import Apply
 
 #NB: this clobbers the builtin 'compile' symbol
 from theano import compile  #to register the optimizer built by this file
@@ -264,7 +261,7 @@ class GemmRelated(Op):
         {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
         """
 
-    check_dims_strides = """
+    check_dims = """
         if (Nx[0] != Nz[0])
         {
             PyErr_Format(PyExc_ValueError,
@@ -275,8 +272,8 @@ class GemmRelated(Op):
         if (Nx[1] != Ny[0])
         {
             PyErr_Format(PyExc_ValueError,
-                "Shape mismatch: x has %%ld cols but y has %%ld rows",
-                (long int)Nx[1], (long int)Ny[0]);
+                "Shape mismatch: x has %%ld cols (and %%ld rows) but y has %%ld rows (and %%ld cols)",
+                (long int)Nx[1], (long int)Nx[0], (long int)Ny[0], (long int)Ny[1]);
             %(fail)s;
         }
         if (Ny[1] != Nz[1])
@@ -286,11 +283,38 @@ class GemmRelated(Op):
                 (long int)Ny[1], (long int)Nz[1]);
             %(fail)s;
         }
+        """
+
+    check_strides = """
+        /*
+        If some matrices are not contiguous on either dimensions,
+        or have invalid strides, copy their content into a contiguous one
+        */
         if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
-           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
-           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
+            || ((Sx[0] != type_size) && (Sx[1] != type_size)))
         {
-            PyErr_SetString(PyExc_NotImplementedError, "stride is not multiple of element size"); %(fail)s;
+            PyArrayObject * _x_copy = PyArray_GETCONTIGUOUS(%(_x)s);
+            Py_XDECREF(%(_x)s);
+            %(_x)s = _x_copy;
+            Sx = %(_x)s->strides;
+        }
+
+        if ((Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
+            || ((Sy[0] != type_size) && (Sy[1] != type_size)))
+        {
+            PyArrayObject * _y_copy = PyArray_GETCONTIGUOUS(%(_y)s);
+            Py_XDECREF(%(_y)s);
+            %(_y)s = _y_copy;
+            Sy = %(_y)s->strides;
+        }
+
+        if ((Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size)
+            || ((Sz[0] != type_size) && (Sz[1] != type_size)))
+        {
+            PyArrayObject * _z_copy = PyArray_GETCONTIGUOUS(%(_zout)s);
+            Py_XDECREF(%(_zout)s);
+            %(_zout)s = _z_copy;
+            Sz = %(_zout)s->strides;
         }
         """
 
@@ -398,7 +422,8 @@ class GemmRelated(Op):
             self.check_xyz_rank2,
             self.check_xyz_double_or_float,
             self.check_ab_double_or_float,
-            self.check_dims_strides,
+            self.check_dims,
+            self.check_strides,
             self.encode_strides_in_unit,
             self.compute_strides,
             self.begin_switch_typenum,
@@ -411,7 +436,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (4,)
+        return (6,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
@@ -825,9 +850,14 @@ def _factor_canonicalized(lst):
     # once i has touched a list element, it is permantent
     lst = list(lst)
     #print 'FACTOR', lst
-    #for (a,b) in lst:
-        #theano.printing.debugprint(a)
-        #theano.printing.debugprint(b)
+    #for t in lst:
+    #    if not isinstance(t, (list, tuple)):
+    #        t = (t,)
+    #    for e in t:
+    #        try:
+    #            theano.printing.debugprint(e)
+    #        except TypeError:
+    #            print e, type(e)
     i = 0
     while i < len(lst)-1:
         try:
@@ -907,9 +937,8 @@ def _gemm_from_node2(node):
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
         #print "RVAL", rval
-        if rval:
-            assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
-        return rval
+        if rval and (rval[0].type == node.outputs[0].type):
+            return rval
 
 class GemmOptimizer(Optimizer):
     """Graph optimizer for inserting Gemm operations"""
