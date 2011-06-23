@@ -104,9 +104,9 @@ Community
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* Register and post to `theano-announce`_ if you want to be keep informed on important change on theano(low volume).
+* Register to `theano-announce`_ if you want to be kept informed on important change on theano(low volume).
 
-* Register and post to `theano-buildbot`_ if you want to receive our daily buildbot email.
+* Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
 * Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
 
