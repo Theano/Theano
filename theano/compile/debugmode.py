@@ -902,7 +902,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         raise NotImplementedError('Negative strides in check_preallocated_output')
 
     for (name, out_map) in prealloc_maps:
-
+        #debug('name =', name, ', perform =', perform)
         # Copy the inputs over again
         for r in node.inputs:
             storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
@@ -1316,6 +1316,7 @@ class _Linker(gof.link.LocalLinker):
                             storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
                         if config.DebugMode.check_preallocated_output:
+                            debug('calling _check_preallocated_output with thunk_py')
                             _check_preallocated_output(
                                     node=node,
                                     thunk=thunk_py,
@@ -1402,6 +1403,7 @@ class _Linker(gof.link.LocalLinker):
                                     thunk_c()
                                 except:
                                     raise_with_op(node)
+                            debug('calling _check_preallocated_output with thunk_c')
                             _check_preallocated_output(
                                     node=node,
                                     thunk=thunk,
