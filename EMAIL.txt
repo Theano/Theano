@@ -12,14 +12,15 @@ mercurial repository, we encourage you to update to the `0.3.1` tag.
 Deleting old cache
 ------------------
 
-Since the default path of the cache directory for compiled object
-changed, we encourage you to delete the previous one.
+The caching mechanism for compiled C modules has been updated.
+In some cases, using previously-compiled modules with the new version of
+Theano can lead to high memory usage and code slow-down. If you experience
+these symptoms, we encourage you to clear your cache.
 
 The easiest way to do that is to execute:
-    python -c 'import theano; print theano.config.base_compiledir'
-and then call "rm -rf" on the returned result.
+    theano-cache clear
 
-A new cache directory will then be created next time you import theano.
+(The theano-cache executable is in Theano/bin.)
 
 
 What's New
