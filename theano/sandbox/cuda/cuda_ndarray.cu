@@ -901,52 +901,12 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
     return (PyObject *) rval;
 }
 
-/*
-#define decl_k_elemwise_binary_inplace_rowmajor_3(name, F) \
-__global__ void name(const int d0, const int d1, const int d2,\
-        float* a, const int sA0, const int sA1, const int sA2,\
-        const float* b, const int sB0, const int sB1, const int sB2){\
-    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
-        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
-            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
-              F(a[i0*sA0 + i1*sA1 + i2*sA2], b[i0*sB0 + i1*sB1 + i2*sB2]); \
-            }\
-        }\
-    }\
-}
-
-#define decl_k_elemwise_binary_inplace_rowmajor_4(name, F) \
-__global__ void name(const int d0, const int d1, const int d2, const int d3,\
-                         float* a, const int sA0, const int sA1,\
-                         const int sA2, const int sA3,\
-                         const float* b, const int sB0, const int sB1,\
-                         const int sB2, const int sB3){\
-    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){\
-        for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y){\
-            for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x){\
-              for (int i3 = threadIdx.y; i3 < d3; i3 += blockDim.y){\
-                F(a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3], b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3]); \
-                }\
-            }\
-        }\
-    }\
-}
-
-template<typename T> __device__ T binary_iadd(T a, T b) { a = a+b; }
-template<typename T> __device__ T binary_idiv(T a, T b) { a = a/b; }
-
-decl_k_elemwise_binary_inplace_rowmajor_3(k_iadd_3, binary_iadd<float>)
-decl_k_elemwise_binary_inplace_rowmajor_4(k_iadd_4, binary_iadd<float>)
-decl_k_elemwise_binary_inplace_rowmajor_3(k_idiv_3, binary_idiv<float>)
-decl_k_elemwise_binary_inplace_rowmajor_4(k_idiv_4, binary_idiv<float>)
-*/
-
 enum operator_t
 {
     IADD=0,
     IDIV,
     CPY,
-    N_ELEMWISE_OPS
+    N_ELEMWISE_OPS // What this mean? It is not used
 };
 
 template <int operator_num>
@@ -1005,14 +965,16 @@ __global__ void k_ielem_4(const int d0, const int d1, const int d2, const int d3
 
 /*
 CudaNdarray_inplace_elemwise
-Compute A / B or A + B, working inplace on A.
+Compute elemwise, working inplace on A.
+Currently implemented A / B, A + B and A = B
+(the last is not tested and not used!)
 
 py_self - the CudaNdarray that we'll modify (A)
 py_other - the other argument (B)
 fct_nb - which operation to perform (operator_t)
 
 Returns 0 on success.
-Returns 1 on failure, and sets Python exception.
+Returns -1 on failure, and sets Python exception.
 
 */
 int
@@ -1090,7 +1052,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
         {
             PyErr_SetString(
                 PyExc_ValueError,
-                "need same dimensions (or broadcastable dimension)");
+                "CudaNdarray_inplace_elemwise need same dimensions (or broadcastable dimension)");
             return -1;
         }
         // if we're broadcasting other, then make sure it has stride 0
@@ -1105,7 +1067,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
         {
             PyErr_SetString(
                 PyExc_ValueError,
-                "cannot work inplace on an un-initialized array");
+                "CudaNdarray_inplace_elemwise cannot work inplace on an un-initialized array");
             return 0;
         }
         return 0;
