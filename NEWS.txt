@@ -3,6 +3,31 @@ Modifications in the trunk since the last release
 Theano 0.4.0rc4 (2011-06-13)
 --------------------------------------------------
 
+Change in output memory storage for Ops:
+ If you implemented custom Ops, with either C or Python implementation,
+ this will concern you.
+
+ The contract for memory storage of Ops has been changed. In particular,
+ it is no longer guaranteed that output memory buffers are either empty,
+ or allocated by a previous execution of the same Op.
+
+ Right now, here is the situation:
+ * For Python implementation (perform), what is inside output_storage
+   may have been allocated from outside the perform() function, for
+   instance by another node (e.g., Scan) or the Mode. If that was the
+   case, the memory can be assumed to be C-contiguous (for the moment).
+ * For C implementations (c_code), nothing has changed yet.
+
+ In a future version, the content of the output storage, both for Python and C
+ versions, will either be NULL, or have the following guarantees:
+ * It will be a Python object of the appropriate Type (for a Tensor variable,
+   a numpy.ndarray, for a GPU variable, a CudaNdarray, for instance)
+ * It will have the correct number of dimensions, and correct dtype
+ However, its shape and memory layout (strides) will not be guaranteed.
+
+ When that change is made, the config flag DebugMode.check_preallocated_output
+ will help you find implementations that are not up-to-date.
+
 Deprecation:
  * tag.shape attribute deprecated (#633)
  * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New

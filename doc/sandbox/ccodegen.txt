@@ -29,6 +29,11 @@ List of methods in ResultBase:
 
 '''c_cleanup:''' This method should clean up all the variables declared by c_declare.
 
+.. warning::
+
+    This page describes usage of c_init and c_extract as of version 0.4.0 (and
+    previous versions). This will change in the future, to allow c_code to
+    use preallocated memory buffers of the outputs.
 
 Important notes:
   * ''Either'' c_init or c_extract will be called. The former for temporary variables and outputs, the latter for inputs. If the former is used, py_<name> will be set to Py_None regardless of what is in storage_<name>.

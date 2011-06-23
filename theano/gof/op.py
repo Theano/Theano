@@ -193,14 +193,17 @@ class CLinkerOp(CLinkerObject):
            There is a string for each input of the function, and the string is the name of a C
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
-           Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  This pointer could be NULL, or contain an object of the right
-           Type (in the Theano sense) to store the output of the computation.
-           For instance, for a TensorVariable, it will be a Numpy ndarray with
-           the right number of dimensions, and the right dtype. However, its
-           shape, or stride pattern, could not be adequate.
-           It could be unchanged from the end of the previous execution, or allocated
-           by another Op, or by the Mode.
+           Each string is the name of a `PyObject` pointer where the Op should
+           store its variables.  As of version 0.4.0, this pointer could be
+           NULL, or contain an object allocated during a previous call to the
+           same function, unchanged from the end of the previous execution.
+           In a future version, there will be no guarantee on where that
+           object will be created (it could be allocated during a previous
+           execution, or by another Op, by the Mode, etc.). It will still
+           be of an appropriate Type (in the Theano sense) to store the output
+           of the computation: for instance, for a TensorVariable, it will be a
+           Numpy ndarray with the right number of dimensions, and the right dtype.
+           However, its shape, or stride pattern, could not be adequate.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
