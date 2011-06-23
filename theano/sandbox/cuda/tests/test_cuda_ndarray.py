@@ -37,62 +37,110 @@ def test_host_to_device():
         assert numpy.all(a == c)
 
 def test_add_iadd_idiv():
-    for shape in ((), (0,), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),
-                  (1000,10000),(10000,1000),
+    for shapes in (
+                  [(5,5),(5,1)],
+                  [(5,5),(1,5)],
+                  (), (0,), (3,), (2,3),
+                  (1,10000000),(10000,1000),(1000000,10),
                   (4100,33,34),(33,4100,34),(33,34,4100),
                   (4100,33,3,6),(33,4100,3,6),(33,3,4100,6),(33,3,6,4100),
                   (4100,3,34,6),(3,4100,34,6),(3,34,4100,6),(3,34,6,4100),
                   (4100,3,4,36),(3,4100,4,36),(3,4,4100,36),(3,4,36,4100),
+                  (0,0,0,0,0),
                   (3,34,35,36,37),
                   (33,34,3,36,37),
                   (33,34,35,36,3),
-
                   ):
-        a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
-        a1 = a0.copy()
+        if isinstance(shapes,tuple):
+            shape = shapes
+            shape2 = shapes
+            a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
+            a0_orig = a0.copy()
+            a1 = a0.copy()
+            assert numpy.allclose(a0, a1)
+        else:
+            shape = shapes[0]
+            shape2 = shapes[1]
+
+            a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
+            a0_orig = a0.copy()
+            a1 = theano._asarray(numpy.random.rand(*shape2), dtype='float32')
+
         b0 = cuda_ndarray.CudaNdarray(a0)
         b1 = cuda_ndarray.CudaNdarray(a1)
+        assert numpy.allclose(a0, numpy.asarray(b0))
+        assert numpy.allclose(a1, numpy.asarray(b1))
+
+        # add don't support stride
+        if shape == shape2:
+            t0 = time.time()
+            bsum = b0 + b1
+            bsum = b0 + b1
+            t1 = time.time()
+            gpu_dt = t1 - t0
+            t0 = time.time()
+            asum = a0 + a1
+            asum = a0 + a1
+            t1 = time.time()
+            cpu_dt = t1 - t0
+            print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+            assert numpy.allclose(asum,  numpy.asarray(bsum))
+
+        #test not contiguous version.
+        #should raise not implemented.
+        a0 = a0_orig.copy()
+        b0 = cuda_ndarray.CudaNdarray(a0)
+        if len(shape)==0:
+            continue
+        elif len(shape) == 1:
+            _b = b1[::-1]
+        elif len(shape) == 2:
+            _b = b1[::, ::-1]
+        elif len(shape) == 3:
+            _b = b1[::, ::, ::-1]
+        elif len(shape) == 4:
+            _b = b1[::, ::, ::, ::-1]
+        elif len(shape) == 5:
+            _b = b1[::, ::, ::, ::, ::-1]
+        # TODO: b0[...,::-1] don't work
+
+        if shape == shape2:
+            t = False
+            try:
+                _c = _b+b1
+            except TypeError:
+                t = True
+            assert t
+
+        # test inplace version
         t0 = time.time()
-        bsum = b0 + b1
-        bsum = b0 + b1
+        b0 += b1
         t1 = time.time()
         gpu_dt = t1 - t0
         t0 = time.time()
-        asum = a0 + a1
-        asum = a0 + a1
+        a0 += a1
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
-        assert numpy.allclose(asum,  numpy.asarray(bsum))
-
-        # test inplace version
-        b0 += b1
-        a0 += a1
+        print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(a0, numpy.asarray(b0))
-        assert numpy.allclose(a0,a1*2)
+        assert numpy.allclose(a0, a0_orig + a1)
 
         b0 /= b1
         a0 /= a1
         assert numpy.allclose(a0, numpy.asarray(b0))
-        assert numpy.allclose(a0,numpy.ones(a0.shape)*2)
+        assert numpy.allclose(a0, (a0_orig + a1)/a1)
 
-        if len(shape)==2:
-            #test not contiguous version.
-            #should raise not implemented.
-            _b = b0[::, ::-1]
+        # test inplace version
+        # for not contiguous input
+        b0 += _b
+        a0 += a1[..., ::-1]
+        assert numpy.allclose(a0, numpy.asarray(b0))
+        assert numpy.allclose(a0, (a0_orig+a1)/a1+a1[..., ::-1])
 
-            b = numpy.asarray(_b)
-
-            ones = numpy.ones(shape, dtype='float32')
-            _ones = cuda_ndarray.CudaNdarray(ones)
-            t = False
-            try:
-                _c = _b+_ones
-            except:
-                t = True
-            assert t
-
-
+        b0 /= _b
+        a0 /= a1[..., ::-1]
+        assert numpy.allclose(a0, numpy.asarray(b0))
+        assert numpy.allclose(a0, ((a0_orig+a1)/a1+a1[..., ::-1])/a1[..., ::-1])
 
 def test_exp():
     print >>sys.stdout, 'starting test_exp'
