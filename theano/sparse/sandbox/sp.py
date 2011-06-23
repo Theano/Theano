@@ -135,8 +135,8 @@ class SquareDiagonal(Op):
     """
     def make_node(self, diag):
         return gof.Apply(self, [diag], 
-                [sparse.Sparse(dtype = diag.dtype,
-                                 format = 'csc').make_result()])
+                [sparse.SparseType(dtype = diag.dtype,
+                                 format = 'csc')()])
     def perform(self, node, (diag,), (z,)):
         N, = diag.shape
         indptr = range(N+1)
