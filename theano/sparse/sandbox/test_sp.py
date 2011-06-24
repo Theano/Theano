@@ -19,7 +19,7 @@ import time
 class TestSP(unittest.TestCase):
     def test_convolution(self):
         print '\n\n*************************************************'
-        print '           TEST CONVOLUTION' 
+        print '           TEST CONVOLUTION'
         print '*************************************************'
 
         # fixed parameters
@@ -29,7 +29,7 @@ class TestSP(unittest.TestCase):
         nkern = 5
         ssizes = ((1,1),(2,2),(3,3),(4,4))
         convmodes = ('full','valid')
-       
+
         # symbolic stuff
         bias = T.dvector()
         kerns = T.dmatrix()
@@ -46,11 +46,11 @@ class TestSP(unittest.TestCase):
                     output, outshp  = sp.convolve(kerns, kshp, nkern, input,\
                             imshp, ss, bias=bias, mode=conv_mode)
                     f = function([kerns, bias, input], output, mode=mode)
-                    
+
                     # now test with real values
                     img2d = N.arange(bsize*N.prod(imshp)).reshape((bsize,)+imshp)
                     img1d = img2d.reshape(bsize,-1)
-    
+
                     # create filters (need to be flipped to use convolve2d)
                     filtersflipped = N.zeros((nkern,)+kshp)
                     for k in range(nkern):
@@ -81,9 +81,9 @@ class TestSP(unittest.TestCase):
                     out1 = f(filters, biasvals, img1d)
                     ttot += time.time() - ttime1
                     temp = bench1.flatten() - out1.flatten()
-   
+
                     assert (temp < 1e-5).all()
-                    
+
                     # test downward propagation -- symbolic stuff
                     #vis = T.grad(output, input, output)
                     #downprop = function([kerns,input], vis, mode=mode)
@@ -93,8 +93,8 @@ class TestSP(unittest.TestCase):
                     #patchstack = N.zeros(pshape)
                     #for bi in N.arange(pshape[0]): # batch index
                         #abspos = 0
-                        #for outy in N.arange(outshp[1]): 
-                            #for outx in N.arange(outshp[2]): 
+                        #for outy in N.arange(outshp[1]):
+                            #for outx in N.arange(outshp[2]):
                                 #for ni in N.arange(nkern):
                                     #print 'filters[n,:].shape = ', filters[n,:].shape
                                     #print 'out1[bi,abspos].shape =',out1[bi,abspos].shape
@@ -108,7 +108,7 @@ class TestSP(unittest.TestCase):
 
                     #print 'visval = ', visval
                     #print 'visref = ', visref
-                    
+
                     #assert N.all(visref==visval)
 
 
@@ -122,7 +122,7 @@ class TestSP(unittest.TestCase):
     def test_sparse(self):
 
         print '\n\n*************************************************'
-        print '           TEST SPARSE' 
+        print '           TEST SPARSE'
         print '*************************************************'
 
         # fixed parameters
@@ -132,7 +132,7 @@ class TestSP(unittest.TestCase):
         nkern = 1 # per output pixel
         ssizes = ((1,1),(2,2))
         convmodes = ('full','valid',)
-       
+
         # symbolic stuff
         bias = T.dvector()
         kerns = T.dvector()
@@ -140,7 +140,7 @@ class TestSP(unittest.TestCase):
         rng = N.random.RandomState(3423489)
 
         import theano.gof as gof
-        #Mode(optimizer='fast_run', linker=gof.OpWiseCLinker(allow_gc=False)),): 
+        #Mode(optimizer='fast_run', linker=gof.OpWiseCLinker(allow_gc=False)),):
         for mode in ('FAST_COMPILE','FAST_RUN'): #,profmode):
             ntot, ttot = 0,0
             for conv_mode in convmodes:
@@ -182,15 +182,15 @@ class TestSP(unittest.TestCase):
                                     pixi += 1
                     refout = refout.reshape(bsize,-1) + biasvals
                     ntot += time.time() - ntime1
-                    
+
                     # need to flatten images
                     ttime1 = time.time()
                     out1 = f(spfilt, biasvals, img1d)
                     ttot += time.time() - ttime1
-                   
+
                     temp = refout - out1
                     assert (temp < 1e-10).all()
-        
+
                     # test downward propagation
                     vis = T.grad(0.5*T.sqr(output).sum(), input)
                     downprop = function([kerns,output], vis)
@@ -217,7 +217,7 @@ class TestSP(unittest.TestCase):
         nkerns = (10,20) # per output pixel
         ssizes = ((1,1),(2,2))
         convmodes = ('full','valid',)
-       
+
         # symbolic stuff
         kerns = [T.dvector(),T.dvector()]
         input = T.dmatrix()
@@ -235,10 +235,10 @@ class TestSP(unittest.TestCase):
                             nkerns[0], input, imshp, ss, mode=conv_mode)
                     l2hid, l2outshp = sp.applySparseFilter(kerns[1], kshp[1],\
                             nkerns[1], l1hid, l1outshp, ss, mode=conv_mode)
-                    
+
                     l1propup = function([kerns[0], input], l1hid, mode=mode)
                     l2propup = function([kerns[1], l1hid], l2hid, mode=mode)
-                    
+
                     # actual values
                     l1kernvals = N.arange(N.prod(l1outshp)*N.prod(kshp[0]))
                     l2kernvals = N.arange(N.prod(l2outshp)*N.prod(kshp[1])*nkerns[0])
@@ -255,7 +255,7 @@ class TestSP(unittest.TestCase):
         nkerns = (3,6) # per output pixel
         ssizes = (((1,1),(2,2)),)
         convmodes = ('full',)#'valid',)
-       
+
         # symbolic stuff
         kerns = [T.dmatrix(),T.dmatrix()]
         input = T.dmatrix()
@@ -272,7 +272,7 @@ class TestSP(unittest.TestCase):
                     l1hid, l1shp = sp.convolve(kerns[0], kshp[0],\
                             nkerns[0], input, imshp, ss[0], mode=conv_mode)
                     l1propup = function([kerns[0], input], l1hid, mode=mode)
-                    
+
                     #l1kernvals = N.random.rand(nkerns[0],N.prod(kshp[0]))
                     l1kernvals = N.arange(nkerns[0]*N.prod(kshp[0])).reshape(nkerns[0],N.prod(kshp[0]))
                     l1hidval = l1propup(l1kernvals,img1d)
@@ -298,18 +298,18 @@ class TestSP(unittest.TestCase):
 
         images = T.dmatrix()
         for maxpoolshp in maxpoolshps:
-            
+
             # symbolic stuff
             output, outshp = sp.max_pool(images, imval.shape[1:], maxpoolshp)
             f = function([images,],[output,])
             output_val = f(imval.reshape(imval.shape[0],-1))
-            
+
             # numeric verification
             my_output_val = N.zeros((imval.shape[0], imval.shape[1],
                                      imval.shape[2]/maxpoolshp[0],
                                      imval.shape[3]/maxpoolshp[1]))
             assert N.prod(my_output_val.shape[1:]) == N.prod(N.r_[imval.shape[1],outshp])
-            
+
             for n in range(imval.shape[0]):
                 for k in range(imval.shape[1]):
                     for i in range(imval.shape[2]/maxpoolshp[0]):
@@ -351,7 +351,7 @@ class TestSP(unittest.TestCase):
                         return theano.sparse.dense_from_sparse(
                                 theano.sparse.CSM(sptype,kmap)(
                                     kerns, indvals, indptrvals, spshapevals))
-                   
+
                     # symbolic stuff
                     utt.verify_grad(d, [kvals])
 
