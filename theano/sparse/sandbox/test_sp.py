@@ -11,6 +11,7 @@ import scipy.sparse as sparse
 import numpy
 import numpy as N
 from theano.sparse.sandbox import sp
+from theano.tests import unittest_tools as utt
 
 import unittest
 import time
@@ -191,7 +192,7 @@ class TestSP(unittest.TestCase):
                     assert (temp < 1e-10).all()
         
                     # test downward propagation
-                    vis = T.grad(output, input, output)
+                    vis = T.grad(0.5*T.sqr(output).sum(), input)
                     downprop = function([kerns,output], vis)
                     temp1 = time.time()
                     for zz in range(100):
@@ -200,7 +201,7 @@ class TestSP(unittest.TestCase):
                             sp.convolution_indices.sparse_eval(imshp,kshp,nkern,ss,conv_mode)
                     spmat = sparse.csc_matrix((spfilt[kmap],indices,indptr),spmat_shape)
                     visref = N.dot(out1,spmat.todense())
-                    assert N.all(visref==visval)
+                    assert N.all(visref==visval), (visref, visval)
 
             print '**** Sparse Profiling Results (',mode,') ****'
             print 'Numpy processing time: ', ntot
@@ -322,7 +323,7 @@ class TestSP(unittest.TestCase):
             def mp(input):
                 output, outshp = sp.max_pool(input, imval.shape[1:], maxpoolshp)
                 return output
-            T.verify_grad(None, mp, [imval.reshape(imval.shape[0],-1)])
+            utt.verify_grad(mp, [imval.reshape(imval.shape[0],-1)])
 
 
     def test_CSMGrad(self):
@@ -339,20 +340,20 @@ class TestSP(unittest.TestCase):
         indptr = T.ivector()
         spmat_shape = T.ivector()
 
-        def d(kerns, indices, indptr, spmat_shape):
-            return theano.sparse.dense_from_sparse(\
-                    theano.sparse.CSM(sptype,kmap)(kerns,indices,indptr,spmat_shape))
-     
         for mode in ['FAST_COMPILE','FAST_RUN']:
             for conv_mode in convmodes:
                 for ss in ssizes:
                     indvals, indptrvals, spshapevals, sptype, outshp, kmap = \
                             sp.convolution_indices.sparse_eval(imshp,kshp,nkern,ss,conv_mode)
                     kvals = N.random.random(nkern*N.prod(kshp)*N.prod(outshp)).flatten()
+
+                    def d(kerns):
+                        return theano.sparse.dense_from_sparse(
+                                theano.sparse.CSM(sptype,kmap)(
+                                    kerns, indvals, indptrvals, spshapevals))
                    
                     # symbolic stuff
-                    T.verify_grad(None, d,\
-                            [kvals, indvals, indptrvals,spshapevals])
+                    utt.verify_grad(d, [kvals])
 
 
 def test_diagonal():
@@ -373,11 +374,11 @@ def test_diagonal():
 def test_diagonal_grad():
     def d(x):
         return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
-    T.verify_grad(None, d, [[0.0, 0.1, 0.2, 0.3]], 
+    utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
 def test_row_scale():
-    x = theano.sparse.csc_matrix()
+    x = theano.sparse.csc_dmatrix()
     s = theano.tensor.dvector()
 
     def d(x,s):
@@ -408,7 +409,7 @@ def test_row_scale():
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
 
 def test_col_scale():
-    x = theano.sparse.csc_matrix()
+    x = theano.sparse.csc_dmatrix()
     s = theano.tensor.dvector()
 
     def d(x,s):
