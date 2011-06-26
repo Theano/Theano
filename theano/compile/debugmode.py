@@ -85,6 +85,21 @@ def debug(*args):
     #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
+# Filter to avoid duplicating optimization warnings
+class NoDuplicateOptWarningFilter(logging.Filter):
+    prev_msgs = set([])
+    def filter(self, record):
+        msg = record.getMessage()
+        if msg.startswith('OPTIMIZATION WARNING: '):
+            if msg in self.prev_msgs:
+                return False
+            else:
+                self.prev_msgs.add(msg)
+                return True
+        return True
+
+_logger.addFilter(NoDuplicateOptWarningFilter())
+
 ########################
 #
 # Exceptions
