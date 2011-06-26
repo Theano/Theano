@@ -638,6 +638,6 @@ def max_pool(images, imgshp, maxpoolshp):
                           tensor.as_tensor(imgshp[0]))
     out2 = tensor.reshape(out1, pshape, ndim=3);
     
-    out3 = tensor.DimShuffle((False,)*3, (0,2,1))(out2)
+    out3 = tensor.DimShuffle(out2.broadcastable, (0,2,1))(out2)
     
     return tensor.flatten(out3,2), outshp
