@@ -1,6 +1,6 @@
 Modifications in the trunk since the last release
 
-Theano 0.4.0rc4 (2011-06-13)
+Theano 0.4.0 (2011-06-27)
 --------------------------------------------------
 
 Change in output memory storage for Ops:

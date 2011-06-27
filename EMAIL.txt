@@ -1,12 +1,14 @@
 ===========================
- Announcing Theano 0.3.1
+ Announcing Theano 0.4.0
 ===========================
 
-This is a bug/crash fix and small feature release.
-The upgrade is recommended for everybody.
+This is a major release, with lots of new features, bug fixes, and some
+interface changes (deprecated or potentially misleading features were
+removed).  The upgrade is recommended for everybody, unless you rely on
+deprecated features that have been removed.
 
 For those using the bleeding edge version in the
-mercurial repository, we encourage you to update to the `0.3.1` tag.
+mercurial repository, we encourage you to update to the `0.4.0` tag.
 
 
 Deleting old cache
@@ -81,11 +83,11 @@ Acknowledgments
 ---------------
 
 I would like to thank all contributors of Theano. For this particular
-release, the people who have helped resolve many outstanding issues:
-(in alphabetical order) Frederic Bastien, Arnaud Bergeron, James
-Bergstra, Josh Bleecher Snyder, Olivier Delalleau, Guillaume
-Desjardins, Dumitru Erhan, Ian Goodfellow, Pascal Lamblin, Razvan
-Pascanu and Francois Savard and David Warde-Farley.
+release, many people have helped during the release sprint:
+(in alphabetical order) Frederic Bastien, James Bergstra, Nicolas
+Boulanger-Lewandowski, Raul Chandias Ferrari, Olivier Delalleau,
+Guillaume Desjardins, Philippe Hamel, Pascal Lamblin, Razvan Pascanu and
+David Warde-Farley.
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
 its strength.
