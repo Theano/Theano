@@ -558,11 +558,7 @@ def test_sparse_shared_memory():
     y = SparseType('csr', dtype='float32')()
 
     sdot = theano.sparse.structured_dot
-    # We use typed float32 constants to make sure there will be no upcasting,
-    # regardless of config.cast_policy.
-    fthree = tensor.constant(3, dtype='float32')
-    ftwo = tensor.constant(2, dtype='float32')
-    z = sdot(x*fthree,m1) + sdot(y*ftwo, m2)
+    z = sdot(x*3,m1) + sdot(y*2, m2)
 
     f = theano.function([theano.In(x,mutable=True),theano.In(y,mutable = True)],z, mode='FAST_RUN')
 
