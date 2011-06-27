@@ -318,11 +318,11 @@ def test_elemwise3():
     a = tcn.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32'), 'a')
     b = tensor.fvector()
     print b.type
-    fone = tensor.constant(1, dtype='float32')
-    print (fone + b).type
-    print (fone + b**a).type
-    print tensor.exp((fone + b**a)).type
-    f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) * tensor.exp(fone +
+    print tensor.constant(1).type
+    print (1 + b).type
+    print (1 + b**a).type
+    print tensor.exp((1 + b**a)).type
+    f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) * tensor.exp(1 +
         b**a).dimshuffle([2,0,3,1]))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
