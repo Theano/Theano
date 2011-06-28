@@ -986,9 +986,12 @@ class ModuleCache(object):
         # Ensure that the too_old_to_use list return by refresh() will
         # contain all modules older thatn age_thresh_del.
         if age_thresh_del < self.age_thresh_use:
-            info("Clearing modules that were not deemed to old to use:",
-                    "age_thresh_del=%d," % age_thresh_del,
-                    "self.age_thresh_use=%d" % self.age_thresh_use)
+            if age_thresh_del > 0:
+                warning("Clearing modules that were not deemed to old to use:",
+                        "age_thresh_del=%d," % age_thresh_del,
+                        "self.age_thresh_use=%d" % self.age_thresh_use)
+            else:
+                info("Clearing all modules.")
             age_thresh_use = age_thresh_del
         else:
             age_thresh_use = None
