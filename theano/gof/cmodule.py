@@ -1248,7 +1248,7 @@ def std_libs():
 def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
-p=subprocess.Popen(['gcc','-dumpversion'],stdout=subprocess.PIPE)
+p=subprocess.Popen(['g++','-dumpversion'],stdout=subprocess.PIPE)
 p.wait()
 gcc_version_str = p.stdout.readline().strip()
 del p
