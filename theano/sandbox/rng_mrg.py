@@ -10,7 +10,7 @@ import numpy
 
 from theano import Op, Apply, shared, config, Variable
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
-        get_vector_length, cast, opt)
+        get_vector_length, cast, opt, scal)
 from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
@@ -48,16 +48,6 @@ def multMatVect(v, A, m1, B, m2):
     r[:3] = matVecModM(A, v[:3], m1)
     r[3:] = matVecModM(B, v[3:], m2)
     return r
-
-def cast_if_untyped(x, dtype):
-    """Return `x` cast as a numpy scalar of type `dtype` if `x` is untyped."""
-    if hasattr(x, 'dtype'):
-        # `x` is already typed.
-        return x
-    else:
-        # We intend to do this on regular Python int / float objects.
-        assert isinstance(x, int) or isinstance(x, float)
-        return numpy.array(x, dtype=dtype)
 
 
 #MRG31k3p
@@ -703,7 +693,7 @@ class MRG_RandomStreams(object):
         node_rstate.default_update = new_rstate
         return sample
 
-    def uniform(self, size, low=0, high=1, ndim=None, dtype='floatX',
+    def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype=None,
                 nstreams=None):
         """
         Sample a tensor of given size whose element from a uniform
@@ -714,23 +704,25 @@ class MRG_RandomStreams(object):
         information.
 
         :param low: Lower bound of the interval on which values are sampled.
-        If not already typed, it is cast into dtype.
+        If the ``dtype`` arg is provided, ``low`` will be cast into dtype.
 
         :param high: Higher bound of the interval on which values are sampled.
-        If not already typed, it is cast into dtype.
+        If the ``dtype`` arg is provided, ``high`` will be cast into dtype.
 
         :param size: Can be a list of integer or Theano variable
                 (ex: the shape of other Theano Variable)
 
-        :param dtype: The output data type.
+        :param dtype: The output data type. If dtype is not specified, it will
+        be inferred from the dtype of low and high, but will be at least as
+        precise as floatX.
         """
-        if dtype == 'floatX':
-            dtype = config.floatX
+        low = as_tensor_variable(low)
+        high = as_tensor_variable(high)
+        if dtype is None:
+            dtype = scal.upcast(config.floatX, low.dtype, high.dtype)
 
-        # We cast `low` and `high` into `dtype` to make sure we do not upcast
-        # e.g. float32 into float64.
-        low = cast_if_untyped(low, dtype)
-        high = cast_if_untyped(high, dtype)
+        low = cast(low, dtype=dtype)
+        high = cast(high, dtype=dtype)
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
@@ -815,13 +807,15 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                 " implemented with n == 1 and pvals.ndim = 2"))
 
-    def normal(self, size=None, avg=0, std=1, ndim=None,
-               dtype='floatX', nstreams=None):
+    def normal(self, size=None, avg=0.0, std=1.0, ndim=None,
+               dtype=None, nstreams=None):
         """
         :param size: Can be a list of integers or Theano variables (ex: the
         shape of another Theano Variable)
 
-        :param dtype: The output data type.
+        :param dtype: The output data type. If dtype is not specified, it will
+        be inferred from the dtype of low and high, but will be at least as
+        precise as floatX.
 
         :param nstreams: Number of streams.
         """
@@ -829,14 +823,14 @@ class MRG_RandomStreams(object):
         # in two halves. First half becomes our U1's for Box-Muller,
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+        avg = as_tensor_variable(avg)
+        std = as_tensor_variable(std)
 
-        if dtype == 'floatX':
-            dtype = config.floatX
+        if dtype is None:
+            dtype = scal.upcast(config.floatX, avg.dtype, std.dtype)
 
-        # We cast `avg` and `std` into `dtype` to make sure we do not upcast
-        # e.g. float32 into float64.
-        avg = cast_if_untyped(avg, dtype)
-        std = cast_if_untyped(std, dtype)
+        avg = cast(avg, dtype)
+        std = cast(std, dtype)
 
         evened = False
         constant = False
@@ -861,7 +855,7 @@ class MRG_RandomStreams(object):
             U2 = flattened[prod(flattened.shape) // 2:]
 
         #normal_samples = zeros_like(flattened)
-        sqrt_ln_U1 = sqrt(numpy.array(-2.0, dtype=dtype) * log(U1))
+        sqrt_ln_U1 = sqrt(-2.0 * log(U1))
         # TypeError: 'TensorVariable' object does not support item assignment
         # so this doesn't work...
         #normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
