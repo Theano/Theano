@@ -7,7 +7,8 @@ from theano.configparser import config, AddConfigVar, StrParam
 
 AddConfigVar('unittests.rseed',
         "Seed to use for randomized unit tests. Special value 'random' means using a seed of None.",
-        StrParam(666))
+        StrParam(666),
+        in_c_key=False)
 
 def fetch_seed(pseed=None):
     """

@@ -69,7 +69,8 @@ AddConfigVar('DebugMode.check_preallocated_output',
          '"c_contiguous", "f_contiguous", '
          '"neg_strides" (negative strides), and '
          '"ALL" (all of the above).'),
-        StrParam('ALL', is_valid=is_valid_check_preallocated_output_param))
+        StrParam('ALL', is_valid=is_valid_check_preallocated_output_param),
+        in_c_key=False)
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")
