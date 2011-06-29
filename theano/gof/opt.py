@@ -26,7 +26,8 @@ _logger = logging.getLogger('theano.gof.opt')
 
 AddConfigVar('time_seq_optimizer',
         "Should SeqOptimizer print the time taked by each of its optimizer",
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 
 from theano.gof import deque
 import destroyhandler as dh

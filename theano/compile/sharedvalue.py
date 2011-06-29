@@ -26,7 +26,8 @@ AddConfigVar('shared.value_borrows',
             " variables, but use the .get_value() and .set_value() methods."
             " False: shared variables 'value' property is guaranteed to not"
             " alias theano-managed memory. True: no guarantee, but faster."),
-        BoolParam(True))
+        BoolParam(True),
+        in_c_key=False)
 
 class SharedVariable(Variable):
     """

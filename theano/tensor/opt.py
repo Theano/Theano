@@ -104,7 +104,8 @@ def broadcast_like(value, template, env, dtype=None):
 
 theano.configparser.AddConfigVar('tensor.insert_inplace_optimizer_validate_nb',
         "-1: auto, if graph have less then 500 nodes 1, else 10",
-        theano.configparser.IntParam(-1))
+        theano.configparser.IntParam(-1),
+        in_c_key=False)
 
 def insert_inplace_optimizer_op(OP):
     """
@@ -1103,12 +1104,12 @@ def local_alloc_elemwise(node):
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
         "If True enable the experimental optimization local_alloc_elemwise",
         theano.configparser.BoolParam(False),
-        )
+        in_c_key=False)
 #This version if faster but not as save.
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
         "If False enable the experimental optimization local_alloc_elemwise but WITHOUT assert into the graph!",
         theano.configparser.BoolParam(True),
-        )
+        in_c_key=False)
 if theano.config.experimental.local_alloc_elemwise:
     #enabled by default when the lifter of assert is done.
     register_specialize(local_alloc_elemwise)

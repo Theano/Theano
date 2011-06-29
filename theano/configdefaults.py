@@ -32,7 +32,7 @@ AddConfigVar('int_division',
         "What to do when one computes x / y, where both x and y are of "
         "integer types",
         EnumStr('int', 'raise', 'floatX'),
-        )
+        in_c_key=False)
 
 #gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
 #gpuX mean use the gpu number X.
@@ -136,7 +136,8 @@ AddConfigVar('lib.amdlibm',
 
 AddConfigVar('op.set_flops',
         "currently used only in ConvOp. The profile mode will print the flops/s for the op.",
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 
 AddConfigVar('nvcc.fastmath',
         "",
@@ -148,7 +149,8 @@ AddConfigVar('gpuelemwise.sync',
 
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
-             IntParam(5))
+             IntParam(5),
+             in_c_key=False)
 
 AddConfigVar('experimental.mrg',
              "Another random number generator that work on the gpu",

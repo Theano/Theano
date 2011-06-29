@@ -10,8 +10,8 @@ from theano.configparser import TheanoConfigParser, AddConfigVar, FloatParam
 from theano import config
 AddConfigVar('optdb.position_cutoff',
         'Where to stop eariler during optimization. It represent the position of the optimizer where to stop.',
-        FloatParam(float('inf'))
-        )
+        FloatParam(float('inf')),
+        in_c_key=False)
 
 class DB(object):
     def __hash__(self):

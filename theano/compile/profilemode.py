@@ -12,20 +12,24 @@ import_time = time.time()
 
 AddConfigVar('ProfileMode.n_apply_to_print',
         "Number of apply instances to print by default",
-        IntParam(15, lambda i: i > 0))
+        IntParam(15, lambda i: i > 0),
+        in_c_key=False)
 
 AddConfigVar('ProfileMode.n_ops_to_print',
         "Number of ops to print by default",
-        IntParam(20, lambda i: i > 0))
+        IntParam(20, lambda i: i > 0),
+        in_c_key=False)
 
 AddConfigVar('ProfileMode.min_memory_size',
              """For the memory profile, do not print apply nodes if the size
  of their outputs (in bytes) is lower then this threshold""",
-        IntParam(1024, lambda i: i >= 0))
+        IntParam(1024, lambda i: i >= 0),
+        in_c_key=False)
 
 AddConfigVar('ProfileMode.profile_memory',
              """Enable profiling of memory used by Theano functions""",
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
