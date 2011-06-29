@@ -2062,7 +2062,15 @@ class Composite(ScalarOp):
 #TODO: What no_recycling is used for? What I need to put their?
 #        no_recycling = []
         self._cmodule_key = gof.CLinker.cmodule_key_(self.env, [])
-        self._hashval = hash(self._cmodule_key)
+        # Remove the config md5 from _hashval
+        # This is a temporary fix so that _hashval does not change when
+        # the Op is pickled and unpickled.
+        cmkey = list(self._cmodule_key)
+        cmkey1 = list(cmkey[1])
+        assert isinstance(cmkey1[3], str) and cmkey1[3].startswith('md5:')
+        del cmkey1[3]
+        cmkey[1] = tuple(cmkey1)
+        self._hashval = hash(tuple(cmkey))
 
     def __hash__(self):
         return self._hashval
