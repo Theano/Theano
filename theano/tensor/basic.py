@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano.configparser import config
 import traceback #for overriding Op.__call__
 import warnings
 from itertools import izip
