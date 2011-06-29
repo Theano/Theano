@@ -21,18 +21,18 @@ def fetch_seed(pseed=None):
     Useful for seeding RandomState objects.
     >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     """
-     
+
     seed = pseed or config.unittests.rseed
     if seed=='random':
-      seed = None
+        seed = None
     #backport
     #seed = None if seed=='random' else seed
 
     try:
         if seed:
-          seed = int(seed)
+            seed = int(seed)
         else:
-          seed = None
+            seed = None
         #backport
         #seed = int(seed) if seed else None
     except ValueError:
@@ -67,7 +67,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
 
 #
 # This supports the following syntax:
-# 
+#
 # try:
 #     verify_grad(...)
 # except verify_grad.E_grad, e:
