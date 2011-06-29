@@ -1,9 +1,9 @@
 import sys, StringIO
 
 if sys.version_info[:2] >= (2,5):
-  from collections import defaultdict
+    from collections import defaultdict
 else:
-  from python25 import defaultdict
+    from python25 import defaultdict
 
 import opt
 from theano.configparser import TheanoConfigParser, AddConfigVar, FloatParam
@@ -23,7 +23,7 @@ class DB(object):
     def __init__(self):
         self.__db__ = defaultdict(set)
         self._names = set()
-        self.name = None #will be reset by register 
+        self.name = None #will be reset by register
         #(via obj.name by the thing doing the registering)
 
     def register(self, name, obj, *tags):
@@ -34,13 +34,13 @@ class DB(object):
             raise TypeError('Object cannot be registered in OptDB', obj)
         if name in self.__db__:
             raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
-        # This restriction is there because in many place we suppose that 
+        # This restriction is there because in many place we suppose that
         # something in the DB is there only once.
         if getattr(obj, 'name', "") in self.__db__:
-            raise ValueError('''You can\'t register the same optimization 
+            raise ValueError('''You can\'t register the same optimization
 multiple time in a DB. Tryed to register "%s" again under the new name "%s".
  Use theano.gof.ProxyDB to work around that'''%(obj.name, name))
-            
+
         if self.name is not None:
             tags = tags + (self.name,)
         obj.name = name
@@ -48,7 +48,7 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         self._names.add(name)
 
         self.add_tags(name, *tags)
-          
+
     def add_tags(self, name, *tags):
         obj = self.__db__[name]
         assert len(obj)==1
@@ -158,14 +158,14 @@ class EquilibriumDB(DB):
     Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
 
     .. note::
-        
+
         We can put LocalOptimizer and Optimizer as EquilibriumOptimizer suppor both.
 
     """
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        return opt.EquilibriumOptimizer(opts, 
+        return opt.EquilibriumOptimizer(opts,
                 max_depth=5,
                 max_use_ratio=11,#upgraded to 11 to don't generated useless output in test.
                 failure_callback=opt.NavigatorOptimizer.warn_inplace)
@@ -206,7 +206,7 @@ class SequenceDB(DB):
 #the call to super should have raise an error with a good message
             assert len(tags)==1
             if getattr(tags[0],'position_cutoff', None):
-              position_cutoff = tags[0].position_cutoff
+                position_cutoff = tags[0].position_cutoff
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         opts.sort(key = lambda obj: self.__position__[obj.name])
@@ -216,7 +216,7 @@ class SequenceDB(DB):
         print >> stream, "SequenceDB (id %i)"%id(self)
         positions = self.__position__.items()
         def c(a,b):
-          return cmp(a[1],b[1])
+            return cmp(a[1],b[1])
         positions.sort(c)
 
         print >> stream, "  position", positions
@@ -240,4 +240,3 @@ class ProxyDB(DB):
 
     def query(self, *tags, **kwtags):
         return self.db.query(*tags, **kwtags)
-
