@@ -1,6 +1,6 @@
 """Driver for gradient calculations."""
 
-__authors__   = "James Bergstra, Ian Goodfellow"
+__authors__   = "James Bergstra"
 __copyright__ = "(c) 2011, Universite de Montreal"
 __license__   = "3-clause BSD License"
 __contact__   = "theano-dev <theano-dev@googlegroups.com>"
@@ -133,13 +133,13 @@ def unimplemented_grad(op, x_pos, x):
 
     """
 
-    raise Exception("""
-                        unimplemented_grad is not a safe function to use.
-                        It depends on catching errors at the run-time of a theano function.
-                        However, it could be removed by the optimization during the compilation
-                        of the theano function, for example, if it is multiplied by 0. This
-                        results in theano functions returning 0 for gradients that are actually
-                        undefined. """)
+    #raise Exception("""
+    #                    unimplemented_grad is not a safe function to use.
+    #                    It depends on catching errors at the run-time of a theano function.
+    #                    However, it could be removed by the optimization during the compilation
+    #                    of the theano function, for example, if it is multiplied by 0. This
+    #                    results in theano functions returning 0 for gradients that are actually
+    #                    undefined. """)
 
     msg = '%s.grad not implemented for input %i'%(op, x_pos)
     return Raise(msg=msg)(x)
