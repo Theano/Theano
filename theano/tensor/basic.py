@@ -1297,7 +1297,7 @@ class _tensor_py_operators:
     def norm(self, L, axis=None):
         if L==0:
             raise NotImplementedError()
-        if L==float('inf'):
+        if numpy.isinf(L):
             raise NotImplementedError()
         #optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0/L)

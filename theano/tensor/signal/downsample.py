@@ -133,7 +133,7 @@ class DownsampleFactorMax(Op):
         zz=z[0]
 
         ## zz needs to be initialized with -inf for the following to work
-        zz -= float('inf')
+        zz -= numpy.inf
         ds0, ds1 = self.ds
         if self.ignore_border:
             x_usable2 = (x.shape[2] / ds0 * ds0)

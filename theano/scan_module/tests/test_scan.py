@@ -138,7 +138,7 @@ class multiple_outputs_numeric_grad:
         if numpy.all(numpy.isfinite(errs)):
             return numpy.max(errs), numpy.argmax(errs)
         else:
-            return float('inf'), 0
+            return numpy.inf, 0
 
 
 
