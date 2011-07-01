@@ -1,12 +1,12 @@
 import time, atexit, copy
 
 from theano.gof.link import WrapLinker
-from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
 from theano.gof.python25 import any
 from theano import gof
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
+run_cthunk = None # Will be imported only when needed.
 
 import_time = time.time()
 
@@ -85,7 +85,11 @@ class ProfileMode(Mode):
         def profile_thunk(i, node, th):
             """ Profile only the execution time
             """
+            global run_cthunk
             if hasattr(th, 'cthunk'):
+                if run_cthunk is None:
+                    # Lazy import to avoid compilation when importing theano.
+                    from theano.gof.cutils import run_cthunk
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
@@ -104,7 +108,11 @@ class ProfileMode(Mode):
         def profile_thunk2(i, node, th):
             """ Profile the execution time and the memory size.
             """
+            global run_cthunk
             if hasattr(th, 'cthunk'):
+                if run_cthunk is None:
+                    # Lazy import to avoid compilation when importing theano.
+                    from theano.gof.cutils import run_cthunk
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0

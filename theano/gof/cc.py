@@ -36,7 +36,6 @@ AddConfigVar('gcc.cxxflags',
         StrParam(""))
 
 # gof imports
-import cutils
 from env import Env
 import graph
 import link
@@ -62,6 +61,9 @@ def error(*args):
     _logger.error(' '.join(str(a) for a in args))
 
 from theano.gof.callcache import CallCache
+
+run_cthunk = None # Will be imported only when needed.
+
 
 def get_module_cache(init_args=None):
     """
@@ -1116,6 +1118,11 @@ class CLinker(link.Linker):
 
 def _execute(cthunk, init_tasks, tasks, error_storage):
     """WRITEME"""
+    global run_cthunk
+    if run_cthunk is None:
+        # Lazy import to avoid compilation when importing theano.
+        from theano.gof.cutils import run_cthunk
+
     def find_task(failure_code):
         """
         Maps a failure code to the task that is associated to it.
@@ -1128,7 +1135,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
         else:
             return tasks[failure_code - n]
     def execute():
-        failure = cutils.run_cthunk(cthunk)
+        failure = run_cthunk(cthunk)
         if failure:
             task, taskname, id = find_task(failure)
             try:
