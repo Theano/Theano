@@ -4,6 +4,7 @@ import logging
 from theano.compile import optdb
 from theano import config
 from theano.gof.cmodule import get_lib_extension
+import nvcc_compiler
 
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
@@ -86,7 +87,6 @@ if not compile_cuda_ndarray:
 
 try:
     if compile_cuda_ndarray:
-        import nvcc_compiler
         if not nvcc_compiler.is_nvcc_available():
             # Hide the error message if the user manually unset the
             # config.cuda.root configuration variable.
