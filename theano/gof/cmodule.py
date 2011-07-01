@@ -1258,7 +1258,7 @@ dummy_in = open(os.devnull)
 dummy_err = open(os.devnull, 'w')
 p = None
 try:
-    p = subprocess.Popen(['gcc', '-dumpversion'], stdout=subprocess.PIPE,
+    p = subprocess.Popen(['g++', '-dumpversion'], stdout=subprocess.PIPE,
                          stdin=dummy_in.fileno(), stderr=dummy_err.fileno())
     p.wait()
     gcc_version_str = p.stdout.readline().strip()
