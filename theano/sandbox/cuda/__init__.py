@@ -1,6 +1,4 @@
-import atexit, os, stat, sys
-import logging
-
+import atexit, logging, os, stat, sys
 from theano.compile import optdb
 from theano import config
 from theano.gof.cmodule import get_lib_extension
