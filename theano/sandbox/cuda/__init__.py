@@ -1,9 +1,10 @@
 import atexit, os, stat, sys
+import logging
+
 from theano.compile import optdb
 from theano import config
 from theano.gof.cmodule import get_lib_extension
 
-import logging
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
