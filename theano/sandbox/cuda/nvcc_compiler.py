@@ -191,10 +191,10 @@ def nvcc_module_compile_str(
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename])
     cmd.append(os.path.split(cppfilename)[-1])
-    if module_name != 'cuda_ndarray':
-        cmd.append(os.path.join(os.path.split(cppfilename)[0],'..','cuda_ndarray','cuda_ndarray.'+get_lib_extension()))
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
+    if module_name != 'cuda_ndarray':
+        cmd.append("-lcuda_ndarray")
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
 

@@ -71,6 +71,17 @@ date = max(stat_times)
 cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'cuda_ndarray.' + get_lib_extension())
+libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
+                               'libcuda_ndarray.' + get_lib_extension())
+
+
+# Add the theano cache directory's cuda_ndarray subdirectory to the list of
+# places that are hard-coded into compiled modules' runtime library search
+# list.  This works in conjunction with nvcc_compiler.nvcc_module_compile_str
+# which adds this folder during compilation with -L and also adds -lcuda_ndarray
+# when compiling modules.
+nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
+
 compile_cuda_ndarray = True
 
 if os.path.exists(cuda_ndarray_so):
@@ -106,7 +117,14 @@ try:
                     code,
                     location=cuda_ndarray_loc,
                     include_dirs=[cuda_path], libs=['cublas'])
-
+            # If necessary, 
+            # create a symlink called libcuda_ndarray.so
+            # which nvcc_module_compile_str uses when linking
+            # any module except "cuda_ndarray" itself.
+            try:
+                open(libcuda_ndarray_so).close()
+            except IOError:
+                os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
     error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
