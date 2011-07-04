@@ -23,7 +23,9 @@ def makeSharedTester(shared_constructor_,
                      theano_fct_,
                      ref_fct_,
                      cast_value_ = numpy.asarray,
-                     op_by_matrix_ = False):
+                     op_by_matrix_=False,
+                     name=None,
+                     ):
     """
     This is a generic fct to allow reusing the same test function
     for many shared variable of many types.
@@ -46,7 +48,12 @@ def makeSharedTester(shared_constructor_,
     :param ref_fct_: A reference function that should return the same value as the theano_fct_
     :param cast_value_: A callable that cast an ndarray into the internal shared variable representation
     :param op_by_matrix_: When we do inplace operation on the an internal type object, should we do it with a scalar or a matrix of the same value.
-
+    :param name: This string is used to set the returned class' __name__
+                 attribute. This is needed for nosetests to properly tag the
+                 test with its correct name, rather than use the generic
+                 SharedTester name. This parameter is mandatory (keeping the
+                 default None value will raise an error), and must be set to
+                 the name of the variable that will hold the returned class.
     :note:
         We must use /= as sparse type don't support other inplace operation.
 
@@ -607,7 +614,8 @@ def makeSharedTester(shared_constructor_,
                     assert not x_shared.type.values_eq(x, y)
                     assert not x_shared.type.values_eq_approx(x, y)
 
-
+    assert name is not None
+    SharedTester.__name__ = name
 
     return SharedTester
 
@@ -625,4 +633,5 @@ test_shared_options=makeSharedTester(
     theano_fct_ = lambda a: a*2,
     ref_fct_ = lambda a: numpy.asarray((a*2)),
     cast_value_ = numpy.asarray,
-    op_by_matrix_ = False)
+    op_by_matrix_ = False,
+    name='test_shared_options')

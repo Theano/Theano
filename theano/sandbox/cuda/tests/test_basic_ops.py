@@ -920,7 +920,8 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
     cast_value_ = cuda.as_cuda_array,
-    op_by_matrix_ = True)
+    op_by_matrix_ = True,
+    name='test_shared_options')
 
 #This test the case when the shared constructor view an ndarray as input
 test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
@@ -937,7 +938,8 @@ test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
     theano_fct_ = theano.tensor.exp,
     ref_fct_ = numpy.exp,
     cast_value_ = numpy.asarray,
-    op_by_matrix_ = True)
+    op_by_matrix_ = True,
+    name='test_shared_options')
 
 if __name__ == '__main__':
     test_many_arg_elemwise()
