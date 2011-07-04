@@ -6,28 +6,28 @@ __contact__   = "delallea@iro"
 
 
 """
-Run this script to run tests individually.
+Run this script to run tests in small batches rather than all at the same time.
+
+If no argument is provided, then the whole Theano test-suite is run.
+Otherwise, only tests found in the directory given as argument are run.
 
 This script performs three tasks:
     1. Run `nosetests --collect-only --with-id` to collect test IDs
-    2. Run `nosetests --with-id X` with for X = 1 to total number of tests
+    2. Run `nosetests --with-id i1 ... iN` with batches of N indices, until all
+       tests have been run (currently N=100).
     3. Run `nosetests --failed` to re-run only tests that failed
         => The output of this 3rd step is the one you should care about
 
 One reason to use this script is if you are a Windows user, and see errors like
 "Not enough storage is available to process this command" when trying to simply
-run `nosetests` in your Theano installation directory.
-By using this script, nosetests is run on each test individually, which is much
-slower but should at least let you run the test suite.
+run `nosetests` in your Theano installation directory. This error is apparently
+caused by memory fragmentation: at some point Windows runs out of contiguous
+memory to load the C modules compiled by Theano in the test-suite.
 
-Note that this script is a work-in-progress and is not fully functional at this
-point: the way some tests are defined in the Theano test-suite seems to confuse
-the nosetests' TestID module, probably leading to not running all tests, as
-well as to some unexpected test failures.
-
-You can also provide a single command-line argument, which should be an integer
-number N (default = 1), in order to run batches of N tests rather than run tests
-one at a time. It will be faster (but may fail under Windows if N is too large).
+By using this script, nosetests is run on a small subset (batch) of tests until
+all tests are run. Note that this is slower, in particular because of the
+initial cost of importing theano and loading the C module cache on each call of
+nosetests.
 """
 
 
@@ -37,35 +37,55 @@ import theano
 
 
 def main():
-    theano_install_dir = os.path.join(os.path.dirname(theano.__file__), '..')
-    os.chdir(theano_install_dir)
-    # It seems like weird things happen if we keep the same IDs file around...
-    # (the number of test items in it changes from one run to another)
+    if len(sys.argv) == 1:
+        tests_dir = os.path.join(os.path.dirname(theano.__file__), '..')
+    else:
+        assert len(sys.argv) == 2
+        tests_dir = sys.argv[1]
+        assert os.path.isdir(tests_dir)
+    os.chdir(tests_dir)
+    # It seems safer to fully regenerate the list of tests on each call.
     if os.path.isfile('.noseids'):
         os.remove('.noseids')
     # Collect test IDs.
+    print """\
+####################
+# COLLECTING TESTS #
+####################"""
     assert subprocess.call(['nosetests', '--collect-only', '--with-id']) == 0
-    data = cPickle.load(
-            open(os.path.join(theano_install_dir, '.noseids'), 'rb'))
+    noseids_file = os.path.join(tests_dir, '.noseids')
+    data = cPickle.load(open(noseids_file, 'rb'))
     ids = data['ids']
     n_tests = len(ids)
+    assert n_tests == max(ids)
     # Run tests.
-    n_batch = 1
-    if len(sys.argv) >= 2:
-        n_batch = int(sys.argv[1])
-    has_error = 0
+    n_batch = 10
+    failed = []
+    print """\
+###################################
+# RUNNING TESTS IN BATCHES OF %s #
+###################################""" % n_batch
     for test_id in xrange(1, n_tests + 1, n_batch):
         test_range = range(test_id, min(test_id + n_batch, n_tests + 1))
-        rval = subprocess.call(['nosetests', '-v', '--with-id'] +
-                               map(str, test_range))
-        has_error += rval
-    if has_error:
+        # We suppress all output because we want the user to focus only on the
+        # failed tests, which are re-run (with output) below.
+        dummy_out = open(os.devnull, 'w')
+        rval = subprocess.call(['nosetests', '-q', '--with-id'] +
+                               map(str, test_range), stdout=dummy_out.fileno(),
+                               stderr=dummy_out.fileno())
+        # Recover failed test indices from the 'failed' field of the '.noseids'
+        # file. We need to do it after each batch because otherwise this field
+        # gets erased.
+        failed += cPickle.load(open(noseids_file, 'rb'))['failed']
+        print '%s%% done (failed: %s)' % ((test_range[-1] * 100) // n_tests,
+                                          len(failed))
+    if failed:
         # Re-run only failed tests
         print """\
-###########################
-# RE-RUNNING FAILED TESTS #
-###########################"""
-        subprocess.call(['nosetests', '-v', '--failed'])
+################################
+# RE-RUNNING FAILED TESTS ONLY #
+################################"""
+        subprocess.call(['nosetests', '-v', '--with-id'] + failed)
         return 0
     else:
         print """\
