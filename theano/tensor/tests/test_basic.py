@@ -993,10 +993,11 @@ SecondSameRankTester = makeTester(
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):
-        # Theano don't accept None as a tendor
+        # Theano does not accept None as a tensor.
         # So we must use a real value.
         M = M_
-        # Currently DebugMode don't support None as inputs event if this is allowed.
+        # Currently DebugMode does not support None as inputs even if this is
+        # allowed.
         if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
             M = N
         N_symb = tensor.iscalar()
