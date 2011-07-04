@@ -59,7 +59,7 @@ def main():
     n_tests = len(ids)
     assert n_tests == max(ids)
     # Run tests.
-    n_batch = 10
+    n_batch = 100
     failed = []
     print """\
 ###################################
