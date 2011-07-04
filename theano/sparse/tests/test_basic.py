@@ -584,7 +584,9 @@ test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
     test_internal_type_ = scipy.sparse.issparse,
     theano_fct_ = lambda a: dense_from_sparse(a*2.),
     ref_fct_ = lambda a: numpy.asarray((a*2).todense()),
-    cast_value_ = scipy.sparse.csr_matrix)
+    cast_value_ = scipy.sparse.csr_matrix,
+    name='test_shared_options',
+    )
 
 
 if __name__ == '__main__':

@@ -243,30 +243,21 @@ You can also run them in-place from the Mercurial checkout directory by typing
 
     nosetests
 
-``THEANO_FLAGS`` is an environment variable that define Theano flags
-(:ref:`libdoc_config`).  For Windows users, you can remove it or see the
-documentation to know how to configure them differently.
-
 .. note::
 
-    The tests should be run with the ``THEANO_FLAGS`` ``device=cpu`` (default).
-    Otherwise, it will generate false errors. If you have a GPU, it will
-    automatically be used to run GPU-related tests.
+    The tests should be run with the :attr:`~config.device` option set to
+    ``cpu``, e.g. with prefixing the ``nosetests`` command with
+    ``THEANO_FLAGS=device=cpu``. If you have a GPU, it will automatically
+    be used to run GPU-related tests.
 
-    If you want the GPU-related tests to run on a specific GPU device, and not
+    If you want GPU-related tests to run on a specific GPU device, and not
     the default one, you should use :attr:`~config.init_gpu_device`, for
-    instance ``THEANO_FLAGS=init_gpu_device=gpu1``.
+    instance ``THEANO_FLAGS=device=cpu,init_gpu_device=gpu1``.
 
 All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
 the ``theano-users@googlegroups.com`` mailing list.
 
-.. note::
-
-    ``warn.ignore_bug_before=all`` removes warnings that you don't need to see
-    here.  It is also recommended for a new user to set this flag to a
-    different value in their ``.theanorc`` file.  See
-    :attr:`.config.warn.ignore_bug_before` for more details.
 
 Troubleshooting: Make sure you have a BLAS library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -586,17 +577,22 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
   trying to compile any Theano function would result in a compilation error
   due to the system being unable to find 'blas.dll').
 
-- You should be able to run the test-suite by executing ``nosetests`` within
-  the Theano installation directory (if you installed Nose manually as described
-  above, this may only work in a MinGW shell).
-  Please note that at this time, the test suite may be broken under Windows.
-  In particular, many tests will probably fail while running the test-suite,
-  due to insufficient memory resources (in which case you will probably get an
-  error of the type ``"Not enough storage is available to
-  process this command"``). A script named ``run_individual_tests.py`` found
-  in ``Theano\theano\tests`` is under development as a workaround, but is not
-  fully functional yet.
+Testing your installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Currently, due to memory fragmentation issue in Windows, the
+test-suite breaks at some point when using ``nosetests``, with many error
+messages looking
+like: ``DLL load failed: Not enough storage is available to process this
+command``. As a result, you should instead run
+
+    .. code-block:: bash
+
+        python theano/tests/run_tests_in_batch.py
+
+This will run tests in batches of 100, which should avoid memory errors.
+Note that this script calls ``nosetests``, which may require being run from
+within a MinGW shell if you installed Nose manually as described above.
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~

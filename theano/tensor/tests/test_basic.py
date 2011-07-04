@@ -304,8 +304,23 @@ def rand_of_dtype(shape, dtype):
     else:
         raise TypeError()
 
-def makeBroadcastTester(op, expected, checks = {}, **kwargs):
-    name = str(op) + "Tester"
+def makeBroadcastTester(op, expected, checks = {}, name=None, **kwargs):
+    name = str(op)
+    # Here we ensure the test name matches the name of the variable defined in
+    # this script. This is needed to properly identify the test e.g. with the
+    # --with-id option of nosetests, or simply to rerun a specific test that
+    # failed.
+    capitalize = False
+    if name.startswith('Elemwise{') and name.endswith(',no_inplace}'):
+        # For instance: Elemwise{add,no_inplace} -> Add
+        name = name[9:-12]
+        capitalize = True
+    elif name.endswith('_inplace'):
+        # For instance: sub_inplace -> SubInplace
+        capitalize = True
+    if capitalize:
+        name = ''.join([x.capitalize() for x in name.split('_')])
+    name += "Tester"
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
             _expected = expected
@@ -504,7 +519,7 @@ if config.floatX=='float32':
     # float32.
     # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
-DivTester = makeBroadcastTester(op = true_div,
+TrueDivTester = makeBroadcastTester(op = true_div,
                                   expected = lambda x, y: check_floatX((x, y), x / y),
                                   good = _good_broadcast_div_mod_normal_float,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
@@ -513,7 +528,7 @@ DivTester = makeBroadcastTester(op = true_div,
                                   grad = _grad_broadcast_div_mod_normal,
                                   grad_rtol=div_grad_rtol,
                                 )
-DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
+TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = _good_broadcast_div_mod_normal_float_inplace,
                                          grad = _grad_broadcast_div_mod_normal,
