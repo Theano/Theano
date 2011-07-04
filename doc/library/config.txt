@@ -245,13 +245,13 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.warn.ignore_bug_before
 
-    String value: 'None', 'all', '0.3'
+    String value: 'None', 'all', '0.3', '0.4'
 
     Default: 'None'
 
     When we fix a Theano bug that generated bad results under some
-    circonstances, we also make Theano raise a warning when it encounter
-    the same circonstances again. This helps to detect if said bug
+    circumstances, we also make Theano raise a warning when it encounters
+    the same circumstances again. This helps to detect if said bug
     had affected your past experiments, as you only need to run your
     experiment again with the new version, and you do not have to
     understand the Theano internal that triggered the bug. A better
@@ -263,8 +263,8 @@ import theano and print the config variable, as in:
     You can set its value to the first version of Theano
     that you used (probably 0.3 or higher)
 
-    `None` mean that all warnings will be displayed.
-    `all` mean to hide all warnings.
+    `None` means that all warnings will be displayed.
+    `all` means all warnings will be ignored.
 
     It is recommended that you put a version, so that you will see future
     warnings.
