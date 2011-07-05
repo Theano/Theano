@@ -13,7 +13,7 @@ AddConfigVar('nvcc.compiler_bindir',
         "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
         StrParam(""))
 
-AddConfigVar('cuda.nvccflags',
+AddConfigVar('nvcc.flags',
         "Extra compiler flags for nvcc",
         StrParam(""))
 
@@ -183,11 +183,9 @@ def nvcc_module_compile_str(
         if sys.platform != 'darwin':
             # the 64bit CUDA libs are in the same files as are named by the function above
             rpaths.append(os.path.join(config.cuda.root,'lib64'))
-
     for rpath in rpaths:
         cmd.extend(['-Xlinker',','.join(['-rpath',rpath])])
-    nvccflags = [flag for flag in config.cuda.nvccflags.split(' ') if flag]
-    cmd.extend(nvccflags)
+    cmd.extend([flag for flag in config.nvcc.flags.split(' ') if flag])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename])
     cmd.append(os.path.split(cppfilename)[-1])

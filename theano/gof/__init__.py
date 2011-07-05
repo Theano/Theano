@@ -146,7 +146,7 @@ from link import \
     Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany
 
 from op import \
-    Op
+    Op, PureOp
 
 from opt import (Optimizer, optimizer, SeqOptimizer,
     MergeOptimizer, MergeOptMerge, 
