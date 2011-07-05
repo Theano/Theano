@@ -4533,7 +4533,10 @@ def _test_autocast_numpy_floatX():
         for floatX in ('float32', 'float64'):
             config.floatX = floatX
             # Go through some typical scalar values.
-            for x in ([2**i for i in xrange(63)] +
+            # Note that we only consider integer values that Python considers
+            # to be 'int', because 'long' is not supported by Theano (due to
+            # the fact it is unbounded).
+            for x in ([2**i for i in xrange(64) if type(2**i) == int] +
                       [0] +
                       [0., 1., 1.1, 1.5]):
                 ok(x, floatX)
