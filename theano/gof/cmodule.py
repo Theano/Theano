@@ -1227,8 +1227,11 @@ def std_include_dirs():
 def std_lib_dirs_and_libs():
     python_inc = distutils.sysconfig.get_python_inc()
     if sys.platform == 'win32':
-        # Typical include directory: C:\Python26\include
-        libname = os.path.basename(os.path.dirname(python_inc)).lower()
+        # Obtain the library name from the Python version instead of the
+        # installation directory, in case the user defined a custom installation
+        # directory.
+        python_version = distutils.sysconfig.get_python_version()
+        libname = 'python' + python_version.replace('.', '')
         # Also add directory containing the Python library to the library
         # directories.
         python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
@@ -1301,18 +1304,6 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     include_dirs = include_dirs + std_include_dirs()
     libs = std_libs() + libs
     lib_dirs = std_lib_dirs() + lib_dirs
-    if sys.platform == 'win32':
-        python_inc = distutils.sysconfig.get_python_inc()
-        # Typical include directory: C:\Python26\include
-        libname = os.path.basename(os.path.dirname(python_inc)).lower()
-        # Also add directory containing the Python library to the library
-        # directories.
-        python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
-        lib_dirs = [python_lib_dir] + lib_dirs
-    else:
-        # Typical include directory: /usr/include/python2.6
-        python_inc = distutils.sysconfig.get_python_inc()
-        libname = os.path.basename(python_inc)
 
     #DSE Patch 1 for supporting OSX frameworks; add -framework Python
     if sys.platform=='darwin' :
