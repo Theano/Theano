@@ -18,7 +18,7 @@ except ImportError:
     def _is_sparse(a):
         return False
 
-import theano.sandbox.cuda as cuda
+from theano.sandbox import cuda
 if cuda.cuda_available:
     def _is_cuda(a):
         return isinstance(a, cuda.CudaNdarray)

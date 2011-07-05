@@ -49,6 +49,8 @@ from gof import \
      Type, Generic, generic, \
      object2, utils
 
+import compile
+
 from compile import \
     SymbolicInput, In, \
     SymbolicOutput, Out, \
