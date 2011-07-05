@@ -60,8 +60,10 @@ class TestSP(unittest.TestCase):
                                 filtersflipped[k,i,j] = it.next()
 
                     # compute output with convolve2d
-                    fulloutshp = N.array(imshp) - N.array(kshp) + 1 if conv_mode=='valid'\
-                             else N.array(imshp) + N.array(kshp) - 1
+                    if conv_mode=='valid':
+                        fulloutshp = N.array(imshp) - N.array(kshp) + 1
+                    else:
+                        fulloutshp = N.array(imshp) + N.array(kshp) - 1
                     ntime1 = time.time()
                     refout = N.zeros((bsize,)+tuple(fulloutshp)+(nkern,))
                     for b in range(bsize):
