@@ -60,7 +60,7 @@ def main():
     assert n_tests == max(ids)
     # Run tests.
     n_batch = 100
-    failed = []
+    failed = set()
     print """\
 ###################################
 # RUNNING TESTS IN BATCHES OF %s #
@@ -75,13 +75,13 @@ def main():
                                stderr=dummy_out.fileno())
         # Recover failed test indices from the 'failed' field of the '.noseids'
         # file. We need to do it after each batch because otherwise this field
-        # gets erased.
-        failed += cPickle.load(open(noseids_file, 'rb'))['failed']
+        # may get erased. We use a set because it seems like it is not
+        # systematically erased though, and we want to avoid duplicates.
+        failed = failed.union(cPickle.load(open(noseids_file, 'rb'))['failed'])
         print '%s%% done (failed: %s)' % ((test_range[-1] * 100) // n_tests,
                                           len(failed))
-    # Remove duplicated failed tests (may happen because it seems the 'failed'
-    # field is not *systematically* overwritten after each call to nosetests).
-    failed = sorted(set(failed))
+    # Sort for cosmetic purpose only.
+    failed = sorted(failed)
     if failed:
         # Re-run only failed tests
         print """\
