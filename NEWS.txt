@@ -12,17 +12,17 @@ Change in output memory storage for Ops:
  or allocated by a previous execution of the same Op.
 
  Right now, here is the situation:
- * For Python implementation (perform), what is inside output_storage
-   may have been allocated from outside the perform() function, for
-   instance by another node (e.g., Scan) or the Mode. If that was the
-   case, the memory can be assumed to be C-contiguous (for the moment).
- * For C implementations (c_code), nothing has changed yet.
+  * For Python implementation (perform), what is inside output_storage
+    may have been allocated from outside the perform() function, for
+    instance by another node (e.g., Scan) or the Mode. If that was the
+    case, the memory can be assumed to be C-contiguous (for the moment).
+  * For C implementations (c_code), nothing has changed yet.
 
  In a future version, the content of the output storage, both for Python and C
  versions, will either be NULL, or have the following guarantees:
- * It will be a Python object of the appropriate Type (for a Tensor variable,
-   a numpy.ndarray, for a GPU variable, a CudaNdarray, for instance)
- * It will have the correct number of dimensions, and correct dtype
+  * It will be a Python object of the appropriate Type (for a Tensor variable,
+    a numpy.ndarray, for a GPU variable, a CudaNdarray, for instance)
+  * It will have the correct number of dimensions, and correct dtype
  However, its shape and memory layout (strides) will not be guaranteed.
 
  When that change is made, the config flag DebugMode.check_preallocated_output
