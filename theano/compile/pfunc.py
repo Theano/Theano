@@ -1,10 +1,13 @@
 """Provide a simple user friendly API """
 __docformat__ = 'restructuredtext en'
 
+import numpy # for backport to 2.4, to get any().
+
+from profiling import ProfileStats
 from theano.gof import Container, Variable, generic, graph, Constant, Value
 from theano.compile import orig_function, In, Out
 from theano.compile.sharedvalue import SharedVariable, shared
-import numpy # for backport to 2.4, to get any().
+from theano import config
 
 def rebuild_collect_shared( outputs
                            , inputs             = None
@@ -292,7 +295,8 @@ class Param(object):
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         no_default_updates=False, accept_inplace=False, name=None,
-        rebuild_strict=True, allow_input_downcast=None):
+        rebuild_strict=True, allow_input_downcast=None,
+        profile=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -319,11 +323,9 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     If False (default), perform them all. Else, perform automatic updates on all Variables
     that are neither in "updates" nor in "no_default_updates".
 
-    :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
-
-    :rtype: theano.compile.Function
-    :returns: a callable object that will compute the outputs (given the inputs)
-    and update the implicit function arguments according to the `updates`.
+    :type name: None or string
+    :param name: attaches a name to the Profiling result of this function when
+    using ProfileMode (will be deprecated).
 
     :type allow_input_downcast: Boolean
     :param allow_input_downcast: True means that the values passed as
@@ -332,6 +334,21 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     False means that it will only be casted to a more general, or
     precise, type. None (default) is almost like False, but allows
     downcasting of Python float scalars to floatX.
+
+    :type profile: None, True, str, or ProfileStats instance
+    :param profile: accumulate profiling information into a given ProfileStats
+    instance. None is the default, and means to use the value of
+    config.profile.
+    If argument is `True` then a new ProfileStats instance will be
+    used.  If argument is a string, a new ProfileStats instance will be created
+    with that string as its `message` attribute.  This profiling object will be
+    available via self.profile.
+
+
+    :rtype: theano.compile.Function
+    :returns: a callable object that will compute the outputs (given the inputs)
+    and update the implicit function arguments according to the `updates`.
+
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
@@ -354,6 +371,17 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     # Then it clones the outputs and the update expressions.  This rebuilds a computation graph
     # from the inputs and the givens.
     #
+    if profile is None:
+        profile = config.profile
+        # profile -> True or False
+    if profile == True:
+        profile = ProfileStats(message=name)
+        # profile -> object
+    if type(profile) == str:
+        profile = ProfileStats(message=profile)
+    # profile is typically either False or an object at this point.
+    # No need to block other objects being passed through though. It might be
+    # useful.
 
     if not isinstance(params,(list,tuple)):
         raise Exception("in pfunc() the first argument must be a list or a tuple")
@@ -393,7 +421,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         inputs.append(si)
 
     return orig_function(inputs, cloned_outputs, mode,
-            accept_inplace=accept_inplace, name=name)
+            accept_inplace=accept_inplace, name=name, profile=profile)
 
 
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
