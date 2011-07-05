@@ -53,7 +53,7 @@ def main():
 # COLLECTING TESTS #
 ####################"""
     assert subprocess.call(['nosetests', '--collect-only', '--with-id']) == 0
-    noseids_file = os.path.join(tests_dir, '.noseids')
+    noseids_file = '.noseids'
     data = cPickle.load(open(noseids_file, 'rb'))
     ids = data['ids']
     n_tests = len(ids)
@@ -79,6 +79,9 @@ def main():
         failed += cPickle.load(open(noseids_file, 'rb'))['failed']
         print '%s%% done (failed: %s)' % ((test_range[-1] * 100) // n_tests,
                                           len(failed))
+    # Remove duplicated failed tests (may happen because it seems the 'failed'
+    # field is not *systematically* overwritten after each call to nosetests).
+    failed = sorted(set(failed))
     if failed:
         # Re-run only failed tests
         print """\
