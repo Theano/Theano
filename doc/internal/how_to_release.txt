@@ -11,6 +11,8 @@ Update the NEWS.txt and move the old stuff in the HISTORY.txt file.
 To update the NEWS.txt file, check all ticket closed for this release
 and all commit log messages.
 
+For the final release, copy the file Theano/NEWS.txt to Theano/doc/NEWS.txt
+
 Get a fresh copy of the repository
 ==================================
 
@@ -37,6 +39,10 @@ Update the year in the ``Theano/LICENSE.txt`` file too, if necessary.
 
 ``NEWS.txt`` usually contains the name and date of the release, change them
 too.
+
+Update the code and the documentation for the theano flags
+warn.ignore_bug_before to accept the new version. You must modify the
+file theano/configdefaults.py and doc/library/config.txt.
 
 Tag the release
 ===============
