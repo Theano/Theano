@@ -262,7 +262,11 @@ class EnsureSortedIndices(Op):
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self,node, (x,), (z,)):
-        z[0] = x.ensure_sorted_indices(inplace=self.inplace)
+        if self.inplace:
+            x.sort_indices()
+            z[0] = x
+        else:
+            z[0] = x.sorted_indices()
 
     def grad(self, (x,), (gz,)):
         return [gz]
@@ -408,11 +412,12 @@ class ConvolutionIndices(Op):
                                 l+=1 # move on to next filter tap l=(l+1)%ksize
 
         if spmat.format != 'csc':
-            spmat = spmat.tocsc().ensure_sorted_indices()
+            spmat = spmat.tocsc().sorted_indices()
         else:
-            # BUG ALERT: scipy0.6 has bug where data and indices are written in reverse column
-            # ordering. Explicit call to ensure_sorted_indices removes this problem
-            spmat = spmat.ensure_sorted_indices()
+            # BUG ALERT: scipy0.6 has bug where data and indices are written in
+            # reverse column ordering.
+            # Explicit call to sorted_indices removes this problem.
+            spmat = spmat.sorted_indices()
 
         if ws:
             kmap = None
