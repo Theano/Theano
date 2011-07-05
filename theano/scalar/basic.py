@@ -390,7 +390,6 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
-        return (11, numpy.__version__) # Ensure the 'int' C type is among the real types
         return (10, numpy.__version__) # Use the correct type checking and conversion functions
         return (9, numpy.__version__) # Make operators work with 64 and 128 arguments at the same time
         return (8, numpy.__version__) # put const around operators and added unary '-' operator
