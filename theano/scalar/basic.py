@@ -421,6 +421,7 @@ complex_types = complex64, complex128
 
 discrete_types = int_types + uint_types
 continuous_types = float_types + complex_types
+all_types = discrete_types + continuous_types
 
 class _scalar_py_operators:
 
@@ -1101,9 +1102,7 @@ def int_or_true_div(x_discrete, y_discrete):
         elif config.int_division == 'int':
             warnings.warn(
                     "Division of two integer types with x / y is deprecated, "
-                    "please use x // y for an integer division "
-                    "(set `config.int_division = raise` to track the origin "
-                    "of this warning)",
+                    "please use x // y for an integer division.",
                     DeprecationWarning,
                     stacklevel=4)
             return 'int'
