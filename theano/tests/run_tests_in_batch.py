@@ -37,8 +37,11 @@ import theano
 
 
 def main():
+    theano_dir = os.path.dirname(theano.__file__)
+    # `nose` is the script that calls nosetests.
+    nose = os.path.join(theano_dir, 'tests', 'call_nose.py')
     if len(sys.argv) == 1:
-        tests_dir = os.path.join(os.path.dirname(theano.__file__), '..')
+        tests_dir = theano_dir
     else:
         assert len(sys.argv) == 2
         tests_dir = sys.argv[1]
@@ -52,7 +55,8 @@ def main():
 ####################
 # COLLECTING TESTS #
 ####################"""
-    assert subprocess.call(['nosetests', '--collect-only', '--with-id']) == 0
+    rval = subprocess.call(['python', nose, '--collect-only', '--with-id'])
+    assert rval == 0
     noseids_file = '.noseids'
     data = cPickle.load(open(noseids_file, 'rb'))
     ids = data['ids']
@@ -70,7 +74,7 @@ def main():
         # We suppress all output because we want the user to focus only on the
         # failed tests, which are re-run (with output) below.
         dummy_out = open(os.devnull, 'w')
-        rval = subprocess.call(['nosetests', '-q', '--with-id'] +
+        rval = subprocess.call(['python', nose, '-q', '--with-id'] +
                                map(str, test_range), stdout=dummy_out.fileno(),
                                stderr=dummy_out.fileno())
         # Recover failed test indices from the 'failed' field of the '.noseids'
@@ -88,7 +92,7 @@ def main():
 ################################
 # RE-RUNNING FAILED TESTS ONLY #
 ################################"""
-        subprocess.call(['nosetests', '-v', '--with-id'] + failed)
+        subprocess.call(['python', nose, '-v', '--with-id'] + failed)
         return 0
     else:
         print """\
