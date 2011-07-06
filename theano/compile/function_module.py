@@ -1058,8 +1058,9 @@ class FunctionMaker(object):
         _logger.debug('Linker took %f seconds' % (end_linker - start_linker))
         if self.profile:
             self.profile.linker_time += end_linker - start_linker
-            _fn.time_thunks = profile.flag_time_thunks
+            _fn.time_thunks = self.profile.flag_time_thunks
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
+        fn.profile = self.profile
         return fn
 
 def _pickle_FunctionMaker(self):
