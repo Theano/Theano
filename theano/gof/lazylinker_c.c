@@ -1,5 +1,6 @@
 #include <Python.h>
 #include "structmember.h"
+#include <sys/time.h>
 /**
 
 TODO: 
@@ -11,7 +12,6 @@ TODO:
 
 
   */
-#include <time.h>
 static double pytime(const struct timeval * tv)
 {
   struct timeval t;
