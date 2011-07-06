@@ -145,10 +145,6 @@ AddConfigVar('op.set_flops',
         BoolParam(False),
         in_c_key=False)
 
-AddConfigVar('nvcc.fastmath',
-        "",
-        BoolParam(False))
-
 AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
         BoolParam(True))

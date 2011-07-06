@@ -1,7 +1,7 @@
 import atexit, logging, os, stat, sys
 from theano.compile import optdb
-from theano import config
 from theano.gof.cmodule import get_lib_extension
+from theano.configparser import config, AddConfigVar, StrParam
 import nvcc_compiler
 
 _logger_name = 'theano.sandbox.cuda'
@@ -20,6 +20,22 @@ def debug(*msg):
     _logger.debug('DEBUG (%s): %s'% ( _logger_name,
         ' '.join(str(m) for m in msg)))
 
+AddConfigVar('cuda.root',
+        """directory with bin/, lib/, include/ for cuda utilities.
+        This directory is included via -L and -rpath when linking dynamically
+        compiled modules.  If AUTO, if nvcc is in the path, it will use one of
+        this parent directory.  Otherwise /usr/local/cuda.  Leave empty to
+        prevent extra linker directives.
+        Default: environment variable "CUDA_ROOT" or else "AUTO".
+        """,
+        StrParam(os.getenv('CUDA_ROOT', "AUTO")))
+
+if config.cuda.root == "AUTO":
+    # set nvcc_path correctly and get the version
+    nvcc_compiler.set_cuda_root()
+
+#is_nvcc_available called here to initialize global vars in nvcc_compiler module
+nvcc_compiler.is_nvcc_available()
 
 # Compile cuda_ndarray.cu
 # This need that nvcc (part of cuda) is installed. If it is not, a warning is
