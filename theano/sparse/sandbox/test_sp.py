@@ -1,9 +1,14 @@
 import sys
+
+from nose.plugins.skip import SkipTest
+import theano.sparse
+if not theano.sparse.enable_sparse:
+    raise SkipTest('Optional package sparse disabled')
+
 from theano import function, Mode
 from theano.gof import OpWiseCLinker
 import theano, numpy
 import theano.tensor as T
-import theano.sparse
 import scipy.sparse
 
 from scipy.signal import convolve2d

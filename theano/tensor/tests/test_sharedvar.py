@@ -7,6 +7,7 @@ from theano.gof.python25 import all
 from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.misc.may_share_memory import may_share_memory
+import theano.sparse
 
 utt.seed_rng()
 
@@ -445,7 +446,8 @@ def makeSharedTester(shared_constructor_,
                 topo_cst[0].op == theano.compile.function_module.deep_copy_op
 
             # Test that we can take the grad.
-            if isinstance(x1_specify_shape.type, theano.sparse.SparseType):
+            if (theano.sparse.enable_sparse and
+                isinstance(x1_specify_shape.type, theano.sparse.SparseType)):
                 #SparseVariable don't support sum for now.
                 assert not hasattr(x1_specify_shape, 'sum')
             else:

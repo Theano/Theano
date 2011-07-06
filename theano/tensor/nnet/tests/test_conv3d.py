@@ -1,15 +1,17 @@
 import unittest
 import theano
 import theano.tensor as T
-from theano import function
+from theano import function, shared
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet.ConvTransp3D import convTransp3D
 from theano.tensor.nnet.ConvGrad3D import convGrad3D
 from theano.tensor.nnet.Conv3D import conv3D
 import numpy as N
 import copy
-from scipy import sparse
-from theano import shared
+import theano.sparse
+if theano.sparse.enable_sparse:
+    from scipy import sparse
+from nose.plugins.skip import SkipTest
 
 floatX = theano.config.floatX
 
@@ -311,6 +313,8 @@ class TestConv3D(unittest.TestCase):
 
     def test_c_against_sparse_mat_transp_mul(self):
     #like test_c_against_mat_transp_mul but using a sparse matrix and a kernel that is smaller than the image
+        if not theano.sparse.enable_sparse:
+            raise SkipTest('Optional package sparse disabled')
 
         batchSize    = self.rng.randint(1,3)
         filterWidth  = self.rng.randint(1,8)
