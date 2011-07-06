@@ -5,6 +5,7 @@ __docformat__ = "restructuredtext en"
 
 import copy
 import copy_reg
+import cPickle
 import itertools
 import time
 
@@ -1079,11 +1080,15 @@ copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 
 
-def _pickle_slice(s):
-    return (slice, (s.start, s.stop, s.step))
-
-copy_reg.pickle(slice, _pickle_slice)
-
+try:
+    # Someone wrote this at one point, and I'm guessing it's because the default
+    # pickling mechanism doesn't work... so I'm adding a try/except around it.
+    # This way if the default implementation works we can just use it.
+    cPickle.dumps(slice(0, 10, 100))
+except:
+    def _pickle_slice(s):
+        return (slice, (s.start, s.stop, s.step))
+    copy_reg.pickle(slice, _pickle_slice)
 
 
 __checkers = []
