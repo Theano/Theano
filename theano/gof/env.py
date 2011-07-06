@@ -311,6 +311,9 @@ class Env(utils.object2):
         self.__import_r__([new_r])
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
+        # Precondition: the substitution is semantically valid
+        # However it may introduce cycles to the graph,  in which case the
+        # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i, r, new_r, reason=reason)
 
         if prune:
@@ -438,15 +441,31 @@ class Env(utils.object2):
         if len(self.nodes) < 2:
             # optimization
             # when there are 0 or 1 nodes, no sorting is necessary
+            # This special case happens a lot because the OpWiseCLinker produces
+            # 1-element graphs.
             return list(self.nodes)
         env = self
-        ords = {}
-        for feature in env._features:
-            if hasattr(feature, 'orderings'):
-                for op, prereqs in feature.orderings(env).items():
-                    ords.setdefault(op, []).extend(prereqs)
+        ords = self.orderings()
         order = graph.io_toposort(env.inputs, env.outputs, ords)
         return order
+
+    def orderings(self):
+        """
+        Return dict d s.t. d[node] is a list of nodes that must be evaluated
+        before node itself can be evaluated.
+
+        This is used primarily by the destroy_handler feature to ensure that all
+        clients of any destroyed inputs have already computed their outputs.
+        """
+        ords = {}
+        for feature in self._features:
+            if hasattr(feature, 'orderings'):
+                for node, prereqs in feature.orderings(self).items():
+                    ords.setdefault(node, []).extend(prereqs)
+        # eliminate duplicate prereqs
+        for (node,prereqs) in ords.items():
+            ords[node] = list(set(prereqs))
+        return ords
 
     def nclients(self, r):
         """WRITEME Same as len(self.clients(r))."""

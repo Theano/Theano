@@ -1,4 +1,8 @@
-"""Provides `DebugMode`, an evaluation mode for debugging theano internals."""
+"""Provides `DebugMode`, an evaluation mode for debugging theano internals.
+
+:TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
+
+"""
 __docformat__ = "restructuredtext en"
 
 import time, copy, sys, copy_reg, gc, os
@@ -1552,7 +1556,8 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
     def __init__(self, inputs, outputs, optimizer, mode,
             accept_inplace = False,
-            function_builder = Function):
+            function_builder = Function,
+            profile=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -1567,7 +1572,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         :note: this function sets TensorType.filter_checks_isfinite when `mode.check_isfinite` is True
 
         """
-
+        self.profile = profile
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
         return_none = False

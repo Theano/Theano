@@ -7,12 +7,13 @@ _logger = logging.getLogger('theano.compile.function')
 
 from io import In
 from function_module import orig_function
+from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
 def function(inputs, outputs=None, mode=None, updates=[], givens=[],
              no_default_updates=False, accept_inplace=False, name=None,
-             rebuild_strict=True, allow_input_downcast=None):
+             rebuild_strict=True, allow_input_downcast=None, profile=None):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -62,6 +63,11 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     precise, type. None (default) is almost like False, but allows
     downcasting of Python float scalars to floatX.
 
+    :type profile: None, True, or ProfileStats instance
+    :param profile: accumulate profiling information into a given ProfileStats
+    instance. If argument is `True` then a new ProfileStats instance will be
+    used.  This profiling object will be available via self.profile.
+
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
     another expression is undefined.  Replacements specified with givens are different from
@@ -88,6 +94,8 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
 
     if uses_In or uses_tuple:
         # we must use old semantics in this case.
+        if profile:
+            raise NotImplementedError('profiling not supported in old-style function')
         if uses_updates or uses_givens:
             raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
         fn =  orig_function(inputs, outputs,
@@ -102,7 +110,8 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
                 no_default_updates=no_default_updates,
                 accept_inplace=accept_inplace,name=name,
                 rebuild_strict=rebuild_strict,
-                allow_input_downcast=allow_input_downcast)
+                allow_input_downcast=allow_input_downcast,
+                profile=profile)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs

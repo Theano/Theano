@@ -5,6 +5,7 @@ __docformat__ = "restructuredtext en"
 
 import copy
 import copy_reg
+import cPickle
 import itertools
 import time
 
@@ -15,7 +16,7 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
-
+from theano.configdefaults import config
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -331,6 +332,7 @@ class Function(object):
         self.unpack_single = unpack_single
         self.return_none = return_none
         self.maker = maker
+        self.profile = None # reassigned in FunctionMaker.create
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -495,6 +497,7 @@ class Function(object):
         return cpy
 
     def __call__(self, *args, **kwargs):
+        profile = self.profile
         t0 = time.time()
 
         # Reinitialize each container's 'provided' counter
@@ -536,8 +539,7 @@ class Function(object):
         for k, arg in kwargs.iteritems():
             self[k] = arg
 
-
-        if ( not hasattr(self, '_check_for_aliased_inputs') or
+        if (not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
             ## Collect aliased inputs among the storage space
             args_share_memory = []
@@ -592,9 +594,21 @@ class Function(object):
                             self.inv_finder[c]))
 
         # Do the actual work
-        t0_fn = time.time()
-        self.fn()
-        dt_fn = time.time() - t0_fn
+        if profile:
+            t0_fn = time.time()
+        try:
+            self.fn()
+        except:
+            if hasattr(self.fn, 'position_of_error'):
+                # this is a new vm-provided function
+                # the C VM needs this because the exception manipulation
+                # done by raise_with_op is not implemented in C.
+                gof.vm.raise_with_op(self.fn.nodes[self.fn.position_of_error])
+            else:
+                # old-style linkers raise their own exceptions
+                raise
+        if profile:
+            profile.vm_call_time += time.time() - t0_fn
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
@@ -626,20 +640,18 @@ class Function(object):
                 if isinstance(value, gof.Container):
                     value = value.storage[0]
                 self[i] = value
-
         #
         # NOTE: This logic needs to be replicated in
         #       scan.
         #       grep for 'PROFILE_CODE'
         #
 
-        dt_call=time.time()-t0
-        if hasattr(self.maker.mode,'fct_call_time'):
-            self.maker.mode.fct_call_time[self] += dt_call
-            self.maker.mode.fct_call[self] += 1
-
-        self.maker.mode.call_time += dt_call
-        self.maker.mode.fn_time += dt_fn
+        if profile:
+            dt_call=time.time()-t0
+            profile.fct_callcount += 1
+            profile.fct_call_time += dt_call
+            if hasattr(self.fn, 'update_profile'):
+                self.fn.update_profile(profile)
 
         if self.return_none:
             return None
@@ -687,9 +699,10 @@ def _pickle_Function(f):
                 if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):
                     if numpy.may_share_memory(d_i, d_j):
                         if f.pickle_aliased_memory_strategy == 'warn':
-                            _logger.warning('aliased relationship between Function arguments '
-                                    'will not be preserved by un-pickling operation')
-                            #_logger.debug(str([d_i, d_j, id(d_i), id(d_j)]))
+                            _logger.warning(('aliased relationship between'
+                                    ' Function arguments %s, %s'
+                                    ' will not be preserved by un-pickling'
+                                    ' operation') %(str(d_i), str(d_j)))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
 
@@ -893,7 +906,8 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs,
-            mode = None, accept_inplace = False, function_builder = Function):
+            mode = None, accept_inplace = False, function_builder = Function,
+            profile=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -908,10 +922,20 @@ class FunctionMaker(object):
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
         """
-
         mode = mode_module.get_mode(mode)
 
+        # figure out which profile object to use (if any)
+        # to help with forward-porting ProfileMode,
+        # we allow ProfileMode to provide a ProfileStats object
+        # using this somewhat awkward mechanism.
+        mode_profile = getattr(mode, 'profile', None)
+        if (profile is not None) and (mode_profile is not None):
+            raise TypeError(
+                    'profile passed via both "mode" and "profile" arguments')
+        self.profile = profile = profile or mode_profile
+
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
+        self.orig_outputs = outputs
         unpack_single = False
         return_none = False
         if outputs is None:
@@ -951,7 +975,8 @@ class FunctionMaker(object):
             end_optimizer = time.time()
         finally:
             theano.config.compute_test_value = compute_test_value_orig
-        mode.optimizer_time += end_optimizer - start_optimizer
+        if profile:
+            profile.optimizer_time += end_optimizer - start_optimizer
         _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
 
         #Add deep copy to respect the memory interface
@@ -1031,36 +1056,39 @@ class FunctionMaker(object):
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
         end_linker = time.time()
         _logger.debug('Linker took %f seconds' % (end_linker - start_linker))
-        self.mode.linker_time += end_linker - start_linker
+        if self.profile:
+            self.profile.linker_time += end_linker - start_linker
+            _fn.time_thunks = profile.flag_time_thunks
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
+def _pickle_FunctionMaker(self):
+    kwargs = dict(
+                inputs = self.inputs,
+                outputs = self.orig_outputs,
+                mode = self.mode,
+                accept_inplace = self.accept_inplace,
+                function_builder = self.function_builder,
+                profile = self.profile,
+                )
+    return (_constructor_FunctionMaker, (kwargs,))
 
-def _pickle_FunctionMaker(fm):
-    if fm.return_none:
-        outputs = None
-    else:
-        if fm.unpack_single:
-            outputs = fm.outputs[0]
-        else:
-            outputs = fm.outputs
-
-    #backport
-    #outputs = None if fm.return_none else (fm.outputs[0] if fm.unpack_single else fm.outputs)
-    rval = (_constructor_FunctionMaker, (fm.inputs, outputs, fm.mode, fm.accept_inplace))
-    return rval
-
-def _constructor_FunctionMaker(*args):
-    return FunctionMaker(*args)
+def _constructor_FunctionMaker(kwargs):
+    return FunctionMaker(**kwargs)
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 
-def _pickle_slice(s):
-    return (slice, (s.start, s.stop, s.step))
 
-copy_reg.pickle(slice, _pickle_slice)
-
+try:
+    # Someone wrote this at one point, and I'm guessing it's because the default
+    # pickling mechanism doesn't work... so I'm adding a try/except around it.
+    # This way if the default implementation works we can just use it.
+    cPickle.dumps(slice(0, 10, 100))
+except:
+    def _pickle_slice(s):
+        return (slice, (s.start, s.stop, s.step))
+    copy_reg.pickle(slice, _pickle_slice)
 
 
 __checkers = []
@@ -1077,7 +1105,7 @@ def check_equal(x, y):
 def register_checker(checker):
     __checkers.insert(0, checker)
 
-def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None):
+def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None, profile=None):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1105,6 +1133,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
     :param accept_inplace:  True iff the graph can contain inplace operations prior to the
     optimization phase (default is False)
 
+    :param profile: None or ProfileStats instance
+
     """
 
     #Every element of the input list will be upgraded to an `In` instance if necessary,
@@ -1130,8 +1160,16 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
         if not mode:
             raise ValueError("Please provide at least one mode.")
         elif len(mode) == 1:
-            fn = FunctionMaker(inputs, outputs, mode[0], accept_inplace = accept_inplace).create(defaults)
+            fn = FunctionMaker(
+                    inputs,
+                    outputs,
+                    mode[0],
+                    accept_inplace = accept_inplace,
+                    profile=profile).create(
+                            defaults)
         else:
+            if profile:
+                raise NotImplementedError('profiling not implemented in this kind of mode')
             #return a different kind of function
             def dup_defaults():
                 # TODO This may need to be changed to use containers as defaults.
@@ -1153,19 +1191,18 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
             fn = maker1.create(defaults)
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
-        fn = Maker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
+        fn = Maker(inputs,
+                outputs,
+                mode,
+                accept_inplace = accept_inplace,
+                profile=profile).create(
+                        defaults)
 
     t2 = time.time()
-    if hasattr(mode, 'compile_time'):
-        mode.compile_time+=t2-t1
+    if profile:
+        profile.compile_time+=t2-t1
 
     fn.name = name
-
-    if hasattr(mode,'fct_call_time'):
-        mode.fct_call_time.setdefault(fn,0)
-    if hasattr(mode,'fct_call'):
-        mode.fct_call.setdefault(fn,0)
-
     return fn
 
 

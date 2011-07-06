@@ -11,8 +11,6 @@ How should you write your algorithm to make the most of what Theano can do?
 Limitations
 -----------
 
-- Conditional control flow is possible but currently not efficient.  The current implementation will evaluate both sides of an ``if`` construct (see :func:`tensor.switch`).
-
 - While- or for-Loops within an expression graph are supported, but only via
   the :func:`theano.scan` op (which puts restrictions on how the loop body can
   interact with the rest of the graph).

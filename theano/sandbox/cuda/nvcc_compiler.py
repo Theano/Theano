@@ -7,20 +7,7 @@ import commands
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
 
-from theano.configparser import config, AddConfigVar, StrParam
-
-AddConfigVar('nvcc.compiler_bindir',
-        "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
-        StrParam(""))
-
-AddConfigVar('cuda.nvccflags',
-        "Extra compiler flags for nvcc",
-        StrParam(""))
-
-AddConfigVar('cuda.root',
-        "The directory with bin/, lib/, include/ for cuda utilities. Used to put this directory of nvidia lib in the compiled libraire. Usefull when people forget to update there LD_LIBRARY_PATH and LIBRARY_PATH environment variable. If AUTO, if nvcc is in the path, it will use one of this parent directory. Otherwise /usr/local/cuda. If empty, won't appen the directory in the compiled library",
-        StrParam(os.getenv('CUDA_ROOT', "AUTO")))
-
+from theano.configparser import config, AddConfigVar, StrParam, BoolParam
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
@@ -34,6 +21,18 @@ def info(*args):
 def debug(*args):
     #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
+
+AddConfigVar('nvcc.compiler_bindir',
+        "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
+        StrParam(""))
+
+AddConfigVar('nvcc.flags',
+        "Extra compiler flags for nvcc",
+        StrParam(""))
+
+AddConfigVar('nvcc.fastmath',
+        "",
+        BoolParam(False))
 
 nvcc_path = 'nvcc'
 nvcc_version = None
@@ -65,11 +64,6 @@ def set_cuda_root():
         if os.path.exists(os.path.join(dir,"nvcc")):
             config.cuda.root = os.path.split(dir)[0]
             return
-
-if config.cuda.root == "AUTO":
-    set_cuda_root()
-
-is_nvcc_available()#to set nvcc_path correctly and get the version
 
 rpath_defaults = []
 def add_standard_rpath(rpath):
@@ -183,11 +177,9 @@ def nvcc_module_compile_str(
         if sys.platform != 'darwin':
             # the 64bit CUDA libs are in the same files as are named by the function above
             rpaths.append(os.path.join(config.cuda.root,'lib64'))
-
     for rpath in rpaths:
         cmd.extend(['-Xlinker',','.join(['-rpath',rpath])])
-    nvccflags = [flag for flag in config.cuda.nvccflags.split(' ') if flag]
-    cmd.extend(nvccflags)
+    cmd.extend([flag for flag in config.nvcc.flags.split(' ') if flag])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename])
     cmd.append(os.path.split(cppfilename)[-1])

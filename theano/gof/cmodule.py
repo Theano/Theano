@@ -1312,6 +1312,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #DSE Patch 1 for supporting OSX frameworks; add -framework Python
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
+        python_inc = distutils.sysconfig.get_python_inc()
         # link with the framework library *if specifically requested*
         # config.mac_framework_link is by default False, since on some mac
         # installs linking with -framework causes a Bus Error

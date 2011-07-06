@@ -65,15 +65,6 @@ AddConfigVar('force_device',
         BoolParam(False, allow_override=False),
         in_c_key=False)
 
-#Don't add FAST_RUN_NOGC to this list(as well as other ALL CAPS short cut)
-#The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'
-#The old all capital letter way of working is deprecated as it is not scalable.
-AddConfigVar('mode',
-        "Default compilation mode",
-        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
-                'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
-        in_c_key=False)
-
 # Test whether or not gcc is present: disable C code if it is not.
 # Using the dummy file descriptor below is a workaround for a crash experienced
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
@@ -84,13 +75,15 @@ try:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  "Default linker used if the theano flags mode is Mode or ProfileMode",
-                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'),
+                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
+                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 except OSError:
     # gcc is not present, linker should default to python only
     AddConfigVar('linker',
                  "Default linker used if the theano flags mode is Mode or ProfileMode",
-                 EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py'),
+                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
+                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
     warning('GCC not detected ! Theano will be unable to execute optimized '+
             'C-implementations (for both CPU and GPU) and will default to '+
@@ -144,10 +137,6 @@ AddConfigVar('op.set_flops',
         "currently used only in ConvOp. The profile mode will print the flops/s for the op.",
         BoolParam(False),
         in_c_key=False)
-
-AddConfigVar('nvcc.fastmath',
-        "",
-        BoolParam(False))
 
 AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
