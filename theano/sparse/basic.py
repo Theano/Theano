@@ -133,6 +133,79 @@ def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
+class _sparse_py_operators:
+    T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
+    def __neg__(self): return neg(self)
+    def __add__(left, right): return add(left, right)
+    def __radd__(right, left): return add(left, right)
+    def __sub__(left, right): return sub(left, right)
+    def __rsub__(right, left): return sub(left, right)
+    def __mul__(left, right): return mul(left, right)
+    def __rmul__(left, right): return mul(left, right)
+
+    #extra pseudo-operator symbols
+    def __dot__(left, right): return structured_dot(left, right)
+    def __rdot__(right, left): return structured_dot(left, right)
+
+    #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
+    #     Discussion with Fred & James (at least, and maybe others before)
+    #     we decided that casting from a sparse to dense should be explicit
+    #     because it's usually something you want to be pretty careful about,
+    #     and not to do by accident.
+    #def _as_TensorVariable(self):
+    #    return dense_from_sparse(self)
+
+    shape = property(lambda self: tensor.shape(dense_from_sparse(self))) # don't worry!
+    # ... the plan is that the ShapeFeature in tensor.opt will do shape propagation
+    # ... and remove the dense_from_sparse from the graph.  This will *NOT* actually expand
+    # ... your sparse matrix just to get the shape.
+    ndim = property(lambda self: self.type.ndim)
+    dtype = property(lambda self: self.type.dtype)
+
+
+class SparseVariable(gof.Variable, _sparse_py_operators):
+    dtype = property(lambda self: self.type.dtype)
+    format = property(lambda self: self.type.format)
+    def __str__(self):
+        return '%s{%s,%s}'%(
+                self.__class__.__name__,
+                self.format,
+                self.dtype)
+    def __repr__(self):
+        return str(self)
+
+class SparseConstantSignature(tuple):
+    def __eq__(self, other):
+        (a, b), (x,y) = self, other
+        return a == x \
+                and (b.dtype == y.dtype)\
+                and (type(b) == type(y))\
+                and (b.shape == y.shape)\
+                and (abs(b-y).sum() < 1e-6 * b.nnz)
+    def __hash__(self):
+        (a,b) = self
+        return hash(type(self)) ^ hash(a) ^ hash(type(b))
+
+class SparseConstant(gof.Constant, _sparse_py_operators):
+    dtype = property(lambda self: self.type.dtype)
+    format = property(lambda self: self.type.format)
+
+    def signature(self):
+        assert self.data is not None
+        return SparseConstantSignature((self.type, self.data))
+    def __str__(self):
+        return '%s{%s,%s,shape=%s,nnz=%s}'%(
+                self.__class__.__name__,
+                self.format,
+                self.dtype,
+                self.data.shape,
+                self.data.nnz)
+    def __repr__(self):
+        return str(self)
+
+class SparseValue(gof.Value, _sparse_py_operators):
+    dtype = property(lambda self: self.type.dtype)
+    format = property(lambda self: self.type.format)
 
 class SparseType(gof.Type):
     """
@@ -148,6 +221,9 @@ class SparseType(gof.Type):
             }
     dtype_set = set(['int', 'int8', 'int16','int32', 'int64', 'float32', 'float64', 'complex64','complex128'])
     ndim = 2
+
+    Variable = SparseVariable
+    Constant = SparseConstant
 
     def __init__(self, format, dtype):
         """
@@ -247,65 +323,6 @@ csc_dmatrix = SparseType(format='csc', dtype='float64')
 csr_dmatrix = SparseType(format='csr', dtype='float64')
 csc_fmatrix = SparseType(format='csc', dtype='float32')
 csr_fmatrix = SparseType(format='csr', dtype='float32')
-
-class _sparse_py_operators:
-    T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
-    def __neg__(self): return neg(self)
-    def __add__(left, right): return add(left, right)
-    def __radd__(right, left): return add(left, right)
-    def __sub__(left, right): return sub(left, right)
-    def __rsub__(right, left): return sub(left, right)
-    def __mul__(left, right): return mul(left, right)
-    def __rmul__(left, right): return mul(left, right)
-
-    #extra pseudo-operator symbols
-    def __dot__(left, right): return structured_dot(left, right)
-    def __rdot__(right, left): return structured_dot(left, right)
-
-    #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
-    #     Discussion with Fred & James (at least, and maybe others before)
-    #     we decided that casting from a sparse to dense should be explicit
-    #     because it's usually something you want to be pretty careful about,
-    #     and not to do by accident.
-    #def _as_TensorVariable(self):
-    #    return dense_from_sparse(self)
-
-    shape = property(lambda self: tensor.shape(dense_from_sparse(self))) # don't worry!
-    # ... the plan is that the ShapeFeature in tensor.opt will do shape propagation
-    # ... and remove the dense_from_sparse from the graph.  This will *NOT* actually expand
-    # ... your sparse matrix just to get the shape.
-    ndim = property(lambda self: self.type.ndim)
-    dtype = property(lambda self: self.type.dtype)
-
-
-class SparseVariable(gof.Variable, _sparse_py_operators):
-    dtype = property(lambda self: self.type.dtype)
-    format = property(lambda self: self.type.format)
-
-class SparseConstantSignature(tuple):
-    def __eq__(self, other):
-        (a, b), (x,y) = self, other
-        return a == x \
-                and (b.dtype == y.dtype)\
-                and (type(b) == type(y))\
-                and (b.shape == y.shape)\
-                and (abs(b-y).sum() < 1e-6 * b.nnz)
-    def __hash__(self):
-        (a,b) = self
-        return hash(type(self)) ^ hash(a) ^ hash(type(b))
-
-class SparseConstant(gof.Constant, _sparse_py_operators):
-    dtype = property(lambda self: self.type.dtype)
-    format = property(lambda self: self.type.format)
-
-    def signature(self):
-        assert self.data is not None
-        return SparseConstantSignature((self.type, self.data))
-
-class SparseValue(gof.Value, _sparse_py_operators):
-    dtype = property(lambda self: self.type.dtype)
-    format = property(lambda self: self.type.format)
-
 
 # CONSTRUCTION
 class CSMProperties(gof.Op):

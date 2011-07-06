@@ -937,6 +937,9 @@ def _gemm_from_node2(node):
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
         #print "RVAL", rval
+        # THIS GOT COMMENTED OUT AT SOME POINT - ASK P.Lamblin maybe why?
+        #if rval:
+        #    assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
         if rval and (rval[0].type == node.outputs[0].type):
             return rval
 
