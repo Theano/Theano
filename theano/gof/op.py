@@ -3,18 +3,21 @@
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 """
+__authors__   = "theano-dev"
+__copyright__ = "(c) 2010, Universite de Montreal"
+__license__   = "3-clause BSD License"
+__contact__   = "theano-dev <theano-dev@googlegroups.com>"
+
 
 __docformat__ = "restructuredtext en"
+import logging
 
 from theano import config
 import graph
 import numpy
 import utils
 import warnings
-import logging
-from theano import config
 from env import Env
-import graph
 import cc
 
 
