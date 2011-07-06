@@ -74,6 +74,8 @@ from printing import \
 import scan_module
 from scan_module import scan, map, reduce, foldl, foldr, clone
 
+from updates import Updates
+
 import tensor
 import scalar
 #import sparse #we don't import by default as we don't want to force having scipy installed.

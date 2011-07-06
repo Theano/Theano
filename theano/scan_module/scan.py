@@ -53,6 +53,7 @@ from scan_op import safe_new, safe_to_cpu
 import scan_utils
 from scan_utils import safe_new, safe_to_cpu, traverse
 from theano.sandbox import cuda
+from theano.updates import Updates
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan')
@@ -917,7 +918,7 @@ def scan( fn
     ###         and so on ...
     ##
 
-    update_map = {}
+    update_map = Updates()
     def remove_dimensions( outs, steps_return, offsets = None):
         out_ls = []
         for idx, out in enumerate(outs):
