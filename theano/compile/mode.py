@@ -4,7 +4,9 @@ import os, logging
 
 import numpy, theano
 from theano import gof
-from theano.configparser import config, AddConfigVar, StrParam
+import theano.gof.vm
+from theano.configparser import config, AddConfigVar, StrParam, EnumStr
+
 
 _logger = logging.getLogger('theano.compile.mode')
 
@@ -55,7 +57,11 @@ predefined_linkers = {
     'c'    : gof.CLinker(),
     'c|py' : gof.OpWiseCLinker(allow_gc=True),
     'c|py_nogc' : gof.OpWiseCLinker(allow_gc=False),
-    'c&py' : gof.DualLinker(checker = check_equal)
+    'c&py' : gof.DualLinker(checker = check_equal),
+    'vm'   : gof.vm.VM_Linker(allow_gc=True, use_cloop=False),
+    'cvm'   : gof.vm.VM_Linker(allow_gc=True, use_cloop=True),
+    'vm_nogc' : gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
+    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True),
     }
 
 
@@ -249,6 +255,7 @@ class Mode(object):
         self._optimizer = optimizer
         self.call_time = 0
         self.fn_time = 0
+        linker.mode = self #TODO: WHY IS THIS HERE?
         self.optimizer_time = 0
         self.linker_time = 0
 
@@ -290,15 +297,27 @@ class Mode(object):
 FAST_COMPILE = Mode('py', 'fast_compile')
 FAST_RUN = Mode('c|py', 'fast_run')
 FAST_RUN_NOGC = Mode("c|py_nogc", 'fast_run')
-SANITY_CHECK = [Mode('c|py', None),
-                Mode('c|py', 'fast_run')]
 STABILIZE = Mode("c|py", OPT_STABILIZE)
 
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
                     'FAST_RUN_NOGC':FAST_RUN_NOGC,
-                    'SANITY_CHECK': SANITY_CHECK,
-                    'STABILIZE': STABILIZE}
+                    'STABILIZE': STABILIZE,
+                    'VM':Mode('vm', 'fast_run'),
+                    'VM_NOGC':Mode('vm_nogc', 'fast_run'),
+                    'CVM':Mode('cvm', 'fast_run'),
+                    'CVM_NOGC':Mode('cvm_nogc', 'fast_run'),
+                    }
+
+#Don't add FAST_RUN_NOGC to this list(as well as other ALL CAPS short cut)
+#The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'
+#The old all capital letter way of working is deprecated as it is not scalable.
+AddConfigVar('mode',
+        "Default compilation mode",
+        EnumStr(*(predefined_modes.keys() + [
+            'Mode','DEBUG_MODE', 'PROFILE_MODE'])),
+        in_c_key=False)
+
 
 instanciated_default_mode=None
 def get_mode(orig_string):
@@ -329,7 +348,7 @@ def get_mode(orig_string):
             ret = DebugMode(optimizer=config.optimizer)
         else:
             # The import is needed in case string is ProfileMode
-            from profilemode import ProfileMode
+            from profilemode import ProfileMode,prof_mode_instance_to_print
             ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
     elif predefined_modes.has_key(string):
         ret = predefined_modes[string]
@@ -349,7 +368,6 @@ def get_mode(orig_string):
     #must tell python to print the summary at the end.
     if string == 'ProfileMode':
         #need to import later to break circular dependency.
-        from profilemode import prof_mode_instance_to_print
         prof_mode_instance_to_print.append(ret)
 
     return ret
@@ -365,3 +383,4 @@ def register_mode(name, mode):
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
+

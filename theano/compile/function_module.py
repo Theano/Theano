@@ -331,6 +331,7 @@ class Function(object):
         self.unpack_single = unpack_single
         self.return_none = return_none
         self.maker = maker
+        self.profile = None # reassigned in FunctionMaker.create
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)

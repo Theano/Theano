@@ -10,6 +10,8 @@ import random
 import numpy.random
 from theano.tests  import unittest_tools as utt
 
+import theano.tensor as T
+
 
 class T_bunch_of_modes(unittest.TestCase):
 
