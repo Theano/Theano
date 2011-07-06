@@ -8,6 +8,8 @@ from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
 run_cthunk = None # Will be imported only when needed.
 
+from profiling import ProfileStats
+
 import_time = time.time()
 
 AddConfigVar('ProfileMode.n_apply_to_print',
@@ -34,24 +36,53 @@ AddConfigVar('ProfileMode.profile_memory',
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
         ret = super(Profile_Maker,self).create(input_storage, trustme)
-        for i, node in enumerate(ret.maker.env.toposort()):
-            self.mode.apply_time[(i,node)]=0.0
-            assert len(ret.fn.thunk_groups[i])==1
-            self.mode.op_cimpl[node.op] = hasattr(ret.fn.thunk_groups[i][0],'cthunk')
 
+        # create a function-specific storage container for profiling info
+        profile = ProfileStats(atexit_print=False)
+        self.mode.profile_stats[ret] = profile
+        ret.profile = profile
+
+        #initialize the timers
+        for i, node in enumerate(ret.maker.env.toposort()):
+            profile.apply_time[node]=0.0
+            profile.outputs_size[node]=[0.0] * len(node.outputs)
+
+            # a thunk_group is a list of the thunks from each linker
+            # corresponding to the i'th position in the toposort.
+            assert len(ret.fn.thunk_groups[i])==1
+            profile.apply_cimpl[node] = hasattr(
+                    ret.fn.thunk_groups[i][0],
+                    'cthunk')
+
+        # Here we replace the linker function.
+        # This ugliness makes WrapLinker (an object that *generates*
+        # functions and is not function-specific)  work with ProfileStats
+        # objects which are function-specific.
+
+        #capture old fn in closure. This is important since new_fn is about to
+        #take its place as ret.fn.
+        ret_fn = ret.fn
+        def new_fn():
+            self.mode.apply_time = self.mode.profile_stats[ret].apply_time
+            self.mode.outputs_size = self.mode.profile_stats[ret].outputs_size
+            ret_fn()
+            # delete the old apply_time variable
+            # because it doesn't mean the same thing anymore.
+            # This prevents old code from looking like it still works.
+            del self.mode.apply_time
+            del self.mode.outputs_size
+
+        ret.fn = new_fn
         return ret
 
 class ProfileMode(Mode):
     def __init__(self, linker=config.linker, optimizer=config.optimizer):
-        apply_time = {}
-        op_cimpl = {}
-        compile_time = 0 #time passed in theano.function()
-        fct_call_time = {}#time passed inside theano fct call including op time.
-        fct_call = {}
         message=""
-        outputs_size={}
-        self.__setstate__((linker, optimizer, apply_time, op_cimpl,
-                           compile_time, fct_call_time, fct_call, message, outputs_size))
+        profile_stats={}
+        self.__setstate__((linker,
+            optimizer,
+            message,
+            profile_stats))
 
     def function_maker(self, i,o,m, *args, **kwargs):
         """Return an instance of `Profiler_Maker` which init the count"""
@@ -59,28 +90,24 @@ class ProfileMode(Mode):
         assert m is self
         return Profile_Maker(i, o, self, *args, **kwargs)
 
-    local_time = property(lambda self: [sum(self.apply_time.values())])
+    def __get_local_time(self):
+        rval = 0
+        for ps in self.profile_stats.values():
+            rval += sum(ps.apply_time.values())
+        return rval
+    local_time = property(__get_local_time)
 
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
-        return (self.provided_linker, self.provided_optimizer, self.apply_time,
-                self.op_cimpl, self.compile_time, self.fct_call_time,
-                self.fct_call, self.message, self.outputs_size)
+        return (self.provided_linker,
+                self.provided_optimizer,
+                self.message,
+                self.profile_stats)
 
     def __setstate__(self, state):
-        linker, optimizer, apply_time, op_cimpl, compile_time, \
-                fct_call_time, fct_call, message, outputs_size = state
-        self.apply_time = apply_time
-        self.op_cimpl = op_cimpl
-        self.compile_time = compile_time
-        self.fct_call_time = fct_call_time
-        self.fct_call = fct_call
-        self.call_time = 0
-        self.fn_time = 0
-        self.optimizer_time = 0
-        self.linker_time = 0
-        self.message = ""
-        self.outputs_size = outputs_size
+        linker, optimizer, message, profile_stats = state
+        self.message = message
+        self.profile_stats = profile_stats
 
         def profile_thunk(i, node, th):
             """ Profile only the execution time
@@ -102,7 +129,7 @@ class ProfileMode(Mode):
                 th()
                 dt = time.time() - t0
 
-            apply_time[(i,node)] += dt
+            self.apply_time[node] += max(dt, 1e-14)
 
 
         def profile_thunk2(i, node, th):
@@ -149,8 +176,8 @@ class ProfileMode(Mode):
                 else:
                     raise Exception("Can't determine the memory size of dtype",o[0].dtype)
                 size.append(s)
-            outputs_size[node]=size
-            apply_time[(i,node)] += dt
+            self.outputs_size[node]=size
+            self.apply_time[node] += max(dt, 1e-14)
 
 
         self.provided_linker = linker
@@ -182,21 +209,43 @@ class ProfileMode(Mode):
                        Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
                        that are accepted.
         """
+        compile_time = sum([ps.compile_time for ps in self.profile_stats.values()])
 
-        compile_time = self.compile_time
-        fct_call_time = self.fct_call_time
-        fct_call = self.fct_call
-        apply_time = self.apply_time
-        op_cimpl = self.op_cimpl
+        fct_call = dict([(fn, ps.fct_callcount)
+            for (fn, ps) in self.profile_stats.items()])
+
+        fct_call_time = dict([(fn, ps.fct_call_time)
+            for (fn, ps) in self.profile_stats.items()])
+
+        apply_time = {}
+        for fn, ps in self.profile_stats.items():
+            for (i, node) in enumerate(fn.maker.env.toposort()):
+                apply_time[(i, node)] = ps.apply_time[node]
+        for (i,n),t in apply_time.items():
+            if t == 0:
+                print i, n
+
+        op_cimpl = {}
+        outputs_size = {}
+        for fn, ps in self.profile_stats.items():
+            op_cimpl.update(ps.apply_cimpl)
+
         message = self.message
-        outputs_size = self.outputs_size
-        other_time = {'linker_time':self.linker_time,
-                      'optimizer_time':self.optimizer_time}
+
+        outputs_size = {}
+        for fn, ps in self.profile_stats.items():
+            outputs_size.update(ps.outputs_size)
+
+        other_time = dict(
+                linker_time = sum(
+                    [ps.linker_time for ps in self.profile_stats.values()]),
+                optimizer_time = sum(
+                    [ps.optimizer_time for ps in self.profile_stats.values()]))
 
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size, other_time,
-                            **kwargs)
-
+                        apply_time, op_cimpl, message, outputs_size,
+                        self.local_time, other_time,
+                        **kwargs)
 
     def print_diff_summary(self, other, **kwargs):
         """ As print_summary, but print the difference on two different profile mode.
@@ -240,7 +289,7 @@ class ProfileMode(Mode):
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
                        apply_time, op_cimpl, message, outputs_size,
-                       other_time,
+                       local_time, other_time,
                        n_apply_to_print=config.ProfileMode.n_apply_to_print,
                        n_ops_to_print=config.ProfileMode.n_ops_to_print,
                        print_apply=True,
@@ -256,7 +305,6 @@ class ProfileMode(Mode):
                                 whose outputs memory size is lower then that.
         """
 
-        local_time = sum(apply_time.values())
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
@@ -312,7 +360,7 @@ class ProfileMode(Mode):
             op_time[op]+=t
             nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
             if t==0:
-                assert nb_call == 0
+                assert nb_call == 0, nb_call
             else:
                 op_call[op] += nb_call
                 op_apply[op] += 1
@@ -429,8 +477,8 @@ class ProfileMode(Mode):
         else:
             fct_memory={}#env->dict(node->(outputs size))
             var_mem = {}
-            for node,val in outputs_size.items():
-                fct_memory.setdefault(node.env,{})
+            for node, val in outputs_size.items():
+                fct_memory.setdefault(node.env, {})
                 fct_memory[node.env][node]=val
                 for out,v in zip(node.outputs,val):
                     var_mem[out]=v
@@ -600,7 +648,7 @@ def atexit_print_default_profile_mode():
     config.mode=PROFILE_MODE
     """
     for prof_mode in prof_mode_instance_to_print:
-        if sum(prof_mode.apply_time.values())>0:
+        if prof_mode.local_time>0:
             prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the

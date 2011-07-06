@@ -17,10 +17,16 @@ __docformat__ = "restructuredtext en"
 import atexit
 import sys
 import theano
+from theano.configparser import AddConfigVar, StrParam, BoolParam
 config = theano.config
 
 _atexit_print_list = []
 _atexit_print_file = sys.stderr
+
+AddConfigVar('profiling.time_thunks',
+             """Time individual thunks when profiling""",
+        BoolParam(True))
+
 
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
@@ -88,7 +94,9 @@ class ProfileStats(object):
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
 
-    def __init__(self, atexit_print=True, **kwargs):
+    # param is called flag_time_thunks because most other attributes with time
+    # in the name are times *of* something, rather than configuration flags.
+    def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
         """
         atexit_print - bool. True means that this object will be printed to
                        stderr (using .summary()) at the end of the program.
@@ -99,6 +107,11 @@ class ProfileStats(object):
         self.output_size = {}
         self.apply_time = {}
         self.apply_cimpl = {}
+        self.outputs_size = {}
+        if flag_time_thunks is None:
+            self.flag_time_thunks = config.profiling.time_thunks
+        else:
+            self.flag_time_thunks = flag_time_thunks
         self.__dict__.update(kwargs)
         #print >> sys.stderr, "self.message", self.message
         if atexit_print:
