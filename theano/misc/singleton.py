@@ -60,4 +60,3 @@ class DeepCopiableFunction(Singleton):
     def __hash__(self):
         # Required for Ops that contain such functions.
         return hash(type(self))
-
