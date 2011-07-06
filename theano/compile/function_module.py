@@ -934,6 +934,7 @@ class FunctionMaker(object):
         self.profile = profile = profile or mode_profile
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
+        self.orig_outputs = outputs
         unpack_single = False
         return_none = False
         if outputs is None:
@@ -1060,25 +1061,22 @@ class FunctionMaker(object):
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
+def _pickle_FunctionMaker(self):
+    kwargs = dict(
+                inputs = self.inputs,
+                outputs = self.orig_outputs,
+                mode = self.mode,
+                accept_inplace = self.accept_inplace,
+                function_builder = self.function_builder,
+                profile = self.profile,
+                )
+    return (_constructor_FunctionMaker, (kwargs,))
 
-def _pickle_FunctionMaker(fm):
-    if fm.return_none:
-        outputs = None
-    else:
-        if fm.unpack_single:
-            outputs = fm.outputs[0]
-        else:
-            outputs = fm.outputs
-
-    #backport
-    #outputs = None if fm.return_none else (fm.outputs[0] if fm.unpack_single else fm.outputs)
-    rval = (_constructor_FunctionMaker, (fm.inputs, outputs, fm.mode, fm.accept_inplace))
-    return rval
-
-def _constructor_FunctionMaker(*args):
-    return FunctionMaker(*args)
+def _constructor_FunctionMaker(kwargs):
+    return FunctionMaker(**kwargs)
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
+
 
 
 def _pickle_slice(s):
