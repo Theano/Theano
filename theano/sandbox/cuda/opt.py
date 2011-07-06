@@ -270,6 +270,48 @@ def local_gpu_dot_to_dot22(node):
                                                 shape_out))]
     return False
 
+@register_opt()
+@local_optimizer([])
+def local_gpu_lazy_ifelse(node):
+    """
+    gpu_from_host(dot22) -> gpudot(gpu_from_host)
+
+    dot(host_from_gpu) -> host_from_gpu(gpudot22)
+    """
+    import theano
+
+    if hasattr(theano,"lazycond"):
+        gpu_ifelse = theano.lazycond.IfElse(gpu = True)
+
+        if node.op == gpu_from_host:
+            host_input = node.inputs[0]
+            if (host_input.owner
+                    and host_input.owner.op == theano.lazycond.ifelse):
+                c, t, f = host_input.owner.inputs
+                if not isinstance(f.type,CudaNdarrayType):
+                    f = gpu_from_host(f)
+                if not isinstance(t.type,CudaNdarrayType):
+                    t = gpu_from_host(t)
+                if isinstance(c.type,CudaNdarrayType):
+                    c = host_from_gpu(c)
+
+                return [gpu_ifelse(c, t, f)]
+
+        if node.op == theano.lazycond.ifelse:
+            if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
+                c, t, f = node.inputs
+
+                if not isinstance(f.type,CudaNdarrayType):
+                    f = gpu_from_host(f)
+                if not isinstance(t.type,CudaNdarrayType):
+                    t = gpu_from_host(t)
+                if isinstance(c.type,CudaNdarrayType):
+                    c = host_from_gpu(c)
+
+                return [host_from_gpu(gpu_ifelse(c, t, f))]
+
+    return False
+
 
 @register_opt()
 @local_optimizer([])

@@ -391,7 +391,7 @@ default_colorCodes = {'GpuFromHost' : 'red',
               'HostFromGpu' : 'red',
               'Scan'  : 'yellow',
               'Shape' : 'cyan',
-              'Cond'  : 'magenta',
+              'IfElse'  : 'magenta',
               'Elemwise': '#FFAABB',
               'Subtensor': '#FFAAFF'}
 
@@ -473,10 +473,10 @@ def pydotprint(fct, outfile=None,
         c3 = pd.Cluster('Middle')
         cond = None
         for node in fct_env.toposort():
-            if node.op.__class__.__name__=='Cond' and node.op.name == cond_highlight:
+            if node.op.__class__.__name__=='IfElse' and node.op.name == cond_highlight:
                 cond = node
         if cond is None:
-            _warn("pydotprint: cond_highlight is set but there is no Cond node in the graph")
+            _warn("pydotprint: cond_highlight is set but there is no IfElse node in the graph")
             cond_highlight = None
 
     if cond_highlight is not None:

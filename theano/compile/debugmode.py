@@ -1,6 +1,6 @@
 """Provides `DebugMode`, an evaluation mode for debugging theano internals.
 
-:TODO: add support for Cond Op, LazyLinker, PureOp, etc.
+:TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
 
 """
 __docformat__ = "restructuredtext en"

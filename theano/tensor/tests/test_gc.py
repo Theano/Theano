@@ -57,7 +57,7 @@ def test_gc():
         #because temporaries that weren't collected shouldn't be pickled anyway
         len_post_f = len(post_f)
         len_post_g = len(post_g)
-        assert len_post_f == len_post_g
+        assert len_post_f == len_post_g, (f_linker, len_post_f, len_post_g)
 
 
 def test_merge_opt_runtime():

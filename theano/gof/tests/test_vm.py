@@ -1,7 +1,10 @@
 import gc
 import sys
 import time
-import line_profiler
+try:
+    import line_profiler
+except ImportError:
+    pass
 import numpy
 
 from theano import function
@@ -9,7 +12,7 @@ from theano.gof import vm,link, OpWiseCLinker
 from theano.compile import Mode
 
 from theano import tensor
-from theano.lazycond import cond
+from theano.lazycond import ifelse
 import theano
 
 def test_speed():
@@ -91,7 +94,7 @@ def test_speed_lazy():
     def build_graph(x, depth=5):
         z = x
         for d in range(depth):
-            z = cond(z> 0, -z, z)
+            z = ifelse(z> 0, -z, z)
         return z
 
     def time_linker(name, linker):
@@ -105,12 +108,12 @@ def test_speed_lazy():
         f_a = function([x], a,
                 mode=Mode(optimizer=None,
                     linker=linker()),
-                #profile='f_a lazy cond %s'%name,
+                #profile='f_a lazy ifelse %s'%name,
                 )
         f_b = function([x], b,
                 mode=Mode(optimizer=None,
                     linker=linker()),
-                #profile='f_b lazy cond %s'%name,
+                #profile='f_b lazy ifelse %s'%name,
                 )
 
         print f_a([2.0])
@@ -186,7 +189,7 @@ if run_memory_usage_tests:
         def build_graph(x, depth=5):
             z = x
             for d in range(depth):
-                z = cond(z> 0, -z, z)
+                z = ifelse(z> 0, -z, z)
             return z
 
         def time_linker(name, linker):

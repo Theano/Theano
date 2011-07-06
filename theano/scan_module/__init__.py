@@ -567,7 +567,7 @@ class ScanMerge(gof.Optimizer):
 
     def apply(self, env):
         nodelist = list(env.toposort())
-        cond_nodes = [ x for x in nodelist if x.op.__class__.__name__=='Cond']
+        cond_nodes = [ x for x in nodelist if x.op.__class__.__name__=='IfElse']
         scan_nodes = [ x for x in nodelist if x.op.__class__.__name__=='Scan']
 
         # Having lazy ifs in the graph complicates a bit things, and for
