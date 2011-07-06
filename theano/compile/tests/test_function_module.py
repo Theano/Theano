@@ -8,6 +8,7 @@ from theano import gof,config
 from theano.scalar import mul
 from theano.compile.io import In, Out
 from theano.compile import function
+from theano.gof.python25 import all, any
 
 from theano import tensor
 from theano import tensor as T
