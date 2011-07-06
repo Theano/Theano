@@ -308,8 +308,14 @@ class Cholesky(Op):
     def __eq__(self, other):
         return (type(self)==type(other) and self.props() == other.props())
     def __repr__(self):
-        lu=('lower' if self.lower else 'upper')
-        destr=('destructive' if self.destructive else 'non-destructive')
+        if self.lower:
+            lu = 'lower'
+        else:
+            lu = 'upper'
+        if self.destructive:
+            destr = 'destructive'
+        else:
+            destr = 'non-destructive'
         return 'Cholesky{%s,%s}'% (lu,destr)
     def make_node(self, x):
         x = as_tensor_variable(x)

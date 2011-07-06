@@ -22,6 +22,7 @@ from theano import tensor  #do not use, there is  an import * below that hides i
 from theano import tensor as T  #ugly but works for now...
 from theano.tensor import TensorType, inplace
 from theano.gof import Env
+from theano.gof.python25 import any, all
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
 from theano.tests import unittest_tools as utt
