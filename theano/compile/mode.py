@@ -309,13 +309,19 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'CVM_NOGC':Mode('cvm_nogc', 'fast_run'),
                     }
 
-#Don't add FAST_RUN_NOGC to this list(as well as other ALL CAPS short cut)
-#The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'
-#The old all capital letter way of working is deprecated as it is not scalable.
+# Do not add FAST_RUN_NOGC to this list (nor any other ALL CAPS shortcut).
+# The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'.
+# The old all capital letter way of working is deprecated as it is not
+# scalable.
+# Also, please be careful not to modify the first item in the enum when adding
+# new modes, since it is the default mode.
 AddConfigVar('mode',
         "Default compilation mode",
-        EnumStr(*(predefined_modes.keys() + [
-            'Mode','DEBUG_MODE', 'PROFILE_MODE'])),
+        EnumStr(*(['Mode','DEBUG_MODE', 'PROFILE_MODE'] +
+                  # NB: the 'sorted' should not be required, but it is a safety
+                  # measure to help debugging (platform-dependent behavior is
+                  # *not* fun to work with).
+                  sorted(predefined_modes.iterkeys()))),
         in_c_key=False)
 
 
