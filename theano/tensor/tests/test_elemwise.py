@@ -401,7 +401,7 @@ class test_Prod(unittest.TestCase):
     def test_pickle_bug(self):
         # Regression test for bug fixed in 24d4fd291054.
         o = Prod()
-        s = cPickle.dumps(o)
+        s = cPickle.dumps(o, protocol=-1)
         o = cPickle.loads(s)
         cPickle.dumps(o)
 

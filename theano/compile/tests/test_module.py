@@ -740,7 +740,7 @@ def test_pickle_aliased_memory():
     try:
         m.f.pickle_aliased_memory_strategy = 'warn'
         m.g.pickle_aliased_memory_strategy = 'warn'
-        m_dup = cPickle.loads(cPickle.dumps(m))
+        m_dup = cPickle.loads(cPickle.dumps(m, protocol=-1))
         assert sio.getvalue().startswith('aliased relat')
     finally:
         logging.getLogger('theano.compile.function_module').removeHandler(handler)
@@ -749,7 +749,7 @@ def test_pickle_aliased_memory():
     try:
         m.f.pickle_aliased_memory_strategy = 'raise'
         m.g.pickle_aliased_memory_strategy = 'raise'
-        m_dup = cPickle.loads(cPickle.dumps(m))
+        m_dup = cPickle.loads(cPickle.dumps(m, protocol=-1))
     except AliasedMemoryError, e:
         return
 
@@ -761,7 +761,7 @@ def test_pickle_aliased_memory():
 
     #m's memory is aliased differently....
     m.y = m.x[1:2]
-    m_dup = cPickle.loads(cPickle.dumps(m))
+    m_dup = cPickle.loads(cPickle.dumps(m, protocol=-1))
 
     if 0:
         #is m_dup's memory aliased the same way?
