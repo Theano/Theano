@@ -22,7 +22,7 @@ from theano import gof
 from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
-from theano.misc.singleton import DeepCopiableFunction
+from theano.misc.singleton import DeepCopyableFunction
 
 builtin_complex = complex
 builtin_int = int
@@ -493,13 +493,13 @@ complexs64 = _multi(complex64)
 complexs128 = _multi(complex128)
 
 
-# Note that currently only upcast_out inherits from DeepCopiableFunction,
+# Note that currently only upcast_out inherits from DeepCopyableFunction,
 # because it is enough to make the test-suite pass with Python 2.4. However,
 # it may prove necessary to use this same mechanism in other places as well
 # in the future.
-# Note that turning a function into an instance of a DeepCopiableFunction
+# Note that turning a function into an instance of a DeepCopyableFunction
 # subclass is backward compatible w.r.t. old pickled files.
-class UpcastOut(DeepCopiableFunction):
+class UpcastOut(DeepCopyableFunction):
     def __call__(self, *types):
         return Scalar(dtype = Scalar.upcast(*types)),
 upcast_out = UpcastOut()

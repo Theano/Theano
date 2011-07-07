@@ -19,7 +19,7 @@ class Singleton(object):
         return cls._instance
 
 
-class DeepCopiableFunction(Singleton):
+class DeepCopyableFunction(Singleton):
 
     """
     Utility class to work around Python 2.4 limitations.
@@ -35,7 +35,7 @@ class DeepCopiableFunction(Singleton):
         def f():
             return 0
     write instead:
-        class F(DeepCopiableFunction):
+        class F(DeepCopyableFunction):
             def __call__(self):
                 return 0
         f = F()
