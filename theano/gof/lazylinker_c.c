@@ -8,6 +8,9 @@
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
 #define PY_SSIZE_T_MIN INT_MIN
+// This one was taken from:
+// http://svn.python.org/projects/python/trunk/Modules/_ctypes/ctypes.h
+#define PyNumber_AsSsize_t(ob, exc) PyInt_AsLong(ob)
 #endif
 
 /**
