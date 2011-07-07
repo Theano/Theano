@@ -700,7 +700,7 @@ def test_pickle():
     mode = get_mode()
     m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
 
-    m_dup = cPickle.loads(cPickle.dumps(m))
+    m_dup = cPickle.loads(cPickle.dumps(m, protocol=-1))
 
     assert numpy.all(m.x == m_dup.x) and numpy.all(m.y == m_dup.y)
 

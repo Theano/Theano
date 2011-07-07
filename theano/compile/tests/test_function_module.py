@@ -429,7 +429,7 @@ class T_picklefunction(unittest.TestCase):
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         try:
-            g = cPickle.loads(cPickle.dumps(f))
+            g = cPickle.loads(cPickle.dumps(f, protocol=-1))
         except NotImplementedError, e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
@@ -467,7 +467,7 @@ class T_picklefunction(unittest.TestCase):
         old_default_link = config.linker
         try:
             try:
-                str_f = cPickle.dumps(f)
+                str_f = cPickle.dumps(f, protocol=-1)
                 config.mode = 'Mode'
                 config.linker = 'py'
                 config.optimizer = 'None'
@@ -527,7 +527,7 @@ class T_picklefunction(unittest.TestCase):
 
         # try to pickle the entire things
         try:
-            saved_format = cPickle.dumps(list_of_things)
+            saved_format = cPickle.dumps(list_of_things, protocol=-1)
             new_list_of_things = cPickle.loads(saved_format)
         except NotImplementedError, e:
             if e[0].startswith('DebugMode is not picklable'):
