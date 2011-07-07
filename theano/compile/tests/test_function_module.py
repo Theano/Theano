@@ -429,6 +429,9 @@ class T_picklefunction(unittest.TestCase):
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         try:
+            # Note that here we also test protocol 0 on purpose, since it
+            # should work (even though one should not use it).
+            g = cPickle.loads(cPickle.dumps(f, protocol=0))
             g = cPickle.loads(cPickle.dumps(f, protocol=-1))
         except NotImplementedError, e:
             if e[0].startswith('DebugMode is not picklable'):
