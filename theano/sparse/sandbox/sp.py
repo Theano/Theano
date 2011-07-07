@@ -331,7 +331,10 @@ class ConvolutionIndices(Op):
         # size of output image if doing proper convolution (mode='full',dx=dy=0)
         # outshp is the actual output shape given the parameters
         fulloutshp = inshp[1:] + kshp - 1
-        s = -1 if mode=='valid' else 1
+        if mode == 'valid':
+            s = -1
+        else:
+            s = 1
         outshp = N.int64(N.ceil((inshp[1:] + s*kshp - s*1) \
                  /N.array([dy,dx], dtype='float')))
         if any(outshp <= 0):
