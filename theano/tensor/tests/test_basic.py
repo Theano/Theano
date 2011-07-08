@@ -2057,14 +2057,13 @@ class T_subtensor(unittest.TestCase):
             for stop in [None] + [-8,-5,-1,0,1,5,8]:
                 for step in [None]+[-3,-1,2]:
                     outs += [ data[start:stop:step].shape ]
-                    shapes += [data.get_value()[start:stop:step].shape ]
+                    shapes += [data.get_value(borrow=True)[start:stop:step].shape ]
             f = function([], outs, mode = mode_opt)
             t_shapes = f()
             for t_shape, shape in zip(t_shapes,shapes):
                 assert numpy.all(t_shape == shape)
             assert theano.tensor.Subtensor not in [ x.op for x in
                                            f.maker.env.toposort() ]
-
 
     def test_shape_i_scalar(self):
         # Each axis is treated independently by shape_i/shape operators

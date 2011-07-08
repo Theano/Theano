@@ -2970,15 +2970,22 @@ class Subtensor(Op):
             raise exception
 
         #infer the broadcasting pattern
-        padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
-        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
+        padded = (idx_list
+                + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list)))
+        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
+                if isinstance(p, slice)]
 
-        input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
+        input_types = Subtensor.collapse(idx_list,
+                lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
-            raise IndexError("Not enough inputs to fill in the Subtensor template.", inputs, idx_list)
+            raise IndexError(
+                    "Not enough inputs to fill in the Subtensor template.",
+                    inputs, idx_list)
         for input, expected_type in zip(inputs, input_types):
             if input.type != expected_type:
-                raise TypeError("Wrong type for the Subtensor template. Expected %s, got %s." % (input.type, expected_type))
+                raise TypeError(
+                    "Wrong type for Subtensor template. Expected %s, got %s."%(
+                        input.type, expected_type))
 
         return gof.Apply(self,
                          (x, ) + inputs,
@@ -3077,6 +3084,242 @@ class Subtensor(Op):
                 indices.append(str(entry))
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
 
+    @staticmethod
+    def helper_c_code(node, name, inputs, outputs, sub, idx_list):
+        #
+        # two arrays are created:
+        # is_slice: len == ndim, 0 means int, 1 means slice
+        # subtensor_spec: len = n_ints + 3 * n_slices
+        #
+        fail = sub['fail']
+        init_cmds = []
+        is_slice = []
+        inplace = 1
+        NONE_CODE = sys.maxint - 1
+
+        pos = [0,1] #annoying version of global variable for init_entry
+        def inc_spec_pos(amt): pos[0] += amt
+        def inc_input_pos(amt): pos[1] += amt
+        def spec_pos(): return pos[0]
+        def input_pos(): return pos[1]
+        def init_entry(entry, depth=0):
+            if isinstance(entry, int):
+                init_cmds.append(
+                        "subtensor_spec[%i] = %i;" %(spec_pos(),
+                            entry))
+                inc_spec_pos(1)
+                if depth==0:
+                    is_slice.append(0)
+            elif isinstance(entry, Type):
+                init_cmds.append(
+                        "subtensor_spec[%i] = %s;" %(spec_pos(),
+                            inputs[input_pos()]))
+                inc_spec_pos(1)
+                inc_input_pos(1)
+                if depth==0:
+                    is_slice.append(0)
+            elif entry is None:
+                init_cmds.append(
+                        "subtensor_spec[%i] = %i;" %(spec_pos(),
+                            NONE_CODE))
+                inc_spec_pos(1)
+                if depth==0:
+                    is_slice.append(0)
+            elif depth==0 and isinstance(entry, slice):
+                init_entry(entry.start, depth+1)
+                init_entry(entry.stop, depth+1)
+                init_entry(entry.step, depth+1)
+                is_slice.append(1)
+            else:
+                assert 0, entry
+
+        for entry in idx_list:
+            init_entry(entry)
+        #make sure we used all inputs
+        assert input_pos() == len(inputs), input_pos()
+        assert len(is_slice) <= node.inputs[0].ndim, node.inputs[0].ndim
+
+        len_is_slice = len(is_slice)
+        view_ndim = node.inputs[0].ndim - (numpy.asarray(is_slice)==0).sum()
+
+        len_subtensor_spec = spec_pos()
+
+        is_slice_init = ",".join([str(s) for s in is_slice])
+        subtensor_init = "\n".join(init_cmds)
+
+        x, = inputs[:1]
+        z, = outputs
+
+        rval = """
+        // The subtensor is created by iterating over the dimensions
+        // and updating stride, shape, and data pointers
+
+        int is_slice[] = {%(is_slice_init)s};
+        npy_intp subtensor_spec[%(len_subtensor_spec)s];
+        %(subtensor_init)s;
+        int spec_pos = 0; //position in subtensor_spec
+        int inner_ii = 0; // the current dimension of zview
+        int outer_ii = 0; // current dimension of z
+
+        //TODO: give this Op a second output so that this view can be cached
+        //TODO: alternatively, fix the memory leak on failure
+        Py_INCREF(%(x)s->descr);
+        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
+                &PyArray_Type,
+                %(x)s->descr,
+                %(view_ndim)s,
+                %(x)s->dimensions,
+                %(x)s->strides,
+                %(x)s->data,
+                %(x)s->flags,
+                NULL);
+        if (!xview)
+        {
+            %(fail)s;
+        }
+        assert (xview->dimensions != %(x)s->dimensions);
+        assert (xview->strides != %(x)s->strides);
+
+        for (; outer_ii < %(len_is_slice)s; ++outer_ii)
+        {
+            if (is_slice[outer_ii])
+            {
+                npy_intp length = %(x)s->dimensions[outer_ii];
+                npy_intp slicelength;
+                npy_intp start = subtensor_spec[spec_pos+0];
+                npy_intp stop  = subtensor_spec[spec_pos+1];
+                npy_intp step  = subtensor_spec[spec_pos+2];
+                if (step == %(NONE_CODE)s) step = 1;
+
+                npy_intp defstart = step < 0 ? length-1 : 0;
+                npy_intp defstop = step < 0 ? -1 : length;
+
+                // logic adapted from
+                // PySlice_GetIndicesEx in python source
+                if (!step)
+                {
+                    Py_DECREF(xview);
+                    PyErr_Format(PyExc_ValueError, "slice step cannot be zero");
+                    %(fail)s;
+                }
+
+                if (start == %(NONE_CODE)s)
+                {
+                    start = defstart;
+                }
+                else
+                {
+                    if (start < 0) start += length;
+                    if (start < 0) start = (step < 0) ? -1 : 0;
+                    if (start >= length)
+                        start = (step < 0) ? length - 1 : length;
+                }
+
+                if (stop == %(NONE_CODE)s)
+                {
+                    stop = defstop;
+                }
+                else
+                {
+                    if (stop < 0) stop += length;
+                    if (stop < 0) stop = (step < 0) ? -1 : 0;
+                    if (stop >= length)
+                        stop = (step < 0) ? length - 1 : length;
+                }
+
+                if ((step < 0 && stop >= start)
+                    || (step > 0 && start >= stop)) {
+                    slicelength = 0;
+                }
+                else if (step < 0) {
+                    slicelength = (stop-start+1)/step+1;
+                }
+                else {
+                    slicelength = (stop-start-1)/step+1;
+                }
+
+                if (0){
+                    fprintf(stdout, "start %%zi\\n", start);
+                    fprintf(stdout, "stop %%zi\\n", stop);
+                    fprintf(stdout, "step %%zi\\n", step);
+                    fprintf(stdout, "length %%zi\\n", length);
+                    fprintf(stdout, "slicelength %%zi\\n", slicelength);
+                }
+
+                assert (slicelength <= length);
+                xview->data += %(x)s->strides[outer_ii] * start;
+                xview->dimensions[inner_ii] = slicelength;
+                xview->strides[inner_ii] = %(x)s->strides[outer_ii] * step;
+
+                inner_ii += 1;
+                spec_pos += 3;
+            }
+            else // tuple coord `outer_ii` is an int
+            {
+                int idx = subtensor_spec[spec_pos];
+                if (idx < 0) idx += %(x)s->dimensions[outer_ii];
+                if (idx >= 0)
+                {
+                    if (idx < %(x)s->dimensions[outer_ii])
+                    {
+                        xview->data += %(x)s->strides[outer_ii] * idx;
+                    }
+                    else
+                    {
+                        PyErr_Format(PyExc_IndexError,"index out of bounds");
+                        %(fail)s;
+                    }
+                }
+                else
+                {
+                    PyErr_Format(PyExc_IndexError,"index out of bounds");
+                    %(fail)s;
+                }
+
+                spec_pos += 1;
+            }
+        }
+        assert (inner_ii <= xview->nd);
+        while (inner_ii < xview->nd)
+        {
+            assert (outer_ii < %(x)s->nd);
+            xview->dimensions[inner_ii] = %(x)s->dimensions[outer_ii];
+            xview->strides[inner_ii] = %(x)s->strides[outer_ii];
+            inner_ii += 1;
+            outer_ii += 1;
+        }
+        PyArray_UpdateFlags(xview, NPY_C_CONTIGUOUS|NPY_F_CONTIGUOUS);
+        """% locals()
+        #print rval
+        return rval
+
+    @staticmethod
+    def helper_c_code_cache_version():
+        return (2,)
+
+    def c_code(self, node, name, inputs, outputs, sub): #DEBUG
+        part0 = self.helper_c_code(node, name, inputs, outputs, sub,
+                self.idx_list)
+
+        x = inputs[0]
+        z, = outputs
+        part1 = """
+        if (%(z)s) Py_DECREF(%(z)s);
+        Py_INCREF(py_%(x)s);
+        xview->base = py_%(x)s;
+        assert(py_%(x)s == (PyObject*)%(x)s);
+        %(z)s = xview;
+        """ %locals()
+
+        return part0 + part1
+
+
+    def c_code_cache_version(self):
+        hv = self.helper_c_code_cache_version()
+        if hv:
+            return (1, hv)
+        else:
+            return ()
 
 
 class SubtensorPrinter:
@@ -3134,7 +3377,8 @@ def set_subtensor(x, y, inplace=False,
     :param y: symbolic variable for the rvalue of = operation
     :param tolerate_inplace_aliasing: see inc_subtensor for documentation.
     """
-    return inc_subtensor(x, y, inplace, set_instead_of_inc=True)
+    return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
+            tolerate_inplace_aliasing=tolerate_inplace_aliasing)
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         tolerate_inplace_aliasing=False):
@@ -3227,7 +3471,7 @@ class IncSubtensor(Op):
         else:
             msg += 'Set'
         return  "%s%s{%s}" % (msg,
-                self.__class__.__name__, ", ".join(indices))
+                self.__class__.__name__[3:], ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
         x, y = map(as_tensor_variable, [x, y])
@@ -3243,18 +3487,22 @@ class IncSubtensor(Op):
             raise exception
 
         #infer the broadcasting pattern
-        padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
-        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
+        padded = (idx_list
+                + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list)))
+        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
+                if isinstance(p, slice)]
 
-        #if y.type.broadcastable != tuple(broadcastable):
-        #    raise TypeError("Invalid broadcastable pattern for y in IncSubtensor.make_node")
-
-        input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
+        input_types = Subtensor.collapse( idx_list,
+                lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
-            raise IndexError("Not enough inputs to fill in the Subtensor template.", inputs, idx_list)
+            raise IndexError(
+                    "Not enough inputs to fill in the Subtensor template.",
+                    inputs, idx_list)
         for input, expected_type in zip(inputs, input_types):
             if input.type != expected_type:
-                raise TypeError("Wrong type for the Subtensor template. Expected %s, got %s." % (input.type, expected_type))
+                raise TypeError(
+                    "Wrong type for Subtensor template. Expected %s, got %s."%(
+                        input.type, expected_type))
 
         return gof.Apply(self,
                          (x, y) + inputs,
@@ -3295,6 +3543,85 @@ class IncSubtensor(Op):
             else:
                 x.__setitem__(cdata, y)
         out[0] = x
+
+    def c_code(self, node, name, inputs, outputs, sub): #DEBUG
+
+        if self.inplace: # convert bool to int
+            inplace = 1
+        else:
+            inplace = 0
+        x = inputs[0]
+        y = inputs[1]
+        z, = outputs
+        if self.set_instead_of_inc: # convert bool to int
+            op_is_set = 1
+        else:
+            op_is_set = 0
+        fail = sub['fail']
+
+        copy_input_if_necessary = """
+        if (%(inplace)s)
+        {
+            if (%(x)s != %(z)s)
+            {
+                if (%(z)s) Py_DECREF(%(z)s);
+                Py_INCREF(%(x)s);
+                %(z)s = %(x)s;
+            }
+        }
+        else
+        {
+            if (%(z)s) Py_DECREF(%(z)s);
+            %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0, NPY_ENSURECOPY, NULL);
+        }
+        """ % locals()
+
+        # make xview actually a view of %(z)s
+        get_xview = Subtensor.helper_c_code(node, name,
+                outputs[:1]+inputs[2:],
+                outputs, sub, self.idx_list)
+
+
+        make_modification = """
+        if (%(op_is_set)s)
+        {
+            if (PyArray_CopyInto(xview, %(y)s)) // does broadcasting
+            {
+                Py_DECREF(xview);
+                %(fail)s;
+            }
+        }
+        else
+        {
+            PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
+                    (PyObject*)xview, py_%(y)s);
+            if (add_rval)
+            {
+                assert (PyArray_Check((PyObject*)add_rval));
+                assert (add_rval->data == xview->data);
+                Py_DECREF(add_rval);
+            }
+            else
+            {
+                Py_DECREF(xview);
+                %(fail)s;
+            }
+        }
+        """ %locals()
+
+        return (copy_input_if_necessary
+                + get_xview
+                + make_modification
+                + "Py_DECREF(xview);"
+                )
+
+    def c_code_cache_version(self):
+        hv = Subtensor.helper_c_code_cache_version()
+        if hv:
+            return (1, hv)
+        else:
+            return ()
+
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

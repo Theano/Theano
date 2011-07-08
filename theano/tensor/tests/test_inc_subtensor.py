@@ -20,7 +20,7 @@ class Test_inc_subtensor(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
-    def test_simple_ok(self):
+    def test_simple_2d(self):
         """Increments or sets part of a tensor by a scalar using full slice and
         a partial slice depending on a scalar.
         """
@@ -52,8 +52,41 @@ class Test_inc_subtensor(unittest.TestCase):
                 expected_result[:,:val_sl2_end] += val_inc
 
             self.assertTrue(numpy.array_equal(result, expected_result))
-        return
 
+    def test_simple_3d(self):
+        """Increments or sets part of a tensor by a scalar using full slice and
+        a partial slice depending on a scalar.
+        """
+        a = T.dtensor3()
+        increment = T.dscalar()
+        sl1 = slice(None)
+        sl2_end = T.lscalar()
+        sl2 = slice(sl2_end)
+        sl3 = 2
+
+        for do_set in [True,False]:
+            print "Set", do_set
+
+            if do_set:
+                resut = T.set_subtensor(a[sl1, sl3, sl2], increment)
+            else:
+                resut = T.inc_subtensor(a[sl1, sl3, sl2], increment)
+
+            f = theano.function([a, increment, sl2_end], resut)
+
+            val_a = numpy.ones((5,3,4))
+            val_inc = 2.3
+            val_sl2_end = 2
+
+            expected_result = numpy.copy(val_a)
+            result = f(val_a, val_inc, val_sl2_end)
+
+            if do_set:
+                expected_result[:,sl3,:val_sl2_end] = val_inc
+            else:
+                expected_result[:,sl3,:val_sl2_end] += val_inc
+
+            self.assertTrue(numpy.array_equal(result, expected_result))
     def test_grad(self):
 
 
