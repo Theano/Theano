@@ -1572,6 +1572,15 @@ class ScalarFromTensor(Op):
         return [tensor_from_scalar(dt)]
     def __str__(self):
         return self.__class__.__name__
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, = inputs
+        z, = outputs
+        fail = sub['fail']
+        return """
+        %(z)s = ((dtype_%(x)s*)(%(x)s->data))[0];
+        """%locals()
+    def c_code_cache_version(self):
+        return (1,)
 scalar_from_tensor = ScalarFromTensor()
 
 
