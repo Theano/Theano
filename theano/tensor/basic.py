@@ -3301,8 +3301,6 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        if not isinstance(node.inputs[0].type, TensorType):
-            return ()
         return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub): #DEBUG
