@@ -36,15 +36,43 @@ import cPickle, os, subprocess, sys
 import theano
 
 
-def main():
-    theano_dir = os.path.dirname(theano.__file__)
-    # `nose` is the script that calls nosetests.
-    nose = os.path.join(theano_dir, 'tests', 'call_nose.py')
-    if len(sys.argv) == 1:
-        tests_dir = theano_dir
+def main(stdout=None, stderr=None, argv=None, call_nose=None):
+    """
+    Run tests with optional output redirection.
+
+    Parameters stdout and stderr should be file-like objects used to redirect
+    the output. None uses default sys.stdout and sys.stderr.
+
+    If argv is None, then we use arguments from sys.argv, otherwise we use the
+    provided arguments instead.
+
+    If call_nose is None, then we use the call_nose.py script found in
+    theano/tests to call nosetests. Otherwise we call the provided script.
+    """
+    if stdout is None:
+        stdout = sys.stdout
+    if stderr is None:
+        stderr = sys.stderr
+    if argv is None:
+        argv = sys.argv
+    if call_nose is None:
+        call_nose = os.path.join(theano.__path__[0], 'tests', 'call_nose.py')
+    stdout_backup = sys.stdout
+    stderr_backup = sys.stderr
+    try:
+        sys.stdout = stdout
+        sys.stderr = stderr
+        run(stdout, stderr, argv, call_nose)
+    finally:
+        sys.stdout = stdout_backup
+        sys.stderr = stderr_backup
+
+def run(stdout, stderr, argv, call_nose):
+    if len(argv) == 1:
+        tests_dir = theano.__path__[0]
     else:
-        assert len(sys.argv) == 2
-        tests_dir = sys.argv[1]
+        assert len(argv) == 2
+        tests_dir = argv[1]
         assert os.path.isdir(tests_dir)
     os.chdir(tests_dir)
     # It seems safer to fully regenerate the list of tests on each call.
@@ -55,7 +83,14 @@ def main():
 ####################
 # COLLECTING TESTS #
 ####################"""
-    rval = subprocess.call(['python', nose, '--collect-only', '--with-id'])
+    stdout.flush()
+    stderr.flush()
+    dummy_in = open(os.devnull)
+    rval = subprocess.call(['python', call_nose, '--collect-only', '--with-id'],
+                           stdin=dummy_in.fileno(), stdout=stdout.fileno(),
+                           stderr=stderr.fileno())
+    stdout.flush()
+    stderr.flush()
     assert rval == 0
     noseids_file = '.noseids'
     data = cPickle.load(open(noseids_file, 'rb'))
@@ -70,13 +105,16 @@ def main():
 # RUNNING TESTS IN BATCHES OF %s #
 ###################################""" % n_batch
     for test_id in xrange(1, n_tests + 1, n_batch):
+        stdout.flush()
+        stderr.flush()
         test_range = range(test_id, min(test_id + n_batch, n_tests + 1))
         # We suppress all output because we want the user to focus only on the
         # failed tests, which are re-run (with output) below.
         dummy_out = open(os.devnull, 'w')
-        rval = subprocess.call(['python', nose, '-q', '--with-id'] +
+        rval = subprocess.call(['python', call_nose, '-q', '--with-id'] +
                                map(str, test_range), stdout=dummy_out.fileno(),
-                               stderr=dummy_out.fileno())
+                               stderr=dummy_out.fileno(),
+                               stdin=dummy_in.fileno())
         # Recover failed test indices from the 'failed' field of the '.noseids'
         # file. We need to do it after each batch because otherwise this field
         # may get erased. We use a set because it seems like it is not
@@ -92,7 +130,13 @@ def main():
 ################################
 # RE-RUNNING FAILED TESTS ONLY #
 ################################"""
-        subprocess.call(['python', nose, '-v', '--with-id'] + failed)
+        stdout.flush()
+        stderr.flush()
+        subprocess.call(['python', call_nose, '-v', '--with-id'] + failed,
+                        stdin=dummy_in.fileno(), stdout=stdout.fileno(),
+                        stderr=stderr.fileno())
+        stdout.flush()
+        stderr.flush()
         return 0
     else:
         print """\
