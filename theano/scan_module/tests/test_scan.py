@@ -1,3 +1,4 @@
+import time
 import unittest
 
 import numpy
@@ -2126,6 +2127,105 @@ class T_Scan(unittest.TestCase):
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([],gx)
         assert numpy.allclose( f2(), numpy.ones((10,)))
+
+def test_speed():
+
+    r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000,10)
+
+    t0 = time.time()
+    for i in xrange(1,1000):
+        r[i] += r[i-1]
+    t1 = time.time()
+    print 'python', t1 - t0
+
+    r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000,10)
+    t0 = time.time()
+    r_i = iter(r[1:])
+    r_ii = iter(r[:-1])
+    while True:
+        try:
+            tmp = r_i.next()
+            tmp += r_ii.next()
+        except StopIteration:
+            break
+    t1 = time.time()
+    print 'python with builtin iterator', t1 - t0
+
+    if 0:
+        r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000,10)
+        s_r = tensor.matrix()
+        s_y, updates = theano.scan(fn=lambda ri, rii:ri+rii,
+                sequences=[s_r[1:]],
+                outputs_info=tensor.constant(r[0]))
+        assert not updates
+        f = theano.function([s_r], s_y)
+
+        t2 = time.time()
+        f(r)
+        t3 = time.time()
+        print 'theano1', t3 - t2
+
+    if 1:
+        r = numpy.arange(10000).astype(theano.config.floatX).reshape(-1,10)
+        shared_r = theano.shared(r)
+        s_i = tensor.shared(numpy.array(1))
+        s_rinc = tensor.inc_subtensor(shared_r[s_i], shared_r[s_i-1],
+                tolerate_inplace_aliasing=True)
+        theano.printing.debugprint(s_rinc)
+        f = theano.function([], [],
+                updates={
+                    s_i: s_i+1,
+                    shared_r: s_rinc,
+                    })
+        f._check_for_aliased_inputs = False
+        t2 = time.time()
+        f_fn = f.fn
+        for i in xrange(998):
+            f_fn()
+        f() #999 to update the profiling timers
+        t3 = time.time()
+        print 'theano2', t3 - t2
+        print shared_r.get_value()
+
+def test_speed_rnn():
+
+    N=20
+
+    r = numpy.arange(1000*N).astype(theano.config.floatX).reshape(1000,N)
+
+    w = numpy.random.randn(N,N).astype(theano.config.floatX)
+
+    t0 = time.time()
+    for i in xrange(1,1000):
+        r[i] += numpy.tanh(numpy.dot(r[i-1], w))
+    t1 = time.time()
+    print 'python', t1 - t0
+
+    if 1:
+        r = numpy.arange(1000*N).astype(theano.config.floatX).reshape(1000,N)
+        s_w = theano.shared(w)
+        shared_r = theano.shared(r)
+        s_i = tensor.shared(numpy.array(1))
+        s_rinc = tensor.inc_subtensor(
+                shared_r[s_i],
+                theano.tensor.tanh(theano.dot(shared_r[s_i-1], s_w)),
+                tolerate_inplace_aliasing=True)
+        theano.printing.debugprint(s_rinc)
+        f = theano.function([], [],
+                updates={
+                    s_i: s_i+1,
+                    shared_r: s_rinc,
+                    })
+        f._check_for_aliased_inputs = False
+        f_fn = f.fn
+        t2 = time.time()
+        for i in xrange(998):
+            #f_fn()
+            f()
+        f() #999 to update the profiling timers
+        t3 = time.time()
+        print 'theano2', t3 - t2
+        print shared_r.get_value()
 
 if __name__ == '__main__':
     #'''
