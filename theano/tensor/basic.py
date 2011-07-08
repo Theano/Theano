@@ -1556,6 +1556,10 @@ class TensorFromScalar(Op):
 tensor_from_scalar = TensorFromScalar()
 
 class ScalarFromTensor(Op):
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, t):
         assert isinstance(t.type, TensorType)
         assert t.type.broadcastable == ()
@@ -3086,6 +3090,8 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list):
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError()
         #
         # two arrays are created:
         # is_slice: len == ndim, 0 means int, 1 means slice
@@ -3295,6 +3301,8 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
+        if not isinstance(node.inputs[0].type, TensorType):
+            return ()
         return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub): #DEBUG
