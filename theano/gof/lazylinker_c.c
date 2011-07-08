@@ -675,42 +675,50 @@ PyObject *
 CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
 {
   CLazyLinker * self = (CLazyLinker*)_self;
-  static char *kwlist[] = {(char*)"time_thunks", NULL};
-  if (! PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist,
-                                    &self->do_timing))
+  static char *kwlist[] = {
+    (char*)"time_thunks",
+    (char *)"n_calls",
+    NULL};
+  int n_calls=1;
+  if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist,
+                                    &self->do_timing,
+                                    &n_calls))
     return NULL;
   int err = 0;
   self->position_of_error = -1;
   PyObject * one = PyInt_FromLong(1);
   PyObject * zero = PyInt_FromLong(0);
   //clear storage of pre_call_clear elements
-  Py_ssize_t n_pre_call_clear = PyList_Size(self->pre_call_clear);
-  assert(PyList_Check(self->pre_call_clear));
-  for (int i = 0; i < n_pre_call_clear; ++i)
+  for (int call_i = 0; call_i < n_calls && (!err); ++call_i)
     {
-      PyObject * el_i = PyList_GetItem(self->pre_call_clear, i);
-      Py_INCREF(Py_None);
-      PyList_SetItem(el_i, 0, Py_None);
-    }
-  //clear the computed flag out of all non-input vars
-  for (int i = 0; i < self->n_vars; ++i)
-    {
-      self->var_computed[i] = !self->var_has_owner[i];
-      if (self->var_computed[i])
+      Py_ssize_t n_pre_call_clear = PyList_Size(self->pre_call_clear);
+      assert(PyList_Check(self->pre_call_clear));
+      for (int i = 0; i < n_pre_call_clear; ++i)
         {
-          Py_INCREF(one);
-          PyList_SetItem(self->var_computed_cells[i], 0, one);
+          PyObject * el_i = PyList_GetItem(self->pre_call_clear, i);
+          Py_INCREF(Py_None);
+          PyList_SetItem(el_i, 0, Py_None);
         }
-      else
+      //clear the computed flag out of all non-input vars
+      for (int i = 0; i < self->n_vars; ++i)
         {
-          Py_INCREF(zero);
-          PyList_SetItem(self->var_computed_cells[i], 0, zero);
+          self->var_computed[i] = !self->var_has_owner[i];
+          if (self->var_computed[i])
+            {
+              Py_INCREF(one);
+              PyList_SetItem(self->var_computed_cells[i], 0, one);
+            }
+          else
+            {
+              Py_INCREF(zero);
+              PyList_SetItem(self->var_computed_cells[i], 0, zero);
+            }
         }
-    }
 
-  for (int i = 0; i < self->n_output_vars && (!err); ++i)
-    {
-      err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+      for (int i = 0; i < self->n_output_vars && (!err); ++i)
+        {
+          err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+        }
     }
   Py_DECREF(one);
   Py_DECREF(zero);
