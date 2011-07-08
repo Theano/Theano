@@ -2197,7 +2197,7 @@ def test_speed_rnn():
 
     t0 = time.time()
     for i in xrange(1,1000):
-        r[i] += numpy.tanh(numpy.dot(r[i-1], w))
+        r[i] = numpy.tanh(numpy.dot(r[i-1], w))
     t1 = time.time()
     print 'python', t1 - t0
 
@@ -2206,22 +2206,25 @@ def test_speed_rnn():
         s_w = theano.shared(w)
         shared_r = theano.shared(r)
         s_i = tensor.shared(numpy.array(1))
-        s_rinc = tensor.inc_subtensor(
+        s_rinc = tensor.set_subtensor(
                 shared_r[s_i],
                 theano.tensor.tanh(theano.dot(shared_r[s_i-1], s_w)),
                 tolerate_inplace_aliasing=True)
-        theano.printing.debugprint(s_rinc)
         f = theano.function([], [],
                 updates={
                     s_i: s_i+1,
                     shared_r: s_rinc,
                     })
+        theano.printing.debugprint(f )
         f._check_for_aliased_inputs = False
         f_fn = f.fn
+        print type(f_fn)
+        #print help(f_fn)
         t2 = time.time()
-        for i in xrange(998):
+        f_fn(n_calls=998)
+        #for i in xrange(998):
             #f_fn()
-            f()
+            #f()
         f() #999 to update the profiling timers
         t3 = time.time()
         print 'theano2', t3 - t2
