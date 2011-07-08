@@ -37,6 +37,10 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None, borr
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works
 # as long as we dont do purely scalar-scalar operations
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
+#
+# N.B. THERE IS ANOTHER CLASS CALLED ScalarSharedVariable in the
+# theano.scalar.sharedvar file.  It is not registered as a shared_constructor,
+# this one is.
 class ScalarSharedVariable(_tensor_py_operators, SharedVariable):
     pass
 

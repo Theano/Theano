@@ -50,6 +50,10 @@ class VM(object):
         of runtime spent on thunks[i] in the course of computations performed by
         call_with_timers().
 
+    need_update_inputs - bool. True indicates that Function.__call__ must
+        implement the feedback from output storage  to input storage. False means
+        it *must not* repeat that feedback.
+
     """
     def __init__(self, nodes, thunks, pre_call_clear):
         """
@@ -70,6 +74,7 @@ class VM(object):
         self.call_counts = [0]*len(nodes)
         self.call_times = [0]*len(nodes)
         self.time_thunks = False
+        self.need_update_inputs = True
 
     def __call__(self):
         """
@@ -395,7 +400,8 @@ class VM_Linker(link.LocalLinker):
             input_storage, output_storage, storage_map,
             post_thunk_clear,
             computed,
-            compute_map
+            compute_map,
+            updated_vars
             ):
 
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
@@ -467,6 +473,12 @@ class VM_Linker(link.LocalLinker):
                 prereq_var_idxs.sort() # TODO: why sort?
                 node_prereqs.append(prereq_var_idxs)
 
+            update_storage = []
+            for (ivar, ovar) in updated_vars.items():
+                if ivar != ovar:
+                    update_storage.append(vars_idx[ivar]) #dst
+                    update_storage.append(vars_idx[ovar]) #src
+
             c0 = sys.getrefcount(node_n_inputs)
             vm = CVM(
                     nodes,
@@ -476,6 +488,7 @@ class VM_Linker(link.LocalLinker):
                     call_counts=[0]*len(nodes),
                     call_times=[0.0]*len(nodes),
                     compute_map_list=compute_map_list,
+                    storage_map_list=storage_map_list,
                     base_input_output_list=base_input_output_list,
                     node_n_inputs=node_n_inputs,
                     node_n_outputs=node_n_outputs,
@@ -486,6 +499,7 @@ class VM_Linker(link.LocalLinker):
                     output_vars=output_vars,
                     node_prereqs=node_prereqs,
                     node_output_size=node_output_size,
+                    update_storage=update_storage,
                     )
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
@@ -510,7 +524,10 @@ class VM_Linker(link.LocalLinker):
                         )
         return vm
 
-    def make_all(self, profiler = None, input_storage = None, output_storage = None):
+    def make_all(self, profiler = None, input_storage = None,
+            output_storage = None,
+            ):
+        expanded_inputs=self.expanded_inputs # hacky argumentpassing workaround
         env = self.env
         order = list(env.toposort())
         no_recycling = self.no_recycling
@@ -541,12 +558,24 @@ class VM_Linker(link.LocalLinker):
         else:
             post_thunk_clear = None
 
+        # calculate the update_storage map whose keys are shared var inputs
+        # and whose values are the outputs that hold their updates
+
+        updated_vars = {}
+        if expanded_inputs:
+            # Update the inputs that have an update function
+            potential_values = list(env.outputs)
+            assert len(expanded_inputs)==len(env.inputs)
+            for e_input, ivar in reversed(zip(expanded_inputs, env.inputs)):
+                if e_input.update is not None:
+                    updated_vars[ivar] = potential_values.pop()
 
         vm = self.make_vm(order, thunks,
                 input_storage, output_storage, storage_map,
                 post_thunk_clear,
                 computed,
-                compute_map
+                compute_map,
+                updated_vars
                 )
 
         return (vm,

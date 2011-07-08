@@ -2151,7 +2151,7 @@ def test_speed():
     t1 = time.time()
     print 'python with builtin iterator', t1 - t0
 
-    if 0:
+    if 1:
         r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000,10)
         s_r = tensor.matrix()
         s_y, updates = theano.scan(fn=lambda ri, rii:ri+rii,
@@ -2188,27 +2188,50 @@ def test_speed():
         print shared_r.get_value()
 
 def test_speed_rnn():
+    import theano.scalar.sharedvar
+    print """Warning: the updates version runs slower than python because by
+    default the blas optimizations don't replace dot with dot22.  Why is that?"""
 
-    N=20
+    L = 10000
+    N = 50
 
-    r = numpy.arange(1000*N).astype(theano.config.floatX).reshape(1000,N)
+    numpy.random.seed(2523452)
+
+    r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
 
     w = numpy.random.randn(N,N).astype(theano.config.floatX)
 
     t0 = time.time()
-    for i in xrange(1,1000):
-        r[i] = numpy.tanh(numpy.dot(r[i-1], w))
+    for i in xrange(1,L):
+        r[i] += numpy.tanh(numpy.dot(r[i-1], w))
     t1 = time.time()
     print 'python', t1 - t0
 
     if 1:
-        r = numpy.arange(1000*N).astype(theano.config.floatX).reshape(1000,N)
+        r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
+        s_r = tensor.matrix()
+        s_y, updates = theano.scan(fn=lambda ri, rii:ri+tensor.tanh(tensor.dot(rii, w)),
+                sequences=[s_r[1:]],
+                outputs_info=tensor.constant(r[0]))
+        assert not updates
+        f = theano.function([s_r], s_y)
+
+        t2 = time.time()
+        f(r)
+        t3 = time.time()
+        print 'theano1', t3 - t2
+
+    if 1:
+        r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
         s_w = theano.shared(w)
         shared_r = theano.shared(r)
-        s_i = tensor.shared(numpy.array(1))
-        s_rinc = tensor.set_subtensor(
+        s_i = theano.scalar.sharedvar.shared(1)
+        s_rinc = tensor.inc_subtensor(
                 shared_r[s_i],
-                theano.tensor.tanh(theano.dot(shared_r[s_i-1], s_w)),
+                theano.tensor.tanh(
+                    theano.tensor.dot(
+                        shared_r[s_i-1],
+                        w)),
                 tolerate_inplace_aliasing=True)
         f = theano.function([], [],
                 updates={
@@ -2216,15 +2239,14 @@ def test_speed_rnn():
                     shared_r: s_rinc,
                     })
         theano.printing.debugprint(f )
-        f._check_for_aliased_inputs = False
         f_fn = f.fn
-        print type(f_fn)
-        #print help(f_fn)
         t2 = time.time()
-        f_fn(n_calls=998)
-        #for i in xrange(998):
-            #f_fn()
-            #f()
+        if 1:
+            f_fn(n_calls=L-2)
+        elif 0:
+            for i in xrange(L-2): f_fn()
+        else:
+            for i in xrange(L-2): f()
         f() #999 to update the profiling timers
         t3 = time.time()
         print 'theano2', t3 - t2

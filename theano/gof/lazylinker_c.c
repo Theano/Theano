@@ -36,6 +36,37 @@ static double pytime(const struct timeval * tv)
 }
 
 /**
+  Helper routine to convert a PyList of integers to a c array of integers.
+  */
+static int unpack_list_of_ssize_t(PyObject * pylist, Py_ssize_t **dst, Py_ssize_t *len,
+                                  const char* kwname)
+{
+  Py_ssize_t buflen, *buf;
+  if (!PyList_Check(pylist))
+    {
+      PyErr_Format(PyExc_TypeError, "%s must be list", kwname);
+      return -1;
+    }
+  assert (NULL == *dst);
+  *len = buflen = PyList_Size(pylist);
+  *dst = buf = (Py_ssize_t*)malloc(buflen * sizeof(Py_ssize_t));
+  assert(buf);
+  for (int ii = 0; ii < buflen; ++ii)
+    {
+      PyObject * el_i = PyList_GetItem(pylist, ii);
+      Py_ssize_t n_i = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
+      if (PyErr_Occurred())
+        {
+          free(buf);
+          *dst = NULL;
+          return -1;
+        }
+      buf[ii] = n_i;
+    }
+  return 0;
+}
+
+/**
 
   CLazyLinker
 
@@ -52,6 +83,7 @@ typedef struct {
     int n_vars;    // number of variables in the graph
     int * var_computed; // 1 or 0 for every variable
     PyObject ** var_computed_cells;
+    PyObject ** var_value_cells;
 
     Py_ssize_t n_output_vars;
     Py_ssize_t * output_vars; // variables that *must* be evaluated by call
@@ -69,13 +101,15 @@ typedef struct {
     Py_ssize_t * node_n_prereqs;
     Py_ssize_t ** node_prereqs;
 
+    Py_ssize_t * update_storage; // dst0, src0, dst1, src1, ... cells to switch after a call
+    Py_ssize_t n_updates;
 
     void ** thunk_cptr_fn;
     void ** thunk_cptr_data;
     PyObject * call_times;
     PyObject * call_counts;
     int do_timing;
-
+    int need_update_inputs;
     int position_of_error; // -1 for no error, otw the index into `thunks` that failed.
 } CLazyLinker;
 
@@ -88,6 +122,8 @@ CLazyLinker_dealloc(PyObject* _self)
   free(self->thunk_cptr_data);
 
   free(self->is_lazy);
+
+  free(self->update_storage);
 
   if (self->node_n_prereqs)
     {
@@ -112,9 +148,11 @@ CLazyLinker_dealloc(PyObject* _self)
       for (int i = 0; i < self->n_vars; ++i)
         {
           Py_DECREF(self->var_computed_cells[i]);
+          Py_DECREF(self->var_value_cells[i]);
         }
     }
   free(self->var_computed_cells);
+  free(self->var_value_cells);
   free(self->output_vars);
 
   Py_XDECREF(self->nodes);
@@ -140,6 +178,7 @@ CLazyLinker_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       self->n_vars = 0;
       self->var_computed = NULL;
       self->var_computed_cells = NULL;
+      self->var_value_cells = NULL;
 
       self->n_output_vars = 0;
       self->output_vars = NULL;
@@ -157,12 +196,16 @@ CLazyLinker_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       self->node_prereqs = NULL;
       self->node_n_prereqs = NULL;
 
+      self->update_storage = NULL;
+      self->n_updates = 0;
+
       self->thunk_cptr_data = NULL;
       self->thunk_cptr_fn = NULL;
       self->call_times = NULL;
       self->call_counts = NULL;
       self->do_timing = 0;
 
+      self->need_update_inputs = 0;
       self->position_of_error = -1;
     }
     return (PyObject *)self;
@@ -179,6 +222,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
       (char*)"call_counts",
       (char*)"call_times",
       (char*)"compute_map_list",
+      (char*)"storage_map_list",
       (char*)"base_input_output_list",
       (char*)"node_n_inputs",
       (char*)"node_n_outputs",
@@ -189,9 +233,11 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
       (char*)"output_vars",
       (char*)"node_prereqs",
       (char*)"node_output_size",
+      (char*)"update_storage",
       NULL};
 
     PyObject *compute_map_list=NULL,
+             *storage_map_list=NULL,
              *base_input_output_list=NULL,
              *node_n_inputs=NULL,
              *node_n_outputs=NULL,
@@ -201,10 +247,11 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
              *is_lazy=NULL,
              *output_vars=NULL,
              *node_prereqs=NULL,
-             *node_output_size=NULL;
+             *node_output_size=NULL,
+             *update_storage=NULL;
 
     assert(!self->nodes);
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOO", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOO", kwlist,
                                       &self->nodes,
                                       &self->thunks,
                                       &self->pre_call_clear,
@@ -212,6 +259,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
                                       &self->call_counts,
                                       &self->call_times,
                                       &compute_map_list,
+                                      &storage_map_list,
                                       &base_input_output_list,
                                       &node_n_inputs,
                                       &node_n_outputs,
@@ -221,7 +269,8 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
                                       &is_lazy,
                                       &output_vars,
                                       &node_prereqs,
-                                      &node_output_size
+                                      &node_output_size,
+                                      &update_storage
                                       ))
         return -1;
     Py_INCREF(self->nodes);
@@ -361,6 +410,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
         self->var_has_owner = (int*)malloc(self->n_vars*sizeof(int));
         self->var_computed = (int*)malloc(self->n_vars*sizeof(int));
         self->var_computed_cells = (PyObject**)malloc(self->n_vars*sizeof(PyObject*));
+        self->var_value_cells = (PyObject**)malloc(self->n_vars*sizeof(PyObject*));
         for (int i = 0; i < self->n_vars; ++i)
           {
             PyObject * el_i = PyList_GetItem(var_owner, i);
@@ -378,6 +428,8 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
               }
             self->var_computed_cells[i] = PyList_GetItem(compute_map_list, i);
             Py_INCREF(self->var_computed_cells[i]);
+            self->var_value_cells[i] = PyList_GetItem(storage_map_list, i);
+            Py_INCREF(self->var_value_cells[i]);
           }
       }
     else
@@ -386,26 +438,18 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
         return -1;
       }
 
-    //output vars
-    if (PyList_Check(output_vars))
+    if (unpack_list_of_ssize_t(output_vars, &self->output_vars, &self->n_output_vars,
+                               "output_vars"))
+      return -1;
+    for (int i = 0; i < self->n_output_vars; ++i)
       {
-        self->n_output_vars = PyList_Size(output_vars);
-        self->output_vars = (Py_ssize_t*)malloc(self->n_output_vars*sizeof(Py_ssize_t));
-        assert(self->output_vars);
-        for (int i = 0; i < self->n_output_vars; ++i)
-          {
-            PyObject * el_i = PyList_GetItem(output_vars, i);
-            Py_ssize_t N = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
-            if (PyErr_Occurred()) return -1;
-            assert (N <= self->n_vars);
-            self->output_vars[i] = N;
-          }
+        assert(self->output_vars[i] < self->n_vars);
       }
-    else
-      {
-        PyErr_SetString(PyExc_TypeError, "output_vars must be list");
-        return -1;
-      }
+    if (unpack_list_of_ssize_t(update_storage, &self->update_storage, &self->n_updates,
+                               "updates_storage"))
+      return -1;
+    assert((self->n_updates % 2) == 0);
+    self->n_updates /= 2;
     return 0;
 }
 static void set_position_of_error(CLazyLinker * self, int owner_idx)
@@ -719,6 +763,17 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
         {
           err = lazy_rec_eval(self, self->output_vars[i], one, zero);
         }
+
+      for (int i = 0; i < self->n_updates; ++i)
+        {
+          Py_ssize_t dst = self->update_storage[2*i];
+          Py_ssize_t src = self->update_storage[2*i+1];
+          PyObject* tmp = PyList_GetItem(self->var_value_cells[src], 0);
+          Py_INCREF(Py_None);
+          Py_INCREF(tmp);
+          PyList_SetItem(self->var_value_cells[dst], 0, tmp);
+          PyList_SetItem(self->var_value_cells[src], 0, Py_None);
+        }
     }
   Py_DECREF(one);
   Py_DECREF(zero);
@@ -749,6 +804,8 @@ static PyMemberDef CLazyLinker_members[] = {
      (char*)"position of failed thunk"},
     {(char*)"time_thunks", T_INT, offsetof(CLazyLinker, do_timing), 0,
      (char*)"bool: nonzero means call will time thunks"},
+    {(char*)"need_update_inputs", T_INT, offsetof(CLazyLinker, need_update_inputs), 0,
+     (char*)"bool: nonzero means Function.__call__ must implement update mechanism"},
     {NULL}  /* Sentinel */
 };
 
@@ -794,8 +851,15 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
     CLazyLinker_new,           /* tp_new */
 };
 
+static PyObject * get_version(PyObject *dummy, PyObject *args)
+{
+  PyObject *result = PyFloat_FromDouble(0.1);
+  return result;
+}
+
 static PyMethodDef lazylinker_ext_methods[] = {
-    {NULL}  /* Sentinel */
+  {"get_version",  get_version, METH_VARARGS, "Get extension version."},
+  {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 #ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */

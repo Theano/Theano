@@ -629,10 +629,11 @@ class Function(object):
                     # WARNING: This circumvents the 'readonly' attribute in x
                     o_container.storage[0] = None
 
-        # Update the inputs that have an update function
-        for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
-            if input.update is not None:
-                storage.data = outputs.pop()
+        if getattr(self.fn, 'need_update_inputs', True):
+            # Update the inputs that have an update function
+            for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
+                if input.update is not None:
+                    storage.data = outputs.pop()
 
         # Put default values back in the storage
         for i, (required, refeed, value) in enumerate(self.defaults):
@@ -994,6 +995,9 @@ class FunctionMaker(object):
             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
         else:
             self.linker = linker.accept(env)
+
+        #hacky thing so VMLinker
+        self.linker.expanded_inputs = expanded_inputs
 
         self.indices = indices
         self.inputs = inputs
