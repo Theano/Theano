@@ -102,11 +102,23 @@ AddConfigVar('on_opt_error',
         EnumStr('warn', 'raise'),
         in_c_key=False)
 
+def get_home_dir():
+    home = os.getenv('HOME')
+    if home is None:
+        # This expanduser usually works on Windows (see discussion on
+        # theano-users, July 13 2010).
+        home = os.path.expanduser('~')
+        if home == '~':
+            # This might happen when expanduser fails. Although the cause of
+            # failure is a mystery, it has been seen on some Windows system.
+            home = os.getenv('USERPROFILE')
+    assert home is not None
+    return home
+    
 AddConfigVar('home',
         "User home directory",
-        StrParam(os.getenv("HOME", os.path.expanduser('~'))),
+        StrParam(get_home_dir()),
         in_c_key=False)
-#This expanduser works on windows (see discussion on theano-users, July 13 2010)
 
 AddConfigVar('nocleanup',
         "Suppress the deletion of code files that did not compile cleanly",
