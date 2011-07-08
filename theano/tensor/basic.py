@@ -3113,7 +3113,8 @@ class SubtensorPrinter:
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), SubtensorPrinter())
 
-def set_subtensor(x, y, inplace=False):
+def set_subtensor(x, y, inplace=False,
+        tolerate_inplace_aliasing=False):
     """Return x with the given subtensor overwritten by y.
 
     Example: To replicate the numpy expression "r[10:] = 5", type
@@ -3122,14 +3123,21 @@ def set_subtensor(x, y, inplace=False):
 
     :param x: symbolic variable for the lvalue of = operation
     :param y: symbolic variable for the rvalue of = operation
+    :param tolerate_inplace_aliasing: see inc_subtensor for documentation.
     """
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True)
 
-def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False):
+def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
+        tolerate_inplace_aliasing=False):
     """Return x with the given subtensor incremented by y.
 
     :param x: the symbolic result of a Subtensor operation.
     :param y: the amount by which to increment ths subtensor in question
+    :param tolerate_inplace_aliasing: allow x and y to be views of a single
+        underlying array even while working inplace.  For correct results,
+        x and y must not be overlapping views; if they overlap, the result
+        of this Op will generally be incorrect. This value has no effect if
+        inplace=False.
 
     Example: To replicate the numpy expression "r[10:] += 5", type
 
@@ -3138,7 +3146,12 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False):
     # retrieve idx_list from x.owner
     if not isinstance(x.owner.op, Subtensor):
         raise TypeError('x must be result of a subtensor operation')
-    the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc)
+    if tolerate_inplace_aliasing:
+        destroyhandler_tolerate_aliased = [[0,1]]
+    else:
+        destroyhandler_tolerate_aliased = []
+    the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc,
+            destroyhandler_tolerate_aliased=destroyhandler_tolerate_aliased)
     real_x = x.owner.inputs[0]
     real_idxargs = x.owner.inputs[1:]
     return the_op(real_x, y, *real_idxargs)
@@ -3157,11 +3170,13 @@ class IncSubtensor(Op):
     of incrementing it by that value.
     """
 
-    def __init__(self, idx_list, inplace=False, set_instead_of_inc=False):
+    def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
+            destroyhandler_tolerate_aliased=[]):
         self.idx_list = map(Subtensor.convert, idx_list)
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
+        self.destroyhandler_tolerate_aliased = list(destroyhandler_tolerate_aliased)
         self.set_instead_of_inc = set_instead_of_inc
 
     def __eq__(self, other):
@@ -3211,8 +3226,10 @@ class IncSubtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            exception = ValueError(Subtensor.e_invalid%(len(idx_list),
-                                                        x.type.ndim))
+            exception = ValueError(
+                    Subtensor.e_invalid%(
+                        len(idx_list),
+                        x.type.ndim))
             exception.subtensor_invalid = True
             raise exception
 

@@ -1518,7 +1518,9 @@ def local_inplace_setsubtensor(node):
     """
     if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(node.op.idx_list, inplace=True, \
-                        set_instead_of_inc=node.op.set_instead_of_inc)
+                        set_instead_of_inc=node.op.set_instead_of_inc,
+                        destroyhandler_tolerate_aliased=\
+                                node.op.destroyhandler_tolerate_aliased)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False

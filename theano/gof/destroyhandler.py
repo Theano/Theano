@@ -470,25 +470,44 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     # add_inplace(x, x.T).  In some special cases though, the in-place op will
                     # actually be able to work properly with multiple destroyed inputs (e.g,
                     # add_inplace(x, x).  An Op that can still work in this case should declare
-                    # so via the 'tolerate_same' attribute
+                    # so via the 'destroyhandler_tolerate_same' attribute or
+                    # 'destroyhandler_tolerate_aliased' attribute.
                     #
-                    # tolerate_same should be a list of pairs of the form
+                    # destroyhandler_tolerate_same should be a list of pairs of the form
                     # [(idx0, idx1), (idx0, idx2), ...]
-                    # The first element of each pair is the index of a destroyed
+                    # The first element of each pair is the input index of a destroyed
                     # variable.
                     # The second element of each pair is the index of a different input where
                     # we will permit exactly the same variable to appear.
                     # For example, add_inplace.tolerate_same might be [(0,1)] if the destroyed
                     # input is also allowed to appear as the second argument.
+                    #
+                    # destroyhandler_tolerate_alias is the same sort of list of
+                    # pairs.
+                    # op.destroyhandler_tolerate_alias = [(idx0, idx1)] tells the
+                    # destroyhandler to IGNORE an aliasing between a destroyed
+                    # input idx0 and another input idx1.
+                    # This is generally a bad idea, but it is safe in some
+                    # cases, such as
+                    # - the op reads from the aliased idx1 before modifying idx0
+                    # - the idx0 and idx1 are guaranteed not to overlap (e.g.
+                    #   they are pointed at different rows of a matrix).
+                    #
 
                     #CHECK FOR INPUT ALIASING
                     # OPT: pre-compute this on import
-                    tolerate_same = getattr(app.op, 'tolerate_same', [])
+                    tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
                     tolerated = set(idx1 for idx0, idx1 in tolerate_same
                             if idx0 == destroyed_idx)
                     tolerated.add(destroyed_idx)
+                    tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
+                    ignored = set(idx1 for idx0, idx1 in tolerate_aliased
+                            if idx0 == destroyed_idx)
                     #print 'tolerated', tolerated
+                    #print 'ignored', ignored
                     for i, input in enumerate(app.inputs):
+                        if i in ignored:
+                            continue
                         if input in root_impact \
                                 and (i not in tolerated or input is not destroyed_variable):
                             raise InconsistencyError("Input aliasing: %s (%i, %i)"

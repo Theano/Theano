@@ -40,13 +40,14 @@ def MyValue(data):
 
 class MyOp(Op):
 
-    def __init__(self, nin, name, vmap = {}, dmap = {}, nout = 1, tolerate_same = []):
+    def __init__(self, nin, name, vmap = {}, dmap = {}, nout = 1,
+            destroyhandler_tolerate_same = []):
         self.nin = nin
         self.nout = nout
         self.name = name
         self.destroy_map = dmap
         self.view_map = vmap
-        self.tolerate_same = tolerate_same
+        self.destroyhandler_tolerate_same = destroyhandler_tolerate_same
     
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
@@ -65,7 +66,7 @@ sigmoid = MyOp(1, 'Sigmoid')
 transpose_view = MyOp(1, 'TransposeView', vmap = {0: [0]})
 add = MyOp(2, 'Add')
 add_in_place = MyOp(2, 'AddInPlace', dmap = {0: [0]})
-add_in_place_2 = MyOp(2, 'AddInPlace', dmap = {0: [0]}, tolerate_same = [(0, 1)])
+add_in_place_2 = MyOp(2, 'AddInPlace', dmap = {0: [0]}, destroyhandler_tolerate_same = [(0, 1)])
 dot = MyOp(2, 'Dot')
 
 
