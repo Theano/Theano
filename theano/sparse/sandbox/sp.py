@@ -13,6 +13,7 @@ from scipy import sparse as scipy_sparse
 import theano
 import theano.sparse
 from theano import sparse, gof, Op, tensor
+from theano.gof.python25 import all, any
 from theano.printing import Print
 
 def register_specialize(lopt, *tags, **kwargs):
@@ -346,16 +347,22 @@ class ConvolutionIndices(Op):
         insize = N.prod(inshp)
 
         # range of output units over which to iterate
-        lbound = N.array([kshp[0]-1,kshp[1]-1]) if mode=='valid' else N.zeros(2)
-        ubound = lbound + (inshp[1:]-kshp+1) if mode=='valid' else fulloutshp
+        if mode == 'valid':
+            lbound = N.array([kshp[0]-1,kshp[1]-1])
+            ubound = lbound + (inshp[1:]-kshp+1)
+        else:
+            lbound = N.zeros(2)
+            ubound = fulloutshp
 
         # coordinates of image in "fulloutshp" coordinates
         topleft  = N.array([kshp[0]-1,kshp[1]-1])
         botright = topleft + inshp[1:] # bound when counting the receptive field
 
         # sparse matrix specifics...
-        spmatshp = (outsize*N.prod(kshp)*inshp[0],insize) if ws else\
-                   (nkern*outsize,insize)
+        if ws:
+            spmatshp = (outsize * N.prod(kshp) * inshp[0], insize)
+        else:
+            spmatshp = (nkern * outsize, insize)
         spmat = scipy_sparse.lil_matrix(spmatshp)
 
         # loop over output image pixels
@@ -396,11 +403,16 @@ class ConvolutionIndices(Op):
                                           fmapi*N.prod(inshp[1:]) # taking into account multiple input features
 
                                     # convert oy,ox values to output space coordinates
-                                    (y,x) = (oy,ox) if mode=='full' else (oy,ox) - topleft
+                                    if mode == 'full':
+                                        (y, x) = (oy, ox)
+                                    else:
+                                        (y, x) = (oy, ox) - topleft
                                     (y,x) = N.array([y,x]) / (dy,dx) # taking into account step size
                                     # convert to row index of sparse matrix
-                                    row = (y*outshp[1]+x)*inshp[0]*ksize + l + fmapi*ksize if ws else\
-                                          y*outshp[1] + x
+                                    if ws:
+                                        row = (y*outshp[1]+x)*inshp[0]*ksize + l + fmapi*ksize
+                                    else:
+                                        row = y*outshp[1] + x
 
                                     # Store something at that location in sparse matrix.
                                     # The written value is only useful for the sparse case. It
@@ -444,7 +456,8 @@ class ConvolutionIndices(Op):
 
         rval = (spmat.indices[:spmat.size],
                 spmat.indptr, spmatshp, sptype, outshp)
-        rval += (kmap,) if kmap!=None else ()
+        if kmap is not None:
+            rval += (kmap,)
 
         return rval
 

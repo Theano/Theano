@@ -16,6 +16,7 @@ from theano import tensor
 from theano import compile
 from theano import scalar
 from theano import config
+from theano.gof.python25 import all, any
 
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
