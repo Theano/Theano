@@ -105,13 +105,13 @@ if not release:
 
     a = open(filename, 'w')
     try:
-    	try:
-        	a.write(cnt % {'version': VERSION,
-                       	'full_version' : FULL_VERSION,
-                       	'hg_revision' : HG_REVISION,
-                       	'isrelease': str(ISRELEASED)})
-    	except Exception, e:
-        	print e
+        try:
+            a.write(cnt % {'version': VERSION,
+                       'full_version' : FULL_VERSION,
+                       'hg_revision' : HG_REVISION,
+                       'isrelease': str(ISRELEASED)})
+        except Exception, e:
+            print e
     finally:
         a.close()
 
@@ -131,7 +131,8 @@ def do_setup():
           packages=find_packages(),
           install_requires=['numpy>=1.3.0', 'scipy>=0.7.0'],
           package_data={
-              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.sh', 'ChangeLog'],
+              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh',
+                   'ChangeLog'],
               'theano.misc': ['*.sh']
           },
           keywords=' '.join([
