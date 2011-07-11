@@ -131,20 +131,21 @@ try:
                     code,
                     location=cuda_ndarray_loc,
                     include_dirs=[cuda_path], libs=['cublas'])
-            # If necessary, 
-            # create a symlink called libcuda_ndarray.so
-            # which nvcc_module_compile_str uses when linking
-            # any module except "cuda_ndarray" itself.
-            try:
-                open(libcuda_ndarray_so).close()
-            except IOError:
-                os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
     error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
     set_cuda_disabled()
 
 if cuda_available:
+    # If necessary, 
+    # create a symlink called libcuda_ndarray.so
+    # which nvcc_module_compile_str uses when linking
+    # any module except "cuda_ndarray" itself.
+    try:
+        open(libcuda_ndarray_so).close()
+    except IOError:
+        os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
+
     try:
         gpu_init()
         cuda_available = True
