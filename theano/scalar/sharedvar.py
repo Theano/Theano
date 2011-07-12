@@ -1,4 +1,18 @@
 """A shared variable container for true scalars - for internal use.
+
+Why does this file exist?
+-------------------------
+
+Scalars are used to index subtensors.  Subtensor indexing is the heart of what
+looks like the new scan mechanism.  This little file made it possible to catch
+up to the Python interpreter in benchmarking tests.
+
+We don't want to encourage people to use scalars (rather than 0-d tensors), but
+the reason is just to keep the docs simple, not because scalars are bad.  If we
+just don't register this shared variable constructor to handle any values by
+default when calling theano.shared(value) then users must really go out of their
+way (as scan does) to create a shared variable of this kind.
+
 """
 __authors__   = "James Bergstra"
 __copyright__ = "(c) 2010, Universite de Montreal"
