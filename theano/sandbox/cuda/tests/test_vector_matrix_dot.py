@@ -83,6 +83,8 @@ def test_gemv1():
                 gpu_f.maker.env.toposort() ]) == 1
     assert sum([isinstance(node.op, blasop.GpuGemm) for node in
                 gpu_f2.maker.env.toposort() ]) == 1
+    assert any([node.op is cuda.blas.gpu_gemm_inplace for node in gpu_f2.maker.env.toposort()])
+    assert any([node.op is cuda.blas.gpu_gemm_inplace for node in gpu_f.maker.env.toposort()])
 
 
 def test_gemv2():
@@ -105,6 +107,8 @@ def test_gemv2():
                 gpu_f.maker.env.toposort() ]) == 1
     assert sum([isinstance(node.op, blasop.GpuGemm) for node in
                 gpu_f2.maker.env.toposort() ]) == 1
+    assert any([node.op is cuda.blas.gpu_gemm_inplace for node in gpu_f2.maker.env.toposort()])
+    assert any([node.op is cuda.blas.gpu_gemm_inplace for node in gpu_f.maker.env.toposort()])
 
 if __name__=='__main__':
     test_dot_vm()
