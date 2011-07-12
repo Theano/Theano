@@ -147,9 +147,22 @@ Bleeding-edge (developer) install instructions
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
+If you want the bleeding-edge without developing the code you can use
+pip for this
+
+.. code-block:: bash
+
+    pip install --upgrade hg+http://hg.assembla.com/theano
+
+or
+    
+.. code-block:: bash
+
+    pip install --upgrade hg+http://hg.assembla.com/theano --install-option='--prefix=YOURPREFIX'
+
 The following are general instructions that will set you up with the
-bleeding-edge version of Theano. First, get the code using `Mercurial
-<http://mercurial.selenic.com/>`__:
+bleeding-edge version of Theano and allow you to hack it. First,
+get the code using `Mercurial <http://mercurial.selenic.com/>`__:
 
 .. code-block:: bash
 
