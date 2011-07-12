@@ -123,7 +123,7 @@ directory; see the `virtualenv documentation`_ for details.
 
 .. note::
 
-    The tests should be run with the :envvar:`~config.THEANO_FLAGS`
+    The tests should be run with the ``THEANO_FLAGS``(defined later)
     ``device=cpu`` (default). Otherwise, it will generate false errors.
 
 .. _distribute: http://packages.python.org/distribute/
@@ -259,8 +259,7 @@ You can also run them in-place from the Mercurial checkout directory by typing
 .. note::
 
     The tests should be run with the :attr:`~config.device` option set to
-    ``cpu``, e.g. setting the :envvar:`~config.THEANO_FLAGS` environment
-    variable by prefixing the ``nosetests`` command with
+    ``cpu``, e.g. with prefixing the ``nosetests`` command with
     ``THEANO_FLAGS=device=cpu``. If you have a GPU, it will automatically
     be used to run GPU-related tests.
 
@@ -285,8 +284,8 @@ was compiled with a static library of BLAS (the latter is not supported in
 Theano).
 
 The short way to configure the Theano flags ``blas.ldflags`` is by setting the
-environmental variable :envvar:`~config.THEANO_FLAGS` to ``blas.ldflags=XXX`` (in bash
-``export THEANO_FLAGS=blas.ldflags=XXX``).
+environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX`` (in bash
+``export THEANO_FLAGS=blas.ldflags=XXX``)
 
 The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
 permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
@@ -436,8 +435,7 @@ Mac
   For this reason, we've disabled linking with ``-framework Python``, since on
   most configurations this solves the ``Bus error`` problem. If this default
   configuration causes problems with your Python/Theano installation and you think
-  that linking with ``-framework Python`` might help, then either set the
-  :envvar:`~config.THEANO_FLAGS` environment variable with
+  that linking with ``-framework Python`` might help, then either set
   ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
   contain
 
