@@ -93,8 +93,9 @@ def local_cut_gpu_host_gpu(node):
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
         'fast_run', 'inplace', 'gpu')
-gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_folding,
-        'fast_run', 'gpu')
+gpu_cut_copies.register('cut_gpu_constant_transfers',
+                        tensor.opt.constant_folding,
+                        'fast_run', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
 compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_host_gpu, 'fast_run')
