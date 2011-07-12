@@ -1,15 +1,9 @@
 """
 Test compilation modes
 """
-from nose.plugins.skip import SkipTest
-
 import unittest
-import theano
-import numpy
-import random
-import numpy.random
-from theano.tests  import unittest_tools as utt
 
+import theano
 import theano.tensor as T
 
 
