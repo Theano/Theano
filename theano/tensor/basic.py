@@ -3322,10 +3322,7 @@ class Subtensor(Op):
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
-        if hv:
-            return (1, hv)
-        else:
-            return ()
+        return (1, hv)
 
 
 class SubtensorPrinter:
