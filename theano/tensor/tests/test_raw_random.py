@@ -68,10 +68,10 @@ class T_random_function(unittest.TestCase):
         f2, f4, f2_4, f2_4_4 = f()
         f2b, f4b, f2_4b, f2_4_4b = f()
 
-        print f2
-        print f4
-        print f2_4
-        print f2_4_4
+        #print f2
+        #print f4
+        #print f2_4
+        #print f2_4_4
 
         #print f2b
         #print f4b
