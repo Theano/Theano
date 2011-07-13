@@ -583,7 +583,7 @@ class ConvOp(Op):
             # and ConvOp.getOutputShape doesn't handle this. In this case
             # we simply let the default function do its work.
             raise theano.tensor.ShapeError()
-            
+
 
     def perform(self,node, inp, out):
         """

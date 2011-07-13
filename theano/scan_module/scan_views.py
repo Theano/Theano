@@ -207,9 +207,3 @@ def foldr( fn
                   , go_backwards  = True
                   , mode          = mode
                   , name          = name )
-
-
-
-
-
-

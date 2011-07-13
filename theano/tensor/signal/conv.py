@@ -29,7 +29,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     a 3D tensor, corresponding to a set of 2D filters.
 
     Shape parameters are optional and will result in faster execution.
-    
+
     :type input: dmatrix of dtensor3
     :param input: symbolic variable for images to be filtered
     :type filters: dmatrix of dtensor3
@@ -50,13 +50,13 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     ### use shape information if it is given to us ###
     if filter_shape and image_shape:
-        if input.ndim==3: 
+        if input.ndim==3:
             bsize = image_shape[0]
         else:
             bsize = 1
         imshp = (1,) + tuple(image_shape[-2:])
- 
-        if filters.ndim==3: 
+
+        if filters.ndim==3:
             nkern = filter_shape[0]
         else:
             nkern = 1
@@ -78,12 +78,12 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     new_input_shape = tensor.join(0, tensor.stack(sym_bsize,1), input.shape[-2:])
     input4D = tensor.reshape(input, new_input_shape, ndim=4)
-    
+
     new_filter_shape = tensor.join(0, tensor.stack(sym_nkern,1), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
 
     ### perform actual convolution ###
-    op = conv.ConvOp(output_mode=border_mode, 
+    op = conv.ConvOp(output_mode=border_mode,
                 dx=subsample[0], dy=subsample[1],
                 imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
 
