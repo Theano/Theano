@@ -489,7 +489,7 @@ class ModuleCache(object):
         if do_refresh:
             self.refresh()
 
-    age_thresh_use = 60*60*24*24
+    age_thresh_use = 60*60*24*24    # 24 days
     """
     The default age threshold (in seconds) for cache files we want to use.
 
@@ -973,8 +973,8 @@ class ModuleCache(object):
 
         self.time_spent_in_check_key += time.time() - start_time
 
-    age_thresh_del = 60*60*24*31#31 days
-    age_thresh_del_unversioned = 60*60*24*7#7 days
+    age_thresh_del = 60*60*24*31 # 31 days
+    age_thresh_del_unversioned = 60*60*24*7 # 7 days
 
     """The default age threshold for `clear_old` (in seconds)
     """
@@ -995,8 +995,8 @@ class ModuleCache(object):
         # contain all modules older thatn age_thresh_del.
         if age_thresh_del < self.age_thresh_use:
             if age_thresh_del > 0:
-                warning("Clearing modules that were not deemed to old to use:",
-                        "age_thresh_del=%d," % age_thresh_del,
+                warning("Clearing modules that were not deemed too old to "
+                        "use: age_thresh_del=%d," % age_thresh_del,
                         "self.age_thresh_use=%d" % self.age_thresh_use)
             else:
                 info("Clearing all modules.")
