@@ -12,11 +12,22 @@ import gof
 
 from compile import optdb
 from tensor import opt
+
+_logger = logging.getLogger('theano.lazycond')
+
+def warning(*msg):
+    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+def info(*msg):
+    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+def debug(*msg):
+    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+
+
 @gof.local_optimizer([None])
 def ifelse_make_inplace(node):
     op = node.op
     if isinstance(op, IfElse) and not op.as_view :
-        print 'ifelse_make_inplace applied'
+        logger.debug('ifelse_make_inplace applied')
         return IfElse(as_view = True,
                     gpu = op.gpu, name=op.name).make_node(*node.inputs).outputs
     return False

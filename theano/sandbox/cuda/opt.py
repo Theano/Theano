@@ -275,13 +275,11 @@ def local_gpu_dot_to_dot22(node):
 @local_optimizer([])
 def local_gpu_lazy_ifelse(node):
     """
-    gpu_from_host(dot22) -> gpudot(gpu_from_host)
+    gpu_from_host(ifelse) -> gpu_ifelse(gpu_from_host)
 
-    dot(host_from_gpu) -> host_from_gpu(gpudot22)
+    ifelse(host_from_gpu) -> host_from_gpu(ifelse)
     """
-    import theano
-
-    if hasattr(theano,"lazycond"):
+    if hasattr(theano, "lazycond"):
         gpu_ifelse = theano.lazycond.IfElse(gpu = True)
 
         if node.op == gpu_from_host:
