@@ -9,7 +9,7 @@ import warnings
 
 import theano
 
-_logger = logging.getLogger('theano.config')
+_logger = logging.getLogger('theano.configparser')
 
 class TheanoConfigWarning(Warning):
 

@@ -15,7 +15,7 @@ from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
 
-_logger=logging.getLogger("theano.tensor.basic")
+_logger=logging.getLogger("theano.printing")
 def _info(*msg):
     _logger.info(' '.join(msg))
 def _warn(*msg):

@@ -19,7 +19,7 @@ from theano import tensor
 from theano.tensor.nnet import softplus
 from theano.sandbox.softsign import softsign
 
-_logger = logging.getLogger('driver_kouh')
+_logger = logging.getLogger('theano.sandbox.cuda.tests.test_bench_loopfusion')
 
 def _shared_uniform(rng, low, high, size, dtype, name=None):
     return shared(

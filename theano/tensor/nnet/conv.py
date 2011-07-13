@@ -30,7 +30,7 @@ try:
 except ImportError:
     pass
 
-_logger=logging.getLogger("theano.signal.conv")
+_logger=logging.getLogger("theano.tensor.nnet.conv")
 def _debug(*msg):
     _logger.debug(' '.join([ str(x) for x in msg]))
 def _warn(*msg):

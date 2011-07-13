@@ -13,7 +13,7 @@ from theano import gof, Op, tensor, config
 from theano.tensor.nnet import conv
 
 import logging
-_logger=logging.getLogger("theano.signal.conv")
+_logger=logging.getLogger("theano.tensor.signal.conv")
 def _debug(*msg):
     _logger.debug(' '.join(msg))
 def _warn(*msg):

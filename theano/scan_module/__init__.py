@@ -54,7 +54,7 @@ import scan_utils
 from scan_utils import clone
 
 # Logging function for sending warning or info
-_logger = logging.getLogger('theano.scan')
+_logger = logging.getLogger('theano.scan_module')
 
 def warning(*msg):
     _logger.warning('WARNING theano.scan: '+' '.join(msg))

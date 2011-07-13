@@ -56,7 +56,7 @@ from theano.sandbox import cuda
 from theano.updates import Updates
 
 # Logging function for sending warning or info
-_logger = logging.getLogger('theano.scan')
+_logger = logging.getLogger('theano.scan_module.scan')
 
 def warning(*msg):
     _logger.warning('WARNING theano.scan: '+' '.join(msg))

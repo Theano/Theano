@@ -18,7 +18,7 @@ import logging
 import scan
 
 # Logging function for sending warning or info
-_logger = logging.getLogger('theano.scan_views')
+_logger = logging.getLogger('theano.scan_module.scan_views')
 
 def warning(*msg):
     _logger.warning('WARNING theano.scan: '+' '.join(msg))

@@ -35,7 +35,7 @@ import scan_utils
 from scan_utils import safe_new, safe_to_cpu, traverse
 
 # Logging function for sending warning or info
-_logger = logging.getLogger('theano.scan_op')
+_logger = logging.getLogger('theano.scan_module.scan_op')
 
 
 def warning(*msg):
