@@ -482,9 +482,9 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     # For example, add_inplace.tolerate_same might be [(0,1)] if the destroyed
                     # input is also allowed to appear as the second argument.
                     #
-                    # destroyhandler_tolerate_alias is the same sort of list of
+                    # destroyhandler_tolerate_aliased is the same sort of list of
                     # pairs.
-                    # op.destroyhandler_tolerate_alias = [(idx0, idx1)] tells the
+                    # op.destroyhandler_tolerate_aliased = [(idx0, idx1)] tells the
                     # destroyhandler to IGNORE an aliasing between a destroyed
                     # input idx0 and another input idx1.
                     # This is generally a bad idea, but it is safe in some
