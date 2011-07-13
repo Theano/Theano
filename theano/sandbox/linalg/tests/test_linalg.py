@@ -1,7 +1,7 @@
 import numpy
 
 import theano
-import theano.sparse # To know if scipy is available.
+import theano.scipy # To know if scipy is available.
 from theano import tensor, function
 from theano.tensor.basic import _allclose
 
@@ -64,9 +64,7 @@ def test_inverse_grad():
 
 def test_det_grad():
     # If scipy is not available, this test will fail, thus we skip it.
-    # Note that currently we re-use the `enable_sparse` flag, but it may be
-    # cleaner to have a different `scipy_available` flag in the future.
-    if not theano.sparse.enable_sparse:
+    if not theano.scipy.scipy_available:
         raise SkipTest('Scipy is not available')
     rng = numpy.random.RandomState(1234)
 

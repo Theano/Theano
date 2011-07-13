@@ -458,7 +458,9 @@ def diag(x):
         raise TypeError('diag requires vector or matrix argument', x)
 
 class Det(Op):
-    """matrix determinant"""
+    """matrix determinant
+    TODO: move this op to another file that request scipy.
+    """
     def make_node(self, x):
         x = as_tensor_variable(x)
         o = theano.tensor.scalar(dtype=x.dtype)
