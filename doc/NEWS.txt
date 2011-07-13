@@ -20,9 +20,11 @@ Change in output memory storage for Ops:
 
  In a future version, the content of the output storage, both for Python and C
  versions, will either be NULL, or have the following guarantees:
+
   * It will be a Python object of the appropriate Type (for a Tensor variable,
     a numpy.ndarray, for a GPU variable, a CudaNdarray, for instance)
   * It will have the correct number of dimensions, and correct dtype
+
  However, its shape and memory layout (strides) will not be guaranteed.
 
  When that change is made, the config flag DebugMode.check_preallocated_output
@@ -64,8 +66,10 @@ Optimization:
 GPU:
  * Move to the gpu fused elemwise that have other dtype then float32 in them
    (except float64) if the input and output are float32.
+
    * This allow to move elemwise comparisons to the GPU if we cast it to
      float32 after that.
+
  * Implemented CudaNdarray.ndim to have the same interface in ndarray.
  * Fixed slowdown caused by multiple chained views on CudaNdarray objects
  * CudaNdarray_alloc_contiguous changed so as to never try to free
@@ -83,10 +87,12 @@ New features:
    configured by config.DebugMode.check_preallocated_output.
  * var[vector of index] now work, (grad work recursively, the direct grad
    work inplace, gpu work)
+
     * limitation: work only of the outer most dimensions.
+
  * New way to test the graph as we build it. Allow to easily find the source
    of shape mismatch error:
-   `http://deeplearning.net/software/theano/tutorial/debug_faq.html#interactive-debugger`__
+   `<http://deeplearning.net/software/theano/tutorial/debug_faq.html#interactive-debugger>`__
  * cuda.root inferred if nvcc is on the path, otherwise defaults to
    /usr/local/cuda
  * Better graph printing for graphs involving a scan subgraph
