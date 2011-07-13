@@ -121,11 +121,6 @@ directory; see the `virtualenv documentation`_ for details.
     If you do not have ``pip`` installed but do have ``easy_install``, you can
     get ``pip`` by simply typing ``easy_install pip``.
 
-.. note::
-
-    The tests should be run with the ``THEANO_FLAGS``(defined later)
-    ``device=cpu`` (default). Otherwise, it will generate false errors.
-
 .. _distribute: http://packages.python.org/distribute/
 .. _setuptools: http://pypi.python.org/pypi/setuptools
 .. _easy_install: http://packages.python.org/distribute/easy_install.html
@@ -155,7 +150,7 @@ pip for this
     pip install --upgrade hg+http://hg.assembla.com/theano
 
 or
-    
+
 .. code-block:: bash
 
     pip install --upgrade hg+http://hg.assembla.com/theano --install-option='--prefix=YOURPREFIX'
@@ -258,14 +253,18 @@ You can also run them in-place from the Mercurial checkout directory by typing
 
 .. note::
 
-    The tests should be run with the :attr:`~config.device` option set to
-    ``cpu``, e.g. with prefixing the ``nosetests`` command with
-    ``THEANO_FLAGS=device=cpu``. If you have a GPU, it will automatically
-    be used to run GPU-related tests.
+    The tests should be run with the configuration option :attr:`~config.device`
+    set to ``cpu`` (default). If you need to change this value,
+    you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
+    by prefixing the ``nosetests`` command with ``THEANO_FLAGS=device=cpu``.
+    If you have a GPU, it will automatically be used to run GPU-related tests.
 
     If you want GPU-related tests to run on a specific GPU device, and not
-    the default one, you should use :attr:`~config.init_gpu_device`, for
-    instance ``THEANO_FLAGS=device=cpu,init_gpu_device=gpu1``.
+    the default one, you should use :attr:`~config.init_gpu_device`.
+    For instance: ``THEANO_FLAGS=device=cpu,init_gpu_device=gpu1``.
+
+    See :ref:`libdoc_config` for more information on how to change these
+    configuration options.
 
 All tests should pass except those marked as ``KnownFailureTest``. If some
 test fails on your machine, you are encouraged to tell us what went wrong on
@@ -284,7 +283,7 @@ was compiled with a static library of BLAS (the latter is not supported in
 Theano).
 
 The short way to configure the Theano flags ``blas.ldflags`` is by setting the
-environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX`` (in bash
+environment variable :envvar:`THEANO_FLAGS` to ``blas.ldflags=XXX`` (in bash
 ``export THEANO_FLAGS=blas.ldflags=XXX``)
 
 The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
@@ -436,6 +435,7 @@ Mac
   most configurations this solves the ``Bus error`` problem. If this default
   configuration causes problems with your Python/Theano installation and you think
   that linking with ``-framework Python`` might help, then either set
+  the :envvar:`THEANO_FLAGS` environment variable with
   ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
   contain
 
