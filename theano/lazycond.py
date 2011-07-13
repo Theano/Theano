@@ -28,7 +28,7 @@ def debug(*msg):
 def ifelse_make_inplace(node):
     op = node.op
     if isinstance(op, IfElse) and not op.as_view :
-        logger.debug('ifelse_make_inplace applied')
+        _logger.debug('ifelse_make_inplace applied')
         return IfElse(as_view = True,
                     gpu = op.gpu, name=op.name).make_node(*node.inputs).outputs
     return False
