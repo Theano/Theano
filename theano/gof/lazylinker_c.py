@@ -1,9 +1,19 @@
-import os, sys
+import os, logging, sys
 
 import theano
 from theano import config
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
+
+_logger = logging.getLogger('theano.gof.lazylinker_c')
+
+def warning(*msg):
+    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+def info(*msg):
+    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+def debug(*msg):
+    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+
 
 # Ensure the compiledir is in `sys.path` to be able to reload an existing
 # precompiled library.
@@ -34,7 +44,7 @@ except ImportError:
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
         except ImportError:
-            print "COMPILING NEW CVM"
+            info("COMPILING NEW CVM")
             dirname = 'lazylinker_ext'
             cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')
             code = open(cfile).read()
@@ -56,7 +66,7 @@ except ImportError:
             from lazylinker_ext import lazylinker_ext as lazy_c
             assert (lazylinker_ext._version ==
                     lazy_c.get_version())
-            print "NEW VERSION", lazylinker_ext._version
+            info("NEW VERSION", lazylinker_ext._version)
     finally:
         # Release lock on compilation directory.
         release_lock()

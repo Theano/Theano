@@ -4,6 +4,7 @@ IfElse is an Op that works with the LazyLinker to support conditional graph eval
 :TODO: Add text to library documentation describing the IfElse Op.
 """
 from copy import deepcopy
+import logging
 
 from theano.gof import PureOp, Apply, generic, Container
 
