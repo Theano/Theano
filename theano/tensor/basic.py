@@ -3895,6 +3895,15 @@ class Join(Op):
             # the loops.
             bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
             ndim = len(bcastable)
+            # Axis can also be a constant
+            if isinstance(axis, Constant):
+                try:
+                    # Note : `get_constant_value` returns a ndarray not a
+                    # int
+                    axis = int(get_constant_value(axis))
+
+                except TypeError:
+                    pass
             if isinstance(axis, int):
                 # Basically, broadcastable -> length 1, but the converse does not
                 # hold. So we permit e.g. T/F/T joins, and if they fail at runtime
