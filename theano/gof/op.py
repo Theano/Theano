@@ -495,7 +495,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
             the thunk can potentially cache return values (like CLinker does),
             then it must not do so for variables in the no_recycling list.
         """
-        logger = logging.getLogger('theano.gof.Op')
+        logger = logging.getLogger('theano.gof.op.Op')
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
