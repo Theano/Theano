@@ -5,7 +5,8 @@ from theano import config
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 
-_logger = logging.getLogger('theano.gof.lazylinker_c')
+_logger_name = 'theano.gof.lazylinker_c'
+_logger = logging.getLogger(_logger_name)
 
 def warning(*msg):
     _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
