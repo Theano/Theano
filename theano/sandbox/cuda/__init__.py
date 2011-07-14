@@ -64,12 +64,6 @@ def set_cuda_disabled():
     """
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
-    # Note that we do not display this warning when the user manually unset the
-    # config.cuda.root configuration variable.
-    if not cuda_warning_is_displayed and config.cuda.root:
-        cuda_warning_is_displayed = True
-        warning('Cuda is disabled, cuda-based code will thus not be '
-                'working properly')
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
@@ -113,11 +107,6 @@ if not compile_cuda_ndarray:
 try:
     if compile_cuda_ndarray:
         if not nvcc_compiler.is_nvcc_available():
-            # Hide the error message if the user manually unset the
-            # config.cuda.root configuration variable.
-            if config.cuda.root:
-                error('nvcc compiler not found on $PATH.'
-                      ' Check your nvcc installation and try again.')
             set_cuda_disabled()
 
         if cuda_available:
@@ -199,11 +188,27 @@ def use(device,
         default_to_move_computation_to_gpu=True,
         move_shared_float32_to_gpu=True,
         enable_cuda=True):
+    """
+    Error and warning about CUDA should be displayed only when this function is called.
+    We need to be able to load this module only to check if it is available!
+    """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
-        raise EnvironmentError("You forced use of device %s, but CUDA initialization failed "
-                               "with error:\n%s" % (device, cuda_initialization_error_message))
-    if not cuda_available:
+        if not nvcc_compiler.is_nvcc_available():
+            raise EnvironmentError("You forced the use of gpu device '%s', but "
+                                   "nvcc was not found. Set it in your PATH "
+                                   "environment variable or set the Theano "
+                                   "flags 'cuda.root' to its directory" % device)
+        else:            
+            raise EnvironmentError("You forced the use of gpu device %s, "
+                                   "but CUDA initialization failed "
+                                   "with error:\n%s" % (
+                device, cuda_initialization_error_message))
+    elif not nvcc_compiler.is_nvcc_available():
+        error('nvcc compiler not found on $PATH.'
+              ' Check your nvcc installation and try again.')
+        return
+    elif not cuda_available:
         error_addendum = ""
         try:
             if cuda_initialization_error_message:
