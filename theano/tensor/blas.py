@@ -1,22 +1,20 @@
 """Ops and optimizations for using BLAS function calls to evaluate linear algebra expressions"""
 
-import sys, traceback, logging, copy, os
+import logging, copy, os
+
 import numpy
 import numpy.distutils
+
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler,
-        SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer,
+from theano.gof import (utils, Op, view_roots, DestroyHandler,
+        local_optimizer, Optimizer,
         InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer, Apply)
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
 import theano.scalar
 import basic as T
-
-#NB: this clobbers the builtin 'compile' symbol
-from theano import compile  #to register the optimizer built by this file
-
-from theano.tensor.blas_headers import cblas_header_text, blas_header_text
+from theano.tensor.blas_headers import blas_header_text #, cblas_header_text
 
 _logger = logging.getLogger('theano.tensor.blas')
 _logger.setLevel(logging.WARN)
