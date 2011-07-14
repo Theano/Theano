@@ -251,8 +251,8 @@ class EnumStr(ConfigParam):
             if val in self.all:
                 return val
             else:
-                raise ValueError('Invalid value (%s) for configuration variable "%s". Legal options are %s'
-                        % (val, self.fullname, self.all), val)
+                raise ValueError('Invalid value ("%s") for configuration variable "%s". Legal options are %s'
+                        % (val, self.fullname, self.all))
         over = kwargs.get("allow_override", True)
         super(EnumStr, self).__init__(default, filter, over)
 
