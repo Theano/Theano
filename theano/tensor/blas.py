@@ -934,10 +934,15 @@ def _gemm_from_node2(node):
     if len(lst) > 1:
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
-        #print "RVAL", rval
-        # THIS GOT COMMENTED OUT AT SOME POINT - ASK P.Lamblin maybe why?
-        #if rval:
-        #    assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
+
+        # It can happen that _factor_canonicalized and _gemm_from_factored_list
+        # return a node with an incorrect type.  This happens in particular when
+        # one of the scalar factors forces the upcast of the whole expression.
+        # In that case, we simply skip that candidate for Gemm.  This was
+        # discussed in
+        # http://groups.google.com/group/theano-dev/browse_thread/thread/a3096c82856e3ad5,
+        # but never made it into a trac ticket.
+
         if rval and (rval[0].type == node.outputs[0].type):
             return rval
 
