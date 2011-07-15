@@ -37,14 +37,6 @@ from scan_utils import safe_new, safe_to_cpu, traverse
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
 
-
-def warning(*msg):
-    _logger.warning('WARNING theano.scan: '+' '.join(msg))
-
-
-def info(*msg):
-    _logger.info('INFO theano.scan: '+' '.join(msg))
-
 from theano.sandbox import cuda
 
 class Scan(Op):

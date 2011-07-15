@@ -28,9 +28,14 @@ __docformat__ = "restructuredtext en"
 # Set a default logger. It is important to do this before importing some other
 # theano code, since this code may want to log some messages.
 import logging
+
+theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
-logging.getLogger("theano").addHandler(logging_default_handler)
-logging.getLogger("theano").setLevel(logging.WARNING)
+logging_default_formatter = logging.Formatter(
+        fmt='%(levelname)s (%(name)s): %(message)s')
+logging_default_handler.setFormatter(logging_default_formatter)
+theano_logger.addHandler(logging_default_handler)
+theano_logger.setLevel(logging.WARNING)
 
 import configparser, configdefaults
 

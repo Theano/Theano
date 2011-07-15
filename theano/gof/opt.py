@@ -123,7 +123,7 @@ class SeqOptimizer(Optimizer, list):
     def warn(exc, self, optimizer):
         """Default failure_callback for SeqOptimizer
         """
-        _logger.error("ERROR: SeqOptimizer apply %s"% str(optimizer))
+        _logger.error("SeqOptimizer apply %s"% str(optimizer))
         _logger.error("Traceback:")
         _logger.error(traceback.format_exc())
         if config.on_opt_error == 'raise':
@@ -774,7 +774,7 @@ class NavigatorOptimizer(Optimizer):
     def warn(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: print traceback
         """
-        _logger.error("ERROR: Optimization failure due to: %s" % str(local_opt))
+        _logger.error("Optimization failure due to: %s" % str(local_opt))
         _logger.error("TRACEBACK:")
         _logger.error(traceback.format_exc())
         if isinstance(exc, AssertionError) or config.on_opt_error == 'raise':
@@ -1110,7 +1110,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
-            _logger.error("ERROR: EquilibriumOptimizer max'ed out")
+            _logger.error("EquilibriumOptimizer max'ed out")
 
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))

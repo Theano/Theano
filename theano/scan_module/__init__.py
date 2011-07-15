@@ -56,13 +56,6 @@ from scan_utils import clone
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module')
 
-def warning(*msg):
-    _logger.warning('WARNING theano.scan: '+' '.join(msg))
-
-def info(*msg):
-    _logger.info('INFO theano.scan: '+' '.join(msg))
-
-
 
 @gof.local_optimizer([None])
 def scan_make_inplace(node):

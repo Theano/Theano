@@ -8,9 +8,6 @@ import logging
 _logger=logging.getLogger("theano.compile.io")
 _logger.setLevel(logging.WARNING)
 
-def warning(*args):
-    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
-
 class SymbolicInput(object):
     """
     Represents a symbolic input for use with function or FunctionMaker.
@@ -206,11 +203,12 @@ class In(SymbolicInput):
         # to False with mutable=True.
         if mutable:
             if borrow==False:
-                warning("Symbolic input for variable %s (name=%s) has flags "\
-                        "mutable=True, borrow=False. This combination is "\
-                        "incompatible since mutable=True implies that the input "\
-                        "variable may be both aliased (borrow=True) and over-"\
-                        "written. We set borrow=True and continue." % (variable, name))
+                _logger.warning("Symbolic input for variable %s (name=%s) has "
+                        "flags mutable=True, borrow=False. This combination is "
+                        "incompatible since mutable=True implies that the "
+                        "input variable may be both aliased (borrow=True) and "
+                        "over-written. We set borrow=True and continue.",
+                        variable, name)
             borrow = True
 
         # borrow=None basically means False. We can't set default value to False because of the

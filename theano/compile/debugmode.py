@@ -80,28 +80,12 @@ import logging
 _logger=logging.getLogger("theano.compile.debugmode")
 _logger.setLevel(logging.WARNING)
 
-def error(*args):
-    #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.error("ERROR: "+' '.join(str(a) for a in args))
-def warning(*args):
-    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
-def opt_warning(*args):
-    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.warning("OPTIMIZATION WARNING: "+' '.join(str(a) for a in args))
-def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.info("INFO: "+' '.join(str(a) for a in args))
-def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
-
 # Filter to avoid duplicating optimization warnings
 class NoDuplicateOptWarningFilter(logging.Filter):
     prev_msgs = set([])
     def filter(self, record):
         msg = record.getMessage()
-        if msg.startswith('OPTIMIZATION WARNING: '):
+        if msg.startswith('Optimization Warning: '):
             if msg in self.prev_msgs:
                 return False
             else:
@@ -581,7 +565,9 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
                 # while not destroying anything
                 continue
             if out_var is not in_var:
-                opt_warning("input idx %d marked as destroyed was not changed for node '%s'"%(ii[0],str(node)))
+                _logger.warning("Optimization Warning: input idx %d marked "
+                        "as destroyed was not changed for node '%s'",
+                        ii[0], str(node))
 
     if warn_input_not_reused:
         vmap=getattr(node.op,'view_map',{})
@@ -598,7 +584,9 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
-                opt_warning("input idx %d marked as viewed but new memory allocated by node '%s'"%(ii[0],str(node)))
+                _logger.warning("Optimization Warning: input idx %d marked "
+                        "as viewed but new memory allocated by node '%s'",
+                        ii[0], str(node))
 
     for r_idx, r in enumerate(node.inputs):
         if not r.type.values_eq(r_vals[r], storage_map[r][0]):
@@ -928,7 +916,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         raise NotImplementedError('Negative strides in check_preallocated_output')
 
     for (name, out_map) in prealloc_maps:
-        #debug('name =', name, ', perform =', perform)
+        # _logger.debug('name = %s, perform = %s', name, perform)
         # Copy the inputs over again
         for r in node.inputs:
             storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
@@ -1245,7 +1233,7 @@ class _Linker(gof.link.LocalLinker):
         # This is the function that runs when you evaluate the graph
         #####
         def f():
-            debug("starting a DebugMode call")
+            _logger.debug("starting a DebugMode call")
             for x in no_recycling:
                 x[0] = None
 
@@ -1268,7 +1256,7 @@ class _Linker(gof.link.LocalLinker):
                 assert len(thunks_py) == len(order)
 
                 # transfer the initial values from the storage_map to the r_vals
-                debug("DEBUGMODE: transfer initial values")
+                _logger.debug("DEBUGMODE: transfer initial values")
                 # r_vals_initialized keeps track of the values that have
                 # actually been transferred from storage_map to r_vals
                 r_vals_initialized = []
@@ -1301,7 +1289,7 @@ class _Linker(gof.link.LocalLinker):
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
                     this_node_destroyed_variables = set()
 
-                    debug(i, "DEBUGMODE: starting node", i, node)
+                    _logger.debug("%i - starting node %i %s", i, i, node)
 
                     # put a copy of each input into the storage_map
                     # also, check that inputs have valid values
@@ -1315,7 +1303,8 @@ class _Linker(gof.link.LocalLinker):
 
                     ## On the first call to thunk_py(), its output storage will be None
                     if thunk_py:
-                        debug(i, "DEBUGMODE running thunk_py with None as output storage")
+                        _logger.debug("%i - running thunk_py with None as "
+                                "output storage", i)
                         try:
                             thunk_py()
                         except utils.MethodNotDefined:
@@ -1342,7 +1331,9 @@ class _Linker(gof.link.LocalLinker):
                             storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
                         if config.DebugMode.check_preallocated_output:
-                            debug('calling _check_preallocated_output with thunk_py')
+                            _logger.debug(
+                                    '%i - calling _check_preallocated_output '
+                                    'with thunk_py', i)
                             _check_preallocated_output(
                                     node=node,
                                     thunk=thunk_py,
@@ -1383,7 +1374,7 @@ class _Linker(gof.link.LocalLinker):
 
                             clobber = False
 
-                        debug(i, "DEBUGMODE running thunk_c")
+                        _logger.debug("%i - running thunk_c", i)
                         ## First time, with None in output_storage
                         try:
                             thunk_c()
@@ -1429,7 +1420,9 @@ class _Linker(gof.link.LocalLinker):
                                     thunk_c()
                                 except:
                                     raise_with_op(node)
-                            debug('calling _check_preallocated_output with thunk_c')
+                            _logger.debug(
+                                    '%i - calling _check_preallocated_output '
+                                    'with thunk_c', i)
                             _check_preallocated_output(
                                     node=node,
                                     thunk=thunk,
@@ -1452,7 +1445,7 @@ class _Linker(gof.link.LocalLinker):
                     for r in node.inputs:
                         #print >> sys.stderr, i, "DEBUGMODE clearing input", r
                         storage_map[r][0] = None
-                    debug("done with node")
+                    _logger.debug("%i - done with node", i)
 
                 if False:
                     #This could be useful to help finding refcount problem.

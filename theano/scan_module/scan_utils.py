@@ -41,12 +41,6 @@ import theano
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_utils')
 
-def warning(*msg):
-    _logger.warning('WARNING theano.scan: '+' '.join(msg))
-
-def info(*msg):
-    _logger.info('INFO theano.scan: '+' '.join(msg))
-
 
 def safe_new(x):
     if isinstance(x, numpy.ndarray):

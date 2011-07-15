@@ -18,11 +18,6 @@ from theano.tensor.blas_headers import blas_header_text #, cblas_header_text
 
 _logger = logging.getLogger('theano.tensor.blas')
 _logger.setLevel(logging.WARN)
-def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
-def info(*msg): _logger.info(' '.join(str(m) for m in msg))
-def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
-def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
-def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 try:
     import scipy.linalg.blas
@@ -35,7 +30,8 @@ try:
             }
 except ImportError, e:
     _have_fblas = False
-    warning('Failed to import scipy.linalg.blas.fblas. Falling back on slower implementations (%s)' % str(e))
+    _logger.warning('Failed to import scipy.linalg.blas.fblas. '
+            'Falling back on slower implementations (%s)', str(e))
 
 class Gemv(Op):
     """
@@ -138,7 +134,9 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
                     if any([f.find(ll)>=0 for ll in l]):
                         found_dyn=True
         if not found_dyn and dirs:
-            warning("We did not found a dynamic library into the library_dir of the library we use for blas. If you use ATLAS, make sure to compile it with dynamics library.")
+            _logger.warning("We did not found a dynamic library into the "
+                    "library_dir of the library we use for blas. If you use "
+                    "ATLAS, make sure to compile it with dynamics library.")
 
     for t in config.blas.ldflags.split():
         try:
@@ -1061,7 +1059,7 @@ def local_dot_to_dot22(node):
     x,y = node.inputs
     if y.type.dtype != x.type.dtype:
         # TODO: upcast one so the types match
-        info('Not optimizing dot with inputs', x, y, x.type, y.type)
+        _logger.info('Not optimizing dot with inputs %s %s %s %s', x, y, x.type, y.type)
         return
     if y.type.dtype.startswith('float'):
         if _is_real_matrix(x) and _is_real_matrix(y):
@@ -1074,7 +1072,7 @@ def local_dot_to_dot22(node):
             if _is_real_vector(x) and _is_real_vector(x):
                 return [_dot22(x.dimshuffle('x',0), y.dimshuffle(0,'x')).dimshuffle()]
 
-    info('Not optimizing dot with inputs', x, y, x.type, y.type)
+    _logger.info('Not optimizing dot with inputs %s %s %s %s', x, y, x.type, y.type)
 
 @local_optimizer([gemm_no_inplace])
 def local_inplace_gemm(node):
@@ -1225,7 +1223,10 @@ def local_dot22_to_dot22scalar(node):
 
             return [T.mul(m.owner.inputs[1-i],dot)]
         elif m.owner and m.owner.op == T.mul:
-            info('Not optimizing dot22 with inputs', d, m, d.type, m.type, 'we need to check in a recursive way in the mul if we can reorder the graph. The canonizer should have done this.')
+            _logger.info('Not optimizing dot22 with inputs %s %s %s %s. '
+                    'we need to check in a recursive way in the mul if we can '
+                    'reorder the graph. The canonizer should have done this.',
+                    d, m, d.type, m.type)
         else:
             return False
 
@@ -1235,7 +1236,9 @@ def local_dot22_to_dot22scalar(node):
             scalar_idx = i
             break
     if scalar_idx<0:
-        info('Not optimizing dot22 with inputs', node.inputs, [x.type for x in node.inputs], 'as the type of the scalar can\'t be upcasted to the matrix type')
+        _logger.info('Not optimizing dot22 with inputs %s %s, as the type '
+                'of the scalar cannot be upcasted to the matrix type',
+                node.inputs, [x.type for x in node.inputs])
         return False
     assert scalar_idx<len(node.inputs)
     s = node.inputs[scalar_idx]

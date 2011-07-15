@@ -7,18 +7,6 @@ import nvcc_compiler
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
-def error(*msg):
-    _logger.error('ERROR (%s): %s'% (
-        _logger_name, ' '.join(str(m) for m in msg)))
-def warning(*msg):
-    _logger.warning('WARNING (%s): %s'% ( _logger_name,
-        ' '.join(str(m) for m in msg)))
-def info(*msg):
-    _logger.info('INFO (%s): %s'% ( _logger_name,
-        ' '.join(str(m) for m in msg)))
-def debug(*msg):
-    _logger.debug('DEBUG (%s): %s'% ( _logger_name,
-        ' '.join(str(m) for m in msg)))
 
 AddConfigVar('cuda.root',
         """directory with bin/, lib/, include/ for cuda utilities.
@@ -122,7 +110,7 @@ try:
                     include_dirs=[cuda_path], libs=['cublas'])
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
-    error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
+    _logger.error( "Failed to compile cuda_ndarray.cu: %s", str(e))
     set_cuda_disabled()
 
 if cuda_available:
@@ -158,14 +146,13 @@ if cuda_available:
     # we compiled!
     import cuda_ndarray.cuda_ndarray
     if cuda_ndarray_so != cuda_ndarray.cuda_ndarray.__file__:
-        warning("WARNING: cuda_ndarray was loaded from",
+        _logger.warning("cuda_ndarray was loaded from %s, but Theano expected "
+                "to load it from %s. This is not expected as theano should "
+                "compile it automatically for you. Do you have a directory "
+                "called cuda_ndarray in your LD_LIBRARY_PATH environment "
+                "variable? If so, please remove it as it is outdated.",
                 cuda_ndarray.cuda_ndarray.__file__,
-                "but Theano expected to load it from",
-                cuda_ndarray_so,
-                """This is not expected as theano should compile it
- automatically for you. Do you have a directory called cuda_ndarray in your
-LD_LIBRARY_PATH environment variable? If so, please remove it as it is
-outdated!""")
+                cuda_ndarray_so)
 
     shared_constructor = float32_shared_constructor
 
@@ -205,7 +192,7 @@ def use(device,
                                    "with error:\n%s" % (
                 device, cuda_initialization_error_message))
     elif not nvcc_compiler.is_nvcc_available():
-        error('nvcc compiler not found on $PATH.'
+        _logger.error('nvcc compiler not found on $PATH.'
               ' Check your nvcc installation and try again.')
         return
     elif not cuda_available:
@@ -215,7 +202,8 @@ def use(device,
                 error_addendum = " (error: %s)" % cuda_initialization_error_message
         except NameError: # cuda_initialization_error_message is not available b/c compilation failed
             pass
-        warning('CUDA is installed, but device %s is not available%s' % (device, error_addendum))
+        _logger.warning('CUDA is installed, but device %s is not available %s',
+                device, error_addendum)
         return
 
     if device == 'gpu':
@@ -245,7 +233,8 @@ def use(device,
             print >> sys.stderr, "Using gpu device %d: %s" % (active_device_number(), active_device_name())
         except (EnvironmentError, ValueError), e:
             _logger.error(("ERROR: Not using GPU."
-                " Initialisation of device %i failed:\n%s") % (device, e))
+                " Initialisation of device %i failed:\n%s"),
+                device, e)
             cuda_enabled = False
             if force:
                 e.args+=(("You asked to force this device and it failed."
@@ -253,8 +242,9 @@ def use(device,
                 raise
 
     elif use.device_number != device:
-        _logger.warning(("WARNING: ignoring call to use(%s), GPU number %i "
-            "is already in use.") %(str(device), use.device_number))
+        _logger.warning(("Ignoring call to use(%s), GPU number %i "
+            "is already in use."),
+            str(device), use.device_number)
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu_opt',
@@ -294,10 +284,12 @@ if config.device.startswith('gpu'):
 elif config.init_gpu_device:
     assert config.device=="cpu", ("We can use the Theano flag init_gpu_device"
             " only when the Theano flag device=='cpu'")
-    warning(("GPU device %s will be initialized, and used if a GPU is needed. "
+    _logger.warning(("GPU device %s will be initialized, and used if a GPU is "
+          "needed. "
           "However, no computation, nor shared variables, will be implicitly "
           "moved to that device. If you want that behavior, use the 'device' "
-          "flag instead.") % config.init_gpu_device)
+          "flag instead."),
+          config.init_gpu_device)
     use(device=config.init_gpu_device,
         force=config.force_device,
         default_to_move_computation_to_gpu=False,

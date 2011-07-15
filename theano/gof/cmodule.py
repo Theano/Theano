@@ -30,15 +30,6 @@ def local_bitwidth():
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARN)
 
-def error(*args):
-    _logger.error("ERROR: "+' '.join(str(a) for a in args))
-def warning(*args):
-    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
-def info(*args):
-    _logger.info("INFO: "+' '.join(str(a) for a in args))
-def debug(*args):
-    _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
-
 METH_VARARGS="METH_VARARGS"
 METH_NOARGS="METH_NOARGS"
 
@@ -187,8 +178,8 @@ def dlimport(fullpath, suffix=None):
         raise ValueError('path has wrong suffix', (fullpath, suffix))
     workdir = fullpath[:-len(module_name)- 1 - len(suffix)]
 
-    debug("WORKDIR", workdir)
-    debug("module_name", module_name)
+    _logger.debug("WORKDIR %s", workdir)
+    _logger.debug("module_name %s", module_name)
 
     sys.path[0:0] = [workdir] #insert workdir at beginning (temporarily)
     try:
@@ -360,7 +351,7 @@ class KeyData(object):
             cPickle.dump(self, open(self.key_pkl, 'wb'),
                          protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
-            warning("Cache leak due to unpickle-able key data", self.keys)
+            _logger.warning("Cache leak due to unpickle-able key data %s", self.keys)
             os.remove(self.key_pkl)
             raise
 
@@ -541,15 +532,17 @@ class ModuleCache(object):
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
                             # So it is normal that this happens from time to time.
-                            warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
+                            _logger.warning("ModuleCache.refresh() Found key "
+                                    "without dll in cache, deleting it. %s",
+                                    key_pkl)
                         _rmtree(root, ignore_nocleanup=True,
                                 msg="missing module file", level="info")
                         continue
                     if (time_now - last_access_time(entry)) < age_thresh_use:
-                        debug('refresh adding', key_pkl)
+                        _logger.debug('refresh adding %s', key_pkl)
                         def unpickle_failure():
-                            info("ModuleCache.refresh() Failed to unpickle "
-                                 "cache file", key_pkl)
+                            _logger.info("ModuleCache.refresh() Failed to "
+                                    "unpickle cache file %s", key_pkl)
                         try:
                             key_data = cPickle.load(open(key_pkl, 'rb'))
                         except EOFError:
@@ -611,14 +604,14 @@ class ModuleCache(object):
                         # TODO: check if this can happen at all
                         to_del = [key for key in key_data.keys if not key[0]]
                         if to_del:
-                            warning("ModuleCache.refresh() Found unversioned "
-                                    "key in cache, removing it.", key_pkl)
+                            _logger.warning("ModuleCache.refresh() Found unversioned "
+                                    "key in cache, removing it. %s", key_pkl)
                             # Since the version is in the module hash, all
                             # keys should be unversioned.
                             if len(to_del) != len(key_data.keys):
-                                warning('Found a mix of unversioned and '
+                                _logger.warning('Found a mix of unversioned and '
                                         'versioned keys for the same '
-                                        'module', key_pkl)
+                                        'module %s', key_pkl)
                             _rmtree(root, ignore_nocleanup=True,
                                     msg="unversioned key(s) in cache",
                                     level='info')
@@ -640,9 +633,10 @@ class ModuleCache(object):
                                         msg='duplicated module',
                                         level='debug')
                             else:
-                                debug('Found duplicated module not old enough '
-                                      'yet to be deleted (age: %s): %s' %
-                                      (age, entry))
+                                _logger.debug('Found duplicated module not '
+                                        'old enough yet to be deleted '
+                                        '(age: %s): %s',
+                                        age, entry)
                             continue
 
                         # Remember the map from a module's hash to the KeyData
@@ -661,13 +655,14 @@ class ModuleCache(object):
                                             get_safe_part(key),
                                             []).append(key)
                             else:
-                                warning(
+                                _logger.warning(
                                     "The same cache key is associated to "
                                     "different modules (%s and %s). This "
                                     "is not supposed to happen! You may "
                                     "need to manually delete your cache "
-                                    "directory to fix this." %
-                                    (self.entry_from_key[key], entry))
+                                    "directory to fix this.",
+                                    self.entry_from_key[key],
+                                    entry)
                         self.loaded_key_pkl.add(key_pkl)
                     else:
                         too_old_to_use.append(entry)
@@ -692,12 +687,13 @@ class ModuleCache(object):
                     # considered a failure of the OTHER process, that deleted
                     # it.
                     if entry in self.module_from_name:
-                        warning("A module that was loaded by this "
+                        _logger.warning("A module that was loaded by this "
                                 "ModuleCache can no longer be read from file "
-                                "%s... this could lead to problems." % entry)
+                                "%s... this could lead to problems.",
+                                entry)
                         del self.module_from_name[entry]
 
-                    info("deleting ModuleCache entry", entry)
+                    _logger.info("deleting ModuleCache entry %s", entry)
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
                     if key[0]:
@@ -709,13 +705,17 @@ class ModuleCache(object):
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the os.
                             # So it is normal that this happen from time to time.
-                            warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
+                            _logger.warning("Removing key file %s because the "
+                                    "corresponding module is gone from the "
+                                    "file system.",
+                                    pkl_file_to_remove)
                         self.loaded_key_pkl.remove(pkl_file_to_remove)
 
         finally:
             compilelock.release_lock()
 
-        debug('Time needed to refresh cache: %s' % (time.time() - start_time))
+        _logger.debug('Time needed to refresh cache: %s',
+                (time.time() - start_time))
 
         return too_old_to_use
 
@@ -752,12 +752,12 @@ class ModuleCache(object):
         if name is not None:
             # This is an existing module we can recover.
             if name not in self.module_from_name:
-                debug('loading name', name)
+                _logger.debug('loading name %s', name)
                 self.module_from_name[name] = dlimport(name)
                 self.stats[1] += 1
             else:
                 self.stats[0] += 1
-            debug('returning compiled module from cache', name)
+            _logger.debug('returning compiled module from cache %s', name)
             rval = self.module_from_name[name]
         else:
             hash_key = hash(key)
@@ -775,10 +775,11 @@ class ModuleCache(object):
                 try:
                     location = dlimport_workdir(self.dirname)
                 except OSError, e:
-                    error(e)
+                    _logger.error(e)
                     if e.errno == 31:
-                        error('There are', len(os.listdir(config.compiledir)),
-                                'files in', config.compiledir)
+                        _logger.error('There are %i files in %s',
+                                len(os.listdir(config.compiledir)),
+                                config.compiledir)
                     raise
                 try:
                     compile_steps = fn(location=location).__iter__()
@@ -790,7 +791,8 @@ class ModuleCache(object):
                     src_code = compile_steps.next()
                     module_hash = get_module_hash(src_code, key)
                     if module_hash in self.module_hash_to_key_data:
-                        debug("Duplicated module! Will re-use the previous one")
+                        _logger.debug("Duplicated module! Will re-use the "
+                                "previous one")
                         duplicated_module = True
                         # Load the already existing module.
                         key_data = self.module_hash_to_key_data[module_hash]
@@ -837,7 +839,7 @@ class ModuleCache(object):
                         # Obtain path to the '.so' module file.
                         name = module.__file__
 
-                        debug("Adding module to cache", key, name)
+                        _logger.debug("Adding module to cache %s %s", key, name)
                         assert name.startswith(location)
                         assert name not in self.module_from_name
                         # Changing the hash of the key is not allowed during
@@ -929,7 +931,7 @@ class ModuleCache(object):
 
             self.stats[2] += 1
             rval = module
-        #debug('stats', self.stats, sum(self.stats))
+        #_logger.debug('stats %s %i', self.stats, sum(self.stats))
         return rval
 
     def check_key(self, key, key_pkl):
@@ -995,11 +997,13 @@ class ModuleCache(object):
         # contain all modules older thatn age_thresh_del.
         if age_thresh_del < self.age_thresh_use:
             if age_thresh_del > 0:
-                warning("Clearing modules that were not deemed too old to "
-                        "use: age_thresh_del=%d," % age_thresh_del,
-                        "self.age_thresh_use=%d" % self.age_thresh_use)
+                _logger.warning("Clearing modules that were not deemed "
+                        "too old to use: age_thresh_del=%d, "
+                        "self.age_thresh_use=%d",
+                        age_thresh_del,
+                        self.age_thresh_use)
             else:
-                info("Clearing all modules.")
+                _logger.info("Clearing all modules.")
             age_thresh_use = age_thresh_del
         else:
             age_thresh_use = None
@@ -1069,17 +1073,17 @@ class ModuleCache(object):
                 if os.path.isdir(to_delete):
                     try:
                         shutil.rmtree(to_delete)
-                        debug('Deleted: %s' % to_delete)
+                        _logger.debug('Deleted: %s', to_delete)
                     except Exception:
-                        warning('Could not delete %s' % to_delete)
+                        _logger.warning('Could not delete %s', to_delete)
                         continue
                 to_rename = os.path.join(self.dirname, base_dir)
                 if os.path.isdir(to_rename):
                     try:
                         shutil.move(to_rename, to_delete)
                     except Exception:
-                        warning('Could not move %s to %s' %
-                                (to_rename, to_delete))
+                        _logger.warning('Could not move %s to %s',
+                                to_rename, to_delete)
         finally:
             compilelock.release_lock()
 
@@ -1166,7 +1170,8 @@ class ModuleCache(object):
             self.clear_unversioned()
         finally:
             compilelock.release_lock()
-        debug('Time spent checking keys: %s' % self.time_spent_in_check_key)
+        _logger.debug('Time spent checking keys: %s',
+                self.time_spent_in_check_key)
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
             ignore_if_missing=False):
@@ -1187,10 +1192,11 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
         # If parent still exists, mark it for deletion by a future refresh()
         if os.path.exists(parent):
             try:
-                info('placing "delete.me" in', parent)
+                _logger.info('placing "delete.me" in %s', parent)
                 open(os.path.join(parent,'delete.me'), 'w').close()
             except Exception, ee:
-                warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
+                _logger.warning("Failed to remove or mark cache directory %s "
+                        "for removal %s", parent, ee)
 
 _module_cache = None
 def get_module_cache(dirname, init_args=None):
@@ -1205,10 +1211,12 @@ def get_module_cache(dirname, init_args=None):
         _module_cache = ModuleCache(dirname, **init_args)
         atexit.register(_module_cache._on_atexit)
     elif init_args:
-        warning('Ignoring init arguments for module cache because it was '
-                'created prior to this call')
+        _logger.warning('Ignoring init arguments for module cache because it '
+                'was created prior to this call')
     if _module_cache.dirname != dirname:
-        warning("Returning module cache instance with different dirname than you requested")
+        _logger.warning("Returning module cache instance with different "
+                "dirname (%s) than you requested (%s)",
+                _module_cache.dirname, dirname)
     return _module_cache
 
 def get_lib_extension():
@@ -1322,7 +1330,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         # Figure out whether the current Python executable is 32 or 64 bit and compile accordingly
         n_bits = local_bitwidth()
         preargs.extend(['-m%s' % n_bits])
-        debug("OS X: compiling for %s bit architecture" % n_bits)
+        _logger.debug("OS X: compiling for %s bit architecture", n_bits)
 
     # sometimes, the linker cannot find -lpython so we need to tell it
     # explicitly where it is located
@@ -1338,7 +1346,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cppfilename = os.path.join(location, 'mod.cpp')
     cppfile = file(cppfilename, 'w')
 
-    debug('Writing module C++ code to', cppfilename)
+    _logger.debug('Writing module C++ code to %s', cppfilename)
     ofiles = []
     rval = None
 
@@ -1351,7 +1359,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     lib_filename = os.path.join(location, '%s.%s' %
             (module_name, get_lib_extension()))
 
-    debug('Generating shared lib', lib_filename)
+    _logger.debug('Generating shared lib %s', lib_filename)
     cmd = ['g++', get_gcc_shared_library_arg(), '-g']
     if no_opt:
         cmd.extend(p for p in preargs if not p.startswith('-O'))
@@ -1366,7 +1374,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
     #print >> sys.stderr, 'COMPILING W CMD', cmd
-    debug('Running cmd', ' '.join(cmd))
+    _logger.debug('Running cmd: %s', ' '.join(cmd))
 
     p = subprocess.Popen(cmd)
     status = p.wait()

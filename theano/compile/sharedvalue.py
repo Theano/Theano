@@ -15,11 +15,6 @@ from theano.gof import Container, Variable, generic
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
 _logger.setLevel(logging.DEBUG)
-def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
-def info(*msg): _logger.info(' '.join(str(m) for m in msg))
-def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
-def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
-def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 AddConfigVar('shared.value_borrows',
         ("DEPRECATED. You should not use the 'value' property of shared"

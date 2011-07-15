@@ -9,19 +9,6 @@ _logger.setLevel(logging.WARN)
 
 from theano.configparser import config, AddConfigVar, StrParam, BoolParam
 
-def error(*args):
-    #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.error("ERROR: "+' '.join(str(a) for a in args))
-def warning(*args):
-    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
-def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.info("INFO: "+' '.join(str(a) for a in args))
-def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
-
 AddConfigVar('nvcc.compiler_bindir',
         "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
         StrParam(""))
@@ -143,7 +130,7 @@ def nvcc_module_compile_str(
     cppfilename = os.path.join(location, 'mod.cu')
     cppfile = file(cppfilename, 'w')
 
-    debug('Writing module C++ code to', cppfilename)
+    _logger.debug('Writing module C++ code to %s', cppfilename)
     ofiles = []
     rval = None
 
@@ -152,7 +139,7 @@ def nvcc_module_compile_str(
     lib_filename = os.path.join(location, '%s.%s' %
             (module_name, get_lib_extension()))
 
-    debug('Generating shared lib', lib_filename)
+    _logger.debug('Generating shared lib %s', lib_filename)
     # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13',
     preargs1=[pa for pa in preargs if pa.startswith('-O') or pa.startswith('--maxrregcount=')]#nvcc argument
     preargs2=[pa for pa in preargs if pa not in preargs1]#other arguments
@@ -225,7 +212,7 @@ def nvcc_module_compile_str(
         cmd.pop(cmd.index(fwk_str))
 
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
-    debug('Running cmd', ' '.join(cmd))
+    _logger.debug('Running cmd %s', ' '.join(cmd))
     orig_dir = os.getcwd()
     try:
         os.chdir(location)
@@ -248,7 +235,7 @@ def nvcc_module_compile_str(
             continue
         if 'statement is unreachable' in eline:
             continue
-        _logger.info("NVCC: "+eline)
+        _logger.info("NVCC: %s", eline)
 
     if p.returncode:
         # filter the output from the compiler

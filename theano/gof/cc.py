@@ -51,14 +51,6 @@ import cmodule
 import logging
 _logger=logging.getLogger("theano.gof.cc")
 _logger.setLevel(logging.WARN)
-def info(*args):
-    _logger.info(' '.join(str(a) for a in args))
-def debug(*args):
-    _logger.debug(' '.join(str(a) for a in args))
-def warning(*args):
-    _logger.warning(' '.join(str(a) for a in args))
-def error(*args):
-    _logger.error(' '.join(str(a) for a in args))
 
 from theano.gof.callcache import CallCache
 
@@ -546,7 +538,7 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined:
                 cleanup = ""
 
-            info('compiling un-versioned Apply', node)
+            _logger.info('compiling un-versioned Apply %s', str(node))
 
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
@@ -993,7 +985,7 @@ class CLinker(link.Linker):
         yield src_code
         get_lock()
         try:
-            debug("LOCATION", location)
+            _logger.debug("LOCATION %s", str(location))
             c_compiler = self.c_compiler()
             libs = self.libraries()
             preargs = self.compile_args()

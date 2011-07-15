@@ -8,14 +8,6 @@ import socket # only used for gethostname()
 import logging
 _logger=logging.getLogger("theano.gof.compilelock")
 _logger.setLevel(logging.INFO) # INFO will show the the messages "Refreshing lock" message
-def info(*args):
-    _logger.info(' '.join(str(a) for a in args))
-def debug(*args):
-    _logger.debug(' '.join(str(a) for a in args))
-def warning(*args):
-    _logger.warning(' '.join(str(a) for a in args))
-def error(*args):
-    _logger.error(' '.join(str(a) for a in args))
 
 # In seconds, time that a process will wait before deciding to override an
 # existing lock. An override only happens when the existing lock is held by
@@ -66,7 +58,7 @@ def get_lock():
             now = time.time()
             if now - get_lock.start_time > refresh_every:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
-                info('Refreshing lock', lockpath)
+                _logger.info('Refreshing lock %s', str(lockpath))
                 refresh_lock(lockpath)
                 get_lock.start_time = now
     get_lock.n_lock += 1
@@ -172,8 +164,8 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                 if other_dead:
                     if not no_display:
                         msg = "process '%s'" % read_owner.split('_')[0]
-                        warning("Overriding existing lock by dead %s (I am "
-                                "process '%s')"% (msg, my_pid))
+                        _logger.warning("Overriding existing lock by dead %s "
+                                "(I am process '%s')", msg, my_pid)
                     get_lock.unlocker.unlock()
                     continue
                 if last_owner == read_owner:
@@ -185,8 +177,8 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                                 msg = 'unknown process'
                             else:
                                 msg = "process '%s'" % read_owner.split('_')[0]
-                            warning("Overriding existing lock by %s (I am "
-                                    "process '%s')"% (msg, my_pid))
+                            _logger.warning("Overriding existing lock by %s "
+                                    "(I am process '%s')", msg, my_pid)
                         get_lock.unlocker.unlock()
                         continue
                 else:
@@ -198,9 +190,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                         msg = 'unknown process'
                     else:
                         msg = "process '%s'" % read_owner.split('_')[0]
-                    info("Waiting for existing lock by %s (I am "
-                         "process '%s')" % (msg, my_pid))
-                    info("To manually release the lock, delete", tmp_dir)
+                    _logger.info("Waiting for existing lock by %s (I am "
+                         "process '%s')", msg, my_pid)
+                    _logger.info("To manually release the lock, delete %s", tmp_dir)
                     if verbosity <= 1:
                         no_display = True
                 time.sleep(random.uniform(min_wait, max_wait))
@@ -229,7 +221,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
 
         except Exception, e:
             # If something wrong happened, we try again.
-            warning("Something wrong happened:", type(e), e)
+            _logger.warning("Something wrong happened: %s %s", type(e), e)
             time.sleep(random.uniform(min_wait, max_wait))
             continue
 

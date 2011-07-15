@@ -18,12 +18,6 @@ _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
 _logger.addHandler(logging.StreamHandler()) #TO REMOVE
-def warning(*msg):
-    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
-def info(*msg):
-    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
-def debug(*msg):
-    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
 
 def as_cuda_ndarray_variable(x):
     if hasattr(x, '_as_CudaNdarrayVariable'):

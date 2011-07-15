@@ -5,8 +5,6 @@ import logging
 from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
 
 _logger = logging.getLogger('theano.configdefaults')
-def warning(*msg):
-    _logger.warning('WARNING theano.configdefaults: '+' '.join(msg))
 
 config = TheanoConfigParser()
 
@@ -85,9 +83,10 @@ except OSError:
                  EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
-    warning('GCC not detected ! Theano will be unable to execute optimized '+
-            'C-implementations (for both CPU and GPU) and will default to '+
-            'Python implementations. Performance will be severely degraded.')
+    _logger.warning('GCC not detected ! Theano will be unable to execute '
+            'optimized C-implementations (for both CPU and GPU) and will '
+            'default to Python implementations. Performance will be severely '
+            'degraded.')
 
 del dummy_stdin
 

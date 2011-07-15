@@ -58,12 +58,6 @@ from theano.updates import Updates
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
 
-def warning(*msg):
-    _logger.warning('WARNING theano.scan: '+' '.join(msg))
-
-def info(*msg):
-    _logger.info('INFO theano.scan: '+' '.join(msg))
-
 
 def scan( fn
          , sequences         = None
@@ -371,10 +365,10 @@ def scan( fn
                 # ^ initial state but taps not provided
                 if outs_info[i].has_key('taps'):
                     # ^ explicitly provided a None for taps
-                    warning (' Output %s ( index %d) has a initial state '
-                             ' but taps is explicitly set to None ' % (
-                                 getattr(outs_info[i]['initial'],'name','None')
-                                 , i) )
+                    _logger.warning('Output %s ( index %d) has a initial state '
+                             'but taps is explicitly set to None ',
+                             getattr(outs_info[i]['initial'],'name','None'),
+                             i)
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
@@ -428,8 +422,8 @@ def scan( fn
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
-                            info(('Cannot compute test value for the inner '
-                                'function of scan, input value missing'), e)
+                            _logger.info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing %s'), e)
 
                 # Add names to slices for debugging and pretty printing ..
                 # that is if the input already has a name
@@ -556,8 +550,8 @@ def scan( fn
                     if config.compute_test_value != 'ignore':
                         # No need to print a warning or raise an error now,
                         # it will be done when fn will be called.
-                        info(('Cannot compute test value for the inner '
-                            'function of scan, input value missing'), e)
+                        _logger.info(('Cannot compute test value for the inner '
+                            'function of scan, input value missing %s'), e)
 
             if getattr(init_out['initial'],'name', None) is not None:
                 arg.name = init_out['initial'].name+'[t-1]'
@@ -614,8 +608,8 @@ def scan( fn
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
-                            info(('Cannot compute test value for the inner '
-                                'function of scan, input value missing.'), e)
+                            _logger.info(('Cannot compute test value for the inner '
+                                'function of scan, input value missing. %s'), e)
 
                 # give it a name or debugging and pretty printing
                 if getattr(init_out['initial'],'name', None) is not None:

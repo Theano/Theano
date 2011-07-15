@@ -2,20 +2,6 @@ import cPickle, logging, sys
 
 _logger=logging.getLogger("theano.gof.callcache")
 
-def warning(*args):
-    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.warning(' '.join(str(a) for a in args))
-def error(*args):
-    sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.error(' '.join(str(a) for a in args))
-def info(*args):
-    sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.info(' '.join(str(a) for a in args))
-def debug(*args):
-    sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.debug(' '.join(str(a) for a in args))
-
-
 class CallCache(object):
     def __init__(self, filename=None):
         self.filename = filename
@@ -45,10 +31,10 @@ class CallCache(object):
         #backport
         #key = (fn, tuple(args)) if key is None else key
         if key not in self.cache:
-            debug('cache miss', len(self.cache))
+            _logger.debug('cache miss %i', len(self.cache))
             self.cache[key] = fn(*args)
         else:
-            debug('cache hit', len(self.cache))
+            _logger.debug('cache hit %i', len(self.cache))
         return self.cache[key]
 
     def __del__(self):
@@ -56,5 +42,5 @@ class CallCache(object):
             if self.filename:
                 self.persist()
         except Exception, e:
-            _logging.error('persist failed', self.filename, e)
+            _logger.error('persist failed %s %s', self.filename, e)
 
