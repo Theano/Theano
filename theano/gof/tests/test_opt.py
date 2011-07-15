@@ -388,7 +388,7 @@ class TestEquilibrium(object):
         # display pesky warnings along with stdout
         # also silence logger for 'theano.gof.opt'
         _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
+        oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             opt = EquilibriumOptimizer(

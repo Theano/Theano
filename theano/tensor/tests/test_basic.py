@@ -1274,7 +1274,7 @@ class T_max_and_argmax(unittest.TestCase):
         n = as_tensor_variable(numpy.random.rand(2,3))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
+        oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
@@ -1421,7 +1421,7 @@ class T_argmin_argmax(unittest.TestCase):
             n = as_tensor_variable(numpy.random.rand(2,3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
-            oldlevel = _logger.getEffectiveLevel()
+            oldlevel = _logger.level
             _logger.setLevel(logging.CRITICAL)
             try:
                 try:
@@ -1571,7 +1571,7 @@ class T_min_max(unittest.TestCase):
             n = as_tensor_variable(numpy.random.rand(2,3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
-            oldlevel = _logger.getEffectiveLevel()
+            oldlevel = _logger.level
             _logger.setLevel(logging.CRITICAL)
             try:
                 try:
@@ -1779,7 +1779,7 @@ class T_subtensor(unittest.TestCase):
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
+        oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
@@ -1882,7 +1882,7 @@ class T_subtensor(unittest.TestCase):
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         # Silence expected warnings
         _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
+        oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
@@ -3119,7 +3119,7 @@ class t_dot(unittest.TestCase):
         # constant folding will complain to _logger that things are not aligned
         # this is normal, testers are not interested in seeing that output.
         _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.getEffectiveLevel()
+        oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
