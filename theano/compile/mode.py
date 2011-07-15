@@ -390,4 +390,3 @@ def register_mode(name, mode):
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
-
