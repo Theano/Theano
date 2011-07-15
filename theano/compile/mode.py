@@ -317,7 +317,8 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 # new modes, since it is the default mode.
 AddConfigVar('mode',
         "Default compilation mode",
-        EnumStr(*(['Mode','DEBUG_MODE', 'PROFILE_MODE'] +
+        EnumStr(*(['Mode','DebugMode', 'ProfileMode',
+                   'DEBUG_MODE', 'PROFILE_MODE'] +
                   # NB: the 'sorted' should not be required, but it is a safety
                   # measure to help debugging (platform-dependent behavior is
                   # *not* fun to work with).
