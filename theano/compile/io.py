@@ -6,7 +6,6 @@ from sharedvalue import SharedVariable
 
 import logging
 _logger=logging.getLogger("theano.compile.io")
-_logger.setLevel(logging.WARNING)
 
 class SymbolicInput(object):
     """

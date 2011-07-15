@@ -17,7 +17,6 @@ import basic as T
 from theano.tensor.blas_headers import blas_header_text #, cblas_header_text
 
 _logger = logging.getLogger('theano.tensor.blas')
-_logger.setLevel(logging.WARN)
 
 try:
     import scipy.linalg.blas

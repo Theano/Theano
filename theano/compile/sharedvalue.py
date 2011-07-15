@@ -14,7 +14,6 @@ from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
 from theano.gof import Container, Variable, generic
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
-_logger.setLevel(logging.DEBUG)
 
 AddConfigVar('shared.value_borrows',
         ("DEPRECATED. You should not use the 'value' property of shared"
