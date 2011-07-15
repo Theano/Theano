@@ -2241,7 +2241,7 @@ def test_speed_rnn():
         theano.printing.debugprint(f )
         f_fn = f.fn
         t2 = time.time()
-        if 1:
+        if 0:
             f_fn(n_calls=L-2)
         elif 0:
             for i in xrange(L-2): f_fn()
