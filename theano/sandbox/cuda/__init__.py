@@ -10,11 +10,12 @@ _logger.setLevel(logging.WARNING)
 
 AddConfigVar('cuda.root',
         """directory with bin/, lib/, include/ for cuda utilities.
-        This directory is included via -L and -rpath when linking dynamically
-        compiled modules.  If AUTO, if nvcc is in the path, it will use one of
-        this parent directory.  Otherwise /usr/local/cuda.  Leave empty to
-        prevent extra linker directives.
-        Default: environment variable "CUDA_ROOT" or else "AUTO".
+        This directory is included via -L and -rpath when linking
+        dynamically compiled modules.  If AUTO and nvcc is in the
+        path, it will use one of nvcc parent directory.  Otherwise
+        /usr/local/cuda will be used.  Leave empty to prevent extra
+        linker directives.  Default: environment variable "CUDA_ROOT"
+        or else "AUTO".
         """,
         StrParam(os.getenv('CUDA_ROOT', "AUTO")))
 
