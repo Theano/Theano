@@ -7,7 +7,7 @@ class CallCache(object):
         self.filename = filename
         try:
             if filename is None:
-                raise IOError('bad filename') #just goes to except 
+                raise IOError('bad filename') #just goes to except
             f = file(filename, 'r')
             self.cache = cPickle.load(f)
             f.close()
@@ -16,7 +16,7 @@ class CallCache(object):
 
     def persist(self, filename=None):
         if filename is None:
-          filename = self.filename
+            filename = self.filename
 
         #backport
         #filename = self.filename if filename is None else filename
@@ -26,7 +26,7 @@ class CallCache(object):
 
     def call(self, fn, args=(), key=None):
         if key is None:
-          key = (fn, tuple(args))
+            key = (fn, tuple(args))
 
         #backport
         #key = (fn, tuple(args)) if key is None else key
@@ -43,4 +43,3 @@ class CallCache(object):
                 self.persist()
         except Exception, e:
             _logger.error('persist failed %s %s', self.filename, e)
-

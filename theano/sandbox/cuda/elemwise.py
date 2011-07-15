@@ -667,7 +667,7 @@ nd_collapse_[i]=0;
         l=["local_str[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
         l+=["local_ostr[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
         if len(l)>0:
-              print >> sio," && "," && ".join(l)
+            print >> sio," && "," && ".join(l)
         print >> sio,"""){nd_collapse=0;} """
 
         if self.verbose:
@@ -956,4 +956,3 @@ nd_collapse_[i]=0;
         #define INTDIV_POW2(a, b) (a >> b)
         #define INTMOD_POW2(a, b) (a & ((1<<b)-1))
         """
-

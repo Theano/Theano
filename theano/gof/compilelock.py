@@ -196,7 +196,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     if verbosity <= 1:
                         no_display = True
                 time.sleep(random.uniform(min_wait, max_wait))
-    
+
             try:
                 os.mkdir(tmp_dir)
             except OSError:
@@ -205,10 +205,10 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                 continue
             # Safety check: the directory should be here.
             assert os.path.isdir(tmp_dir)
-    
+
             # Write own id into lock file.
             unique_id = refresh_lock(lock_file)
-    
+
             # Verify we are really the lock owner (this should not be needed,
             # but better be safe than sorry).
             owner = open(lock_file).readlines()[0].strip()
@@ -276,4 +276,3 @@ class Unlocker(object):
             self.os.rmdir(self.tmp_dir)
         except:
             pass
-

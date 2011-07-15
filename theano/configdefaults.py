@@ -113,7 +113,7 @@ def get_home_dir():
             home = os.getenv('USERPROFILE')
     assert home is not None
     return home
-    
+
 AddConfigVar('home',
         "User home directory",
         StrParam(get_home_dir()),

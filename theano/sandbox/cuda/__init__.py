@@ -114,7 +114,7 @@ except Exception, e:
     set_cuda_disabled()
 
 if cuda_available:
-    # If necessary, 
+    # If necessary,
     # create a symlink called libcuda_ndarray.so
     # which nvcc_module_compile_str uses when linking
     # any module except "cuda_ndarray" itself.
@@ -186,7 +186,7 @@ def use(device,
                                    "nvcc was not found. Set it in your PATH "
                                    "environment variable or set the Theano "
                                    "flags 'cuda.root' to its directory" % device)
-        else:            
+        else:
             raise EnvironmentError("You forced the use of gpu device %s, "
                                    "but CUDA initialization failed "
                                    "with error:\n%s" % (

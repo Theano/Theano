@@ -61,9 +61,9 @@ class SymbolicInput(object):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
         if (mutable is not None):
-          self.mutable = mutable
+            self.mutable = mutable
         else:
-          self.mutable = (update is not None)
+            self.mutable = (update is not None)
 
         self.strict = strict
         self.allow_downcast = allow_downcast
@@ -255,5 +255,3 @@ class SymbolicOutput(object):
         return "Out(%s,%s)" % (self.variable, self.borrow)
 
 Out = SymbolicOutput
-
-
