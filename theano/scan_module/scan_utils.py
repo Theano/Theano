@@ -11,30 +11,17 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import copy_reg
-import cPickle
-import itertools
 import logging
 import numpy
 
-import sys, time, copy
-
 from theano import config
-from theano.gof.python25 import partial
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor
 from theano.tensor.basic import get_constant_value
-from theano.gof import Op, Apply
-from theano.compile.io import *
-from theano.compile.function_module import Supervisor, view_tree_set, alias_root
-from theano.misc.safe_asarray import _asarray
-import theano.compile.mode as mode_module
-from theano.scalar import Scalar, ScalarVariable, ScalarConstant
 
 from theano.sandbox import cuda
 
-import theano
 
 ################ Utility Functions and Classes #######################
 

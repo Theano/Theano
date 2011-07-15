@@ -12,32 +12,30 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import copy
 import itertools
 import logging
-import numpy
-import time, sys
+import time
 
-from theano.compile import SharedVariable, function, Param, Out
-from theano.compile.function_module import ViewOp, DeepCopyOp
+import numpy
+
+import theano
+from theano.compile import function, Param, Out
 from theano import compile
 from theano import gradient
-from theano.gof.python25 import all
+from theano.gof.python25 import any
 from theano.gof import Op, Apply
 from theano import gof
-from theano.misc import safe_asarray as safe_asarray
 from theano.tensor import TensorType
 from theano import tensor
 from theano.tensor.opt import Shape_i
-import theano
+from theano.sandbox import cuda
 
 import scan_utils
-from scan_utils import safe_new, safe_to_cpu, traverse
+from scan_utils import safe_new
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
 
-from theano.sandbox import cuda
 
 class Scan(Op):
     #

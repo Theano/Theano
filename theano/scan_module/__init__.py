@@ -45,7 +45,6 @@ from theano import tensor
 from theano.tensor import opt, TensorType
 from theano import gof
 from theano.compile import optdb
-from theano import config
 
 import scan_op
 from scan import scan

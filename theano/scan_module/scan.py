@@ -39,7 +39,6 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
-import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -47,13 +46,12 @@ from theano import gof
 from theano.tensor import opt
 from theano import tensor
 from theano import config
+from theano.updates import Updates
+from theano.sandbox import cuda
 
 import scan_op
-from scan_op import safe_new, safe_to_cpu
 import scan_utils
 from scan_utils import safe_new, safe_to_cpu, traverse
-from theano.sandbox import cuda
-from theano.updates import Updates
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
