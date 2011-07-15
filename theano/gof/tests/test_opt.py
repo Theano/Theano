@@ -35,7 +35,7 @@ class MyOp(Op):
         self.name = name
         self.destroy_map = dmap
         self.x = x
-    
+
     def make_node(self, *inputs):
         inputs = map(as_variable, inputs)
         for input in inputs:
@@ -87,7 +87,7 @@ PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), 
 TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 
 class TestPatternOptimizer:
-    
+
     def test_replace_output(self):
         # replacing the whole graph
         x, y, z = inputs()
@@ -96,7 +96,7 @@ class TestPatternOptimizer:
         PatternOptimizer((op1, (op2, '1', '2'), '3'),
                          (op4, '3', '2')).optimize(g)
         assert str(g) == "[Op4(z, y)]"
-    
+
     def test_nested_out_pattern(self):
         x, y, z = inputs()
         e = op1(x, y)
@@ -239,7 +239,7 @@ class TestPatternOptimizer:
         PatternOptimizer((op4, (op1, 'x', 'y')),
                          (op3, 'x', 'y')).optimize(g)
         assert str(g) == "[Op3(Op4(*1 -> Op1(x, y)), *1)]"
-    
+
     def test_eq(self):
         # replacing the whole graph
         x, y, z = inputs()
@@ -265,14 +265,14 @@ OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
 OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
 
 class TestOpSubOptimizer:
-    
+
     def test_straightforward(self):
         x, y, z = inputs()
         e = op1(op1(op1(op1(op1(x)))))
         g = Env([x, y, z], [e])
         OpSubOptimizer(op1, op2).optimize(g)
         assert str(g) == "[Op2(Op2(Op2(Op2(Op2(x)))))]"
-    
+
     def test_straightforward_2(self):
         x, y, z = inputs()
         e = op1(op2(x), op3(y), op4(z))
@@ -402,13 +402,3 @@ class TestEquilibrium(object):
             _logger.setLevel(oldlevel)
         print 'after', g
         assert str(g) == '[Op4(x, y)]'
-
-
-
-
-
-
-
-
-
-

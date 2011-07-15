@@ -4681,7 +4681,7 @@ class test_arithmetic_cast(unittest.TestCase):
                         'default',
                         message='Division of two integer',
                         category=DeprecationWarning)
- 
+
 
 class test_broadcast(unittest.TestCase):
     def test_broadcast_bigdim(self):
