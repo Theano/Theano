@@ -1041,8 +1041,8 @@ class ModuleCache(object):
         cached modules regardless of their age.
 
         :param clear_base_files: If True, then delete base directories
-        'cuda_ndarray' and 'cutils_ext' if they are present. If False, those
-        directories are left intact.
+        'cuda_ndarray', 'cutils_ext' and 'lazylinker_ext' if they are present.
+        If False, those directories are left intact.
 
         :param delete_if_problem: See help of refresh() method.
         """
@@ -1059,7 +1059,7 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Remove base directories 'cuda_ndarray' and 'cutils_ext' if present.
+        Remove base directories 'cuda_ndarray', 'cutils_ext' and 'lazylinker_ext' if present.
 
         Note that we do not delete them outright because it may not work on
         some systems due to these modules being currently in use. Instead we
@@ -1068,7 +1068,7 @@ class ModuleCache(object):
         """
         compilelock.get_lock()
         try:
-            for base_dir in ('cuda_ndarray', 'cutils_ext'):
+            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
