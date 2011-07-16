@@ -28,7 +28,7 @@ def local_bitwidth():
     return len('%x' % maxint) * 4
 
 _logger=logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.WARN)
+_logger.setLevel(logging.WARNING)
 
 METH_VARARGS="METH_VARARGS"
 METH_NOARGS="METH_NOARGS"
@@ -536,7 +536,7 @@ class ModuleCache(object):
                                     "without dll in cache, deleting it. %s",
                                     key_pkl)
                         _rmtree(root, ignore_nocleanup=True,
-                                msg="missing module file", level="info")
+                                msg="missing module file", level=logging.INFO)
                         continue
                     if (time_now - last_access_time(entry)) < age_thresh_use:
                         _logger.debug('refresh adding %s', key_pkl)
@@ -551,14 +551,14 @@ class ModuleCache(object):
                             unpickle_failure()
                             _rmtree(root, ignore_nocleanup=True,
                                     msg='broken cache directory [EOF]',
-                                    level='warning')
+                                    level=logging.WARNING)
                             continue
                         except Exception:
                             unpickle_failure()
                             if delete_if_problem:
                                 _rmtree(root, ignore_nocleanup=True,
                                         msg='broken cache directory',
-                                        level='info')
+                                        level=logging.INFO)
                             else:
                                 # This exception is often triggered by keys
                                 # that contain references to classes that have
@@ -597,7 +597,7 @@ class ModuleCache(object):
                                 # This is suspicious. Better get rid of it.
                                 _rmtree(root, ignore_nocleanup=True,
                                         msg='module file path mismatch',
-                                        level='info')
+                                        level=logging.INFO)
                                 continue
 
                         # Find unversioned keys from other processes.
@@ -614,7 +614,7 @@ class ModuleCache(object):
                                         'module %s', key_pkl)
                             _rmtree(root, ignore_nocleanup=True,
                                     msg="unversioned key(s) in cache",
-                                    level='info')
+                                    level=logging.INFO)
                             continue
 
                         mod_hash = key_data.module_hash
@@ -631,7 +631,7 @@ class ModuleCache(object):
                             if delete_if_problem or age > self.age_thresh_del:
                                 _rmtree(root, ignore_nocleanup=True,
                                         msg='duplicated module',
-                                        level='debug')
+                                        level=logging.DEBUG)
                             else:
                                 _logger.debug('Found duplicated module not '
                                         'old enough yet to be deleted '
@@ -1025,7 +1025,7 @@ class ModuleCache(object):
                 assert entry not in self.module_from_name
                 parent = os.path.dirname(entry)
                 assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                _rmtree(parent, msg='old cache directory', level='info',
+                _rmtree(parent, msg='old cache directory', level=logging.INFO,
                         ignore_nocleanup=True)
 
         finally:
@@ -1131,7 +1131,7 @@ class ModuleCache(object):
 
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    _rmtree(parent, msg='unversioned', level='info',
+                    _rmtree(parent, msg='unversioned', level=logging.INFO,
                             ignore_nocleanup=True)
 
             # Sanity check: all unversioned keys should have been removed at
@@ -1157,7 +1157,7 @@ class ModuleCache(object):
                         # take care of the clean-up.
                         if age > min_age:
                             _rmtree(os.path.join(self.dirname, filename),
-                                    msg='old unversioned', level='info',
+                                    msg='old unversioned', level=logging.INFO,
                                     ignore_nocleanup=True)
         finally:
             compilelock.release_lock()
@@ -1173,7 +1173,7 @@ class ModuleCache(object):
         _logger.debug('Time spent checking keys: %s',
                 self.time_spent_in_check_key)
 
-def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
+def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             ignore_if_missing=False):
     # On NFS filesystems, it is impossible to delete a directory with open
     # files in it.  So instead, some commands in this file will respond to a
@@ -1186,10 +1186,12 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level='debug',
             log_msg = 'Deleting'
             if msg:
                 log_msg += ' (%s)' % msg
-            eval(level)('%s: %s' % (log_msg, parent))
+            _logger.log(level, '%s: %s', log_msg, parent)
             shutil.rmtree(parent)
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()
+        _logger.debug('In _rmtree, encountered exception: %s(%s)',
+                type(e), e)
         if os.path.exists(parent):
             try:
                 _logger.info('placing "delete.me" in %s', parent)
