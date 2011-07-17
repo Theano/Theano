@@ -1604,7 +1604,7 @@ def test_setsubtensor_allocs1():
 def test_setsubtensor_allocs2():
     x = tensor.matrix()
     y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
-    x0 = tensor.zeros_like(y)
+    x0 = tensor.zeros_like(x)
     z  = tensor.set_subtensor(x0[:4], y0)
     f = theano.function([x], z)
     assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
