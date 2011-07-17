@@ -1309,7 +1309,7 @@ class Second(BinaryScalarOp):
         if y.type in continuous_types:
             return None, gz
         else:
-            return None
+            return None, None
 
 second = Second(transfer_type(1), name = 'second')
 
