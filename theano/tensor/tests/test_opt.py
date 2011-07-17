@@ -1602,6 +1602,15 @@ class Test_alloc_zero(unittest.TestCase):
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
+    def test_setsubtensor_allocs1t(self):
+        y = tensor.matrix()
+        x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
+        y0 = tensor.zeros_like(y)
+        z  = tensor.set_subtensor(x0[:4], y0.T)
+        f = theano.function([y], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
+
     def test_setsubtensor_allocs2(self):
         x = tensor.matrix()
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
@@ -1616,6 +1625,15 @@ class Test_alloc_zero(unittest.TestCase):
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
         z  = tensor.inc_subtensor(x[:4], y0)
+        f = theano.function([x,y], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
+
+    def test_incsubtensor_allocs0t(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z  = tensor.inc_subtensor(x[:4], y0.T)
         f = theano.function([x,y], z)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])

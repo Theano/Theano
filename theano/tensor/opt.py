@@ -262,21 +262,19 @@ def local_0_dot_x(node):
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
-        if x.owner and isinstance(x.owner.op, T.Alloc):
-            try:
-                val = get_constant_value(x.owner.inputs[0])
-                if numpy.all(val == 0):
-                    replace = True
-            except TypeError:
-                pass
+        try:
+            if get_constant_value(x) == 0:
+                replace = True
+        except TypeError:
+            pass
 
-        if y.owner and isinstance(y.owner.op, T.Alloc):
-            try:
-                val = get_constant_value(y.owner.inputs[0])
-                if numpy.all(val == 0):
-                    replace = True
-            except TypeError:
-                pass
+        try:
+            if get_constant_value(y) == 0:
+                replace = True
+        except TypeError:
+            pass
+
+        # TODO: Integrate that into get_constant_value somehow
         if isinstance(x, T.TensorConstant) and (x.tag.unique_value == 0):
             replace = True
         if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
@@ -1630,13 +1628,12 @@ def local_incsubtensor_of_allocs(node):
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
-        if y.owner and isinstance(y.owner.op, T.Alloc):
-            try:
-                val = get_constant_value(y.owner.inputs[0])
-                if numpy.all(val == 0):
-                    replace = True
-            except TypeError:
-                    pass
+        try:
+            if get_constant_value(y) == 0:
+                replace = True
+        except TypeError:
+            pass
+        # TODO: Integrate that into get_constant_value
         if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
             replace = True
 
@@ -1655,25 +1652,20 @@ def local_setsubtensor_of_allocs(node):
         y = node.inputs[1]
         replace_x = None
         replace_y = None
-        if x.owner and isinstance(x.owner.op, T.Alloc):
-            try:
-                val = get_constant_value(x.owner.inputs[0])
-                assert val.size == 1
-                replace_x = val
-            except (TypeError, AssertionError):
-                replace_x = x.owner.inputs[0]
+
+        try:
+            replace_x = get_constant_value(x)
+        except TypeError:
+            pass
 
         if isinstance(x, T.TensorConstant) and (x.tag.unique_value is not
                                                 None):
             replace_x = x.tag.unique_value
 
-        if y.owner and isinstance(y.owner.op, T.Alloc):
-            try:
-                val = get_constant_value(y.owner.inputs[0])
-                assert val.size == 1
-                replace_y = val
-            except (TypeError, AssertionError):
-                replace_y = y.owner.inputs[0]
+        try:
+            replace_y = get_constant_value(y)
+        except TypeError:
+            pass
 
         if isinstance(y, T.TensorConstant) and (y.tag.unique_value is not
                                                 None):
