@@ -1419,8 +1419,21 @@ class TensorConstant(_tensor_py_operators, Constant):
 
     To create a TensorConstant, use the `constant` function in this module.
     """
+    def __init__(self, type, data, name = None):
+        Constant.__init__(self, type, data, name)
+        if (isinstance(data, numpy.ndarray) and
+            data.ndim > 0 and
+            len(numpy.unique(data)) == 1):
+            self.tag.unique_value = numpy.unique(data)[0]
+        else:
+            self.tag.unique_value = None
+
     def __str__(self):
-        name = "%s"%self.data
+        if self.tag.unique_value is not None:
+            name = "%s of %s"%(str(self.data.shape),
+                               str(self.tag.unique_value))
+        else:
+            name = "%s"%self.data
         if len(name) > 20:
             name = name[:10]+".."+name[-10:]
 
