@@ -276,3 +276,29 @@ class TestComputeTestValue(unittest.TestCase):
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
+
+    def test_no_perform(self):
+        pass
+
+    def test_no_c_code(self):
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = 'raise'
+            # int_div has no C code for the moment
+            # If that changes, use another op with no C code here
+            i = T.iscalar('i')
+            j = T.iscalar('j')
+            i.tag.test_value = 3
+            j.tag.test_value = 2
+
+            o = i // j
+
+            # Check that the c_code function is not implemented
+            self.assertRaises(NotImplementedError, o.owner.op.c_code,
+                    o.owner, 'o', ('x', 'y'), 'z', {'fail': ''})
+
+            assert hasattr(o.tag, 'test_value')
+            assert o.tag.test_value == 1
+
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value

@@ -1581,77 +1581,99 @@ class test_local_subtensor_merge(unittest.TestCase):
                                 for s2 in s2r:
                                     f(x_val, b1,e1,s1,b2,e2,s2)
 
+class Test_alloc_zero(unittest.TestCase):
 
-def test_setsubtensor_allocs0():
-    x = tensor.matrix()
-    y = tensor.matrix()
-    x0 = tensor.zeros_like(x)
-    y0 = tensor.zeros_like(y)
-    z  = tensor.set_subtensor(x0[:4], y0)
-    f = theano.function([x,y], z)
-    assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
-                       f.maker.env.toposort() ])
+    def test_setsubtensor_allocs0(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        x0 = tensor.zeros_like(x)
+        y0 = tensor.zeros_like(y)
+        z  = tensor.set_subtensor(x0[:4], y0)
+        f = theano.function([x,y], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
 
-def test_setsubtensor_allocs1():
-    y = tensor.matrix()
-    x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
-    y0 = tensor.zeros_like(y)
-    z  = tensor.set_subtensor(x0[:4], y0)
-    f = theano.function([y], z)
-    assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
-                       f.maker.env.toposort() ])
+    def test_setsubtensor_allocs1(self):
+        y = tensor.matrix()
+        x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
+        y0 = tensor.zeros_like(y)
+        z  = tensor.set_subtensor(x0[:4], y0)
+        f = theano.function([y], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
 
-def test_setsubtensor_allocs2():
-    x = tensor.matrix()
-    y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
-    x0 = tensor.zeros_like(x)
-    z  = tensor.set_subtensor(x0[:4], y0)
-    f = theano.function([x], z)
-    assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
-                       f.maker.env.toposort() ])
+    def test_setsubtensor_allocs2(self):
+        x = tensor.matrix()
+        y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
+        x0 = tensor.zeros_like(x)
+        z  = tensor.set_subtensor(x0[:4], y0)
+        f = theano.function([x], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
 
-def test_incsubtensor_allocs0():
-    x = tensor.matrix()
-    y = tensor.matrix()
-    y0 = tensor.zeros_like(y)
-    z  = tensor.inc_subtensor(x[:4], y0)
-    f = theano.function([x,y], z)
-    assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
-                       f.maker.env.toposort() ])
+    def test_incsubtensor_allocs0(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z  = tensor.inc_subtensor(x[:4], y0)
+        f = theano.function([x,y], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
 
-def test_incsubtensor_allocs1():
-    x = tensor.matrix()
-    y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
-    z  = tensor.inc_subtensor(x[:4], y0)
-    f = theano.function([x], z)
-    assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
-                       f.maker.env.toposort() ])
-
-
-def test_dot_allocs_0():
-    v1 = tensor.vector('v1')
-    v2 = tensor.vector('v2')
-    m1 = tensor.matrix('m1')
-    m2 = tensor.matrix('m2')
-    vv = numpy.asarray([0,1,2], dtype = theano.config.floatX)
-    vm = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]],
-                       dtype=theano.config.floatX)
-    for _e1 in [(v1,vv),(m1,vm)]:
-        for _e2 in [(v2,vv),(m2,vm)]:
-            for p in [0,1]:
-                if p == 0:
-                    e1 = tensor.zeros_like(_e1[0])
-                    e2 = _e2[0]
-                else:
-                    e1 = _e1[0]
-                    e2 = tensor.zeros_like(_e2[0])
-                o = tensor.dot(e1,e2)
-                f = theano.function([_e1[0],_e2[0]], o)
-                f(_e1[1], _e2[1])
-                assert numpy.all([ not isinstance(x.op, tensor.Dot) for x in
-                                  f.maker.env.toposort() ])
+    def test_incsubtensor_allocs1(self):
+        x = tensor.matrix()
+        y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
+        z  = tensor.inc_subtensor(x[:4], y0)
+        f = theano.function([x], z)
+        assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
+                           f.maker.env.toposort() ])
 
 
+    def test_dot_allocs_0(self):
+        v1 = tensor.vector('v1')
+        v2 = tensor.vector('v2')
+        m1 = tensor.matrix('m1')
+        m2 = tensor.matrix('m2')
+        vv = numpy.asarray([0,1,2], dtype = theano.config.floatX)
+        vm = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]],
+                           dtype=theano.config.floatX)
+        for _e1 in [(v1,vv),(m1,vm)]:
+            for _e2 in [(v2,vv),(m2,vm)]:
+                for p in [0,1]:
+                    if p == 0:
+                        e1 = tensor.zeros_like(_e1[0])
+                        e2 = _e2[0]
+                    else:
+                        e1 = _e1[0]
+                        e2 = tensor.zeros_like(_e2[0])
+                    o = tensor.dot(e1,e2)
+                    f = theano.function([_e1[0],_e2[0]], o)
+                    f(_e1[1], _e2[1])
+                    assert numpy.all([ not isinstance(x.op, tensor.Dot) for x in
+                                      f.maker.env.toposort() ])
+
+
+def test_local_subtensor_alloc0():
+    x = tensor.matrix('x')
+    y = tensor.vector('y')
+
+    # The rows of yx are copies of x
+    yx = tensor.alloc(y, x.shape[0], x.shape[1])
+
+    # Slice of each row
+    z_mat = yx[:,3:]
+    assert z_mat.ndim == 2
+
+    # Only one column
+    z_vec = yx[:,3]
+    assert z_vec.ndim == 1
+
+    f = theano.function([x, y], z_mat)
+    g = theano.function([x, y], z_vec)
+
+    # DebugMode should detect if something goes wrong.
+    f(numpy.zeros((3,5)), numpy.arange(5))
+    g(numpy.zeros((3,5)), numpy.arange(5))
 
 
 def test_local_fill_useless():
