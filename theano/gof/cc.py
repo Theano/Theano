@@ -1221,7 +1221,10 @@ class OpWiseCLinker(link.LocalLinker):
             for node in order:
                 # Maker sure we use the C version of the code whenever
                 # possible
-                old_value = node.op._op_use_c_code
+                # There are ops that don't have _op_use_c_code property
+                # for example ifelse (or any ops that come with their own
+                # make_thunk
+                old_value = getattr(node.op,'_op_use_c_code', False)
                 try:
                     node.op._op_use_c_code = True
                     thunks += [node.op.make_thunk(node,
