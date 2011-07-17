@@ -257,46 +257,41 @@ def register_specialize_device(lopt, *tags, **kwargs):
 @register_stabilize
 @gof.local_optimizer([None])
 def local_0_dot_x(node):
-
-    if isinstance(node.op, T.Dot):
-        x = node.inputs[0]
-        y = node.inputs[1]
-        replace = False
-        try:
-            if get_constant_value(x) == 0:
-                replace = True
-        except TypeError:
-            pass
-
-        try:
-            if get_constant_value(y) == 0:
-                replace = True
-        except TypeError:
-            pass
-
-        # TODO: Integrate that into get_constant_value somehow
-        if isinstance(x, T.TensorConstant) and (x.tag.unique_value == 0):
-            replace = True
-        if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
-            replace = True
-
-        if replace:
-            if x.ndim ==2 and y.ndim == 2:
-                return [T.alloc( T.constant(0,dtype = node.outputs[0].type.dtype),
-                               x.shape[0], y.shape[1])]
-            elif x.ndim==1 and y.ndim == 2:
-                return [T.alloc( T.constant(0,dtype = node.outputs[0].type.dtype),
-                               y.shape[1])]
-            elif x.ndim==2 and y.ndim ==1:
-                return [T.alloc( T.constant(0,dtype = node.outputs[0].type.dtype),
-                               x.shape[0])]
-            elif x.ndim==1 and y.ndim==1:
-                return [T.constant(0,dtype = node.outputs[0].type.dtype)]
-        else:
-            return False
-
-    else:
+    if not isinstance(node.op, T.Dot):
         return False
+
+    x = node.inputs[0]
+    y = node.inputs[1]
+    replace = False
+    try:
+        if get_constant_value(x) == 0:
+            replace = True
+    except TypeError:
+        pass
+
+    try:
+        if get_constant_value(y) == 0:
+            replace = True
+    except TypeError:
+        pass
+
+    # TODO: Integrate that into get_constant_value somehow
+    if isinstance(x, T.TensorConstant) and (x.tag.unique_value == 0):
+        replace = True
+    if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
+        replace = True
+
+    if replace:
+        constant_zero = T.constant(0, dtype=node.outputs[0].type.dtype)
+        if x.ndim == 2 and y.ndim == 2:
+            return [T.alloc(constant_zero, x.shape[0], y.shape[1])]
+        elif x.ndim == 1 and y.ndim == 2:
+            return [T.alloc(constant_zero, y.shape[1])]
+        elif x.ndim == 2 and y.ndim == 1:
+            return [T.alloc(constant_zero, x.shape[0])]
+        elif x.ndim == 1 and y.ndim == 1:
+            return [constant_zero]
+
 
 ######################
 # DimShuffle lifters #
