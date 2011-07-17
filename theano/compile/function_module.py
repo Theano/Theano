@@ -594,8 +594,7 @@ class Function(object):
                             self.inv_finder[c]))
 
         # Do the actual work
-        if profile:
-            t0_fn = time.time()
+        t0_fn = time.time()
         try:
             self.fn()
         except:
@@ -607,8 +606,11 @@ class Function(object):
             else:
                 # old-style linkers raise their own exceptions
                 raise
+
+        dt_fn = time.time() - t0_fn
+        self.maker.mode.fn_time += dt_fn
         if profile:
-            profile.vm_call_time += time.time() - t0_fn
+            profile.vm_call_time += dt_fn
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
@@ -647,8 +649,9 @@ class Function(object):
         #       grep for 'PROFILE_CODE'
         #
 
+        dt_call = time.time() - t0
+        self.maker.mode.call_time += dt_call
         if profile:
-            dt_call=time.time()-t0
             profile.fct_callcount += 1
             profile.fct_call_time += dt_call
             if hasattr(self.fn, 'update_profile'):
@@ -976,9 +979,12 @@ class FunctionMaker(object):
             end_optimizer = time.time()
         finally:
             theano.config.compute_test_value = compute_test_value_orig
+
+        opt_time = end_optimizer - start_optimizer
+        mode.optimizer_time += opt_time
         if profile:
-            profile.optimizer_time += end_optimizer - start_optimizer
-        _logger.debug('Optimizing took %f seconds' % (end_optimizer - start_optimizer))
+            profile.optimizer_time += opt_time
+        _logger.debug('Optimizing took %f seconds', opt_time)
 
         #Add deep copy to respect the memory interface
         insert_deepcopy(env, inputs, outputs+additional_outputs)
@@ -1059,11 +1065,16 @@ class FunctionMaker(object):
         start_linker = time.time()
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
         end_linker = time.time()
-        _logger.debug('Linker took %f seconds' % (end_linker - start_linker))
+
+        linker_time = end_linker - start_linker
+        _logger.debug('Linker took %f seconds', linker_time)
+        self.mode.linker_time += linker_time
         if self.profile:
-            self.profile.linker_time += end_linker - start_linker
+            self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
-        fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
+
+        fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
+                defaults, self.unpack_single, self.return_none, self)
         fn.profile = self.profile
         return fn
 

@@ -196,6 +196,11 @@ class ProfileMode(Mode):
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 
+        self.call_time = 0
+        self.fn_time = 0
+        self.optimizer_time = 0
+        self.linker_time = 0
+
     def print_summary(self,**kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
