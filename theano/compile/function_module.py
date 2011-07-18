@@ -1097,11 +1097,12 @@ copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 
 try:
-    # Someone wrote this at one point, and I'm guessing it's because the default
-    # pickling mechanism doesn't work... so I'm adding a try/except around it.
-    # This way if the default implementation works we can just use it.
+    # Pickle of slice is implemented on python 2.6.  To enabled be
+    # compatible with python 2.4, we implement pickling of slice
+    # ourself.
     cPickle.dumps(slice(0, 10, 100))
 except:
+    # This slice pickle implementation seam backward and forward compatible.
     def _pickle_slice(s):
         return (slice, (s.start, s.stop, s.step))
     copy_reg.pickle(slice, _pickle_slice)
