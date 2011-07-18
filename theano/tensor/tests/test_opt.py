@@ -1694,8 +1694,10 @@ def test_local_subtensor_alloc0():
     g = theano.function([x, y], z_vec)
 
     # DebugMode should detect if something goes wrong.
-    f(numpy.zeros((3,5)), numpy.arange(5))
-    g(numpy.zeros((3,5)), numpy.arange(5))
+    xval = numpy.zeros((3,5), dtype=config.floatX)
+    yval = numpy.arange(5, dtype=config.floatX)
+    f(xval, yval)
+    g(xval, yval)
 
 
 def test_local_fill_useless():
