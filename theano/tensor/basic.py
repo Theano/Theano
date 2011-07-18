@@ -1585,7 +1585,7 @@ class ScalarFromTensor(Op):
         return [tensor_from_scalar(dt)]
 
     def R_op(self, inputs, eval_points):
-        return None
+        return [None]
 
     def __str__(self):
         return self.__class__.__name__
