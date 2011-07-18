@@ -1583,13 +1583,17 @@ class test_local_subtensor_merge(unittest.TestCase):
 
 class Test_alloc_zero(unittest.TestCase):
 
+    def setUp(self):
+        mode = theano.compile.mode.get_default_mode()
+        self.mode = mode.including("local_incsubtensor_of_allocs", "local_setsubtensor_of_allocs", "local_0_dot_x")
+
     def test_setsubtensor_allocs0(self):
         x = tensor.matrix()
         y = tensor.matrix()
         x0 = tensor.zeros_like(x)
         y0 = tensor.zeros_like(y)
         z  = tensor.set_subtensor(x0[:4], y0)
-        f = theano.function([x,y], z)
+        f = theano.function([x,y], z, mode=self.mode)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1598,7 +1602,7 @@ class Test_alloc_zero(unittest.TestCase):
         x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
         y0 = tensor.zeros_like(y)
         z  = tensor.set_subtensor(x0[:4], y0)
-        f = theano.function([y], z)
+        f = theano.function([y], z, mode=self.mode)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1607,7 +1611,7 @@ class Test_alloc_zero(unittest.TestCase):
         x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
         y0 = tensor.zeros_like(y)
         z  = tensor.set_subtensor(x0[:4], y0.T)
-        f = theano.function([y], z)
+        f = theano.function([y], z, mode=mode_opt)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1616,7 +1620,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
         x0 = tensor.zeros_like(x)
         z  = tensor.set_subtensor(x0[:4], y0)
-        f = theano.function([x], z)
+        f = theano.function([x], z, mode=self.mode)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1625,7 +1629,7 @@ class Test_alloc_zero(unittest.TestCase):
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
         z  = tensor.inc_subtensor(x[:4], y0)
-        f = theano.function([x,y], z)
+        f = theano.function([x,y], z, mode=self.mode)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1634,7 +1638,7 @@ class Test_alloc_zero(unittest.TestCase):
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
         z  = tensor.inc_subtensor(x[:4], y0.T)
-        f = theano.function([x,y], z)
+        f = theano.function([x,y], z, mode=mode_opt)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1642,7 +1646,7 @@ class Test_alloc_zero(unittest.TestCase):
         x = tensor.matrix()
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4,4)), dtype=config.floatX))
         z  = tensor.inc_subtensor(x[:4], y0)
-        f = theano.function([x], z)
+        f = theano.function([x], z, mode=self.mode)
         assert numpy.all( [ not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.env.toposort() ])
 
@@ -1665,7 +1669,7 @@ class Test_alloc_zero(unittest.TestCase):
                         e1 = _e1[0]
                         e2 = tensor.zeros_like(_e2[0])
                     o = tensor.dot(e1,e2)
-                    f = theano.function([_e1[0],_e2[0]], o)
+                    f = theano.function([_e1[0],_e2[0]], o, mode=self.mode)
                     f(_e1[1], _e2[1])
                     assert numpy.all([ not isinstance(x.op, tensor.Dot) for x in
                                       f.maker.env.toposort() ])
