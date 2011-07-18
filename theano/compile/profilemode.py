@@ -75,7 +75,7 @@ class Profile_Maker(FunctionMaker):
         ret.fn = new_fn
 
         global run_cthunk
-        if run_cthunk is None:
+        if run_cthunk is None and any(profile.apply_cimpl.values()):
             # Lazy import to avoid compilation when importing theano.
             from theano.gof.cutils import run_cthunk
 
