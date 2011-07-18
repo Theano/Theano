@@ -5227,6 +5227,183 @@ class Outer(Op):
         return "outer"
 outer = Outer()
 
+########################
+# R Operator
+########################
+
+def Rop(f, wrt, eval_points):
+    """
+    Computes the R operation on `f` wrt to `wrt` evaluated at points given
+    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
+    to `wrt` right muliplied by the eval points.
+
+    :type f: `Variable` or list of `Variable`s
+        `f` stands for the output of the computational graph to which you
+        want to apply the R operator
+    :type wrt: `Variable` or list of `Variables`s
+        variables for which you compute the R operator of the expression
+        described by `f`
+    :type eval_points: `Variable` or list of `Variable`s
+        evalutation points for each of the variables in `wrt`
+
+    :rtype: `Variable` or list of `Variable`s depending on type of f
+    :return: symbolic expression such that
+        R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
+        where the indices in that expression are magic multidimensional
+        indices that specify both the position within a list and all
+        coordinates of the tensor element in the last
+        """
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [ wrt ]
+
+    if not isinstance(eval_points, (list, tuple)):
+        eval_points = [ eval_points ]
+
+    if not isinstance(f, (list,tuple)):
+        f = [f]
+
+    assert len(wrt) == len(eval_points)
+
+    seen_nodes = {}
+
+    def _traverse(node):
+        if node is None:
+            return None
+        else:
+            op     = node.op
+            inputs = node.inputs
+            if not hasattr(op, 'R_op'):
+                raise Exception((' R_op was not implemented for %s'
+                                      ' operation. Email the mailing list'
+                                      ' for help') % op.__class__.__name__)
+            # Compute the evaluation points corresponding to each of the
+            # inputs of the node
+            local_eval_points = []
+            for inp in inputs:
+                if inp in wrt:
+                    local_eval_points.append( eval_points[wrt.index(inp)] )
+                elif inp.owner is None:
+                    local_eval_points.append( zeros_like(inp) )
+                elif inp.owner in seen_nodes:
+
+                    local_eval_points.append(
+                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ] )
+
+                else:
+                    # We actually need to compute the R_op for this node
+
+                    _traverse(inp.owner)
+                    local_eval_points.append(
+                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ])
+            from theano.sandbox import cuda
+            if cuda.cuda_available:
+                from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
+                from theano.sandbox.cuda.type import CudaNdarrayType
+                for idx, (x,y) in enumerate(zip(inputs, local_eval_points)):
+                    if x.type != y.type:
+                        if (isinstance(x.type, CudaNdarrayType) and
+                            isinstance(y.type, TensorType)):
+                            assert x.type.ndim == y.type.ndim
+                            assert y.type.dtype == 'float32'
+                        elif (isinstance(x.type, TensorType) and
+                              isinstance(y.type, CudaNdarrayType)):
+                            assert x.type.ndim == y.type.ndim
+                            assert x.type.dtype == 'float32'
+                        else:
+                            assert x.type == y.type
+            else:
+                for x,y in zip(inputs, local_eval_points):
+                    assert x.type == y.type
+
+            seen_nodes[node] = op.R_op(node.inputs, local_eval_points)
+            return None
+
+    # Populate the dictionary
+    for out in f:
+        _traverse(out.owner)
+
+    rval = []
+    for out in f:
+        if out in wrt:
+            rval.append( eval_points[wrt.index(out)])
+        else:
+            rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)] )
+
+    if len(rval) == 1:
+        return rval[0]
+    else:
+         return rval
+
+
+def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
+         disconnected_inputs='raise'):
+    """
+    Computes the L operation on `f` wrt to `wrt` evaluated at points given
+    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
+    to `wrt` left muliplied by the eval points.
+
+    :type f: `Variable` or list of `Variable`s
+        `f` stands for the output of the computational graph to which you
+        want to apply the L operator
+    :type wrt: `Variable` or list of `Variables`s
+        variables for which you compute the L operator of the expression
+        described by `f`
+    :type eval_points: `Variable` or list of `Variable`s
+        evalutation points for each of the variables in `f`
+
+    :rtype: `Variable` or list of `Variable`s depending on type of f
+    :return: symbolic expression such that
+        L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
+        where the indices in that expression are magic multidimensional
+        indices that specify both the position within a list and all
+        coordinates of the tensor element in the last
+    """
+
+    if not isinstance(f, TensorVariable):
+        raise TypeError('In tensor.Lop(), cost argument should be a TensorVariable.', f)
+
+    inputs = gof.graph.inputs([cost])
+    gmap = gradient.grad_sources_inputs(
+            zip(f,eval_points),
+            list(inputs) + list(consider_constant),
+            warn_type=warn_type)
+
+
+    # Note : If p is not in gmap there can be several reasons, among which
+    # is the fact that p might not be part of the computational graph. A
+    # simple example is that for a+b for e.g. a[0] is not part of the graph,
+    # so Theano does not know how to compute TT.grad(TT.sum(a+b), a[0])
+    # such subtle cases can be fixed by a more careful implementation of the
+    # gradient, but for now Theano needs to throw an exception, and make the
+    # user aware that it does not know how to compute that gradient
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [wrt]
+    ret = []
+    for p in wrt:
+        if p in gmap:
+            ret.append(gmap[p])
+        else:
+            message = ("Lop method was asked to compute the gradient "
+                    "with respect to a variable that is not part of "
+                    "the computational graph of the cost, or is used "
+                    "only by a non-differentiable operator: %s" % p)
+            if disconnected_inputs == 'ignore':
+                pass
+            elif disconnected_inputs == 'warn':
+                warnings.warn(message, stacklevel=1)
+            elif disconnected_inputs == 'raise':
+                raise ValueError(message)
+            else:
+                raise ValueError("Invalid value for keyword "
+                        "'disconnected_inputs', valid values are "
+                        "'ignore', 'warn' and 'raise'.")
+            ret.append(zeros_like(p))
+
+    if len(ret) == 1:
+        return ret[0]
+    else:
+        return ret
+
 
 #########################
 # Gradient
