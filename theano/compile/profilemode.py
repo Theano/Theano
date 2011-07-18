@@ -73,6 +73,12 @@ class Profile_Maker(FunctionMaker):
             del self.mode.outputs_size
 
         ret.fn = new_fn
+
+        global run_cthunk
+        if run_cthunk is None:
+            # Lazy import to avoid compilation when importing theano.
+            from theano.gof.cutils import run_cthunk
+
         return ret
 
 class ProfileMode(Mode):
@@ -114,9 +120,6 @@ class ProfileMode(Mode):
             """
             global run_cthunk
             if hasattr(th, 'cthunk'):
-                if run_cthunk is None:
-                    # Lazy import to avoid compilation when importing theano.
-                    from theano.gof.cutils import run_cthunk
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
@@ -137,9 +140,6 @@ class ProfileMode(Mode):
             """
             global run_cthunk
             if hasattr(th, 'cthunk'):
-                if run_cthunk is None:
-                    # Lazy import to avoid compilation when importing theano.
-                    from theano.gof.cutils import run_cthunk
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
