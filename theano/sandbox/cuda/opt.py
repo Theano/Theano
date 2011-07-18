@@ -933,7 +933,7 @@ def get_device_type_sizes():
         del gpu_int_size
         del t
     except Exception, e:
-        _logger.warning(("OPTIMIZATION WARNING: "
+        _logger.warning(("Optimization Warning: "
             "Got the following error, but we can ignore it. "
             "This could cause less GpuElemwise fused together.\n"
             "%s") % e)

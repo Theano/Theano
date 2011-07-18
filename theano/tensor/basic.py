@@ -31,10 +31,6 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 import logging
 _logger=logging.getLogger("theano.tensor.basic")
-def _info(*msg):
-    _logger.info(' '.join(msg))
-def _warn(*msg):
-    _logger.warn(' '.join(msg))
 
 #This is needed as we will hide it later
 python_complex=complex
@@ -728,9 +724,9 @@ class TensorType(Type):
                 if not (a_missing.any() or (allow_remove_inf and a_inf.any())):
                     # There are no missing values in a, thus this is not the
                     # reason why numpy.allclose(a, b) returned False.
-                    _info('numpy allclose failed for abs_err %f and rel_err %f' %(
-                        numpy.max( abs(a-b)),
-                        numpy.max( abs(a-b)/(abs(a)+abs(b)))))
+                    _logger.info('numpy allclose failed for abs_err %f and rel_err %f',
+                        numpy.max(abs(a-b)),
+                        numpy.max(abs(a-b) / (abs(a) + abs(b))))
                     return False
                 # The following line is what numpy.allclose bases its decision
                 # upon, according to its documentation.

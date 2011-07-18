@@ -16,10 +16,6 @@ from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
 
 _logger=logging.getLogger("theano.printing")
-def _info(*msg):
-    _logger.info(' '.join(msg))
-def _warn(*msg):
-    _logger.warn(' '.join(msg))
 
 def debugprint(obj, depth=-1, print_type=False, file=None):
     """Print a computation graph to file
@@ -476,7 +472,7 @@ def pydotprint(fct, outfile=None,
             if node.op.__class__.__name__=='IfElse' and node.op.name == cond_highlight:
                 cond = node
         if cond is None:
-            _warn("pydotprint: cond_highlight is set but there is no IfElse node in the graph")
+            _logger.warn("pydotprint: cond_highlight is set but there is no IfElse node in the graph")
             cond_highlight = None
 
     if cond_highlight is not None:

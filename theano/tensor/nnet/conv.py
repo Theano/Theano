@@ -31,10 +31,6 @@ except ImportError:
     pass
 
 _logger=logging.getLogger("theano.tensor.nnet.conv")
-def _debug(*msg):
-    _logger.debug(' '.join([ str(x) for x in msg]))
-def _warn(*msg):
-    _logger.warn(' '.join([ str(x) for x in msg]))
 
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
@@ -395,7 +391,7 @@ class ConvOp(Op):
                 warnstr = "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%i)"\
                       "must be 0 or a divisor of bsize(%i). We revert it to %i. This"\
                       " won't change the result, but may make it slower."
-                _warn(warnstr % (self.unroll_batch, self.bsize, new))
+                _logger.warn(warnstr, self.unroll_batch, self.bsize, new)
 
                 self.unroll_batch=new
 
@@ -414,7 +410,7 @@ class ConvOp(Op):
                 warnstr = "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%i)"\
                       "should be 0 or a divisor of nkern(%i). We revert it to %i."\
                       "This won't change the result, but may make it slower."
-                _warn(warnstr % (self.unroll_kern, self.nkern, new))
+                _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern=new
 
         if all_shape:
@@ -466,7 +462,11 @@ class ConvOp(Op):
                     self.unroll_kern=self.speed_unroll_batch_kern[time_unroll_batch_kern_idx][1]
                     self.unroll_patch = False
 
-            _debug("AUTO FIND VERSION OF C_CODE OF CONV OP",self.unroll_batch, self.unroll_kern, self.unroll_patch, self.bsize, self.nkern, time_unroll_patch, time_unroll_batch_kern)
+            _logger.debug("AUTO FIND VERSION OF C_CODE OF CONV OP "
+                    "%s %s %s %s %s %s %s",
+                    self.unroll_batch, self.unroll_kern, self.unroll_patch,
+                    self.bsize, self.nkern, time_unroll_patch,
+                    time_unroll_batch_kern)
 
 
         self._rehash()
@@ -764,7 +764,7 @@ class ConvOp(Op):
                     un_b = bsize
                 else:
                     un_b = 1
-                    _warn("OPTIMISATION WARNING: in ConvOp.grad() we can't determine "\
+                    _logger.warn("Optimization Warning: in ConvOp.grad() we can't determine "\
                           "a good unroll value for the batch. Maybe you can optimize this!")
 
             if all_shape and un_k!=0 and nkern%un_k!=0:
@@ -772,7 +772,7 @@ class ConvOp(Op):
                     un_k = nkern
                 else:
                     un_k = 1
-                    _warn("OPTIMISATION WARNING: in ConvOp.grad() we can't determine "\
+                    _logger.warn("Optimization Warning: in ConvOp.grad() we can't determine "\
                           "a good unroll value for the kernel. Maybe you can optimize this!")
 
             dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
@@ -983,18 +983,18 @@ using namespace std;
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             if self.verbose:
-                _debug("return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version")
+                _logger.debug("return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version")
             return _conv_op_code_a % d
 
         if self.unroll_patch:
             if self.verbose:
-                _debug("return unroll patch version. all_shape=", all_shape)
+                _logger.debug("return unroll patch version. all_shape=%s", all_shape)
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             assert self.unroll_batch>0
             assert self.unroll_kern>0
             if self.verbose:
-                _debug("return unrolled batch (%s) and kern code (%s)",
+                _logger.debug("return unrolled batch (%s) and kern code (%s)",
                         str(self.unroll_batch), str(self.unroll_kern))
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
@@ -1002,11 +1002,11 @@ using namespace std;
         #TODO: should we choose the unroll size automatically with the bigger divisor under 5?
         if self.out_mode == 'valid' and self.dx==0 and self.dy==0:
             if self.verbose:
-                _debug("return gemm version")
+                _logger.debug("return gemm version")
             return _conv_op_code_valid_gemm % d
         else:
             if self.verbose:
-                _debug("return no gemm version")
+                _logger.debug("return no gemm version")
             return _conv_op_code_a % d
 
 

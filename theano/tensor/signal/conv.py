@@ -14,10 +14,6 @@ from theano.tensor.nnet import conv
 
 import logging
 _logger=logging.getLogger("theano.tensor.signal.conv")
-def _debug(*msg):
-    _logger.debug(' '.join(msg))
-def _warn(*msg):
-    _logger.warn(' '.join(msg))
 
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
