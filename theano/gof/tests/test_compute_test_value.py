@@ -295,7 +295,7 @@ class TestComputeTestValue(unittest.TestCase):
 
             # Check that the c_code function is not implemented
             self.assertRaises(NotImplementedError, o.owner.op.c_code,
-                    o.owner, 'o', ('x', 'y'), 'z', {'fail': ''})
+                    o.owner, 'o', ['x', 'y'], 'z', {'fail': ''})
 
             assert hasattr(o.tag, 'test_value')
             assert o.tag.test_value == 1
