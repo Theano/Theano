@@ -5365,7 +5365,12 @@ def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
     if not isinstance(f, TensorVariable):
         raise TypeError('In tensor.Lop(), cost argument should be a TensorVariable.', f)
 
-    inputs = gof.graph.inputs([cost])
+    if type(eval_points) not in (list, tuple):
+        eval_points = [eval_points]
+    if type(f) not in (list, tuple):
+        f = [f]
+
+    inputs = gof.graph.inputs(f)
     gmap = gradient.grad_sources_inputs(
             zip(f,eval_points),
             list(inputs) + list(consider_constant),
