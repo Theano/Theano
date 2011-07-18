@@ -2081,7 +2081,7 @@ def tensor4(name=None, dtype=None):
 
 @theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, op_cimpl, message, outputs_size,
+                    apply_time, apply_cimpl, message, outputs_size,
                     other_time):
     if any([x[1].op.__class__.__name__.lower().startswith("gpu") for x in apply_time.keys()]):
         local_time = sum(apply_time.values())

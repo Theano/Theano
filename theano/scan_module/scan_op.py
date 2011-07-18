@@ -1056,7 +1056,7 @@ class Scan(Op):
 
 @theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, op_cimpl, message, outputs_size,
+                    apply_time, apply_cimpl, message, outputs_size,
                     other_time):
     # Scan overhead profile
     if any([isinstance(node.op, Scan) and v>0 for (_,node),v in

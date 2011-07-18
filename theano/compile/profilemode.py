@@ -230,10 +230,10 @@ class ProfileMode(Mode):
             if t == 0:
                 print i, n
 
-        op_cimpl = {}
+        apply_cimpl = {}
         outputs_size = {}
         for fn, ps in self.profile_stats.items():
-            op_cimpl.update(ps.apply_cimpl)
+            apply_cimpl.update(ps.apply_cimpl)
 
         message = self.message
 
@@ -248,7 +248,7 @@ class ProfileMode(Mode):
                     [ps.optimizer_time for ps in self.profile_stats.values()]))
 
         self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                        apply_time, op_cimpl, message, outputs_size,
+                        apply_time, apply_cimpl, message, outputs_size,
                         self.local_time, other_time,
                         **kwargs)
 
@@ -281,19 +281,19 @@ class ProfileMode(Mode):
         fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
         fct_call = diff_dict(self.fct_call,other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
-        op_cimpl = self.op_cimpl and other.op_cimpl
+        apply_cimpl = self.apply_cimpl and other.apply_cimpl
         message = self.message
         outputs_size = diff_dict(self.outputs_size,other.outputs_size)
         other_time = {'linker_time':self.linker_time-other.linker_time,
                       'optimizer_time':self.optimizer_time-other.optimizer_time}
         self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size,
+                            apply_time, apply_cimpl, message, outputs_size,
                             print_apply=False, other_time=other_time,
                             **kwargs)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
-                       apply_time, op_cimpl, message, outputs_size,
+                       apply_time, apply_cimpl, message, outputs_size,
                        local_time, other_time,
                        n_apply_to_print=config.ProfileMode.n_apply_to_print,
                        n_ops_to_print=config.ProfileMode.n_ops_to_print,
@@ -355,6 +355,7 @@ class ProfileMode(Mode):
         op_time = {}
         op_call = {}
         op_apply = {}
+        op_cimpl = {}
         sop_apply = {}
         for (i,a),t in apply_time.items():
             op=a.op
@@ -364,6 +365,8 @@ class ProfileMode(Mode):
             sop_apply.setdefault(type(a.op),0)
             op_time[op]+=t
             nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
+            op_cimpl.setdefault(a.op, True)
+            op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
             if t==0:
                 assert nb_call == 0, nb_call
             else:
@@ -375,23 +378,23 @@ class ProfileMode(Mode):
         sop_time={}
         sop_call={}
         sop_op = {}
-        sop_c={} #map each op class to Bool. True iff all applies were done in c.
+        sop_cimpl={} #map each op class to Bool. True iff all applies were done in c.
         for a,t in op_time.items():
             typ = type(a)
             sop_time.setdefault(typ,0)
             sop_time[typ]+=t
             sop_op.setdefault(typ,0)
             sop_op[typ]+=1
-            sop_c.setdefault(typ,True)
-            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
+            sop_cimpl.setdefault(typ,True)
+            sop_cimpl[typ]=sop_cimpl[typ] and op_cimpl.get(a, False)
             sop_call[typ]=sop_call.get(typ,0)+op_call[a]
 
 
         # Print the summary per op class.
         print
         print 'Single Op-wise summary:'
-        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_apply> <Op name>'
-        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
+        print '<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> [*] <nb_call> <nb_op> <nb_apply> <Op name>'
+        sotimes = [(t*100/local_time, t, a, sop_cimpl[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
         tot=0
@@ -422,10 +425,10 @@ class ProfileMode(Mode):
         flops_msg=''
         if op_flops:
             flops_msg=' <MFlops/s>'
-            print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
+            print '\nHACK WARNING: we print the flops for some OP, but the logic don\'t always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print
         print 'Op-wise summary:'
-        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
+        print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> [*] %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
                 for a, t in op_time.items()]
@@ -456,7 +459,7 @@ class ProfileMode(Mode):
         if print_apply:
             print
             print 'Apply-wise summary:'
-            print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
+            print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>'
             atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
@@ -466,14 +469,20 @@ class ProfileMode(Mode):
                 ftot=tot*100/local_time
                 if nb_call==0:
                     continue
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %2i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
+                if a[1] in apply_cimpl:
+                    msg = '*'
+                else:
+                    msg = ' '
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %s %i  %2i %s' % (
+                    f, ftot, t, tot, t/nb_call, msg, nb_call, a[0], str(a[1]))
             print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                     %(max(0, len(atimes)-n_apply_to_print),
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
                       sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
+            print '(*) Op is running a c implementation'
         for printer in profiler_printers:
             printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, op_cimpl, message, outputs_size,
+                    apply_time, apply_cimpl, message, outputs_size,
                     other_time)
 
         if not outputs_size:
