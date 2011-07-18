@@ -76,7 +76,9 @@ following methods:
       evaluations, or it may reset ``output_storage`` cells to hold a value of
       ``None``.  It can also pre-allocate some memory for the Op to use.
       This feature can allow ``perform`` to reuse memory between
-      calls, for example.
+      calls, for example. If there is something  preallocated in the
+      ``output_storage``, it will be of the good dtype, but can have
+      the wrong shape and have any stride pattern.
 
   This method must be determined by the inputs. That is to say, if
   it is evaluated once on inputs A and returned B, then if ever
