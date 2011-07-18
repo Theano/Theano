@@ -291,6 +291,13 @@ def local_0_dot_x(node):
             return [T.alloc(constant_zero, x.shape[0])]
         elif x.ndim == 1 and y.ndim == 1:
             return [constant_zero]
+        else:
+            _logger.warning(("OPTIMIZATION WARNING: "
+                             "Optimization theano/opt.py:local_0_dot_x "
+                             "Found that it could apply bug was not implemented"
+                             "for this input to dot:\n"
+                             "(%s,%s)") % (x.type, y.type))
+
 
 
 ######################
