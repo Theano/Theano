@@ -83,11 +83,11 @@ Acknowledgments
 ---------------
 
 I would like to thank all contributors of Theano. For this particular
-release, many people have helped during the release sprint:
-(in alphabetical order) Frederic Bastien, James Bergstra, Nicolas
-Boulanger-Lewandowski, Raul Chandias Ferrari, Olivier Delalleau,
-Guillaume Desjardins, Philippe Hamel, Pascal Lamblin, Razvan Pascanu and
-David Warde-Farley.
+release, many people have helped during the release sprint: (in
+alphabetical order) Frederic Bastien, Arnaud Bergeron, James Bergstra,
+Nicolas Boulanger-Lewandowski, Raul Chandias Ferrari, Olivier
+Delalleau, Guillaume Desjardins, Philippe Hamel, Pascal Lamblin,
+Razvan Pascanu and David Warde-Farley.
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
 its strength.
