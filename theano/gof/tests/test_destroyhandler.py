@@ -41,13 +41,15 @@ def MyValue(data):
 class MyOp(Op):
 
     def __init__(self, nin, name, vmap = {}, dmap = {}, nout = 1,
-            destroyhandler_tolerate_same = []):
+            destroyhandler_tolerate_same = [],
+            destroyhandler_tolerate_aliased = []):
         self.nin = nin
         self.nout = nout
         self.name = name
         self.destroy_map = dmap
         self.view_map = vmap
         self.destroyhandler_tolerate_same = destroyhandler_tolerate_same
+        self.destroyhandler_tolerate_aliased = destroyhandler_tolerate_aliased
     
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
@@ -66,7 +68,10 @@ sigmoid = MyOp(1, 'Sigmoid')
 transpose_view = MyOp(1, 'TransposeView', vmap = {0: [0]})
 add = MyOp(2, 'Add')
 add_in_place = MyOp(2, 'AddInPlace', dmap = {0: [0]})
-add_in_place_2 = MyOp(2, 'AddInPlace', dmap = {0: [0]}, destroyhandler_tolerate_same = [(0, 1)])
+add_in_place_2 = MyOp(2, 'AddInPlace', dmap = {0: [0]},
+        destroyhandler_tolerate_same = [(0, 1)])
+add_in_place_3 = MyOp(2, 'AddInPlace', dmap = {0: [0]},
+        destroyhandler_tolerate_aliased = [(0, 1)])
 dot = MyOp(2, 'Dot')
 
 
@@ -112,7 +117,6 @@ def inconsistent(g):
         print "Test failed! The graph was marked as consistent."
         raise
     print "Test OK"
-    
 
 
 
@@ -236,6 +240,22 @@ def test_aliased_inputs_tolerate2():
     e = add_in_place_2(x, transpose_view(x))
     g = Env([x], [e], False)
     inconsistent(g)
+
+def test_same_aliased_inputs_ignored():
+    x, y, z = inputs()
+    e = add_in_place_3(x, x)
+    g = Env([x], [e], False)
+    consistent(g)
+
+def test_different_aliased_inputs_ignored():
+    x, y, z = inputs()
+    e = add_in_place_3(x, transpose_view(x))
+    g = Env([x], [e], False)
+    consistent(g)
+    # warning - don't run this because it would produce the wrong answer
+    # add_in_place_3 is actually not correct when aliasing of inputs
+    # is ignored.
+
 
 def test_indestructible_through_views():
     x, y, z = inputs()
