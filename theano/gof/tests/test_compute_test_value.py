@@ -351,7 +351,7 @@ class TestComputeTestValue(unittest.TestCase):
 
             o = IncOneC()(i)
 
-            # Check that the c_code function is not implemented
+            # Check that the perform function is not implemented
             self.assertRaises((NotImplementedError, utils.MethodNotDefined),
                     o.owner.op.perform,
                     o.owner, 0, [None])
