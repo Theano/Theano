@@ -2129,6 +2129,18 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose( f2(), numpy.ones((10,)))
 
 def test_speed():
+    #
+    # This function prints out the speed of very simple recurrent
+    # calculations implemented in various ways.  In DebugMode this will test the
+    # correctness of the optimizations applied, but generally
+    # correctness-testing is not the goal of this test.
+    #
+    # To be honest, it isn't really a unit test so much as a tool for testing
+    # approaches to scan.
+    #
+    # The computation being tested here is a recurrent addition.
+    #
+    #
 
     r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000,10)
 
@@ -2188,6 +2200,19 @@ def test_speed():
         print shared_r.get_value()
 
 def test_speed_rnn():
+
+    #
+    # This function prints out the speed of recurrent neural network
+    # calculations implemented in various ways.  In DebugMode this will test the
+    # correctness of the optimizations applied, but generally
+    # correctness-testing is not the goal of this test.
+    #
+    # To be honest, it isn't really a unit test so much as a tool for testing
+    # approaches to scan.
+    #
+    # The computation being tested here is a repeated tanh of a matrix-vector
+    # multiplication - the heart of an ESN or RNN.
+    #
     import theano.scalar.sharedvar
     print """Warning: the updates version runs slower than python because by
     default the blas optimizations don't replace dot with dot22.  Why is that?"""
