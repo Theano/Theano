@@ -1783,7 +1783,7 @@ class SpecifyShape(Op):
         return [specify_shape(gz,s), None]
 
     def R_op(self, inputs, eval_points):
-        return [zeros_like(x) for x in self.make_node(*inputs).outputs ]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 specify_shape = SpecifyShape()
 

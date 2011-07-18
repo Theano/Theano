@@ -22,7 +22,7 @@ class test_rop(unittest.TestCase):
         v  = TT.vector('v')
         y  = TT.specify_shape(x, (5,))
         yv = TT.Rop(y,x,v)
-        rop_f = function([v,x], yv)
+        rop_f = function([x,v], yv)
         J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
                            sequences = TT.arange(x.shape[0]),
                            non_sequences = [y,x])
@@ -32,7 +32,7 @@ class test_rop(unittest.TestCase):
 
         v1 = rop_f(vx,vv)
         v2 = scan_f(vx,vv)
-        assert numpy.allclose(v1,v1)
+        assert numpy.allclose(v1,v2)
 
 
 class test_lop(unittest.TestCase):
@@ -46,7 +46,7 @@ class test_lop(unittest.TestCase):
         v  = TT.vector('v')
         y  = TT.specify_shape(x, (5,))
         yv = TT.Lop(y,x,v)
-        rop_f = function([v,x], yv)
+        rop_f = function([x,v], yv)
         J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
                            sequences = TT.arange(x.shape[0]),
                            non_sequences = [y,x])
@@ -56,6 +56,6 @@ class test_lop(unittest.TestCase):
 
         v1 = rop_f(vx,vv)
         v2 = scan_f(vx,vv)
-        assert numpy.allclose(v1,v1)
+        assert numpy.allclose(v1,v2)
 
 
