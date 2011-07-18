@@ -405,11 +405,8 @@ def _allclose(a, b):
 
     return numpy.allclose(a,b, atol=atol, rtol=rtol)
 
-def get_constant_value(v, return_ndarray = False):
+def get_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
-
-    If ``return_ndarray`` is True, it also returns numpy ndarrays if this is
-    the content of the constant.
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
     this function digs through them.
@@ -425,8 +422,6 @@ def get_constant_value(v, return_ndarray = False):
         # it is not a constant, but in some cases it *could* be replaced with one.
         # Note that this would have an effect on the broadcasting of inputs and so on
         try:
-            if return_ndarray and isinstance(v.data, numpy.ndarray):
-                return v.data
             numpy.complex(v.data) #works for all numeric scalars
             return v.data
         except:
