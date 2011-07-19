@@ -57,6 +57,39 @@ def safe_new(x, tag = ''):
     return nw_x
 
 
+class until(object):
+    """
+    Class used to encode the different things the inner function of scan can
+    (or needs) to return.
+
+    This class has to be used when scan needs to halt when a condition is
+    met, otherwise the list of outputs and dictionary can directly be return
+    as a tuple. The reason is that otherwise scan has no way to distinguish
+    between the condition and the list of outputs ( unless we enforce and
+    order, but since this was not impose up to know it can make quite a bit
+    of code to fail).
+    """
+    def __init__(self, condition, outputs = None, updates = None):
+        self.condition = tensor.as_tensor_variable(condition)
+        assert self.condition.ndim == 0
+        if outputs is None:
+            self.outputs = []
+        elif type(outputs) in (list, tuple):
+            self.outputs = list(outputs)
+        else:
+            self.outptus = [outputs]
+        if updates is None:
+            self.updates = {}
+        elif type(updates) is dict:
+            self.updates = updates
+        elif type(udpates) is (list, tuple):
+            self.updates = dict(updates)
+        else:
+            raise Exception( ('Scan could not parse the returned values by'
+                              ' the lambda function describing the inner'
+                              ' operations of scan '))
+
+
 def traverse(out, x,x_copy, d):
     ''' Function used by scan to parse the tree and figure out which nodes
     it needs to replace. There are two options :
