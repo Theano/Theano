@@ -1,7 +1,7 @@
 """ test code snippet in the Theano tutorials.
 """
 
-import os, unittest
+import os, shutil, unittest
 import theano
 import theano.tensor as T
 from theano import function
@@ -705,7 +705,7 @@ class T_aliasing(unittest.TestCase):
 
 
 class T_loading_and_saving(unittest.TestCase):
-    ## All tests here belog to
+    ## All tests here belong to
     ## http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
     ## Theano/doc/tutorial/loading_and_saving.txt
     ## Any change you do here also add it to the tutorial !
@@ -722,42 +722,42 @@ class T_loading_and_saving(unittest.TestCase):
 
         mode_instance = theano.compile.mode.get_mode(None)
         if not isinstance(mode_instance, theano.compile.debugmode.DebugMode):
-            if os.path.exists('obj.save') or os.path.exists('objects.save'):
-                # We do not want to delete these files silently, in case for
-                # some reason they would be something else than test-generated
-                # files.
-                # Ideally we would save those files in a temporary directory...
-                raise AssertionError(
-                        'Please get rid of files obj.save and '
-                        'objects.save in directory %s' % os.getcwd())
+            # Here, we work in a temporary directory in order not to clutter
+            # the Theano repository. Code relative to creating that dir and
+            # removing it afterwards should _not_ be backported to the tutorial.
+            from tempfile import mkdtemp
+            tmpdir = mkdtemp()
+            origdir = os.getcwd()
+            try:
+                os.chdir(tmpdir)
 
-            f = file('obj.save', 'wb')
-            cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
-            f.close()
+                f = file('obj.save', 'wb')
+                cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+                f.close()
 
 
-            f = file('obj.save', 'rb')
-            loaded_obj = cPickle.load(f)
-            f.close()
+                f = file('obj.save', 'rb')
+                loaded_obj = cPickle.load(f)
+                f.close()
 
-            obj1 = my_obj
-            obj2 = my_obj
-            obj3 = my_obj
+                obj1 = my_obj
+                obj2 = my_obj
+                obj3 = my_obj
 
-            f = file('objects.save', 'wb')
-            for obj in [obj1, obj2, obj3]:
-                cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
-            f.close()
+                f = file('objects.save', 'wb')
+                for obj in [obj1, obj2, obj3]:
+                    cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+                f.close()
 
-            f = file('objects.save', 'rb')
-            loaded_objects = []
-            for i in range(3):
-                loaded_objects.append(cPickle.load(f))
-            f.close()
-
-            # Cleanup created files.
-            os.remove('obj.save')
-            os.remove('objects.save')
+                f = file('objects.save', 'rb')
+                loaded_objects = []
+                for i in range(3):
+                    loaded_objects.append(cPickle.load(f))
+                f.close()
+            finally:
+                # Get back to the orinal dir, and temporary one.
+                os.chdir(origdir)
+                shutil.rmtree(tmpdir)
 
 class T_modes(unittest.TestCase):
     ## All tests here belog to
