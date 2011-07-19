@@ -184,7 +184,7 @@ class test_RopLop(unittest.TestCase):
 
 
     def test_max_argmax(self):
-        self.check_map_rop_lop(TT.max(self.mx, axis=1),
+        self.check_mat_rop_lop(TT.max(self.mx, axis=1),
                                (self.mat_in_shape[0],))
 
     def test_max_argmax(self):
