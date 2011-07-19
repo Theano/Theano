@@ -541,7 +541,78 @@ class Elemwise(Op):
         else:
             return self.name
 
+    def R_op(self, inputs, eval_points):
+        outs = self.make_node(*inputs).outputs
+        rval = [None for x in outs]
+        # For each output
+        for idx, out in enumerate(outs):
+            # make such that _bgrads computes only the gradients of the
+            # current output on the inputs ( and not all outputs)
+            ograds = [ theano.tensor.zeros_like(x) for x in outs]
+            ograds[idx] = theano.tensor.ones_like(out)
+
+            bgrads = self._bgrad(inputs, ograds)
+            rop_out = None
+
+            for jdx, (inp, eval_point) in enumerate(zip(inputs,
+                                                        eval_points)):
+                # if None, then we can just ignore this branch ..
+                # what we do is to assume that for any non-differentiable
+                # branch, the gradient is actually 0, which I think is not
+                # the right thing to do .. have to talk to Ian and James
+                # about it
+
+                if bgrads[jdx] is None:
+                    pass
+                elif eval_point is not None:
+                    if rop_out is None:
+                        rop_out = bgrads[jdx]*eval_point
+                    else:
+                        rop_out = rop_out + bgrads[jdx]*eval_point
+
+            rval[idx] = rop_out
+
+        return rval
+
     def grad(self, inputs, ograds):
+
+        #compute grad with respect to broadcasted input
+        rval = self._bgrad(inputs,ograds)
+
+        #sum out the broadcasted dimensions
+        for i, ipt in enumerate(inputs):
+            if rval[i] is None:
+                continue
+
+            # list of all the dimensions that are broadcastable for input[i] so we
+            # can sum over them
+            # todo: only count dimensions that were effectively broadcasted
+            to_sum = [j for j, bcast in enumerate(ipt.type.broadcastable) if bcast]
+
+            if to_sum:
+                shuffle = []
+                j = 0
+                for bcast in ipt.type.broadcastable:
+                    if bcast == 1:
+                        shuffle.append('x')
+                    else:
+                        shuffle.append(j)
+                        j += 1
+                    #close if
+                #close for
+                sr = Sum(axis = to_sum)(rval[i])
+                sr = sr.dimshuffle(shuffle)
+                #sr = DimShuffle(sr.type.broadcastable, shuffle)(sr)
+                rval[i] = sr
+            #close if
+        #close for
+
+        return rval
+
+
+    def _bgrad(self, inputs, ograds):
+        # returns grad, with respect to broadcasted versions of inputs
+
         # Gradients (especially on the final costs) don't have to be symbolic
         # e.g., ograds will be [ 1. ] if your objective is c and the output
         # of the current apply node is c
@@ -565,35 +636,17 @@ class Elemwise(Op):
                                             broadcastable = ()),
                                      numpy.asarray(r.data)) # .reshape(b)
                 return DimShuffle((), ['x']*nd, inplace = True)(res)
-            new_r = Elemwise(node.op, {})(*[transform(input) for input in node.inputs])
+            new_r = Elemwise(node.op, {})(*[transform(ipt) for ipt in node.inputs])
             return new_r
         ret = []
-        for scalar_igrad, input in zip(scalar_igrads, inputs):
+        for scalar_igrad, ipt in zip(scalar_igrads, inputs):
             if scalar_igrad is None:
                 # undefined gradient
                 ret.append(None)
                 continue
-            r = transform(scalar_igrad)
+            ret.append( transform(scalar_igrad))
 
-            # list of all the dimensions that are broadcastable for that input so we
-            # can sum over them
-            # todo: only count dimensions that were effectively broadcasted
-            to_sum = [i for i, bcast in enumerate(input.type.broadcastable) if bcast]
 
-            if to_sum:
-                shuffle = []
-                j = 0
-                for bcast in input.type.broadcastable:
-                    if bcast == 1:
-                        shuffle.append('x')
-                    else:
-                        shuffle.append(j)
-                        j += 1
-                sr = Sum(axis = to_sum)(r)
-                sr = DimShuffle(sr.type.broadcastable, shuffle)(sr)
-                ret.append(sr)
-            else:
-                ret.append(r)
         return ret
 
     def perform(self, node, inputs, output_storage):
