@@ -9,6 +9,8 @@ from theano import tensor
 from theano.tests  import unittest_tools as utt
 from theano.compile.pfunc import rebuild_collect_shared
 
+import theano.tensor as TT
+
 
 '''
   Questions and notes about scan that should be answered :
