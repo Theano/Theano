@@ -4561,6 +4561,8 @@ class ARange(Op):
         gz, = grads
         return [None] * len(inputs)
 
+    def R_op(self, inputs, eval_points):
+        return [None]
 _arange = {}
 def arange(start, stop=None, step=1, dtype=None):
     # If only one argument is provided, it is in fact the "stop" argument,
