@@ -4869,6 +4869,13 @@ class AdvancedIncSubtensor1(Op):
         x, y, ilist = ishapes
         return [x]
 
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1],
+                              *inputs[2:]).outputs
+
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
