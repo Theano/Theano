@@ -4431,6 +4431,11 @@ class Flatten(Op):
         g_out, = grads
         return [reshape(g_out, shape(x), x.ndim)]
 
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+        return self.make_node(*eval_points).outputs
+
 def flatten(x, outdim=1):
     return Flatten(outdim)(x)
 
