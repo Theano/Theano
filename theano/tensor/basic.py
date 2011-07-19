@@ -3788,6 +3788,10 @@ class Split(Op):
         _, axis, _ = inputs
         return [join(axis, *g_outputs), None, None]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0]  is None:
+            return [None for i in self.len_splits]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 class Rebroadcast(Op):
     """
