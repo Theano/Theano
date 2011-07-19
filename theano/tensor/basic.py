@@ -3358,6 +3358,13 @@ class Subtensor(Op):
         hv = self.helper_c_code_cache_version()
         return (1, hv)
 
+    def R_op(self, inputs, eval_points):
+        # Subtensor is not differentiable wrt to its indices, therefore we
+        # do not even need to consider the eval_points provided for those
+        # (they should be defaulted to zeros_like by the global R_op)
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 class SubtensorPrinter:
 
