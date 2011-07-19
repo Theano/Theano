@@ -152,7 +152,7 @@ class test_RopLop(unittest.TestCase):
 
         v1 = rop_f(vx,vv)
         v2 = scan_f(vx,vv)
-        assert numpy.allclose(v1,v2)
+        assert numpy.allclose(v1,v2), ('ROP mismatch: %s %s' % (v1, v2))
         self.check_nondiff_rop( theano.clone(y,
                                              replace={self.x:break_op(self.x)}))
 
@@ -172,7 +172,7 @@ class test_RopLop(unittest.TestCase):
 
         v1 = lop_f(vx,vv)
         v2 = scan_f(vx,vv)
-        assert numpy.allclose(v1,v2)
+        assert numpy.allclose(v1,v2), ('LOP mismatch: %s %s' % (v1, v2))
 
 
     def test_shape(self):
