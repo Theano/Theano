@@ -720,3 +720,8 @@ def find_up(l_node, f_node):
     nodes = graph.io_toposort(l_ins, l_outs)
     return f_node in nodes
 
+
+def flatten(l):
+    """flattens a list by one level only"""
+    return sum(l , [])
+
