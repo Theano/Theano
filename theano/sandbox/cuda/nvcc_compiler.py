@@ -1,4 +1,4 @@
-import sys, os, subprocess, logging
+import sys, os, subprocess, logging, warnings
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension, local_bitwidth)
 import distutils
@@ -13,9 +13,19 @@ AddConfigVar('nvcc.compiler_bindir',
         "If defined, nvcc compiler driver will seek g++ and gcc in this directory",
         StrParam(""))
 
+AddConfigVar('cuda.nvccflags',
+        "DEPRECATED, use nvcc.flags instead",
+        StrParam("", allow_override=False),
+        in_c_key=False)
+
+if config.cuda.nvccflags != '':
+    warnings.warn('Configuration variable cuda.nvccflags is deprecated. '
+            'Please use nvcc.flags instead. You provided value: %s'
+            % config.cuda.nvccflags)
+
 AddConfigVar('nvcc.flags',
         "Extra compiler flags for nvcc",
-        StrParam(""))
+        StrParam(config.cuda.nvccflags))
 
 AddConfigVar('nvcc.fastmath',
         "",
