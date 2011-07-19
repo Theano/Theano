@@ -4347,6 +4347,13 @@ class Reshape(Op):
         x, shp = inp
         g_out, = grads
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+	    return self.make_node(eval_points[0], *inputs[1:]).outputs
+
+
     def infer_shape(self, node, ishapes):
         # inputs[1] can contain at most one value of '-1', meaning the actual
         # shape of the output will be automatically computed by reshape, so
