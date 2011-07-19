@@ -418,14 +418,15 @@ def get_constant_value(v):
     """
 
     if isinstance(v, Constant):
-        #TODO: consider checking for arrays of the form e.g. [1,1,1,1] where
-        # it is not a constant, but in some cases it *could* be replaced with one.
-        # Note that this would have an effect on the broadcasting of inputs and so on
+        if getattr(v.tag, 'unique_value', None) is not None:
+            data = v.tag.unique_value
+        else:
+            data = v.data
         try:
-            numpy.complex(v.data) #works for all numeric scalars
-            return v.data
+            numpy.complex(data) #works for all numeric scalars
+            return data
         except:
-            raise TypeError('v.data is non-numeric or non-scalar', v)
+            raise TypeError('v.data is non-numeric, non-scalar, or has more than one unique value', v)
     if v.owner:
         if isinstance(v.owner.op, Alloc):
             return get_constant_value(v.owner.inputs[0])
@@ -5342,7 +5343,7 @@ def Rop(f, wrt, eval_points):
     if len(rval) == 1:
         return rval[0]
     else:
-         return rval
+        return rval
 
 
 def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
