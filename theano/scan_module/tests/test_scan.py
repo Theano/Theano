@@ -2239,7 +2239,7 @@ def test_speed_rnn():
                 sequences=[s_r[1:]],
                 outputs_info=tensor.constant(r[0]))
         assert not updates
-        f = theano.function([s_r], s_y, mode='FAST_RUN_NOGC')
+        f = theano.function([s_r], s_y, mode=theano.Mode(linker='c|py_nogc'))
 
         t2 = time.time()
         f(r)
@@ -2263,9 +2263,10 @@ def test_speed_rnn():
                     s_i: s_i+1,
                     shared_r: s_rinc,
                     },
-                mode='CVM')
+                mode=theano.Mode(linker='cvm'))
         theano.printing.debugprint(f )
         f_fn = f.fn
+        print f_fn
         t2 = time.time()
         f_fn(n_calls=L-2)
         f() #999 to update the profiling timers
