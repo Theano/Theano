@@ -77,49 +77,183 @@ class BreakRop(Op):
     def R_op(self, inputs, eval_points):
         return [None]
 
-    def test_specifyshape(self):
-        rng  = numpy.random.RandomState(utt.fetch_seed())
-        vx = numpy.asarray(rng.uniform(size=(5,)), theano.config.floatX)
-        vv = numpy.asarray(rng.uniform(size=(5,)), theano.config.floatX)
-
-        x  = TT.vector('x')
-        v  = TT.vector('v')
-        y  = TT.specify_shape(x, (5,))
-        yv = TT.Rop(y,x,v)
-        rop_f = function([x,v], yv)
-        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
-                           sequences = TT.arange(x.shape[0]),
-                           non_sequences = [y,x])
-        sy = TT.dot(J, v)
-
-        scan_f = function([x,v], sy)
-
-        v1 = rop_f(vx,vv)
-        v2 = scan_f(vx,vv)
-        assert numpy.allclose(v1,v2)
+break_op = BreakRop()
 
 
-class test_lop(unittest.TestCase):
+class test_RopLop(unittest.TestCase):
 
-    def test_specifyshape(self):
-        rng  = numpy.random.RandomState(utt.fetch_seed())
-        vx = numpy.asarray(rng.uniform(size=(5,)), theano.config.floatX)
-        vv = numpy.asarray(rng.uniform(size=(5,)), theano.config.floatX)
+    def setUp(self):
+        # Using vectors make things a lot simpler for generating the same
+        # computations using scan
+        self.x = TT.vector('x')
+        self.v = TT.vector('v')
+        self.rng  = numpy.random.RandomState(utt.fetch_seed())
+        self.in_shape = ( 5+self.rng.randint(30),)
+        self.mx = TT.matrix('mx')
+        self.mv = TT.matrix('mv')
+        self.mat_in_shape = ( 5 + self.rng.randint(30),
+                             5+self.rng.randint(30))
 
-        x  = TT.vector('x')
-        v  = TT.vector('v')
-        y  = TT.specify_shape(x, (5,))
-        yv = TT.Lop(y,x,v)
-        rop_f = function([x,v], yv)
-        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
-                           sequences = TT.arange(x.shape[0]),
-                           non_sequences = [y,x])
-        sy = TT.dot(v, J)
+    def check_nondiff_rop(self, y):
+        raised = False
+        try:
+            tmp = TT.Rop(y, self.x, self.v)
+        except ValueError:
+            raised = True
+        if not raised:
+            self.fail((
+                'Op did not raised an error even though the function'
+                ' is not differentiable'))
 
-        scan_f = function([x,v], sy)
+    def check_mat_rop_lop(self, y, out_shape):
+        vx = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
+        vv = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
+        yv = TT.Rop(y, self.mx, self.mv)
+        rop_f = function([self.mx, self.mv], yv)
+        sy, _ = theano.scan( lambda i,y,x,v: (TT.grad(y[i],x)*v).sum(),
+                           sequences = TT.arange(y.shape[0]),
+                           non_sequences = [y,self.mx,self.mv])
+        scan_f = function([self.mx,self.mv], sy)
+
 
         v1 = rop_f(vx,vv)
         v2 = scan_f(vx,vv)
         assert numpy.allclose(v1,v2)
+        self.check_nondiff_rop( theano.clone(y,
+                                             replace={self.mx:break_op(self.mx)}))
+
+        vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
+        yv = TT.Lop(y, self.mx, self.v)
+        lop_f = function([self.mx, self.v], yv)
+        sy, _ = theano.scan( lambda i,y,x,v: (TT.grad(y[i]*v[i],x))[i],
+                           sequences = TT.arange(y.shape[0]),
+                           non_sequences = [y,self.mx,self.v])
+        scan_f = function([self.mx, self.v], sy)
+
+
+        v1 = lop_f(vx,vv)
+        v2 = scan_f(vx,vv)
+        assert numpy.allclose(v1,v2)
+
+
+    def check_rop_lop(self, y, out_shape):
+        # TEST ROP
+        vx = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
+        vv = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
+
+        yv = TT.Rop(y,self.x,self.v)
+        rop_f = function([self.x,self.v], yv)
+        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
+                           sequences = TT.arange(y.shape[0]),
+                           non_sequences = [y,self.x])
+        sy = TT.dot(J, self.v)
+
+        scan_f = function([self.x,self.v], sy)
+
+        v1 = rop_f(vx,vv)
+        v2 = scan_f(vx,vv)
+        assert numpy.allclose(v1,v2)
+        self.check_nondiff_rop( theano.clone(y,
+                                             replace={self.x:break_op(self.x)}))
+
+        # TEST LOP
+
+        vx = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
+        vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
+
+        yv = TT.Lop(y,self.x,self.v)
+        lop_f = function([self.x,self.v], yv)
+        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
+                           sequences = TT.arange(y.shape[0]),
+                           non_sequences = [y,self.x])
+        sy = TT.dot(self.v, J)
+
+        scan_f = function([self.x,self.v], sy)
+
+        v1 = lop_f(vx,vv)
+        v2 = scan_f(vx,vv)
+        assert numpy.allclose(v1,v2)
+
+
+    def test_shape(self):
+        self.check_nondiff_rop( self.x.shape[0])
+
+    def test_specifyshape(self):
+        self.check_rop_lop(TT.specify_shape(self.x, self.in_shape),
+                           self.in_shape)
+
+
+    def test_max_argmax(self):
+        self.check_map_rop_lop(TT.max(self.mx, axis=1),
+                               (self.mat_in_shape[0],))
+
+    def test_max_argmax(self):
+        self.check_nondiff_rop(TT.argmax(self.mx,axis=1))
+
+    def test_subtensor(self):
+        self.check_rop_lop(self.x[:4], (4,))
+
+    def test_incsubtensor1(self):
+        tv = numpy.asarray( self.rng.uniform(size=(3,)),
+                           theano.config.floatX)
+        t = theano.shared(tv)
+        out = TT.inc_subtensor(self.x[:3], t)
+        self.check_rop_lop(out, self.in_shape)
+
+
+    def test_incsubtensor1(self):
+        tv = numpy.asarray( self.rng.uniform(size=(10,)),
+                           theano.config.floatX)
+        t = theano.shared(tv)
+        out = TT.inc_subtensor(t[:4], self.x[:4])
+        self.check_rop_lop(out, (10,))
+
+
+    def test_setsubtensor1(self):
+        tv = numpy.asarray( self.rng.uniform(size=(3,)),
+                           theano.config.floatX)
+        t = theano.shared(tv)
+        out = TT.set_subtensor(self.x[:3], t)
+        self.check_rop_lop(out, self.in_shape)
+
+
+    def test_setsubtensor1(self):
+        tv = numpy.asarray( self.rng.uniform(size=(10,)),
+                           theano.config.floatX)
+        t = theano.shared(tv)
+        out = TT.set_subtensor(t[:4], self.x[:4])
+        self.check_rop_lop(out, (10,))
+
+
+    def test_join(self):
+        tv = numpy.asarray( self.rng.uniform(size=(10,)),
+                           theano.config.floatX)
+        t = theano.shared(tv)
+        out = TT.join(0, self.x, t)
+        self.check_rop_lop(out, (self.in_shape[0]+10,))
+
+    def test_dot(self):
+        insh = self.in_shape[0]
+        vW   = numpy.asarray(self.rng.uniform(size=(insh,insh)),
+                           theano.config.floatX)
+        W = theano.shared(vW)
+        self.check_rop_lop( TT.dot(self.x, W), self.in_shape)
+
+
+    def test_elemwise0(self):
+        self.check_rop_lop( (self.x+1)**2, self.in_shape)
+
+    def test_elemwise1(self):
+        self.check_rop_lop( self.x+TT.cast(self.x, 'int32'),
+                           self.in_shape)
+
+    def test_sum(self):
+        self.check_mat_rop_lop(self.mx.sum(axis=1), (self.mat_in_shape[0],))
+
+
+    def test_softmax(self):
+        # Softmax adds an extra dimnesion !
+        self.check_rop_lop( TT.nnet.softmax(self.x)[0], self.in_shape)
+
 
 
