@@ -707,3 +707,16 @@ def compress_outs(op, not_required, inputs):
     node_inputs += inputs[ni_offset+op.n_shared_outs+op.n_nit_sot:]
 
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
+
+def find_up(l_node, f_node):
+    r"""
+    Goes up in the graph and returns True if a node in nodes is found.
+    """
+    if isinstance(l_node, gof.Apply):
+        l_outs = l_node.outputs
+    else:
+        l_outs = l_node
+    l_ins  = graph.inputs(l_outs)
+    nodes = graph.io_toposort(l_ins, l_outs)
+    return f_node in nodes
+
