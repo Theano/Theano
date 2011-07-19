@@ -253,7 +253,15 @@ class test_RopLop(unittest.TestCase):
 
     def test_softmax(self):
         # Softmax adds an extra dimnesion !
-        self.check_rop_lop( TT.nnet.softmax(self.x)[0], self.in_shape)
+        self.check_rop_lop( TT.nnet.softmax(self.x)[0], self.in_shape[0])
 
+    def test_alloc(self):
+        # Alloc of the sum of x into a vector
+        out1d = TT.alloc(self.x.sum(), self.in_shape[0])
+        self.check_rop_lop(out1d, self.in_shape[0])
 
-
+        # Alloc of x into a 3-D tensor, flattened
+        out3d = TT.alloc(self.x,
+                self.mat_in_shape[0], self.mat_in_shape[1], self.in_shape[0])
+        self.check_rop_lop(out3d.flatten(),
+                self.mat_in_shape[0] * self.mat_in_shape[1] * self.in_shape[0])
