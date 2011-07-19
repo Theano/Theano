@@ -1793,6 +1793,10 @@ class SpecifyShape(Op):
         return [specify_shape(gz,s), None]
 
     def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            # It means that the this op sits on top of a non-differentiable
+            # path
+            return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 specify_shape = SpecifyShape()
