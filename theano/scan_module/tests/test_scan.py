@@ -383,9 +383,6 @@ class T_Scan(unittest.TestCase):
         assert len(scan_node) == 1
         scan_node = scan_node[0]
         scan_node_topo = scan_node.op.fn.maker.env.toposort()
-        #theano.printing.pydotprint(f2, outfile='out2.png', high_contrast=True)
-        #theano.printing.pydotprint(scan_node.op.fn,
-        #                           outfile='inner2.png', high_contrast=True)
 
         # check that there is no gpu transfer in the inner loop.
         assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in scan_node_topo])
@@ -1437,8 +1434,8 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(f([2,3]) , 5)
 
     def test_computing_gradient(self):
-        x1 = theano.tensor.scalar()
-        x2 = theano.shared(numpy.array([1,2,3,4,5]))
+        x1 = theano.tensor.scalar('x1')
+        x2 = theano.shared(numpy.array([1,2,3,4,5]), name = 'x2')
         K = x2*x1
 
         out,updates = theano.scan(lambda i,v: theano.tensor.grad(K[i], v),
@@ -1494,6 +1491,9 @@ class T_Scan(unittest.TestCase):
           iteration.
 
         This unit test addresses the bug fix of changeset ba7157e95cb1.
+
+        !!! test lost some of its meaning because return_steps has been
+        depricated !!!
         """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
@@ -1503,8 +1503,9 @@ class T_Scan(unittest.TestCase):
             return a+1, {b:2*b}
 
         out, updates = theano.scan(inner_func,
-                outputs_info = [{'initial': init_a, 'return_steps': 1}],
+                outputs_info = [{'initial': init_a}],
                 n_steps=1)
+        out = out[-1]
         assert out.type.ndim == a.type.ndim
         assert updates[b].type.ndim == b.type.ndim
 
@@ -1717,69 +1718,6 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_y , v_y)
 
 
-    ### TEST  store steps / return steps
-
-    def test_return_steps(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
-        vW     = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
-        vWout  = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
-        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
-        v_u1   = asarrayX(rng.uniform(size = (8,2), low = -5., high = 5.))
-        v_u2   = asarrayX(rng.uniform(size = (8,), low = -5.,high = 5.))
-        v_x0   = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
-        v_y0   = asarrayX(rng.uniform(size = (3,)))
-
-        W_in2 = theano.shared(vW_in2, name='win2')
-        W     = theano.shared(vW, name='w')
-        W_out = theano.shared(vWout, name = 'wout')
-        W_in1 = theano.tensor.matrix('win')
-        u1    = theano.tensor.matrix('u1')
-        u2    = theano.tensor.vector('u2')
-        x0    = theano.tensor.vector('x0')
-        y0    = theano.tensor.vector('y0')
-
-        def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, y_tm3, W_in1):
-            return [y_tm3+1, theano.dot(u1_t,W_in1) + u2_t * W_in2 + \
-                    theano.dot(x_tm1, W),
-                    y_tm1 + theano.dot(x_tm1, W_out)]
-
-        outputs, updates = theano.scan( f_rnn_cmpl
-                                       , [ u1
-                                          , u2]
-                                       , [ dict(store_steps = 3)
-                                          , dict(initial = x0, return_steps = 2)
-                                          , dict(initial=y0, taps=[-1,-3],
-                                                 return_steps = 4)]
-                                       , W_in1
-                                       , n_steps           = None
-                                       , truncate_gradient = -1
-                                       , go_backwards      = False)
-
-        f4     = theano.function([u1,u2,x0,y0,W_in1], outputs
-                                 , updates = updates
-                                 , allow_input_downcast = True
-                                )
-
-
-        # compute the values in numpy
-        v_x = numpy.zeros((8,2),dtype=theano.config.floatX)
-        v_y = numpy.zeros((8,),dtype=theano.config.floatX)
-        v_x[0] = numpy.dot(v_u1[0],vW_in1) + v_u2[0]*vW_in2 + \
-                    numpy.dot(v_x0,vW)
-        v_y[0] = numpy.dot(v_x0,vWout) + v_y0[2]
-
-        for i in xrange(1,8):
-
-            v_x[i] = numpy.dot(v_u1[i],vW_in1) + v_u2[i]*vW_in2 + \
-                        numpy.dot(v_x[i-1],vW)
-            v_y[i] = numpy.dot(v_x[i-1], vWout) + v_y[i-1]
-
-        (theano_dump, theano_x,theano_y) =  f4( v_u1, v_u2, v_x0, v_y0, vW_in1)
-
-        assert numpy.allclose(theano_x , v_x[-2:])
-        assert numpy.allclose(theano_y , v_y[-4:])
-
 
 
     def test_scan_as_tensor_on_gradients(self):
@@ -1832,19 +1770,20 @@ class T_Scan(unittest.TestCase):
                     theano.dot(x_tm1, W),
                     y_tm1 + theano.dot(x_tm1, W_out)]
 
-        outputs, updates = theano.scan( f_rnn_cmpl
+        _outputs, updates = theano.scan( f_rnn_cmpl
                                        , [ u1
                                           , u2]
-                                       , [ dict(return_steps = 1)
-                                          , dict(initial = x0
-                                                 , return_steps = 1)
-                                          , dict(initial=y0, taps=[-1,-3],
-                                                 return_steps = 1)]
+                                       , [ None
+                                          , dict(initial = x0)
+                                          , dict(initial=y0, taps=[-1,-3])]
                                        , W_in1
                                        , n_steps           = None
                                        , truncate_gradient = -1
                                        , go_backwards      = False)
-
+        outputs = [ \
+                   _outputs[0][-1],
+                   _outputs[1][-1],
+                   _outputs[2][-1] ]
         f4     = theano.function([u1,u2,x0,y0,W_in1], outputs
                                  , updates = updates
                                  , allow_input_downcast = True
@@ -1989,7 +1928,7 @@ class T_Scan(unittest.TestCase):
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
     def test_remove_stuff(self):
-        x = theano.tensor.vector()
+        x = theano.tensor.vector('x')
 
         def lm(m):
             trng  = theano.tensor.shared_randomstreams.RandomStreams(
@@ -2002,6 +1941,7 @@ class T_Scan(unittest.TestCase):
                                        sequences = x,
                                        n_steps = None,
                                        truncate_gradient = -1,
+                                       name ='forward',
                                        go_backwards = False)
         go1 = theano.tensor.grad(o1.mean(), wrt = x)
         f = theano.function([x],go1, updates = updates,
@@ -2010,9 +1950,10 @@ class T_Scan(unittest.TestCase):
 
         #theano.printing.debugprint(f, print_type=True)
         topo = f.maker.env.toposort()
+        # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
-        self.assertTrue(nb_scan == 2)
+        self.assertTrue(nb_scan == 1)
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
         if theano.config.mode != 'FAST_COMPILE':
