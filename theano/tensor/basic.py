@@ -2490,7 +2490,10 @@ class Alloc(gof.Op):
         return ret
 
     def R_op(self, inputs, eval_points):
-        return [None]
+        # There is only one entry in eval_points and inputs
+        if None in eval_points
+            return [None]
+        return self.make_node(*eval_points).outputs
 
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
