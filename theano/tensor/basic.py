@@ -2494,10 +2494,9 @@ class Alloc(gof.Op):
         return ret
 
     def R_op(self, inputs, eval_points):
-        # There is only one entry in eval_points and inputs
-        if None in eval_points:
+        if eval_points[0] is None:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
@@ -5335,5 +5334,3 @@ class Outer(Op):
     def __str__(self):
         return "outer"
 outer = Outer()
-
-
