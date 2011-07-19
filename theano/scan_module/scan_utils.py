@@ -144,58 +144,120 @@ def get_updates_and_outputs(outputs_updates):
     """
     outputs = []
     updates = {}
+    cond = None
+
+    def pick_from2(elem0, elem1):
+        lupd = {}
+        lout = []
+        if ( isinstance(elem0,dict) or
+                ( isinstance(elem0, (list,tuple)) and
+                    isinstance(elem0[0], (list,tuple)))):
+            # elem0 is the updates dictionary / list
+            lupd = dict(elem0)
+            lout = elem1
+            if not isinstance(outputs, (list,tuple)):
+                lout = [outputs]
+        elif ( isinstance(elem1, dict) or
+                ( isinstance(elem1, (list,tuple)) and
+                    isinstance(elem1[0], (list,tuple))) ):
+            # elem1 is the updates dictionary / list
+            lupd = dict(elem1)
+            lout = elem0
+            if not isinstance(outputs, (list,tuple)):
+                lout = [outputs]
+        else :
+            if ( isinstance(outputs_updates, (list,tuple)) and
+                    isinstance(outputs_updates[0], (list,tuple))):
+                lout = []
+                lupd = dict(outputs_updates)
+            else:
+                lout = outputs_updates
+                lupd = {}
+        return lupd, lout
+
+    def pick_from1(elem0):
+        lupd = {}
+        lout = []
+        if ( isinstance(elem0, dict) or
+            (isinstance(elem0, (list,tuple)) and
+             isinstance(elem0[0], (list, tuple)))):
+            lupd = dict(elem0)
+        else:
+            if not isinstance(elem0, (list, tuple)):
+                lout = [elem0]
+            else:
+                lout = elem0
+        return lupd, lout
 
     # we will try now to separate the outputs from the updates
     if not isinstance(outputs_updates, (list,tuple)):
         if isinstance(outputs_updates, dict) :
             # we have just an update dictionary
             updates = outputs_updates
+        elif isinstance(outputs_updates, until):
+            updates = outputs_updates.updates
+            outputs = outputs_updates.outputs
+            cond    = outputs_updates.condition
         else:
             outputs = [outputs_updates]
     elif len(outputs_updates) == 1:
-        if isinstance(outputs_updates[0], (dict, tuple)):
-            updates = dict(otuputs_updates[1])
+            rval = pick_from1(outputs_updates)
+            updates = rval[0]
+            outputs = rval[1]
+    elif len(outputs_updates) == 2:
+        elem0 = outputs_updates[0]
+        elem1 = outputs_updates[1]
+        if isinstance(elem0,until):
+            cond = elem0.condition
+            rval = pick_from1(elem1)
+            updates = rval[0].updates(elem0.updates)
+            outputs = rval[1] + elem0.outputs
+        elif isinstance(elem1, until):
+            cond = elem1.condition
+            rval = pick_from1(elem0)
+            updates = rval[0].update(elem1.updates)
+            outputs = rval[1] + elem1.outputs
+        else:
+            rval = pick_from2(elem0, elem1)
+            updates = rval[0]
+            outputs = rval[1]
+    elif len(outputs_updates) == 3:
+        elem0 = outputs_updates[0]
+        elem1 = outputs_updates[1]
+        elem2 = outputs_updates[2]
+        if isinstance(elem0, until):
+            cond = elem0.condition
+            rval = pick_from2(elem1, elem2)
+            updates = rval[0].update(elem0.updates)
+            outputs = rval[1] + elem0.outputs
+        elif isinstance(elem1, until):
+            cond = elem1.condition
+            rval = pick_from2(elem0, elem2)
+            updates = rval[0].update(elem1.updates)
+            outputs = rval[1] + elem1.outputs
+        elif isinstance(elem2, until):
+            cond = elem2.condition
+            rval = pick_from2(elem0, elem1)
+            updates = rval[0].update(elem2.updates)
+            outputs = rval[1] + elem2.outputs
         else:
             outputs = outputs_updates
     else:
-        elem0 = outputs_updates[0]
-        elem1 = outputs_updates[1]
-        t_el0 = type(elem0)
-        t_el1 = type(elem1)
-        if ( t_el0 == dict or
-                ( t_el0 in (list,tuple) and
-                    isinstance(elem0[0], (list,tuple)))):
-            # elem0 is the updates dictionary / list
-            updates = elem0
-            outputs = elem1
-            if not isinstance(outputs, (list,tuple)):
-                outputs = [outputs]
-        elif ( isinstance(elem1, dict) or
-                ( isinstance(elem1, (list,tuple)) and
-                    isinstance(elem1[0], (list,tuple))) ):
-            # elem1 is the updates dictionary / list
-            updates = elem1
-            outputs = elem0
-            if not isinstance(outputs, (list,tuple)):
-                outputs = [outputs]
-        else :
-            if ( isinstance(outputs_updates, (list,tuple)) and
-                    isinstance(outputs_updates[0], (list,tuple))):
-                outputs = []
-                updates = outputs_updates
-            else:
-                outputs = outputs_updates
-                updates = {}
+        outputs = outputs_updates
 
     # in case you return a tuple .. convert it to a list (there are certain
     # operation that are not permited on tuples, like element assignment)
-    outputs = list(outputs)
+    if not isinstance(outputs, (list, tuple)):
+        outputs = [outputs]
+    else:
+        outputs = list(outputs)
 
     # If you return numbers (highly unlikely) this will not go well for
     # theano. We need to convert them to Theano constants:
     for i,out in enumerate(outputs):
         outputs[i] = tensor.as_tensor(out)
 
+    #return cond, outputs, updates
     return outputs, updates
 
 
