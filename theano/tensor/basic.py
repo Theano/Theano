@@ -3670,6 +3670,14 @@ class IncSubtensor(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None or eval_points[1] is None:
+            return [None]
+        # Again we ignore eval points for indices because incsubtensor is
+        # not differentiable wrt to those
+        return self.make_node(eval_points[0], eval_points[1],
+                            *inputs[2:]).outputs
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
