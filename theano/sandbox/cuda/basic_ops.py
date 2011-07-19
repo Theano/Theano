@@ -50,7 +50,20 @@ class HostFromGpu(Op):
         z[0] = numpy.asarray(x)
     def grad(self, inputs, grads):
         gz, = grads
-        return [gpu_from_host(gz)]
+        if isinstance(gz, tensor.TensorType):
+            # This would only happen if you call Lop, and provide a tensor
+            # that is not cuda
+            # This might require another look to be sure
+            return [gpu_from_host(gz)]
+        else:
+            return [gz]
+
+    def R_op(self, inputs, eval_points):
+        ev, = eval_points
+        if isinstance(ev, tensor.TensorType):
+            return [gpu_from_host(ev)]
+        else:
+            return [ev]
     def infer_shape(self, node, xshp):
         return xshp
 host_from_gpu = HostFromGpu()
@@ -72,7 +85,21 @@ class GpuFromHost(Op):
         z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
     def grad(self, inputs, grads):
         gz, = grads
-        return [host_from_gpu(gz)]
+        if isinstance(gz,CudaNdarrayType):
+            # This would only happen if you call Lop, and provide a tensor
+            # that is not cuda
+            # This might require another look to be sure
+            return [host_from_gpu(gz)]
+        else:
+            return [gz]
+
+    def R_op(self, inputs, eval_points):
+        ev, = eval_points
+        if isinstance(ev, CudaNdarrayType):
+            return [host_from_gpu(ev)]
+        else:
+            return [ev]
+
     def infer_shape(self, node, xshp):
         return xshp
 gpu_from_host = GpuFromHost()
