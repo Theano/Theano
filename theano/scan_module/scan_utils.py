@@ -726,13 +726,15 @@ def flatten(l):
     return sum(l , [])
 
 
-def reconstruct_graph(inputs, outputs, tag):
+def reconstruct_graph(inputs, outputs, tag = None):
     """
     Different interface to clone, that allows you to pass inputs.
     Compared to clone, this method always replaces the inputs with
     new variables of the same type, and returns those ( in the same
     order as the original inputs).
     """
+    if tag is None:
+        tag = ''
     nw_inputs = [safe_new(x,tag) for x in inputs]
     givens = {}
     for nw_x, x in zip(nw_inputs, inputs):

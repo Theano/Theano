@@ -105,9 +105,9 @@ def rebuild_collect_shared( outputs
                                 , (v, v.type, v_update, v_update.type))
                         update_d[v] = v_update
                         update_expr.append((v, v_update))
-        if not copy_inputs_over and not isinstance(v, Constant):
+        if not copy_inputs_over or isinstance(v, Constant):
             ### Cloning shared variables implies copying their underlying
-            ### memory buffer ??
+            ### memory buffer ?? No.
             return clone_d.setdefault(v,v.clone())
         else:
             return clone_d.setdefault(v,v)
