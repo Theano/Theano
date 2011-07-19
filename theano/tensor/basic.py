@@ -3852,6 +3852,13 @@ class Rebroadcast(Op):
 
         return [tuple(l)]
 
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(*eval_points).outputs
+
+
 def addbroadcast(x, *axes):
     """
     Make the input broadcastable in the specified axes.
