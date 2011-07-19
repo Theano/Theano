@@ -1240,6 +1240,11 @@ class Sum(CAReduce):
                 i += 1
         return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
 
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+        return self.make_node(*eval_points).outputs
+
     def __str__(self):
         if self.axis is None:
             return "Sum"
