@@ -229,40 +229,85 @@ def expand( tensor_var, size):
                               , dtype = tensor_var.dtype)
     return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
 
-
-
-
-
-
-def equal_computations(x,y, strict=False):
+def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
     '''
-     Checks if to theano graphs represent the same computations (applied to
-     different inputs).
+     Checks if to theano graphs represent the same computations (with
+     equivalence of inputs defined by map).  Inputs are always assumed
+     equal if strict is set to False.
     '''
-    if not x.type == y.type:
-        return False
-    elif not x.owner and not y.owner:
-        if not strict:
-            return True
-        else:
-            if isinstance(x, tensor.Constant):
-                # not they both have the same type
-                return x.data == y.data
-            else:
-                return x == y
-    elif x.owner and not y.owner:
-        return False
-    elif not x.owner and y.owner:
-        return False
-    elif not x.owner.op == y.owner.op:
-        return False
-    elif not len(x.owner.inputs) == len(y.owner.inputs):
-        return False
-    else:
-        for xx,yy in zip(x.owner.inputs,y.owner.inputs):
-            if not equal_computations(xx,yy):
+    import time
+    t00 = time.time()
+
+    if in_xs is None:
+        in_xs = []
+    if in_ys is None:
+        in_ys = []
+
+
+    for x,y in zip(xs,ys):
+        if x.owner and not y.owner:
+            return False
+        if y.owner and not x.owner:
+            return False
+        if x.owner and y.owner:
+            if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
-        return True
+
+    nds_x = gof.graph.io_toposort(in_xs, xs)
+    nds_y = gof.graph.io_toposort(in_ys, ys)
+    if len(nds_x) != len(nds_y):
+        return False
+    common = set(zip(in_xs,in_ys))
+    n_nodes = len(nds_x)
+    cont = True
+    idx = 0
+    for dx,dy in zip(xs,ys):
+        if not dx.owner or not dy.owner:
+            if dy.owner or dx.owner:
+                return False
+            elif (isinstance(dx, tensor.Constant) and
+                isinstance(dy, tensor.Constant) and
+                dx.data == dy.data):
+                pass
+            elif strict:
+                if dx != dy:
+                    return False
+            else:
+                if dx.type != dy.type:
+                    return False
+
+    while cont and idx < n_nodes:
+        nd_x = nds_x[idx]
+        nd_y = nds_y[idx]
+        if nd_x.op != nd_y.op:
+            cont = False
+        elif len(nd_x.inputs) != len(nd_y.inputs):
+            cont = False
+        elif len(nd_x.outputs) != len(nd_y.outputs):
+            cont = False
+        else:
+            for dx,dy in zip(nd_x.inputs, nd_y.inputs):
+                if (dx,dy) not in common:
+                    if strict and dx!= dy:
+                        if (isinstance(dx, tensor.Constant) and
+                            isinstance(dy, tensor.Constant) and
+                            dx.data == dy.data):
+                            pass
+                        else:
+                            cont = False
+                    else:
+                        cont = cont and (dx.type == dy.type)
+
+        if cont:
+            for dx,dy in zip(nd_x.outputs, nd_y.outputs):
+                common.add((dx,dy))
+        idx += 1
+
+    return cont
+
+
+
+
 
 def infer_shape(outs, inputs, input_shapes):
     '''

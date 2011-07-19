@@ -301,19 +301,26 @@ class Scan(Op):
             return False
         elif not len(self.outputs) == len(other.outputs):
             return False
+        elif self.info != other.info:
+            return False
         else:
             # If everything went OK up to here, there is still one thing to
             # check. Namely, do the internal graph represent same
             # computations
-            for x,y in zip(self.inputs, other.inputs):
-                if not scan_utils.equal_computations(x,y):
-                    return False
-            for x,y in zip(self.outputs, other.outputs):
-                if not scan_utils.equal_computations(x,y):
-                    return False
+            if not scan_utils.equal_computations(self.inputs,
+                                                 other.inputs,
+                                                 strict = False):
+                return False
+
+            if not scan_utils.equal_computations(self.outputs,
+                                                 other.outputs,
+                                                 self.inputs,
+                                                 other.inputs):
+                return False
+
             # If they do, then they need to match in other small details
             # like name, mode, etc.
-            return self.info == other.info
+            return True
 
     def __str__(self):
         if self.gpu:
