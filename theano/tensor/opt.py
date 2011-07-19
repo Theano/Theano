@@ -275,12 +275,6 @@ def local_0_dot_x(node):
     except TypeError:
         pass
 
-    # TODO: Integrate that into get_constant_value somehow
-    if isinstance(x, T.TensorConstant) and (x.tag.unique_value == 0):
-        replace = True
-    if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
-        replace = True
-
     if replace:
         constant_zero = T.constant(0, dtype=node.outputs[0].type.dtype)
         if x.ndim == 2 and y.ndim == 2:
@@ -1636,9 +1630,6 @@ def local_incsubtensor_of_allocs(node):
                 replace = True
         except TypeError:
             pass
-        # TODO: Integrate that into get_constant_value
-        if isinstance(y, T.TensorConstant) and (y.tag.unique_value == 0):
-            replace = True
 
         if replace:
             return [x]
@@ -1661,18 +1652,10 @@ def local_setsubtensor_of_allocs(node):
         except TypeError:
             pass
 
-        if isinstance(x, T.TensorConstant) and (x.tag.unique_value is not
-                                                None):
-            replace_x = x.tag.unique_value
-
         try:
             replace_y = get_constant_value(y)
         except TypeError:
             pass
-
-        if isinstance(y, T.TensorConstant) and (y.tag.unique_value is not
-                                                None):
-            replace_y = y.tag.unique_value
 
         if (replace_x == replace_y and
             replace_x is not None and
