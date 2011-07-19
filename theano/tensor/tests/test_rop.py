@@ -52,8 +52,30 @@ from theano import function
 import theano
 import theano.tensor as TT
 import numpy
+from theano.gof import Op, Apply
 
-class test_rop(unittest.TestCase):
+'''
+Special Op created to test what happens when you have one op that is not
+differentiable in the computational graph
+'''
+class BreakRop(Op):
+    """
+    @note: Non-differentiable.
+    """
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def make_node(self, x):
+        return Apply(self, [x], [x.type()])
+    def perform(self, node, inp, out_):
+        x, = inp
+        out, = out_
+        out[0] = x
+    def grad(self, inp, grads):
+        return [None]
+    def R_op(self, inputs, eval_points):
+        return [None]
 
     def test_specifyshape(self):
         rng  = numpy.random.RandomState(utt.fetch_seed())
