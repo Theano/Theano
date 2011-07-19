@@ -4928,6 +4928,11 @@ class AdvancedSubtensor(Op):
         raise NotImplementedError('Advanced indexing of x with arguments (%s) not supported yet'\
                 % ','.join(str(input) for input in inputs))
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
+
     def infer_shape(self, node, ishapes):
         # Really special case
         if len(ishapes) == 3:
