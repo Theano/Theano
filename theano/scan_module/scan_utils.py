@@ -23,6 +23,7 @@ from theano.tensor.basic import get_constant_value
 
 from theano.sandbox import cuda
 
+import theano
 
 ################ Utility Functions and Classes #######################
 
