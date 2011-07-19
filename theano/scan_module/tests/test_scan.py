@@ -2263,10 +2263,11 @@ def test_speed_rnn():
                     s_i: s_i+1,
                     shared_r: s_rinc,
                     },
-                mode='CVM')
+                mode=theano.Mode(linker='cvm'))
         theano.printing.debugprint(f )
         f_fn = f.fn
         t2 = time.time()
+        print f_fn
         f_fn(n_calls=L-2)
         f() #999 to update the profiling timers
         t3 = time.time()
