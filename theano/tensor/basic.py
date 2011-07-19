@@ -2489,6 +2489,8 @@ class Alloc(gof.Op):
             pass
         return ret
 
+    def R_op(self, inputs, eval_points):
+        return [None]
 
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
