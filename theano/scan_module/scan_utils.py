@@ -7,7 +7,8 @@ __docformat__ = 'restructedtext en'
 __authors__ = ( "Razvan Pascanu "
                 "Frederic Bastien "
                 "James Bergstra "
-                "Pascal Lamblin "  )
+                "Pascal Lamblin "
+                "Arnaud Bergeron")
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
