@@ -4351,7 +4351,7 @@ class Reshape(Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-	    return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 
     def infer_shape(self, node, ishapes):
