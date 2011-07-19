@@ -4810,6 +4810,11 @@ class AdvancedSubtensor1(Op):
         assert len(inputs)==2
         return [advanced_inc_subtensor1(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
+
     def infer_shape(self, node, ishapes):
         x, ilist = ishapes
         return [ilist+x[1:]]
