@@ -195,7 +195,9 @@ def float32_shared_constructor(value, name=None, strict=False,
         else:
             deviceval = value.copy()
     else:
-        deviceval = type_support_filter(value, broadcastable, False, None)
+        # type.broadcastable is guaranteed to be a tuple, which this next
+        # function requires
+        deviceval = type_support_filter(value, type.broadcastable, False, None)
 
     try:
         rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
