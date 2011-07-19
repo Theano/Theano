@@ -4996,6 +4996,11 @@ class AdvancedIncSubtensor(Op):
         # grad on x is grad  on output
         # grad on y is grad_output[idx_list]
         # grad on rest is None
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1], *inputs[2:]).outputs
+
 
 
 
