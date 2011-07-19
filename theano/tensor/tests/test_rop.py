@@ -2,6 +2,48 @@
  WRITE ME
 
  Tests for the R operator / L operator
+
+ops without:
+
+    PermuteRowElements
+    Tile
+    AdvancedSubtensor
+    TensorDot
+    Outer
+    Prod
+    MulwithoutZeros
+    ProdWithoutZeros
+
+
+list of ops that support R-op:
+    * Alloc
+    * Split
+    * ARange
+    * ScalarFromTensor
+    * Shape
+    * SpecifyShape
+    * MaxAndArgmax
+    * Subtensor
+    * IncSubtensor
+    * Rebroadcast
+    * Join
+    * Reshape
+    * Flatten
+    * AdvancedSubtensor1
+    * AdvancedIncSubtensor1
+    * AdvancedIncSubtensor
+    * Dot
+    * DimShuffle
+    * Elemwise
+    * Sum
+    * Softmax
+    * Scan
+
+
+
+
+
+
 """
 
 import unittest
