@@ -361,4 +361,3 @@ class TestComputeTestValue(unittest.TestCase):
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
-        pass
