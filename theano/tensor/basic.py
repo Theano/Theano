@@ -1712,6 +1712,9 @@ class Shape(Op):
         out[0] = theano._asarray(x.shape, dtype = 'int64')
     def grad(self, inp, grads):
         return [None]
+
+    def R_op(self, inputs, eval_points):
+        return [None]
 @constructor
 def old_shape(a):
     """Return the shape tuple of a TensorType Variable, it may be either symbolic or nonsymbolic.
