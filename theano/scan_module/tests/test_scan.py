@@ -2228,23 +2228,23 @@ def test_speed_rnn():
 
     t0 = time.time()
     for i in xrange(1,L):
-        r[i] += numpy.tanh(numpy.dot(r[i-1], w))
+        r[i] = numpy.tanh(numpy.dot(r[i-1], w))
     t1 = time.time()
     print 'python', t1 - t0
 
     if 1:
         r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
         s_r = tensor.matrix()
-        s_y, updates = theano.scan(fn=lambda ri, rii:ri+tensor.tanh(tensor.dot(rii, w)),
+        s_y, updates = theano.scan(fn=lambda ri, rii:tensor.tanh(tensor.dot(rii, w)),
                 sequences=[s_r[1:]],
                 outputs_info=tensor.constant(r[0]))
         assert not updates
-        f = theano.function([s_r], s_y)
+        f = theano.function([s_r], s_y, mode='FAST_RUN_NOGC')
 
         t2 = time.time()
         f(r)
         t3 = time.time()
-        print 'theano1', t3 - t2
+        print 'theano (scan)', t3 - t2
 
     if 1:
         r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
@@ -2262,19 +2262,15 @@ def test_speed_rnn():
                 updates={
                     s_i: s_i+1,
                     shared_r: s_rinc,
-                    })
+                    },
+                mode='CVM')
         theano.printing.debugprint(f )
         f_fn = f.fn
         t2 = time.time()
-        if 0:
-            f_fn(n_calls=L-2)
-        elif 0:
-            for i in xrange(L-2): f_fn()
-        else:
-            for i in xrange(L-2): f()
+        f_fn(n_calls=L-2)
         f() #999 to update the profiling timers
         t3 = time.time()
-        print 'theano2', t3 - t2
+        print 'theano (updates)', t3 - t2
         print shared_r.get_value()
 
 if __name__ == '__main__':
