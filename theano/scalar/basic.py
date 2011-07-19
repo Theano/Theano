@@ -1913,13 +1913,7 @@ class Composite(ScalarOp):
     someday...)
     """
     def __str__(self):
-        if hasattr(self, 'name') and self.name:
-            return self.name
-        else:
-            return "%s{%s}" % (self.__class__.__name__, ", ".join(
-                "%s=%s" % (k, v) for k, v in self.__dict__.items()
-                if k not in ["env","_c_code", "_cmodule_key", "_impls",
-                             "_hashval", "inputs_type"] ))
+        return self.name
 
     def make_new_inplace(self, output_types_preference = None, name = None):
         """
