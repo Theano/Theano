@@ -2472,7 +2472,11 @@ class Alloc(gof.Op):
         return [node.inputs[1:]]
 
     def grad(self, inputs, grads):
-        return [None for i in inputs]
+        x = inputs[0]
+        gz = grads[0]
+        n_axes_to_sum = gz.ndim - x.ndim
+        gx = gz.sum(axis=range(n_axes_to_sum))
+        return [gx] + [None for i in inputs[1:]]
 
     def __call__(self, val, *shapes):
         """
