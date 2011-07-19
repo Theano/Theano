@@ -347,6 +347,13 @@ class Softmax(gof.Op):
         sm = softmax(x)
         return [softmax_grad(g_sm, sm)]
 
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
     def infer_shape(self, node, shape):
         return shape
 

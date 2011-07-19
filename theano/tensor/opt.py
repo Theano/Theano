@@ -469,6 +469,11 @@ class MakeVector(T.Op):
                 grads.append(output_gradients[0][i])
         return grads
 
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+	    return self.make_node(*eval_points).outputs
+
 make_vector = MakeVector()
 
 class MakeVectorPrinter:

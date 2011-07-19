@@ -24,5 +24,6 @@ from sharedvar import tensor_constructor as shared
 
 import nnet # used for softmax, sigmoid, etc.
 
+from tensor_grad import Rop, Lop, grad, numeric_grad, verify_grad
 
 

@@ -15,7 +15,7 @@ import numpy, theano
 from theano import gof, shared
 from theano.gof import Apply, Constant, Op, Type, Value, Variable
 
-from theano import gradient
+
 
 import elemwise
 from theano import scalar as scal
@@ -1586,7 +1586,9 @@ class ScalarFromTensor(Op):
         return [tensor_from_scalar(dt)]
 
     def R_op(self, inputs, eval_points):
-        return [None]
+        if None in eval_points:
+            return [None]
+        return self.make_node(*eval_points).outputs
 
     def __str__(self):
         return self.__class__.__name__
@@ -1710,6 +1712,9 @@ class Shape(Op):
         out[0] = theano._asarray(x.shape, dtype = 'int64')
     def grad(self, inp, grads):
         return [None]
+
+    def R_op(self, inputs, eval_points):
+        return [None]
 @constructor
 def old_shape(a):
     """Return the shape tuple of a TensorType Variable, it may be either symbolic or nonsymbolic.
@@ -1788,6 +1793,10 @@ class SpecifyShape(Op):
         return [specify_shape(gz,s), None]
 
     def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            # It means that the this op sits on top of a non-differentiable
+            # path
+            return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 specify_shape = SpecifyShape()
@@ -1867,6 +1876,12 @@ class MaxAndArgmax(Op):
             return [(),()]
         rval = tuple([ishape[i] for (i,b) in enumerate(node.inputs[0].type.broadcastable) if i !=axis.data])
         return [rval,rval]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None, None]
+        return [self.make_node(eval_points[0], inputs[1]).outputs[0], None]
+
 
     def grad(self, inp, grads):
         # @warning: This only works if axis is 0, else the max is
@@ -2474,6 +2489,8 @@ class Alloc(gof.Op):
             pass
         return ret
 
+    def R_op(self, inputs, eval_points):
+        return [None]
 
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
@@ -3341,6 +3358,13 @@ class Subtensor(Op):
         hv = self.helper_c_code_cache_version()
         return (1, hv)
 
+    def R_op(self, inputs, eval_points):
+        # Subtensor is not differentiable wrt to its indices, therefore we
+        # do not even need to consider the eval_points provided for those
+        # (they should be defaulted to zeros_like by the global R_op)
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 class SubtensorPrinter:
 
@@ -3646,6 +3670,14 @@ class IncSubtensor(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None or eval_points[1] is None:
+            return [None]
+        # Again we ignore eval points for indices because incsubtensor is
+        # not differentiable wrt to those
+        return self.make_node(eval_points[0], eval_points[1],
+                            *inputs[2:]).outputs
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
@@ -3756,6 +3788,10 @@ class Split(Op):
         _, axis, _ = inputs
         return [join(axis, *g_outputs), None, None]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0]  is None:
+            return [None for i in self.len_splits]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
 class Rebroadcast(Op):
     """
@@ -3815,6 +3851,13 @@ class Rebroadcast(Op):
                 l.append(ishapes[0][ax])
 
         return [tuple(l)]
+
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(*eval_points).outputs
+
 
 def addbroadcast(x, *axes):
     """
@@ -3967,6 +4010,11 @@ class Join(Op):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         out[0] = theano._asarray(numpy.concatenate(tensors, axis = axis),
                 dtype=node.outputs[0].type.dtype)
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[1:]:
+            return [None]
+        return self.make_node(inputs[0], *eval_points[1:]).outputs
 
     def grad(self, axis_and_tensors, grads):
         """ The gradient wrt a join op is a `Split`, used to partition the gradient along the
@@ -4299,6 +4347,13 @@ class Reshape(Op):
         x, shp = inp
         g_out, = grads
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+	    return self.make_node(eval_points[0], *inputs[1:]).outputs
+
+
     def infer_shape(self, node, ishapes):
         # inputs[1] can contain at most one value of '-1', meaning the actual
         # shape of the output will be automatically computed by reshape, so
@@ -4375,6 +4430,11 @@ class Flatten(Op):
         x, = inp
         g_out, = grads
         return [reshape(g_out, shape(x), x.ndim)]
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+        return self.make_node(*eval_points).outputs
 
 def flatten(x, outdim=1):
     return Flatten(outdim)(x)
@@ -4501,6 +4561,8 @@ class ARange(Op):
         gz, = grads
         return [None] * len(inputs)
 
+    def R_op(self, inputs, eval_points):
+        return [None]
 _arange = {}
 def arange(start, stop=None, step=1, dtype=None):
     # If only one argument is provided, it is in fact the "stop" argument,
@@ -4748,6 +4810,11 @@ class AdvancedSubtensor1(Op):
         assert len(inputs)==2
         return [advanced_inc_subtensor1(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
+
     def infer_shape(self, node, ishapes):
         x, ilist = ishapes
         return [ilist+x[1:]]
@@ -4802,6 +4869,13 @@ class AdvancedIncSubtensor1(Op):
         x, y, ilist = ishapes
         return [x]
 
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1],
+                              *inputs[2:]).outputs
+
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
@@ -4853,6 +4927,11 @@ class AdvancedSubtensor(Op):
                     % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
         raise NotImplementedError('Advanced indexing of x with arguments (%s) not supported yet'\
                 % ','.join(str(input) for input in inputs))
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def infer_shape(self, node, ishapes):
         # Really special case
@@ -4917,6 +4996,11 @@ class AdvancedIncSubtensor(Op):
         # grad on x is grad  on output
         # grad on y is grad_output[idx_list]
         # grad on rest is None
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1], *inputs[2:]).outputs
+
 
 
 
@@ -5017,6 +5101,16 @@ class Dot(Op):
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
         return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
+    def R_op(self, inputs, eval_points):
+        # R_op for a \dot b evaluted at c for a and d for b is
+        # simply c \dot b + a \dot d
+        if None in eval_points:
+            return [None]
+        t1 = self.make_node(eval_points[0], inputs[1]).outputs[0]
+        t2 = self.make_node(inputs[0], eval_points[1]).outputs[0]
+        return [t1+t2]
+
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
@@ -5235,600 +5329,4 @@ class Outer(Op):
         return "outer"
 outer = Outer()
 
-########################
-# R Operator
-########################
 
-def Rop(f, wrt, eval_points):
-    """
-    Computes the R operation on `f` wrt to `wrt` evaluated at points given
-    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
-    to `wrt` right muliplied by the eval points.
-
-    :type f: `Variable` or list of `Variable`s
-        `f` stands for the output of the computational graph to which you
-        want to apply the R operator
-    :type wrt: `Variable` or list of `Variables`s
-        variables for which you compute the R operator of the expression
-        described by `f`
-    :type eval_points: `Variable` or list of `Variable`s
-        evalutation points for each of the variables in `wrt`
-
-    :rtype: `Variable` or list of `Variable`s depending on type of f
-    :return: symbolic expression such that
-        R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
-        where the indices in that expression are magic multidimensional
-        indices that specify both the position within a list and all
-        coordinates of the tensor element in the last
-        """
-    if not isinstance(wrt, (list, tuple)):
-        wrt = [ wrt ]
-
-    if not isinstance(eval_points, (list, tuple)):
-        eval_points = [ eval_points ]
-
-    if not isinstance(f, (list,tuple)):
-        f = [f]
-
-    assert len(wrt) == len(eval_points)
-
-    seen_nodes = {}
-
-    def _traverse(node):
-        if node is None:
-            return None
-        else:
-            op     = node.op
-            inputs = node.inputs
-            if not hasattr(op, 'R_op'):
-                raise Exception((' R_op was not implemented for %s'
-                                      ' operation. Email the mailing list'
-                                      ' for help') % op.__class__.__name__)
-            # Compute the evaluation points corresponding to each of the
-            # inputs of the node
-            local_eval_points = []
-            for inp in inputs:
-                if inp in wrt:
-                    local_eval_points.append( eval_points[wrt.index(inp)] )
-                elif inp.owner is None:
-                    local_eval_points.append( zeros_like(inp) )
-                elif inp.owner in seen_nodes:
-
-                    local_eval_points.append(
-                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ] )
-
-                else:
-                    # We actually need to compute the R_op for this node
-
-                    _traverse(inp.owner)
-                    local_eval_points.append(
-                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ])
-            from theano.sandbox import cuda
-            if cuda.cuda_available:
-                from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
-                from theano.sandbox.cuda.type import CudaNdarrayType
-                for idx, (x,y) in enumerate(zip(inputs, local_eval_points)):
-                    if x.type != y.type:
-                        if (isinstance(x.type, CudaNdarrayType) and
-                            isinstance(y.type, TensorType)):
-                            assert x.type.ndim == y.type.ndim
-                            assert y.type.dtype == 'float32'
-                        elif (isinstance(x.type, TensorType) and
-                              isinstance(y.type, CudaNdarrayType)):
-                            assert x.type.ndim == y.type.ndim
-                            assert x.type.dtype == 'float32'
-                        else:
-                            assert x.type == y.type
-            else:
-                for x,y in zip(inputs, local_eval_points):
-                    assert x.type == y.type
-
-            seen_nodes[node] = op.R_op(node.inputs, local_eval_points)
-            return None
-
-    # Populate the dictionary
-    for out in f:
-        _traverse(out.owner)
-
-    rval = []
-    for out in f:
-        if out in wrt:
-            rval.append( eval_points[wrt.index(out)])
-        elif seen_nodes[out.owner][out.owner.outputs.index(out)] is None:
-            raise ValueError(( 'The function is not differentiable with '
-                              'respect to the provided inputs !'))
-        else:
-            rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)] )
-
-    if len(rval) == 1:
-        return rval[0]
-    else:
-        return rval
-
-
-def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
-         disconnected_inputs='raise'):
-    """
-    Computes the L operation on `f` wrt to `wrt` evaluated at points given
-    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
-    to `wrt` left muliplied by the eval points.
-
-    :type f: `Variable` or list of `Variable`s
-        `f` stands for the output of the computational graph to which you
-        want to apply the L operator
-    :type wrt: `Variable` or list of `Variables`s
-        variables for which you compute the L operator of the expression
-        described by `f`
-    :type eval_points: `Variable` or list of `Variable`s
-        evalutation points for each of the variables in `f`
-
-    :rtype: `Variable` or list of `Variable`s depending on type of f
-    :return: symbolic expression such that
-        L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
-        where the indices in that expression are magic multidimensional
-        indices that specify both the position within a list and all
-        coordinates of the tensor element in the last
-    """
-
-    if not isinstance(f, TensorVariable):
-        raise TypeError('In tensor.Lop(), cost argument should be a TensorVariable.', f)
-
-    if type(eval_points) not in (list, tuple):
-        eval_points = [eval_points]
-    if type(f) not in (list, tuple):
-        f = [f]
-
-    inputs = gof.graph.inputs(f)
-    gmap = gradient.grad_sources_inputs(
-            zip(f,eval_points),
-            list(inputs) + list(consider_constant),
-            warn_type=warn_type)
-
-
-    # Note : If p is not in gmap there can be several reasons, among which
-    # is the fact that p might not be part of the computational graph. A
-    # simple example is that for a+b for e.g. a[0] is not part of the graph,
-    # so Theano does not know how to compute TT.grad(TT.sum(a+b), a[0])
-    # such subtle cases can be fixed by a more careful implementation of the
-    # gradient, but for now Theano needs to throw an exception, and make the
-    # user aware that it does not know how to compute that gradient
-    if not isinstance(wrt, (list, tuple)):
-        wrt = [wrt]
-    ret = []
-    for p in wrt:
-        if p in gmap:
-            ret.append(gmap[p])
-        else:
-            message = ("Lop method was asked to compute the gradient "
-                    "with respect to a variable that is not part of "
-                    "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % p)
-            if disconnected_inputs == 'ignore':
-                pass
-            elif disconnected_inputs == 'warn':
-                warnings.warn(message, stacklevel=1)
-            elif disconnected_inputs == 'raise':
-                raise ValueError(message)
-            else:
-                raise ValueError("Invalid value for keyword "
-                        "'disconnected_inputs', valid values are "
-                        "'ignore', 'warn' and 'raise'.")
-            ret.append(zeros_like(p))
-
-    if len(ret) == 1:
-        return ret[0]
-    else:
-        return ret
-
-
-#########################
-# Gradient
-#########################
-
-def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
-         disconnected_inputs='raise'):
-    """
-    :type cost: Scalar (0-dimensional) `Variable`
-    :type wrt: `Variable` or list of `Variable`s.
-    :type g_cost: Scalar `Variable`, or None
-    :param g_cost: an expression for the gradient through cost.  The default is
-        ``ones_like(cost)``.
-    :param consider_constant: a list of expressions not to backpropagate through
-
-    :param warn_type: a value of True will cause warnings to be logged for any Op that emits a
-        gradient that does not match its input type.
-
-    :type disconnected_inputs: string
-    :param disconnected_inputs: Defines the behaviour if some of the variables
-        in ``wrt`` are not part of the computational graph computing ``cost``
-        (or if all links are non-differentiable). The possible values are:
-        - 'ignore': considers that the gradient on these parameters is zero.
-        - 'warn': consider the gradient zero, and print a warning.
-        - 'raise': raise an exception.
-
-    :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
-
-    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
-    If `wrt` is a list, then return a list containing the gradient of `cost` wrt
-    each element of the list.  If an element of `wrt` is not differentiable
-    with respect to the output, then a zero variable is returned.
-
-    This function is a wrapper around the more general function
-    `theano.gradient.grad_sources_inputs``.
-
-    """
-    if not isinstance(cost, TensorVariable):
-        raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
-
-    if cost.type.ndim:
-        raise TypeError(
-                'In tensor.grad, "cost" argument should be a scalar, but ndim'
-                ' is %i (should be 0). If you want to compute the gradient of'
-                ' the sum of cost, you should use cost.sum().'
-                % cost.type.ndim)
-
-    if g_cost is None:
-        g_cost = ones_like(cost)
-    inputs = gof.graph.inputs([cost])
-    gmap = gradient.grad_sources_inputs(
-            [(cost, g_cost)],
-            list(inputs) + list(consider_constant),
-            warn_type=warn_type)
-
-
-    # Note : If p is not in gmap there can be several reasons, among which
-    # is the fact that p might not be part of the computational graph. A
-    # simple example is that for a+b for e.g. a[0] is not part of the graph,
-    # so Theano does not know how to compute TT.grad(TT.sum(a+b), a[0])
-    # such subtle cases can be fixed by a more careful implementation of the
-    # gradient, but for now Theano needs to throw an exception, and make the
-    # user aware that it does not know how to compute that gradient
-    if not isinstance(wrt, (list, tuple)):
-        wrt = [wrt]
-    ret = []
-    for p in wrt:
-        if p in gmap:
-            ret.append(gmap[p])
-        else:
-            message = ("grad method was asked to compute the gradient "
-                    "with respect to a variable that is not part of "
-                    "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % p)
-            if disconnected_inputs == 'ignore':
-                pass
-            elif disconnected_inputs == 'warn':
-                warnings.warn(message, stacklevel=1)
-            elif disconnected_inputs == 'raise':
-                raise ValueError(message)
-            else:
-                raise ValueError("Invalid value for keyword "
-                        "'disconnected_inputs', valid values are "
-                        "'ignore', 'warn' and 'raise'.")
-            ret.append(zeros_like(p))
-
-    if len(ret) == 1:
-        return ret[0]
-    else:
-        return ret
-
-class numeric_grad:
-    """WRITEME"""
-
-    # Note on step sizes and tolerances:
-    #
-    # There is a relationship between the step size and the function value and the measurement
-    # error that is incurred due to rounding.  The finite difference we measure is
-    # delta = f(x0) - f(x0+eps)
-    #
-    # For maximum precision, f should be close to zero.
-    # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
-    #
-    # Even in this case of maximum accuracy, there is a tradeoff between stepsize and
-    # measurement error.
-    # Taking small steps allows us to measure large derivatives accuractly, but longer steps
-    # are required to measure small derivatives accurately.  However longer steps introduce
-    # bias into our measurement in general for non-linear functions.
-    #
-    # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
-    #
-    # For now, we use a heuristic that catches very bad gradients, but is not perfectly
-    # accurate.
-    type_eps = {'float64': 1e-7,
-            'float32': 3e-4,
-            numpy.dtype('float64'):1e-7,
-            numpy.dtype('float32'):3e-4}
-
-    def __init__(self, f, pt, eps=None):
-        """Return the gradient of f at pt.
-
-        This function computes the gradient by a one-sided finite differences of a
-        fixed step size (eps).
-
-        It is assumed that f(...) will return a scalar.
-        It is assumed that all f's inputs are numpy.ndarray objects.
-
-        :param eps: the stepsize for the finite differencing.  None means input
-        dtype-dependent. See `type_eps`.
-        """
-
-        def prod(inputs):
-            rval = 1
-            for i in inputs:
-                rval *= i
-            return rval
-
-        packed_pt = False
-        if not isinstance(pt, (list, tuple)):
-            pt = [pt]
-            packed_pt = True
-
-        apt = [numpy.array(p) for p in pt]
-
-        shapes = [p.shape for p in apt]
-        dtypes = [str(p.dtype) for p in apt]
-
-        # TODO: remove this eventually (why was this here in the first place ?)
-        # In the case of CSM, the arguments are a mixture of floats and integers...
-        #if not dtypes == [dtypes[0]] * len(apt):
-            #raise TypeError('All function arguments must have same dtype')
-
-        total_size = __builtin__.sum(prod(sh) for sh in shapes)
-
-        working_dtype = __builtin__.min((self.type_eps[dt], dt) for dt in dtypes)[1]
-
-        #create un-initialized memory
-        x = numpy.ndarray((total_size,), dtype=working_dtype)
-        gx = numpy.ndarray((total_size,), dtype=working_dtype)
-
-        if eps is None:
-            eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
-
-
-        #set up aliases so that apt[i] is backed by memory in x
-        # and self.gf is backed by memory in gx
-        cur_pos = 0
-        self.gf = []
-        for i,p in enumerate(apt):
-            p_size = prod(p.shape)
-            # set up alias
-            apt[i] = x[cur_pos:cur_pos+p_size].reshape(p.shape)
-            self.gf.append(gx[cur_pos:cur_pos+p_size].reshape(p.shape))
-            # initialize with p's value
-            apt[i][...] = p
-            cur_pos += p_size
-
-        f_x = f(*[p.copy() for p in apt])
-
-        # now iterate over the elements of x, and call f on apt.
-        x_copy = x.copy()
-        for i in xrange(total_size):
-            x[:] = x_copy
-
-            x[i] += eps
-            f_eps = f(*apt)
-
-            gx[i] = numpy.asarray((f_eps - f_x)/eps)
-
-        if packed_pt:
-            self.gf = self.gf[0]
-
-    @staticmethod
-    def abs_rel_err(a,b):
-        """Return absolute and relative error between a and b.
-
-        The relative error is a small number when a and b are close, relative to how big they are.
-
-        Formulas used:
-            abs_err = abs(a - b)
-            rel_err = abs_err / (abs(a) + abs(b))
-
-        The tuple (abs_err, rel_err) is returned
-        """
-        abs_err = abs(a-b)
-        rel_err = abs_err / (abs(a) + abs(b))
-        return (abs_err, rel_err)
-
-    def abs_rel_errors(self, g_pt):
-        """Return the abs and rel error of gradient estimate `g_pt`
-
-        `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
-        is raised.
-
-        Corresponding ndarrays in `g_pt` and `self.gf` must have the same shape or ValueError
-        is raised.
-
-        """
-        if len(g_pt) != len(self.gf):
-            raise ValueError('argument has wrong number of elements', len(g_pt))
-        errs = []
-        for i, (a, b) in enumerate(zip(g_pt, self.gf)):
-            if a.shape != b.shape:
-                raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
-                    b.shape))))
-            errs.append(numeric_grad.abs_rel_err(a,b))
-        return errs
-
-    def max_err(self, g_pt, abs_tol, rel_tol):
-        """Find the biggest error between g_pt and self.gf.
-
-        What is measured is the violation of relative and absolute errors,
-        wrt the provided tolerances (abs_tol, rel_tol).
-        A value > 1 means both tolerances are exceeded.
-
-        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over g_pt,
-        as well as abs_err and rel_err at this point.
-        """
-        pos = []
-        errs = []
-        abs_errs = []
-        rel_errs = []
-
-        abs_rel_errs = self.abs_rel_errors(g_pt)
-        for abs_err, rel_err in abs_rel_errs:
-            scaled_err = numpy.minimum(abs_err/abs_tol, rel_err/rel_tol)
-            max_i = scaled_err.argmax()
-
-            pos.append(max_i)
-            errs.append(scaled_err.flatten()[max_i])
-            abs_errs.append(abs_err.flatten()[max_i])
-            rel_errs.append(rel_err.flatten()[max_i])
-
-        # max over the arrays in g_pt
-        max_arg = numpy.argmax(errs)
-        max_pos = pos[max_arg]
-        return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
-
-
-def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=None,
-        mode=None, cast_to_output_type=False):
-    """ Test a gradient by Finite Difference Method. Raise error on failure.
-
-    Example:
-    >>> verify_grad(theano.tensor.tanh,
-                    (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-                    rng=numpy.random)
-
-    Raises an Exception if the difference between the analytic gradient and
-    numerical gradient (computed through the Finite Difference Method) of a random
-    projection of the fun's output to a scalar exceeds
-    the given tolerance.
-
-    :param fun: a Python function that takes Theano variables as inputs,
-        and returns a Theano variable. For instance, an Op instance with
-        a single output.
-    :param pt: the list of numpy.ndarrays to use as input values.
-        These arrays must be either float32 or float64 arrays.
-    :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient of sum(u * fun) at pt
-    :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
-    :param abs_tol: absolute tolerance used as threshold for gradient comparison
-    :param rel_tol: relative tolerance used as threshold for gradient comparison
-
-    :note: WARNING to unit-test writers: if `op` is a function that builds a graph,
-           try to make it a SMALL graph.  Often verify grad is run in
-           debug mode, which can be very slow if it has to verify a lot
-           of intermediate computations.
-
-    :note: This op does not support multiple outputs. In tests/test_scan.py there is
-           an experimental verify_grad that covers that case as well by using random
-           projections.
-    """
-    assert isinstance(pt, (list,tuple))
-    pt = [numpy.array(p) for p in pt]
-
-    for i, p in enumerate(pt):
-        if p.dtype not in ('float32', 'float64'):
-            raise TypeError(('verify_grad can work only with floating point '
-                'inputs, but input %i has dtype "%s".') % (i, p.dtype))
-
-    _type_tol = dict( # relativ error tolerances for different types
-            float32=1e-2,
-            float64=1e-4)
-
-    if abs_tol is None:
-        abs_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
-    if rel_tol is None:
-        rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
-
-    if rng is None:
-        raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
-                'You may want to use theano.tests.unittest_tools.verify_grad instead of theano.tensor.verify_grad.')
-
-    # We allow input downcast in function, because numeric_grad works in the
-    # most precise dtype used among the inputs, so we may need to cast some.
-    def function(inputs, output):
-        if mode is None:
-            f = compile.function(inputs, output, accept_inplace=True,
-                    allow_input_downcast=True)
-        else:
-            f = compile.function(inputs, output, accept_inplace=True,
-                    allow_input_downcast=True, mode=mode)
-        return f
-
-    tensor_pt = [TensorType(as_tensor_variable(p).dtype, as_tensor_variable(p).broadcastable)(name='input %i'%i) for i,p in enumerate(pt)]
-
-    #fun can be either a function or an actual Op instance
-    o_output = fun(*tensor_pt)
-
-    if isinstance(o_output,list):
-        raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
-        # we could make loop over outputs making random projections R for each,
-        # but this doesn't handle the case where not all the outputs are
-        # differentiable... so I leave this as TODO for now -JB.
-
-    o_fn = function(tensor_pt, o_output)
-    o_fn_out = o_fn(*[p.copy() for p in pt])
-
-    if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
-        raise TypeError('It seems like you are trying to use verify_grad '
-                'on an op or a function which outputs a list: there should'
-                ' be a single (array-like) output instead')
-
-    # random_projection should not have elements too small,
-    # otherwise too much precision is lost in numerical gradient
-    def random_projection():
-        plain =  rng.rand(*o_fn_out.shape) + 0.5
-        if cast_to_output_type:
-            return numpy.array(plain,o_output.dtype)
-        return plain
-
-    t_r = shared(random_projection())
-
-    #random projection of o onto t_r
-    cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
-    cost_fn = function(tensor_pt, cost)
-
-    #todo-- determine if this is actually needed
-    g_cost = as_tensor_variable(1.0,name='g_cost')
-    if cast_to_output_type:
-        g_cost = cast(g_cost, o_output.dtype)
-
-    symbolic_grad = grad(cost, tensor_pt, g_cost,
-                         disconnected_inputs='ignore')
-    #if o_output.dtype in ['float32','float64']:
-    #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
-
-    grad_fn = function(tensor_pt, symbolic_grad)
-
-    for test_num in xrange(n_tests):
-        num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
-
-
-        analytic_grad = grad_fn(*[p.copy() for p in pt])
-
-        if not isinstance(analytic_grad, (list, tuple)):
-            analytic_grad = [analytic_grad]
-
-        max_arg, max_err_pos, max_abs_err, max_rel_err =\
-                num_grad.max_err(analytic_grad, abs_tol, rel_tol)
-
-        if max_abs_err > abs_tol and max_rel_err > rel_tol:
-            raise verify_grad.E_grad(max_arg, max_err_pos,
-                    max_abs_err, max_rel_err, abs_tol, rel_tol)
-
-        #get new random projection for next test
-        if test_num < n_tests - 1:
-            t_r.set_value(random_projection(), borrow=True)
-
-
-class GradientError(Exception):
-    """This error is raised when a gradient is calculated, but incorrect."""
-    def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
-        self.arg = arg
-        self.err_pos = err_pos
-        self.abs_err = abs_err
-        self.rel_err = rel_err
-        self.abs_tol = abs_tol
-        self.rel_tol = rel_tol
-
-
-    def __str__(self):
-        return """GradientError: numeric gradient and analytic gradient exceed tolerance:
-        At position %i of argument %i,
-            abs. error = %f,  abs. tolerance = %f
-            rel. error = %f,  rel. tolerance = %f
-        """ %(self.err_pos, self.arg,
-              self.abs_err, self.abs_tol,
-              self.rel_err, self.rel_tol)
-
-verify_grad.E_grad = GradientError
