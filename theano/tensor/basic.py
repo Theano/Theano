@@ -1877,6 +1877,12 @@ class MaxAndArgmax(Op):
         rval = tuple([ishape[i] for (i,b) in enumerate(node.inputs[0].type.broadcastable) if i !=axis.data])
         return [rval,rval]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None, None]
+        return [self.make_node(eval_points[0], inputs[1]).outputs[0], None]
+
+
     def grad(self, inp, grads):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.
