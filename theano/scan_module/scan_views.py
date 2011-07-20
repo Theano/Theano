@@ -102,31 +102,18 @@ def reduce( fn
     :param name: See ``scan``.
     """
     # Makes sure the outputs_info is a list.
-    if not isinstance(outputs_info, (list,tuple)):
-        outs_info = [outputs_info]
-    else:
-        outs_info = list(outputs_info)
-
-    for i,out_info in enumerate(outs_info):
-        if out_info:
-            if not isinstance(out_info, dict):
-                # Specifies that it should return only the last step.
-                outs_info[i] = dict(
-                    initial = out_info,  return_steps = 1)
-            else:
-                # Specifies that it should return only the last step.
-                outs_info[i]['return_steps'] = 1
-                # NOTE : If the user asks for more then the last step,
-                # it means he does not understand ``reduce``. We could
-                # issue a warning in that case
-    return scan.scan( fn                 = fn
+    rval = scan.scan( fn                 = fn
                 , sequences         = sequences
-                , outputs_info      = outs_info
+                , outputs_info      = outputs_info
                 , non_sequences     = non_sequences
                 , go_backwards      = go_backwards
                 , truncate_gradient = -1
                 , mode              = mode
                 , name              = name )
+    if isinstance(rval[0], (list,tuple)):
+        return [ x[-1] for x in rval[0]], rval[1]
+    else:
+        return rval[0][-1], rval[1]
 
 
 # The ``foldl`` view of Scan Op.
