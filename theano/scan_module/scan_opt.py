@@ -765,6 +765,7 @@ class ScanMerge(gof.Optimizer):
         info = Margs.info
         info['name'] = A.op.name+'&'+B.op.name
 
+        #indicates that we have a stopping condition for scan
         if as_while:
             Margs_inner_outs = Margs.inner_outputs + Margs.cond
         else:
