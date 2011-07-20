@@ -136,6 +136,7 @@ def safe_make_node(op, *inputs):
         return node[0].owner
     else:
         return node.owner
+
 def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                bad_runtime = {}, grad = {}, mode = None, grad_rtol=None,
                eps = 1e-10, skip = False):
@@ -146,7 +147,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
 
     class Checker(unittest.TestCase):
 
-        op = _op
+        op = staticmethod(_op)
         expected = staticmethod(_expected)
         checks = _checks
         good = _good
