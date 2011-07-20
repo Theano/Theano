@@ -119,12 +119,9 @@ def scan_pushout_non_seq_operation(node):
         return False
     # this flag tells if there was any change during the last iterations
     changed   = True
-    try:
-        clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
-                        node.op.inputs, node.op.outputs)
-        local_env = gof.Env(clean_inputs, clean_outputs)
-    except:
-        import ipdb; ipdb.set_trace()
+    clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
+                    node.op.inputs, node.op.outputs)
+    local_env = gof.Env(clean_inputs, clean_outputs)
 
     max_iterations = 2*len(local_env.toposort()) + 3
     counts = 0
