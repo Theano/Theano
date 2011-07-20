@@ -1225,6 +1225,10 @@ class _tensor_py_operators:
     def flatten(self, ndim=1):
         return flatten(self, ndim)
 
+    # CASTING
+    def astype(self, dtype):
+        return cast(self, dtype)
+
     #SLICING
 #     def __getitem__(self, args): return Subtensor.from_idxs(self,
 #             args).outputs[0]
