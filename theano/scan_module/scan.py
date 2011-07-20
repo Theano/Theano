@@ -864,7 +864,13 @@ def scan( fn
     other_inner_args = []
 
     other_scan_args  += [ arg for arg in non_seqs
-                        if not isinstance(arg, SharedVariable) ]
+                        if (not isinstance(arg, SharedVariable) and
+                            not isinstance(arg, tensor.Constant))]
+
+    ## Step 5.6 all shared variables with no update rules
+    other_inner_args += [ safe_new(arg,'_copy') for arg in non_seqs
+                         if (not isinstance(arg, SharedVariable) and
+                             not isinstance(arg, tensor.Constant))]
 
     ## Step 5.6 all non sequences including shared variables with no update rules
     def new_variable( v ):
