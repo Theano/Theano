@@ -1,6 +1,6 @@
 import numpy
 
-from theano.gof import Variable, Op, utils, Type, Constant,  Value, Apply
+from theano.gof import Op, Apply
 
 from theano.tensor import as_tensor_variable, dot, DimShuffle
 from theano import tensor
@@ -174,7 +174,7 @@ def is_positive(v):
     print 'is_positive', v
     if v.owner and v.owner.op == tensor.pow:
         print 'try for pow', v, v.owner.inputs
-        try: 
+        try:
             exponent = tensor.get_constant_value(v.owner.inputs[1])
         except TypeError:
             return False
@@ -530,5 +530,3 @@ class A_Xinv_b(Op):
         gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
         gb = matrix_dot(ix.T, a.T, gz)
         return [ga, gX, gb]
-
-
