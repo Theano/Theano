@@ -887,7 +887,7 @@ def scan( fn
                         in dummy_f.maker.expanded_inputs
                         if ( isinstance(arg.variable, SharedVariable) and
                             not arg.update) ]
-    other_shared_inner_args = [ new_variable(arg.variable) for arg
+    other_shared_inner_args = [ safe_new(arg.variable, '_copy') for arg
                         in dummy_f.maker.expanded_inputs
                         if ( isinstance(arg.variable, SharedVariable) and
                             not arg.update) ]
