@@ -386,8 +386,14 @@ def scan( fn
     for i in xrange(n_outs):
         if outs_info[i]:
             if isinstance(outs_info[i], dict):
+                # DEPRICATED :
                 if outs_info[i].get('return_steps', None):
+                    warning( ("Using `return_steps` has been depricated."
+                              " Simply select the entries you need using "
+                              " a subtensor. Scan will optimize memory "
+                              " consumption, so do not worry about that."))
                     return_steps[i] = outs_info[i]['return_steps']
+                # END
 
             if not isinstance(outs_info[i], dict):
                 # by default any output has a tap value of -1
