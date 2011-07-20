@@ -716,8 +716,8 @@ def find_up(l_node, f_node):
         l_outs = l_node.outputs
     else:
         l_outs = l_node
-    l_ins  = graph.inputs(l_outs)
-    nodes = graph.io_toposort(l_ins, l_outs)
+    l_ins  = gof.graph.inputs(l_outs)
+    nodes = gof.graph.io_toposort(l_ins, l_outs)
     return f_node in nodes
 
 
