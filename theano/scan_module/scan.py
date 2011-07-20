@@ -71,7 +71,8 @@ def scan( fn
          , truncate_gradient = -1
          , go_backwards      = False
          , mode              = None
-         , name              = None ):
+         , name              = None
+         , profile           = False):
     """
     This function constructs and applies a Scan op to the provided
     arguments.
