@@ -5305,36 +5305,11 @@ def tensordot(x, y=None, axes=2):
 
     return tensordot.op[axes](x, y)
 
-
 #TODO: tensordot should be function as described in rst docs.
 
-class Outer(Op):
-    """ Compute vector-vector outer product
-    """
-    def make_node(self, *inputs):
-        inputs = map(as_tensor_variable, inputs)
+def outer(x, y):
+    """Return vector-vector outer product."""
+    return dot(
+            x.dimshuffle(0, 'x'),
+            y.dimshuffle('x', 0))
 
-        x, y = inputs
-        nx = x.type.ndim
-        ny = y.type.ndim
-
-        if nx != 1: raise TypeError('non-vector arg0 to outer()', x)
-        if ny != 1: raise TypeError('not-vector arg1 to outer()', y)
-
-        bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
-
-        i_dtypes = [input.type.dtype for input in inputs]
-        outputs = [tensor(scal.upcast(*i_dtypes), bz)]
-        return Apply(self, inputs, outputs)
-
-    def perform(self, node, inp, out):
-        x, y = inp
-        z, = out
-        z[0] = numpy.outer(x, y)
-    def grad(self, inp, grads):
-        x, y = inp
-        gz, = grads
-        return dot(gz, y), dot(x, gz) #no transposing necessary
-    def __str__(self):
-        return "outer"
-outer = Outer()
