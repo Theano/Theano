@@ -708,13 +708,11 @@ def scan( fn
                 ordered_args +
                 non_seqs     )
 
-    # add only the non-shared variables to the arguments of the dummy
-    # function [ a function should not get shared variables as input ]
-    # this could happen if for example the initial state of an output is a
-    # shared variable for which we use only the last step (i.e. no
-    # subtensort is applied to the shared variable )
+    # add only the non-shared variables and non-constants to the arguments of the dummy
+    # function [ a function should not get shared variables or constants as input ]
     dummy_args = [arg for arg in args
-                  if not isinstance(arg, SharedVariable)]
+                  if (not isinstance(arg, SharedVariable) and
+                      not isinstance(arg, tensor.Constant) )]
     # when we apply the lambda expression we get a mixture of update rules
     # and outputs that needs to be separated
 
