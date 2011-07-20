@@ -290,8 +290,7 @@ def get_updates_and_outputs(outputs_updates):
     for i,out in enumerate(outputs):
         outputs[i] = tensor.as_tensor(out)
 
-    #return cond, outputs, updates
-    return outputs, updates
+    return cond, outputs, updates
 
 
 def isNaN_or_Inf_or_None(x):
