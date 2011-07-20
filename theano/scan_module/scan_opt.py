@@ -188,13 +188,7 @@ def scan_pushout_non_seq_operation(node):
                     y_place_holder = scan_utils.safe_new(y,'_replace')
                     to_replace       += [y]
                     replace_with_in  += [y_place_holder]
-                    if (cuda.cuda_available and
-                        isinstance(nw_outer_node.outputs[idx],
-                                   CudaNdarrayType)):
-                        nw_out = nw_outer_node.outputs[idx]
-                        replace_with_out += [host_from_gpu(nw_out)]
-                    else:
-                        replace_with_out += [nw_outer_node.outputs[idx]]
+                    replace_with_out += [nw_outer_node.outputs[idx]]
                 changed = True
 
     if counts >= max_iterations:
