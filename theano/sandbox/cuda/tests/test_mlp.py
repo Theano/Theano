@@ -116,7 +116,7 @@ def test_run_nnet():
             rval_gpu, tg = run_nnet(True, n_in=n_in, n_hid=n_hid)
             #print "cpu:", rval_cpu
             #print "gpu:", rval_gpu
-            abs_diff, rel_diff = theano.tensor.basic.numeric_grad.abs_rel_err(rval_gpu,rval_cpu)
+            abs_diff, rel_diff = theano.tensor.tensor_grad.numeric_grad.abs_rel_err(rval_gpu,rval_cpu)
             max_abs_diff = abs_diff.max()
             print "max abs diff=%e max rel diff=%e n_in=%d n_hid=%d"%(
                 max_abs_diff, rel_diff.max(), n_in, n_hid)
