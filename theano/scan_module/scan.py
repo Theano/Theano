@@ -164,14 +164,14 @@ def scan( fn
         .. code-block:: python
 
             ...
-            return [y1_t, y2_t], {x:x+1}, theano.until(x < 50)
+            return [y1_t, y2_t], {x:x+1}, theano.scan_module.until(x < 50)
 
         or
 
         .. code-block:: python
 
             ...
-            return theano.until(x<50, [y1_t, y2_t], {x:x+1})
+            return theano.scan_module.until(x<50, [y1_t, y2_t], {x:x+1})
 
         Note that a number of steps ( considered in here as the maximum
         number of steps ) is still required even though a condition is
