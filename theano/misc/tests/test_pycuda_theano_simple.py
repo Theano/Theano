@@ -71,6 +71,14 @@ def test_pycuda_memory_to_theano():
     print "gpuarray ref count after creating a CudaNdarray", sys.getrefcount(y)
     assert sys.getrefcount(y)==3
     assert (numpy.asarray(z) == 0).all()
+    assert z.base is y
+
+    # Test that we can take a view from this cuda view on pycuda memory
+    zz = z.view()
+    assert sys.getrefcount(y) == 4
+    assert zz.base is y
+    del zz
+    assert sys.getrefcount(y) == 3
 
     cuda_ones = cuda_ndarray.CudaNdarray(numpy.asarray([[[1]]],dtype='float32'))
     z += cuda_ones
