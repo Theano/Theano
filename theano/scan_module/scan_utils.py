@@ -288,9 +288,6 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
      equivalence of inputs defined by map).  Inputs are always assumed
      equal if strict is set to False.
     '''
-    import time
-    t00 = time.time()
-
     if in_xs is None:
         in_xs = []
     if in_ys is None:
