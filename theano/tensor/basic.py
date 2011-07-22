@@ -2834,7 +2834,7 @@ def extract_constant(x):
         if x.owner and isinstance(x.owner.op, ScalarFromTensor):
             x = x.owner.inputs[0]
         else:
-            x = tensor.tensor_from_scalar(x)
+            x = tensor_from_scalar(x)
     return x
 
 
