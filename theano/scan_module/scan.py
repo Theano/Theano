@@ -735,7 +735,7 @@ def scan( fn
         # We do not need to use the scan op anymore, so we can just return
         # the outputs and updates we have
         if condition is not None:
-            warning( ('When the number of steps is fixed and equal to 1,'
+            _logger.warning( ('When the number of steps is fixed and equal to 1,'
                       ' the provided stopping condition, ', str(condition),
                       ' is ignored'))
 
