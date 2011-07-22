@@ -14,20 +14,6 @@ from theano.compile.pfunc import rebuild_collect_shared
 '''
   Questions and notes about scan that should be answered :
 
-   * Even though it does not make it publically known in
-   the documentation, scan allows you to set both a return_steps
-   flag and a store_steps flag ( the first one is a soft condition telling
-   you how many steps to return, the second one determines how much memory
-   to allocate). There is an optimization as well, that transforms
-   return_steps to
-   store_steps. Questions :
-      - what happens if both flags are set ?
-       answer: whatever return_steps says is ignored, and store_steps is used
-      - the optimization works only with return_steps = -1; can it be made
-       to work with other values ?
-       answer: 6 Jul 2010 RP :it is a bit harry to figure out from the
-       subtensors what exactly you need
-
    * Scan seems to do copies of every input variable. Is that needed?
    answer : probably not, but it doesn't hurt also ( what we copy is
    theano variables, which just cary information about the type / dimension
