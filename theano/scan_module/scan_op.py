@@ -723,7 +723,7 @@ class Scan(Op):
         else:
             self_outs = self.outputs
         outs_shape = scan_utils.infer_shape(
-                outs = self.outputs,
+                outs = self_outs,
                 inputs = self.inputs,
                 input_shapes = inner_ins_shapes)
         # Will be used to check if outs_shape can be expressed without using
