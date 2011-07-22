@@ -1259,7 +1259,6 @@ def local_useless_subtensor(node):
                 return False
 
             length_pos_data = sys.maxint
-            length_pos_shape_i = None
 
             length_pos = shape_of[node.inputs[0]][pos]
             try:
@@ -1673,6 +1672,9 @@ compile.optdb.register('local_inplace_incsubtensor1', TopoOptimizer(local_inplac
 @register_stabilize
 @gof.local_optimizer([None])
 def local_incsubtensor_of_allocs(node):
+    """
+    IncSubtensor(x, zeros, idx) -> x
+    """
     if isinstance(node.op, T.IncSubtensor) and not node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
@@ -1693,6 +1695,11 @@ def local_incsubtensor_of_allocs(node):
 @register_stabilize
 @gof.local_optimizer([None])
 def local_setsubtensor_of_allocs(node):
+    """
+    SetSubtensor(x, x[idx], idx) -> x
+
+    when x is constant or alloc.
+    """
     if isinstance(node.op, T.IncSubtensor) and node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
