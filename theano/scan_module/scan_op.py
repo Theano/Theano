@@ -361,7 +361,7 @@ class Scan(Op):
         node_output_storage = [storage_map[r] for r in node.outputs]
         node_input_compute = [compute_map[r] for r in node.inputs]
         node_output_compute = [compute_map[r] for r in node.outputs]
-        #logger.debug('Compiling node %i of graph' % node_idx)
+        #_logger.debug('Compiling node %i of graph' % node_idx)
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -382,7 +382,7 @@ class Scan(Op):
                            wrapped_outputs,
                            mode = self.mode_instance,
                            name = self.name,
-                          profile = profile)
+                           profile = profile)
 
         p = self.perform
         # default arguments are stored in the closure of `rval`
