@@ -931,18 +931,15 @@ def scan_merge_inouts(node):
     # start again
     left  = []
     right = []
-    #inp_equiv = [[],[]]
 
     if has_duplicates(na.outer_in_shared):
         _left, _right = make_equiv(na.outer_in_shared, na.inner_in_shared)
         left  += _left
         right += _right
-        #inp_equiv.update(make_equiv(na.outer_in_shared, na.inner_in_shared))
     if has_duplicates(na.outer_in_sit_sot):
         _left, _right = make_equiv(na.outer_in_sit_sot, na.inner_in_sit_sot)
         left  += _left
         right += _right
-        #inp_equiv.update(make_equiv(na.outer_in_sit_sot, na.inner_in_sit_sot))
     if has_duplicates(na.outer_in_mit_mot):
         seen = {}
         for omm, imm, _sl in zip(na.outer_in_mit_mot, na.inner_in_mit_mot, na.mit_mot_in_slices):
@@ -951,7 +948,6 @@ def scan_merge_inouts(node):
                 simm = seen[(omm, sl)]
                 left  += imm
                 right += simm
-                #inp_equiv.update(zip(imm, simm))
             else:
                 seen[(omm, sl)] = imm
 
@@ -963,7 +959,6 @@ def scan_merge_inouts(node):
                 sims = seen[(oms, sl)]
                 left  += ims
                 right += sims
-                #inp_equiv.update(zip(ims, sims))
             else:
                 seen[(oms, sl)] = ims
 
