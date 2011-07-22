@@ -303,7 +303,7 @@ class Scan(Op):
                                                  other.outputs,
                                                  self.inputs,
                                                  other.inputs,
-                                                strict = True):
+                                                 strict=True):
                 return False
 
             # If they do, then they need to match in other small details
