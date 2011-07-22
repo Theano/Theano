@@ -678,12 +678,6 @@ def find_up(l_node, f_node):
     nodes = gof.graph.io_toposort(l_ins, l_outs)
     return f_node in nodes
 
-
-def flatten(l):
-    """flattens a list by one level only"""
-    return sum(l , [])
-
-
 def reconstruct_graph(inputs, outputs, tag = None):
     """
     Different interface to clone, that allows you to pass inputs.
@@ -814,8 +808,8 @@ class scan_args(object):
             self.other_info[k] = info[k]
 
     inner_inputs = property(lambda self: (self.inner_in_seqs +
-                                          flatten(self.inner_in_mit_mot) +
-                                          flatten(self.inner_in_mit_sot) +
+                                          sum(self.inner_in_mit_mot, []) +
+                                          sum(self.inner_in_mit_sot, []) +
                                           self.inner_in_sit_sot +
                                           self.inner_in_shared +
                                           self.inner_in_non_seqs))
@@ -829,7 +823,7 @@ class scan_args(object):
                                           self.outer_in_nit_sot +
                                           self.outer_in_non_seqs))
 
-    inner_outputs = property(lambda self: (flatten(self.inner_out_mit_mot) +
+    inner_outputs = property(lambda self: (sum(self.inner_out_mit_mot, []) +
                                            self.inner_out_mit_sot +
                                            self.inner_out_sit_sot +
                                            self.inner_out_nit_sot +
