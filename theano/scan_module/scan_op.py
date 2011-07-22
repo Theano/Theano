@@ -315,15 +315,17 @@ class Scan(Op):
             gpu_str = 'gpu'
         else:
             gpu_str = 'cpu'
-        if self.inplace :
-            aux_txt = '{inplace,%s}'%gpu_str
+        if self.as_while:
+            name = 'while'
         else:
-            aux_txt = '{%s}'%gpu_str
+            name = 'for'
 
-        if self.name:
-            return self.name+aux_txt
+        if self.inplace :
+            aux_txt = '%s{inplace,%s,%s}'%(name, gpu_str, str(self.name))
         else:
-            return 'scan'+aux_txt
+            aux_txt = '%s{%s,%s}'%(name,gpu_str, str(self.name))
+
+        return aux_txt
 
 
     def __hash__(self):
