@@ -136,6 +136,7 @@ def safe_make_node(op, *inputs):
         return node[0].owner
     else:
         return node.owner
+
 def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                bad_runtime = {}, grad = {}, mode = None, grad_rtol=None,
                eps = 1e-10, skip = False):
@@ -146,7 +147,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
 
     class Checker(unittest.TestCase):
 
-        op = _op
+        op = staticmethod(_op)
         expected = staticmethod(_expected)
         checks = _checks
         good = _good
@@ -998,6 +999,52 @@ SecondSameRankTester = makeTester(
                             )),
                             mode=get_default_mode().excluding('local_fill_to_alloc')
                         )
+
+### Alloc
+AllocTester = makeBroadcastTester(
+        name = 'AllocTester',
+        op = alloc,
+        expected = (lambda x, *shp: numpy.zeros(shp, dtype=x.dtype) + x),
+        good = dict(
+            correct02 = (rand(), numpy.int32(4), numpy.int32(7)),
+            correct12 = (rand(7), numpy.int32(4), numpy.int32(7)),
+            correct13 = (rand(7), numpy.int32(2), numpy.int32(4), numpy.int32(7)),
+            correct23 = (rand(4,7), numpy.int32(2), numpy.int32(4), numpy.int32(7)),
+            ),
+        bad_runtime = dict(
+            bad_shape12 = (rand(7), numpy.int32(7), numpy.int32(5)),
+            too_big32 = (rand(6,2,4), numpy.int32(6), numpy.int32(2)),
+            too_big32b = (rand(6,2,4), numpy.int32(2), numpy.int32(4)),
+            ),
+        )
+
+# Since not all inputs of Alloc are differentiable, we need different testers
+s1, s2, s3 = randint_ranged(1, 13, (3,))
+# alloc a scalar into a vector
+Alloc01GradTester = makeBroadcastTester(
+        name = 'Alloc01GradTester',
+        #op = (lambda self, x: alloc(x, s1)),
+        op = (lambda x: alloc(x, s1)),
+        expected = (lambda x: numpy.zeros((s1,), dtype=x.dtype) + x),
+        grad = dict(
+            x1 = (rand(),),
+            x2 = (rand(),),
+            x3 = (rand(),),
+            ),
+        )
+
+# alloc a vector into a tensor3
+Alloc13GradTester = makeBroadcastTester(
+        name = 'Alloc13GradTester',
+        #op = (lambda self, x: alloc(x, s1, s2, s3)),
+        op = (lambda x: alloc(x, s1, s2, s3)),
+        expected = (lambda x: numpy.zeros((s1, s2, s3), dtype=x.dtype) + x),
+        grad = dict(
+            x1 = (rand(s3),),
+            x2 = (rand(s3),),
+            x3 = (rand(s3),),
+            ),
+        )
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):

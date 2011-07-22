@@ -1,0 +1,40 @@
+
+.. _gpundarray:
+
+**********
+GpuNdArray
+**********
+
+Why a common GPU ndarray?
+
+- Currently there are at least 4 different GPU array data structures in use by Python packages
+
+  - CudaNdarray (Theano), GPUArray (PyCUDA), CUDAMatrix (cudamat), GPUArray (PyOpenCL), ...
+  - There are even more if we include other languages
+
+- All of them are a subset of the functionality of ``numpy.ndarray`` on the GPU
+- Lots of duplicated effort
+
+  - GPU code is harder/slower to do {\bf correctly} and {\bf fast} than on the CPU/Python
+
+- Lack of a common array API makes it harder to port/reuse code
+- Also harder to find/distribute code
+- Divides development work
+
+
+Design Goals
+
+- Make it VERY similar to ``numpy.ndarray``
+- Be compatible with both CUDA and OpenCL
+- Have the base object accessible from C to allow collaboration with more projects, across high-level languages
+
+  - We want people from C, C++, Ruby, R, ... all use the same base GPU N-dimensional array
+
+
+Final GpuNdArray Note
+
+- Under development
+- Will be the next GPU array container for Theano (this summer!)
+- Probably also for PyCUDA, PyOpenCL
+- Mailing list: http://lists.tiker.net/listinfo/gpundarray
+

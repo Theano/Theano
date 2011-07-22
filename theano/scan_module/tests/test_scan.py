@@ -9,25 +9,10 @@ from theano import tensor
 from theano.tests  import unittest_tools as utt
 from theano.compile.pfunc import rebuild_collect_shared
 
-import theano.tensor as TT
 
 
 '''
   Questions and notes about scan that should be answered :
-
-   * Even though it does not make it publically known in
-   the documentation, scan allows you to set both a return_steps
-   flag and a store_steps flag ( the first one is a soft condition telling
-   you how many steps to return, the second one determines how much memory
-   to allocate). There is an optimization as well, that transforms
-   return_steps to
-   store_steps. Questions :
-      - what happens if both flags are set ?
-       answer: whatever return_steps says is ignored, and store_steps is used
-      - the optimization works only with return_steps = -1; can it be made
-       to work with other values ?
-       answer: 6 Jul 2010 RP :it is a bit harry to figure out from the
-       subtensors what exactly you need
 
    * Scan seems to do copies of every input variable. Is that needed?
    answer : probably not, but it doesn't hurt also ( what we copy is
@@ -313,9 +298,6 @@ class T_Scan(unittest.TestCase):
         scan_node = [node for node in topo if isinstance(node.op, theano.scan_module.scan_op.Scan)]
         assert len(scan_node) == 1
         scan_node = scan_node[0]
-        #theano.printing.pydotprint(f2, outfile='out1.png', high_contrast=True)
-        #theano.printing.pydotprint(scan_node.op.fn,
-        #                           outfile='inner1.png', high_contrast=True)
 
         topo = f2.maker.env.toposort()
         assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu) for node in topo]) == 0
@@ -1960,7 +1942,6 @@ class T_Scan(unittest.TestCase):
             self.assertTrue(nb_shape_i == 1)
 
     def test_bug_josh_reported(self):
-        import theano
         import theano.tensor.signal.conv
         m1 = theano.tensor.matrix()
         m2 = theano.tensor.matrix()
@@ -2090,8 +2071,8 @@ class T_Scan(unittest.TestCase):
 
         mode = theano.compile.mode.FAST_RUN
         mode = mode.excluding('inplace')
-        f1 = theano.function([],o, mode= mode)
-        inputs, outputs = clone_optimized_graph(f1)
+        f0 = theano.function([],o, mode= mode)
+        inputs, outputs = clone_optimized_graph(f0)
 
         scan_nodes = grab_scan_node(outputs[0])
         assert scan_nodes is not None
@@ -2173,19 +2154,23 @@ class T_Scan(unittest.TestCase):
         n2o_u,_ = theano.scan( lambda i, o,u,h0,W,eu:
                               (theano.tensor.grad(o[i], u)*eu).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eu])
+                              non_sequences = [o,u,h0,W,eu],
+                              name = 'jacobU'
+                             )
 
 
         n2o_h0,_ = theano.scan( lambda i, o,u,h0,W,eh0:
                               (theano.tensor.grad(o[i], h0)*eh0).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eh0])
+                              non_sequences = [o,u,h0,W,eh0],
+                              name = 'jacobh')
 
 
         n2o_W,_ = theano.scan( lambda i, o,u,h0,W,eW:
                               (theano.tensor.grad(o[i], W)*eW).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eW])
+                              non_sequences = [o,u,h0,W,eW],
+                             name = 'jacobW')
 
 
         fn_test = theano.function([u,h0,W,eu,eh0,eW],
@@ -2201,12 +2186,12 @@ class T_Scan(unittest.TestCase):
 
 
     def test_pushout(self):
-        W1 = TT.matrix('W1')
-        W2 = TT.matrix('W2')
-        h0 = TT.vector('h0')
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        h0 = tensor.vector('h0')
 
         def lambda_fn(h, W1, W2):
-            return TT.dot(h, W1 + W2)
+            return tensor.dot(h, W1 + W2)
 
         o, _ = theano.scan(lambda_fn, outputs_info= h0,
                            non_sequences =[W1,W2],
@@ -2223,14 +2208,14 @@ class T_Scan(unittest.TestCase):
 
 
     def test_alloc_inputs1(self):
-        W1 = TT.matrix('W1')
-        W2 = TT.matrix('W2')
-        h0 = TT.vector('h0')
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        h0 = tensor.vector('h0')
 
         def lambda_fn(h, W1, W2):
-            return TT.dot(h, W1 * W2)
+            return tensor.dot(h, W1 * W2)
         o, _ = theano.scan(lambda_fn, outputs_info= h0,
-                           non_sequences =[W1,TT.zeros_like(W2)],
+                           non_sequences =[W1,tensor.zeros_like(W2)],
                            n_steps = 5)
 
         f = theano.function([h0,W1,W2], o)
@@ -2242,17 +2227,17 @@ class T_Scan(unittest.TestCase):
 
 
     def test_alloc_inputs2(self):
-        W1 = TT.matrix()
-        W2 = TT.matrix()
-        h0 = TT.vector()
+        W1 = tensor.matrix()
+        W2 = tensor.matrix()
+        h0 = tensor.vector()
 
         def lambda_fn(W1,h, W2):
-            return W1 * TT.dot(h, W2)
+            return W1 * tensor.dot(h, W2)
 
         o, _ = theano.scan(lambda_fn,
-                           sequences = TT.zeros_like(W1),
+                           sequences = tensor.zeros_like(W1),
                            outputs_info= h0,
-                           non_sequences =[TT.zeros_like(W2)],
+                           non_sequences =[tensor.zeros_like(W2)],
                            n_steps = 5)
 
         f = theano.function([h0,W1,W2], o)
@@ -2266,21 +2251,21 @@ class T_Scan(unittest.TestCase):
 
 
     def test_alloc_inputs3(self):
-        _W1 = TT.matrix()
-        _W2 = TT.matrix()
-        _h0 = TT.vector()
+        _W1 = tensor.matrix()
+        _W2 = tensor.matrix()
+        _h0 = tensor.vector()
 
-        W1 = TT.specify_shape(_W1, (3,3))
-        W2 = TT.specify_shape(_W2, (3,3))
-        h0 = TT.specify_shape(_h0, (3,))
+        W1 = tensor.specify_shape(_W1, (3,3))
+        W2 = tensor.specify_shape(_W2, (3,3))
+        h0 = tensor.specify_shape(_h0, (3,))
 
         def lambda_fn(W1,h, W2):
-            return W1 * TT.dot(h, W2)
+            return W1 * tensor.dot(h, W2)
 
         o, _ = theano.scan(lambda_fn,
-                           sequences = TT.zeros_like(W1),
+                           sequences = tensor.zeros_like(W1),
                            outputs_info= h0,
-                           non_sequences =[TT.zeros_like(W2)],
+                           non_sequences =[tensor.zeros_like(W2)],
                            n_steps = 5)
 
         f = theano.function([_h0,_W1,_W2], o)
@@ -2292,9 +2277,9 @@ class T_Scan(unittest.TestCase):
 
 
     def test_while0(self):
-        x = TT.vector('x')
+        x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _ = theano.scan(lambda_fn, x)
         f = theano.function([x], o)
         vx = numpy.zeros((50,))
@@ -2303,9 +2288,9 @@ class T_Scan(unittest.TestCase):
         assert numpy.sum(out[24:]) == 0
 
     def test_while1(self):
-        x = TT.vector('x')
+        x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _  = theano.scan(lambda_fn, x)
         o2, _ = theano.scan(lambda x_t:x_t + 2,
                             x)
@@ -2322,11 +2307,11 @@ class T_Scan(unittest.TestCase):
 
 
     def test_while2(self):
-        x = TT.vector('x')
+        x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _  = theano.scan(lambda_fn, x)
-        o2, _ = theano.scan(lambda x_t:( x_t + 2, theano.until(x_t>3)),
+        o2, _ = theano.scan(lambda x_t:( x_t + 2, theano.scan_module.until(x_t>3)),
                             x)
 
         f = theano.function([x], [o,o2])
@@ -2338,6 +2323,68 @@ class T_Scan(unittest.TestCase):
         lssc = [x for x in f.maker.env.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
+
+    def test_return_steps(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        v_u1   = asarrayX(rng.uniform(size = (8,2), low = -5., high = 5.))
+        v_u2   = asarrayX(rng.uniform(size = (8,), low = -5.,high = 5.))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        v_y0   = asarrayX(rng.uniform(size = (3,)))
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.vector('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.vector('y0')
+
+        def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, y_tm3, W_in1):
+            return [y_tm3+1, theano.dot(u1_t,W_in1) + u2_t * W_in2 + \
+                    theano.dot(x_tm1, W),
+                    y_tm1 + theano.dot(x_tm1, W_out)]
+
+        outputs, updates = theano.scan( f_rnn_cmpl
+                                       , [ u1
+                                          , u2]
+                                       , [ dict(store_steps = 3)
+                                          , dict(initial = x0, return_steps = 2)
+                                          , dict(initial=y0, taps=[-1,-3],
+                                                 return_steps = 4)]
+                                       , W_in1
+                                       , n_steps           = None
+                                       , truncate_gradient = -1
+                                       , go_backwards      = False)
+
+        f4     = theano.function([u1,u2,x0,y0,W_in1], outputs
+                                 , updates = updates
+                                 , allow_input_downcast = True
+                                )
+
+
+        # compute the values in numpy
+        v_x = numpy.zeros((8,2),dtype=theano.config.floatX)
+        v_y = numpy.zeros((8,),dtype=theano.config.floatX)
+        v_x[0] = numpy.dot(v_u1[0],vW_in1) + v_u2[0]*vW_in2 + \
+                    numpy.dot(v_x0,vW)
+        v_y[0] = numpy.dot(v_x0,vWout) + v_y0[2]
+
+        for i in xrange(1,8):
+
+            v_x[i] = numpy.dot(v_u1[i],vW_in1) + v_u2[i]*vW_in2 + \
+                        numpy.dot(v_x[i-1],vW)
+            v_y[i] = numpy.dot(v_x[i-1], vWout) + v_y[i-1]
+
+        (theano_dump, theano_x,theano_y) =  f4( v_u1, v_u2, v_x0, v_y0, vW_in1)
+
+        assert numpy.allclose(theano_x , v_x[-2:])
+        assert numpy.allclose(theano_y , v_y[-4:])
+
 
 
 def test_speed():

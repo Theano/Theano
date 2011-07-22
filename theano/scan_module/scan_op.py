@@ -110,7 +110,7 @@ class Scan(Op):
                     TensorType(
                         broadcastable = (False,) + o.type.broadcastable
                         , dtype = o.type.dtype ))
-            # shared outputs
+            # shared outputs + possibly the ending condition
             for o in outputs[end:]:
                 if cuda.cuda_available and isinstance(o.type,
                                                       cuda.CudaNdarrayType):
@@ -120,7 +120,8 @@ class Scan(Op):
                 else:
                     self.output_types.append( o.type )
 
-
+        if self.as_while:
+            self.output_types = self.output_types[:-1]
         self.destroy_map = {}
 
         if hasattr(self,'inplace') and self.inplace:
@@ -154,22 +155,6 @@ class Scan(Op):
         # function that we set in case none was given
         self.info['name'] = self.name
 
-        # If a shared variable is the result of a ViewOp it is a clear
-        # indication that we need to copy that value after the perform of
-        # scan is done
-        slices = ( self.n_mit_mot_outs +
-                  self.n_mit_sot +
-                  self.n_sit_sot +
-                  self.n_nit_sot )
-        wrapped_inputs  = [Param(x, borrow=True) for x in inputs ]
-        wrapped_outputs = [Out(x, borrow=True) for x in
-                           outputs[:slices] ]
-        wrapped_outputs += outputs[slices:]
-        self.fn = function(wrapped_inputs,
-                           wrapped_outputs,
-                           mode = self.mode_instance,
-                           name = self.name )
-
         # Pre-computing some values to speed up perform
         self.mintaps   = [ numpy.min(x) for x in self.tap_array]
         self.mintaps  += [ 0 for x in xrange(self.n_nit_sot) ]
@@ -182,7 +167,10 @@ class Scan(Op):
                                     self.n_shared_outs )
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
-        self._cmodule_key = gof.CLinker.cmodule_key_(self.fn.maker.env,[])
+        tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
+                                                       self.outputs)
+        local_env = gof.Env(tmp_in, tmp_out)
+        self._cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
         self._hash_inner_graph = hash(self._cmodule_key)
 
 
@@ -307,15 +295,15 @@ class Scan(Op):
             # If everything went OK up to here, there is still one thing to
             # check. Namely, do the internal graph represent same
             # computations
-            if not scan_utils.equal_computations(self.inputs,
-                                                 other.inputs,
-                                                 strict = False):
-                return False
+            for self_in, other_in in zip(self.inputs, other.inputs):
+                if self_in.type != other_in.type :
+                    return False
 
             if not scan_utils.equal_computations(self.outputs,
                                                  other.outputs,
                                                  self.inputs,
-                                                 other.inputs):
+                                                 other.inputs,
+                                                strict = True):
                 return False
 
             # If they do, then they need to match in other small details
@@ -327,15 +315,17 @@ class Scan(Op):
             gpu_str = 'gpu'
         else:
             gpu_str = 'cpu'
-        if self.inplace :
-            aux_txt = '{inplace,%s}'%gpu_str
+        if self.as_while:
+            name = 'while'
         else:
-            aux_txt = '{%s}'%gpu_str
+            name = 'for'
 
-        if self.name:
-            return self.name+aux_txt
+        if self.inplace :
+            aux_txt = '%s{inplace,%s,%s}'%(name, gpu_str, str(self.name))
         else:
-            return 'scan'+aux_txt
+            aux_txt = '%s{%s,%s}'%(name,gpu_str, str(self.name))
+
+        return aux_txt
 
 
     def __hash__(self):
@@ -344,6 +334,68 @@ class Scan(Op):
                 # CLinker.cmodule_key_
                 self._hash_inner_graph ^
                 scan_utils.hash_listsDictsTuples(self.info) )
+
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        """
+        :param node: something previously returned by self.make_node
+
+        :param storage_map: dict variable -> one-element-list where a computed
+                value for this variable may be found.
+
+        :param compute_map: dict variable -> one-element-list where a boolean
+                value will be found.  The boolean indicates whether the
+                variable's storage_map container contains a valid value (True)
+                or if it has not been computed yet (False).
+
+        :param no_recycling: list of variables for which it is forbidden to
+                reuse memory allocated by a previous call.
+
+        :note: If the thunk consults the storage_map on every call, it is safe
+            for it to ignore the no_recycling argument, because elements of the
+            no_recycling list will have a value of None in the storage map.  If
+            the thunk can potentially cache return values (like CLinker does),
+            then it must not do so for variables in the no_recycling list.
+        """
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
+        node_input_compute = [compute_map[r] for r in node.inputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
+        #logger.debug('Compiling node %i of graph' % node_idx)
+        # If a shared variable is the result of a ViewOp it is a clear
+        # indication that we need to copy that value after the perform of
+        # scan is done
+        slices = ( self.n_mit_mot_outs +
+                  self.n_mit_sot +
+                  self.n_sit_sot +
+                  self.n_nit_sot )
+        wrapped_inputs  = [Param(x, borrow=True) for x in self.inputs ]
+        wrapped_outputs = [Out(x, borrow=True) for x in
+                           self.outputs[:slices] ]
+        wrapped_outputs += self.outputs[slices:]
+        profile = None
+        if theano.config.profile or type(self.profile) is str:
+            profile = ScanProfileStats(name = self.name)
+        elif self.profile:
+            profile = self.profile
+        self.fn = function(wrapped_inputs,
+                           wrapped_outputs,
+                           mode = self.mode_instance,
+                           name = self.name,
+                          profile = profile)
+
+        p = self.perform
+        # default arguments are stored in the closure of `rval`
+        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+            r = p(n, [x[0] for x in i], o)
+            for o in node.outputs:
+                compute_map[o][0] = True
+            return r
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.perform = p
+        rval.lazy = False
+        return rval
 
 
     def perform( self, node, args, outs):
@@ -438,8 +490,12 @@ class Scan(Op):
         for idx in xrange(len(other_args)):
             input_storage[idx+offset].storage[0] = other_args[idx]
 
+        i = 0
+        cond = True
         ############## THE MAIN LOOP #########################
-        for i in xrange(n_steps):
+        #for i in xrange(n_steps):
+        while (i< n_steps) and cond:
+
             # sequences over which scan iterates
             # 3. collect input slices
             for idx in xrange(self.n_seqs):
@@ -496,11 +552,18 @@ class Scan(Op):
             offset += self.n_outs+self.n_nit_sot - self.n_mit_mot
             for idx in xrange(self.n_shared_outs):
                 output_storage[idx+offset].storage[0] = None
-
+            # If condition add it to the mix
+            if self.as_while:
+                pdx = offset + self.n_shared_outs
+                output_storage[pdx].storage[0] = None
             # 5. compute outputs
             t0_fn = time.time()
             fn()
             dt_fn = time.time() - t0_fn
+            if self.as_while:
+                pdx = offset + self.n_shared_outs
+                cond = output_storage[pdx].storage[0] == 0
+
             t_fn += dt_fn
             offset_out = 0
             # 5.1 Copy over the values for mit_mot outputs
@@ -558,13 +621,14 @@ class Scan(Op):
                                itertools.izip(pos, store_steps)
                                ]
 
+            i = i+1
 
         # 6. Check if you need to re-order output buffers
         begin = self.n_mit_mot
         end   = self.n_outs + self.n_nit_sot
         for idx in xrange(begin, end):
             min_tap = self.mintaps[idx]
-            if ( store_steps[idx] < n_steps-self.mintaps[idx] and
+            if ( store_steps[idx] < i-self.mintaps[idx] and
                 pos[idx] < store_steps[idx] ):
 
                 pdx = pos[idx]
@@ -594,8 +658,8 @@ class Scan(Op):
             # backpropagation through time. In such a scenarion Scan is
             # expected to return 0 for all entries for which the gradient is
             # not actually computed
-            elif store_steps[idx] > n_steps - self.mintaps[idx]:
-                outs[idx][0][n_steps-self.mintaps[idx]:] = 0
+            elif store_steps[idx] > i - self.mintaps[idx]:
+                outs[idx][0][i-self.mintaps[idx]:] = 0
 
 
         t_call = time.time() - t0_call
@@ -603,15 +667,25 @@ class Scan(Op):
         # and this little string helps us to find this spot:
         # "PROFILE_CODE"
 
-        if hasattr(self.fn.maker.mode,'fct_call_time'):
-            self.fn.maker.mode.fct_call_time[self.fn] += t_fn
-            self.fn.maker.mode.fct_call[self.fn] += n_steps
+        if hasattr(self.fn.maker, 'profile') and self.fn.maker.profile:
+            profile = self.fn.maker.profile
+            profile.callcount += 1
+            profile.nbsteps += n_steps
+            profile.call_time += t_call
+            profile.vm_call_time +=  t_fn
+            if hasattr(self.fn.fn, 'update_profile'):
+                self.fn.fn.update_profile(profile)
 
-        self.fn.maker.mode.call_time += t_fn
-        self.fn.maker.mode.fn_time += t_fn
+        #/* Old ProfileMode
+        #if hasattr(self.fn.maker.mode,'fct_call_time'):
+        #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
+        #    self.fn.maker.mode.fct_call[self.fn] += n_steps
+
+        #self.fn.maker.mode.call_time += t_fn
+        #self.fn.maker.mode.fn_time += t_fn
+        # Old Profile Mode */
         self.t_call = t_call
-        self.t_fn = t_fn
-
+        self.t_fn   = t_fn
 
     ### Infer Shape
     def infer_shape(self, node, input_shapes):
@@ -644,9 +718,12 @@ class Scan(Op):
         out_equivalent = {}
         for in_ns, out_ns in zip(inner_non_sequences, node.inputs[offset:]):
             out_equivalent[in_ns] = out_ns
-
+        if self.as_while:
+            self_outs = self.outputs[:-1]
+        else:
+            self_outs = self.outputs
         outs_shape = scan_utils.infer_shape(
-                outs = self.outputs,
+                outs = self_outs,
                 inputs = self.inputs,
                 input_shapes = inner_ins_shapes)
         # Will be used to check if outs_shape can be expressed without using
@@ -704,18 +781,10 @@ class Scan(Op):
         # Note ! We don't want to use the actual same variable as the ones
         # used by the original scan, rather create clones of them
 
-        def new_var(x):
-            nw_x = x.type()
-            if x.name:
-                nw_x.name=x.name +'grad_copy'
-            return nw_x
-
-
-        self_inputs = [new_var(x) for x in self.inputs ]
-        givens = {}
-        for new_x, x in zip(self_inputs, self.inputs):
-            givens[x] = new_x
-        self_outputs = scan_utils.clone(self.outputs, replace=givens)
+        rval = scan_utils.reconstruct_graph(self.inputs,
+                                            self.outputs,'_grad')
+        self_inputs  = rval[0]
+        self_outputs = rval[1]
 
 
         seqs   = self_inputs[:self.n_seqs]
@@ -738,6 +807,7 @@ class Scan(Op):
                                  + self.n_mit_sot
                                  + self.n_nit_sot
                                  + self.n_sit_sot )
+        # shared variables as well as the condition as well as the condition
         old_scan_shared_outs  = self_outputs[out_offset:]
         arg_offset = ( 1
                       + self.n_seqs
@@ -992,6 +1062,8 @@ class Scan(Op):
         info['n_sit_sot']                = 0
         info['n_shared_outs']            = n_shared_outs + self.n_shared_outs
         info['n_nit_sot']                = n_nit_sot
+        info['as_while']           = self.as_while
+        info['profile']            = self.profile
         if self.name:
             info['name']  = 'grad_of_' + self.name
         else:
@@ -1059,6 +1131,180 @@ class Scan(Op):
         end   = begin + n_shared_outs
         gradients += outputs[begin:end]
         return gradients
+
+    def R_op(self, inputs, eval_points):
+        # Step 0. Don't work on the orignal tensor variables
+        rval = scan_utils.reconstruct_graph(self.inputs,
+                                            self.outputs,'_rop')
+        self_inputs  = rval[0]
+        self_outputs = rval[1]
+        # Step 1. Compute the R_op of the inner function
+        inner_eval_points = [scan_utils.safe_new(x,'_evalpoint') for x in self_inputs]
+        if self.as_while:
+            rop_self_outputs = self_outputs[:-1]
+        else:
+            rop_self_outputs = self_outputs
+        rop_outs = tensor.Rop(rop_self_outputs, self_inputs, inner_eval_points)
+        if type(rop_outs) not in (list, tuple):
+            rop_outs = [rop_outs]
+        # Step 2. Figure out what corresponds to what in the scan
+
+        # When doing the R-op of scan, you end up having double of each type of
+        # input, because for each sequence you need also its eval point, for
+        # each mit_mot, mit_sot, sit_sot or other type of inputs the same.
+        # Interestingly enough, all these types of eval points behave the same
+        # way as the input to which they correspond
+        # The only exception is the eval point for the number of sequences, and
+        # evan point for the number of nit_sot which I think should just be
+        # ignored (?)
+        info = {}
+        info['n_seqs']    = self.n_seqs*2
+        info['n_mit_sot'] = self.n_mit_sot*2
+        info['n_sit_sot'] = self.n_sit_sot*2
+        info['n_mit_mot'] = self.n_mit_mot*2
+        info['n_nit_sot'] = self.n_nit_sot*2
+        info['n_shared_outs'] = self.n_shared_outs*2
+        info['gpu']       = False
+        info['as_while']  = self.as_while
+        info['profile'] = self.profile
+        info['truncate_gradient'] = self.truncate_gradient
+        if self.name:
+            info['name'] = 'rop_of_'+self.name
+        else:
+            info['name'] = None
+        info['mode'] = self.mode
+        info['inplace'] = False
+        info['mit_mot_out_slices'] = self.mit_mot_out_slices*2
+        new_tap_array = []
+        b = 0
+        e = self.n_mit_mot
+        new_tap_array += self.tap_array[b:e]*2
+        b = e
+        e += self.n_mit_sot
+        new_tap_array += self.tap_array[b:e]*2
+        b = e
+        e += self.n_sit_sot
+        new_tap_array += self.tap_array[b:e]*2
+        info['tap_array'] = new_tap_array
+
+        # Sequences ...
+        b  = 1
+        ib = 0
+        e  = 1 + self.n_seqs
+        ie = self.n_seqs
+        scan_seqs  = inputs[b:e] + eval_points[b:e]
+        inner_seqs = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+
+        # MIT_MOT sequences ...
+        b  = e
+        e  = e + self.n_mit_mot
+        ib = ie
+        ie = ie + int(numpy.sum([len(x) for x in
+                                 self.tap_array[:self.n_mit_mot]]))
+        scan_mit_mot  = inputs[b:e] + eval_points[b:e]
+        inner_mit_mot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+
+        # MIT_SOT sequences ...
+        b  = e
+        e  = e + self.n_mit_sot
+        ib = ie
+        ie = ie + int(numpy.sum([len(x) for x in
+                             self.tap_array[self.n_mit_mot:self.n_mit_mot+self.n_mit_sot]]))
+        scan_mit_sot  = inputs[b:e] + eval_points[b:e]
+        inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+
+        #SIT_SOT sequences ...
+        b  = e
+        e  = e + self.n_sit_sot
+        ib = ie
+        ie = ie + self.n_sit_sot
+        scan_sit_sot  = inputs[b:e] + eval_points[b:e]
+        inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+
+        #Shared outs ...
+        b  = e
+        e  = e + self.n_shared_outs
+        ib = ie
+        ie = ie + self.n_shared_outs
+        scan_shared  = inputs[b:e] + eval_points[b:e]
+        inner_shared = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+
+        # NIT_SOT sequences
+        b = e
+        e = e + self.n_nit_sot
+        scan_nit_sot = inputs[b:e]*2
+
+
+        # All other arguments
+        scan_other = inputs[e:] + eval_points[e:]
+        inner_other = self_inputs[ie:] + inner_eval_points[ie:]
+
+        # Outputs
+        n_mit_mot_outs = int(numpy.sum([len(x) for x in
+                                        self.mit_mot_out_slices]))
+        info['n_mit_mot_outs'] = n_mit_mot_outs
+        b = 0
+        e = n_mit_mot_outs
+        inner_out_mit_mot = self_outputs[b:e] + rop_outs[b:e]
+        b = e
+        e = e + self.n_mit_sot
+        inner_out_mit_sot = self_outputs[b:e] + rop_outs[b:e]
+        b = e
+        e = e + self.n_sit_sot
+        inner_out_sit_sot = self_outputs[b:e] + rop_outs[b:e]
+        b = e
+        e = e + self.n_nit_sot
+        inner_out_nit_sot = self_outputs[b:e] + rop_outs[b:e]
+        b = e
+        e = e + self.n_shared_outs
+        inner_out_shared = self_outputs[b:e] + rop_outs[b:e]
+
+        inner_ins = ( inner_seqs +
+                     inner_mit_mot +
+                     inner_mit_sot +
+                     inner_sit_sot +
+                     inner_shared +
+                     inner_other )
+        inner_outs = ( inner_out_mit_mot +
+                      inner_out_mit_sot +
+                      inner_out_sit_sot +
+                      inner_out_nit_sot +
+                      inner_out_shared)
+
+        if self.as_while:
+            inner_outs += [self_outputs[-1]]
+        scan_inputs =  ( [inputs[0]] +
+                        scan_seqs +
+                        scan_mit_mot +
+                        scan_mit_sot +
+                        scan_sit_sot +
+                        scan_shared +
+                        scan_nit_sot +
+                        scan_other)
+
+        local_op = Scan( inner_ins, inner_outs, info )
+        outputs = local_op(*scan_inputs)
+        if type(outputs) not in (list, tuple):
+            outputs = [ outputs ]
+        # Select only the result of the R_op results
+        final_outs = []
+        b = self.n_mit_mot
+        e = self.n_mit_mot*2
+        final_outs += outputs[b:e]
+        b = e + self.n_mit_sot
+        e = e + self.n_mit_sot*2
+        final_outs += outputs[b:e]
+        b = e + self.n_sit_sot
+        e = e + self.n_sit_sot*2
+        final_outs += outputs[b:e]
+        b = e + self.n_nit_sot
+        e = e + self.n_nit_sot*2
+        final_outs += outputs[b:e]
+        b = e + self.n_shared_outs
+        e = e + self.n_shared_outs*2
+        final_outs += outputs[b:e]
+
+        return final_outs
 
 
 @theano.compile.profilemode.register_profiler_printer

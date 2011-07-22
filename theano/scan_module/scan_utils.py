@@ -12,13 +12,14 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
+import copy
 import logging
 import numpy
 
 from theano import config
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
-from theano import tensor
+from theano import tensor, scalar
 from theano.tensor.basic import get_constant_value
 
 from theano.sandbox import cuda
@@ -42,8 +43,16 @@ def safe_new(x, tag = ''):
         nw_name = x.name + tag
     else:
         nw_name = None
-    if isinstance(x.type, tensor.Constant):
+    # Should it be theano.Constant? What is the difference between the two?
+    if isinstance(x, tensor.Constant):
         return x.clone()
+    # Note, as_tensor_variable will convert the Scalar into a
+    # TensorScalar that will require a ScalarFromTensor op,
+    # making the pushout optimization fail
+    elif isinstance(x, scalar.ScalarVariable):
+        nw_x = x.type()
+        nw_x.name = nw_name
+        return nw_x
     else:
         try:
             x = tensor.as_tensor_variable(x)
@@ -69,25 +78,9 @@ class until(object):
     order, but since this was not impose up to know it can make quite a bit
     of code to fail).
     """
-    def __init__(self, condition, outputs = None, updates = None):
+    def __init__(self, condition):
         self.condition = tensor.as_tensor_variable(condition)
         assert self.condition.ndim == 0
-        if outputs is None:
-            self.outputs = []
-        elif type(outputs) in (list, tuple):
-            self.outputs = list(outputs)
-        else:
-            self.outptus = [outputs]
-        if updates is None:
-            self.updates = {}
-        elif type(updates) is dict:
-            self.updates = updates
-        elif type(udpates) is (list, tuple):
-            self.updates = dict(updates)
-        else:
-            raise Exception( ('Scan could not parse the returned values by'
-                              ' the lambda function describing the inner'
-                              ' operations of scan '))
 
 
 def traverse(out, x,x_copy, d):
@@ -162,136 +155,92 @@ def clone( output
 
 
 
-def get_updates_and_outputs(outputs_updates):
+def get_updates_and_outputs(ls):
     """
-    This function tries to recognize the updates dictionary and the
-    list of outputs from the input argument and return them in a
-    predefined order
+    This function tries to recognize the updates dictionary, the
+    list of outputs and the stopping condition returned by the
+    lambda expression and arrange them in a predefined order
 
 
-    The code that follows tries to be as flexible as possible allowing the
-    user to return the output and updates in any order, and giving the
-    updates however (s)he wants ( as a dictionary or a list o pairs ..)
-    Is there a way to compress all this by writing it in a more
-    pythonic/functional way?
     """
-    outputs = []
-    updates = {}
-    cond = None
+    def is_outputs(elem):
+        if (isinstance(elem, (list,tuple)) and
+            all([isinstance(x, theano.Variable) for x in elem])):
+            return True
+        if isinstance(elem, theano.Variable):
+            return True
+        return False
 
-    def pick_from2(elem0, elem1):
-        lupd = {}
-        lout = []
-        if ( isinstance(elem0,dict) or
-                ( isinstance(elem0, (list,tuple)) and
-                    isinstance(elem0[0], (list,tuple)))):
-            # elem0 is the updates dictionary / list
-            lupd = dict(elem0)
-            lout = elem1
-            if not isinstance(outputs, (list,tuple)):
-                lout = [outputs]
-        elif ( isinstance(elem1, dict) or
-                ( isinstance(elem1, (list,tuple)) and
-                    isinstance(elem1[0], (list,tuple))) ):
-            # elem1 is the updates dictionary / list
-            lupd = dict(elem1)
-            lout = elem0
-            if not isinstance(outputs, (list,tuple)):
-                lout = [outputs]
-        else :
-            if ( isinstance(outputs_updates, (list,tuple)) and
-                    isinstance(outputs_updates[0], (list,tuple))):
-                lout = []
-                lupd = dict(outputs_updates)
+    def is_updates(elem):
+        if isinstance(elem, dict):
+            return True
+        # Dictionaries can be given as lists of tuples
+        if (isinstance(elem, (list, tuple)) and
+            all([isinstance(x, (list,tuple)) and len(x) ==2
+                 for x in elem])):
+            return True
+        return False
+
+    def is_condition(elem):
+        return isinstance(elem, theano.scan_module.until)
+
+    def _list(x):
+        if isinstance(x, (list, tuple)):
+            return list(x)
+        else:
+            return [x]
+
+    if is_outputs(ls):
+        return None, _list(ls), {}
+    if is_updates(ls):
+        return None, [], dict(ls)
+    if not isinstance(ls, (list, tuple)):
+        raise ValueError(('Scan can not parse the return value'
+                          ' of your lambda expression'))
+    ls = list(ls)
+    deprication_msg = ('The return value of the lambda function'
+                    ' has been restricted. you have to always return first the'
+                    ' outputs (if any), afterwards the updates (if any) and'
+                    ' at the end the conclusion')
+    error_msg = 'Scan can not parse the return value of your lambda expression'
+    if len(ls) == 2:
+        if is_outputs(ls[0]):
+            if is_updates(ls[1]):
+                return (None, _list(ls[0]), dict(ls[1]))
+            elif is_condition(ls[1]):
+                return ( ls[1].condition, _list(ls[0]), {})
             else:
-                lout = outputs_updates
-                lupd = {}
-        return lupd, lout
-
-    def pick_from1(elem0):
-        lupd = {}
-        lout = []
-        if ( isinstance(elem0, dict) or
-            (isinstance(elem0, (list,tuple)) and
-             isinstance(elem0[0], (list, tuple)))):
-            lupd = dict(elem0)
-        else:
-            if not isinstance(elem0, (list, tuple)):
-                lout = [elem0]
+                raise ValueError(error_msg)
+        elif is_updates(ls[0]):
+            if is_outputs(ls[1]):
+                _logger.warning(deprication_msg)
+                return ( None, _list(ls[1]), dict(ls[0]) )
+            elif is_condition(ls[1]):
+                return (ls[1].condition, [], dict(ls[0]))
             else:
-                lout = elem0
-        return lupd, lout
-
-    # we will try now to separate the outputs from the updates
-    if not isinstance(outputs_updates, (list,tuple)):
-        if isinstance(outputs_updates, dict) :
-            # we have just an update dictionary
-            updates = outputs_updates
-        elif isinstance(outputs_updates, until):
-            updates = outputs_updates.updates
-            outputs = outputs_updates.outputs
-            cond    = outputs_updates.condition
+                raise ValueError(error_msg)
         else:
-            outputs = [outputs_updates]
-    elif len(outputs_updates) == 1:
-            rval = pick_from1(outputs_updates)
-            updates = rval[0]
-            outputs = rval[1]
-    elif len(outputs_updates) == 2:
-        elem0 = outputs_updates[0]
-        elem1 = outputs_updates[1]
-        if isinstance(elem0,until):
-            cond = elem0.condition
-            rval = pick_from1(elem1)
-            updates = rval[0].updates(elem0.updates)
-            outputs = rval[1] + elem0.outputs
-        elif isinstance(elem1, until):
-            cond = elem1.condition
-            rval = pick_from1(elem0)
-            updates = rval[0].update(elem1.updates)
-            outputs = rval[1] + elem1.outputs
+            raise ValueError(error_msg)
+    elif len(ls) == 3:
+        if is_outputs(ls[0]):
+            if is_updates(ls[1]):
+                if is_condition(ls[2]):
+                    return (ls[2].condition, _list(ls[0]), dict(ls[1]))
+                else:
+                    raise ValueError(error_msg)
+            else:
+                raise ValueError(error_msg)
+        elif is_updates(ls[0]):
+            if is_outputs(ls[1]):
+                if is_condition(ls[2]):
+                    _logger.warning(deprication_msg)
+                    return (ls[2].condition, _list(ls[1]), dict(ls[0]))
+                else:
+                    raise ValueError(error_msg)
+            else:
+                raise ValueError(error_msg)
         else:
-            rval = pick_from2(elem0, elem1)
-            updates = rval[0]
-            outputs = rval[1]
-    elif len(outputs_updates) == 3:
-        elem0 = outputs_updates[0]
-        elem1 = outputs_updates[1]
-        elem2 = outputs_updates[2]
-        if isinstance(elem0, until):
-            cond = elem0.condition
-            rval = pick_from2(elem1, elem2)
-            updates = rval[0].update(elem0.updates)
-            outputs = rval[1] + elem0.outputs
-        elif isinstance(elem1, until):
-            cond = elem1.condition
-            rval = pick_from2(elem0, elem2)
-            updates = rval[0].update(elem1.updates)
-            outputs = rval[1] + elem1.outputs
-        elif isinstance(elem2, until):
-            cond = elem2.condition
-            rval = pick_from2(elem0, elem1)
-            updates = rval[0].update(elem2.updates)
-            outputs = rval[1] + elem2.outputs
-        else:
-            outputs = outputs_updates
-    else:
-        outputs = outputs_updates
-
-    # in case you return a tuple .. convert it to a list (there are certain
-    # operation that are not permited on tuples, like element assignment)
-    if not isinstance(outputs, (list, tuple)):
-        outputs = [outputs]
-    else:
-        outputs = list(outputs)
-
-    # If you return numbers (highly unlikely) this will not go well for
-    # theano. We need to convert them to Theano constants:
-    for i,out in enumerate(outputs):
-        outputs[i] = tensor.as_tensor(out)
-
-    #return cond, outputs, updates
-    return outputs, updates
+            raise ValueError(error_msg)
 
 
 def isNaN_or_Inf_or_None(x):
@@ -339,9 +288,6 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
      equivalence of inputs defined by map).  Inputs are always assumed
      equal if strict is set to False.
     '''
-    import time
-    t00 = time.time()
-
     if in_xs is None:
         in_xs = []
     if in_ys is None:
@@ -356,6 +302,11 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
         if x.owner and y.owner:
             if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
+    if len(in_xs) != len(in_ys):
+        return False
+    for _x,_y in zip(in_xs, in_ys):
+        if _x.type != _y.type:
+            return False
 
     nds_x = gof.graph.io_toposort(in_xs, xs)
     nds_y = gof.graph.io_toposort(in_ys, ys)
@@ -371,14 +322,15 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                 return False
             elif (isinstance(dx, tensor.Constant) and
                 isinstance(dy, tensor.Constant) and
-                dx.data == dy.data):
+                numpy.all(dx.data == dy.data)):
                 pass
-            elif strict:
-                if dx != dy:
-                    return False
             else:
-                if dx.type != dy.type:
-                    return False
+                if not strict:
+                    if dx.type != dy.type:
+                        return False
+                else:
+                    if (dx,dy) not in common:
+                        return False
 
     while cont and idx < n_nodes:
         nd_x = nds_x[idx]
@@ -395,7 +347,7 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                     if strict and dx!= dy:
                         if (isinstance(dx, tensor.Constant) and
                             isinstance(dy, tensor.Constant) and
-                            dx.data == dy.data):
+                            numpy.all(dx.data == dy.data)):
                             pass
                         else:
                             cont = False
@@ -597,6 +549,8 @@ def compress_outs(op, not_required, inputs):
     info['inplace']            = op.info['inplace']
     info['gpu']                = op.info['gpu']
     info['mode']               = op.info['mode']
+    info['as_while']           = op.info['as_while']
+    info['profile']            = op.info['profile']
 
     op_inputs   = op.inputs[:op.n_seqs]
     op_outputs  = []
@@ -705,6 +659,10 @@ def compress_outs(op, not_required, inputs):
     # other stuff
     op_inputs += op.inputs[i_offset:]
     node_inputs += inputs[ni_offset+op.n_shared_outs+op.n_nit_sot:]
+    if op.as_while:
+        op_outputs += [op.outputs[o_offset]]
+        map_old_new[o_offset] = len(op_outputs)-1
+        #map_old_new[len(op_outputs)-1] = o_offset
 
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
 
@@ -716,15 +674,9 @@ def find_up(l_node, f_node):
         l_outs = l_node.outputs
     else:
         l_outs = l_node
-    l_ins  = graph.inputs(l_outs)
-    nodes = graph.io_toposort(l_ins, l_outs)
+    l_ins  = gof.graph.inputs(l_outs)
+    nodes = gof.graph.io_toposort(l_ins, l_outs)
     return f_node in nodes
-
-
-def flatten(l):
-    """flattens a list by one level only"""
-    return sum(l , [])
-
 
 def reconstruct_graph(inputs, outputs, tag = None):
     """
@@ -748,11 +700,11 @@ class scan_args(object):
                  _inner_inputs, _inner_outputs, info):
         self.n_steps = outer_inputs[0]
         rval = reconstruct_graph(_inner_inputs, _inner_outputs, '_merge')
-        #if info['as_while']:
-        #    self.cond = [rval[1][-1]]
-        #    inner_outputs = rval[1][:-1]
-        #else:
-        inner_outputs = rval[1]
+        if info['as_while']:
+            self.cond = [rval[1][-1]]
+            inner_outputs = rval[1][:-1]
+        else:
+            inner_outputs = rval[1]
         inner_inputs  = rval[0]
 
         p = 1
@@ -852,12 +804,12 @@ class scan_args(object):
 
         self.other_info = dict()
         for k in ('truncate_gradient', 'name', 'mode', 'inplace',
-                  'gpu', 'profile'):
+                  'gpu','as_while', 'profile'):
             self.other_info[k] = info[k]
 
     inner_inputs = property(lambda self: (self.inner_in_seqs +
-                                          flatten(self.inner_in_mit_mot) +
-                                          flatten(self.inner_in_mit_sot) +
+                                          sum(self.inner_in_mit_mot, []) +
+                                          sum(self.inner_in_mit_sot, []) +
                                           self.inner_in_sit_sot +
                                           self.inner_in_shared +
                                           self.inner_in_non_seqs))
@@ -871,7 +823,7 @@ class scan_args(object):
                                           self.outer_in_nit_sot +
                                           self.outer_in_non_seqs))
 
-    inner_outputs = property(lambda self: (flatten(self.inner_out_mit_mot) +
+    inner_outputs = property(lambda self: (sum(self.inner_out_mit_mot, []) +
                                            self.inner_out_mit_sot +
                                            self.inner_out_sit_sot +
                                            self.inner_out_nit_sot +

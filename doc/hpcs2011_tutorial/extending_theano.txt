@@ -1,0 +1,149 @@
+
+.. _extending_theano:
+
+****************
+Extending Theano
+****************
+
+Theano graphs
+-------------
+
+- Theano works with symbolic graphs
+- Those graphs are bi-partite graphs (graph with 2 types of nodes)
+- Those 2 nodes types are Apply and Variable nodes
+
+Inputs and Outputs are lists of Theano variables
+
+.. image:: pics/apply_node.png
+    :width: 500 px
+
+Op contract
+-----------
+
+
+.. code-block:: python
+
+    import theano
+
+    class MyOp(Op):
+        def __eq__(self, other):
+        def __hash__(self):
+        def __str__(self):
+        def make_node(self, x):
+        # Python implementation:
+        def perform(self, node, inputs_storage, output_storage):
+        # C implementation: [see theano web site]
+        # others implementation (pycuda, ...):
+        def make_thunk(self, node, storage_map, _, _2):
+        # optional:
+        def __init__(self, ...):
+        def grad(self, inputs, g):
+        def infer_shape(node, (i0_shapes, ...))
+
+
+Op example
+----------
+
+.. code-block:: python
+
+    import theano
+
+    class DoubleOp(theano.Op):
+        def __eq__(self, other):
+            return type(self) == type(other)
+        def __hash__(self):
+            return hash(type(self))
+        def __str__(self):
+            return self.__class__.__name__
+        def make_node(self, x):
+            x = theano.tensor.as_tensor_variable(x)
+            return theano.Apply(self, [x], [x.type()])
+        def perform(self, node, inputs, output_storage):
+            x = inputs[0]
+            z = output_storage[0]
+            z[0] = x * 2
+
+Test it!
+
+>>> x = theano.tensor.matrix()
+>>> f = theano.function([x],DoubleOp()(x))
+>>> import numpy
+>>> inp = numpy.random.rand(5,5)
+>>> out = f(inp)
+>>> assert numpy.allclose(inp*2, out)
+>>> print inp
+>>> print out
+
+
+Exercises 7
+-----------
+
+- Run the code in the file double_op.py.
+- Modify and execute to compute: x * y
+- Modify and execute the example to return 2 outputs: x + y and x - y
+
+  - Our current elemwise fusion generate computation with only 1 outputs
+
+
+
+Theano + PyCUDA
+---------------
+
+.. code-block:: python
+
+    import numpy, theano
+    import theano.misc.pycuda_init
+    from pycuda.compiler import SourceModule
+    import theano.sandbox.cuda as cuda
+
+    class PyCUDADoubleOp(theano.Op):
+        def __eq__(self, other):
+            return type(self) == type(other)
+        def __hash__(self):
+            return hash(type(self))
+        def __str__(self):
+            return self.__class__.__name__
+        def make_node(self, inp):
+            inp = cuda.basic_ops.gpu_contiguous(
+               cuda.basic_ops.as_cuda_ndarray_variable(inp))
+            assert inp.dtype == "float32"
+            return theano.Apply(self, [inp], [inp.type()])
+        def make_thunk(self, node, storage_map, _, _2):
+            mod = SourceModule("""
+        __global__ void my_fct(float * i0, float * o0, int size) {
+        int i = blockIdx.x*blockDim.x + threadIdx.x;
+        if(i<size){
+            o0[i] = i0[i]*2;
+        }
+      }""")
+            pycuda_fct = mod.get_function("my_fct")
+            inputs = [ storage_map[v] for v in node.inputs]
+            outputs = [ storage_map[v] for v in node.outputs]
+            def thunk():
+                z = outputs[0]
+                if z[0] is None or z[0].shape!=inputs[0][0].shape:
+                    z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
+                grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
+                pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+                           block=(512,1,1), grid=grid)
+            return thunk
+    
+
+Test it!
+
+>>> x = theano.tensor.fmatrix()
+>>> f = theano.function([x], PyCUDADoubleOp()(x))
+>>> xv=numpy.ones((4,5), dtype="float32")
+>>> assert numpy.allclose(f(xv), xv*2)
+>>> print numpy.asarray(f(xv))
+
+Exercises 8
+-----------
+
+- Run the above example
+- Modify and execute the example to multiple two matrix: x * y
+- Modify and execute the example to return 2 outputs: x + y and x - y
+
+  - Our current elemwise fusion generate computation with only 1 outputs
+
+- Modify and execute the example to support stride? (Don't force the input to be c contiguous)

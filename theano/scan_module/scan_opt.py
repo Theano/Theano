@@ -17,7 +17,7 @@ import numpy
 import sys
 
 import theano
-from theano import tensor
+from theano import tensor, scalar
 from theano.tensor import opt, TensorType, get_constant_value
 from theano import gof
 from theano.compile import optdb
@@ -26,7 +26,7 @@ from theano import config
 
 import scan_op
 import scan_utils
-from scan_utils import clone, equal_computations
+from scan_utils import clone, equal_computations, find_up, scan_args
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 # Logging function for sending warning or info
@@ -75,9 +75,10 @@ def remove_constants_and_unused_inputs_scan(node):
         if (isinstance(node.inputs[idx+1], tensor.TensorConstant) and
             node.inputs[idx+1].tag.unique_value is not None):
             try:
-                val = tensor.get_constant_value(node.inputs[idx+1],
-                                                return_ndarray = True)
-                givens[op_ins[idx]] = tensor.constant(val[0])
+                # This works if input is a constant that has all entries
+                # equal
+                val = tensor.get_constant_value(node.inputs[idx+1])
+                givens[op_ins[idx]] = node.inputs[idx+1].clone()[0]
             except TypeError:
                 pass
         elif op_ins[idx] in all_ins:
@@ -99,6 +100,7 @@ def remove_constants_and_unused_inputs_scan(node):
         op_outs = scan_utils.clone(op_outs, replace = givens)
         nw_info = op.info.copy()
         nw_info['n_seqs'] = nw_n_seqs
+        # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan.make_node(*nw_outer).outputs
         return nw_outs
@@ -113,147 +115,156 @@ optdb.register( 'scanOp_remove_constants_and_unused_inputs'
                , 'scan')
 
 
-@gof.local_optimizer([None])
-def scan_pushout_non_seq_operation(node):
-    if not isinstance(node.op, scan_op.Scan):
-        return False
-    # this flag tells if there was any change during the last iterations
-    changed   = True
-    try:
+class PushOutNonSeqScan(gof.Optimizer):
+
+    def __init__(self):
+        gof.Optimizer.__init__(self)
+
+    def add_requirements(self,env):
+        env.extend(gof.toolbox.ReplaceValidate())
+
+
+    def apply(self, env):
+        nodelist = [x for x in env.toposort() if isinstance(x.op,
+                                                           scan_op.Scan)]
+        for node in nodelist:
+            self.process_node(env, node)
+
+    def process_node(self, env, node):
+        # this flag tells if there was any change during the last iterations
+
+
+        changed   = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
                         node.op.inputs, node.op.outputs)
+
+
         local_env = gof.Env(clean_inputs, clean_outputs)
-    except:
-        import ipdb; ipdb.set_trace()
+        max_iterations = 2*len(local_env.toposort()) + 3
+        counts = 0
+        to_remove        = []
+        to_replace       = []
+        replace_with_in  = []
+        replace_with_out = []
+        op = node.op
+        # Construct the list of non_sequences to simplify a few things
+        st  = op.n_seqs
+        st += int(numpy.sum([len(x) for x in
+                             op.tap_array[:(op.n_mit_mot+op.n_mit_sot)] ]))
+        st += op.n_sit_sot
+        st += op.n_shared_outs
+        non_seqs = clean_inputs[st:]
+        st  = ( op.n_seqs +
+               op.n_mit_mot +
+               op.n_mit_sot +
+               op.n_sit_sot +
+               op.n_nit_sot +
+               op.n_shared_outs +1 )
+        outer_non_seqs = node.inputs[st:]
+        assert len(non_seqs) == len(outer_non_seqs)
+        while changed and counts < max_iterations:
+            counts += 1
+            changed = False
 
-    max_iterations = 2*len(local_env.toposort()) + 3
-    counts = 0
-    to_remove        = []
-    to_replace       = []
-    replace_with_in  = []
-    replace_with_out = []
-    op = node.op
-    # Construct the list of non_sequences to simplify a few things
-    st  = op.n_seqs
-    st += int(numpy.sum([len(x) for x in
-                         op.tap_array[:(op.n_mit_mot+op.n_mit_sot)] ]))
-    st += op.n_sit_sot
-    st += op.n_shared_outs
-    non_seqs = clean_inputs[st:]
-    st  = ( op.n_seqs +
-           op.n_mit_mot +
-           op.n_mit_sot +
-           op.n_sit_sot +
-           op.n_nit_sot +
-           op.n_shared_outs +1 )
-    outer_non_seqs = node.inputs[st:]
+            for nd in local_env.toposort():
+                if (    numpy.all([ (x in non_seqs) or
+                                    (x.owner in to_remove) or
+                                    isinstance(x, tensor.Constant)
+                                   for x in nd.inputs]) and
+                        # we can do this because the assumption is that a
+                        # viewOp or deepCopyOp will be just at the end of the
+                        # function and not somewhere in the middle ..
+                        not isinstance(nd.op,theano.compile.ViewOp) and
+                        not isinstance(nd.op,theano.compile.DeepCopyOp) and
+                        # and we didn't already looked at this node
+                        not nd in to_remove
+                   ):
 
-    while changed and counts < max_iterations:
-        counts += 1
-        changed = False
-        for nd in local_env.toposort():
-            if (    numpy.all([ (x in non_seqs) or
-                                (x.owner in to_remove) or
-                                isinstance(x, tensor.Constant)
-                               for x in nd.inputs]) and
-                    # we can do this because the assumption is that a
-                    # viewOp or deepCopyOp will be just at the end of the
-                    # function and not somewhere in the middle ..
-                    not isinstance(nd.op,theano.compile.ViewOp) and
-                    not isinstance(nd.op,theano.compile.DeepCopyOp) and
-                    # and we didn't already looked at this node
-                    not nd in to_remove
-               ):
+                    # We have a candidate node to removable
+                    # Step 1. Reconstruct it on outside
+                    to_remove.append(nd)
+                    outside_ins = []
+                    for x in nd.inputs:
+                        if x in non_seqs:
+                            outside_ins +=[ outer_non_seqs[non_seqs.index(x)]]
+                        elif x in to_replace:
+                            outside_ins +=[replace_with_out[to_replace.index(x)]]
+                        elif isinstance(x, theano.Constant):
+                            outside_ins +=[x.clone()]
+                        else:
+                            raise Exception(
+                                ('Error in the `scan_pushout_non_seq_operations`'
+                                 '. The optimization tries to move some '
+                                 'computation fron scan which is not allowed '
+                                 'to move. Report this on theano-users list'),x )
+                    nw_outer_node = nd.op.make_node(*outside_ins)
+                    # Step 2. Create variables for replacements
+                    for idx,y in enumerate(nd.outputs):
 
-                # We have a candidate node to removable
-                # Step 1. Reconstruct it on outside
-                to_remove += [nd]
-                outside_ins = []
-                for x in nd.inputs:
-                    if x in non_seqs:
-                        outside_ins +=[ outer_non_seqs[non_seqs.index(x)]]
-                    elif x in to_replace:
-                        outside_ins +=[replace_with_out[to_replace.index(x)]]
-                    elif isinstance(x, theano.Constant):
-                        outside_ins +=[x.clone()]
-                    else:
-                        raise Exception(
-                            ('Error in the `scan_pushout_non_seq_operations`'
-                             '. The optimization tries to move some '
-                             'computation fron scan which is not allowed '
-                             'to move. Report this on theano-users list'),x )
-                nw_outer_node = nd.op.make_node(*outside_ins)
-                # Step 2. Create variables for replacements
-                for idx,y in enumerate(nd.outputs):
-                    y_place_holder = scan_utils.safe_new(y,'_replace')
-                    to_replace       += [y]
-                    replace_with_in  += [y_place_holder]
-                    if (cuda.cuda_available and
-                        isinstance(nw_outer_node.outputs[idx],
-                                   CudaNdarrayType)):
-                        nw_out = nw_outer_node.outputs[idx]
-                        replace_with_out += [host_from_gpu(nw_out)]
-                    else:
+                        y_place_holder = scan_utils.safe_new(y,'_replace')
+                        to_replace       += [y]
+                        replace_with_in  += [y_place_holder]
+                        assert type(y) == type(nw_outer_node.outputs[idx])
                         replace_with_out += [nw_outer_node.outputs[idx]]
-                changed = True
+                    changed = True
 
-    if counts >= max_iterations:
-        raise Exception( ('Error in the `scan_pushout_non_seq_operations`.'
-                          ' The optimization exhausted the maximal number '
-                          'of iterations allowed!'))
-    # We need to check all candidate replacements and choose those that
-    # make sense for us
+        if counts >= max_iterations:
+            raise Exception( ('Error in the `scan_pushout_non_seq_operations`.'
+                              ' The optimization exhausted the maximal number '
+                              'of iterations allowed!'))
+        # We need to check all candidate replacements and choose those that
+        # make sense for us
 
-    # Step 1. which elements of `to_replace` are used by remaining
-    # components of the inner function
-    clean_to_replace       = []
-    clean_replace_with_in  = []
-    clean_replace_with_out = []
-    existent_nodes = [ nd for nd in local_env.toposort()
-                        if nd not in to_remove]
-    to_keep = []
-    for nd in existent_nodes:
-        to_keep += nd.inputs
-    for idx,out in enumerate(to_replace):
-        if out in to_keep and out.owner not in existent_nodes:
-            clean_to_replace += [out]
-            clean_replace_with_in  += [replace_with_in[idx]]
-            clean_replace_with_out += [replace_with_out[idx]]
+        # Step 1. which elements of `to_replace` are used by remaining
+        # components of the inner function
+        clean_to_replace       = []
+        clean_replace_with_in  = []
+        clean_replace_with_out = []
+        existent_nodes = [ nd for nd in local_env.toposort()
+                            if nd not in to_remove]
+        to_keep = []
+        for nd in existent_nodes:
+            to_keep += nd.inputs
+        for idx,out in enumerate(to_replace):
+            if out in to_keep and out.owner not in existent_nodes:
+                clean_to_replace += [out]
+                clean_replace_with_in  += [replace_with_in[idx]]
+                clean_replace_with_out += [replace_with_out[idx]]
 
-    if len(clean_to_replace) > 0:
-        # We can finally put an end to all this madness
-        givens = {}
-        nw_outer = []
-        nw_inner = []
-        for to_repl, repl_in, repl_out in zip( clean_to_replace,
+        if len(clean_to_replace) > 0:
+            # We can finally put an end to all this madness
+            givens = {}
+            nw_outer = []
+            nw_inner = []
+            for to_repl, repl_in, repl_out in zip( clean_to_replace,
                                               clean_replace_with_in,
                                               clean_replace_with_out):
-            if isinstance(repl_out, theano.Constant):
-                # Is this even possible !?
-                repl_in = repl_out.clone()
-            else:
-                nw_inner += [repl_in]
-                nw_outer += [repl_out]
-            givens[to_repl] = repl_in
+                if isinstance(repl_out, theano.Constant):
+                    repl_in = repl_out.clone()
+                else:
+                    nw_inner += [repl_in]
+                    nw_outer += [repl_out]
+                givens[to_repl] = repl_in
 
-
-        _op_outs = scan_utils.clone(clean_outputs,
-                                    replace=givens)
-
-        _op_ins = clean_inputs + nw_inner
-        op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs, '')
-        # Reconstruct node
-        nwScan = scan_op.Scan(op_ins, op_outs, op.info)
-        node = nwScan.make_node(* (node.inputs + nw_outer))
-        return node.outputs
-    else:
-        return False
+            _op_outs = scan_utils.clone(clean_outputs,
+                                        replace=givens)
+            _op_ins = clean_inputs + nw_inner
+            op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
+            # Reconstruct node
+            nwScan = scan_op.Scan(op_ins, op_outs, op.info)
+            nw_node = nwScan.make_node(* (node.inputs + nw_outer))
+            env.replace_all_validate(zip(node.outputs, nw_node.outputs),
+                                     reason = 'scan_push_computation_out')
+            return True
+        else:
+            return False
 
 
 optdb.register('scanOp_pushout_nonseqs_ops',
-               opt.in2out( scan_pushout_non_seq_operation,
-                          ignore_newtrees=True),
-               1.90,
+               PushOutNonSeqScan(),
+               #opt.out2in( scan_pushout_non_seq_operation),
+                        #  ignore_newtrees=True),
+               1.899,
                'fast_run',
                'scan')
 
@@ -756,6 +767,236 @@ optdb.register( 'scanOp_save_mem'
                , 'fast_run'
                , 'scan')
 
+
+class ScanMerge(gof.Optimizer):
+    """ Graph Optimizer that merges different scan ops """
+    def add_requirements(self,env):
+        env.extend(gof.toolbox.ReplaceValidate())
+
+    def merge(self, A,B, as_while):
+        Aargs = scan_args(A.inputs, A.outputs, A.op.inputs, A.op.outputs, A.op.info)
+        Bargs = scan_args(B.inputs, B.outputs, B.op.inputs, B.op.outputs, B.op.info)
+        Margs = Aargs.merge(Bargs)
+
+        # fixup name
+        info = Margs.info
+        info['name'] = A.op.name+'&'+B.op.name
+
+        #indicates that we have a stopping condition for scan
+        if as_while:
+            Margs_inner_outs = Margs.inner_outputs + Margs.cond
+        else:
+            Margs_inner_outs = Margs.inner_outputs
+        op = scan_op.Scan(Margs.inner_inputs, Margs_inner_outs, info)
+
+        outputs = op(*Margs.outer_inputs)
+
+        if type(outputs) not in (list, tuple):
+            outputs = [outputs]
+
+        return zip(Margs.outer_outputs, outputs)
+
+    def apply(self, env):
+        nodelist = list(env.toposort())
+        scan_nodes = filter(lambda s: isinstance(s.op, scan_op.Scan), nodelist)
+
+        nscan = dict()
+        for snode in scan_nodes:
+            n_steps = snode.inputs[0]
+            try:
+                n_steps = int(get_constant_value(n_steps))
+            except TypeError:
+                pass
+            l = nscan.get(n_steps)
+            if l is None:
+                nscan[n_steps] = [snode]
+            else:
+                l.append(snode)
+        for snodes in nscan.values():
+            if len(snodes) > 1:
+                # amongst nodes that have the same number of steps
+                # try to find the ones that can be merged
+                curnode = snodes[0]
+                for snode in snodes[1:]:
+                    if (snode.op.truncate_gradient == curnode.op.truncate_gradient and
+                        snode.op.mode == curnode.op.mode and
+                        not find_up(snode, curnode)):
+                        if (not snode.op.as_while and
+                            not curnode.op.as_while):
+                            proposal = self.merge(curnode, snode, False)
+                            env.replace_all_validate(proposal, reason='scan merge')
+                        elif (snode.op.as_while and
+                              curnode.op.as_while):
+                            # check if equal computations
+                            if scan_utils.equal_computations(
+                                [snode.op.outputs[-1]],
+                                [curnode.op.outputs[-1]],
+                                snode.op.inputs,
+                                curnode.op.inputs):
+                                proposal = self.merge(curnode, snode, True)
+                                env.replace_all_validate(proposal, reason =
+                                                         'scan_merge')
+                            else:
+                                pass
+                        else:
+                            pass
+                        # other merges will be done in other passes
+                        break
+
+# after const merge but before stabilize so that we can have identity
+# for equivalent nodes but we still have the chance to hoist stuff out
+# of the scan later.
+optdb.register('scanOp_merge',
+               EquilibriumOptimizer([ScanMerge()],
+                                    max_use_ratio=11),
+               1.90,
+               'fast_run',
+               'scan')
+
+def has_duplicates(l):
+    """returns true if l has any duplicates (according to __eq__)."""
+    return len(set(l)) < len(l)
+
+def make_equiv(lo, li):
+    """builds a dictionary of equivalences between inner inputs based on the equivalence of their corresponding outer inputs."""
+    seeno = {}
+    left  = []
+    right = []
+    for o, i in zip(lo, li):
+        if o in seeno:
+            left  += [i]
+            right += [o]
+        else:
+            seeno[o] = i
+    return left, right
+
+@gof.local_optimizer([None])
+def scan_merge_inouts(node):
+    if not isinstance(node.op, scan_op.Scan):
+        return False
+
+    a = scan_args(node.inputs, node.outputs,
+                  node.op.inputs, node.op.outputs, node.op.info)
+
+    inp_equiv = {}
+
+    if has_duplicates(a.outer_in_seqs):
+        new_outer_seqs = []
+        new_inner_seqs = []
+        for out_seq, in_seq in zip(a.outer_in_seqs, a.inner_in_seqs):
+            if out_seq in new_outer_seqs:
+                i = new_outer_seqs.index(out_seq)
+                inp_equiv[in_seq] = new_inner_seqs[i]
+            else:
+                new_outer_seqs.append(out_seq)
+                new_inner_seqs.append(in_seq)
+        a.outer_in_seqs = new_outer_seqs
+        a.inner_in_seqs = new_inner_seqs
+
+    if has_duplicates(a.outer_in_non_seqs):
+        new_outer_nseqs = []
+        new_inner_nseqs = []
+        for out_nseq, in_nseq in zip(a.outer_in_non_seqs, a.inner_in_non_seqs):
+            if out_nseq in new_outer_nseqs:
+                i = new_outer_nseqs.index(out_nseq)
+                inp_equiv[in_nseq] = new_inner_nseqs[i]
+            else:
+                new_outer_nseqs.append(out_nseq)
+                new_inner_nseqs.append(in_nseq)
+        a.outer_in_non_seqs = new_outer_nseqs
+        a.inner_in_non_seqs = new_inner_nseqs
+
+    if len(inp_equiv) > 0:
+        # do the replacement now. The rest will be left to ScanSaveMem
+        inner_inputs = a.inner_inputs
+        outer_inputs = a.outer_inputs
+        info = a.info
+        if info['as_while']:
+            a_inner_outs = a.inner_outputs + a.cond
+        else:
+            a_inner_outs = a.inner_outputs
+        inner_outputs = scan_utils.clone(a_inner_outs, replace=inp_equiv)
+        orig_outputs = a.outer_outputs
+
+        op = scan_op.Scan(inner_inputs, inner_outputs, info)
+        outputs = op(*outer_inputs)
+
+        if not isinstance(outputs, (list, tuple)):
+            outputs = [outputs]
+
+        na = scan_args(outer_inputs, outputs, op.inputs, op.outputs, op.info)
+    else:
+        na = a
+
+    # start again
+    left  = []
+    right = []
+
+    if has_duplicates(na.outer_in_shared):
+        _left, _right = make_equiv(na.outer_in_shared, na.inner_in_shared)
+        left  += _left
+        right += _right
+    if has_duplicates(na.outer_in_sit_sot):
+        _left, _right = make_equiv(na.outer_in_sit_sot, na.inner_in_sit_sot)
+        left  += _left
+        right += _right
+    if has_duplicates(na.outer_in_mit_mot):
+        seen = {}
+        for omm, imm, _sl in zip(na.outer_in_mit_mot, na.inner_in_mit_mot, na.mit_mot_in_slices):
+            sl = tuple(_sl)
+            if (omm, sl) in seen:
+                simm = seen[(omm, sl)]
+                left  += imm
+                right += simm
+            else:
+                seen[(omm, sl)] = imm
+
+    if has_duplicates(na.outer_in_mit_sot):
+        seen = {}
+        for oms, ims, _sl in zip(na.outer_in_mit_sot, na.inner_in_mit_sot, na.mit_sot_in_slices):
+            sl = tuple(_sl)
+            if (oms, sl) in seen:
+                sims = seen[(oms, sl)]
+                left  += ims
+                right += sims
+            else:
+                seen[(oms, sl)] = ims
+
+    def map_out(i, o, seen):
+        for si, so in seen:
+            if equal_computations([i], [si],left, right):
+                return so
+        seen.append((i, o))
+        return o
+
+    seen = []
+    na.outer_out_nit_sot = [map_out(i, o, seen) for i, o in zip(na.inner_out_nit_sot, na.outer_out_nit_sot)]
+
+    seen = []
+    na.outer_out_sit_sot = [map_out(i, o, seen) for i, o in zip(na.inner_out_sit_sot, na.outer_out_sit_sot)]
+
+    seen = []
+    na.outer_out_mit_sot = [map_out(i, o, seen) for i, o in zip(na.inner_out_mit_sot, na.outer_out_mit_sot)]
+
+    seen = []
+    new_outer_out_mit_mot = []
+    for imm, omm, osl in zip(na.inner_out_mit_mot, na.outer_out_mit_mot, na.mit_mot_out_slices):
+        for simm, somm, sosl in seen:
+            if osl == sosl and equal_computations(imm, simm, left, right):
+                new_outer_out_mit_mot.append(somm)
+                break
+        else:
+            seen.append((imm, omm, osl))
+            new_outer_out_mit_mot.append(omm)
+    na.outer_out_mit_mot = new_outer_out_mit_mot
+
+    return na.outer_outputs
+
+optdb.register('scanOp_merge_inouts'
+               , opt.in2out(scan_merge_inouts,ignore_newtrees=True)
+              , 1.91
+              , 'fast_run'
+              , 'scan')
 
 from theano.sandbox import cuda
 

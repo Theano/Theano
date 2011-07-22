@@ -1063,6 +1063,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             start_from = env.outputs
         changed = True
         max_use_abort = False
+        opt_name = None
         process_count = {}
 
         while changed and not max_use_abort:
@@ -1099,6 +1100,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         process_count.setdefault(lopt, 0)
                         if process_count[lopt] > max_use:
                             max_use_abort = True
+                            opt_name = lopt.name
                         else:
                             lopt_change = self.process_node(env, node, lopt)
                             if lopt_change:
@@ -1110,7 +1112,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
-            _logger.error("EquilibriumOptimizer max'ed out")
+            _logger.error("EquilibriumOptimizer max'ed out by "+opt_name)
 
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))

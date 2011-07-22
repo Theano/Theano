@@ -1,0 +1,76 @@
+
+.. _pyCUDA:
+
+******
+PyCUDA
+******
+
+Introduction
+------------
+
+Authors: Andreas Klockner
+
+- PyCUDA can access Nvidia's CUDA parallel computation API from Python
+- Object cleanup tied to lifetime of objects (RAII, Resource Acquisition Is Initialization).
+
+  - Makes it much easier to write correct, leak- and crash-free code
+  - PyCUDA knows about dependencies (e.g.. it won't detach from a context before all memory allocated in it is also freed)
+
+- Convenience
+
+  - Abstractions to compile CUDA code from Python: ``pycuda.driver.SourceModule``
+  - A GPU memory buffer: \texttt{pycuda.gpuarray.GPUArray}
+
+- Completeness
+
+  - Binding to all of CUDA's driver API
+
+- Automatic Error Checking
+
+  - All CUDA errors are automatically translated into Python exceptions
+
+- Speed
+
+  - PyCUDA's base layer is written in C++
+
+- Helpful documentation
+
+
+Example
+-------
+
+.. code-block:: python
+
+  import pycuda.autoinit
+  import pycuda.driver as drv
+  import numpy
+  
+  from pycuda.compiler import SourceModule
+  mod = SourceModule("""
+  __global__ void multiply_them(float *dest, float *a, float *b)
+  {
+    const int i = threadIdx.x;
+    dest[i] = a[i] * b[i];
+  }
+  """)
+
+  multiply_them = mod.get_function("multiply_them")
+  
+  a = numpy.random.randn(400).astype(numpy.float32)
+  b = numpy.random.randn(400).astype(numpy.float32)
+  
+  dest = numpy.zeros_like(a)
+  multiply_them(
+          drv.Out(dest), drv.In(a), drv.In(b),
+          block=(400,1,1), grid=(1,1))
+
+  assert numpy.allclose(dest, a*b)
+  print dest
+
+
+Exercice 6
+----------
+
+- Run the above example
+- Modify and execute it to work for a matrix of 20 x 10
+

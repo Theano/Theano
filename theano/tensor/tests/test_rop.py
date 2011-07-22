@@ -13,30 +13,33 @@ ops without:
     Prod
     MulwithoutZeros
     ProdWithoutZeros
-
+    CAReduce(for max,... done for MaxAndArgmax op)
 
 list of ops that support R-op:
-    * Alloc
-    * Split
-    * ARange
-    * ScalarFromTensor
-    * Shape
+ * with test
     * SpecifyShape
     * MaxAndArgmax
     * Subtensor
-    * IncSubtensor
-    * Rebroadcast
+    * IncSubtensor set_subtensor too
+    * Alloc
+    * Dot
+    * Elemwise
+    * Sum
+    * Softmax
+    * Shape
     * Join
+
+ * without test
+    * Split
+    * ARange
+    * ScalarFromTensor
+    * Rebroadcast
     * Reshape
     * Flatten
     * AdvancedSubtensor1
     * AdvancedIncSubtensor1
     * AdvancedIncSubtensor
-    * Dot
     * DimShuffle
-    * Elemwise
-    * Sum
-    * Softmax
     * Scan
 
 
@@ -183,11 +186,17 @@ class test_RopLop(unittest.TestCase):
                            self.in_shape)
 
 
-    def test_max_argmax(self):
+    def test_max(self):
+        ## If we call max directly, we will return an CAReduce object
+        ## and he don't have R_op implemented!
+        #self.check_mat_rop_lop(TT.max(self.mx, axis=[0,1])[0],
+        #                       ())
+        self.check_mat_rop_lop(TT.max(self.mx, axis=0),
+                               (self.mat_in_shape[1],))
         self.check_mat_rop_lop(TT.max(self.mx, axis=1),
                                (self.mat_in_shape[0],))
 
-    def test_max_argmax(self):
+    def test_argmax(self):
         self.check_nondiff_rop(TT.argmax(self.mx,axis=1))
 
     def test_subtensor(self):
@@ -201,7 +210,7 @@ class test_RopLop(unittest.TestCase):
         self.check_rop_lop(out, self.in_shape)
 
 
-    def test_incsubtensor1(self):
+    def test_incsubtensor2(self):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
@@ -217,7 +226,7 @@ class test_RopLop(unittest.TestCase):
         self.check_rop_lop(out, self.in_shape)
 
 
-    def test_setsubtensor1(self):
+    def test_setsubtensor2(self):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)

@@ -41,4 +41,4 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import scan_opt
 from scan import scan
 from scan_views import map, reduce, foldl, foldr
-from scan_utils import clone
+from scan_utils import clone, until

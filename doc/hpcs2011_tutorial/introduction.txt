@@ -1,0 +1,133 @@
+
+.. _introduction:
+
+
+************
+Introduction
+************
+
+Theano motivations
+------------------
+Theano tries to be the **holy grail** in computing: *easy to code* and *it fast to execute* !
+
+it works only on mathematical expressions, so you won't have:
+
+  - Function call inside a theano function
+  - Structure, enum
+  - Dynamic type (Theano is Fully typed)
+
+Unfortunately it doesn't do coffee... yet.
+
+.. image:: pics/Caffeine_Machine_no_background_red.png
+
+
+Theano status
+-------------
+
+Why you can rely on Theano:
+
+- Theano has been developed and used since January 2008 (3.5 yrs old)
+- Core technology for a funded Silicon-Valley startup
+- Driven over 40 research papers in the last few years
+- Good user documentation
+- Active mailing list with participants from outside our lab
+- Many contributors (some from outside our lab)
+- Used to teach IFT6266 for two years
+- Used by everyone in our lab (\textasciitilde 30 people)
+- Deep Learning Tutorials
+- Unofficial RPMs for Mandriva
+- Downloads (June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (``bleeding edge'' repository): unknown
+
+Why scripting for GPUs ?
+------------------------
+
+**GPUs?**
+
+- Faster, cheaper, more efficient power usage
+- How much faster? I have seen numbers from 100x slower to 1000x faster.
+
+  - It depends on the algorithms
+  - How the benchmark is done
+      
+    - Quality of implementation
+    - How much time was spent optimizing CPU vs GPU code
+
+  - In Theory:
+
+    - Intel Core i7 980 XE (107Gf/s float64) 6 cores
+    - NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32) 480 cores
+    - NVIDIA GTX580 (1.5Tf/s float32) 512 cores
+  
+  - Theano goes up to 100x faster on th GPU because we don't use multiple core on CPU
+    
+    - Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
+  - If you see 1000x, it probably means the benchmark is not fair
+
+**Scripting for GPUs?**
+
+They *Complement each other*
+
+- GPUs are everything that scripting/high level languages are not
+
+  - Highly parallel
+  - Very architecture-sensitive
+  - Built for maximum FP/memory throughput
+- CPU: largely restricted to control
+
+  - Optimized for sequential code and low latency (rather than high throughput)
+  - Tasks (1000/sec)
+  - Scripting fast enough
+
+Theano vs PyCUDA vs PyOpenCL vs CUDA
+------------------------------------
+
+- Theano
+
+  - Mathematical expression compiler
+  - Generates costum C and CUDA code
+  - Uses Python code when performance is not critical
+
+- CUDA
+
+  - C extension by NVIDA that allow to code and use GPU
+
+- PyCUDA (Python + CUDA)
+
+  - Python interface to CUDA
+  - Memory management of GPU objects
+  - Compilation of code for the low-level driver
+
+- PyOpenCL (Python + OpenCL)
+  - PyCUDA for OpenCL
+
+Python
+------
+
+- Interpreted language
+- General-purpose high-level programming language
+- OO and scripting language
+- Emphasizes code readability
+- Large and comprehensive standard library
+- Indentation for block delimiters
+- Dynamic type and memory management
+- Dictionary ``d={'var1':'value1', 'var2':42, ...}``
+- List comprehension: ``[i+3 for i in range(10)]``
+
+NumPy
+-----
+
+- Base scientific computing package in Python on the CPU
+- A powerful N-dimensional array object
+
+  - ndarray.{ndim, shape, size, dtype, itemsize, stride}
+  
+- Sophisticated broadcasting functions
+    
+  - ``numpy.random.rand(4,5) * numpy.random.rand(1,5)`` -> mat(4,5)
+  - ``numpy.random.rand(4,5) * numpy.random.rand(4,1)`` -> mat(4,5)
+  - ``numpy.random.rand(4,5) * numpy.random.rand(5)`` -> mat(4,5)
+
+- Tools for integrating C/C++ and Fortran code
+- Linear algebra, Fourier transform and pseudorandom number generation
+
+
