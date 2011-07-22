@@ -726,9 +726,10 @@ class T_loading_and_saving(unittest.TestCase):
             # the Theano repository. Code relative to creating that dir and
             # removing it afterwards should _not_ be backported to the tutorial.
             from tempfile import mkdtemp
-            tmpdir = mkdtemp()
             origdir = os.getcwd()
+            tmpdir = None
             try:
+                tmpdir = mkdtemp()
                 os.chdir(tmpdir)
 
                 f = file('obj.save', 'wb')
@@ -757,7 +758,8 @@ class T_loading_and_saving(unittest.TestCase):
             finally:
                 # Get back to the orinal dir, and temporary one.
                 os.chdir(origdir)
-                shutil.rmtree(tmpdir)
+                if tmpdir is not None:
+                    shutil.rmtree(tmpdir)
 
 class T_modes(unittest.TestCase):
     ## All tests here belog to
