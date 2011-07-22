@@ -667,15 +667,25 @@ class Scan(Op):
         # and this little string helps us to find this spot:
         # "PROFILE_CODE"
 
-        if hasattr(self.fn.maker.mode,'fct_call_time'):
-            self.fn.maker.mode.fct_call_time[self.fn] += t_fn
-            self.fn.maker.mode.fct_call[self.fn] += n_steps
+        if hasattr(self.fn.maker, 'profile') and self.fn.maker.profile:
+            profile = self.fn.maker.profile
+            profile.callcount += 1
+            profile.nbsteps += n_steps
+            profile.call_time += t_call
+            profile.vm_call_time +=  t_fn
+            if hasattr(self.fn.fn, 'update_profile'):
+                self.fn.fn.update_profile(profile)
 
-        self.fn.maker.mode.call_time += t_fn
-        self.fn.maker.mode.fn_time += t_fn
+        #/* Old ProfileMode
+        #if hasattr(self.fn.maker.mode,'fct_call_time'):
+        #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
+        #    self.fn.maker.mode.fct_call[self.fn] += n_steps
+
+        #self.fn.maker.mode.call_time += t_fn
+        #self.fn.maker.mode.fn_time += t_fn
+        # Old Profile Mode */
         self.t_call = t_call
-        self.t_fn = t_fn
-
+        self.t_fn   = t_fn
 
     ### Infer Shape
     def infer_shape(self, node, input_shapes):
