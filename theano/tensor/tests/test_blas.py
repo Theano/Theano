@@ -770,6 +770,8 @@ def test_dot_vm():
     # Assert that the dot was optimized somehow
     assert sum([isinstance(node.op, T.Dot) for node in
                 f.maker.env.toposort() ]) == 0
+    assert sum([isinstance(node.op, T.blas.Dot22) for node in
+                f.maker.env.toposort() ]) == 1
 
 def test_dot_mv():
     ''' Test matrix dot vector '''
@@ -785,6 +787,8 @@ def test_dot_mv():
     # Assert that the dot was optimized somehow
     assert sum([isinstance(node.op, T.Dot) for node in
                 f.maker.env.toposort() ]) == 0
+    assert sum([isinstance(node.op, T.blas.Dot22) for node in
+                f.maker.env.toposort() ]) == 1
 
 class TestGemv(TestCase):
     def test_gemv1(self):
