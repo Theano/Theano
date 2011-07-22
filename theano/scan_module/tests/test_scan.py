@@ -2324,6 +2324,68 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
 
+    def test_return_steps(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        v_u1   = asarrayX(rng.uniform(size = (8,2), low = -5., high = 5.))
+        v_u2   = asarrayX(rng.uniform(size = (8,), low = -5.,high = 5.))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        v_y0   = asarrayX(rng.uniform(size = (3,)))
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.vector('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.vector('y0')
+
+        def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, y_tm3, W_in1):
+            return [y_tm3+1, theano.dot(u1_t,W_in1) + u2_t * W_in2 + \
+                    theano.dot(x_tm1, W),
+                    y_tm1 + theano.dot(x_tm1, W_out)]
+
+        outputs, updates = theano.scan( f_rnn_cmpl
+                                       , [ u1
+                                          , u2]
+                                       , [ dict(store_steps = 3)
+                                          , dict(initial = x0, return_steps = 2)
+                                          , dict(initial=y0, taps=[-1,-3],
+                                                 return_steps = 4)]
+                                       , W_in1
+                                       , n_steps           = None
+                                       , truncate_gradient = -1
+                                       , go_backwards      = False)
+
+        f4     = theano.function([u1,u2,x0,y0,W_in1], outputs
+                                 , updates = updates
+                                 , allow_input_downcast = True
+                                )
+
+
+        # compute the values in numpy
+        v_x = numpy.zeros((8,2),dtype=theano.config.floatX)
+        v_y = numpy.zeros((8,),dtype=theano.config.floatX)
+        v_x[0] = numpy.dot(v_u1[0],vW_in1) + v_u2[0]*vW_in2 + \
+                    numpy.dot(v_x0,vW)
+        v_y[0] = numpy.dot(v_x0,vWout) + v_y0[2]
+
+        for i in xrange(1,8):
+
+            v_x[i] = numpy.dot(v_u1[i],vW_in1) + v_u2[i]*vW_in2 + \
+                        numpy.dot(v_x[i-1],vW)
+            v_y[i] = numpy.dot(v_x[i-1], vWout) + v_y[i-1]
+
+        (theano_dump, theano_x,theano_y) =  f4( v_u1, v_u2, v_x0, v_y0, vW_in1)
+
+        assert numpy.allclose(theano_x , v_x[-2:])
+        assert numpy.allclose(theano_y , v_y[-4:])
+
+
 
 def test_speed():
     #
