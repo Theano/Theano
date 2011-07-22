@@ -13,30 +13,33 @@ ops without:
     Prod
     MulwithoutZeros
     ProdWithoutZeros
-
+    CAReduce(for max,... done for MaxAndArgmax op)
 
 list of ops that support R-op:
-    * Alloc
-    * Split
-    * ARange
-    * ScalarFromTensor
-    * Shape
+ * with test
     * SpecifyShape
     * MaxAndArgmax
     * Subtensor
-    * IncSubtensor
-    * Rebroadcast
+    * IncSubtensor set_subtensor too
+    * Alloc
+    * Dot
+    * Elemwise
+    * Sum
+    * Softmax
+    * Shape
     * Join
+
+ * without test
+    * Split
+    * ARange
+    * ScalarFromTensor
+    * Rebroadcast
     * Reshape
     * Flatten
     * AdvancedSubtensor1
     * AdvancedIncSubtensor1
     * AdvancedIncSubtensor
-    * Dot
     * DimShuffle
-    * Elemwise
-    * Sum
-    * Softmax
     * Scan
 
 
