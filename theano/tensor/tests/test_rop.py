@@ -40,7 +40,7 @@ list of ops that support R-op:
     * AdvancedIncSubtensor1
     * AdvancedIncSubtensor
     * DimShuffle
-    * Scan
+    * Scan [ RP: scan has a test in scan_module/tests/test_scan.test_rop ]
 
 
 
