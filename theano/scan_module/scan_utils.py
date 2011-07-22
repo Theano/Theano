@@ -321,9 +321,13 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
             if dy.owner or dx.owner:
                 return False
             elif (isinstance(dx, tensor.Constant) and
-                isinstance(dy, tensor.Constant) and
-                numpy.all(dx.data == dy.data)):
-                pass
+                  isinstance(dy, tensor.Constant)):
+                if not ( numpy.all(dx.data == dy.data) and
+                        dx.dtype == dy.dtype and
+                        dx.shape == dy.shape):
+                    return False
+                else:
+                    pass
             else:
                 if not strict:
                     if dx.type != dy.type:
@@ -346,9 +350,13 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                 if (dx,dy) not in common:
                     if strict and dx!= dy:
                         if (isinstance(dx, tensor.Constant) and
-                            isinstance(dy, tensor.Constant) and
-                            numpy.all(dx.data == dy.data)):
-                            pass
+                            isinstance(dy, tensor.Constant)):
+                            if not (numpy.all(dx.data == dy.data) and
+                                dx.dtype == dy.dtype and
+                                dx.shape == dy.shape):
+                                return False
+                            else:
+                                pass
                         else:
                             cont = False
                     else:
