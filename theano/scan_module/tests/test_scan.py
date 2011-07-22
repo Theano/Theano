@@ -298,9 +298,6 @@ class T_Scan(unittest.TestCase):
         scan_node = [node for node in topo if isinstance(node.op, theano.scan_module.scan_op.Scan)]
         assert len(scan_node) == 1
         scan_node = scan_node[0]
-        #theano.printing.pydotprint(f2, outfile='out1.png', high_contrast=True)
-        #theano.printing.pydotprint(scan_node.op.fn,
-        #                           outfile='inner1.png', high_contrast=True)
 
         topo = f2.maker.env.toposort()
         assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu) for node in topo]) == 0
@@ -1945,7 +1942,6 @@ class T_Scan(unittest.TestCase):
             self.assertTrue(nb_shape_i == 1)
 
     def test_bug_josh_reported(self):
-        import theano
         import theano.tensor.signal.conv
         m1 = theano.tensor.matrix()
         m2 = theano.tensor.matrix()
