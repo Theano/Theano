@@ -828,8 +828,6 @@ class ScanMerge(gof.Optimizer):
                         elif (snode.op.as_while and
                               curnode.op.as_while):
                             # check if equal computations
-                            correspondance = dict(zip(snode.op.inputs,
-                                                     curnode.op.inputs))
                             if scan_utils.equal_computations(
                                 [snode.op.outputs[-1]],
                                 [curnode.op.outputs[-1]],
