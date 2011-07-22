@@ -3708,7 +3708,12 @@ class IncSubtensor(Op):
         x, y = inputs[:2]
         idx_list = inputs[2:]
 
-        gx = g_output
+        if self.set_instead_of_inc:
+            gx = set_subtensor(
+                Subtensor(idx_list=self.idx_list)(g_output,*idx_list),
+                zeros_like(y))
+        else:
+            gx = g_output
         gy = Subtensor(idx_list = self.idx_list)(g_output, *idx_list)
 
         return [gx, gy] + [None]*len(idx_list)
