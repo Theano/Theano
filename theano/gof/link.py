@@ -403,10 +403,7 @@ class PerformLinker(LocalLinker):
             # the python version
             # Note : ops that implement their own make thunk don't usually
             # have this attribute defiend !!
-            if hasattr(node.op, '_op_use_c_code'):
-                old_value = node.op._op_use_c_code
-            else:
-                old_value = False
+            old_value = getattr(node.op, '_op_use_c_code', False)
             try:
                 node.op._op_use_c_code = False
                 thunks += [node.op.make_thunk(node,
