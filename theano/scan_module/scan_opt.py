@@ -591,40 +591,22 @@ class ScanSaveMem(gof.Optimizer):
                     if idx < op.n_mit_sot + op.n_sit_sot:
                         # In case the input is still an alloc node, we
                         # actually have two options:
-                        #   a) the input is an alloc (due to an optimization
-                        #   that converts set_subtensor(0,0) in 0
-                        #   b) the input is an set subtensor
-                        if ( nw_inputs[offset+idx].owner and
+                        #   a) the input is a set_subtensor, in that case we
+                        #      can replace the initial tensor by a slice,
+                        #   b) it is not, and we simply take a slice of it.
+                        if (nw_inputs[offset+idx].owner and
                             isinstance(nw_inputs[offset+idx].owner.op,
                                        tensor.IncSubtensor)):
                             _nw_input = nw_inputs[offset+idx].owner.inputs[1]
                             tmp = pre_greedy_local_optimizer(list_opt_slice,
-                                tensor.as_tensor_variable(val - init_l[i]))
+                                    tensor.as_tensor_variable(val - init_l[i]))
                             tmp = pre_constant_merge([tmp])[0]
                             nw_input = scan_utils.expand( _nw_input,tmp )
-                        # If it is an alloc
-                        elif ( nw_inputs[offset+idx].owner and
-                          isinstance(nw_inputs[offset+idx].owner.op,
-                                     tensor.Alloc)):
-
-                            tmp = pre_greedy_local_optimizer(list_opt_slice,
-                                tensor.as_tensor_variable(val))
-                            tmp = pre_constant_merge([tmp])[0]
-                            nw_input = nw_inputs[offset+idx][:tmp]
-                        # Else, if it was constant folded to a single value
-                        elif isinstance(nw_inputs[offset+idx], tensor.Constant):
-                            # The hope is that constant folding will fold
-                            # this as well
-
-                            tmp = pre_greedy_local_optimizer(list_opt_slice,
-                                            tensor.as_tensor_variable(val))
-                            tmp = pre_constant_merge([tmp])[0]
-                            nw_input = nw_inputs[offset+idx][:tmp]
                         else:
-                            raise Exception(('Unforseen case. Please report'
-                                            ' to theano-dev with an example'
-                                            ' script for this case to be'
-                                            ' debuged'))
+                            tmp = pre_greedy_local_optimizer(list_opt_slice,
+                                    tensor.as_tensor_variable(val))
+                            tmp = pre_constant_merge([tmp])[0]
+                            nw_input = nw_inputs[offset+idx][:tmp]
 
                         nw_inputs[offset+idx] = nw_input
                         replaced_outs.append(op.n_mit_mot + idx)
