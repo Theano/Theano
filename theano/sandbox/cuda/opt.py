@@ -423,23 +423,19 @@ def local_gpu_gemm(node):
 @local_optimizer([])
 def local_gpu_outer(node):
     """
-    gpu_from_host(outer) -> gpu_outer(gpu_from_host)
-
-    outer(host_from_gpu) -> host_from_gpu(gpu_outer)
+    gpu_dot22(col, row) -> gpu_outer
     """
-    if node.op == gpu_from_host:
-        host_input = node.inputs[0]
-        if host_input.owner and host_input.owner.op == tensor.basic.outer:
-            x, y = host_input.owner.inputs
-            # gpu_outer will refuse to work with float64 so future-proof
-            if x.type.dtype == 'float32' and y.type.dtype == 'float32':
-                return [gpu_outer(gpu_from_host(x), gpu_from_host(y))]
-    if node.op == tensor.basic.outer:
-        x, y = node.inputs
-        x_on_gpu = (x.owner and x.owner.op == host_from_gpu and x.type.dtype == 'float32')
-        y_on_gpu = (y.owner and y.owner.op == host_from_gpu and x.type.dtype == 'float32')
-        if x_on_gpu or y_on_gpu:
-            return [host_from_gpu(gpu_outer(as_cuda_ndarray_variable(x), as_cuda_ndarray_variable(y)))]
+    if node.op == gpu_dot22:
+        l, r = node.inputs
+        if l.type.broadcastable[1] and r.type.broadcastable[0]:
+            # TODO: we would like to remove the double-dimshuffle when l or r is
+            # already the output of a GpuDimshuffle. To do this, refactor the
+            # logic in tensor/opt.py that collapses dimshuffle chains so that we
+            # can call it from here.
+            lvec = GpuDimShuffle(l.broadcastable, [0])(l)
+            rvec = GpuDimShuffle(r.broadcastable, [1])(r)
+            return [gpu_outer(lvec, rvec)]
+
     return False
 
 @register_opt()
