@@ -78,25 +78,9 @@ class until(object):
     order, but since this was not impose up to know it can make quite a bit
     of code to fail).
     """
-    def __init__(self, condition, outputs = None, updates = None):
+    def __init__(self, condition):
         self.condition = tensor.as_tensor_variable(condition)
         assert self.condition.ndim == 0
-        if outputs is None:
-            self.outputs = []
-        elif type(outputs) in (list, tuple):
-            self.outputs = list(outputs)
-        else:
-            self.outptus = [outputs]
-        if updates is None:
-            self.updates = {}
-        elif type(updates) is dict:
-            self.updates = updates
-        elif type(udpates) is (list, tuple):
-            self.updates = dict(updates)
-        else:
-            raise Exception( ('Scan could not parse the returned values by'
-                              ' the lambda function describing the inner'
-                              ' operations of scan '))
 
 
 def traverse(out, x,x_copy, d):
