@@ -388,7 +388,7 @@ def scan( fn
             if isinstance(outs_info[i], dict):
                 # DEPRICATED :
                 if outs_info[i].get('return_steps', None):
-                    warning( ("Using `return_steps` has been depricated."
+                    _logger.warning( ("Using `return_steps` has been depricated."
                               " Simply select the entries you need using "
                               " a subtensor. Scan will optimize memory "
                               " consumption, so do not worry about that."))
