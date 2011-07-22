@@ -2154,19 +2154,23 @@ class T_Scan(unittest.TestCase):
         n2o_u,_ = theano.scan( lambda i, o,u,h0,W,eu:
                               (theano.tensor.grad(o[i], u)*eu).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eu])
+                              non_sequences = [o,u,h0,W,eu],
+                              name = 'jacobU'
+                             )
 
 
         n2o_h0,_ = theano.scan( lambda i, o,u,h0,W,eh0:
                               (theano.tensor.grad(o[i], h0)*eh0).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eh0])
+                              non_sequences = [o,u,h0,W,eh0],
+                              name = 'jacobh')
 
 
         n2o_W,_ = theano.scan( lambda i, o,u,h0,W,eW:
                               (theano.tensor.grad(o[i], W)*eW).sum(),
                               sequences = tensor.arange(o.shape[0]),
-                              non_sequences = [o,u,h0,W,eW])
+                              non_sequences = [o,u,h0,W,eW],
+                             name = 'jacobW')
 
 
         fn_test = theano.function([u,h0,W,eu,eh0,eW],
