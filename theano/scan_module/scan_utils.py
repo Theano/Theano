@@ -12,13 +12,14 @@ __authors__ = ( "Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
+import copy
 import logging
 import numpy
 
 from theano import config
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
-from theano import tensor
+from theano import tensor, scalar
 from theano.tensor.basic import get_constant_value
 
 from theano.sandbox import cuda
