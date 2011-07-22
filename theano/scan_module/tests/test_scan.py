@@ -2071,8 +2071,8 @@ class T_Scan(unittest.TestCase):
 
         mode = theano.compile.mode.FAST_RUN
         mode = mode.excluding('inplace')
-        f1 = theano.function([],o, mode= mode)
-        inputs, outputs = clone_optimized_graph(f1)
+        f0 = theano.function([],o, mode= mode)
+        inputs, outputs = clone_optimized_graph(f0)
 
         scan_nodes = grab_scan_node(outputs[0])
         assert scan_nodes is not None
