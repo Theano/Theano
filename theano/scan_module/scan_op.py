@@ -316,7 +316,7 @@ class Scan(Op):
         else:
             gpu_str = 'cpu'
         if self.as_while:
-            name = 'while'
+            name = 'do_while'
         else:
             name = 'for'
 
