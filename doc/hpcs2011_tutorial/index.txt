@@ -1,0 +1,16 @@
+
+.. _index:
+
+=========================
+GPU programming made Easy
+=========================
+
+.. toctree::
+
+    introduction
+    theano
+    advanced_theano
+    pyCUDA
+    extending_theano
+    gpundarray
+

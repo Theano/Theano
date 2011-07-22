@@ -5,7 +5,18 @@ import theano.scipy # To know if scipy is available.
 from theano import tensor, function
 from theano.tensor.basic import _allclose
 
-from theano.sandbox.linalg.ops import *
+# The one in comment are not tested...
+from theano.sandbox.linalg.ops import (cholesky,
+                                       matrix_inverse,
+                                       #solve,
+                                       #diag,
+                                       #extract_diag,
+                                       #alloc_diag,
+                                       det,
+                                       #PSD_hint,
+                                       #trace,
+                                       #spectral_radius_bound
+                                       )
 
 from nose.plugins.skip import SkipTest
 
@@ -21,7 +32,7 @@ if 0:
         pd = numpy.dot(r,r.T)
 
         x = tensor.matrix()
-        chol = Cholesky()(x)
+        chol = cholesky(x)
         f = function([x], tensor.dot(chol, chol.T)) # an optimization could remove this
 
         ch_f = function([x], chol)
