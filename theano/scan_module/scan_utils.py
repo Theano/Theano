@@ -43,8 +43,16 @@ def safe_new(x, tag = ''):
         nw_name = x.name + tag
     else:
         nw_name = None
-    if isinstance(x.type, tensor.Constant):
+    # Should it be theano.Constant? What is the difference between the two?
+    if isinstance(x, tensor.Constant):
         return x.clone()
+    # Note, as_tensor_variable will convert the Scalar into a
+    # TensorScalar that will require a ScalarFromTensor op,
+    # making the pushout optimization fail
+    elif isinstance(x, scalar.ScalarVariable):
+        nw_x = x.type()
+        nw_x.name = nw_name
+        return nw_x
     else:
         try:
             x = tensor.as_tensor_variable(x)
