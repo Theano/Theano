@@ -1210,6 +1210,7 @@ def test_local_useless_subtensor():
             ((slice(0,x.shape[1]),slice(0,x.shape[1]),), False),
             ((slice(0,x.shape[1]),2), False),
             ((slice(0,x.shape[1]),slice(x.shape[0]-x.shape[0],x.shape[1]),), False),
+            ((slice(0,T.scalar_from_tensor(x.shape[0])),), True),
             ]):
         f = function([x], tensor.exp(x).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
@@ -1235,6 +1236,22 @@ def test_local_useless_subtensor():
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
         f([[0,1,2],[3,4,5]]) # let debugmode test something
+
+    # Test scalar variable
+    s = scal.int32('s')
+    for idx, (dims, res) in enumerate([
+            ((slice(0,s),), False),
+            ]):
+        f = function([x, s], tensor.exp(x).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog=f.maker.env.toposort()
+        if res:
+            assert prog[0].op == tensor.exp, dims
+            assert len(prog)==1, dims
+        else:
+            assert any([isinstance(node.op, Subtensor) for node in prog])
+        f([[1,2,3],[4,5,6]], 1)
+        f([[1,2,3],[4,5,6]], 3)
 
 
 class test_local_subtensor_lift(unittest.TestCase):

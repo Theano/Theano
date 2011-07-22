@@ -472,7 +472,7 @@ class MakeVector(T.Op):
     def R_op(self, inputs, eval_points):
         if None in eval_points:
             return [None]
-	    return self.make_node(*eval_points).outputs
+        return self.make_node(*eval_points).outputs
 
 make_vector = MakeVector()
 
@@ -1258,29 +1258,37 @@ def local_useless_subtensor(node):
                 # is not a useless subtensor
                 return False
 
-
             length_pos_data = sys.maxint
             length_pos_shape_i = None
-            try:
-                length_pos = shape_of[node.inputs[0]][pos]
-                try:
-                    length_pos_data = get_constant_value(length_pos)
-                except TypeError:
-                    pass
 
-                if isinstance(idx.stop, theano.scalar.Scalar):
-                    if isinstance(node.inputs[node_input_idx].owner.op,
-                                T.ScalarFromTensor):
-                        length_pos_shape_i = node.inputs[node_input_idx].owner.inputs[0]
-                    else:
-                        length_pos_shape_i = node.inputs[node_input_idx]
-                    assert length_pos_shape_i.type == idx.stop
-                    # We already know that start and step are not variables
-                    # and so they don't appear in the input of the node
-                    node_input_idx += 1
-            # Catch exception from shape_of
-            except Exception, e:
-                length_pos = None
+            length_pos = shape_of[node.inputs[0]][pos]
+            try:
+                length_pos_data = get_constant_value(length_pos)
+            except TypeError:
+                pass
+
+            if isinstance(idx.stop, theano.scalar.Scalar):
+                length_pos_shape_i = node.inputs[node_input_idx]
+                # length_pos is a tensor variable, but length_pos_shape_i
+                # is a scalar variable. We try to see if they represent
+                # the same underlying variable.
+                if (length_pos_shape_i.owner and
+                        isinstance(length_pos_shape_i.owner.op,
+                            T.ScalarFromTensor)):
+                    length_pos_shape_i = length_pos_shape_i.owner.inputs[0]
+                elif (length_pos.owner and
+                        isinstance(length_pos.owner.op,
+                            T.TensorFromScalar)):
+                    length_pos = length_pos.owner.inputs[0]
+                else:
+                    # We did not find underlying variables of the same type
+                    return False
+
+                assert length_pos_shape_i.type == length_pos.type
+                assert length_pos_shape_i.type.dtype == idx.stop.dtype
+                # We already know that start and step are not variables
+                # and so they don't appear in the input of the node
+                node_input_idx += 1
 
             if isinstance(idx.stop, int):
                 if idx.stop < length_pos_data:
