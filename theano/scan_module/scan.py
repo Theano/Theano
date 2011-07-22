@@ -146,7 +146,7 @@ def scan( fn
         outputs ordered in the same order as ``outputs_info``, with the
         difference that there should be only one output variable per
         output initial state (even if no tap value is used). Secondly
-        `fn` should return an update dictionary ( that tells how to
+        `fn` should return an update dictionary (that tells how to
         update any shared variable after each iteration step). The
         dictionary can optionally be given as a list of tuples. There is
         no constraint on the order of these two list, ``fn`` can return
@@ -157,31 +157,16 @@ def scan( fn
         To use ``scan`` as a while loop, the user needs to change the
         function ``fn`` such that also a stopping condition is returned.
         To do so, he/she needs to wrap the condition in an ``until`` class.
-        The condition can be returned as a third element, or all the other
-        outputs and updates can be wrapped in ``until``. A few examples
-        would be :
+        The condition should be returned as a third element, for example:
 
         .. code-block:: python
 
             ...
             return [y1_t, y2_t], {x:x+1}, theano.scan_module.until(x < 50)
 
-        or
-
-        .. code-block:: python
-
-            ...
-            return theano.scan_module.until(x<50, [y1_t, y2_t], {x:x+1})
-
-        Note that a number of steps ( considered in here as the maximum
+        Note that a number of steps (considered in here as the maximum
         number of steps ) is still required even though a condition is
-        passed ( and it is used to allocate memory if needed ). Also when
-        passing multiple argument to ``until`` be aware of its signature:
-
-        .. code-block:: python
-
-            class until(object):
-                def __init__( condition, outputs = [], updates = {}):
+        passed (and it is used to allocate memory if needed). = {}):
 
     :param sequences:
         ``sequences`` is the list of Theano variables or dictionaries
