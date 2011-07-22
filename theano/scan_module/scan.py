@@ -957,7 +957,7 @@ def scan( fn
     ##
     ### Step 8. Compute the outputs using the scan op
     ##
-    _scan_inputs = ( scan_seqs                                    +
+    _scan_inputs = ( scan_seqs                                   +
                    mit_mot_scan_inputs                           +
                    mit_sot_scan_inputs                           +
                    sit_sot_scan_inputs                           +
