@@ -876,16 +876,6 @@ def scan( fn
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    ## Step 5.6 all non sequences including shared variables with no update rules
-    def new_variable( v ):
-        if isinstance(new_variable, tensor.Constant):
-            return v.clone()
-        new_v = safe_new(v)
-        if getattr(v,'name', None) is not None:
-            new_v.name = v.name + '_copy'
-        return new_v
-    other_inner_args += [ new_variable(arg) for arg in non_seqs
-                         if not isinstance(arg, SharedVariable) ]
     givens.update( dict( zip(other_scan_args, other_inner_args) ))
     other_shared_scan_args  = [ arg.variable for arg
                         in dummy_f.maker.expanded_inputs
