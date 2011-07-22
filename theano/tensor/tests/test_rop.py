@@ -130,9 +130,8 @@ class test_RopLop(unittest.TestCase):
         vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
         yv = TT.Lop(y, self.mx, self.v)
         lop_f = function([self.mx, self.v], yv)
-        sy, _ = theano.scan( lambda i,y,x,v: (TT.grad(y[i]*v[i],x))[i],
-                           sequences = TT.arange(y.shape[0]),
-                           non_sequences = [y,self.mx,self.v])
+
+        sy = TT.grad((self.v*y).sum(), self.mx)
         scan_f = function([self.mx, self.v], sy)
 
 
