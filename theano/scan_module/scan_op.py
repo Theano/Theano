@@ -295,15 +295,15 @@ class Scan(Op):
             # If everything went OK up to here, there is still one thing to
             # check. Namely, do the internal graph represent same
             # computations
-            if not scan_utils.equal_computations(self.inputs,
-                                                 other.inputs,
-                                                 strict = False):
-                return False
+            for self_in, other_in in zip(self.inputs, other.inputs):
+                if self_in.type != other_in.type :
+                    return False
 
             if not scan_utils.equal_computations(self.outputs,
                                                  other.outputs,
                                                  self.inputs,
-                                                 other.inputs):
+                                                 other.inputs,
+                                                strict = True):
                 return False
 
             # If they do, then they need to match in other small details
