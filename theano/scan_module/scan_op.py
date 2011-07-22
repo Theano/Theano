@@ -781,18 +781,10 @@ class Scan(Op):
         # Note ! We don't want to use the actual same variable as the ones
         # used by the original scan, rather create clones of them
 
-        def new_var(x):
-            nw_x = x.type()
-            if x.name:
-                nw_x.name=x.name +'grad_copy'
-            return nw_x
-
-
-        self_inputs = [new_var(x) for x in self.inputs ]
-        givens = {}
-        for new_x, x in zip(self_inputs, self.inputs):
-            givens[x] = new_x
-        self_outputs = scan_utils.clone(self.outputs, replace=givens)
+        rval = scan_utils.reconstruct_graph(self.inputs,
+                                            self.outputs,'_grad')
+        self_inputs  = rval[0]
+        self_outputs = rval[1]
 
 
         seqs   = self_inputs[:self.n_seqs]
