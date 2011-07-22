@@ -302,6 +302,11 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
         if x.owner and y.owner:
             if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
+    if len(in_xs) != len(in_ys):
+        return False
+    for _x,_y in zip(in_xs, in_ys):
+        if _x.type != _y.type:
+            return False
 
     nds_x = gof.graph.io_toposort(in_xs, xs)
     nds_y = gof.graph.io_toposort(in_ys, ys)
