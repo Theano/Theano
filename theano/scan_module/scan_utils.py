@@ -322,14 +322,15 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                 return False
             elif (isinstance(dx, tensor.Constant) and
                 isinstance(dy, tensor.Constant) and
-                dx.data == dy.data):
+                numpy.all(dx.data == dy.data)):
                 pass
-            elif strict:
-                if dx != dy:
-                    return False
             else:
-                if dx.type != dy.type:
-                    return False
+                if not strict:
+                    if dx.type != dy.type:
+                        return False
+                else:
+                    if (dx,dy) not in common:
+                        return False
 
     while cont and idx < n_nodes:
         nd_x = nds_x[idx]
@@ -346,7 +347,7 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                     if strict and dx!= dy:
                         if (isinstance(dx, tensor.Constant) and
                             isinstance(dy, tensor.Constant) and
-                            dx.data == dy.data):
+                            numpy.all(dx.data == dy.data)):
                             pass
                         else:
                             cont = False
