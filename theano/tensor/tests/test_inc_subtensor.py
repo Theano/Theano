@@ -87,7 +87,7 @@ class Test_inc_subtensor(unittest.TestCase):
                 expected_result[:,sl3,:val_sl2_end] += val_inc
 
             self.assertTrue(numpy.array_equal(result, expected_result))
-    def test_grad(self):
+    def test_grad_inc(self):
 
 
         a = T.dvector()
