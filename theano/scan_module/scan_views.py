@@ -101,8 +101,7 @@ def reduce( fn
 
     :param name: See ``scan``.
     """
-    # Makes sure the outputs_info is a list.
-    rval = scan.scan( fn                 = fn
+    rval = scan.scan(fn             = fn
                 , sequences         = sequences
                 , outputs_info      = outputs_info
                 , non_sequences     = non_sequences
