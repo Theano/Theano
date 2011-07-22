@@ -585,6 +585,10 @@ def scan( fn
 
             actual_arg = init_out['initial']
             arg = safe_new(init_out['initial'])
+            if isinstance(arg, tensor.Constant):
+                # safe new returns a clone of the constants, but that is not
+                # what we need for initial states
+                arg = arg.type()
 
             # Try to transfer test_value to the new variable
             if config.compute_test_value != 'off':
