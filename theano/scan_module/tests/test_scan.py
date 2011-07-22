@@ -2275,7 +2275,7 @@ class T_Scan(unittest.TestCase):
     def test_while0(self):
         x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _ = theano.scan(lambda_fn, x)
         f = theano.function([x], o)
         vx = numpy.zeros((50,))
@@ -2286,7 +2286,7 @@ class T_Scan(unittest.TestCase):
     def test_while1(self):
         x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _  = theano.scan(lambda_fn, x)
         o2, _ = theano.scan(lambda x_t:x_t + 2,
                             x)
@@ -2305,9 +2305,9 @@ class T_Scan(unittest.TestCase):
     def test_while2(self):
         x = tensor.vector('x')
         def lambda_fn(x_t):
-            return x_t+1, theano.until( x_t > 3)
+            return x_t+1, theano.scan_module.until( x_t > 3)
         o, _  = theano.scan(lambda_fn, x)
-        o2, _ = theano.scan(lambda x_t:( x_t + 2, theano.until(x_t>3)),
+        o2, _ = theano.scan(lambda x_t:( x_t + 2, theano.scan_module.until(x_t>3)),
                             x)
 
         f = theano.function([x], [o,o2])
