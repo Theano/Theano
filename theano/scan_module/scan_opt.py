@@ -17,7 +17,7 @@ import numpy
 import sys
 
 import theano
-from theano import tensor
+from theano import tensor, scalar
 from theano.tensor import opt, TensorType, get_constant_value
 from theano import gof
 from theano.compile import optdb
