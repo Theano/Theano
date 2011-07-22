@@ -1295,10 +1295,7 @@ def local_useless_subtensor(node):
                     return False
 
             elif isinstance(idx.stop, theano.scalar.Scalar):
-                if length_pos_shape_i is None:
-                    return False
-                if length_pos is None:
-                    return False
+                # length_pos_shape_i cannot be None
                 if length_pos_shape_i != length_pos:
                     return False
             elif idx.stop is None:
