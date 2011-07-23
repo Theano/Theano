@@ -1,0 +1,43 @@
+.. _pycuda:
+
+====================
+PyCUDA compatibility
+====================
+
+Currently PyCUDA and Theano have different object to store GPU
+data. Both implementation don't support the same set of
+feature. Theano implementation is called CudaNdarray and support
+strides. But it support only the float32 dtype. PyCUDA implementation
+is called GPUArray and don't support stride. But it support all numpy
+and CUDA dtype.
+
+We are currently working on having the same base object that will
+mimic numpy. Until this is ready, here is some information on how to
+use both Project in the same script.
+
+Transfer
+--------
+
+You can use the `theano.misc.pycuda_utils` module to convert GPUArray to and
+from CudaNdarray. The function `to_cudandarray(x, copyif=False)` and
+`to_gpuarray(x)` return a new object that share the same memory space
+as the original. Otherwise it raise an ValueError.As GPUArray don't
+support strides, if the CudaNdarray is strided, we could copy it to
+have a non-strided copy. The resulting GPUArray won't share the same
+memory region. If you want this behavior, set `copyif=True` in
+`to_gpuarray`.
+
+Compiling with PyCUDA
+---------------------
+
+You can use PyCUDA to compile some CUDA function that work directly on
+CudaNdarray. There is an example in the function `test_pycuda_simple` in
+the file `theano/misc/tests/test_pycuda_theano_simple.py`.
+
+Theano op using PyCUDA function
+-------------------------------
+
+You can use gpu function compiled with PyCUDA in a Theano op. Look
+into the `HPCS2011 tutorial
+<http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_ for an example.
+
