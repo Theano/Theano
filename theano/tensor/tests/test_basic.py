@@ -196,7 +196,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
 
                 try:
                     variables = f(*inputs)
-                except:
+                except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while calling the Function on the inputs %s" \
                         % (self.op, testname, inputs)
