@@ -1266,7 +1266,10 @@ def local_useless_subtensor(node):
             except TypeError:
                 pass
 
-            if isinstance(idx.stop, theano.scalar.Scalar):
+            if isinstance(idx.stop, int):
+                if idx.stop < length_pos_data:
+                    return False
+            elif isinstance(idx.stop, theano.scalar.Scalar):
                 length_pos_shape_i = node.inputs[node_input_idx]
                 # length_pos is a tensor variable, but length_pos_shape_i
                 # is a scalar variable. We try to see if they represent
@@ -1283,17 +1286,17 @@ def local_useless_subtensor(node):
                     # We did not find underlying variables of the same type
                     return False
 
-                assert length_pos_shape_i.type == length_pos.type
-                assert length_pos_shape_i.type.dtype == idx.stop.dtype
+                # The type can be different: int32 vs int64. length_pos
+                # should always be int64 as that is what the shape
+                # tracker keep. Subtensor accept any scalar int{8,16,32,64}
+                # as index type.
+                assert str(length_pos.type.dtype) == "int64"
+                assert str(length_pos_shape_i.type.dtype) in ["int8", "int16", 
+                                                              "int32", "int64"]
                 # We already know that start and step are not variables
                 # and so they don't appear in the input of the node
                 node_input_idx += 1
 
-            if isinstance(idx.stop, int):
-                if idx.stop < length_pos_data:
-                    return False
-
-            elif isinstance(idx.stop, theano.scalar.Scalar):
                 # length_pos_shape_i cannot be None
                 if length_pos_shape_i != length_pos:
                     return False
