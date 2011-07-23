@@ -14,7 +14,7 @@ if cuda_ndarray.cuda_available == False:
 
 import theano
 import theano.tensor as T
-from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp
+from theano.misc.pycuda_example import PycudaElemwiseSourceModuleOp, PycudaElemwiseKernelOp, PycudaElemwiseSourceModuleMakeThunkOp
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -28,21 +28,25 @@ def test_pycuda_elemwise_source_module():
         for op in [theano.scalar.basic.mul, theano.scalar.basic.add]:
             x=T.fmatrix('x')
             y=T.fmatrix('y')
-            pycuda_op = PycudaElemwiseSourceModuleOp(op)
             elemwise_op = theano.tensor.Elemwise(op)
+            pycuda_op = PycudaElemwiseSourceModuleOp(op)
+            pycuda_op_thunk = PycudaElemwiseSourceModuleMakeThunkOp(op)
             f=theano.function([x,y], elemwise_op(x,y), mode=mode_with_gpu)
             f2 = theano.function([x,y], theano.sandbox.cuda.host_from_gpu(pycuda_op(x,y)))
             f3 = theano.function([x,y], elemwise_op(x,y),
                                  mode=mode_with_gpu.including("local_pycuda_gpu_elemwise"))
+            f4 = theano.function([x,y], theano.sandbox.cuda.host_from_gpu(pycuda_op_thunk(x,y)))
 
             assert any([ isinstance(node.op, theano.sandbox.cuda.GpuElemwise) for node in f.maker.env.toposort()])
             assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f2.maker.env.toposort()])
             assert any([ isinstance(node.op, PycudaElemwiseSourceModuleOp) for node in f3.maker.env.toposort()])
+            assert any([ isinstance(node.op, PycudaElemwiseSourceModuleMakeThunkOp) for node in f4.maker.env.toposort()])
 
             val1 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
             val2 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
             assert (f(val1,val2) == f2(val1,val2)).all()
             assert (f(val1,val2) == f3(val1,val2)).all()
+            assert (f(val1,val2) == f4(val1,val2)).all()
             #print f(val1,val2)
             #print f2(val1,val2)
 
