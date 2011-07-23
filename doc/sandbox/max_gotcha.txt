@@ -1,5 +1,9 @@
 .. _sandbox_maxgotcha:
 
+==========
+Max Gotcha
+==========
+
 Guillaume and I just found a bug in some experiment code that was
 basically caused by confusing semantics of max().  The same sort of
 thing applies to min.  This is an FYI email to help others on the list

@@ -1,3 +1,7 @@
+====================
+Interactive Debugger
+====================
+
 '''Seed of discussion for what an interactive debugging tool might look like. 2009.03.27.'''
 
 == Interactive debugger ( #352 ) ==

@@ -1,3 +1,7 @@
+==============
+Hosting Theano
+==============
+
 '''Historical Interest.  This has been addressed for now.  20080904'''
 
 There are several [http://en.wikipedia.org/wiki/Comparison_of_free_software_hosting_facilities project hosting services] online, but none is perfect for theano.

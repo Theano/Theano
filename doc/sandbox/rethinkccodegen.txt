@@ -1,5 +1,9 @@
 '''An open proposal.  This is still relevant. 20080904'''
 
+======================
+New C code generation?
+======================
+
 == Issues ==
 
 There are several issues with the current way C code is generated:

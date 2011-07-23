@@ -1,3 +1,7 @@
+===============
+Others software
+===============
+
 Other software to look at and maybe recommend to users:
 
 * [http://www.pytables.org/moin PyTables] - This is looking really

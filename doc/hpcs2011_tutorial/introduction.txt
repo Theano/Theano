@@ -36,7 +36,7 @@ Why you can rely on Theano:
 - Used by everyone in our lab (\textasciitilde 30 people)
 - Deep Learning Tutorials
 - Unofficial RPMs for Mandriva
-- Downloads (June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (``bleeding edge'' repository): unknown
+- Downloads (June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
 
 Why scripting for GPUs ?
 ------------------------

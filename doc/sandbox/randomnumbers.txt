@@ -1,5 +1,9 @@
 .. sandbox_randnb:
 
+==============
+Random Numbers
+==============
+
 ''' This has been implemented (#182). 20090327.'''
 
 = Random Numbers =

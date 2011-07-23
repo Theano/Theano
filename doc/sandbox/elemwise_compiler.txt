@@ -1,5 +1,9 @@
 .. _sandbox_elemwise:
 
+=================
+Elemwise compiler
+=================
+
 '''Stale specification page.  Upgrade this to provide useful developer doc. 2008.09.04'''
 == Definitions ==
 

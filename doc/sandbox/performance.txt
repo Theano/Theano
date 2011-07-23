@@ -1,4 +1,7 @@
 
+===========
+Performance
+===========
 
 Theano uses several tricks to obtain good performance:
  * common sub-expression elimination
