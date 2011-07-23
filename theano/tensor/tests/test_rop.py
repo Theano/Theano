@@ -14,6 +14,7 @@ ops without:
     MulwithoutZeros
     ProdWithoutZeros
     CAReduce(for max,... done for MaxAndArgmax op)
+    MaxAndArgmax(only for matrix on axis 0 or 1)
 
 list of ops that support R-op:
  * with test
