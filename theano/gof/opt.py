@@ -1100,7 +1100,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         process_count.setdefault(lopt, 0)
                         if process_count[lopt] > max_use:
                             max_use_abort = True
-                            opt_name = lopt.name
+                            opt_name = (getattr(lopt, "name", None)
+                                        or getattr(lopt, "__name__", None) or "")
                         else:
                             lopt_change = self.process_node(env, node, lopt)
                             if lopt_change:
