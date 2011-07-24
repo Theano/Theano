@@ -1184,47 +1184,57 @@ class _Linker(gof.link.LocalLinker):
         thunks_py = [] #python thunks
         thunks_c = [] #c thunks
 
-        compute_map = {}
-        for k in storage_map:
-            compute_map[k] = [k.owner is None]
-
-
         for node in order:
             node_input_storage = [storage_map[r] for r in node.inputs]
             node_output_storage = [storage_map[r] for r in node.outputs]
 
-            if hasattr(node.op, '_op_use_c_code'):
-                old_value = node.op._op_use_c_code
-            else:
-                old_value = False
             try:
-                # ! Problem ! We do not know if make_thunk succedded into
-                # generating a cthunk, or if it reverted back to a python
-                # thunk, or if it is none of the above ...
-                node.op._op_use_c_code = True
-                tmp_thunk = node.op.make_thunk(node,
-                                    storage_map,
-                                    compute_map,
-                                    no_recycling)
-                if hasattr(tmp_thunk, 'cthunk'):
-                    # Arbritrary check to see if it has a C implementation
-                    thunks_c.append(tmp_thunk)
-                else:
-                    thunks_c.append(None)
-            finally:
-                node.op._op_use_c_code = old_value
+                if not self.maker.mode.check_c_code:
+                    raise utils.MethodNotDefined()
+                e = Env(*graph.clone(node.inputs, node.outputs))
+                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
+                #  Specifically... e.nodes is a set, but of only 1 element
+
+                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
+
+                thunk, node_input_filters, node_output_filters = cl.make_thunk(
+                    input_storage = node_input_storage,
+                    output_storage = node_output_storage)
+                thunk.inputs = node_input_storage
+                thunk.outputs = node_output_storage
+                thunks_c.append(thunk)
+            except (NotImplementedError, utils.MethodNotDefined):
+                thunks_c.append(None)
 
             if self.maker.mode.check_py_code or thunks_c[-1] is None:
-                try:
-                    node.op._op_use_c_code = False
-                    thunks_py += [node.op.make_thunk(node,
-                                        storage_map,
-                                        compute_map,
-                                        no_recycling)]
-                finally:
-                    node.op._op_use_c_code = old_value
+                p = node.op.perform
+                thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
+                         node: p(n, [x[0] for x in i], o))
+                thunk.inputs = node_input_storage
+                thunk.outputs = node_output_storage
+                thunk.perform = p
+                thunks_py.append(thunk)
             else:
                 thunks_py.append(None)
+
+            # If the op define its own make_thunk, check it
+            if node.op.make_thunk.im_func != theano.gof.Op.make_thunk.im_func:
+                compute_map = {}
+                for k in node.inputs:
+                    compute_map[k] = [True]
+                for k in node.outputs:
+                    compute_map[k] = [False]
+                thunk = node.op.make_thunk(node,
+                                           storage_map,
+                                           compute_map,
+                                           no_recycling)
+                if thunks_py[-1] is None:
+                    thunks_py[-1] = thunk
+                elif thunks_c[-1] is None:
+                    thunks_c[-1] = thunk
+                else:
+                    _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function"%node)
+                    thunks_py[-1] = thunk
 
         if no_recycling is True:
             no_recycling = storage_map.values()
