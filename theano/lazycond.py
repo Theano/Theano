@@ -50,9 +50,28 @@ class IfElse(PureOp):
             view_map[0] = [1]
             self.view_map = view_map
             #raise NotImplementedError('IfElse must copy for now')
+        else:
+            self.view_map = {}
         self.as_view=as_view
         self.gpu = gpu
         self.name = name
+
+    def __eq__(self, other):
+        return (type(self)==type(other) and
+                self.as_view == other.as_view and
+                # view_map included in as_view
+                #self.view_map == other.view_map and
+                self.gpu == other.gpu and
+                self.name == other.name)
+
+    def __eq__(self, other):
+        return (hash(type(self)) ^
+                # view_map included in as_view
+                # and dict are not hashable
+                #hash(self.view_map) ^
+                hash(self.as_view) ^
+                hash(self.gpu) ^
+                hash(self.name))
 
     def make_node(self, c, t, f):
         if t.type != f.type:

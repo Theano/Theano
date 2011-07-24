@@ -84,6 +84,11 @@ class IfElseIfElseIf(PureOp):
 class NotImplementedOp(PureOp):
     class E(Exception): pass
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
