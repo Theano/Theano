@@ -280,8 +280,6 @@ class PushOutNonSeqScan(gof.Optimizer):
 
 optdb.register('scanOp_pushout_nonseqs_ops',
                PushOutNonSeqScan(),
-               #opt.out2in( scan_pushout_non_seq_operation),
-                        #  ignore_newtrees=True),
                1.899,
                'fast_run',
                'scan')
