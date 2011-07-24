@@ -524,6 +524,8 @@ def pydotprint(fct, outfile=None,
             idx = ' id=' + str(len(var_str))
             if len(varstr)+len(idx) > max_label_size:
                 varstr = varstr[:max_label_size-3-len(idx)]+idx+'...'
+            else:
+                varstr = varstr + idx
         elif len(varstr) > max_label_size:
             varstr = varstr[:max_label_size-3]+'...'
         var_str[var]=varstr
