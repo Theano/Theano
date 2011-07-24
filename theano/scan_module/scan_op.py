@@ -384,7 +384,7 @@ class Scan(Op):
                            name = self.name,
                            profile = profile)
 
-        p = self.perform
+        p = self.execute
         # default arguments are stored in the closure of `rval`
         def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
             r = p(n, [x[0] for x in i], o)
@@ -517,7 +517,7 @@ class Scan(Op):
         return node.inputs[offset:]
 
 
-    def perform( self, node, args, outs):
+    def execute( self, node, args, outs):
         """
         The args are packed like this:
 
