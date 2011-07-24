@@ -324,7 +324,7 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                   isinstance(dy, tensor.Constant)):
                 if not ( numpy.all(dx.data == dy.data) and
                         dx.dtype == dy.dtype and
-                        dx.shape == dy.shape):
+                        dx.data.shape == dy.data.shape):
                     return False
                 else:
                     pass
@@ -353,7 +353,7 @@ def equal_computations(xs,ys, in_xs = None, in_ys = None, strict=True):
                             isinstance(dy, tensor.Constant)):
                             if not (numpy.all(dx.data == dy.data) and
                                 dx.dtype == dy.dtype and
-                                dx.shape == dy.shape):
+                                dx.data.shape == dy.data.shape):
                                 return False
                             else:
                                 pass
