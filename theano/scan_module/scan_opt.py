@@ -292,10 +292,24 @@ def scan_make_inplace(node):
         (not op.info['inplace']) ):
         info = op.info.copy()
         info['inplace'] = True
+        # inputs corresponding to sequences and n_steps
+        ls_begin = node.inputs[:1+op.n_seqs]
+        ls  = op.outer_mitmot(node)
+        ls += op.outer_mitsot(node)
+        ls += op.outer_sitsot(node)
+        ls_end  = op.outer_shared(node)
+        ls_end += op.outer_nitsot(node)
+        ls_end += op.outer_non_seqs(node)
+        n_outs = len(ls)
+        for idx in xrange(n_outs):
+            if ls[idx] in ls[:idx]:
+                ls[idx] = deep_copy_op(ls[idx])
+
+        inputs = ls_begin + ls + ls_end
         new_op = scan_op.Scan( op.inputs
                               , op.outputs
                               , info)
-        return new_op.make_node(*node.inputs).outputs
+        return new_op.make_node(*inputs).outputs
     return False
 
 optdb.register( 'scanOp_make_inplace'
