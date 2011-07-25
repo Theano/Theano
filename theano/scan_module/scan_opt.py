@@ -125,12 +125,14 @@ def remove_constants_and_unused_inputs_scan(node):
     else:
         return False
 
-optdb.register( 'scanOp_remove_constants_and_unused_inputs'
-               , opt.in2out(remove_constants_and_unused_inputs_scan,
-                            ignore_newtrees = True)
-               , 1.995
-               , 'fast_run'
-               , 'scan')
+scan_seqopt = theano.gof.SequenceDB()
+optdb.register('scan_seqopt', scan_seqopt, 1.9, 'fast_run', 'scan')
+scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
+                     opt.in2out(remove_constants_and_unused_inputs_scan,
+                                ignore_newtrees = True),
+                     5,
+                     'fast_run',
+                     'scan')
 
 
 class PushOutNonSeqScan(gof.Optimizer):
@@ -278,11 +280,11 @@ class PushOutNonSeqScan(gof.Optimizer):
             return False
 
 
-optdb.register('scanOp_pushout_nonseqs_ops',
-               PushOutNonSeqScan(),
-               1.899,
-               'fast_run',
-               'scan')
+scan_seqopt.register('scanOp_pushout_nonseqs_ops',
+                     PushOutNonSeqScan(),
+                     1,
+                     'fast_run',
+                     'scan')
 
 
 @gof.local_optimizer([None])
@@ -774,11 +776,11 @@ class ScanSaveMem(gof.Optimizer):
 # Just before specialize to have the other optimization
 # like constant folding being applied
 # This don't introduce inplace.
-optdb.register( 'scanOp_save_mem'
-               , ScanSaveMem()
-               , 1.99
-               , 'fast_run'
-               , 'scan')
+scan_seqopt.register( 'scanOp_save_mem',
+                      ScanSaveMem(),
+                      4,
+                      'fast_run',
+                      'scan')
 
 
 class ScanMerge(gof.Optimizer):
@@ -972,11 +974,11 @@ class ScanMerge(gof.Optimizer):
 # after const merge but before stabilize so that we can have identity
 # for equivalent nodes but we still have the chance to hoist stuff out
 # of the scan later.
-optdb.register('scanOp_merge',
-               ScanMerge(),
-               1.90,
-               'fast_run',
-               'scan')
+scan_seqopt.register('scanOp_merge',
+                     ScanMerge(),
+                     2,
+                     'fast_run',
+                     'scan')
 
 def has_duplicates(l):
     """returns true if l has any duplicates (according to __eq__)."""
@@ -1117,10 +1119,10 @@ def scan_merge_inouts(node):
 
     return na.outer_outputs
 
-optdb.register('scanOp_merge_inouts'
-               , opt.in2out(scan_merge_inouts,ignore_newtrees=True)
-              , 1.91
-              , 'fast_run'
-              , 'scan')
+scan_seqopt.register('scanOp_merge_inouts',
+                     opt.in2out(scan_merge_inouts,ignore_newtrees=True),
+                     3,
+                     'fast_run',
+                     'scan')
 
 
