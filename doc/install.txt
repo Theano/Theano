@@ -363,7 +363,7 @@ Mac
 
     .. code-block:: bash
 
-        $ sudo port install gcc44 py26-scipy mercurial python_select
+        $ sudo port install gcc44 py26-scipy mercurial
 
     This will install all the required Theano dependencies.  Note that
     compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
@@ -378,14 +378,14 @@ Mac
   packages are updated quite frequently.
 
 - In order to use the MacPorts version of python, you might
-  need to explicitly select it with ``sudo python_select python26``. The
+  need to explicitly select it with ``sudo port select python26``. The
   reason this is necessary is because you might have an Apple-provided python
   (via, for example, an Xcode installation). After performing this step, you
   should check that the symbolic link provided by ``which python`` points to
   the MacPorts python. For instance, on Snow Leopard with the latest MacPorts,
   the output of ``which python`` is ``/opt/local/bin/python`` and this symbolic
   link points to ``/opt/local/bin/python2.6``. When executing ``sudo
-  python_select python26-apple`` (which you should **not** do), the link
+  port select python26-apple`` (which you should **not** do), the link
   points to ``/usr/bin/python2.6``.
 
 - Once this is fixed, please check that the ``scipy`` module that is imported in
@@ -406,9 +406,9 @@ Mac
   up-to-date (at the very least 3.4, but 4.x is better). If you have an old
   version of Xcode lying around, chances are that your gcc install is old. You
   should also check  ``which gcc``: if it says  ``/usr/bin/gcc`` then you
-  should install gcc_select from MacPorts (``sudo port install gcc_select``)
-  and use the MacPorts-provided gcc. Use ``gcc_select -l`` to see which gcc
-  installs you have on the system. Then execute ``sudo gcc_select mp-gcc44``
+  should use the MacPorts-provided gcc.
+  Use ``sudo port select gcc`` to see which gcc
+  installs you have on the system. Then execute ``sudo port select gcc mp-gcc44``
   to create a symlink that points to the correct (MacPorts) gcc (version 4.4
   in this case).
 
