@@ -636,7 +636,7 @@ def scan( fn
                 # Try to transfer test_value to the new variable
                 if config.compute_test_value != 'off':
                     try:
-                        nw_slice.tag.test_value = Op._get_test_value(_init_out_var_slice)
+                        nw_slice.tag.test_value = gof.Op._get_test_value(_init_out_var_slice)
                     except AttributeError, e:
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,

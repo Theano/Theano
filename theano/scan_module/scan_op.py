@@ -975,7 +975,7 @@ class Scan(Op):
                                  + self.n_mit_sot
                                  + self.n_nit_sot
                                  + self.n_sit_sot )
-        # shared variables as well as the condition as well as the condition
+        # shared variables as well as the condition
         old_scan_shared_outs  = self_outputs[out_offset:]
         arg_offset = ( 1
                       + self.n_seqs
