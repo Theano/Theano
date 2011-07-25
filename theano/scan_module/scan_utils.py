@@ -90,12 +90,17 @@ def traverse(out, x,x_copy, d):
     This happens because initially shared variables are on GPU .. which is
     fine for the main computational graph but confuses things a bit for the
     inner graph of scan '''
+    import theano.sandbox.cuda as cuda
     if out == x:
         d[out] = tensor.as_tensor_variable(x_copy)
         return d
     elif out.owner is None:
         return d
-
+    elif (cuda.cuda_available and
+          out.owner.op == cuda.host_from_gpu and
+          out.owner.inputs == [x]):
+        d[out] = tensor.as_tensor_variable(x_copy)
+        return d
     else:
         for inp in out.owner.inputs:
             d = traverse(inp, x, x_copy, d)
