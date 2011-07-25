@@ -42,8 +42,7 @@ def safe_new(x, tag = ''):
         nw_name = x.name + tag
     else:
         nw_name = None
-    # Should it be theano.Constant? What is the difference between the two?
-    if isinstance(x, tensor.Constant):
+    if isinstance(x, theano.Constant):
         return x.clone()
     # Note, as_tensor_variable will convert the Scalar into a
     # TensorScalar that will require a ScalarFromTensor op,
