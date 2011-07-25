@@ -1228,13 +1228,26 @@ class _Linker(gof.link.LocalLinker):
                                            storage_map,
                                            compute_map,
                                            no_recycling)
+
+                # Right now there is no op that when called check if
+                # its ouputs are computed and don't recompute itself.
+                # I think it is not a good idea to do so as we only
+                # call thunk when we want them computed. So those
+                # check would be useless. In case some ops do it at
+                # some point, we reset the compute_map of outputs to
+                # False.
+                def wrap_thunk():
+                    for k in node.outputs:
+                        compute_map[k] = [False]
+                    thunk()
+
                 if thunks_py[-1] is None:
-                    thunks_py[-1] = thunk
+                    thunks_py[-1] = wrap_thunk
                 elif thunks_c[-1] is None:
-                    thunks_c[-1] = thunk
+                    thunks_c[-1] = wrap_thunk
                 else:
                     _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function"%node)
-                    thunks_py[-1] = thunk
+                    thunks_py[-1] = wrap_thunk
 
         if no_recycling is True:
             no_recycling = storage_map.values()
