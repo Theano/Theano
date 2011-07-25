@@ -141,11 +141,14 @@ class Scan(Op):
                                     self.n_shared_outs )
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
-        tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
+        if not self.info['gpu']:
+            tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                        self.outputs)
-        local_env = gof.Env(tmp_in, tmp_out)
-        self._cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
-        self._hash_inner_graph = hash(self._cmodule_key)
+            local_env = gof.Env(tmp_in, tmp_out)
+            self._cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            self._hash_inner_graph = hash(self._cmodule_key)
+        else:
+            self._hash_inner_graph = self.info['gpu_hash']
 
 
     def make_node(self, *inputs):
