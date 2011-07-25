@@ -586,6 +586,8 @@ class Scan(Op):
             Y sequence outputs y_1, y_2, ... y_<self.n_outs>
 
         """
+        # In order to be able to allocate cuda ndarrays if needed
+        from theano.sandbox import cuda
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
         t0_call = time.time()
