@@ -141,7 +141,7 @@ def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise) and dtype_in_elemwise_supported(node.op):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
-                #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
+                #don't set any inplace pattern. gpu_inplace_optimizer will do it later
                 new_op = GpuElemwise(node.op.scalar_op)
 
                 #   first establish that float32 can store all inputs
@@ -184,7 +184,7 @@ def local_gpu_elemwise_1(node):
             dtype_in_elemwise_supported(node.op)):
 
             elemwise_node = host_i.owner
-            #don't set any inplace pattern. gpu_insert_inplace_optimizer will do it later
+            #don't set any inplace pattern. gpu_inplace_optimizer will do it later
             new_op = GpuElemwise(elemwise_node.op.scalar_op)
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
@@ -993,10 +993,10 @@ else:
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
 #GpuElemwise inplace
-gpu_insert_inplace_optimizer = tensor.opt.insert_inplace_optimizer_op(
+gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
         GpuElemwise)
-compile.optdb.register('gpu_inplace_opt', gpu_insert_inplace_optimizer, 75,
-        'fast_run', 'inplace','gpu_inplace')
+optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
+               'fast_run', 'inplace','gpu_inplace', 'gpu')
 
 @register_opt()
 @local_optimizer([tensor.Alloc])

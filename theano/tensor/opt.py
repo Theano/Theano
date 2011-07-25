@@ -107,14 +107,14 @@ theano.configparser.AddConfigVar('tensor.insert_inplace_optimizer_validate_nb',
         theano.configparser.IntParam(-1),
         in_c_key=False)
 
-def insert_inplace_optimizer_op(OP):
+def inplace_elemwise_optimizer_op(OP):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
     @gof.optimizer
-    def insert_inplace_optimizer(env):
+    def inplace_elemwise_optimizer(env):
         """
-        Usage: inplace_optimizer.optimize(env)
+        Usage: inplace_elemwise_optimizer.optimize(env)
 
         Attempts to replace all Broadcast ops by versions of them
         that operate inplace. It operates greedily: for each Broadcast
@@ -193,7 +193,7 @@ def insert_inplace_optimizer_op(OP):
 
                         for r,new_r in zip(node.outputs,new.outputs):
                             env.replace(r,new_r,
-                                        reason="insert_inplace_optimizer")
+                                        reason="inplace_elemwise_optimizer")
                         nb_change_no_validate +=1
                         if nb_change_no_validate >= validate_each_change:
                             env.validate()
@@ -218,11 +218,11 @@ def insert_inplace_optimizer_op(OP):
                 if not raised_warning:
                     print >> sys.stderr, "Their was some inplace optimization that was not done due to unexpected error"
                 env.revert(chk)
-    return insert_inplace_optimizer
+    return inplace_elemwise_optimizer
 
-insert_inplace_optimizer = insert_inplace_optimizer_op(T.Elemwise)
+inplace_elemwise_optimizer = inplace_elemwise_optimizer_op(T.Elemwise)
 
-compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 'inplace')
+compile.optdb.register('inplace_opt', inplace_elemwise_optimizer, 75, 'fast_run', 'inplace')
 
 def register_canonicalize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
