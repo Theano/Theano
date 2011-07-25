@@ -4,7 +4,7 @@ Optimization to specialize gemm -> ger are not written
 
 Scipy implementation is not written
 
-We need to call scipy.linalg.blas.[cf]blas.[sdcz]ger here to don't loose speed again the old Outer op.
+We need to call scipy.linalg.blas.[cf]blas.[sdcz]ger here in order not to lose speed against the old Outer op.
 Here is the scipy signature: ger(alpha,x,y,incx=1,incy=1,a=0.0,overwrite_x=1,overwrite_y=1,overwrite_a=0)
 
 http://www.scipy.org/doc/api_docs/SciPy.lib.blas.info.html
