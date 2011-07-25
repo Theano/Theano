@@ -289,7 +289,8 @@ optdb.register('scanOp_pushout_nonseqs_ops',
 def scan_make_inplace(node):
     op = node.op
     if ( isinstance(op, scan_op.Scan) and
-        (not op.info['inplace']) ):
+        (not op.info['inplace']) and
+        (not op.info['gpu'])):
         info = op.info.copy()
         info['inplace'] = True
         # inputs corresponding to sequences and n_steps
