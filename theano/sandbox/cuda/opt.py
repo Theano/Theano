@@ -988,9 +988,9 @@ gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
         max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
-    optdb.register('gpu_elemwise_fusion', 
+    optdb.register('gpu_elemwise_fusion',
                    tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
-                   71.00, 'fast_run', 'fusion', 
+                   71.00, 'fast_run', 'fusion',
                    'local_elemwise_fusion','gpu')
 else:
     _logger.debug("not enabling optimization fusion of gpu elemwise in fast_run")
@@ -1258,5 +1258,3 @@ optdb.register( 'gpu_scanOp_make_inplace'
                , 'fast_run'
                , 'inplace'
                , 'scan')
-
-
