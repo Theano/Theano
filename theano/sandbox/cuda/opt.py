@@ -99,7 +99,8 @@ gpu_cut_copies.register('cut_gpu_constant_transfers',
                         'fast_run', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
-compile.optdb['canonicalize'].register('local_cut_gpu_host_gpu', local_cut_gpu_host_gpu, 'fast_run')
+optdb['canonicalize'].register('local_cut_gpu_host_gpu',
+                               local_cut_gpu_host_gpu, 'fast_run', 'gpu')
 
 #'float64', 'complex128' and 'complex64' are not supported in elemwise on the gpu.
 elemwise_cuda_dtype_supported=['float32','uint8','int8','uint16','int16',
@@ -910,7 +911,7 @@ def local_inplace_gemm(node):
 optdb.register('InplaceGpuBlasOpt',
         EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
             max_use_ratio=5),
-               70.0, 'fast_run', 'inplace')
+               70.0, 'fast_run', 'inplace', 'gpu')
 
 def get_device_type_sizes():
     """
@@ -987,10 +988,15 @@ gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
         max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
-    compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
+    optdb.register('gpu_elemwise_fusion', 
+                   tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
+                   71.00, 'fast_run', 'fusion', 
+                   'local_elemwise_fusion','gpu')
 else:
     _logger.debug("not enabling optimization fusion of gpu elemwise in fast_run")
-    compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
+    optdb.register('gpu_elemwise_fusion',
+                   tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
+                   71.00, 'fusion', 'local_elemwise_fusion')
 
 #GpuElemwise inplace
 gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
