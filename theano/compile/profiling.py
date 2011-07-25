@@ -215,6 +215,9 @@ class ProfileStats(object):
         hs += ['<% time>']
         es += ['  %4.1f%% ']
 
+        hs += ['<sum %>']
+        es += [' %5.1f%% ']
+
         hs += ['<apply time>']
         es += ['   %7.3fs ']
 
@@ -245,7 +248,7 @@ class ProfileStats(object):
                 continue
             tot+=t
             ftot=tot*100/local_time
-            print >> file, format_str%(f,t,t/nb_call, impl, nb_call,
+            print >> file, format_str%(f,ftot,t,t/nb_call, impl, nb_call,
                                        nb_apply, str(a)[:maxlen])
             # While this carries over less information, it is arranged such
             # that it way more readeable that the previous output of the
@@ -283,6 +286,9 @@ class ProfileStats(object):
         hs += ['<% time>']
         es += ['  %4.1f%% ']
 
+        hs += ['<sum %>']
+        es += [' %5.1f%% ']
+
         hs += ['<apply time>']
         es += ['   %7.3fs ']
 
@@ -316,7 +322,7 @@ class ProfileStats(object):
             ftot=tot*100/local_time
             if nb_call==0:
                 continue
-            print >> file, format_str %(f, t, t/nb_call, nb_call,
+            print >> file, format_str %(f,ftot, t, t/nb_call, nb_call,
                                         str(a)[:maxlen])
             # Same as before, this I've sacrificied some information making
             # the output more readable
