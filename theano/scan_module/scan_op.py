@@ -395,9 +395,9 @@ class Scan(Op):
                     cython_mit_mot_out_slices[_d0,_d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
             vector_seqs = [ seq.ndim == 1 for seq in
-                                 self.inputs[1:1+self.n_seqs ] ]
+                                 node.inputs[1:1+self.n_seqs ] ]
             vector_outs = [ arg.ndim ==1 for arg in
-                                 self.inputs[1+self.n_seqs: (1+self.n_seqs +
+                                 node.inputs[1+self.n_seqs: (1+self.n_seqs +
                                                         self.n_outs)] ]
             vector_outs += [ False]*self.n_nit_sot
 
