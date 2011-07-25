@@ -29,6 +29,7 @@ from theano.tensor import TensorType
 from theano import tensor
 from theano.tensor.opt import Shape_i
 from theano.sandbox import cuda
+from theano.compile.profiling import ScanProfileStats
 
 import scan_utils
 from scan_utils import safe_new

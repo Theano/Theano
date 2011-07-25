@@ -18,6 +18,9 @@ import atexit
 import sys
 import theano
 from theano.configparser import AddConfigVar, StrParam, BoolParam
+import time
+import numpy
+import_time = time.time()
 config = theano.config
 
 _atexit_print_list = []
@@ -94,6 +97,7 @@ class ProfileStats(object):
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
 
+    line_width = 140
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
@@ -203,19 +207,55 @@ class ProfileStats(object):
         tot=0
         print >> file, 'Ops'
         print >> file, '---'
-        print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Op name>'
+        #print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Op name>'
+        hs = []
+        # formatting string
+        es = []
+
+        hs += ['<% time>']
+        es += ['  %4.1f%% ']
+
+        hs += ['<apply time>']
+        es += ['   %7.3fs ']
+
+        hs += ['<time per call>']
+        es += ['     %8.2es ']
+
+        hs += ['<type>']
+        es += ['   %2s ']
+
+        hs += ['<#call>']
+        es += ['  %4d  ']
+
+        hs += ['<#apply>']
+        es += ['  %4d  ']
+
+        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        maxlen = self.line_width - upto_length
+        hs += ['<Op name>']
+        es += ['%s']
+        header_str = ' '.join(hs)
+        format_str = ' '.join(es)
+
+        print >> file, header_str
+
         for f,t,a,impl,nb_call,nb_apply in otimes[:N]:
             if nb_call == 0:
                 assert t == 0
                 continue
             tot+=t
             ftot=tot*100/local_time
-            if op_flops:
-                print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (
-                        f, ftot, t, tot, t/nb_call, impl, op_flops.get(a,-1), nb_call, nb_apply, a)
-            else:
-                print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
-                        f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
+            print >> file, format_str%(f,t,t/nb_call, impl, nb_call,
+                                       nb_apply, str(a)[:maxlen])
+            # While this carries over less information, it is arranged such
+            # that it way more readeable that the previous output of the
+            # profiler
+            #if op_flops:
+            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (
+            #            f, ftot, t, tot, t/nb_call, impl, op_flops.get(a,-1), nb_call, nb_apply, a)
+            #else:
+            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
+            #            f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
         print >>file, '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-N),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[N:]),
@@ -234,7 +274,34 @@ class ProfileStats(object):
 
         print >> file, 'Thunks'
         print >> file, '------'
-        print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply Op name>'
+        #print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply Op name>'
+        # headers
+        hs = []
+        # formatting string
+        es = []
+
+        hs += ['<% time>']
+        es += ['  %4.1f%% ']
+
+        hs += ['<apply time>']
+        es += ['   %7.3fs ']
+
+        hs += ['<time per call>']
+        es += ['     %8.2es ']
+
+        hs += ['<#call>']
+        es += ['  %4d  ']
+
+        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        maxlen = self.line_width - upto_length
+        hs += ['<Apply name>']
+        es += ['%s']
+
+        header_str = ' '.join(hs)
+        format_str = ' '.join(es)
+
+        print >> file, header_str
+
         atimes = [(
                 t*100/local_time,
                 t,
@@ -249,8 +316,12 @@ class ProfileStats(object):
             ftot=tot*100/local_time
             if nb_call==0:
                 continue
-            print >> file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %s'%(
-                    f, ftot, t, tot, t/nb_call,nb_call, str(a))
+            print >> file, format_str %(f, t, t/nb_call, nb_call,
+                                        str(a)[:maxlen])
+            # Same as before, this I've sacrificied some information making
+            # the output more readable
+            #print >> file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %s'%(
+            #        f, ftot, t, tot, t/nb_call,nb_call, str(a))
         print >> file, '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(atimes)-N),
                   sum(f for f, t, a, nb_call in atimes[N:]),
@@ -616,4 +687,47 @@ if 0: # old code still to be ported from ProfileMode
                             n_apply_to_print=n_apply_to_print,
                             n_ops_to_print=n_ops_to_print, print_apply=False)
 
+
+class ScanProfileStats(ProfileStats):
+    callcount = 0.0
+    nbsteps   = 0.0
+    call_time = 0.0
+    def __init__(self, atexit_print = True, name = None,  **kwargs):
+        super(ScanProfileStats, self).__init__(atexit_print, **kwargs)
+        self.name = name
+
+
+    def summary_function(self, file):
+        # RP: everytime we compile a function a ProfileStats is created for
+        # that function. This means that everytime a optimization replaces
+        # some scan op, some orphane ProfileStats remains in the air ..
+        # also even without any optimization, scan compiles a dummy function
+        # that will produce a ProfileStats that will correspond to a
+        # function that will never be called. Printing several empty
+        # Function profiling is just extremely confusing
+        if self.callcount == 0:
+            return
+        print >> file, ''
+
+        if self.name is not None:
+            print >> file, 'Scan Op profiling (', self.name, ')'
+        else:
+            print >> file, 'Scan Op profiling'
+        print >> file, '=================='
+        print >> file, '  Message: %s'%self.message
+
+        print >> file, '  Time in %i calls of the op (for a total of %i steps) %es' % (
+                self.callcount, self.nbsteps, self.call_time)
+        print >> file, ''
+        val = 0
+        if self.call_time > 0:
+            val = self.vm_call_time*100/self.call_time
+        print >> file, '  Total time spent in calling the VM %es (%.3f%%)'%(
+            self.vm_call_time, val)
+        val = 100
+        if self.call_time > 0:
+            val = 100.-self.vm_call_time*100/self.call_time
+        print >> file, '  Total overhead (computing slices ..) %es (%.3f%%)'%(
+            self.call_time - self.vm_call_time, val)
+        print >> file, ''
 
