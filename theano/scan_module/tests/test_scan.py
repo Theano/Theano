@@ -2282,7 +2282,7 @@ class T_Scan(unittest.TestCase):
             return x_t+1, theano.scan_module.until( x_t > 3)
         o, _ = theano.scan(lambda_fn, x)
         f = theano.function([x], o)
-        vx = numpy.zeros((50,))
+        vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out = f(vx)
         assert numpy.sum(out[24:]) == 0
@@ -2296,7 +2296,7 @@ class T_Scan(unittest.TestCase):
                             x)
 
         f = theano.function([x], [o,o2])
-        vx = numpy.zeros((50,))
+        vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
         assert numpy.sum(out[24:]) == 0
@@ -2315,7 +2315,7 @@ class T_Scan(unittest.TestCase):
                             x)
 
         f = theano.function([x], [o,o2])
-        vx = numpy.zeros((50,))
+        vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
         assert numpy.sum(out[24:]) == 0

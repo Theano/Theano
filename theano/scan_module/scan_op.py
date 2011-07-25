@@ -28,7 +28,7 @@ from theano import gof
 from theano.tensor import TensorType
 from theano import tensor
 from theano.tensor.opt import Shape_i
-from theano.sandbox import cuda
+#from theano.sandbox import cuda
 from theano.compile.profiling import ScanProfileStats
 
 import scan_utils
@@ -46,7 +46,9 @@ class Scan(Op):
     def __init__( self
                  , inputs
                  , outputs
-                 , info  ):
+                 , info
+                 , typeConstructor = None
+                ):
         """
         :param inputs: inputs of the inner function of scan
         :param outputs: outputs of the inner function of scan
@@ -66,60 +68,31 @@ class Scan(Op):
         self.output_types = []
         idx = 0
         jdx = 0
-        if self.gpu:
-            # mit_mot
-            while idx < self.n_mit_mot_outs:
-                # Not that for mit_mot there are several output slices per
-                # output sequence
-                o     = outputs[idx]
-                self.output_types.append(
-                    cuda.CudaNdarrayType(
-                        broadcastable = (False,) + o.type.broadcastable))
-                idx += len(self.mit_mot_out_slices[jdx])
-                jdx += 1
+        if typeConstructor is None:
+            typeConstructor = lambda broadcastable, dtype: TensorType(
+                broadcastable = broadcastable, dtype = dtype)
 
-            # mit_sot / sit_sot / nit_sot
-            end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
-            for o in outputs[idx:end]:
-                self.output_types.append(
-                    cuda.CudaNdarrayType( broadcastable = (False,) +
-                                    o.type.broadcastable))
-            # shared outputs
-            for o in outputs[end:]:
-                if isinstance(o.type, TensorType):
-                    self.output_types.append(cuda.CudaNdarrayType(
-                        broadcastable = o.type.broadcastable))
-                else:
-                    self.output_types.append( o.type )
-        else:
-            while idx < self.n_mit_mot_outs:
-                # Not that for mit_mot there are several output slices per
-                # output sequence
-                o     = outputs[idx]
-                self.output_types.append(
-                    TensorType(
-                        broadcastable = (False,) + o.type.broadcastable
-                        , dtype = o.type.dtype)
-                    )
-                idx += len(self.mit_mot_out_slices[jdx])
-                jdx += 1
+        while idx < self.n_mit_mot_outs:
+            # Not that for mit_mot there are several output slices per
+            # output sequence
+            o     = outputs[idx]
+            self.output_types.append(
+                typeConstructor( broadcastable = (False,) + o.type.broadcastable
+                                , dtype = o.type.dtype)
+                        )
+            idx += len(self.mit_mot_out_slices[jdx])
+            jdx += 1
 
-            # mit_sot / sit_sot / nit_sot
-            end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
-            for o in outputs[idx:end]:
-                self.output_types.append(
-                    TensorType(
-                        broadcastable = (False,) + o.type.broadcastable
-                        , dtype = o.type.dtype ))
-            # shared outputs + possibly the ending condition
-            for o in outputs[end:]:
-                if cuda.cuda_available and isinstance(o.type,
-                                                      cuda.CudaNdarrayType):
-                    self.output_types.append( TensorType(
-                        broadcastable = o.type.broadcastable
-                        , dtype = theano.config.floatX) )
-                else:
-                    self.output_types.append( o.type )
+        # mit_sot / sit_sot / nit_sot
+        end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
+        for o in outputs[idx:end]:
+            self.output_types.append(
+                typeConstructor(
+                    broadcastable = (False,) + o.type.broadcastable
+                    , dtype = o.type.dtype ))
+        # shared outputs + possibly the ending condition
+        for o in outputs[end:]:
+            self.output_types.append( o.type )
 
         if self.as_while:
             self.output_types = self.output_types[:-1]
@@ -168,11 +141,14 @@ class Scan(Op):
                                     self.n_shared_outs )
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
-        tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
+        if not self.info['gpu']:
+            tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                        self.outputs)
-        local_env = gof.Env(tmp_in, tmp_out)
-        self._cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
-        self._hash_inner_graph = hash(self._cmodule_key)
+            local_env = gof.Env(tmp_in, tmp_out)
+            self._cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            self._hash_inner_graph = hash(self._cmodule_key)
+        else:
+            self._hash_inner_graph = self.info['gpu_hash']
 
 
     def make_node(self, *inputs):
@@ -419,9 +395,9 @@ class Scan(Op):
                     cython_mit_mot_out_slices[_d0,_d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
             vector_seqs = [ seq.ndim == 1 for seq in
-                                 self.inputs[1:1+self.n_seqs ] ]
+                                 node.inputs[1:1+self.n_seqs ] ]
             vector_outs = [ arg.ndim ==1 for arg in
-                                 self.inputs[1+self.n_seqs: (1+self.n_seqs +
+                                 node.inputs[1+self.n_seqs: (1+self.n_seqs +
                                                         self.n_outs)] ]
             vector_outs += [ False]*self.n_nit_sot
 
@@ -610,6 +586,8 @@ class Scan(Op):
             Y sequence outputs y_1, y_2, ... y_<self.n_outs>
 
         """
+        # In order to be able to allocate cuda ndarrays if needed
+        from theano.sandbox import cuda
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
         t0_call = time.time()

@@ -22,7 +22,6 @@ from theano import gof
 from theano import tensor, scalar
 from theano.tensor.basic import get_constant_value
 
-from theano.sandbox import cuda
 
 import theano
 
@@ -43,8 +42,7 @@ def safe_new(x, tag = ''):
         nw_name = x.name + tag
     else:
         nw_name = None
-    # Should it be theano.Constant? What is the difference between the two?
-    if isinstance(x, tensor.Constant):
+    if isinstance(x, theano.Constant):
         return x.clone()
     # Note, as_tensor_variable will convert the Scalar into a
     # TensorScalar that will require a ScalarFromTensor op,
@@ -93,14 +91,11 @@ def traverse(out, x,x_copy, d):
     fine for the main computational graph but confuses things a bit for the
     inner graph of scan '''
     if out == x:
-        d[out] = cuda.gpu_from_host(x_copy)
+        d[out] = tensor.as_tensor_variable(x_copy)
         return d
     elif out.owner is None:
         return d
-    elif (out.owner.op == cuda.host_from_gpu
-          and out.owner.inputs == [x] ):
-        d[out] = x_copy
-        return d
+
     else:
         for inp in out.owner.inputs:
             d = traverse(inp, x, x_copy, d)

@@ -4,6 +4,7 @@ _logger = logging.getLogger('theano.sandbox.cuda.opt')
 import sys
 import theano
 import numpy
+from theano.scan_module import scan_utils, scan_op
 from theano import scalar as scal
 from theano import tensor, compile, gof
 
@@ -1030,3 +1031,226 @@ def local_gpualloc(node):
         #if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
+
+
+
+
+def safe_to_gpu(x):
+    if (isinstance(x.type, tensor.TensorType) and
+        x.type.dtype == 'float32'):
+        return gpu_from_host(x)
+    else:
+        return x
+
+def safe_to_cpu(x):
+    if isinstance(x.type, CudaNdarrayType):
+        return host_from_gpu(x)
+    else:
+        return x
+
+
+
+def gpu_safe_new(x, tag = ''):
+    """
+    Internal function that constructs a new variable from x with the same
+    type, but with a different name ( old name + tag). This function is used
+    by gradient, or the R-op to construct new variables for the inputs of
+    the inner graph such that there is no interference between the original
+    graph and the newly constructed graph.
+    """
+    if hasattr(x, 'name') and x.name is not None:
+        nw_name = x.name + tag
+    else:
+        nw_name = None
+    if isinstance(x, theano.Constant):
+        return x.clone()
+
+    nw_x = x.type()
+    nw_x.name = nw_name
+    return nw_x
+
+def gpu_reconstruct_graph(inputs, outputs, tag = None):
+    """
+    Different interface to clone, that allows you to pass inputs.
+    Compared to clone, this method always replaces the inputs with
+    new variables of the same type, and returns those ( in the same
+    order as the original inputs).
+    """
+    if tag is None:
+        tag = ''
+    nw_inputs = [gpu_safe_new(x,tag) for x in inputs]
+    givens = {}
+    for nw_x, x in zip(nw_inputs, inputs):
+        givens[x] = nw_x
+    nw_outputs = scan_utils.clone( outputs, replace=givens)
+    return (nw_inputs, nw_outputs)
+
+
+def tensor_to_cuda(x):
+    if (isinstance(x.type, tensor.TensorType) and
+        x.type.dtype == 'float32'):
+        y = CudaNdarrayType( broadcastable = x.type.broadcastable)()
+        if x.name :
+            y.name = x.name +'[cuda]'
+        return y
+    else:
+        return x
+
+
+@register_opt('scan')
+@local_optimizer([])
+def gpuScanOptimization(node):
+    """
+    scan(host_from_gpu) -> host_from_gpu(GPUscan)
+    gpu_from_host(scan) -> GPUscan(gpu_from_host)
+    """
+
+    #gpu_from_host(scan) -> GPUscan(gpu_from_host)
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, scan_op.Scan) and
+            not host_input.owner.op.info['gpu'] and
+            len(host_input.owner.outputs) == 1 ):
+            # Note that we are not doing the right thing here !!
+            # This is because the local optimizer expects only one
+            # output that corresponds to the input of ``node``
+            # If we do this for each output seperately we will have
+            # multiple scan ops in the graph ( as many as outputs )
+            # and I'm not sure they will get merged into one again
+            # So for now I will just cover a limited case when there
+            # is only one output and the local optimizer can be used
+            # TODO (fix) : either make sure the different scans get
+            # merged or implement this optimization as a global
+            # optimization
+            thescan = host_input.owner.op
+            info = thescan.info.copy()
+            info['gpu'] = True
+            inputs = host_input.owner.inputs
+            nw_ins = [ inputs[0]]
+            e = ( 1+ thescan.n_seqs
+                 + thescan.n_mit_mot
+                 + thescan.n_mit_sot
+                 + thescan.n_sit_sot
+                 + thescan.n_shared_outs)
+            nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
+            b = e
+            e = e + thescan.n_nit_sot
+            nw_ins += inputs[b:e]
+            nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
+            scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
+            scan_outs = [ safe_to_gpu(x) for x in thescan.outputs ]
+            scan_outs = scan_utils.clone(
+                scan_outs
+                , replace = zip(thescan.inputs,
+                                [safe_to_cpu(x) for x in  scan_ins]))
+            # We need to construct the hash here, because scan
+            # __init__ does not know about cuda ndarray and can not
+            # handle graphs with inputs being Cuda Ndarrays
+            tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
+                                                       scan_outs)
+            local_env = gof.Env(tmp_in, tmp_out)
+            _cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            info['gpu_hash'] = hash(_cmodule_key)
+
+            typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
+                    broadcastable = broadcastable)
+            nw_op = scan_op.Scan( scan_ins
+                                 , scan_outs
+                                 , info
+                                 , typeConstructor = typeConstructor
+                                ).make_node(*nw_ins)
+            _outputs = nw_op.outputs
+            return _outputs
+
+    #scan(host_from_gpu) -> host_from_gpu(GPUscan)
+    if (type(node.op) == scan_op.Scan
+        and not node.op.info['gpu']):
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu)
+                      for i in node.inputs]):
+
+            thescan = node.op
+            info = thescan.info.copy()
+            info['gpu'] = True
+            inputs = node.inputs
+            nw_ins = [ inputs[0]]
+            e = ( 1+ thescan.n_seqs
+                 + thescan.n_mit_mot
+                 + thescan.n_mit_sot
+                 + thescan.n_sit_sot
+                 + thescan.n_shared_outs)
+            nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
+            b = e
+            e = e + thescan.n_nit_sot
+            nw_ins += inputs[b:e]
+            nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
+
+            scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
+            scan_outs = [ safe_to_gpu(x) for x in thescan.outputs ]
+            scan_outs = scan_utils.clone(
+                scan_outs
+                , replace = zip(thescan.inputs
+                                ,[safe_to_cpu(x) for x in  scan_ins]))
+
+            # We need to construct the hash here, because scan
+            # __init__ does not know about cuda ndarray and can not
+            # handle graphs with inputs being Cuda Ndarrays
+            tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
+                                                       scan_outs)
+            local_env = gof.Env(tmp_in, tmp_out)
+            _cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            info['gpu_hash'] = hash(_cmodule_key)
+            typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
+                    broadcastable = broadcastable)
+            _outputs = scan_op.Scan(
+                    scan_ins
+                    , scan_outs
+                    , info
+                    , typeConstructor = typeConstructor
+                    ).make_node(*nw_ins).outputs
+            outputs = [safe_to_cpu(x) for x in _outputs]
+            return outputs
+    return False
+
+@gof.local_optimizer([None])
+def gpu_scan_make_inplace(node):
+    op = node.op
+    if ( isinstance(op, scan_op.Scan) and
+        (not op.info['inplace']) and
+        (op.info['gpu'])):
+        info = op.info.copy()
+        info['inplace'] = True
+        # inputs corresponding to sequences and n_steps
+        ls_begin = node.inputs[:1+op.n_seqs]
+        ls  = op.outer_mitmot(node)
+        ls += op.outer_mitsot(node)
+        ls += op.outer_sitsot(node)
+        ls_end  = op.outer_shared(node)
+        ls_end += op.outer_nitsot(node)
+        ls_end += op.outer_non_seqs(node)
+        n_outs = len(ls)
+        for idx in xrange(n_outs):
+            if ls[idx] in ls[:idx]:
+                ls[idx] = deep_copy_op(ls[idx])
+
+        inputs = ls_begin + ls + ls_end
+
+        typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
+                broadcastable = broadcastable)
+        new_op = scan_op.Scan( op.inputs
+                              , op.outputs
+                              , info
+                              , typeConstructor = typeConstructor
+                             )
+        return new_op.make_node(*inputs).outputs
+    return False
+
+optdb.register( 'gpu_scanOp_make_inplace'
+               , theano.tensor.opt.in2out(gpu_scan_make_inplace,ignore_newtrees=True)
+               , 75
+               , 'gpu'
+               , 'fast_run'
+               , 'inplace'
+               , 'scan')
+
+
