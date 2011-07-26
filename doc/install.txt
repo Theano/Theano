@@ -615,6 +615,15 @@ within a MinGW shell if you installed Nose manually as described above.
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+   GotoBLAS is no lower maintained and have some installation
+   problem. GotoBLAS have been released under BSD. `OpenBLAS
+   <https://github.com/xianyi/OpenBLAS>`_ is a new project that
+   continue GotoBLAS that include fixes in the installation and
+   implementation of some function that Theano don't currently use.
+   We didn't try OpenBLAS on Windows.
+
 If you want a faster and/or multithreaded BLAS library, you can
 compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
