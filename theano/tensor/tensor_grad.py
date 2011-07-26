@@ -9,8 +9,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import logging
-_logger = logging.getLogger('theano.gradient')
-import sys
+_logger = logging.getLogger('theano.tensor.tensor_grad')
 
 import numpy #for numeric_grad
 
@@ -114,7 +113,7 @@ def Rop(f, wrt, eval_points):
     if len(rval) == 1:
         return rval[0]
     else:
-         return rval
+        return rval
 
 
 def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
@@ -603,4 +602,3 @@ class GradientError(Exception):
               self.rel_err, self.rel_tol)
 
 verify_grad.E_grad = GradientError
-
