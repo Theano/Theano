@@ -1,0 +1,56 @@
+
+.. _cifar_summer_school2011_overview:
+
+
+******************************************
+Theano Boot Camp: CIFAR Summer School 2011
+******************************************
+
+
+Why follow this Theano Boot Camp?
+---------------------------------
+
+ * *Explain why* Theano is a very usefull tool
+ * *Teach* you Theano basic
+ * *Show* how to use it on *recent machine learning* models
+ * *Help you* build your first recent machine learning models in Theano
+ * *If interest* can explain how to *easily extend Theano*
+
+Boot Camp Overview
+------------------
+
+ * Day 1:
+   
+   * Overview/Motivation
+   * ?!?!?show-of-hands regarding technical background questions
+   * python/numpy crash course
+   * Theano beggining
+   * Example with recent ML models (DLT)
+ * Day 2:
+   * Loop/Condition in Theano (10-20m)
+   * Propose/discuss projects
+   * For groups and start projects!
+ * Day 3: 
+   * Advanced Theano(30 minutes)
+      *  Debuging, profiling, compilation pipeline, inplace optimization
+   * Projects / General hacking / code-sprinting.
+ * Day 4: *You choose* (we can split the group)
+     * Extending Theano or 
+       * How to wrap code in an op
+       * How to use pycuda code in Theano
+     * Projects / General hacking / code-sprinting.
+
+
+
+day 1:
+I think that I could cover those 2 pages:
+ * http://deeplearning.net/software/theano/hpcs2011_tutorial/introduction.html
+ * http://deeplearning.net/software/theano/hpcs2011_tutorial/theano.html
+That include:
+ simple example
+ linear regression example with shared var
+ theano flags
+ grad detail
+ Symbolic variables
+ gpu
+ benchmarck

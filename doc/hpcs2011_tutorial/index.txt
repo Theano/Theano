@@ -7,6 +7,7 @@ GPU programming made Easy
 
 .. toctree::
 
+    boot_camp_overview
     introduction
     theano
     advanced_theano
