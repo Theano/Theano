@@ -937,7 +937,6 @@ class T_Scan(unittest.TestCase):
                                                , go_backwards = False
                                                , mode = mode
                                               )
-        gout = theano.tensor.grad(theano_vsamples[-1].sum(), vsample)
         my_f = theano.function([], theano_vsamples[-1]
                                , updates = updates
                                , allow_input_downcast = True
