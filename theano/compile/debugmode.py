@@ -1246,18 +1246,27 @@ class _Linker(gof.link.LocalLinker):
                 # check would be useless. In case some ops do it at
                 # some point, we reset the compute_map of outputs to
                 # False.
-                def wrap_thunk():
-                    for k in node.outputs:
-                        compute_map[k] = [False]
-                    thunk()
+                #
+                # Note RP: this warp_thunk doesn't work. What happens is
+                # that for all ops that have a make_thunk, the same instance
+                # of `wrap_thunk` gets used ( that has the same `thunk`
+                # function, probably the one of the first of all those ops (
+                # or the last .. I'm not sure). I don't know suffcient about
+                # how python works to understand why. A bunch of tests fail
+                # because of this, one of them being
+                # theano/scan_module/tests/scan_tests.py:T_Scan.test_backwards
+                #def wrap_thunk():
+                #    for k in node.outputs:
+                #        compute_map[k] = [False]
+                #    thunk()
 
                 if thunks_py[-1] is None:
-                    thunks_py[-1] = wrap_thunk
+                    thunks_py[-1] = thunk
                 elif thunks_c[-1] is None:
-                    thunks_c[-1] = wrap_thunk
+                    thunks_c[-1] = thunk
                 else:
                     _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function"%node)
-                    thunks_py[-1] = wrap_thunk
+                    thunks_py[-1] = thunk
 
         if no_recycling is True:
             no_recycling = storage_map.values()
