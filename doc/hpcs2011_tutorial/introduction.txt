@@ -10,7 +10,7 @@ Theano motivations
 ------------------
 Theano tries to be the **holy grail** in computing: *easy to code* and *it fast to execute* !
 
-it works only on mathematical expressions, so you won't have:
+It works only on mathematical expressions, so you won't have:
 
   - Function call inside a theano function
   - Structure, enum
@@ -26,17 +26,34 @@ Theano status
 
 Why you can rely on Theano:
 
-- Theano has been developed and used since January 2008 (3.5 yrs old)
-- Core technology for a funded Silicon-Valley startup
-- Driven over 40 research papers in the last few years
-- Good user documentation
-- Active mailing list with participants from outside our lab
-- Many contributors (some from outside our lab)
-- Used to teach IFT6266 for two years
-- Used by everyone in our lab (\textasciitilde 30 people)
-- Deep Learning Tutorials
-- Unofficial RPMs for Mandriva
-- Downloads (June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
+ - Theano has been developed and used since January 2008 (3.5 yrs old)
+ - Core technology for a funded Silicon-Valley startup
+ - Driven over 40 research papers in the last few years
+ - Good user documentation
+ - Active mailing list with participants from outside our lab
+ - Many contributors (some from outside our lab)
+ - Used to teach IFT6266 for two years
+ - Used by everyone in our lab (~ 30 people)
+ - Deep Learning Tutorials
+ - Unofficial RPMs for Mandriva
+ - Downloads (June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
+
+Why Theano is better ?
+----------------------
+
+Executing the code is faster because Theano:
+  - Rearranges high-level expressions
+  - Produces customized low-level code
+  - Uses a variety of backend technologies (GPU,...)
+
+Writing the code is faster because:
+  - High-level language allows to **concentrate on the algorithm**
+  - Theano do **automatic optimization**
+
+    - No need to manually optimize for each algorithm you want to test
+  - Theano do **automatic efficient symbolic differentiation**
+    
+    - No need to manually differentiate your functions (tedious & error-prone for complicated expressions!)
 
 Why scripting for GPUs ?
 ------------------------
@@ -65,7 +82,7 @@ Why scripting for GPUs ?
 
 **Scripting for GPUs?**
 
-They *Complement each other*
+They *Complement each other*:
 
 - GPUs are everything that scripting/high level languages are not
 

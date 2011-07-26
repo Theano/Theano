@@ -49,23 +49,6 @@ Description
 - The project was started by James Bergstra and Olivier Breuleux
 - For the past 1-2 years, I have replaced Olivier as lead contributor
 
-Why Theano is better ?
-----------------------
-
-Executing the code is faster because Theano:
-  - Rearranges high-level expressions
-  - Produces customized low-level code
-  - Uses a variety of backend technologies (GPU,...)
-
-Writing the code is faster because:
-  - High-level language allows to **concentrate on the algorithm**
-  - Theano do **automatic optimization**
-
-    - No need to manually optimize for each algorithm you want to test
-  - Theano do **automatic efficient symbolic differentiation**
-    
-    - No need to manually differentiate your functions (tedious & error-prone for complicated expressions!)
-
 Simple example
 --------------
 
