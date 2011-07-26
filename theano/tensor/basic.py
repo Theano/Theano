@@ -2143,18 +2143,23 @@ def switch(cond, ift, iff):
 @_scal_elemwise_with_nfunc('bitwise_and', 2, 1)
 def and_(a,b):
     """bitwise a & b"""
+bitwise_and = and_ # numpy name for it
 
 @_scal_elemwise_with_nfunc('bitwise_or', 2, 1)
 def or_(a,b):
     """bitwise a | b"""
+bitwise_or = or_ # numpy name for it
 
 @_scal_elemwise_with_nfunc('bitwise_xor', 2, 1)
 def xor(a,b):
     """bitwise a ^ b"""
+bitwise_xor = xor # numpy name for it
 
 @_scal_elemwise_with_nfunc('invert', 1, 1)
 def invert(a):
     """bitwise ~a"""
+bitwise_not = invert # numpy alias for it
+
 
 ##########################
 # Math
