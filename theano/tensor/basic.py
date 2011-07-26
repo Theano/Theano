@@ -3539,8 +3539,10 @@ class IncSubtensor(Op):
             msg += 'Inc'
         else:
             msg += 'Set'
-        return  "%s%s{%s}" % (msg,
-                self.__class__.__name__[3:], ", ".join(indices))
+        return  "%s{%s;%s}" % (
+                self.__class__.__name__,
+                msg,
+                ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
         x, y = map(as_tensor_variable, [x, y])
