@@ -23,7 +23,7 @@ from theano.compile import function, Param, Out
 from theano import compile
 from theano import gradient
 from theano.gof.python25 import any
-from theano.gof import Op, Apply
+from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType
 from theano import tensor
@@ -38,7 +38,7 @@ from scan_utils import safe_new
 _logger = logging.getLogger('theano.scan_module.scan_op')
 
 
-class Scan(Op):
+class Scan(PureOp):
     #
     # OLD DOCUMENTATION CAN BE FOUND NEAR REVISION 2581
     #
