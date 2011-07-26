@@ -82,7 +82,7 @@ Linux
 Alternative installation on Ubuntu with PPA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-One user provided some `installation documentation <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for Ubuntu 11.04 with CUDA 4.0 PPA.
+Benjamin J. McCann provides `installation documentation <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for Ubuntu 11.04 with CUDA 4.0 PPA.
 
 Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
