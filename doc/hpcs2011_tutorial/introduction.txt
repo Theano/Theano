@@ -48,10 +48,10 @@ Executing the code is faster because Theano:
 
 Writing the code is faster because:
   - High-level language allows to **concentrate on the algorithm**
-  - Theano do **automatic optimization**
+  - Theano does **automatic optimization**
 
     - No need to manually optimize for each algorithm you want to test
-  - Theano do **automatic efficient symbolic differentiation**
+  - Theano does **automatic efficient symbolic differentiation**
     
     - No need to manually differentiate your functions (tedious & error-prone for complicated expressions!)
 
