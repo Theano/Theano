@@ -757,10 +757,10 @@ Arithmetic
 Bitwise
 -------------
 
->>> a & b      # T.and_(a,b)    bitwise and
->>> a ^ 1      # T.xor(a,1)     bitwise xor
->>> a | b      # T.or_(a,b)     bitwise or
->>> ~a         # T.invert(a)    bitwise invert
+>>> a & b      # T.and_(a,b)    bitwise and (alias T.bitwise_and)
+>>> a ^ 1      # T.xor(a,1)     bitwise xor (alias T.bitwise_xor)
+>>> a | b      # T.or_(a,b)     bitwise or (alias T.bitwise_or)
+>>> ~a         # T.invert(a)    bitwise invert (alias T.bitwise_not)
 
 Inplace
 -------------
@@ -921,6 +921,22 @@ The bitwise operators possess this interface:
 .. function:: invert(a)
 
     Returns a variable representing the result of the bitwise not.
+
+.. function:: bitwise_and(a, b)
+
+   Alias for and_. bitwise_and is the numpy name.
+
+.. function:: bitwise_or(a, b)
+
+   Alias for or_. bitwise_or is the numpy name.
+
+.. function:: bitwise_xor(a, b)
+
+   Alias for xor_. bitwise_xor is the numpy name.
+
+.. function:: bitwise_not(a, b)
+
+   Alias for invert. invert is the numpy name.
 
 Here is an example using the bit-wise ``and_`` via the ``&`` operator:
 
