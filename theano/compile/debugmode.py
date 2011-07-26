@@ -1191,6 +1191,12 @@ class _Linker(gof.link.LocalLinker):
             try:
                 if not self.maker.mode.check_c_code:
                     raise utils.MethodNotDefined()
+                # Ops that do not inherit from gof.op.Op don't have certain
+                # methods defined that the CLinker expects (Scan is an
+                # exmaple, ifelse is another of such classes that inherit
+                # directly from PureOp)
+                if not isinstance(node.op, gof.op.Op):
+                    raise utils.MethodNotDefined()
                 e = Env(*graph.clone(node.inputs, node.outputs))
                 e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
                 #  Specifically... e.nodes is a set, but of only 1 element
@@ -1206,7 +1212,11 @@ class _Linker(gof.link.LocalLinker):
             except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
 
-            if self.maker.mode.check_py_code or thunks_c[-1] is None:
+            # Pure ops don't really have a perform ( or their perform just
+            # raises an not implemented exception), so in those cases we
+            # consider that we don't have a python implementation
+            if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
+                node.op.perform.im_func != gof.op.PureOp.perform.im_func):
                 p = node.op.perform
                 thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
                          node: p(n, [x[0] for x in i], o))
