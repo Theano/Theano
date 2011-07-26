@@ -2223,10 +2223,9 @@ class T_Scan(unittest.TestCase):
         vnu,vnh0,vnW = fn_rop (v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu,tnh0,tnW = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
 
-
-        assert numpy.allclose(vnu , tnu )
-        assert numpy.allclose(vnh0, tnh0)
-        assert numpy.allclose(vnW , tnW )
+        assert numpy.allclose(vnu , tnu , atol = 1e-6)
+        assert numpy.allclose(vnh0, tnh0, atol = 1e-6)
+        assert numpy.allclose(vnW , tnW , atol = 1e-6)
 
 
     def test_pushout(self):
