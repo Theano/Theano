@@ -2143,18 +2143,23 @@ def switch(cond, ift, iff):
 @_scal_elemwise_with_nfunc('bitwise_and', 2, 1)
 def and_(a,b):
     """bitwise a & b"""
+bitwise_and = and_ # numpy name for it
 
 @_scal_elemwise_with_nfunc('bitwise_or', 2, 1)
 def or_(a,b):
     """bitwise a | b"""
+bitwise_or = or_ # numpy name for it
 
 @_scal_elemwise_with_nfunc('bitwise_xor', 2, 1)
 def xor(a,b):
     """bitwise a ^ b"""
+bitwise_xor = xor # numpy name for it
 
 @_scal_elemwise_with_nfunc('invert', 1, 1)
 def invert(a):
     """bitwise ~a"""
+bitwise_not = invert # numpy alias for it
+
 
 ##########################
 # Math
@@ -3152,14 +3157,13 @@ class Subtensor(Op):
         if not isinstance(node.inputs[0].type, TensorType):
             raise NotImplementedError()
         #
-        # two arrays are created:
+        # two arrays are created in C code:
         # is_slice: len == ndim, 0 means int, 1 means slice
         # subtensor_spec: len = n_ints + 3 * n_slices
         #
         fail = sub['fail']
-        init_cmds = []
+        init_cmds = [] # initialization for subtensor_spec
         is_slice = []
-        inplace = 1
         NONE_CODE = sys.maxint - 1
 
         pos = [0,1] #annoying version of global variable for init_entry

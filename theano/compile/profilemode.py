@@ -409,7 +409,7 @@ class ProfileMode(Mode):
             else:
                 msg = ' '
             print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, nb_apply, a)
-        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
+        print '   ... (remaining %i single Op account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
@@ -449,7 +449,7 @@ class ProfileMode(Mode):
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
             else:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_apply, a)
-        print '   ... (remaining %i Apply account for %6.2f%%(%.2fs) of the runtime)'\
+        print '   ... (remaining %i Op account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))

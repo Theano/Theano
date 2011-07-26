@@ -275,7 +275,7 @@ class ProfileStats(object):
                     ' (did you forget to enable counters?)')
             return
 
-        print >> file, 'Thunks'
+        print >> file, 'Apply'
         print >> file, '------'
         #print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply Op name>'
         # headers
