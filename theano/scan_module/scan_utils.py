@@ -92,7 +92,7 @@ def traverse(out, x,x_copy, d):
     inner graph of scan '''
     import theano.sandbox.cuda as cuda
     if out == x:
-        d[out] = tensor.as_tensor_variable(x_copy)
+        d[out] = cuda.gpu_from_host(x_copy)
         return d
     elif out.owner is None:
         return d

@@ -1214,7 +1214,12 @@ def gpuScanOptimization(node):
                     , info
                     , typeConstructor = typeConstructor
                     ).make_node(*nw_ins).outputs
-            outputs = [safe_to_cpu(x) for x in _outputs]
+            outputs = []
+            for x,y in zip(_outputs, node.outputs):
+                if isinstance(y.type, CudaNdarrayType):
+                    outputs += [x]
+                else:
+                    outputs += [safe_to_cpu(x)]
             return outputs
     return False
 
