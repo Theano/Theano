@@ -3152,14 +3152,13 @@ class Subtensor(Op):
         if not isinstance(node.inputs[0].type, TensorType):
             raise NotImplementedError()
         #
-        # two arrays are created:
+        # two arrays are created in C code:
         # is_slice: len == ndim, 0 means int, 1 means slice
         # subtensor_spec: len = n_ints + 3 * n_slices
         #
         fail = sub['fail']
-        init_cmds = []
+        init_cmds = [] # initialization for subtensor_spec
         is_slice = []
-        inplace = 1
         NONE_CODE = sys.maxint - 1
 
         pos = [0,1] #annoying version of global variable for init_entry
