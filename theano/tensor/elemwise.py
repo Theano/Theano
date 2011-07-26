@@ -1143,7 +1143,7 @@ for(int i=0;i<%(iname)s->nd;i++){
 }
                    """%locals()
         else:
-            raise Exception("The CAReduce.scalar_op must have an identity field.")
+            raise TypeError("The CAReduce.scalar_op must have an identity field.")
 
         task0_decl = "%(dtype)s& %(name)s_i = *%(name)s_iter;\n%(name)s_i = %(identity)s;" % dict(dtype = odtype,
                                                                                                   name = onames[0],
