@@ -617,7 +617,7 @@ Compiling a faster BLAS
 
 .. note::
 
-   GotoBLAS is no lower maintained and have some installation
+   GotoBLAS is no longer maintained and have some installation
    problem. GotoBLAS have been released under BSD. `OpenBLAS
    <https://github.com/xianyi/OpenBLAS>`_ is a new project that
    continue GotoBLAS that include fixes in the installation and
