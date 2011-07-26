@@ -10,7 +10,7 @@ GPU programming made Easy
     introduction
     theano
     advanced_theano
-    pyCUDA
     extending_theano
+    pyCUDA
     gpundarray
 
