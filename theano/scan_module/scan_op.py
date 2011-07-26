@@ -357,7 +357,10 @@ class Scan(PureOp):
         profile = None
         if (theano.config.profile or (isinstance(self.profile, (str,bool))
                                       and self.profile)):
-            profile = ScanProfileStats(name = self.name)
+            if isinstance(self.profile, str):
+                profile = ScanProfileStats(name = self.profile)
+            else:
+                profile = ScanProfileStats(name = self.name)
         elif self.profile:
             profile = self.profile
         self.fn = function(wrapped_inputs,
