@@ -758,6 +758,10 @@ def test_dot_w_self():
     f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))
 
 
+###############################################################################
+## Tests for Gemv
+###############################################################################
+
 class TestGemv(TestCase):
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
@@ -877,6 +881,198 @@ class TestGemv(TestCase):
         self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
+
+# The following gemv tests were added in March 2011 by Ian Goodfellow
+# and are based on the gemv tests from scipy
+# http://projects.scipy.org/scipy/browser/trunk/scipy/linalg/tests/test_fblas.py?rev=6803
+# NOTE: At the time these tests were written, theano did not have a
+# conjugate function. If such a thing is ever added, the tests involving
+# conjugate should be ported over as well.
+
+
+def matrixmultiply(a, b):
+    if len(b.shape) == 1:
+        b_is_vector = True
+        b = b[:,newaxis]
+    else:
+        b_is_vector = False
+    assert_(a.shape[1] == b.shape[0])
+    c = zeros((a.shape[0], b.shape[1]), common_type(a, b))
+    for i in xrange(a.shape[0]):
+        for j in xrange(b.shape[1]):
+            s = 0
+            for k in xrange(a.shape[1]):
+                s += a[i,k] * b[k, j]
+            c[i,j] = s
+    if b_is_vector:
+        c = c.reshape((a.shape[0],))
+    return c
+
+
+class BaseGemv(object):
+    def get_data(self,x_stride=1,y_stride=1):
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        mult = array(1, dtype = self.dtype)
+        if self.dtype in [complex64,complex128]:
+            mult = array(1+1j, dtype = self.dtype)
+        alpha = array(1., dtype = self.dtype) * mult
+        beta = array(1., dtype = self.dtype) * mult
+        a = rng.randn(3,3).astype(self.dtype) * mult
+        x = arange(shape(a)[0]*x_stride,dtype=self.dtype) * mult
+        y = arange(shape(a)[1]*y_stride,dtype=self.dtype) * mult
+        return alpha,beta,a,x,y
+
+    def test_simple(self):
+        alpha, beta, a, x, y = [ shared(value) for value in self.get_data() ]
+        desired_oy = alpha.get_value() * matrixmultiply(a.get_value(),x.get_value()) + beta.get_value() * y.get_value()
+
+        oy    = alpha * T.dot(a,x) + beta * y
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_val = oy_func()
+
+        assert_array_almost_equal(desired_oy, oy_val)
+
+    def test_default_beta_y(self):
+
+        vs = self.get_data()
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        a = shared(a_v)
+        x = shared(x_v)
+
+        desired_oy = matrixmultiply(a_v, x_v)
+
+        oy = T.dot(a,x)
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        # The only op in the graph is a dot.
+        # In the gemm case, we create a dot22 for that case
+        # There is no dot21.
+        # Creating one is not usefull as this is not faster(in fact it would be slower!
+        # as more code would be in python, numpy.dot will call gemv itself)
+        # See ticket 594
+        """
+>>> t0=time.time();x=scipy.linalg.blas.fblas.dgemv(1,a.T,b,1,z.T);t1=time.time();print t1-t0
+0.00192999839783
+>>> t0=time.time();x=numpy.dot(a,b);t1=time.time();print t1-t0
+0.00158381462097
+"""
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==0
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+
+    def test_simple_transpose(self):
+        vs = self.get_data()
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
+
+        oy = alpha * T.dot(a.T,x)+beta*y
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_x_stride(self):
+        vs = self.get_data(x_stride = 2)
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+
+        desired_oy = alpha_v * matrixmultiply(a_v,x_v[::2])+beta_v*y_v
+
+        oy = alpha * T.dot(a,x[::2])+beta*y
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_x_stride_transpose(self):
+        vs = self.get_data(x_stride = 2)
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v[::2])+beta_v*y_v
+
+        oy = alpha * T.dot(a.T,x[::2])+beta*y
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_y_stride(self):
+        vs = self.get_data(y_stride = 2)
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+
+        desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v[::2]
+
+        oy = alpha * T.dot(a,x)+beta*y[::2]
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_y_stride_transpose(self):
+        vs = self.get_data(y_stride = 2)
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v[::2]
+
+        oy = alpha * T.dot(a.T,x)+beta*y[::2]
+
+        oy_func = theano.function([], oy, mode = mode_blas_opt)
+
+        topo = oy_func.maker.env.toposort()
+        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+
+
+class TestSgemv(TestCase, BaseGemv):
+    dtype = float32
+
+class TestDgemv(TestCase, BaseGemv):
+    dtype = float64
+
+#The optimization to put Gemv don't work for complex type for now.
+# See ticket 653.
+#class TestCgemv(TestCase, BaseGemv):
+#    dtype = complex64
+
+#class TestZgemv(TestCase, BaseGemv):
+#    dtype = complex128
+
+###############################################################################
+## Tests for Ger
+###############################################################################
 
 class TestGer_make_node(TestCase):
     def setUp(self):
@@ -1067,190 +1263,3 @@ class TestGer_make_thunk(TestCase):
     def test_c128_1_9(s): return s.given_dtype('complex128', 1, 9)
 
 
-# The following gemv tests were added in March 2011 by Ian Goodfellow
-# and are based on the gemv tests from scipy
-# http://projects.scipy.org/scipy/browser/trunk/scipy/linalg/tests/test_fblas.py?rev=6803
-# NOTE: At the time these tests were written, theano did not have a
-# conjugate function. If such a thing is ever added, the tests involving
-# conjugate should be ported over as well.
-
-
-def matrixmultiply(a, b):
-    if len(b.shape) == 1:
-        b_is_vector = True
-        b = b[:,newaxis]
-    else:
-        b_is_vector = False
-    assert_(a.shape[1] == b.shape[0])
-    c = zeros((a.shape[0], b.shape[1]), common_type(a, b))
-    for i in xrange(a.shape[0]):
-        for j in xrange(b.shape[1]):
-            s = 0
-            for k in xrange(a.shape[1]):
-                s += a[i,k] * b[k, j]
-            c[i,j] = s
-    if b_is_vector:
-        c = c.reshape((a.shape[0],))
-    return c
-
-
-class BaseGemv(object):
-    def get_data(self,x_stride=1,y_stride=1):
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        mult = array(1, dtype = self.dtype)
-        if self.dtype in [complex64,complex128]:
-            mult = array(1+1j, dtype = self.dtype)
-        alpha = array(1., dtype = self.dtype) * mult
-        beta = array(1., dtype = self.dtype) * mult
-        a = rng.randn(3,3).astype(self.dtype) * mult
-        x = arange(shape(a)[0]*x_stride,dtype=self.dtype) * mult
-        y = arange(shape(a)[1]*y_stride,dtype=self.dtype) * mult
-        return alpha,beta,a,x,y
-
-    def test_simple(self):
-        alpha, beta, a, x, y = [ shared(value) for value in self.get_data() ]
-        desired_oy = alpha.get_value() * matrixmultiply(a.get_value(),x.get_value()) + beta.get_value() * y.get_value()
-
-        oy    = alpha * T.dot(a,x) + beta * y
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_val = oy_func()
-
-        assert_array_almost_equal(desired_oy, oy_val)
-
-    def test_default_beta_y(self):
-
-        vs = self.get_data()
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        a = shared(a_v)
-        x = shared(x_v)
-
-        desired_oy = matrixmultiply(a_v, x_v)
-
-        oy = T.dot(a,x)
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        # The only op in the graph is a dot.
-        # In the gemm case, we create a dot22 for that case
-        # There is no dot21.
-        # Creating one is not usefull as this is not faster(in fact it would be slower!
-        # as more code would be in python, numpy.dot will call gemv itself)
-        # See ticket 594
-        """
->>> t0=time.time();x=scipy.linalg.blas.fblas.dgemv(1,a.T,b,1,z.T);t1=time.time();print t1-t0
-0.00192999839783
->>> t0=time.time();x=numpy.dot(a,b);t1=time.time();print t1-t0
-0.00158381462097
-"""
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==0
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-
-    def test_simple_transpose(self):
-        vs = self.get_data()
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
-
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
-
-        oy = alpha * T.dot(a.T,x)+beta*y
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-    def test_x_stride(self):
-        vs = self.get_data(x_stride = 2)
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
-
-        desired_oy = alpha_v * matrixmultiply(a_v,x_v[::2])+beta_v*y_v
-
-        oy = alpha * T.dot(a,x[::2])+beta*y
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-    def test_x_stride_transpose(self):
-        vs = self.get_data(x_stride = 2)
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
-
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v[::2])+beta_v*y_v
-
-        oy = alpha * T.dot(a.T,x[::2])+beta*y
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-    def test_y_stride(self):
-        vs = self.get_data(y_stride = 2)
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
-
-        desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v[::2]
-
-        oy = alpha * T.dot(a,x)+beta*y[::2]
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-    def test_y_stride_transpose(self):
-        vs = self.get_data(y_stride = 2)
-        alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
-
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v[::2]
-
-        oy = alpha * T.dot(a.T,x)+beta*y[::2]
-
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
-
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
-
-        oy_v = oy_func()
-        assert_array_almost_equal(desired_oy, oy_v)
-
-
-
-class TestSgemv(TestCase, BaseGemv):
-    dtype = float32
-
-class TestDgemv(TestCase, BaseGemv):
-    dtype = float64
-
-#The optimization to put Gemv don't work for complex type for now.
-# See ticket 653.
-#class TestCgemv(TestCase, BaseGemv):
-#    dtype = complex64
-
-#class TestZgemv(TestCase, BaseGemv):
-#    dtype = complex128
