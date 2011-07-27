@@ -9,17 +9,18 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import logging
-_logger = logging.getLogger('theano.tensor.tensor_grad')
+import warnings
 
 import numpy #for numeric_grad
 
 import theano
 from theano.tensor import TensorType, TensorVariable, ones_like, \
-                zeros_like, as_tensor_variable
+                zeros_like, as_tensor_variable, cast
 from theano import gradient
 from theano import gof, shared
 from theano import compile
 
+_logger = logging.getLogger('theano.tensor.tensor_grad')
 
 ########################
 # R Operator
