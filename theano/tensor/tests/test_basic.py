@@ -2553,6 +2553,17 @@ class T_Join_and_Split(unittest.TestCase):
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
+        # Opt can remplace the int by a Theano constant
+        c = join(theano.tensor.constant(1), a, b)
+        assert c.type.broadcastable[0] and c.type.broadcastable[2]
+        assert not c.type.broadcastable[1]
+
+        # In case futur opt insert other useless stuff
+        c = join(theano.tensor.cast(theano.tensor.constant(1), dtype="int32"),
+                 a, b)
+        assert c.type.broadcastable[0] and c.type.broadcastable[2]
+        assert not c.type.broadcastable[1]
+
         f = function([a,b], c)
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(config.floatX)

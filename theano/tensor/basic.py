@@ -4011,7 +4011,7 @@ class Join(Op):
             bcastable = [False] * len(as_tensor_variable_args[0].type.broadcastable)
             ndim = len(bcastable)
             # Axis can also be a constant
-            if isinstance(axis, Constant):
+            if not isinstance(axis, int):
                 try:
                     # Note : `get_constant_value` returns a ndarray not a
                     # int
@@ -5357,4 +5357,3 @@ def outer(x, y):
     return dot(
             x.dimshuffle(0, 'x'),
             y.dimshuffle('x', 0))
-
