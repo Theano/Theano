@@ -154,15 +154,19 @@ class Gemv(Op):
         self.inplace=inplace
         if inplace:
             self.destroy_map={0:[0]}
+
     def __eq__(self, other):
         return type(self)==type(other) and self.inplace == other.inplace
+
     def __str__(self):
         if self.inplace:
             return 'Gemv{inplace}'
         else:
             return 'Gemv{no_inplace}'
+
     def __hash__(self):
         return hash(type(self)) ^ hash(self.inplace)
+
     def make_node(self, y, alpha, A, x, beta):
         y = T.as_tensor_variable(y)
         x = T.as_tensor_variable(x)
@@ -181,6 +185,7 @@ class Gemv(Op):
         #if x.broadcastable[0] != A.broadcastable[1]:
             #raise TypeError('broadcastable mismatch between x and A', (x.type, A.type))
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
+
     def perform(self, node, inputs, out_storage):
         y, alpha, A, x, beta = inputs
         if _have_fblas:
