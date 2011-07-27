@@ -12,8 +12,6 @@ import theano.tensor as tensor
 
 
 def test_pydotprint_cond_highlight():
-    assert len(theano.theano_logger.handlers) == 1
-
     x = tensor.dvector()
     f = theano.function([x], x*2)
     f([1,2,3,4])
@@ -21,7 +19,7 @@ def test_pydotprint_cond_highlight():
     s = StringIO.StringIO()
     new_handler = logging.StreamHandler(s)
     new_handler.setLevel(logging.DEBUG)
-    orig_handler = theano.theano_logger.handlers[0]
+    orig_handler = logging_default_handler
 
     theano.theano_logger.removeHandler(orig_handler)
     theano.theano_logger.addHandler(new_handler)
