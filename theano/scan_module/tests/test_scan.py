@@ -1963,6 +1963,10 @@ class T_Scan(unittest.TestCase):
                                       dtype = theano.config.floatX),
                     m + trng.uniform(size=[3])]
 
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
         [o1,o2], updates = theano.scan( lm,
                                        sequences = x,
                                        n_steps = None,
@@ -1971,7 +1975,7 @@ class T_Scan(unittest.TestCase):
                                        go_backwards = False)
         go1 = theano.tensor.grad(o1.mean(), wrt = x)
         f = theano.function([x],go1, updates = updates,
-                            allow_input_downcast = True)
+                            allow_input_downcast = True, mode= mode)
         self.assertTrue(numpy.allclose(f([1,2,3]), 2./3))
 
         #theano.printing.debugprint(f, print_type=True)
@@ -1997,10 +2001,14 @@ class T_Scan(unittest.TestCase):
         def sum(s):
             return s+1
 
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
         sx, upx = theano.scan(sum, sequences = [x])
         sy, upy = theano.scan(sum, sequences = [y])
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode = mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2008,7 +2016,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences = [x], n_steps=2)
         sy, upy = theano.scan(sum, sequences = [y], n_steps=3)
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode= mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2016,7 +2024,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences = [x], n_steps=4)
         sy, upy = theano.scan(sum, sequences = [y], n_steps=4)
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode = mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 1)
@@ -2024,7 +2032,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences = [x])
         sy, upy = theano.scan(sum, sequences = [x])
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode= mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 1)
@@ -2032,7 +2040,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences = [x])
         sy, upy = theano.scan(sum, sequences = [x], mode='FAST_COMPILE')
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode= mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2040,7 +2048,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences = [x])
         sy, upy = theano.scan(sum, sequences = [x], truncate_gradient=1)
 
-        f = theano.function([x, y], [sx, sy])
+        f = theano.function([x, y], [sx, sy], mode = mode)
         topo = f.maker.env.toposort()
         scans = filter(lambda n: isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2233,6 +2241,10 @@ class T_Scan(unittest.TestCase):
         W2 = tensor.matrix('W2')
         h0 = tensor.vector('h0')
 
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
         def lambda_fn(h, W1, W2):
             return tensor.dot(h, W1 + W2)
 
@@ -2240,7 +2252,7 @@ class T_Scan(unittest.TestCase):
                            non_sequences =[W1,W2],
                            n_steps = 5)
 
-        f = theano.function([h0,W1,W2], o)
+        f = theano.function([h0,W1,W2], o, mode= mode)
 
         scan_node = [x for x in f.maker.env.toposort()
                      if isinstance(x.op,
@@ -2261,7 +2273,11 @@ class T_Scan(unittest.TestCase):
                            non_sequences =[W1,tensor.zeros_like(W2)],
                            n_steps = 5)
 
-        f = theano.function([h0,W1,W2], o)
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        f = theano.function([h0,W1,W2], o, mode = mode)
         scan_node = [x for x in f.maker.env.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
@@ -2286,7 +2302,11 @@ class T_Scan(unittest.TestCase):
                            non_sequences =[tensor.zeros_like(W2)],
                            n_steps = 5)
 
-        f = theano.function([h0,W1,W2], o)
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        f = theano.function([h0,W1,W2], o, mode = mode)
         scan_node = [x for x in f.maker.env.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
@@ -2314,7 +2334,11 @@ class T_Scan(unittest.TestCase):
                            non_sequences =[tensor.zeros_like(W2)],
                            n_steps = 5)
 
-        f = theano.function([_h0,_W1,_W2], o)
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        f = theano.function([_h0,_W1,_W2], o, mode = mode)
         scan_node = [x for x in f.maker.env.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
@@ -2360,7 +2384,11 @@ class T_Scan(unittest.TestCase):
         o2, _ = theano.scan(lambda x_t:( x_t + 2, theano.scan_module.until(x_t>3)),
                             x)
 
-        f = theano.function([x], [o,o2])
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            mode = theano.compile.mode.get_default_mode()
+        f = theano.function([x], [o,o2], mode=mode)
         vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
