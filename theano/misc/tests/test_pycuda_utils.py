@@ -2,7 +2,6 @@ import numpy
 
 import theano.sandbox.cuda as cuda
 import theano.misc.pycuda_init
-from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 
 if not theano.misc.pycuda_init.pycuda_available:
     from nose.plugins.skip import SkipTest
@@ -12,6 +11,7 @@ if cuda.cuda_available == False:
     from nose.plugins.skip import SkipTest
     raise SkipTest('Optional theano package cuda disabled')
 
+from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 import pycuda.gpuarray
 
 def test_to_gpuarray():
