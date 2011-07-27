@@ -1216,7 +1216,7 @@ class _Linker(gof.link.LocalLinker):
             # raises an not implemented exception), so in those cases we
             # consider that we don't have a python implementation
             if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
-                node.op.perform.im_func != gof.op.PureOp.perform.im_func):
+                node.op.perform.func_code != gof.op.PureOp.perform.func_code):
                 p = node.op.perform
                 thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
                          node: p(n, [x[0] for x in i], o))
