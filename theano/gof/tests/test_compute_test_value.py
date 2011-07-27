@@ -173,6 +173,21 @@ class TestComputeTestValue(unittest.TestCase):
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
+    def test_overided_function(self):
+        # We need to test those as they mess with Exception
+        # And we don't want the exception to be changed.
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            config.compute_test_value = "raise"
+            x = T.matrix()
+            x.tag.test_value = numpy.zeros((2,3))
+            y = T.matrix()
+            y.tag.test_value = numpy.zeros((2,2))
+
+            self.assertRaises(ValueError, x.__mul__, y)
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value
+
     def test_scan(self):
         """
         Test the compute_test_value mechanism Scan.
@@ -269,13 +284,7 @@ class TestComputeTestValue(unittest.TestCase):
                         n_steps=k)
                 assert False
             except ValueError, e:
-                # Get traceback
-                tb = sys.exc_info()[2]
-                # Get last frame info
-                frame_info = traceback.extract_tb(tb)[-1]
-                # We should be in scan_op.py, function 'perform'
-                assert os.path.split(frame_info[0])[1] == 'scan_op.py'
-                assert frame_info[2] == 'perform'
+                assert e.message.startswith("shape mismatch")
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
