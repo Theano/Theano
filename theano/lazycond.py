@@ -32,16 +32,29 @@ optdb.register('ifelse_make_inplace', opt.in2out(ifelse_make_inplace,
 class IfElse(PureOp):
     """
     Op that works with LazyLinker to support conditional graph evaluation.
-
+    
     Example usage:
 
         ``rval = ifelse(tf, rval_if_true, rval_if_false)``
 
+    :type tf: symbolic tensor
+    :param tf: boolean variable representing a condition
+    :type rval_if_true: symbolic tensor
+    :param rval_if_false: symbolic variable to compute if tf is True
+    :type rval_if_false: symbolic tensor
+    :param rval_if_false: symbolic variable to compute if tf is False
+    :return: tensor corresponding to rval_if_true if tf is True or
+             rval_if_false if tf is False
+
+    While the switch function computes both values (rval_if_true and rval_if_false),
+    the ifelse op only computes one e.g rval_if_true is computed if tf is True.
+    
     :note:
         Other Linkers (ALL other linkers right now) are INCOMPATIBLE with this
         Op, they will produce functions that FAIL TO EXECUTE.
 
     """
+
     def __init__(self, as_view=False, gpu = False, name = None):
         if as_view:
             # check destroyhandler and others to ensure that a view_map with
