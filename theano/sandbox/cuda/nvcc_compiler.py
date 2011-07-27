@@ -1,8 +1,13 @@
-import sys, os, subprocess, logging, warnings
+import commands
+import distutils
+import logging
+import os
+import subprocess
+import sys
+import warnings
+
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension, local_bitwidth)
-import distutils
-import commands
 
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
