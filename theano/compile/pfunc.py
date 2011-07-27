@@ -9,6 +9,9 @@ from theano.compile import orig_function, In, Out
 from theano.compile.sharedvalue import SharedVariable, shared
 from theano import config
 
+import logging
+_logger=logging.getLogger("theano.compile.pfunc")
+
 def rebuild_collect_shared( outputs
                            , inputs             = None
                            , replace            = None
@@ -251,7 +254,7 @@ def rebuild_collect_shared( outputs
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False,
-            strict=False, allow_downcast=None, implicit=None, borrow = False):
+            strict=False, allow_downcast=None, implicit=None, borrow = None):
         """
         :param variable: A variable in an expression graph to use as a compiled-function parameter
 
@@ -283,10 +286,18 @@ class Param(object):
         self.default = default
         self.name = name
         self.mutable = mutable
-        # Mutable implies borrow. You can get borrow = False because of the
-        # default and it is a bit annoying to require the user to set both
-        # borrow and mutable to True
+        # mutable implies the output can be both aliased to the input and that the input can be
+        # destroyed. borrow simply implies the output can be aliased to the input. Thus
+        # mutable=True should require borrow=True. Raise warning when borrow is explicitely set
+        # to False with mutable=True.
         if mutable:
+            if borrow==False:
+                _logger.warning("Symbolic input for variable %s (name=%s) has "
+                        "flags mutable=True, borrow=False. This combination is "
+                        "incompatible since mutable=True implies that the "
+                        "input variable may be both aliased (borrow=True) and "
+                        "over-written. We set borrow=True and continue.",
+                        variable, name)
             borrow = True
         self.strict = strict
         self.allow_downcast = allow_downcast
