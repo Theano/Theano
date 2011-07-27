@@ -1132,11 +1132,13 @@ class _tensor_py_operators:
     def __add__(self,other):
         try:
             return add(self,other)
-        # We should catch only NotImplementedError.
-        # As otherwise this will transfer error to the wrong error
-        # Theano flags compute_test_value need to be able to raise
-        # other type of error.
-        except NotImplementedError, e:
+        # We should catch the minimum number of exception here.
+        # Otherwise this will convert error when Theano flags
+        # compute_test_value is used
+        # Evidently, we need to catch NotImplementedError
+        # But we also need to catch TypeError
+        # Oterwise TensorVariable * SparseVariable won't work!
+        except (NotImplementedError, TypeError), e:
             # We must return NotImplemented and not an
             # NotImplementedError or raise an NotImplementedError.
             # That way python will give a good error message like this
@@ -1148,14 +1150,14 @@ class _tensor_py_operators:
         # adn the return value in that case
         try:
             return sub(self,other)
-        except NotImplementedError, e:
+        except (NotImplementedError, TypeError), e:
             return NotImplemented
     def __mul__(self,other):
         # See explanation in __add__ for the error catched
         # adn the return value in that case
         try:
             return mul(self,other)
-        except NotImplementedError, e:
+        except (NotImplementedError, TypeError), e:
             return NotImplemented
     def __div__(self,other):
         # See explanation in __add__ for the error catched
@@ -1166,14 +1168,14 @@ class _tensor_py_operators:
             # This is to raise the exception that occurs when trying to divide
             # two integer arrays (currently forbidden).
             raise
-        except NotImplementedError, e:
+        except (NotImplementedError, TypeError), e:
             return NotImplemented
     def __pow__(self,other):
         # See explanation in __add__ for the error catched
         # adn the return value in that case
         try:
             return pow(self,other)
-        except NotImplementedError, e:
+        except (NotImplementedError, TypeError), e:
             return NotImplemented
     def __mod__(self,other):
         # See explanation in __add__ for the error catched
@@ -1184,7 +1186,7 @@ class _tensor_py_operators:
             # This is to raise the exception that occurs when trying to compute
             # x % y with either x or y a complex number.
             raise
-        except NotImplementedError, e:
+        except (NotImplementedError, TypeError), e:
             return NotImplemented
 
     def __truediv__(self,other): return true_div(self, other)
