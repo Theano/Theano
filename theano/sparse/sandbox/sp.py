@@ -55,7 +55,7 @@ class SpSum(Op):
             z = tensor.tensor(broadcastable=(), dtype=x.dtype)
         elif self.axis == 0:
             if x.format == 'csc':
-                z = T.tensor(broadcastable=(False,), dtype=x.dtype)
+                z = tensor.tensor(broadcastable=(False,), dtype=x.dtype)
             elif x.format == 'csr':
                 #return SparseVector() #WRITEME!
                 raise NotImplementedError()
@@ -66,7 +66,7 @@ class SpSum(Op):
                 #return SparseVector() #WRITEME!
                 raise NotImplementedError()
             elif x.format == 'csr':
-                z = T.tensor(broadcastable=(False,), dtype=x.dtype)
+                z = tensor.tensor(broadcastable=(False,), dtype=x.dtype)
             else:
                 raise NotImplementedError()
         else:

@@ -362,6 +362,44 @@ class TestSP(unittest.TestCase):
                     # symbolic stuff
                     utt.verify_grad(d, [kvals])
 
+    def test_sp_sum(self):
+        # TODO: test both grad.
+        for format,cast in [("csc",scipy.sparse.csc_matrix), ("csr",scipy.sparse.csr_matrix)]:
+            x = theano.sparse.SparseType(format=format,
+                                         dtype=theano.config.floatX)()
+            x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
+
+
+            # Sum on all axis
+            z = theano.sparse.sandbox.sp.sp_sum(x)
+            assert z.type.broadcastable==()
+            f = theano.function([x], z)
+            x_val = cast(x_data)
+            out = f(x_val)
+            assert out == x_val.sum()
+
+            # Sum on axis 0
+            try:
+                z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
+                assert z.type.broadcastable==(False,)
+                f = theano.function([x], z)
+                x_val = cast(x_data)
+                out = f(x_val)
+                assert (out == x_val.sum(axis=0)).all()
+            except NotImplementedError:
+                pass
+
+            # Sum on axis 1
+            try:
+                z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
+                assert z.type.broadcastable==(False,)
+                f = theano.function([x], z)
+                x_val = cast(x_data)
+                out = f(x_val)
+                expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
+                assert (out == expected).all()
+            except NotImplementedError:
+                pass
 
 def test_diagonal():
     for K in 1, 5:
