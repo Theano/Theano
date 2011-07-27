@@ -124,6 +124,7 @@ from theano.gof.python25 import all, any
 import theano.scalar
 import basic as T
 from theano.tensor.blas_headers import blas_header_text #, cblas_header_text
+from theano.tensor.opt import local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
 
@@ -1333,6 +1334,35 @@ def local_gemm_to_gemv(node):
             r = gemv_no_inplace(z.dimshuffle(0), a, x, y.dimshuffle(0), b)
             return [r.dimshuffle(0, 'x')]
 
+@local_optimizer([gemm_no_inplace])
+def local_gemm_to_ger(node):
+    """GEMM computing an outer-product -> GER
+    """
+    if node.op == gemm_no_inplace:
+        z, a, x, y, b = node.inputs
+        if x.broadcastable[1] and y.broadcastable[0]:
+            # x and y are both vectors so this might qualifies for a GER
+            xv = x.dimshuffle(0)
+            yv = y.dimshuffle(1)
+            try:
+                bval = T.get_constant_value(b)
+            except TypeError:
+                # b isn't a constant, GEMM is doing useful pre-scaling
+                return
+
+            if bval == 1:   # best case a natural GER
+                rval = Ger(destructive=False)(z, a, xv, yv)
+                return [rval]
+            elif bval == 0:   # GER on zeros_like should be faster than GEMM
+                zeros = T.alloc(
+                        numpy.asarray(0, dtype=x.dtype),
+                        x.shape[0], y.shape[1])
+                rval = Ger(destructive=False)(zeros, a, xv, yv)
+                return [rval]
+            else:
+                # if bval is another constant, then z is being usefully
+                # pre-scaled and GER isn't really the right tool for the job.
+                return
 
 #################################
 #
@@ -1354,8 +1384,11 @@ blas_optdb.register('local_dot_to_gemm',
         GemmOptimizer(),
         10, 'fast_run')
 blas_optdb.register('local_gemm_to_gemv',
-        EquilibriumOptimizer([local_gemm_to_gemv], max_use_ratio=5),
+        EquilibriumOptimizer([local_gemm_to_gemv, local_gemm_to_ger,
+            local_dimshuffle_lift],
+            max_use_ratio=5),
         15, 'fast_run')
+
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gemm inplace

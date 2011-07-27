@@ -1,5 +1,6 @@
 #from nose.plugins.skip import SkipTest
 #import traceback
+import sys
 import theano.tensor as T
 #from theano.gof import Env
 from theano.printing import pp
@@ -1262,4 +1263,72 @@ class TestGer_make_thunk(TestCase):
     def test_c64_7_1(s): return s.given_dtype('complex64', 7, 1)
     def test_c128_1_9(s): return s.given_dtype('complex128', 1, 9)
 
+
+# TODO: Refactor and add to this base class as we refactor test code.
+class TestOptimizationMixin(object):
+
+    def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
+        toposort = f.maker.env.toposort()
+        matches = [node for node in toposort if node.op == op]
+        assert (min <= len(matches) <= max), toposort
+
+    def assertFunctionContains0(self, f, op):
+        return assertFunctionContains(f, op, min=0, max=0)
+
+    def assertFunctionContains1(self, f, op):
+        return assertFunctionContains(f, op, min=1, max=1)
+
+    def assertFunctionContainsN(self, f, op, N):
+        return assertFunctionContains(f, op, min=N, max=N)
+
+class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
+
+    def setUp(self):
+        self.mode = theano.Mode(optimizer='fast_run')
+        dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent
+        self.A = T.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = T.tensor(dtype=dtype, broadcastable=())
+        self.x = T.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = T.tensor(dtype=dtype, broadcastable=(False,))
+
+    def function(self, inputs, outputs):
+        return theano.function(inputs, outputs, self.mode)
+
+    def b(self, bval):
+        return T.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
+
+    def test_b_0_triggers_ger(self):
+        assert T.blas.local_gemm_to_ger.transform(
+                gemm_no_inplace(
+                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.y.dimshuffle('x', 0), self.b(0)).owner)
+    def test_b_1_triggers_ger(self):
+        assert T.blas.local_gemm_to_ger.transform(
+                gemm_no_inplace(
+                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.y.dimshuffle('x', 0), self.b(1)).owner)
+    def test_b_other_does_not_triggers_ger(self):
+        assert not T.blas.local_gemm_to_ger.transform(
+                gemm_no_inplace(
+                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.y.dimshuffle('x', 0), self.b(1.5)).owner)
+
+    def test_outer(self):
+        f = self.function([self.x, self.y], T.outer(self.x, self.y))
+        self.assertFunctionContains(f, ger_destructive)
+
+    def test_A_plus_outer(self):
+        f = self.function([self.A, self.x, self.y],
+                self.A + T.outer(self.x, self.y))
+        self.assertFunctionContains(f, ger)
+
+    def test_A_plus_scaled_outer(self):
+        f = self.function([self.A, self.x, self.y],
+                self.A + 0.1 * T.outer(self.x, self.y))
+        self.assertFunctionContains(f, ger)
+
+    def test_scaled_A_plus_scaled_outer(self):
+        f = self.function([self.A, self.x, self.y],
+                0.2 * self.A + 0.1 * T.outer(self.x, self.y))
+        self.assertFunctionContains(f, gemm_no_inplace)
 
