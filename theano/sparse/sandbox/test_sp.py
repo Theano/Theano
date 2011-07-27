@@ -1,25 +1,24 @@
-import sys
-
 from nose.plugins.skip import SkipTest
+import sys
+import time
+import unittest
+
 import theano.sparse
 if not theano.sparse.enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
-from theano import function, Mode
-from theano.gof import OpWiseCLinker
-import theano, numpy
-import theano.tensor as T
 import scipy.sparse
-
 from scipy.signal import convolve2d
 import scipy.sparse as sparse
 import numpy
 import numpy as N
+
+from theano import function
+import theano
+import theano.tensor as T
 from theano.sparse.sandbox import sp
 from theano.tests import unittest_tools as utt
 
-import unittest
-import time
 
 class TestSP(unittest.TestCase):
     def test_convolution(self):
