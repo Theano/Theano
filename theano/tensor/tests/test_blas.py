@@ -758,40 +758,40 @@ def test_dot_w_self():
     f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))
 
 
-def test_dot_vm():
-    ''' Test vector dot matrix '''
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-    v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-    m = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
-    f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
-
-    # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
-
-    # Assert that the dot was optimized somehow
-    assert sum([isinstance(node.op, T.Dot) for node in
-                f.maker.env.toposort() ]) == 0
-    assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                f.maker.env.toposort() ]) == 1
-
-def test_dot_mv():
-    ''' Test matrix dot vector '''
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-    v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-    m = theano.shared(numpy.array(rng.uniform(size=(2,2)),
-                                   dtype='float32'))
-    f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
-
-    # Assert they produce the same output
-    assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
-
-    # Assert that the dot was optimized somehow
-    assert sum([isinstance(node.op, T.Dot) for node in
-                f.maker.env.toposort() ]) == 0
-    assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                f.maker.env.toposort() ]) == 1
-
 class TestGemv(TestCase):
+    def test_dot_vm(self):
+        ''' Test vector dot matrix '''
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        m = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
+        f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
+
+        # Assert they produce the same output
+        assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
+
+        # Assert that the dot was optimized somehow
+        assert sum([isinstance(node.op, T.Dot) for node in
+                    f.maker.env.toposort() ]) == 0
+        assert sum([isinstance(node.op, T.blas.Dot22) for node in
+                    f.maker.env.toposort() ]) == 1
+
+    def test_dot_mv(self):
+        ''' Test matrix dot vector '''
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        m = theano.shared(numpy.array(rng.uniform(size=(2,2)),
+                                       dtype='float32'))
+        f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
+
+        # Assert they produce the same output
+        assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
+
+        # Assert that the dot was optimized somehow
+        assert sum([isinstance(node.op, T.Dot) for node in
+                    f.maker.env.toposort() ]) == 0
+        assert sum([isinstance(node.op, T.blas.Dot22) for node in
+                    f.maker.env.toposort() ]) == 1
+
     def test_gemv1(self):
         ''' test vector1+dot(matrix,vector2) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
