@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 if config.compiledir not in sys.path:
     sys.path.append(config.compiledir)
 
-version = 0.1 # must match constant returned in function get_version()
+version = 0.2 # must match constant returned in function get_version()
 
 need_reload = False
 try:

@@ -63,7 +63,7 @@ from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.1
+    return 0.2
 
 @cython.boundscheck(False)
 def perform(
@@ -433,7 +433,7 @@ def perform(
         # expected to return 0 for all entries for which the gradient is
         # not actually computed
         elif store_steps[idx] > i - self.mintaps[idx]:
-            outs[idx][0][i+1-self.mintaps[idx]:] = 0
+            outs[idx][0][i-self.mintaps[idx]:] = 0
 
     t_call = time.time() - t0_call
 
