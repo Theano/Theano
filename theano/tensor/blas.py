@@ -211,6 +211,84 @@ class Gemv(Op):
 gemv_no_inplace = Gemv(inplace=False)
 gemv_inplace = Gemv(inplace=True)
 
+class Ger(Op):
+    """
+    BLAS defines general rank-1 update GER as A <- A + alpha x y'
+
+    for matrix A, scalar alpha, vectors x and y.
+
+    This interface to GER allows non-destructive operation on A via the
+    `destructive`
+    argument to the constructor.
+
+    :TODO: Create better classes ScipyGer and CGer that inherit from this class
+    and override the make_thunk() method to use Scipy and C respectively.
+    """
+    def __init__(self, destructive):
+        self.destructive=destructive
+        if destructive:
+            self.destroy_map={0:[0]}
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.destructive == other.destructive
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.destructive)
+
+    def __str__(self):
+        if self.destructive:
+            return 'Ger{destructive}'
+        else:
+            return 'Ger{non-destructive}'
+
+    def make_node(self, A, alpha, x, y):
+        A = T.as_tensor_variable(A)
+        y = T.as_tensor_variable(y)
+        x = T.as_tensor_variable(x)
+        alpha = T.as_tensor_variable(alpha)
+        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+            raise TypeError('ger requires matching dtypes',
+                    (A.dtype, alpha.dtype, x.dtype, y.dtype))
+        if alpha.ndim != 0:
+            raise TypeError('ger requires scalar alpha', alpha.type)
+        if A.ndim != 2:
+            raise TypeError('ger requires matrix for A', A.type)
+        if x.ndim != 1:
+            raise TypeError('ger requires vector for x', x.type)
+        if y.ndim != 1:
+            raise TypeError('ger requires vector for y', y.type)
+
+        if x.dtype not in ('float32', 'float64', 'complex64', 'complex128'):
+            raise TypeError('only float and complex types supported', x.dtype)
+        return Apply(self, [A, alpha, x, y], [A.type()])
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
+
+        # get vars for containers
+        cA, calpha, cx, cy = node_input_storage
+        cZ, = node_output_storage
+
+        def rval():
+            A = cA[0]
+            if self.destructive:
+                A = cA[0]
+            else:
+                A = cA[0].copy()
+            A += calpha[0] * numpy.outer(cx[0], cy[0])
+            cZ[0] = A
+
+        #TODO: If this is currently an unofficial part of the thunk API,
+        #      then maybe it should be documented and made official?
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.lazy = False
+        return rval
+
+ger = Ger(destructive=False)
+ger_destructive = Ger(destructive=True)
+
 def default_blas_ldflags():
     try:
         #if numpy was linked with library that are not installed, we can't reuse them.
