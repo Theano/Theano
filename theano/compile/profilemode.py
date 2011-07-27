@@ -132,6 +132,8 @@ class ProfileMode(Mode):
                 th()
                 dt = time.time() - t0
 
+            # Some Op are so fast that the time.time() resolution is
+            # insufficient to measure it.  So we add an epsilon.
             self.apply_time[node] += max(dt, 1e-14)
 
 
