@@ -1496,7 +1496,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
             if isinstance(node.op, Scan):
                 if v> 0:
                     scan_fct_time = node.op.mode_instance.fn_time
-                    scan_op_time = sum(node.op.mode_instance.local_time)
+                    scan_op_time = node.op.mode_instance.local_time
                     total_super_scan_time += v
                     total_scan_fct_time += scan_fct_time
                     total_scan_op_time += scan_op_time
