@@ -946,8 +946,12 @@ class CAReduce(Op):
      CAReduce(add) -> sum
      CAReduce(mul) -> product
      CAReduce(maximum) -> max
+     CAReduce(minimum) -> min
      CAReduce(or_) -> any # not lazy
      CAReduce(and_) -> all # not lazy
+     CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
+                      that position that where 1.
+                      0 it was an even number ...
 
     In order to (eventually) optimize memory usage patterns,
     L{CAReduce} makes zero guarantees on the order in which it
@@ -979,7 +983,28 @@ class CAReduce(Op):
             self.axis = list(set(axis))
             self.axis.sort()
             self.axis = tuple(self.axis)
-        self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
+
+        # This is probably a speed up of the implementation
+        # And fix test on numpy 1.6
+        # TODO: we should look into thensor/basic.py
+        # elemwise op and take the ufunc from there.
+        if isinstance(scalar_op, theano.scalar.basic.Add):
+            self.ufunc = numpy.add
+        elif isinstance(scalar_op, theano.scalar.basic.Mul):
+            self.ufunc = numpy.multiply
+        elif isinstance(scalar_op, theano.scalar.basic.Maximum):
+            self.ufunc = numpy.maximum
+        elif isinstance(scalar_op, theano.scalar.basic.Minimum):
+            self.ufunc = numpy.minimum
+        elif isinstance(scalar_op, theano.scalar.basic.AND):
+            self.ufunc = numpy.bitwise_and
+        elif isinstance(scalar_op, theano.scalar.basic.OR):
+            self.ufunc = numpy.bitwise_or
+        elif isinstance(scalar_op, theano.scalar.basic.XOR):
+            self.ufunc = numpy.bitwise_xor
+        else:
+            # This seam to don't work with numpy 1.6 anymore
+            self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
     def _output_dtype(self, input_dtype):
         return input_dtype
