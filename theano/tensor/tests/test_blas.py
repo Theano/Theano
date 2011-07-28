@@ -1147,7 +1147,9 @@ class TestGer_make_node(TestCase):
         self.assertRaises(TypeError, ger, self.cm, self.fa, self.fv, self.zv_2)
 
 # TODO: refactor this into some place where all OpTesters could use it.
-class TestOpContractMixin(object):
+# This object name should not start with Test.
+# Otherwise nosetests will execute it!
+class T_OpContractMixin(object):
     # self.ops should be a list of instantiations of an Op class to test.
     # self.other_op should be an op which is different from every op
     other_op = T.add
@@ -1189,7 +1191,7 @@ class TestOpContractMixin(object):
             s = str(op)    # show that str works
             assert s       # names should not be empty
 
-class TestGer_OpContract(TestCase, TestOpContractMixin):
+class TestGer_OpContract(TestCase, T_OpContractMixin):
     #TODO: These tests could be factored into a generic Op-testing base-class
     def setUp(self):
         self.ops = [ger, ger_destructive]
