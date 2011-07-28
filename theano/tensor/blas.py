@@ -272,7 +272,6 @@ class Ger(Op):
         cZ, = node_output_storage
 
         def rval():
-            A = cA[0]
             if self.destructive:
                 A = cA[0]
             else:
