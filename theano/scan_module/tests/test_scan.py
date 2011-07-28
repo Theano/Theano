@@ -2467,7 +2467,7 @@ def test_speed():
         t2 = time.time()
         f(r)
         t3 = time.time()
-        print 'theano1', t3 - t2
+        print 'theano (scan)', t3 - t2
 
     if 1:
         r = numpy.arange(10000).astype(theano.config.floatX).reshape(-1,10)
@@ -2480,7 +2480,8 @@ def test_speed():
                 updates={
                     s_i: s_i+1,
                     shared_r: s_rinc,
-                    })
+                    },
+                           mode = theano.Mode(linker='cvm'))
         f._check_for_aliased_inputs = False
         t2 = time.time()
         f_fn = f.fn
@@ -2488,7 +2489,7 @@ def test_speed():
             f_fn()
         f() #999 to update the profiling timers
         t3 = time.time()
-        print 'theano2', t3 - t2
+        print 'theano (updates)', t3 - t2
         print shared_r.get_value()
 
 def test_speed_rnn():
