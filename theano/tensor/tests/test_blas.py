@@ -1286,7 +1286,7 @@ class TestOptimizationMixin(object):
 class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
 
     def setUp(self):
-        self.mode = theano.Mode(optimizer='fast_run')
+        self.mode = theano.compile.get_default_mode().including('fast_run')
         dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent
         self.A = T.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = T.tensor(dtype=dtype, broadcastable=())
