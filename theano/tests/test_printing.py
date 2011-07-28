@@ -19,7 +19,7 @@ def test_pydotprint_cond_highlight():
     s = StringIO.StringIO()
     new_handler = logging.StreamHandler(s)
     new_handler.setLevel(logging.DEBUG)
-    orig_handler = logging_default_handler
+    orig_handler = theano.logging_default_handler
 
     theano.theano_logger.removeHandler(orig_handler)
     theano.theano_logger.addHandler(new_handler)
