@@ -2,45 +2,26 @@
 .. _cifar_summer_school2011_overview:
 
 
-******************************************
-Theano Boot Camp: CIFAR Summer School 2011
-******************************************
+========
+Schedule
+========
 
 
-Why follow this Theano Boot Camp?
----------------------------------
+Theano lab sessions will be in 4 x 90 minute blocks,
+on the afternoons of Aug 2, 3, 5, and 6 (but not Aug 4th).
 
- * *Explain why* Theano is a very usefull tool
- * *Teach* you Theano basic
- * *Show* how to use it on *recent machine learning* models
- * *Help you* build your first recent machine learning models in Theano
- * *If interest* can explain how to *easily extend Theano*
+Day 1
+-----
 
-Boot Camp Overview
-------------------
+ * Show of hands - what is your background?
 
- * Day 1:
-   
-   * Overview/Motivation
-   * ?!?!?show-of-hands regarding technical background questions
-   * python/numpy crash course
-   * Theano beggining
-   * Example with recent ML models (DLT)
- * Day 2:
-   * Loop/Condition in Theano (10-20m)
-   * Propose/discuss projects
-   * For groups and start projects!
- * Day 3: 
-   * Advanced Theano(30 minutes)
-      *  Debuging, profiling, compilation pipeline, inplace optimization
-   * Projects / General hacking / code-sprinting.
- * Day 4: *You choose* (we can split the group)
-     * Extending Theano or 
-       * How to wrap code in an op
-       * How to use pycuda code in Theano
-     * Projects / General hacking / code-sprinting.
+ * Overview/Motivation
 
+ * python/numpy crash course
 
+ * Theano beggining
+
+ * Example with recent ML models (DLT)
 
 day 1:
 I think that I could cover those 2 pages:
@@ -54,3 +35,31 @@ That include:
  Symbolic variables
  gpu
  benchmarck
+
+Day 2
+-----
+
+ * Day 2:
+   * Loop/Condition in Theano (10-20m)
+   * Propose/discuss projects
+   * For groups and start projects!
+
+Day 3
+-----
+
+ * Day 3: 
+   * Advanced Theano(30 minutes)
+      *  Debuging, profiling, compilation pipeline, inplace optimization
+   * Projects / General hacking / code-sprinting.
+
+Day 4
+-----
+
+ * Day 4: *You choose* (we can split the group)
+     * Extending Theano or 
+       * How to wrap code in an op
+       * How to use pycuda code in Theano
+     * Projects / General hacking / code-sprinting.
+
+
+
