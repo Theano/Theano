@@ -79,7 +79,7 @@ class SpSum(Op):
 
     def perform(self,node, (x,), (z,)):
         if self.axis is None:
-            z[0] = x.sum()
+            z[0] = numpy.asarray(x.sum())
         if self.axis == 0:
             z[0] = numpy.asarray(x.sum(axis=0)).reshape((x.shape[1],))
         if self.axis == 1:
