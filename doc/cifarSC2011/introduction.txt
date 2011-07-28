@@ -6,19 +6,115 @@
 Introduction
 ************
 
-Theano motivations
+Background Questionaire
+-----------------------
+
+ * Who has used Theano before?
+
+   * What did you do with it?
+
+ * Who has used Python? numpy? scipy? matplotlib?
+
+ * Who has used iPython?
+
+   * Who has used it as a distributed computing engine?
+
+ * Who has done C/C++ programming?
+
+ * Who has organized computation around a particular physical memory layout?
+
+ * Who has used a multidimensional array of >2 dimensions?
+
+ * Who has written a Python module in C before?
+
+   * Who has written a program to *generate* Python modules in C?
+
+ * Who has used a templating engine?
+
+ * Who has programmed a GPU before?
+
+   * Using OpenGL / shaders ?
+
+   * Using CUDA (runtime? / driver?)
+
+   * Using PyCUDA ?
+
+   * Using OpenCL / PyOpenCL ?
+
+   * Other?
+
+ * Who has used Cython?
+
+
+Python in one slide
+-------------------
+
+Features:
+
+- General-purpose high-level OO interpreted language
+- Emphasizes code readability
+- Comprehensive standard library
+- Dynamic type and memory management
+
+Language things:
+
+- Indentation for block delimiters
+- Dictionary ``d={'var1':'value1', 'var2':42, ...}``
+- List comprehension: ``[i+3 for i in range(10)]``
+
+.. code-block: python
+
+    a = {'a': 5, 'b': None}   # dictionary of two elements
+    b = [1,2,3]               # list of three int literals
+
+    def foo(b, c=3):          # function w default param c
+        return a + b + c      # note scoping, indentation
+
+
+Numpy in one slide
 ------------------
-Theano tries to be the **holy grail** in computing: *easy to code* and *it fast to execute* !
 
-It works only on mathematical expressions, so you won't have:
+- Numpy provides a N-dimensional numeric array in Python
+- Well known basis for scientific computing
+- provides:
+  - elementwise computations
+  - linear algebra, Fourier transforms
+  - pseudorandom numbers from many distributions
 
-  - Function call inside a theano function
-  - Structure, enum
-  - Dynamic type (Theano is Fully typed)
+- Base scientific computing package in Python on the CPU
+- A powerful N-dimensional array object
 
-Unfortunately it doesn't do coffee... yet.
+  - ndarray.{ndim, shape, size, dtype, itemsize, stride}
+  
+- Sophisticated broadcasting functions
+    
+  - ``numpy.random.rand(4,5) * numpy.random.rand(1,5)`` -> mat(4,5)
+  - ``numpy.random.rand(4,5) * numpy.random.rand(4,1)`` -> mat(4,5)
+  - ``numpy.random.rand(4,5) * numpy.random.rand(5)`` -> mat(4,5)
 
-.. image:: pics/Caffeine_Machine_no_background_red.png
+- Tools for integrating C/C++ and Fortran code
+- Linear algebra, Fourier transform and pseudorandom number generation
+
+
+
+
+What's missing?
+---------------
+
+
+.. :
+
+    Theano tries to be the **holy grail** in computing: *easy to code* and *it fast to execute* !
+
+    It works only on mathematical expressions, so you won't have:
+
+      - Function call inside a theano function
+      - Structure, enum
+      - Dynamic type (Theano is Fully typed)
+
+    Unfortunately it doesn't do coffee... yet.
+
+    .. image:: pics/Caffeine_Machine_no_background_red.png
 
 
 Theano status
@@ -116,35 +212,4 @@ Theano vs PyCUDA vs PyOpenCL vs CUDA
 
 - PyOpenCL (Python + OpenCL)
   - PyCUDA for OpenCL
-
-Python
-------
-
-- Interpreted language
-- General-purpose high-level programming language
-- OO and scripting language
-- Emphasizes code readability
-- Large and comprehensive standard library
-- Indentation for block delimiters
-- Dynamic type and memory management
-- Dictionary ``d={'var1':'value1', 'var2':42, ...}``
-- List comprehension: ``[i+3 for i in range(10)]``
-
-NumPy
------
-
-- Base scientific computing package in Python on the CPU
-- A powerful N-dimensional array object
-
-  - ndarray.{ndim, shape, size, dtype, itemsize, stride}
-  
-- Sophisticated broadcasting functions
-    
-  - ``numpy.random.rand(4,5) * numpy.random.rand(1,5)`` -> mat(4,5)
-  - ``numpy.random.rand(4,5) * numpy.random.rand(4,1)`` -> mat(4,5)
-  - ``numpy.random.rand(4,5) * numpy.random.rand(5)`` -> mat(4,5)
-
-- Tools for integrating C/C++ and Fortran code
-- Linear algebra, Fourier transform and pseudorandom number generation
-
 
