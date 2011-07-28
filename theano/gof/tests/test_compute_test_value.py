@@ -180,10 +180,9 @@ class TestComputeTestValue(unittest.TestCase):
         try:
             config.compute_test_value = "raise"
             x = T.matrix()
-            x.tag.test_value = numpy.zeros((2,3))
+            x.tag.test_value = numpy.zeros((2,3), dtype=config.floatX)
             y = T.matrix()
-            y.tag.test_value = numpy.zeros((2,2))
-
+            y.tag.test_value = numpy.zeros((2,2), dtype=config.floatX)
             self.assertRaises(ValueError, x.__mul__, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
