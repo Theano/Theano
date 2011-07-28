@@ -1275,13 +1275,13 @@ class TestOptimizationMixin(object):
         assert (min <= len(matches) <= max), toposort
 
     def assertFunctionContains0(self, f, op):
-        return assertFunctionContains(f, op, min=0, max=0)
+        return self.assertFunctionContains(f, op, min=0, max=0)
 
     def assertFunctionContains1(self, f, op):
-        return assertFunctionContains(f, op, min=1, max=1)
+        return self.assertFunctionContains(f, op, min=1, max=1)
 
     def assertFunctionContainsN(self, f, op, N):
-        return assertFunctionContains(f, op, min=N, max=N)
+        return self.assertFunctionContains(f, op, min=N, max=N)
 
 class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
 
@@ -1333,4 +1333,3 @@ class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
         f = self.function([self.A, self.x, self.y],
                 0.2 * self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, gemm_no_inplace)
-
