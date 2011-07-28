@@ -280,7 +280,7 @@ GPU
 
 
 
-Exercice 3
+Exercise 3
 -----------
 
 - Modify and execute the example of `Exercise 2`_ to run with floatX=float32 on GPU

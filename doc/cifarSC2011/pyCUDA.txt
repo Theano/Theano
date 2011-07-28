@@ -68,7 +68,7 @@ Example
   print dest
 
 
-Exercice 6
+Exercise 6
 ----------
 
 - Run the above example
