@@ -12,9 +12,8 @@ from scipy.signal import convolve2d
 import scipy.sparse as sparse
 import numpy
 
-from theano import function
+from theano import function, tensor
 import theano
-import theano.tensor as T
 from theano.sparse.sandbox import sp
 from theano.tests import unittest_tools as utt
 
@@ -34,9 +33,9 @@ class TestSP(unittest.TestCase):
         convmodes = ('full','valid')
 
         # symbolic stuff
-        bias = T.dvector()
-        kerns = T.dmatrix()
-        input = T.dmatrix()
+        bias = tensor.dvector()
+        kerns = tensor.dmatrix()
+        input = tensor.dmatrix()
         rng = numpy.random.RandomState(3423489)
         filters = rng.randn(nkern,numpy.prod(kshp))
         biasvals = rng.randn(nkern)
@@ -90,7 +89,7 @@ class TestSP(unittest.TestCase):
                     assert (temp < 1e-5).all()
 
                     # test downward propagation -- symbolic stuff
-                    #vis = T.grad(output, input, output)
+                    #vis = tensor.grad(output, input, output)
                     #downprop = function([kerns,input], vis, mode=mode)
                     #visval = downprop(filters,img1d)
                     ## test downward propagation -- reference implementation
@@ -139,9 +138,9 @@ class TestSP(unittest.TestCase):
         convmodes = ('full','valid',)
 
         # symbolic stuff
-        bias = T.dvector()
-        kerns = T.dvector()
-        input = T.dmatrix()
+        bias = tensor.dvector()
+        kerns = tensor.dvector()
+        input = tensor.dmatrix()
         rng = numpy.random.RandomState(3423489)
 
         import theano.gof as gof
@@ -197,7 +196,7 @@ class TestSP(unittest.TestCase):
                     assert (temp < 1e-10).all()
 
                     # test downward propagation
-                    vis = T.grad(0.5*T.sqr(output).sum(), input)
+                    vis = tensor.grad(0.5*tensor.sqr(output).sum(), input)
                     downprop = function([kerns,output], vis)
                     temp1 = time.time()
                     for zz in range(100):
@@ -224,8 +223,8 @@ class TestSP(unittest.TestCase):
         convmodes = ('full','valid',)
 
         # symbolic stuff
-        kerns = [T.dvector(),T.dvector()]
-        input = T.dmatrix()
+        kerns = [tensor.dvector(),tensor.dvector()]
+        input = tensor.dmatrix()
         rng = numpy.random.RandomState(3423489)
 
         # build actual input images
@@ -262,8 +261,8 @@ class TestSP(unittest.TestCase):
         convmodes = ('full',)#'valid',)
 
         # symbolic stuff
-        kerns = [T.dmatrix(),T.dmatrix()]
-        input = T.dmatrix()
+        kerns = [tensor.dmatrix(),tensor.dmatrix()]
+        input = tensor.dmatrix()
         rng = numpy.random.RandomState(3423489)
 
         # build actual input images
@@ -301,7 +300,7 @@ class TestSP(unittest.TestCase):
         maxpoolshps = ((2,2),(3,3),(4,4),(5,5),(6,6))
         imval = numpy.random.rand(4,5,10,10)
 
-        images = T.dmatrix()
+        images = tensor.dmatrix()
         for maxpoolshp in maxpoolshps:
 
             # symbolic stuff
@@ -340,10 +339,10 @@ class TestSP(unittest.TestCase):
         #convmodes = ('full','valid',)
         convmodes = ('full',)
 
-        kerns = T.dvector()
-        indices = T.ivector()
-        indptr = T.ivector()
-        spmat_shape = T.ivector()
+        kerns = tensor.dvector()
+        indices = tensor.ivector()
+        indptr = tensor.ivector()
+        spmat_shape = tensor.ivector()
 
         for mode in ['FAST_COMPILE','FAST_RUN']:
             for conv_mode in convmodes:
@@ -402,7 +401,7 @@ class TestSP(unittest.TestCase):
 def test_diagonal():
     for K in 1, 5:
 
-        d = T.ivector()
+        d = tensor.ivector()
 
         sd = sp.square_diagonal(d)
 
@@ -446,7 +445,7 @@ def test_row_scale():
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
 
     if 0:
-        T.verify_grad(None, d, [x_val, s_val],
+        tensor.verify_grad(None, d, [x_val, s_val],
                 mode=theano.Mode(linker='py', optimizer='fast_compile'))
     else:
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
@@ -477,7 +476,7 @@ def test_col_scale():
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
 
     if 0:
-        T.verify_grad(None, d, [x_val, s_val],
+        tensor.verify_grad(None, d, [x_val, s_val],
                 mode=theano.Mode(linker='py', optimizer='fast_compile'))
     else:
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
