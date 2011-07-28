@@ -46,6 +46,9 @@ class SpSum(Op):
     def __hash__(self):
         return 76324 ^ hash(type(self)) ^ hash(self.axis)
 
+    def __str__(self):
+        return self.__class__.__name__+"{axis=%s}" % str(self.axis)
+
     def make_node(self, x):
         ###
         # At least for small matrices (5x5), the .sum() method of a csc matrix returns a dense matrix
