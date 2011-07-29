@@ -297,6 +297,14 @@ def scan( fn
         loop are done (see ``theano.function`` for details about
         possible values and their meaning).
 
+    :param profile:
+        Flag or string. If true, or different from the empty string, a
+        profile object will be created and attached to the inner graph of
+        scan. In case ``profile`` is True, the profile object will have the
+        name of the scan instance, otherwise it will have the passed string.
+        Profile object collect (and print) information only when running the
+        inner graph with the new cvm mode ( with older modes this argument
+        is useless)
 
     :rtype: tuple
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
