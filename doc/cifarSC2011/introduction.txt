@@ -230,6 +230,8 @@ Theano in one slide
 
  * It used to have no/poor support for internal looping and conditional
    expressions, but these are now quite usable.
+
+ * Automatic differentiation
  
 
 Project status
@@ -278,7 +280,7 @@ How Fast are GPUs?
   - NVIDIA GTX580 (1.5Tf/s float32) 512 cores
   - GPUs are faster, cheaper, more power-efficient
 
- - Practice: 
+ - Practice (with Theano): 
   - Depends on algorithm and implementation!
   - Reported speed improvements over CPU in lit. vary *widely* (.01x to 1000x)
   - Matrix-matrix multiply speedup: usually about 10-20x.
