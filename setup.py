@@ -47,8 +47,8 @@ AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 4
-MICRO               = 0
-SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
+MICRO               = 1
+SUFFIX              = "rc1"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
