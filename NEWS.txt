@@ -1,6 +1,143 @@
-Modifications in the trunk since the last release
+documented all commits up to: a1f5e8f854f8(during 28 july 2011)
 
-Theano 0.4.0 (2011-06-27)
+Modifications in the 0.4.1 release candidate 1
+
+TODO: 
+ * LazyLinker, VM, CVM with profile
+ * James sparse sandbox op.
+
+Unknow impact:
+ * Compilation cache: we put some theano flags with in_c_key=False. How this affect the compilation cache?
+
+
+Deprecation:
+
+ * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
+ * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
+ * Scan interface change...RP what they are? I think you deprecated AND removed them... TODO
+
+Bugs fixed:
+ 
+ * In one case a AdvancedSubtensor1 could be converted to a GpuAdvancedIncSubtensor1 insted of GpuAdvancedSubtensor1. 
+   It probably didn't happened due to the order of optimizations, but that order is not waranty to be the same on all computers.
+ * Derivative of set_subtensor was wrong.
+ * Derivative of Alloc was wrong.
+
+Crash fixed:
+
+ * On an unusual python 2.4.4 on Windows
+ * When using a C cache copied from another location
+ * On Windows 32 bits when setting a complex64 to 0.
+ * Compilation crash with CUDA 4
+ * Fixed many problem when wanting to copy the compilation cache from a computer to another
+   * This can be usefull to use Theano on a computer without compiler.
+
+GPU:
+
+ * Compilation crash fixed under Ubuntu 11.04
+ * Compilation crash with CUDA 4.0
+ * PyCUDA/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/pycuda.html>`_.
+   * New function to easily convert pycuda GPUArray object to and from CudaNdarray object
+   * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
+ * Removed a warning when nvcc is not available and the user did not requested it.
+ * renamed config option cuda.nvccflags -> nvcc.flags
+
+New features:
+
+ * `R_op <http://deeplearning.net/software/theano/tutorial/gradients.html>`_ macro like theano.tensor.grad
+   * Not all test done yet(TODO)
+ * Added alias theano.tensor.bitwise_{and,or,xor,not}. They are the numpy name
+ * Updates returned by Scan (you need to pass them to the theano.function) are now a new Updates class.
+   That allow more check and easier work with them. The Updates class is a subclass of dict
+ * Scan can now work in a "do while" loop style.
+   * We scan until a condition is meat.
+   * There is a minimum of 1 iteration(can't do "while do" style loop)
+ * The "Interactive Debugger"(compute_test_value theano flags)
+   * Now should work with all op (even the one with only c code)
+   * In the past some errors where transformed to others that not related one.
+     Now we don't do that anymore.
+ * The new Op.make_thunk function(introduced in 0.4.0) is now used by constant_folding and DebugMode
+ * Added A_TENSOR_VARIABLE.astype() as a way to cast. Numpy allow this syntax.
+ * New BLAS GER implementation.
+ * Insert gemv more frequently.
+ * Added new ifelse(scalar condition, rval_if_true, rval_if_false) Op.
+   * This is a subset of the elemwise switch(tensor condition, rval_if_true, rval_if_false).
+   * With the new feature in the sandbox, only rval_if_true or rval_if_false will be evaluated
+
+Optimization:
+
+ * Subtensor has c code
+ * {Inc,Set}Subtensor has c code
+ * ScalarFromTensor has c code
+ * dot(zeros,x) and dot(x,zeros)
+ * IncSubtensor(x, zeros, idx) -> x
+ * SetSubtensor(x, x[idx], idx) -> x (when x is a constant)
+ * subtensor(alloc,...) -> alloc
+ * Many new scan optimization (TODO, list them)
+ * Lower scan execution overhead with a cython implementation
+ * Removed scan double compilation (by using the new Op.make_thunk mechanism)
+
+Sandbox:
+
+ * MRG random generator now implement the same casting behavior as the regular random generator.
+
+Sandbox New features(not enabled by default):
+
+ * New Linkers(theano flags linker={vm,cvm})
+   * It allow to evaluate lazyly the new op ifelse.
+     * That mean we compyte only the true or false branch depending of the condition.
+     * This can speed up some type of computation.
+   * Use a new profiling system (currently track less stuff)
+   * The cvm is implemented in C. So It lower theano overhead.
+   * The vm is implemented in python. So it can help debuging in some case
+   * In the futur the default will be cvm.
+ * Some new not well tested sparse op: theano.sparse.sandbox.{SpSum, Diag, SquareDiagonal, ColScaleCSC, RowScaleCSC, Remove0, EnsureSortedIndices, ConvolutionIndices}
+
+Documentation:
+
+ * How to compute the `Jocobian, Hessian, Jacobian times a vector, Hesian times a vector <http://deeplearning.net/software/theano/tutorial/gradients.html>`_.
+ * Slide for a 3 hours class with exercises that was done at the HPCS2011 Conference in Montréal.
+
+Others:
+
+ * Logger name renamed to be consistent.
+ * Logger function simplified and made more consistent.
+ * Fixed transformation of error by other not related error with the compute_test_value Theano flag.
+ * Compilation cache enhencement.
+ * Made compatible with numpy 1.6 and scipy 0.9
+ * Fix tests when there was new dtype in numpy that is not supported by Theano.
+ * Fixed some tests when scipy is not available
+ * Don't compile anything when Theano is imported. Compile support code when we compile the first c code.
+ * Python 2.4 fix:
+   * Fix the file theano/misc/check_blas.py
+   * For python 2.4.4 on Windows, replaced float("inf") with numpy.inf.
+
+Core:
+
+ * there is a new mechanism that lets an Op permit that one of its
+   inputs can be aliased to another destroyed input.  This will generally
+   result in incorrect calculation, so it should be used with care!  The
+   right way to use it is when the caller can guarantee that even if
+   these two inputs look aliased, they actually will never overlap.  This
+   mechanism can be used for example, by a new alternative approach to
+   implementing Scan.  If an op has an attribute called
+   "destroyhandler_tolerate_aliased" then this is what's going on.
+   IncSubtensor is thus far the only Op to use this mechanism.Mechanism
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Theano 0.4.0 (2011-06-13)
 --------------------------------------------------
 
 Change in output memory storage for Ops:
