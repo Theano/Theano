@@ -1,13 +1,5 @@
 Modifications in the 0.4.1 release candidate 1(28 July 2011)
 
-TODO:
- * LazyLinker, VM, CVM with profile
- * James sparse sandbox op.
-
-Unknown impact:
- * Compilation cache: we put some theano flags with in_c_key=False. How does this affect the compilation cache?
-
-
 Deprecation:
 
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
@@ -27,7 +19,7 @@ Crash fixed:
  * When using a C cache copied from another location
  * On Windows 32 bits when setting a complex64 to 0.
  * Compilation crash with CUDA 4
- * when wanting to copy the compilation cache from a computer to another
+ * When wanting to copy the compilation cache from a computer to another
    * This can be useful for using Theano on a computer without a compiler.
 
 GPU:
