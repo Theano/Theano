@@ -15,51 +15,58 @@ Day 1
 
  * Show of hands - what is your background?
 
- * Overview/Motivation
+ * Python & Numpy in a nutshell
 
- * python/numpy crash course
+ * Theano basics
 
- * Theano beggining
+ * Quick tour through Deep Learning Tutorials (think about projects)
 
- * Example with recent ML models (DLT)
-
-day 1:
-I think that I could cover those 2 pages:
- * http://deeplearning.net/software/theano/hpcs2011_tutorial/introduction.html
- * http://deeplearning.net/software/theano/hpcs2011_tutorial/theano.html
-That include:
- simple example
- linear regression example with shared var
- theano flags
- grad detail
- Symbolic variables
- gpu
- benchmarck
+.. :
+    day 1:
+    I think that I could cover those 2 pages:
+     * http://deeplearning.net/software/theano/hpcs2011_tutorial/introduction.html
+     * http://deeplearning.net/software/theano/hpcs2011_tutorial/theano.html
+    That include:
+     simple example
+     linear regression example with shared var
+     theano flags
+     grad detail
+     Symbolic variables
+     gpu
+     benchmarck
 
 Day 2
 -----
 
- * Day 2:
-   * Loop/Condition in Theano (10-20m)
-   * Propose/discuss projects
-   * For groups and start projects!
+  * Loop/Condition in Theano (10-20m)
+
+  * Propose/discuss projects
+
+  * Form groups and start projects!
 
 Day 3
 -----
 
- * Day 3: 
-   * Advanced Theano(30 minutes)
-      *  Debuging, profiling, compilation pipeline, inplace optimization
-   * Projects / General hacking / code-sprinting.
+ * Advanced Theano (30 minutes)
+
+   * Debugging, profiling, compilation pipeline
+
+ * Projects / General hacking / code-sprinting.
 
 Day 4
 -----
 
- * Day 4: *You choose* (we can split the group)
-     * Extending Theano or 
-       * How to wrap code in an op
-       * How to use pycuda code in Theano
-     * Projects / General hacking / code-sprinting.
+ * *You choose* (we can split the group)
 
+   * Extending Theano
 
+     * How to write an Op
 
+     * How to use pycuda code in Theano
+
+   * Projects / General hacking / code-sprinting.
+
+Note - the schedule here is a guideline.
+We can adapt it in reponse to developments in the hands-on work.
+The point is for you to learn something about the practice of machine
+learning.
