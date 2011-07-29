@@ -27,6 +27,7 @@ you out.
     numpy
     adding
     examples
+    gradients
     loading_and_saving
     symbolic_graphs
     modes

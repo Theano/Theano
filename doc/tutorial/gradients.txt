@@ -1,0 +1,92 @@
+
+.. _tutcomputinggrads:
+
+
+=====================
+Derivatives in Theano
+=====================
+
+Computing gradients
+===================
+
+Now let's use Theano for a slightly more sophisticated task: create a
+function which computes the derivative of some expression ``y`` with
+respect to its parameter ``x``. To do this we will use the macro ``T.grad``.
+For instance, we can compute the
+gradient of :math:`x^2` with respect to :math:`x`. Note that:
+:math:`d(x^2)/dx = 2 \cdot x`.
+
+Here is code to compute this gradient:
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_4
+
+>>> from theano import pp
+>>> x = T.dscalar('x')
+>>> y = x**2
+>>> gy = T.grad(y, x)
+>>> pp(gy)  # print out the gradient prior to optimization
+'((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
+>>> f = function([x], gy)
+>>> f(4)
+array(8.0)
+>>> f(94.2)
+array(188.40000000000001)
+
+In the example above, we can see from ``pp(gy)`` that we are computing
+the correct symbolic gradient.
+``fill((x ** 2), 1.0)`` means to make a matrix of the same shape as
+``x ** 2`` and fill it with 1.0.
+
+.. note::
+    The optimizer simplifies the symbolic gradient expression.  You can see
+    this by digging inside the internal properties of the compiled function.
+
+    .. code-block:: python
+
+        pp(f.maker.env.outputs[0])
+        '(2.0 * x)'
+
+    After optimization there is only one Apply node left in the graph, which
+    doubles the input.
+
+We can also compute the gradient of complex expressions such as the
+logistic function defined above. It turns out that the derivative of the
+logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
+
+.. figure:: dlogistic.png
+
+    A plot of the gradient of the logistic function, with x on the x-axis
+    and :math:`ds(x)/dx` on the y-axis.
+
+
+.. If you modify this code, also change :
+.. theano/tests/test_tutorial.py:T_examples.test_examples_5
+
+>>> x = T.dmatrix('x')
+>>> s = T.sum(1 / (1 + T.exp(-x)))
+>>> gs = T.grad(s, x)
+>>> dlogistic = function([x], gs)
+>>> dlogistic([[0, 1], [-1, -2]])
+array([[ 0.25      ,  0.19661193],
+       [ 0.19661193,  0.10499359]])
+
+In general, for any **scalar** expression ``s``, ``T.grad(s, w)`` provides
+the theano expression for computing :math:`\frac{\partial s}{\partial w}`. In 
+this way Theano can be used for doing **efficient** symbolic differentiation
+(as
+the expression return by ``T.grad`` will be optimized during compilation) even for
+function with many inputs. ( see `automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_ for a description
+of symbolic differentiation).
+
+.. note::
+
+   The second argument of ``T.grad`` can be a list, in which case the
+   output is also a list. The order in both list is important, element
+   *i* of the output list is the gradient of the first argument of
+   ``T.grad`` with respect to the *i*-th element of the list given as second argument.
+   The first argument of ``T.grad`` has to be a scalar (a tensor
+   of size 1). For more information on the semantics of the arguments of
+   ``T.grad`` and details about the implementation, see :ref:`this <libdoc_gradient>`.
+
+
