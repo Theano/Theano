@@ -2460,7 +2460,8 @@ def test_speed():
         s_r = tensor.matrix()
         s_y, updates = theano.scan(fn=lambda ri, rii:ri+rii,
                 sequences=[s_r[1:]],
-                outputs_info=tensor.constant(r[0]))
+                outputs_info=tensor.constant(r[0]),
+                mode = theano.Mode(linker='cvm')  )
         assert not updates
         f = theano.function([s_r], s_y)
 
@@ -2530,9 +2531,10 @@ def test_speed_rnn():
         s_r = tensor.matrix()
         s_y, updates = theano.scan(fn=lambda ri, rii:tensor.tanh(tensor.dot(rii, w)),
                 sequences=[s_r[1:]],
-                outputs_info=tensor.constant(r[0]))
+                outputs_info=tensor.constant(r[0]),
+                    mode = theano.Mode(linker='cvm'))
         assert not updates
-        f = theano.function([s_r], s_y, mode=theano.Mode(linker='c|py_nogc'))
+        f = theano.function([s_r], s_y, mode=theano.Mode(linker='cvm'))
 
         t2 = time.time()
         f(r)
