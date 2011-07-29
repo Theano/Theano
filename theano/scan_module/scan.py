@@ -302,10 +302,13 @@ def scan( fn
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
              Theano variable or a list of Theano variables representing the
              outputs of ``scan`` (in the same order as in
-             ``outputs_info``). ``updates`` is a dictionary specifying the
+             ``outputs_info``). ``updates`` is a subclass of dictionary
+             specifying the
              update rules for all shared variables used in scan
              This dictionary should be passed to ``theano.function`` when
-             you compile your function.
+             you compile your function. The change compared to a normal
+             dictionary is that we validate that keys are SharedVariable
+             and addition of those dictionary are validated to be consistent.
     """
     # General observation : this code is executed only once, at creation
     # of the computational graph, so we don't yet need to be smart about
