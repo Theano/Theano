@@ -245,7 +245,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.warn.ignore_bug_before
 
-    String value: 'None', 'all', '0.3', '0.4'
+    String value: 'None', 'all', '0.3', '0.4', '0.4.1'
 
     Default: 'None'
 
