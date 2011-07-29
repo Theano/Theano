@@ -2539,7 +2539,7 @@ def test_speed_rnn():
         t2 = time.time()
         f(r)
         t3 = time.time()
-        print 'theano (scan)', t3 - t2
+        print 'theano (scan, cvm)', t3 - t2
 
     if 1:
         r = numpy.arange(L*N).astype(theano.config.floatX).reshape(L,N)
@@ -2566,7 +2566,7 @@ def test_speed_rnn():
         f_fn(n_calls=L-2)
         f() #999 to update the profiling timers
         t3 = time.time()
-        print 'theano (updates)', t3 - t2
+        print 'theano (updates, cvm)', t3 - t2
         print shared_r.get_value()
 
 if __name__ == '__main__':
