@@ -90,3 +90,166 @@ of symbolic differentiation).
    ``T.grad`` and details about the implementation, see :ref:`this <libdoc_gradient>`.
 
 
+
+Computing the Jacobian
+======================
+
+In order to compute the Jacobian of some function ``y`` with respect to some
+parameter ``x`` we need to use the ``scan``. What we do is to loop over the
+entries in ``y`` and compute the gradient of ``y[i]`` with respect to ``x``.
+
+.. node::
+    
+    ``scan`` is a generic op in Theano that allows writting in a symbolic
+    manner all kind of recurrent equations. While in principle, creating
+    symbolic loops (and optimizing them for performance) is a hard task,
+    effort is being done for improving the performance of ``scan``. More
+    information about how to use this op, see :ref:`this <lib_scan>`.
+
+
+>>> x = T.dvector('x')
+>>> y = x**2
+>>> J, updates = theano.scan(lambda i, y,x : T.grad(y[i], x), sequences = T.arange(y.shape[0]), non_sequences = [y,x])
+>>> f = function([x], J, updates = updates)
+>>> f([4,4])
+array([[ 8.,  0.],
+       [ 0.,  8.]])
+    
+What we did in this code, is to generate a sequence of ints from ``0`` to
+``y.shape[0]`` using ``T.arange``. Then we loop through this sequence, and
+at each step, we compute the gradient of element ``y[[i]`` with respect to
+``x``. ``scan`` automatically concatenates all these rows, generating a
+matrix, which corresponds to the Jacobian.
+
+.. note::
+    There are a few gotchas regarding ``T.grad``. One of them is that you
+    can not re-write the above expression of the jacobian as
+    ``theano.scan(lambda y_i,x: T.grad(y_i,x), sequences=y,
+    non_sequences=x)``, even though from the documentation of scan this
+    seems possible. The reason is that ``y_i`` will not be a function of
+    ``x`` anymore, while ``y[i]`` still is. 
+
+Computing the Hessian
+=====================
+
+Similar to computing the Jacobian we can also compute the Hessian. The only
+difference is that now, instead of computing the Jacobian of some expression
+``y``, we compute the jacobian of ``T.grad(cost,x)``, where ``cost`` is some
+scalar. 
+
+
+>>> x = T.dvector('x')
+>>> y = x**2
+>>> cost = y.sum()
+>>> gy = T.grad(cost, x)
+>>> H, updates = theano.scan(lambda i, gy,x : T.grad(gy[i], x), sequences = T.arange(gy.shape[0]), non_sequences = [gy,x])
+>>> f = function([x], H, updates = updates)
+>>> f([4,4])
+array([[ 2.,  0.],
+       [ 0.,  2.]])
+
+
+Jacobian times a vector
+=======================
+
+Sometimes we can express the algorithm in terms of Jacobians times vectors,
+or vectors times Jacobians. Compared to evaluating the Jacobian and then
+doing the product, there are methods that computes the wanted result, while
+avoiding actually evaluating the Jacobian. This can bring about significant 
+performance gains. A description of one such algorithm can be found here: 
+
+* Barak A. Pearlmutter, "Fast Exact Multiplication by the Hessian", *Neural
+  Computation, 1994*
+
+While in principle we would want Theano to identify such patterns for us,
+in practice, implementing such optimizations in a generic manner can be 
+close to impossible. As such, we offer special functions that
+can be used to compute such expression.
+
+
+R-operator
+----------
+
+The *R operator* is suppose to evaluate the product between a Jacobian and a
+vector, namely :math:`\frac{\partial f(x)}{\partial x} v`. The formulation
+can be extended even for `x` being a matrix, or a tensor in general, case in
+which also the Jacobian becomes a tensor and the product becomes some kind
+of tensor product. Because in practice we end up needing to compute such
+expression in terms of weight matrices, theano supports this more generic
+meaning of the operation. In order to evaluate the *R-operation* of
+expression ``y``, with respect to ``x``, multiplying the Jacobian with ``v``
+you need to do something similar to this:
+
+
+>>> W = T.dmatrix('W')
+>>> V = T.dmatrix('V')
+>>> x = T.dvector('x')
+>>> y = T.dot(x,W)
+>>> JV = T.Rop(y, W, V)
+>>> f = theano.function([W,V,x], JV)
+>>> f([[1,1],[1,1]], [[2,2,],[2,2]], [0,1])
+array([ 2.,  2.])
+
+
+L-operator
+----------
+
+Similar to *R-operator* the *L-operator* would compute a *row* vector times
+the Jacobian. The mathematical forumla would be :math:`v \frac{\partial
+f(x)}{\partial x}`. As for the *R-operator*, the *L-operator* is supported
+for generic tensors (not only for vectors). Similarly, it can be used as
+follows:
+
+>>> W = T.dmatrix('W')
+>>> v = T.dvector('v')
+>>> x = T.dvector('x')
+>>> y = T.dot(x,W)
+>>> VJ = T.Lop(y, W, v)
+>>> f = theano.function([W,v,x], JV)
+>>> f([[1,1],[1,1]], [2,2,], [0,1])
+array([[ 0.,  0.],
+       [ 2.,  2.]])
+
+.. note::
+    
+    `v`, the evaluation point, differs between the *L-operator* and the *R-operator*.
+    For the *L-operator*, the evaluation point needs to have the same shape
+    as the output, while for the *R-operator* the evaluation point should
+    have the same shape as the input parameter. Also the result of these two
+    opeartion differs. The result of the *L-operator* is of the same shape
+    as the input parameter, while the result of the *R-operator* is the same
+    as the output.
+
+
+Hesian times a vector
+=====================
+
+If you need to compute the Hessian times a vector, you can make use of the
+above defined operators to do it more efficiently then actually computing
+the exact Hessian and then doing the product. Due to the symmetry of the 
+Hessian matrix, you have two options that will
+give you the same result (though might exhibit different performaces, so we
+suggest to profile the methods before using any of the two):
+
+
+>>> x = T.dvector('x')
+>>> v = T.dvector('v')
+>>> y = T.sum(x**2)
+>>> gy = T.grad(y, x)
+>>> vH = T.grad( T.sum(gy*v), x)
+>>> f = theano.function([x,v], vH)
+>>> f([4,4],[2,2])
+array([ 4.,  4.])
+
+
+or, making use of the *R-operator*:
+
+>>> x = T.dvector('x')
+>>> v = T.dvector('v')
+>>> y = T.sum(x**2)
+>>> gy = T.grad(y, x)
+>>> Hv = T.Rop(gy,x,v)
+>>> f = theano.function([x,v], Hv)
+>>> f([4,4],[2,2])
+array([ 4.,  4.])
+
