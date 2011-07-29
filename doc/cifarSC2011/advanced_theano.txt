@@ -244,12 +244,12 @@ Conditions
 
   tic = time.clock()
   for i in xrange(n_times):
-      print f_switch(val1, val2, big_mat1, big_mat2)
+      f_switch(val1, val2, big_mat1, big_mat2)
   print 'time spent evaluating both values %f sec'%(time.clock()-tic)
 
   tic = time.clock()
   for i in xrange(n_times):
-      print f_lazyifelse(val1, val2, big_mat1, big_mat2)
+      f_lazyifelse(val1, val2, big_mat1, big_mat2)
   print 'time spent evaluating one value %f sec'%(time.clock()-tic)
 
 IfElse Op spend less time (about an half) than Switch since it computes only
@@ -265,7 +265,7 @@ Switch is more general.
 It is actually important to use  ``linker='vm'`` or ``linker='cvm'``,
 otherwise IfElse will compute both variables and take the same computation
 time as the Switch Op. The linker is not currently set by default to 'cvm' but
-it will in a near future.
+it will be in a near future.
 
 Loops
 -----
