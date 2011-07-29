@@ -91,7 +91,7 @@ Sandbox New features(not enabled by default):
 Documentation:
 
  * How to compute the `Jacobian, Hessian, Jacobian times a vector, Hessian times a vector <http://deeplearning.net/software/theano/tutorial/gradients.html>`_.
- * Slide for a 3 hours class with exercises that was done at the HPCS2011 Conference in Montréal.
+ * Slide for a 3 hours class with exercises that was done at the HPCS2011 Conference in Montreal.
 
 Others:
 
