@@ -303,8 +303,8 @@ def scan( fn
         scan. In case ``profile`` is True, the profile object will have the
         name of the scan instance, otherwise it will have the passed string.
         Profile object collect (and print) information only when running the
-        inner graph with the new cvm mode ( with older modes this argument
-        is useless)
+        inner graph with the new cvm linker ( with default modes,
+        other linkers this argument is useless)
 
     :rtype: tuple
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
