@@ -1123,5 +1123,3 @@ scan_seqopt.register('scanOp_merge_inouts',
                      3,
                      'fast_run',
                      'scan')
-
-
