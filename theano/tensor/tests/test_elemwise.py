@@ -82,7 +82,7 @@ class test_Broadcast(unittest.TestCase):
 
             self.assertTrue((f(xv, yv) == zv).all())
 
-            #test CAReduce.infer_shape
+            #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker,gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
@@ -111,7 +111,7 @@ class test_Broadcast(unittest.TestCase):
             f(xv, yv)
 
             self.assertTrue((xv == zv).all())
-            #test CAReduce.infer_shape
+            #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker,gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
