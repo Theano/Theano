@@ -10,31 +10,12 @@ Deprecation (will be removed in Theano 0.5):
   * When the inner function that scan receive return multiple outputs, it should follow this order:
     [outputs], [updates], [condition]. It can do not return the part it don't need. But must it must not change the order.
 
-Bugs fixed:
-
- * In one case an AdvancedSubtensor1 could be converted to a GpuAdvancedIncSubtensor1 insted of GpuAdvancedSubtensor1.
-   It probably didn't happen due to the order of optimizations, but that order is not guaranteed to be the same on all computers.
- * Derivative of set_subtensor was wrong.
- * Derivative of Alloc was wrong.
-
-Crash fixed:
-
- * On an unusual Python 2.4.4 on Windows
- * When using a C cache copied from another location
- * On Windows 32 bits when setting a complex64 to 0.
- * Compilation crash with CUDA 4
- * When wanting to copy the compilation cache from a computer to another
-   * This can be useful for using Theano on a computer without a compiler.
-
-GPU:
-
- * Compilation crash fixed under Ubuntu 11.04
- * Compilation crash fixed with CUDA 4.0
- * PyCUDA/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/pycuda.html>`_.
-   * New function to easily convert pycuda GPUArray object to and from CudaNdarray object
-   * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
- * Removed a warning when nvcc is not available and the user did not requested it.
- * renamed config option cuda.nvccflags -> nvcc.flags
+Decrecated in 0.4.0:
+ * tag.shape attribute deprecated (#633)
+ * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
+ * Dividing integers with / is deprecated: use // for integer division, or
+   cast one of the integers to a float type if you want a float result (you may
+   also change this behavior with config.int_division).
 
 New features:
 
@@ -67,8 +48,38 @@ Optimizations:
  * SetSubtensor(x, x[idx], idx) -> x (when x is a constant)
  * subtensor(alloc,...) -> alloc
  * Many new scan optimization (TODO, list them)
- * Lower scan execution overhead with a Cython implementation
- * Removed scan double compilation (by using the new Op.make_thunk mechanism)
+   * Lower scan execution overhead with a Cython implementation
+   * Removed scan double compilation (by using the new Op.make_thunk mechanism)
+   * Pushes out computation from the inner graph to the other graph. For not it only pushes out computations that have strictly as inputs only non_sequence inputs and constants
+   * Merges scan ops that go over the same number of steps (and have the same condition). 
+     * The scan ops should be parallel one to the other (in the sense that one is not a input of another)
+
+GPU:
+
+ * PyCUDA/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/pycuda.html>`_.
+   * New function to easily convert pycuda GPUArray object to and from CudaNdarray object
+   * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
+ * Removed a warning when nvcc is not available and the user did not requested it.
+ * renamed config option cuda.nvccflags -> nvcc.flags
+
+Bugs fixed:
+
+ * In one case an AdvancedSubtensor1 could be converted to a GpuAdvancedIncSubtensor1 insted of GpuAdvancedSubtensor1.
+   It probably didn't happen due to the order of optimizations, but that order is not guaranteed to be the same on all computers.
+ * Derivative of set_subtensor was wrong.
+ * Derivative of Alloc was wrong.
+
+Crash fixed:
+
+ * On an unusual Python 2.4.4 on Windows
+ * When using a C cache copied from another location
+ * On Windows 32 bits when setting a complex64 to 0.
+ * Compilation crash with CUDA 4
+ * When wanting to copy the compilation cache from a computer to another
+   * This can be useful for using Theano on a computer without a compiler.
+ * GPU: 
+   * Compilation crash fixed under Ubuntu 11.04
+   * Compilation crash fixed with CUDA 4.0
 
 Sandbox:
 
@@ -102,6 +113,8 @@ Others:
  * Python 2.4 fix:
    * Fix the file theano/misc/check_blas.py
    * For python 2.4.4 on Windows, replaced float("inf") with numpy.inf.
+ * Removes useless inputs to a scan node
+   * Beautification mostly, making the graph more visible. Such inputs would appear as a consequence of other optimizations
 
 Core:
 
