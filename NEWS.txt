@@ -1,10 +1,14 @@
 Modifications in the 0.4.1 release candidate 1(28 July 2011)
 
-Deprecation:
+Deprecation (will be removed in Theano 0.5):
 
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
  * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
- * Scan interface change...RP what are these changes? I think you deprecated AND removed them... TODO
+ * scan interface change:
+   * The use of `return_steps` in the outputs_info dictionary parameter of scan is deprecated. 
+     * This is a duplicate way of specifing the scan parameter  n_steps.
+  * When the inner function that scan receive return multiple outputs, it should follow this order:
+    [outputs], [updates], [condition]. It can do not return the part it don't need. But must it must not change the order.
 
 Bugs fixed:
 
