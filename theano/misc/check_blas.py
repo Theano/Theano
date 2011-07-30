@@ -65,7 +65,9 @@ def execute(execute=True, verbose=True):
         t1=time.time()
     if verbose and execute:
         print
-        print 'this execution time took %.2fs'%(t1-t0)
+        print 'This execution time took %.2fs'%(t1-t0)
+        print 
+        print 'Try to run this script a few times. Experience show that the first time is not as fast as followings call. The difference is not big, but consistent.'
     return t1-t0
 
 
