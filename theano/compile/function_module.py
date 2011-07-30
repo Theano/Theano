@@ -814,7 +814,7 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
 
     assert len(wrapped_inputs) == len(env.inputs)
     assert len(wrapped_outputs) == len(env.outputs)
-
+    reason = "insert_deepcopy"
     updated_env_inputs = [env_i for i, env_i in zip(wrapped_inputs, env.inputs) if getattr(i, 'update', False)]
 
     # We can't use env.inputs as this don't include Constant Value.
@@ -830,9 +830,11 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
             # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
             if env.outputs[j] in views_of_output_i:
                 if wrapped_outputs[i].borrow and wrapped_outputs[j].borrow:
-                    env.change_input('output',i, view_op(env.outputs[i]))
+                    env.change_input('output',i, view_op(env.outputs[i]),
+                                     reason=reason)
                 else:
-                    env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                    env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                                     reason=reason)
                 copied = True
                 break
 
@@ -850,16 +852,20 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
                     if input_j in env.inputs:
                         j = env.inputs.index(input_j)
                         if wrapped_outputs[i].borrow and wrapped_inputs[j].borrow:
-                            env.change_input('output',i, view_op(env.outputs[i]))
+                            env.change_input('output',i, view_op(env.outputs[i]),
+                                             reason="insert_deepcopy")
                             break
                         else:
-                            env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                            env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                                             reason="insert_deepcopy")
                             break
                     elif wrapped_outputs[i].borrow:
-                        env.change_input('output',i, view_op(env.outputs[i]))
+                        env.change_input('output',i, view_op(env.outputs[i]),
+                                         reason="insert_deepcopy")
                         break
                     else:
-                        env.change_input('output', i, deep_copy_op(env.outputs[i]))
+                        env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                                         reason="insert_deepcopy")
                         break
 
 NODEFAULT = ['NODEFAULT']
