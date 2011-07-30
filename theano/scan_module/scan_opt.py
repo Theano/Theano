@@ -17,17 +17,16 @@ import numpy
 import sys
 
 import theano
-from theano import tensor, scalar
-from theano.tensor import opt, TensorType, get_constant_value
+from theano import tensor
+from theano.tensor import opt, get_constant_value
 from theano import gof
 from theano.compile import optdb
-from theano.gof.opt import EquilibriumOptimizer
 from theano import config
 from theano.compile.function_module import deep_copy_op
 
 import scan_op
 import scan_utils
-from scan_utils import clone, equal_computations, find_up, scan_args
+from scan_utils import equal_computations, find_up, scan_args
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 # Logging function for sending warning or info
