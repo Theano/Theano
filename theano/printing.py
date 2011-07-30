@@ -424,6 +424,9 @@ def pydotprint(fct, outfile=None,
                 file to which the name of the scan op is concatenated and
                 the index in the toposort of the scan.
                 This index can be printed in the graph with the option with_ids.
+    :param var_with_name_simple: If true and a variable have a name,
+                we will print only the variable name.
+                Otherwise, we concatenate the type to the var name.
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
