@@ -9,41 +9,41 @@ Introduction
 Background Questionaire
 -----------------------
 
- * Who has used Theano before?
+* Who has used Theano before?
 
-   * What did you do with it?
+ * What did you do with it?
 
- * Who has used Python? numpy? scipy? matplotlib?
+* Who has used Python? numpy? scipy? matplotlib?
 
- * Who has used iPython?
+* Who has used iPython?
 
-   * Who has used it as a distributed computing engine?
+ * Who has used it as a distributed computing engine?
 
- * Who has done C/C++ programming?
+* Who has done C/C++ programming?
 
- * Who has organized computation around a particular physical memory layout?
+* Who has organized computation around a particular physical memory layout?
 
- * Who has used a multidimensional array of >2 dimensions?
+* Who has used a multidimensional array of >2 dimensions?
 
- * Who has written a Python module in C before?
+* Who has written a Python module in C before?
 
-   * Who has written a program to *generate* Python modules in C?
+ * Who has written a program to *generate* Python modules in C?
 
- * Who has used a templating engine?
+* Who has used a templating engine?
 
- * Who has programmed a GPU before?
+* Who has programmed a GPU before?
 
-   * Using OpenGL / shaders ?
+ * Using OpenGL / shaders ?
 
-   * Using CUDA (runtime? / driver?)
+ * Using CUDA (runtime? / driver?)
 
-   * Using PyCUDA ?
+ * Using PyCUDA ?
 
-   * Using OpenCL / PyOpenCL ?
+ * Using OpenCL / PyOpenCL ?
 
-   * Other?
+ * Other?
 
- * Who has used Cython?
+* Who has used Cython?
 
 
 Python in one slide
@@ -51,15 +51,15 @@ Python in one slide
 
 Features:
 
- * General-purpose high-level OO interpreted language
+* General-purpose high-level OO interpreted language
  
- * Emphasizes code readability
+* Emphasizes code readability
  
- * Comprehensive standard library
+* Comprehensive standard library
  
- * Dynamic type and memory management
+* Dynamic type and memory management
 
- * builtin types: int, float, str, list, dict, tuple, object
+* builtin types: int, float, str, list, dict, tuple, object
 
 Syntax sample:
 
@@ -71,38 +71,38 @@ Syntax sample:
     def foo(b, c=3):          # function w default param c
         return a + b + c      # note scoping, indentation
 
+    b_squared = [b_i**2 for b_i in b]  # list comprehension
 
-
- * List comprehension: ``[i+3 for i in range(10)]``
+    print b[1:3]              # slicing syntax
 
 Numpy in one slide
 ------------------
 
- * Python floats are full-fledged objects on the heap
+* Python floats are full-fledged objects on the heap
 
-   * Not suitable for high-performance computing!
+ * Not suitable for high-performance computing!
 
- * Numpy provides a N-dimensional numeric array in Python
+* Numpy provides a N-dimensional numeric array in Python
 
-   * Perfect for high-performance computing.
+ * Perfect for high-performance computing.
 
- * Numpy provides:
+* Numpy provides
 
-  * elementwise computations
+ * elementwise computations
 
-  * linear algebra, Fourier transforms
+ * linear algebra, Fourier transforms
 
-  * pseudorandom numbers from many distributions
+ * pseudorandom numbers from many distributions
 
- * Scipy provides lots more, including:
+* Scipy provides lots more, including
 
-  * more linear algebra
+ * more linear algebra
 
-  * solvers and optimization algorithms
+ * solvers and optimization algorithms
 
-  * matlab-compatible I/O
+ * matlab-compatible I/O
 
-  * I/O and signal processing for images and audio
+ * I/O and signal processing for images and audio
 
 Here are the properties of numpy arrays that you really need to know.
 
@@ -161,11 +161,11 @@ Training an MNIST-ready classification neural network in pure numpy might look l
 What's missing?
 ---------------
 
- * Non-lazy evaluation (required by Python) hurts performance
+* Non-lazy evaluation (required by Python) hurts performance
 
- * Numpy is bound to the CPU
+* Numpy is bound to the CPU
 
- * Numpy lacks symbolic or automatic differentiation
+* Numpy lacks symbolic or automatic differentiation
 
 Here's how the algorithm above looks in Theano, and it runs 15 times faster if
 you have GPU (I'm skipping some dtype-details which we'll come back to):
@@ -210,41 +210,51 @@ you have GPU (I'm skipping some dtype-details which we'll come back to):
 Theano in one slide
 -------------------
 
- * High-level domain-specific language tailored to numeric computation
+* High-level domain-specific language tailored to numeric computation
 
- * Compiles most common expressions to C for CPU and GPU.
+* Compiles most common expressions to C for CPU and GPU.
 
- * Limited expressivity means lots of opportunities for expression-level optimizations
-   * No function call -> global optimization
+* Limited expressivity means lots of opportunities for expression-level optimizations
 
-   * Strongly typed -> compiles to machine instructions
+ * No function call -> global optimization
 
-   * Array oriented -> parallelizable across cores
+ * Strongly typed -> compiles to machine instructions
 
- * Expression substitution optimizations automatically draw
-   on many backend technologies for best performance.
+ * Array oriented -> parallelizable across cores
 
-   * FFTW, MKL, ATLAS, Scipy, Cython, CUDA
+* Expression substitution optimizations automatically draw
+  on many backend technologies for best performance.
 
-   * Slower fallbacks always available
+ * FFTW, MKL, ATLAS, Scipy, Cython, CUDA
 
- * It used to have no/poor support for internal looping and conditional
-   expressions, but these are now quite usable.
- 
+ * Slower fallbacks always available
+
+* It used to have no/poor support for internal looping and conditional
+  expressions, but these are now quite usable.
+
 
 Project status
 --------------
 
- * Mature: theano has been developed and used since January 2008 (3.5 yrs old)
- * Driven over 40 research papers in the last few years
- * Core technology for a funded Silicon-Valley startup
- * Good user documentation
- * Active mailing list with participants from outside our lab
- * Many contributors (some from outside our lab)
- * Used to teach IFT6266 for two years
- * Used for research at Google and Yahoo.
- * Unofficial RPMs for Mandriva
- * Downloads (on June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
+* Mature: theano has been developed and used since January 2008 (3.5 yrs old)
+
+* Driven over 40 research papers in the last few years
+
+* Core technology for a funded Silicon-Valley startup
+
+* Good user documentation
+
+* Active mailing list with participants from outside our lab
+
+* Many contributors (some from outside our lab)
+
+* Used to teach IFT6266 for two years
+
+* Used for research at Google and Yahoo.
+
+* Unofficial RPMs for Mandriva
+
+* Downloads (on June 8 2011, since last January): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
 
 
 Why scripting for GPUs ?
@@ -252,18 +262,23 @@ Why scripting for GPUs ?
 
 They *Complement each other*:
 
-- GPUs are everything that scripting/high level languages are not
+* GPUs are everything that scripting/high level languages are not
 
-  - Highly parallel
-  - Very architecture-sensitive
-  - Built for maximum FP/memory throughput
-  - So hard to program that meta-programming is easier.
+ * Highly parallel
 
-- CPU: largely restricted to control
+ * Very architecture-sensitive
 
-  - Optimized for sequential code and low latency (rather than high throughput)
-  - Tasks (1000/sec)
-  - Scripting fast enough
+ * Built for maximum FP/memory throughput
+
+ * So hard to program that meta-programming is easier.
+
+* CPU: largely restricted to control
+
+ * Optimized for sequential code and low latency (rather than high throughput)
+
+ * Tasks (1000/sec)
+
+ * Scripting fast enough
 
 Best of both: scripted CPU invokes JIT-compiled kernels on GPU.
 
@@ -271,28 +286,41 @@ Best of both: scripted CPU invokes JIT-compiled kernels on GPU.
 How Fast are GPUs?
 ------------------
 
- - Theory:
+* Theory
 
-  - Intel Core i7 980 XE (107Gf/s float64) 6 cores
-  - NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32) 480 cores
-  - NVIDIA GTX580 (1.5Tf/s float32) 512 cores
-  - GPUs are faster, cheaper, more power-efficient
+ * Intel Core i7 980 XE (107Gf/s float64) 6 cores
 
- - Practice: 
-  - Depends on algorithm and implementation!
-  - Reported speed improvements over CPU in lit. vary *widely* (.01x to 1000x)
-  - Matrix-matrix multiply speedup: usually about 10-20x.
-  - Convolution speedup: usually about 15x.
-  - Elemwise speedup: slower or up to 100x (depending on operation and layout)
-  - Sum: can be faster or slower depending on layout.
+ * NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32) 480 cores
 
- - Benchmarking is delicate work...
-   - How to control quality of implementation?
-     - How much time was spent optimizing CPU vs GPU code?
-   - Theano goes up to 100x faster on GPU because it uses only one CPU core
-   - Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
+ * NVIDIA GTX580 (1.5Tf/s float32) 512 cores
 
- - If you see speedup > 100x, the benchmark is probably not fair.
+ * GPUs are faster, cheaper, more power-efficient
+
+* Practice
+
+ * Depends on algorithm and implementation!
+
+ * Reported speed improvements over CPU in lit. vary *widely* (.01x to 1000x)
+
+ * Matrix-matrix multiply speedup: usually about 10-20x.
+
+ * Convolution speedup: usually about 15x.
+
+ * Elemwise speedup: slower or up to 100x (depending on operation and layout)
+
+ * Sum: can be faster or slower depending on layout.
+
+* Benchmarking is delicate work...
+
+ * How to control quality of implementation?
+
+  * How much time was spent optimizing CPU vs GPU code?
+
+ * Theano goes up to 100x faster on GPU because it uses only one CPU core
+
+ * Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
+
+* If you see speedup > 100x, the benchmark is probably not fair.
 
 
 Software for Directly Programming a GPU
@@ -300,15 +328,27 @@ Software for Directly Programming a GPU
 
 Theano is a meta-programmer, doesn't really count.
 
- - CUDA: C extension by NVIDIA 
-   - Vendor-specific
-   - Numeric libraries (BLAS, RNG, FFT) maturing.
- - OpenCL: multi-vendor version of CUDA
-   - More general, standardized
-   - Fewer libraries, less adoption.
- - PyCUDA: python bindings to CUDA driver interface
-   - Python interface to CUDA
-   - Memory management of GPU objects
-   - Compilation of code for the low-level driver
-   - Makes it easy to do GPU meta-programming from within Python
- - PyOpenCL: PyCUDA for PyOpenCL
+* CUDA: C extension by NVIDIA 
+
+ * Vendor-specific
+
+ * Numeric libraries (BLAS, RNG, FFT) maturing.
+
+* OpenCL: multi-vendor version of CUDA
+
+ * More general, standardized
+
+ * Fewer libraries, less adoption.
+
+* PyCUDA: python bindings to CUDA driver interface
+
+ * Python interface to CUDA
+
+ * Memory management of GPU objects
+
+ * Compilation of code for the low-level driver
+
+ * Makes it easy to do GPU meta-programming from within Python
+
+* PyOpenCL: PyCUDA for PyOpenCL
+
