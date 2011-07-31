@@ -13,13 +13,13 @@ on the afternoons of Aug 2, 3, 5, and 6 (but not Aug 4th).
 Day 1
 -----
 
- * Show of hands - what is your background?
+* Show of hands - what is your background?
 
- * Python & Numpy in a nutshell
+* Python & Numpy in a nutshell
 
- * Theano basics
+* Theano basics
 
- * Quick tour through Deep Learning Tutorials (think about projects)
+* Quick tour through Deep Learning Tutorials (think about projects)
 
 .. :
     day 1:
@@ -38,35 +38,31 @@ Day 1
 Day 2
 -----
 
-  * Loop/Condition in Theano (10-20m)
+* Loop/Condition in Theano (10-20m)
 
-  * Propose/discuss projects
+* Propose/discuss projects
 
-  * Form groups and start projects!
+* Form groups and start projects!
 
 Day 3
 -----
 
- * Advanced Theano (30 minutes)
+* Advanced Theano (30 minutes)
 
-   * Debugging, profiling, compilation pipeline
+ * Debugging, profiling, compilation pipeline
 
- * Projects / General hacking / code-sprinting.
+* Projects / General hacking / code-sprinting.
 
 Day 4
 -----
 
- * *You choose* (we can split the group)
+* *You choose* (we can split the group)
 
-   * Extending Theano
+ * Extending Theano
 
-     * How to write an Op
+  * How to write an Op
 
-     * How to use pycuda code in Theano
+  * How to use pycuda code in Theano
 
-   * Projects / General hacking / code-sprinting.
+* Projects / General hacking / code-sprinting.
 
-Note - the schedule here is a guideline.
-We can adapt it in reponse to developments in the hands-on work.
-The point is for you to learn something about the practice of machine
-learning.
