@@ -5,10 +5,14 @@ Deprecation (will be removed in Theano 0.5):
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
  * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
  * scan interface change:
-   * The use of `return_steps` in the outputs_info dictionary parameter of scan is deprecated. 
-     * This is a duplicate way of specifing the scan parameter  n_steps.
-  * When the inner function that scan receive return multiple outputs, it should follow this order:
-    [outputs], [updates], [condition]. It can do not return the part it don't need. But must it must not change the order.
+   * The use of `return_steps` for specifying how many entries of the output
+   scan has been depricated
+     * The same thing can be done by applying a subtensor on the output
+     return by scan to select a certain slice
+  * The inner function (that scan receives) should return its outputs and
+  updates following this order:
+    [outputs], [updates], [condition]. One can skip any of the three if not
+    used, but the order has to stay unchanged.
 
 Decrecated in 0.4.0:
  * tag.shape attribute deprecated (#633)
@@ -47,12 +51,13 @@ Optimizations:
  * IncSubtensor(x, zeros, idx) -> x
  * SetSubtensor(x, x[idx], idx) -> x (when x is a constant)
  * subtensor(alloc,...) -> alloc
- * Many new scan optimization (TODO, list them)
+ * Many new scan optimization 
    * Lower scan execution overhead with a Cython implementation
    * Removed scan double compilation (by using the new Op.make_thunk mechanism)
-   * Pushes out computation from the inner graph to the other graph. For not it only pushes out computations that have strictly as inputs only non_sequence inputs and constants
-   * Merges scan ops that go over the same number of steps (and have the same condition). 
-     * The scan ops should be parallel one to the other (in the sense that one is not a input of another)
+   * Certain computations from the inner graph are now Pushed out into the outer
+   graph. This means they are not re-comptued at every step of scan.
+   * Different scan ops get merged now into a single op (if possible), reducing the
+   overhead and sharing computations between the two instances
 
 GPU:
 
