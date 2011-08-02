@@ -41,6 +41,8 @@ Background Questionaire
 
  * Using OpenCL / PyOpenCL ?
 
+ * Using cudamat / gnumpy ?
+
  * Other?
 
 * Who has used Cython?
@@ -98,17 +100,21 @@ Python in one slide
     print b[1:3]              # slicing syntax
 
     class Foo(object):        # Defining a class
-        a = 1
+        def __init__(self):
+            self.a = 5
         def hello(self):
             return self.a
 
-    class Bar(Foo):           # Defining a subclass
-        def __init__(self):
-            self.a = 6
-
     f = Foo()                 # Creating a class instance
-    b = Bar()                 # Creating an instance of Bar
-    f.hello(); b.hello()      # Calling methods of objects
+    print f.hello()           # Calling methods of objects
+    # -> 5 
+
+    class Bar(Foo):           # Defining a subclass
+        def __init__(self, a):
+            self.a = a
+
+    print Bar(99).hello()     # Creating an instance of Bar
+    # -> 99
 
 Numpy in one slide
 ------------------
@@ -308,7 +314,14 @@ Project status
 
 * Unofficial RPMs for Mandriva
 
-* Downloads (January 2011 -  June 8 2011): Pypi 780, MLOSS: 483, Assembla (`bleeding edge` repository): unknown
+* Downloads (January 2011 -  June 8 2011):
+
+ * Pypi 780
+
+ * MLOSS: 483
+
+ * Assembla (`bleeding edge` repository): unknown
+
 
 
 Why scripting for GPUs?
