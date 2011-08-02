@@ -148,7 +148,7 @@ Exercise 4
 Compilation pipeline
 --------------------
 
-.. image:: pics/pipeline.png
+.. image:: ../hpcs2011_tutorial/pics/pipeline.png
    :width: 400 px
 
 Inplace optimization
@@ -306,19 +306,19 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 
 >>> theano.printing.pydotprint_variables(prediction)
 
-.. image:: pics/logreg_pydotprint_prediction.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
 All pydotprint* requires graphviz and pydot
 
 >>> theano.printing.pydotprint(predict)
 
-.. image:: pics/logreg_pydotprint_predic.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
    :width: 800 px
 
 >>> theano.printing.pydotprint(train) # This is a small train example!
 
-.. image:: pics/logreg_pydotprint_train.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
    :width: 1500 px
 
 

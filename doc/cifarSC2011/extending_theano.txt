@@ -14,7 +14,7 @@ Theano graphs
 
 Inputs and Outputs are lists of Theano variables
 
-.. image:: pics/apply_node.png
+.. image:: ../hpcs2011_tutorial/pics/apply_node.png
     :width: 500 px
 
 Op contract
