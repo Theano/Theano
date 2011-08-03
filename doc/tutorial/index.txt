@@ -32,6 +32,7 @@ you out.
     symbolic_graphs
     modes
     aliasing
+    loop
     using_gpu
     pycuda
     shape_info

@@ -158,7 +158,7 @@ def as_tensor_variable(x, name=None, ndim=None):
     except TypeError:
         try:
             str_x = str(x)
-        except:
+        except Exception, e:
             str_x = repr(x)
         raise TypeError("Cannot convert %s to TensorType" % str_x, type(x))
 
@@ -340,7 +340,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         else:
             # leave the shape out of the type
             return rtype(TensorType(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
-    except:
+    except Exception:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 def constant(x, name=None, ndim=None, dtype=None):
@@ -425,7 +425,7 @@ def get_constant_value(v):
         try:
             numpy.complex(data) #works for all numeric scalars
             return data
-        except:
+        except Exception:
             raise TypeError('v.data is non-numeric, non-scalar, or has more than one unique value', v)
     if v.owner:
         if isinstance(v.owner.op, Alloc):
@@ -1361,7 +1361,7 @@ class TensorConstantSignature(tuple):
             return False
         try:
             (t0, d0), (t1,d1) = self, other
-        except:
+        except Exception, e:
             return False
         #N.B. compare shape to ensure no broadcasting in ==
         if t0 != t1 or d0.shape != d1.shape:
@@ -1994,7 +1994,7 @@ def max(x, axis='DEFAULT'):
     try:
         const = get_constant_value(axis)
         return CAReduce(scal.maximum,list(const))(x)
-    except:
+    except Exception:
         return max_and_argmax(x,axis)[0]
 
 @constructor
@@ -2873,7 +2873,7 @@ def extract_constant(x):
     '''
     try:
         x = get_constant_value(x)
-    except:
+    except Exception:
         pass
     if isinstance(x, scal.ScalarVariable):
         if x.owner and isinstance(x.owner.op, ScalarFromTensor):
@@ -4398,7 +4398,7 @@ class Reshape(Op):
                     ', should be %i' % (len(shp), self.ndim), shp)
         try:
             out[0] = numpy.reshape(x, shp)
-        except:
+        except Exception, e:
             raise ValueError('Cannot reshape input of shape %s to shape %s' % (x.shape,shp))
     def grad(self, inp, grads):
         x, shp = inp
@@ -4593,7 +4593,7 @@ class ARange(Op):
             try:
                 v = get_constant_value(var)
                 return numpy.all(v == value)
-            except:
+            except Exception:
                 pass
             return False
 

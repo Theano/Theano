@@ -65,7 +65,9 @@ def execute(execute=True, verbose=True):
         t1=time.time()
     if verbose and execute:
         print
-        print 'this execution time took %.2fs'%(t1-t0)
+        print 'This execution time took %.2fs'%(t1-t0)
+        print
+        print 'Try to run this script a few times. Experience show that the first time is not as fast as followings call. The difference is not big, but consistent.'
     return t1-t0
 
 
@@ -103,7 +105,7 @@ if __name__ == "__main__":
             * manually compiled numpy and ATLAS with 2 threads
             * goto 1.26 with 1, 2, 4 and 8 threads.
             * goto2 1.13 compiled with multiple thread enabled.
-            
+
                           Xeon   Xeon   Xeon  Core2 i7    i7     Xeon   Xeon
         lib/nb threads    E5345  E5430  E5450 E8500 930   950    X5560  X5550
 
@@ -139,6 +141,8 @@ if __name__ == "__main__":
         M2070/3.2         0.32s
         GTX470/3.0        0.34s
         GTX285/3.0        0.40s
+        C1060/3.2         0.46s
+        GTX550Ti/4.0      0.57s
         GT220/3.2RC       3.80s
         8500GT/3.0       10.68s
         """

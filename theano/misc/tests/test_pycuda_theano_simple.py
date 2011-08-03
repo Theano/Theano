@@ -19,7 +19,7 @@ if not theano.misc.pycuda_init.pycuda_available:
 
 if cuda_ndarray.cuda_available == False:
     from nose.plugins.skip import SkipTest
-    raise SkipTest('Optional package cuda disabled')
+    raise SkipTest('Optional theano package cuda disabled')
 
 import pycuda
 import pycuda.driver as drv

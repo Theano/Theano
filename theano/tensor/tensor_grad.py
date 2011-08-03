@@ -117,7 +117,7 @@ def Rop(f, wrt, eval_points):
         return rval
 
 
-def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
+def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
          disconnected_inputs='raise'):
     """
     Computes the L operation on `f` wrt to `wrt` evaluated at points given
@@ -140,6 +140,8 @@ def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last
     """
+    if consider_constant is None:
+        consider_constant = []
 
     if not isinstance(f, TensorVariable):
         raise TypeError('In tensor.Lop(), cost argument should be a TensorVariable.', f)
@@ -154,7 +156,6 @@ def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
             zip(f,eval_points),
             list(inputs) + list(consider_constant),
             warn_type=warn_type)
-
 
     # Note : If p is not in gmap there can be several reasons, among which
     # is the fact that p might not be part of the computational graph. A
@@ -196,7 +197,7 @@ def Lop(f, wrt, eval_points, consider_constant=[], warn_type=False,
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
+def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
          disconnected_inputs='raise'):
     """
     :type cost: Scalar (0-dimensional) `Variable`
@@ -228,6 +229,9 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False,
     `theano.gradient.grad_sources_inputs``.
 
     """
+    if consider_constant is None:
+        consider_constant = []
+
     if not isinstance(cost, TensorVariable):
         raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
 

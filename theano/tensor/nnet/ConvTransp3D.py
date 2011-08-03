@@ -12,7 +12,7 @@ class ConvTransp3D(theano.Op):
         return hash(type(self))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def make_node(self, W, b, d, H, RShape = None):
         """
@@ -266,11 +266,11 @@ class ConvTransp3D(theano.Op):
 
                                        for (int i = 0; i < batchSize; i++) {
                                         for (int r = 0; r < videoHeight; r++) {
-                                         const int frc = std::max(0.0, ceil(float(r-filterHeight+1)/float(dr)));
+                                         const int frc = (int)std::max(0.0f, ceilf(float(r-filterHeight+1)/float(dr)));
                                          for (int c = 0; c < videoWidth; c++) {
-                                          const int fcc = std::max(0.0, ceil(float(c-filterWidth +1)/float(dc)));
+                                          const int fcc = (int)std::max(0.0f, ceilf(float(c-filterWidth +1)/float(dc)));
                                           for (int t = 0; t < videoDur; t++) {
-                                           const int ftc = std::max(0.0, ceil(float(t-filterDur +1)  /float(dt)));
+                                           const int ftc = (int)std::max(0.0f, ceilf(float(t-filterDur +1)  /float(dt)));
 
                                            long long Rpost = i * %(R)s->strides[0] + r * %(R)s->strides[1] + c * %(R)s->strides[2] + t * %(R)s->strides[3];
 

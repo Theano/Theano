@@ -7,6 +7,7 @@ import unittest
 from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec
+from numpy.testing.noseclasses import KnownFailureTest
 
 from theano.tensor import *
 from theano.tensor import basic as tensor # for hidden symbols
@@ -4736,6 +4737,22 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
+                                if (cfg == 'numpy+floatX' and
+                                    a_type == 'complex128' and
+                                    b_type == 'float32' and
+                                    combo == ('scalar', 'array') and
+                                    numpy.__version__ == '1.6.0' and
+                                    theano_dtype == 'complex128' and
+                                    numpy_dtypes == ['complex64',
+                                                     'complex64']):
+                                    # In numpy 1.6.0 adding a complex128 with
+                                    # a float32 may result in a complex64. This
+                                    # may be a bug (investigation is currently
+                                    # in progress), so in the meantime we just
+                                    # mark this test as a known failure.
+                                    raise KnownFailureTest('Known issue with '
+                                            'numpy 1.6.0, see #761')
+
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False

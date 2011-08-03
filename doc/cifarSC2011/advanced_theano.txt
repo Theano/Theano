@@ -1,15 +1,154 @@
 
 .. _advanced_theano:
 
-
 ***************
 Advanced Theano
 ***************
 
+Conditions
+----------
+**IfElse**
+
+- Build condition over symbolic variables.
+- IfElse Op takes a boolean condition and two variables to compute as input.
+- While Switch Op evaluates both 'output' variables, IfElse Op is lazy and only
+  evaluates one variable respect to the condition.
+
+**IfElse Example: Comparison with Switch**
+
+.. code-block:: python
+
+  from theano import tensor as T
+  from theano.lazycond import ifelse
+  import theano, time, numpy
+
+  a,b = T.scalars('a','b')
+  x,y = T.matrices('x','y')
+  
+  z_switch = T.switch(T.lt(a,b), T.mean(x), T.mean(y))
+  z_lazy = ifelse(T.lt(a,b), T.mean(x), T.mean(y))
+
+  f_switch = theano.function([a,b,x,y], z_switch, 
+                      mode=theano.Mode(linker='vm'))
+  f_lazyifelse = theano.function([a,b,x,y], z_lazy,
+                      mode=theano.Mode(linker='vm'))
+
+  val1 = 0.
+  val2 = 1.
+  big_mat1 = numpy.ones((10000,1000))
+  big_mat2 = numpy.ones((10000,1000))
+
+  n_times = 10
+
+  tic = time.clock()
+  for i in xrange(n_times):
+      f_switch(val1, val2, big_mat1, big_mat2)
+  print 'time spent evaluating both values %f sec'%(time.clock()-tic)
+
+  tic = time.clock()
+  for i in xrange(n_times):
+      f_lazyifelse(val1, val2, big_mat1, big_mat2)
+  print 'time spent evaluating one value %f sec'%(time.clock()-tic)
+
+IfElse Op spend less time (about an half) than Switch since it computes only
+one variable instead of both.
+
+>>> python ifelse_switch.py
+time spent evaluating both values 0.6700 sec
+time spent evaluating one value 0.3500 sec
+
+Note that IfElse condition is a boolean while Switch condition is a tensor, so
+Switch is more general.
+
+It is actually important to use  ``linker='vm'`` or ``linker='cvm'``,
+otherwise IfElse will compute both variables and take the same computation
+time as the Switch Op. The linker is not currently set by default to 'cvm' but
+it will be in a near future.
+
+Loops
+-----
+
+**Scan**
+
+- General form of **recurrence**, which can be used for looping.
+- **Reduction** and **map** (loop over the leading dimensions) are special cases of Scan
+- You 'scan' a function along some input sequence, producing an output at each time-step
+- The function can see the **previous K time-steps** of your function
+- ``sum()`` could be computed by scanning the z + x(i) function over a list, given an initial state of ``z=0``.
+- Often a for-loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that Theano comes to looping.
+- The advantage of using ``scan`` over for loops
+  
+  - The number of iterations to be part of the symbolic graph
+  - Minimizes GPU transfers if GPU is involved
+  - Compute gradients through sequential steps
+  - Slightly faster then using a for loop in Python with a compiled Theano function
+  - Can lower the overall memory usage by detecting the actual amount of memory needed
+
+**Scan Example: Computing pow(A,k)**
+
+.. code-block:: python
+
+  import theano
+  import theano.tensor as T
+
+  k = T.iscalar("k"); A = T.vector("A")
+
+  def inner_fct(prior_result, A): return prior_result * A
+  # Symbolic description of the result
+  result, updates = theano.scan(fn=inner_fct,
+                              outputs_info=T.ones_like(A),
+                              non_sequences=A, n_steps=k)
+
+  # Scan has provided us with A**1 through A**k.  Keep only the last
+  # value. Scan notices this and does not waste memory saving them.
+  final_result = result[-1]
+  
+  power = theano.function(inputs=[A,k], outputs=final_result,
+                        updates=updates)
+  
+  print power(range(10),2)
+  #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+
+
+**Scan Example: Calculating a Polynomial**
+
+.. code-block:: python
+
+  import theano
+  import theano.tensor as T
+
+  coefficients = theano.tensor.vector("coefficients")
+  x = T.scalar("x"); max_coefficients_supported = 10000
+
+  # Generate the components of the polynomial
+  full_range=theano.tensor.arange(max_coefficients_supported)
+  components, updates = theano.scan(fn=lambda coeff, power, free_var:
+                                     coeff * (free_var ** power),
+                                  outputs_info=None,
+                                  sequences=[coefficients, full_range],
+                                  non_sequences=x)
+  polynomial = components.sum()
+  calculate_polynomial = theano.function(inputs=[coefficients, x],
+                                       outputs=polynomial)
+
+  test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+  print calculate_polynomial(test_coeff, 3)
+  # 19.0
+
+
+
+Exercise 4
+-----------
+
+- Run both examples 
+- Modify and execute the polynomial example to have the reduction done by scan
+
+
+
 Compilation pipeline
 --------------------
 
-.. image:: pics/pipeline.png
+.. image:: ../hpcs2011_tutorial/pics/pipeline.png
    :width: 400 px
 
 Inplace optimization
@@ -113,7 +252,7 @@ Theano output:
       - Try the Theano flag floatX=float32
     """
 
-Exercise 4
+Exercise 5
 -----------
 
 - In the last exercises, do you see a speed up with the GPU?
@@ -167,19 +306,19 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 
 >>> theano.printing.pydotprint_variables(prediction)
 
-.. image:: pics/logreg_pydotprint_prediction.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
 All pydotprint* requires graphviz and pydot
 
 >>> theano.printing.pydotprint(predict)
 
-.. image:: pics/logreg_pydotprint_predic.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
    :width: 800 px
 
 >>> theano.printing.pydotprint(train) # This is a small train example!
 
-.. image:: pics/logreg_pydotprint_train.png
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
    :width: 1500 px
 
 
@@ -206,85 +345,6 @@ Debugging
   - Few optimizations
   - Run Python code (better error messages and can be debugged interactively in the Python debugger)
 
-
-Loops
------
-
-**Scan**
-
-- General form of **recurrence**, which can be used for looping.
-- **Reduction** and **map** (loop over the leading dimensions) are special cases of Scan
-- You 'scan' a function along some input sequence, producing an output at each time-step
-- The function can see the **previous K time-steps** of your function
-- ``sum()`` could be computed by scanning the z + x(i) function over a list, given an initial state of ``z=0``.
-- Often a for-loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that Theano comes to looping.
-- The advantage of using ``scan`` over for loops
-  
-  - The number of iterations to be part of the symbolic graph
-  - Minimizes GPU transfers if GPU is involved
-  - Compute gradients through sequential steps
-  - Slightly faster then using a for loop in Python with a compiled Theano function
-  - Can lower the overall memory usage by detecting the actual amount of memory needed
-
-**Scan Example: Computing pow(A,k)**
-
-.. code-block:: python
-
-  import theano
-  import theano.tensor as T
-
-  k = T.iscalar("k"); A = T.vector("A")
-
-  def inner_fct(prior_result, A): return prior_result * A
-  # Symbolic description of the result
-  result, updates = theano.scan(fn=inner_fct,
-                              outputs_info=T.ones_like(A),
-                              non_sequences=A, n_steps=k)
-
-  # Scan has provided us with A**1 through A**k.  Keep only the last
-  # value. Scan notices this and does not waste memory saving them.
-  final_result = result[-1]
-  
-  power = theano.function(inputs=[A,k], outputs=final_result,
-                        updates=updates)
-  
-  print power(range(10),2)
-  #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
-
-
-**Scan Example: Calculating a Polynomial**
-
-.. code-block:: python
-
-  import theano
-  import theano.tensor as T
-
-  coefficients = theano.tensor.vector("coefficients")
-  x = T.scalar("x"); max_coefficients_supported = 10000
-
-  # Generate the components of the polynomial
-  full_range=theano.tensor.arange(max_coefficients_supported)
-  components, updates = theano.scan(fn=lambda coeff, power, free_var:
-                                     coeff * (free_var ** power),
-                                  outputs_info=None,
-                                  sequences=[coefficients, full_range],
-                                  non_sequences=x)
-  polynomial = components.sum()
-  calculate_polynomial = theano.function(inputs=[coefficients, x],
-                                       outputs=polynomial)
-
-  test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
-  print calculate_polynomial(test_coeff, 3)
-  # 19.0
-
-
-
-Exercise 5
------------
-
-- Run both examples 
-- Modify and execute the polynomial example to have the reduction done by scan
-
 Known limitations
 -----------------
 
@@ -303,6 +363,4 @@ Known limitations
   - A few hundreds nodes is fine
   - Disabling a few optimizations can speed up compilation
   - Usually too many nodes indicates a problem with the graph
-
-- Lazy evaluation in a branch (We will try to merge this summer)
 

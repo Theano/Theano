@@ -98,7 +98,7 @@ In order to compute the Jacobian of some function ``y`` with respect to some
 parameter ``x`` we need to use the ``scan``. What we do is to loop over the
 entries in ``y`` and compute the gradient of ``y[i]`` with respect to ``x``.
 
-.. node::
+.. note::
     
     ``scan`` is a generic op in Theano that allows writting in a symbolic
     manner all kind of recurrent equations. While in principle, creating

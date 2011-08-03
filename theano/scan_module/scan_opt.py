@@ -17,17 +17,16 @@ import numpy
 import sys
 
 import theano
-from theano import tensor, scalar
-from theano.tensor import opt, TensorType, get_constant_value
+from theano import tensor
+from theano.tensor import opt, get_constant_value
 from theano import gof
 from theano.compile import optdb
-from theano.gof.opt import EquilibriumOptimizer
 from theano import config
 from theano.compile.function_module import deep_copy_op
 
 import scan_op
 import scan_utils
-from scan_utils import clone, equal_computations, find_up, scan_args
+from scan_utils import equal_computations, find_up, scan_args
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 # Logging function for sending warning or info
@@ -454,12 +453,12 @@ class ScanSaveMem(gof.Optimizer):
                     if i > op.n_mit_mot:
                         try:
                             length = shape_of[out][0]
-                        except:
+                        except Exception:
                             length = node.inputs[0] + init_l[i]
                     else:
                         try:
                             length = shape_of[out][0]
-                        except:
+                        except Exception:
                             length = out.shape[0]
                     cf_slice = tensor.basic.get_canonical_form_slice(
                                                     this_slice[0], length)
@@ -556,7 +555,7 @@ class ScanSaveMem(gof.Optimizer):
                     else:
                         try:
                             length = shape_of[out][0]
-                        except:
+                        except Exception:
                             length = out.shape[0]
                     cf_slice = tensor.basic.get_canonical_form_slice(
                                                     this_slice[0],length)
@@ -1124,5 +1123,3 @@ scan_seqopt.register('scanOp_merge_inouts',
                      3,
                      'fast_run',
                      'scan')
-
-

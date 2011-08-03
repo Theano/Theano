@@ -1,0 +1,7 @@
+.. _tutloop:
+
+====
+Loop
+====
+
+You can use :ref:`Scan <lib_scan>` to do all type of loop in Theano. All the documentation about it is in the library for now.
