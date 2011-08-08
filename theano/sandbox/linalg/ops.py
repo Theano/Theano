@@ -438,6 +438,8 @@ class AllocDiag(Op):
         if x.type.ndim != 1:
             raise TypeError('AllocDiag only works on vectors', _x)
         return Apply(self, [x], [tensor.matrix(dtype=x.type.dtype)])
+    def grad(self, inputs, g_outputs):
+        return [extract_diag(g_outputs[0])]
     def perform(self, node, (x,), (z,)):
         if x.ndim != 1:
             raise TypeError(x)

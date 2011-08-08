@@ -48,7 +48,11 @@ def Rop(f, wrt, eval_points):
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last
         """
-    if not isinstance(wrt, (list, tuple)):
+
+    using_list = isinstance(wrt, list)
+    using_tuple = isinstance(wrt, tuple)
+
+    if not (using_list or using_tuple):
         wrt = [ wrt ]
 
     if not isinstance(eval_points, (list, tuple)):
@@ -112,8 +116,14 @@ def Rop(f, wrt, eval_points):
             rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)] )
 
     if len(rval) == 1:
+        if using_list:
+            return rval
+        if using_tuple:
+            return tuple(rval)
         return rval[0]
     else:
+        if using_tuple:
+            return tuple(rval)
         return rval
 
 
