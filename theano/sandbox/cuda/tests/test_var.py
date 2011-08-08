@@ -1,7 +1,12 @@
 import numpy
+from nose.plugins.skip import SkipTest
 
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
-from theano.sandbox.cuda import CudaNdarrayType
+from theano.sandbox.cuda import CudaNdarrayType, cuda_available
+
+# Skip test if cuda_ndarray is not available.
+if cuda_available == False:
+    raise SkipTest('Optional package cuda disabled')
 
 def test_float32_shared_constructor():
 
