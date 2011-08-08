@@ -2573,9 +2573,12 @@ def test_speed_batchrnn():
 
     #
     # This function prints out the speed of recurrent neural network
-    # calculations implemented in various ways.  In DebugMode this will test the
-    # correctness of the optimizations applied, but generally
-    # correctness-testing is not the goal of this test.
+    # calculations implemented in various ways.
+
+    # We force the mode to theano.Mode(linker='cvm'). If you manually
+    # change this code to use DebugMode this will test the correctness
+    # of the optimizations applied, but generally correctness-testing
+    # is not the goal of this test.
     #
     # To be honest, it isn't really a unit test so much as a tool for testing
     # approaches to scan.
