@@ -6,13 +6,13 @@ Deprecation (will be removed in Theano 0.5):
  * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
  * scan interface change:
    * The use of `return_steps` for specifying how many entries of the output
-   scan has been depricated
+     scan has been depricated
      * The same thing can be done by applying a subtensor on the output
-     return by scan to select a certain slice
+       return by scan to select a certain slice
   * The inner function (that scan receives) should return its outputs and
-  updates following this order:
-    [outputs], [updates], [condition]. One can skip any of the three if not
-    used, but the order has to stay unchanged.
+    updates following this order:
+      [outputs], [updates], [condition]. One can skip any of the three if not
+      used, but the order has to stay unchanged.
 
 Decrecated in 0.4.0:
  * tag.shape attribute deprecated (#633)
@@ -55,9 +55,9 @@ Optimizations:
    * Lower scan execution overhead with a Cython implementation
    * Removed scan double compilation (by using the new Op.make_thunk mechanism)
    * Certain computations from the inner graph are now Pushed out into the outer
-   graph. This means they are not re-comptued at every step of scan.
-   * Different scan ops get merged now into a single op (if possible), reducing the
-   overhead and sharing computations between the two instances
+     graph. This means they are not re-comptued at every step of scan.
+   * Different scan ops get merged now into a single op (if possible), reducing
+     the overhead and sharing computations between the two instances
 
 GPU:
 
