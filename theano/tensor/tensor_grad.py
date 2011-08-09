@@ -144,12 +144,13 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     :type eval_points: `Variable` or list of `Variable`s
         evalutation points for each of the variables in `f`
 
-    :rtype: `Variable` or list of `Variable`s depending on type of f
+    :rtype: `Variable` or list/tuple of `Variable`s depending on type of f
     :return: symbolic expression such that
         L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last
+        If `wrt` is a list/tuple, then return a list/tuple with the results.
     """
     if consider_constant is None:
         consider_constant = []
