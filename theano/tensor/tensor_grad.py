@@ -159,7 +159,10 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 
     if type(eval_points) not in (list, tuple):
         eval_points = [eval_points]
-    if type(f) not in (list, tuple):
+
+    using_list = isinstance(f, list)
+    using_tuple = isinstance(f, tuple)
+    if not (using_list or using_tuple):
         f = [f]
 
     inputs = gof.graph.inputs(f)
@@ -199,8 +202,15 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
             ret.append(zeros_like(p))
 
     if len(ret) == 1:
-        return ret[0]
+        if using_list:
+            return ret
+        elif using_tuple:
+            return tuple(ret)
+        else:
+            return ret[0]
     else:
+        if using_tuple:
+            return tuple(ret)
         return ret
 
 
