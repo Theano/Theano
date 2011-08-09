@@ -40,7 +40,7 @@ def to_gpuarray(x, copyif=False):
             if copyif:
                 x = x.copy()
             else:
-                raise ValueError("We where asked to don't copy memory, but the memory is not c contiguous.")
+                raise ValueError("We were asked to not copy memory, but the memory is not c contiguous.")
 
         # Now x is always c contiguous
         px = pycuda.gpuarray.GPUArray(x.shape, x.dtype, base=x, gpudata=x.gpudata)
