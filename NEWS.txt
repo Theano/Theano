@@ -6,6 +6,12 @@ Interface change:
    This is an interface change outside the normal release number scheme. We need
    this for pylearn2 and waiting for a futur release is not a good solution.
 
+Know bug:
+ * CAReduce with nan in inputs don't return the good output.
+   * This is used in tensor.{max,sum,mean} and in the grad of PermuteRowElements.
+   * This is not a new bug, just a bug discovered since the last release that we didn't had time to fix.
+   * Ticket: http://trac-hg.assembla.com/theano/ticket/763
+
 Deprecation (will be removed in Theano 0.5):
 
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.

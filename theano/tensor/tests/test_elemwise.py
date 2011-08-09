@@ -1,5 +1,7 @@
 import cPickle, time, unittest
 
+from numpy.testing import dec
+
 from theano.gof import Variable, Op
 from theano import gof
 
@@ -171,7 +173,8 @@ class test_CAReduce(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def with_linker(self, linker, scalar_op = add, dtype="floatX"):
+    def with_linker(self, linker, scalar_op = add, dtype="floatX",
+                    test_nan=False):
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
@@ -199,6 +202,14 @@ class test_CAReduce(unittest.TestCase):
                 xv = numpy.asarray(xv,dtype=dtype)
             else:
                 xv = numpy.asarray(xv<0.5,dtype=dtype)
+
+            if test_nan and xv.size > 0:
+                if len(xsh)>0:
+                    xv = xv.flatten()
+                    xv[0] = numpy.nan
+                    xv = xv.reshape(*xsh)
+                else:
+                    xv = numpy.asarray(numpy.nan, dtype=dtype)
             zv = xv
             numpy_raised = False
             if len(tosum)>1 and any([a<0 for a in tosum]):
@@ -255,7 +266,10 @@ class test_CAReduce(unittest.TestCase):
                 #numpy.{all,any} return bool type.
                 if scalar_op in [and_, or_]:
                     zv = numpy.asarray(zv, dtype=dtype)
-                self.assertTrue(numpy.allclose(f(xv), zv))
+                if test_nan:
+                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv), zv), (f(xv), zv))
+                else:
+                    self.assertTrue(numpy.allclose(f(xv), zv), (f(xv), zv))
 
 
             #test CAReduce.infer_shape
@@ -279,6 +293,20 @@ class test_CAReduce(unittest.TestCase):
             self.with_linker(gof.PerformLinker(), and_, dtype=dtype)
             self.with_linker(gof.PerformLinker(), xor, dtype=dtype)
 
+    @dec.knownfailureif(
+        True,
+        ("When there is nan in the input of CAReduce, we don't have a good output. "))
+    def test_perform_nan(self):
+        for dtype in ["floatX", "complex64", "complex128"]:
+            self.with_linker(gof.PerformLinker(), add, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.PerformLinker(), mul, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.PerformLinker(), maximum, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.PerformLinker(), minimum, dtype=dtype,
+                             test_nan=True)
+
     def test_c(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_linker(gof.CLinker(), add, dtype=dtype)
@@ -290,6 +318,21 @@ class test_CAReduce(unittest.TestCase):
             self.with_linker(gof.CLinker(), or_, dtype=dtype)
             self.with_linker(gof.CLinker(), and_, dtype=dtype)
             self.with_linker(gof.CLinker(), xor, dtype=dtype)
+
+    @dec.knownfailureif(
+        True,
+        ("When there is nan in the input of CAReduce, we don't have a good output. "))
+    def test_c_nan(self):
+        for dtype in ["floatX", "complex64", "complex128"]:
+            self.with_linker(gof.CLinker(), add, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.CLinker(), mul, dtype=dtype,
+                             test_nan=True)
+        for dtype in ["floatX"]:
+            self.with_linker(gof.CLinker(), minimum, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.CLinker(), maximum, dtype=dtype,
+                             test_nan=True)
 
 
 class test_Prod(unittest.TestCase):
