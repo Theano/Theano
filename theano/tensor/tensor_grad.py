@@ -150,7 +150,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last
-        If `wrt` is a list/tuple, then return a list/tuple with the results.
+        If `f` is a list/tuple, then return a list/tuple with the results.
     """
     if consider_constant is None:
         consider_constant = []
@@ -242,11 +242,12 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
 
     :rtype: `Variable` or list/tuple of `Variable`s (depending upon `wrt`)
 
-    :return: symbolic expression of gradient of `cost` with respect to
-    `wrt`.  If `wrt` is a list/tuple, then return a list/tuple
-    containing the gradient of `cost` wrt each element of the list.
-    If an element of `wrt` is not differentiable with respect to the
-    output, then a zero variable is returned.
+    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
+             If an element of `wrt` is not differentiable with respect
+             to the output, then a zero variable is returned.
+             If `wrt` is a list/tuple, longer then 1, a list will be returned.
+             DEPRECATION: In Theano 0.5, grad will return an object of the same
+             type as `wrt`: a list/tuple or TensorVariable in all case.
 
     This function is a wrapper around the more general function
     `theano.gradient.grad_sources_inputs``.
@@ -282,7 +283,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     # gradient, but for now Theano needs to throw an exception, and make the
     # user aware that it does not know how to compute that gradient
     using_list = isinstance(wrt, list)
-    using_tuple = isinstance(list, tuple)
+    using_tuple = isinstance(wrt, tuple)
     if not (using_list or using_tuple):
         wrt = [wrt]
     ret = []
@@ -307,15 +308,25 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
             ret.append(zeros_like(p))
 
     if len(ret) == 1:
-        if using_list:
-            return ret
-        elif using_tuple:
-            return tuple(ret)
-        else:
-            return ret[0]
+        if using_list or using_tuple:
+            warnings.warn(("The return type of tensor.grad will change in this "
+                           "case. In the future grad(cost, wrt) will return an "
+                           "object of the same type as wrt. So if wrt is a "
+                           "list/tuple, list/tuple will be returned. Idem for "
+                           "TensorVariable."),
+                          stacklevel=2)
+        # TODO: when we release Theano 0.5, uncomment the following lines
+        #       and remove the warning. Don't forget the line in the currently
+        #       enabled else.
+        #if using_list:
+        #    return ret
+        #elif using_tuple:
+        #    return tuple(ret)
+        #else:
+        return ret[0]
     else:
-        if using_tuple:
-            return tuple(ret)
+        #if using_tuple:
+        #    return tuple(ret)
         return ret
 
 class numeric_grad:
