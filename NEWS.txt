@@ -1,4 +1,4 @@
-Modifications in the 0.4.1 release candidate 1(28 July 2011)
+Modifications in the 0.4.1 release candidate 2(9 August 2011)
 
 Know bug:
 
