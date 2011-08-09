@@ -2,26 +2,30 @@ Modifications in the 0.4.1 release candidate 2(9 August 2011)
 
 Know bug:
 
- * CAReduce with nan in inputs don't return the good output.
+ * CAReduce with nan in inputs don't return the good output (`Ticket <http://trac-hg.assembla.com/theano/ticket/763>`_).
+
    * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
    * This is not a new bug, just a bug discovered since the last release that we didn't had time to fix.
-   * Ticket: http://trac-hg.assembla.com/theano/ticket/763
 
 Deprecation (will be removed in Theano 0.5):
 
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
  * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
  * scan interface change:
+
    * The use of `return_steps` for specifying how many entries of the output
      scan has been depricated
+
      * The same thing can be done by applying a subtensor on the output
        return by scan to select a certain slice
-  * The inner function (that scan receives) should return its outputs and
-    updates following this order:
-      [outputs], [updates], [condition]. One can skip any of the three if not
-      used, but the order has to stay unchanged.
+   * The inner function (that scan receives) should return its outputs and
+     updates following this order:
+
+        [outputs], [updates], [condition]. One can skip any of the three if not
+        used, but the order has to stay unchanged.
  * tensor.grad(cost, wrt) will return an object of the "same type" as wrt 
    (list/tuple/TensorVariable).
+
    * Currently tensor.grad return a type list when the wrt is a list/tuple of 
      more then 1 element.
 
@@ -36,14 +40,17 @@ Decrecated in 0.4.0:
 New features:
 
  * `R_op <http://deeplearning.net/software/theano/tutorial/gradients.html>`_ macro like theano.tensor.grad
+
    * Not all tests are done yet (TODO)
  * Added alias theano.tensor.bitwise_{and,or,xor,not}. They are the numpy names.
  * Updates returned by Scan (you need to pass them to the theano.function) are now a new Updates class.
    That allow more check and easier work with them. The Updates class is a subclass of dict
  * Scan can now work in a "do while" loop style.
+
    * We scan until a condition is met.
    * There is a minimum of 1 iteration(can't do "while do" style loop)
  * The "Interactive Debugger" (compute_test_value theano flags)
+
    * Now should work with all ops (even the one with only C code)
    * In the past some errors were caught and re-raised as unrelated errors (ShapeMismatch replaced with NotImplemented). We don't do that anymore.
  * The new Op.make_thunk function(introduced in 0.4.0) is now used by constant_folding and DebugMode
@@ -51,6 +58,7 @@ New features:
  * New BLAS GER implementation.
  * Insert GEMV more frequently.
  * Added new ifelse(scalar condition, rval_if_true, rval_if_false) Op.
+
    * This is a subset of the elemwise switch (tensor condition, rval_if_true, rval_if_false).
    * With the new feature in the sandbox, only one of rval_if_true or rval_if_false will be evaluated.
 
@@ -64,6 +72,7 @@ Optimizations:
  * SetSubtensor(x, x[idx], idx) -> x (when x is a constant)
  * subtensor(alloc,...) -> alloc
  * Many new scan optimization 
+
    * Lower scan execution overhead with a Cython implementation
    * Removed scan double compilation (by using the new Op.make_thunk mechanism)
    * Certain computations from the inner graph are now Pushed out into the outer
@@ -74,6 +83,7 @@ Optimizations:
 GPU:
 
  * PyCUDA/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/pycuda.html>`_.
+
    * New function to easily convert pycuda GPUArray object to and from CudaNdarray object
    * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
  * Removed a warning when nvcc is not available and the user did not requested it.
@@ -93,8 +103,10 @@ Crash fixed:
  * On Windows 32 bits when setting a complex64 to 0.
  * Compilation crash with CUDA 4
  * When wanting to copy the compilation cache from a computer to another
+
    * This can be useful for using Theano on a computer without a compiler.
- * GPU: 
+ * GPU:
+
    * Compilation crash fixed under Ubuntu 11.04
    * Compilation crash fixed with CUDA 4.0
 
@@ -105,6 +117,7 @@ Sandbox:
 Sandbox New features(not enabled by default):
 
  * New Linkers (theano flags linker={vm,cvm})
+
    * The new linker allows lazy evaluation of the new ifelse op, meaning we compute only the true or false branch depending of the condition. This can speed up some types of computation.
    * Uses a new profiling system (that currently tracks less stuff)
    * The cvm is implemented in C, so it lowers Theano's overhead.
@@ -128,9 +141,11 @@ Others:
  * Fixed some tests when SciPy is not available.
  * Don't compile anything when Theano is imported. Compile support code when we compile the first C code.
  * Python 2.4 fix:
+
    * Fix the file theano/misc/check_blas.py
    * For python 2.4.4 on Windows, replaced float("inf") with numpy.inf.
  * Removes useless inputs to a scan node
+
    * Beautification mostly, making the graph more visible. Such inputs would appear as a consequence of other optimizations
 
 Core:
