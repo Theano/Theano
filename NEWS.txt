@@ -1,5 +1,11 @@
 Modifications in the 0.4.1 release candidate 1(28 July 2011)
 
+Interface change:
+ * tensor.grad(cost, wrt) will return an object of the "same type" of wrt.
+   If wrt is a tensor variable, list or tuple, it will return the same thing.
+   This is an interface change outside the normal release number scheme. We need
+   this for pylearn2 and waiting for a futur release is not a good solution.
+
 Deprecation (will be removed in Theano 0.5):
 
  * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
