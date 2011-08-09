@@ -41,12 +41,13 @@ def Rop(f, wrt, eval_points):
     :type eval_points: `Variable` or list of `Variable`s
         evalutation points for each of the variables in `wrt`
 
-    :rtype: `Variable` or list of `Variable`s depending on type of f
+    :rtype: `Variable` or list/tuple of `Variable`s depending on type of f
     :return: symbolic expression such that
         R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
-        coordinates of the tensor element in the last
+        coordinates of the tensor element in the last.
+        If `wrt` is a list/tuple, then return a list/tuple with the results.
         """
 
     using_list = isinstance(wrt, list)
@@ -228,12 +229,13 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
+    :rtype: `Variable` or list/tuple of `Variable`s (depending upon `wrt`)
 
-    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
-    If `wrt` is a list, then return a list containing the gradient of `cost` wrt
-    each element of the list.  If an element of `wrt` is not differentiable
-    with respect to the output, then a zero variable is returned.
+    :return: symbolic expression of gradient of `cost` with respect to
+    `wrt`.  If `wrt` is a list/tuple, then return a list/tuple
+    containing the gradient of `cost` wrt each element of the list.
+    If an element of `wrt` is not differentiable with respect to the
+    output, then a zero variable is returned.
 
     This function is a wrapper around the more general function
     `theano.gradient.grad_sources_inputs``.
