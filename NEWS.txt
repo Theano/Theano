@@ -8,7 +8,7 @@ Interface change:
 
 Know bug:
  * CAReduce with nan in inputs don't return the good output.
-   * This is used in tensor.{max,sum,mean} and in the grad of PermuteRowElements.
+   * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
    * This is not a new bug, just a bug discovered since the last release that we didn't had time to fix.
    * Ticket: http://trac-hg.assembla.com/theano/ticket/763
 
