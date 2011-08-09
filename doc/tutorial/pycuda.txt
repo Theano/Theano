@@ -5,11 +5,10 @@ PyCUDA compatibility
 ====================
 
 Currently PyCUDA and Theano have different object to store GPU
-data. Both implementation don't support the same set of
-feature. Theano implementation is called CudaNdarray and support
-strides. But it support only the float32 dtype. PyCUDA implementation
-is called GPUArray and don't support stride. But it support all numpy
-and CUDA dtype.
+data. The two implementations do not support the same set of features.
+Theano's implementation is called CudaNdarray and supports
+strides. It support only the float32 dtype. PyCUDA's implementation
+is called GPUArray and doesn't support strides. Instead it can deal with all numpy and Cuda dtypes.
 
 We are currently working on having the same base object that will
 mimic numpy. Until this is ready, here is some information on how to
@@ -21,7 +20,7 @@ Transfer
 You can use the `theano.misc.pycuda_utils` module to convert GPUArray to and
 from CudaNdarray. The function `to_cudandarray(x, copyif=False)` and
 `to_gpuarray(x)` return a new object that share the same memory space
-as the original. Otherwise it raise an ValueError.As GPUArray don't
+as the original. Otherwise it raise an ValueError. Because GPUArray don't
 support strides, if the CudaNdarray is strided, we could copy it to
 have a non-strided copy. The resulting GPUArray won't share the same
 memory region. If you want this behavior, set `copyif=True` in
