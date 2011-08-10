@@ -44,8 +44,13 @@ class ScipyGer(Ger):
         def rval():
             # N.B. some versions of scipy (e.g. mine) don't actually work
             # in-place on a, even when I tell it to.
-            A = local_ger(calpha[0], cx[0], cy[0], a=cA[0],
-                    overwrite_a=int(self.destructive))
+            A = cA[0]
+            if A.flags['C_CONTIGUOUS']:
+                A = local_ger(calpha[0], cy[0], cx[0], a=A.T,
+                        overwrite_a=int(self.destructive)).T
+            else:
+                A = local_ger(calpha[0], cx[0], cy[0], a=A,
+                        overwrite_a=int(self.destructive))
             cZ[0] = A
 
         #TODO: If this is currently an unofficial part of the thunk API,
