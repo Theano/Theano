@@ -4,11 +4,9 @@ Implementations of BLAS Ops based on scipy's BLAS bindings.
 import numpy
 
 from blas import Ger, ger, ger_destructive
-from blas import Gemv
-from blas import Gemm
-from blas import blas_optdb, optdb,local_optimizer, EquilibriumOptimizer
+from blas import blas_optdb, optdb,local_optimizer
 
-import theano
+from theano.tensor.opt import in2out
 
 try:
     import scipy.linalg.blas
@@ -68,17 +66,11 @@ def use_scipy_ger(node):
 
 @local_optimizer([ScipyGer(False)])
 def make_ger_destructive(node):
-    if (node.op == ScipyGer(False) and
-        not isinstance(node.inputs[0], theano.gof.Constant)):
+    if node.op == ScipyGer(False):
         return [ScipyGer(True)(*node.inputs)]
 
-use_scipy_blas = EquilibriumOptimizer(
-        [use_scipy_ger],
-        max_use_ratio=5)
-
-make_scipy_blas_destructive = EquilibriumOptimizer(
-        [make_ger_destructive],
-        max_use_ratio=5)
+use_scipy_blas = in2out(use_scipy_ger)
+make_scipy_blas_destructive = in2out(make_ger_destructive)
 
 if have_fblas:
     # scipy_blas is scheduled in the blas_optdb very late, because scipy sortof
