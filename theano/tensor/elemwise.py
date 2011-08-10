@@ -727,13 +727,19 @@ class Elemwise(Op):
             raise
         if nout == 1:
             variables = [variables]
-        for variable, storage in zip(variables, output_storage):
+        for variable, storage, nout in zip(variables, output_storage, node.outputs):
+            if str(getattr(variable, "dtype", "")) == 'object':
+                # Since numpy 1.6, function created with numpy.frompyfunc
+                # always return an ndarray with dtype object
+                variable = numpy.asarray(variable, dtype=nout.dtype)
             if hasattr(variable,'shape') and storage[0].shape != variable.shape:
                 storage[0].resize(variable.shape)
+
             if storage[0].shape:
                 storage[0][:] = variable
             else:
                 storage[0].itemset(variable)
+            assert str(storage[0].dtype) != 'object'
         # the following should be used instead of the previous loop, unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
