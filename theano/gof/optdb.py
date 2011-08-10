@@ -168,7 +168,7 @@ class EquilibriumDB(DB):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         return opt.EquilibriumOptimizer(opts,
                 max_depth=5,
-                max_use_ratio=50,#upgraded to 50 to avoid equibriumOptimizer
+                max_use_ratio=20,#upgraded to 20 to avoid equibriumOptimizer
                                 # to be max'ed out by constant folding (can
                                         # I increase the max ratio only for
                                         # constant folding somehow?
