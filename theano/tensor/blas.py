@@ -478,12 +478,8 @@ class GemmRelated(Op):
                 (long int)Ny[1], (long int)Nz[1]);
             %(fail)s;
         }
-        if (Nx[1] == 0)
-        {
-            PyErr_Format(PyExc_ValueError,
-                "Undefined semantics: x has 0 cols");
-            %(fail)s;
-        }
+// We must not raise an error when Nx[1] == 0. This would disable case
+// that numpy.dot accept.
         """
 
     check_strides = """
@@ -643,7 +639,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (7,)
+        return (8,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
