@@ -6,6 +6,7 @@ from basic import *
 import opt
 import opt_uncanonicalize
 import blas
+import blas_scipy
 import xlogx
 
 import raw_random, randomstreams

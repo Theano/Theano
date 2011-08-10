@@ -238,9 +238,9 @@ class Ger(Op):
 
     def __str__(self):
         if self.destructive:
-            return 'Ger{destructive}'
+            return '%s{destructive}' % self.__class__.__name__
         else:
-            return 'Ger{non-destructive}'
+            return '%s{non-destructive}' % self.__class__.__name__
 
     def make_node(self, A, alpha, x, y):
         A = T.as_tensor_variable(A)
@@ -1418,11 +1418,12 @@ blas_optdb.register('local_gemm_to_gemv',
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
-optdb.register('InplaceBlasOpt',
-        EquilibriumOptimizer(
+blas_opt_inplace = EquilibriumOptimizer(
             [local_inplace_gemm, local_inplace_gemv, local_inplace_ger],
             failure_callback=EquilibriumOptimizer.warn_inplace,
-            max_use_ratio=5),
+            max_use_ratio=5)
+optdb.register('InplaceBlasOpt',
+        blas_opt_inplace,
         70.0, 'fast_run', 'inplace')
 
 class Dot22Scalar(GemmRelated):
