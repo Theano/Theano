@@ -792,7 +792,7 @@ class TestGemv(TestCase):
         ''' Test vector dot matrix '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
+        m = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
         f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
 
         # Assert they produce the same output
@@ -808,7 +808,7 @@ class TestGemv(TestCase):
         ''' Test matrix dot vector '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(2,2)),
+        m = theano.shared(numpy.array(rng.uniform(size=(3,2)),
                                        dtype='float32'))
         f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
 
@@ -822,12 +822,12 @@ class TestGemv(TestCase):
                     f.maker.env.toposort() ]) == 1
 
     def test_gemv1(self):
-        ''' test vector1+dot(matrix,vector2) '''
+        ''' test vector2+dot(matrix,vector1) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(2,)), dtype='float32')
+        v2_orig = numpy.array(rng.uniform(size=(3,)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m  = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
+        m  = theano.shared(numpy.array(rng.uniform(size=(3,2)), dtype='float32'))
 
         f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
 
@@ -854,12 +854,12 @@ class TestGemv(TestCase):
             assert topo[0].op.inplace==True
 
     def test_gemv2(self):
-        ''' test vector1+dot(vector2,matrix) '''
+        ''' test vector2+dot(vector1,matrix) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(2,)), dtype='float32')
+        v2_orig = numpy.array(rng.uniform(size=(3,)), dtype='float32')
         v2 = theano.shared(v2_orig )
-        m  = theano.shared(numpy.array(rng.uniform(size=(2,2)), dtype='float32'))
+        m  = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
 
         f = theano.function([], v2+theano.dot(v1,m), mode = mode_blas_opt)
 
