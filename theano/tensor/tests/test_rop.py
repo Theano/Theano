@@ -236,6 +236,18 @@ class test_RopLop(unittest.TestCase):
         out = tensor.set_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
+    def test_dimshuffle(self):
+        # I need the sum, because the setup expects the output to be a
+        # vector
+        self.check_rop_lop(self.x[:4].dimshuffle('x',0).sum(axis=0),
+                           (4,))
+
+    def test_rebroadcast(self):
+        # I need the sum, because the setup expects the output to be a
+        # vector
+        self.check_rop_lop(tensor.unbroadcast(self.x[:4].dimshuffle('x',0),0).sum(axis=1),
+                           (1,))
+
 
     def test_join(self):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
@@ -258,6 +270,21 @@ class test_RopLop(unittest.TestCase):
     def test_elemwise1(self):
         self.check_rop_lop( self.x+tensor.cast(self.x, 'int32'),
                            self.in_shape)
+
+
+
+
+    def test_reshape(self):
+        new_shape = tensor.constant( numpy.asarray([
+            self.mat_in_shape[0]*self.mat_in_shape[1]],
+            dtype = 'int64'))
+
+        self.check_mat_rop_lop(self.mx.reshape(new_shape),
+                               (self.mat_in_shape[0]*self.mat_in_shape[1],))
+
+    def test_flatten(self):
+        self.check_mat_rop_lop(self.mx.flatten(),
+                               (self.mat_in_shape[0]*self.mat_in_shape[1],))
 
     def test_sum(self):
         self.check_mat_rop_lop(self.mx.sum(axis=1), (self.mat_in_shape[0],))
