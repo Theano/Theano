@@ -4262,6 +4262,8 @@ def get_vector_length(v):
     v = as_tensor_variable(v)
     if v.ndim != 1:
         raise TypeError('argument must be symbolic vector')
+    if v.type.broadcastable[0]:
+        return 1
     if isinstance(v, gof.Constant) and v.type.ndim == 1:
         return len(v.data)
     if v.owner and isinstance(v.owner.op, Join):
