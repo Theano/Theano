@@ -821,13 +821,14 @@ class TestGemv(TestCase):
         assert sum([isinstance(node.op, T.blas.Dot22) for node in
                     f.maker.env.toposort() ]) == 1
 
-    def test_gemv1(self):
+    @staticmethod
+    def t_gemv1(m_shp):
         ''' test vector2+dot(matrix,vector1) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(3,)), dtype='float32')
+        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)), dtype='float32'))
+        v2_orig = numpy.array(rng.uniform(size=(m_shp[0],)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m  = theano.shared(numpy.array(rng.uniform(size=(3,2)), dtype='float32'))
+        m  = theano.shared(numpy.array(rng.uniform(size=m_shp), dtype='float32'))
 
         f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
 
@@ -852,6 +853,12 @@ class TestGemv(TestCase):
         assert isinstance(topo[0].op, Gemv)
         if config.mode != 'FAST_COMPILE':
             assert topo[0].op.inplace==True
+
+    def test_gemv1(self):
+        self.t_gemv1((3,2))
+        self.t_gemv1((0,2))
+        self.t_gemv1((3,0))
+        self.t_gemv1((0,0))
 
     def test_gemv2(self):
         ''' test vector2+dot(vector1,matrix) '''
