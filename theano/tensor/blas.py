@@ -205,9 +205,14 @@ class Gemv(Op):
             #out_storage[0][0] = gemv(alpha, A, x, beta, y, overwrite_y=self.inplace)
             out_storage[0][0] = gemv(alpha, A.T, x, beta, y, overwrite_y=self.inplace, trans=True)
         else:
-            out_storage[0][0] = numpy.asarray(
-                    beta * y + alpha * numpy.dot(A, x)
-                    , dtype=y.dtype)
+            out = numpy.dot(A, x)
+            if alpha != 1:
+                out *= alpha
+            if beta != 1:
+                out +=  beta * y
+            else:
+                out += y
+            out_storage[0][0] = numpy.asarray(out, dtype=y.dtype)
 
 gemv_no_inplace = Gemv(inplace=False)
 gemv_inplace = Gemv(inplace=True)
@@ -276,7 +281,10 @@ class Ger(Op):
                 A = cA[0]
             else:
                 A = cA[0].copy()
-            A += calpha[0] * numpy.outer(cx[0], cy[0])
+            if calpha[0] != 1:
+                A += calpha[0] * numpy.outer(cx[0], cy[0])
+            else:
+                A += numpy.outer(cx[0], cy[0])
             cZ[0] = A
 
         #TODO: If this is currently an unofficial part of the thunk API,
