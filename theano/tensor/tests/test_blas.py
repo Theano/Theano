@@ -25,6 +25,7 @@ from theano import Param, shared, config
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
         compile, inplace)
         #, constant, eval_outputs)
+import theano.tensor.blas_scipy
 
 if config.mode == 'FAST_COMPILE':
     mode_not_fast_compile = 'FAST_RUN'
@@ -1314,6 +1315,9 @@ class TestOptimizationMixin(object):
     def assertFunctionContainsN(self, f, op, N):
         return self.assertFunctionContains(f, op, min=N, max=N)
 
+    def SkipTest(self):
+        raise Exception('how do I skip this test properly?')
+
 class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
 
     def setUp(self):
@@ -1323,6 +1327,11 @@ class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
         self.a = T.tensor(dtype=dtype, broadcastable=())
         self.x = T.tensor(dtype=dtype, broadcastable=(False,))
         self.y = T.tensor(dtype=dtype, broadcastable=(False,))
+        self.origval = theano.tensor.blas_scipy.optimizations_enabled
+        theano.tensor.blas_scipy.optimizations_enabled = False
+
+    def tearDown(self):
+        theano.tensor.blas_scipy.optimizations_enabled = self.origval
 
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs, self.mode)
