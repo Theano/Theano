@@ -8,6 +8,7 @@ from blas import Gemv
 from blas import Gemm
 from blas import blas_optdb, optdb,local_optimizer, EquilibriumOptimizer
 
+import theano
 
 try:
     import scipy.linalg.blas
@@ -67,7 +68,8 @@ def use_scipy_ger(node):
 
 @local_optimizer([ScipyGer(False)])
 def make_ger_destructive(node):
-    if node.op == ScipyGer(False):
+    if (node.op == ScipyGer(False) and
+        not isinstance(node.inputs[0], theano.gof.Constant)):
         return [ScipyGer(True)(*node.inputs)]
 
 use_scipy_blas = EquilibriumOptimizer(
