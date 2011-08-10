@@ -6,6 +6,8 @@ __docformat__ = "restructuredtext en"
 
 import numpy
 
+import theano
+
 def _asarray(a, dtype, order=None):
     """Convert the input to a Numpy array.
 
@@ -26,6 +28,8 @@ def _asarray(a, dtype, order=None):
     used internally. It is imported so as to be available directly through
         theano._asarray
     """
+    if dtype == 'floatX':
+        dtype = theano.config.floatX
     dtype = numpy.dtype(dtype)  # Convert into dtype object.
     rval = numpy.asarray(a, dtype=dtype, order=order)
     # Note that dtype comparison must be done by comparing their `num`
