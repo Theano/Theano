@@ -52,4 +52,3 @@ def _asarray(a, dtype, order=None):
                     (dtype, dtype.num, rval.dtype, rval.dtype.num))
     else:
         return rval
-
