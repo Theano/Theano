@@ -28,94 +28,111 @@ def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
 
 def test_dot22():
+    def cmp(a_shp, b_shp):
+        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
 
-    a = tcn.shared_constructor(my_rand(4,4), 'a')
+        b = tensor.fmatrix()
 
-    b = tensor.fmatrix()
+        f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
-    f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
+        a0 = a.get_value() * 1.0
+        bval = my_rand(*b_shp)
+        f(bval)
 
-    a0 = a.get_value() * 1.0
-    print a0
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
-    bval = my_rand(4,4)
-    f(bval)
-    print a.get_value()
+        assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
 
-    assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
+    cmp((3,4),(4,5))
+    cmp((0,4),(4,5))
+    cmp((3,4),(4,0))
+    cmp((3,0),(0,5))
+    cmp((0,4),(4,0))
+    cmp((0,0),(0,0))
 
 def test_dot22scalar():
-    a = tensor.fmatrix()
-    b = tensor.fmatrix()
-    scalar = tensor.fscalar()
-    av = my_rand(4,4)
-    bv = my_rand(4,4)
+    def cmp(a_shp, b_shp):
+        a = tensor.fmatrix()
+        b = tensor.fmatrix()
+        scalar = tensor.fscalar()
+        av = my_rand(*a_shp)
+        bv = my_rand(*b_shp)
 
-    f = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'), mode=mode_with_gpu)
-    f2 = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'))
-    t=f.maker.env.toposort()
-    assert len(t)==4
-    assert isinstance(t[0].op,tcn.GpuFromHost)
-    assert isinstance(t[1].op,tcn.GpuFromHost)
-    assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
-    assert isinstance(t[3].op,tcn.HostFromGpu)
-    assert numpy.allclose(f(av,bv),f2(av,bv))
+        f = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'), mode=mode_with_gpu)
+        f2 = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'))
+        t=f.maker.env.toposort()
+        assert len(t)==4
+        assert isinstance(t[0].op,tcn.GpuFromHost)
+        assert isinstance(t[1].op,tcn.GpuFromHost)
+        assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
+        assert isinstance(t[3].op,tcn.HostFromGpu)
+        assert numpy.allclose(f(av,bv),f2(av,bv))
 
-    f = theano.function([a,b,scalar], tensor.dot(a,b)*scalar, mode=mode_with_gpu)
-    f2 = theano.function([a,b,scalar], tensor.dot(a,b)*scalar)
-    t=f.maker.env.toposort()
-    assert len(t)==4
-    assert isinstance(t[0].op,tcn.GpuFromHost)
-    assert isinstance(t[1].op,tcn.GpuFromHost)
-    assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
-    assert isinstance(t[3].op,tcn.HostFromGpu)
-    assert numpy.allclose(f(av,bv,0.5),f2(av,bv,0.5))
+        f = theano.function([a,b,scalar], tensor.dot(a,b)*scalar, mode=mode_with_gpu)
+        f2 = theano.function([a,b,scalar], tensor.dot(a,b)*scalar)
+        t=f.maker.env.toposort()
+        assert len(t)==4
+        assert isinstance(t[0].op,tcn.GpuFromHost)
+        assert isinstance(t[1].op,tcn.GpuFromHost)
+        assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
+        assert isinstance(t[3].op,tcn.HostFromGpu)
+        assert numpy.allclose(f(av,bv,0.5),f2(av,bv,0.5))
+
+    cmp((3,4),(4,5))
+    cmp((0,4),(4,5))
+    cmp((3,4),(4,0))
+    cmp((3,0),(0,5))
+    cmp((0,4),(4,0))
+    cmp((0,0),(0,0))
 
 def test_gemm():
+    def cmp(a_shp, b_shp):
+        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
 
-    a = tcn.shared_constructor(my_rand(4,4), 'a')
+        b = tensor.fmatrix('b')
+        c = tensor.fmatrix('c')
 
-    b = tensor.fmatrix('b')
-    c = tensor.fmatrix('c')
+        f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
+        assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
-    f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
-    assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
+        a0 = a.get_value() * 1.0
+        bval = my_rand(*b_shp)
+        cval = my_rand(a_shp[0],b_shp[1])
+        f(bval,cval)
 
-    a0 = a.get_value() * 1.0
-    print a0
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
-    bval = my_rand(4,4)
-    cval = my_rand(4,4)
-    f(bval,cval)
-    print a.get_value()
-
-    assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
+        assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
+    cmp((3,4),(4,5))
+    cmp((0,4),(4,5))
+    cmp((3,4),(4,0))
+    cmp((3,0),(0,5))
+    cmp((0,4),(4,0))
+    cmp((0,0),(0,0))
 
 def test_gemm_no_inplace():
 
-    a = tcn.shared_constructor(my_rand(4,4), 'a')
-    cval = my_rand(4,4)
-    c = tcn.shared_constructor(cval.copy(), 'c')
+    def cmp(a_shp, b_shp):
+        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        cval = my_rand(a_shp[0], b_shp[1])
+        c = tcn.shared_constructor(cval.copy(), 'c')
 
-    b = tcn.fmatrix('b')
-    b2 = tcn.fmatrix('b2')
+        b = tcn.fmatrix('b')
+        b2 = tcn.fmatrix('b2')
 
-    f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
+        f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
 
-    a0 = a.get_value() * 1.0
-    #print a0
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
-    assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
-    bval = my_rand(4,4)
-    bval2 = my_rand(4,4)
-    rval = f(bval,bval2)
-    #print a.get_value()
+        a0 = a.get_value() * 1.0
+        assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
+        bval = my_rand(*b_shp)
+        bval2 = my_rand(*b_shp)
+        rval = f(bval,bval2)
 
-    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
-    assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
+        assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
+        assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
+
+    cmp((3,4),(4,5))
+    cmp((0,4),(4,5))
+    cmp((3,4),(4,0))
+    cmp((3,0),(0,5))
+    cmp((0,4),(4,0))
+    cmp((0,0),(0,0))
 
 def test_outer():
     x = tcn.shared_constructor(my_rand(8,), 'x')

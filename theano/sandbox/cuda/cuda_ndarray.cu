@@ -2720,10 +2720,10 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     if (B->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg to gemm"); return -1; }
     if (C->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg to gemm"); return -1; }
 
+    // We must allow dimensions to be zeros.
     if ((CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(B)[0])
             || (CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(C)[0])
-            || (CudaNdarray_HOST_DIMS(B)[1] != CudaNdarray_HOST_DIMS(C)[1])
-            || (CudaNdarray_HOST_DIMS(A)[1] == 0))
+            || (CudaNdarray_HOST_DIMS(B)[1] != CudaNdarray_HOST_DIMS(C)[1]))
     {
         PyErr_Format(PyExc_ValueError, "dimension mismatch in args to gemm (%i,%i)x(%i,%i)->(%i,%i)",
                 CudaNdarray_HOST_DIMS(A)[0],
@@ -2814,6 +2814,9 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     //TODO: recognize the negative stride and make a copy of the offending argument,
     //rather than aborting
 #define CHK_STRIDE_SGEMM(T0, T1, D0, D1, D2, a, x, sx, y, sy, b, z, sz) \
+    if (sx == 0){sx = 1;}\
+    if (sy == 0){sy = 1;}\
+    if (sz == 0){sz = 1;}\
     if ((sx > 0) && (sy > 0) && (sz > 0)) { \
         cublasSgemm(T0, T1, D0, D1, D2, a, x, sx, y, sy, b, z, sz); \
     } else { \
