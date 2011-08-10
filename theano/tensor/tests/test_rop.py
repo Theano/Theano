@@ -54,7 +54,7 @@ import unittest
 from theano.tests  import unittest_tools as utt
 from theano import function
 import theano
-import theano.tensor as TT
+from theano import tensor
 import numpy
 from theano.gof import Op, Apply
 
@@ -89,19 +89,19 @@ class test_RopLop(unittest.TestCase):
     def setUp(self):
         # Using vectors make things a lot simpler for generating the same
         # computations using scan
-        self.x = TT.vector('x')
-        self.v = TT.vector('v')
+        self.x = tensor.vector('x')
+        self.v = tensor.vector('v')
         self.rng  = numpy.random.RandomState(utt.fetch_seed())
         self.in_shape = ( 5+self.rng.randint(30),)
-        self.mx = TT.matrix('mx')
-        self.mv = TT.matrix('mv')
+        self.mx = tensor.matrix('mx')
+        self.mv = tensor.matrix('mv')
         self.mat_in_shape = ( 5 + self.rng.randint(30),
                              5+self.rng.randint(30))
 
     def check_nondiff_rop(self, y):
         raised = False
         try:
-            tmp = TT.Rop(y, self.x, self.v)
+            tmp = tensor.Rop(y, self.x, self.v)
         except ValueError:
             raised = True
         if not raised:
@@ -112,10 +112,10 @@ class test_RopLop(unittest.TestCase):
     def check_mat_rop_lop(self, y, out_shape):
         vx = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
         vv = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
-        yv = TT.Rop(y, self.mx, self.mv)
+        yv = tensor.Rop(y, self.mx, self.mv)
         rop_f = function([self.mx, self.mv], yv)
-        sy, _ = theano.scan( lambda i,y,x,v: (TT.grad(y[i],x)*v).sum(),
-                           sequences = TT.arange(y.shape[0]),
+        sy, _ = theano.scan( lambda i,y,x,v: (tensor.grad(y[i],x)*v).sum(),
+                           sequences = tensor.arange(y.shape[0]),
                            non_sequences = [y,self.mx,self.mv])
         scan_f = function([self.mx,self.mv], sy)
 
@@ -129,10 +129,10 @@ class test_RopLop(unittest.TestCase):
                                              replace={self.mx:break_op(self.mx)}))
 
         vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
-        yv = TT.Lop(y, self.mx, self.v)
+        yv = tensor.Lop(y, self.mx, self.v)
         lop_f = function([self.mx, self.v], yv)
 
-        sy = TT.grad((self.v*y).sum(), self.mx)
+        sy = tensor.grad((self.v*y).sum(), self.mx)
         scan_f = function([self.mx, self.v], sy)
 
 
@@ -147,12 +147,12 @@ class test_RopLop(unittest.TestCase):
         vx = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
         vv = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
 
-        yv = TT.Rop(y,self.x,self.v)
+        yv = tensor.Rop(y,self.x,self.v)
         rop_f = function([self.x,self.v], yv)
-        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
-                           sequences = TT.arange(y.shape[0]),
+        J, _ = theano.scan( lambda i,y,x: tensor.grad(y[i],x),
+                           sequences = tensor.arange(y.shape[0]),
                            non_sequences = [y,self.x])
-        sy = TT.dot(J, self.v)
+        sy = tensor.dot(J, self.v)
 
         scan_f = function([self.x,self.v], sy)
 
@@ -167,12 +167,12 @@ class test_RopLop(unittest.TestCase):
         vx = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
         vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
 
-        yv = TT.Lop(y,self.x,self.v)
+        yv = tensor.Lop(y,self.x,self.v)
         lop_f = function([self.x,self.v], yv)
-        J, _ = theano.scan( lambda i,y,x: TT.grad(y[i],x),
-                           sequences = TT.arange(y.shape[0]),
+        J, _ = theano.scan( lambda i,y,x: tensor.grad(y[i],x),
+                           sequences = tensor.arange(y.shape[0]),
                            non_sequences = [y,self.x])
-        sy = TT.dot(self.v, J)
+        sy = tensor.dot(self.v, J)
 
         scan_f = function([self.x,self.v], sy)
 
@@ -185,22 +185,22 @@ class test_RopLop(unittest.TestCase):
         self.check_nondiff_rop( self.x.shape[0])
 
     def test_specifyshape(self):
-        self.check_rop_lop(TT.specify_shape(self.x, self.in_shape),
+        self.check_rop_lop(tensor.specify_shape(self.x, self.in_shape),
                            self.in_shape)
 
 
     def test_max(self):
         ## If we call max directly, we will return an CAReduce object
         ## and he don't have R_op implemented!
-        #self.check_mat_rop_lop(TT.max(self.mx, axis=[0,1])[0],
+        #self.check_mat_rop_lop(tensor.max(self.mx, axis=[0,1])[0],
         #                       ())
-        self.check_mat_rop_lop(TT.max(self.mx, axis=0),
+        self.check_mat_rop_lop(tensor.max(self.mx, axis=0),
                                (self.mat_in_shape[1],))
-        self.check_mat_rop_lop(TT.max(self.mx, axis=1),
+        self.check_mat_rop_lop(tensor.max(self.mx, axis=1),
                                (self.mat_in_shape[0],))
 
     def test_argmax(self):
-        self.check_nondiff_rop(TT.argmax(self.mx,axis=1))
+        self.check_nondiff_rop(tensor.argmax(self.mx,axis=1))
 
     def test_subtensor(self):
         self.check_rop_lop(self.x[:4], (4,))
@@ -209,7 +209,7 @@ class test_RopLop(unittest.TestCase):
         tv = numpy.asarray( self.rng.uniform(size=(3,)),
                            theano.config.floatX)
         t = theano.shared(tv)
-        out = TT.inc_subtensor(self.x[:3], t)
+        out = tensor.inc_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
 
@@ -217,7 +217,7 @@ class test_RopLop(unittest.TestCase):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
-        out = TT.inc_subtensor(t[:4], self.x[:4])
+        out = tensor.inc_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
 
@@ -225,7 +225,7 @@ class test_RopLop(unittest.TestCase):
         tv = numpy.asarray( self.rng.uniform(size=(3,)),
                            theano.config.floatX)
         t = theano.shared(tv)
-        out = TT.set_subtensor(self.x[:3], t)
+        out = tensor.set_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
 
@@ -233,7 +233,7 @@ class test_RopLop(unittest.TestCase):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
-        out = TT.set_subtensor(t[:4], self.x[:4])
+        out = tensor.set_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
 
@@ -241,7 +241,7 @@ class test_RopLop(unittest.TestCase):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
-        out = TT.join(0, self.x, t)
+        out = tensor.join(0, self.x, t)
         self.check_rop_lop(out, (self.in_shape[0]+10,))
 
     def test_dot(self):
@@ -249,14 +249,14 @@ class test_RopLop(unittest.TestCase):
         vW   = numpy.asarray(self.rng.uniform(size=(insh,insh)),
                            theano.config.floatX)
         W = theano.shared(vW)
-        self.check_rop_lop( TT.dot(self.x, W), self.in_shape)
+        self.check_rop_lop( tensor.dot(self.x, W), self.in_shape)
 
 
     def test_elemwise0(self):
         self.check_rop_lop( (self.x+1)**2, self.in_shape)
 
     def test_elemwise1(self):
-        self.check_rop_lop( self.x+TT.cast(self.x, 'int32'),
+        self.check_rop_lop( self.x+tensor.cast(self.x, 'int32'),
                            self.in_shape)
 
     def test_sum(self):
@@ -265,15 +265,15 @@ class test_RopLop(unittest.TestCase):
 
     def test_softmax(self):
         # Softmax adds an extra dimnesion !
-        self.check_rop_lop( TT.nnet.softmax(self.x)[0], self.in_shape[0])
+        self.check_rop_lop( tensor.nnet.softmax(self.x)[0], self.in_shape[0])
 
     def test_alloc(self):
         # Alloc of the sum of x into a vector
-        out1d = TT.alloc(self.x.sum(), self.in_shape[0])
+        out1d = tensor.alloc(self.x.sum(), self.in_shape[0])
         self.check_rop_lop(out1d, self.in_shape[0])
 
         # Alloc of x into a 3-D tensor, flattened
-        out3d = TT.alloc(self.x,
+        out3d = tensor.alloc(self.x,
                 self.mat_in_shape[0], self.mat_in_shape[1], self.in_shape[0])
         self.check_rop_lop(out3d.flatten(),
                 self.mat_in_shape[0] * self.mat_in_shape[1] * self.in_shape[0])
