@@ -1179,6 +1179,9 @@ def _approx_eq(a,b,eps=1.0e-4):
             print a.shape, b.shape
         return False
     abs_rel_err = numeric_grad.abs_rel_err(a,b)
+    # numpy.max don't like empty ndarray.
+    if a.size == b.size == 0:
+        return True
     if numpy.max(abs_rel_err) >= eps:
         if _approx_eq.debug:
             print a, b
