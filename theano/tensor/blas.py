@@ -149,7 +149,7 @@ class Gemv(Op):
     A is matrix
     x, y are vectors
     alpha, beta are scalars
-
+    output is a vector that can be inplace on y
     """
     def __init__(self, inplace):
         self.inplace=inplace
@@ -1362,13 +1362,13 @@ def local_gemm_to_ger(node):
                 return
 
             if bval == 1:   # best case a natural GER
-                rval = Ger(destructive=False)(z, a, xv, yv)
+                rval = ger(z, a, xv, yv)
                 return [rval]
             elif bval == 0:   # GER on zeros_like should be faster than GEMM
                 zeros = T.alloc(
                         numpy.asarray(0, dtype=x.dtype),
                         x.shape[0], y.shape[1])
-                rval = Ger(destructive=False)(zeros, a, xv, yv)
+                rval = ger(zeros, a, xv, yv)
                 return [rval]
             else:
                 # if bval is another constant, then z is being usefully
@@ -1391,7 +1391,7 @@ def local_dot22_to_ger(node):
 
             one = T.as_tensor_variable(numpy.asarray(1, dtype=x.dtype))
             zeros = T.alloc(numpy.asarray(0, dtype=x.dtype), x.shape[0], y.shape[1])
-            rval = Ger(destructive=False)(zeros, one, xv, yv)
+            rval = ger(zeros, one, xv, yv)
             return [rval]
 
 #################################
