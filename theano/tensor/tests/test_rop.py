@@ -29,19 +29,22 @@ list of ops that support R-op:
     * Softmax
     * Shape
     * Join
+    * Rebroadcast
+    * Reshape
+    * Flatten
+    * DimShuffle
+    * Scan [ RP: scan has a test in scan_module/tests/test_scan.test_rop ]
+
 
  * without test
     * Split
     * ARange
     * ScalarFromTensor
-    * Rebroadcast
-    * Reshape
-    * Flatten
     * AdvancedSubtensor1
     * AdvancedIncSubtensor1
     * AdvancedIncSubtensor
-    * DimShuffle
-    * Scan [ RP: scan has a test in scan_module/tests/test_scan.test_rop ]
+
+
 
 
 
