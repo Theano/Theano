@@ -730,7 +730,17 @@ class Scan(PureOp):
                 output_storage[pdx].storage[0] = None
             # 5. compute outputs
             t0_fn = time.time()
-            fn()
+            try:
+                fn()
+            except Exception:
+                if hasattr(fn, 'position_of_error'):
+                    # this is a new vm-provided function
+                    # the C VM needs this because the exception manipulation
+                    # done by raise_with_op is not implemented in C.
+                    gof.vm.raise_with_op(fn.nodes[fn.position_of_error])
+                else:
+                    # old-style linkers raise their own exceptions
+                    raise
             dt_fn = time.time() - t0_fn
             if self.as_while:
                 pdx = offset + self.n_shared_outs
