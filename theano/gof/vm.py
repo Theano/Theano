@@ -102,7 +102,7 @@ class VM(object):
             profile.apply_time[node] += t
 
             profile.apply_callcount.setdefault(node,0)
-            profile.apply_callcount[node] = c
+            profile.apply_callcount[node] += c
 
             profile.apply_cimpl[node] = hasattr(thunk,'cthunk')
 
