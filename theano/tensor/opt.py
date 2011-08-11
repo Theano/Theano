@@ -1291,7 +1291,7 @@ def local_useless_subtensor(node):
                 # tracker keep. Subtensor accept any scalar int{8,16,32,64}
                 # as index type.
                 assert str(length_pos.type.dtype) == "int64"
-                assert str(length_pos_shape_i.type.dtype) in ["int8", "int16", 
+                assert str(length_pos_shape_i.type.dtype) in ["int8", "int16",
                                                               "int32", "int64"]
                 # We already know that start and step are not variables
                 # and so they don't appear in the input of the node

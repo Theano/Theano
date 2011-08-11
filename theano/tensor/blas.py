@@ -1608,4 +1608,3 @@ from opt import register_specialize, register_canonicalize
 def local_print_as_we_go_along(node):
     if node.op in (T.sub, T.add):
         debugprint(node)
-
