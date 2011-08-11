@@ -118,10 +118,7 @@ def hash_listsDictsTuples(x):
         for v in x:
             hash_value ^= hash_listsDictsTuples(v)
     else:
-        try:
-            hash_value ^= hash(x)
-        except:
-            pass
+        hash_value ^= hash(x)
     return hash_value
 
 
