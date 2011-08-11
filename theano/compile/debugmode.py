@@ -152,7 +152,7 @@ class BadCLinkerOutput(DebugModeError):
             print >> ssio, numpy.isnan(self.val_py).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
         try:
             ssio = StringIO()
@@ -166,7 +166,7 @@ class BadCLinkerOutput(DebugModeError):
             print >> ssio, numpy.isnan(self.val_c).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
         try:
             ov=numpy.asarray(self.val_c)
@@ -184,7 +184,7 @@ class BadCLinkerOutput(DebugModeError):
             print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
         return sio.getvalue()
 
@@ -246,7 +246,7 @@ class BadOptimization(DebugModeError):
             print >> ssio, self.old_r_val.strides
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
 
         str_old_r_val = str(self.old_r_val)
@@ -263,7 +263,7 @@ class BadOptimization(DebugModeError):
             print >> ssio, self.new_r_val.strides
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
         str_new_r_val = str(self.new_r_val)
         if len(str_new_r_val) > val_str_len_limit:
@@ -286,7 +286,7 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
-        except:
+        except Exception:
             pass
 
         print >> sio, "  Reason: ", str(self.reason)
@@ -400,7 +400,7 @@ class InvalidValueError(DebugModeError):
             v_min = v.min()
             v_max = v.max()
             v_isfinite = numpy.all(numpy.isfinite(v))
-        except:
+        except Exception:
             pass
         client_node = self.client_node
         hint = self.hint
@@ -687,7 +687,7 @@ def _check_strides_match(a, b, warn_err, op):
 
     try:
         strides_eq = a.strides == b.strides
-    except:
+    except Exception:
         return # no strides
 
     if not strides_eq:
@@ -1435,7 +1435,7 @@ class _Linker(gof.link.LocalLinker):
                         ## First time, with None in output_storage
                         try:
                             thunk_c()
-                        except:
+                        except Exception:
                             raise_with_op(node)
 
                         for r in node.outputs:
@@ -1475,7 +1475,7 @@ class _Linker(gof.link.LocalLinker):
                             def thunk():
                                 try:
                                     thunk_c()
-                                except:
+                                except Exception:
                                     raise_with_op(node)
                             _logger.debug(
                                     '%i - calling _check_preallocated_output '
@@ -1547,7 +1547,7 @@ class _Linker(gof.link.LocalLinker):
                                 storage_map[r][0].itemset(dr_vals[r][0])
                         else:
                             storage_map[r][0] = dr_vals[r][0]
-            except:
+            except Exception:
                 # Restore the initial state of storage_map
                 for r in storage_map:
                     if r in original_storage_map_keys:

@@ -118,10 +118,7 @@ def hash_listsDictsTuples(x):
         for v in x:
             hash_value ^= hash_listsDictsTuples(v)
     else:
-        try:
-            hash_value ^= hash(x)
-        except:
-            pass
+        hash_value ^= hash(x)
     return hash_value
 
 
@@ -249,7 +246,7 @@ def isNaN_or_Inf_or_None(x):
         isNaN = numpy.isnan(x)
         isInf = numpy.isinf(x)
         isStr = isinstance(x, str)
-    except:
+    except Exception:
         isNaN = False
         isInf = False
         isStr = False
@@ -258,7 +255,7 @@ def isNaN_or_Inf_or_None(x):
             val   = get_constant_value(x)
             isInf = numpy.isinf(val)
             isNaN = numpy.isnan(val)
-        except:
+        except Exception:
             isNaN = False
             isInf = False
     if isinstance(x, gof.Constant) and isinstance(x.data, str):

@@ -461,7 +461,7 @@ def pydotprint(fct, outfile=None,
 
     try:
         import pydot as pd
-    except:
+    except ImportError:
         print "failed to import pydot. Yous must install pydot for this function to work."
         return
 

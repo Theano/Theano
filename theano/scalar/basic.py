@@ -593,7 +593,7 @@ class unary_out_lookup(gof.utils.object2):
             types = types[0]
         try:
             rval = self.tbl[types]
-        except:
+        except Exception:
             raise TypeError(types)
         if isinstance(types, (list, tuple)):
             return rval

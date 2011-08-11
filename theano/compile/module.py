@@ -421,22 +421,22 @@ class Method(Component):
         _inputs = [x.variable for x in inputs]
         # Grab the variables that are not accessible from either the inputs or the updates.
         if outputs is None:
-          outputs_list = []
+            outputs_list = []
         else:
-          if isinstance(outputs, (list, tuple)):
-            outputs_list = list(outputs)
-          else:
-            outputs_list = [outputs]
+            if isinstance(outputs, (list, tuple)):
+                outputs_list = list(outputs)
+            else:
+                outputs_list = [outputs]
 
         #backport
         #outputs_list = [] if outputs is None else (list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
 
         outputs_variable_list = []
         for o in outputs_list:
-          if isinstance(o, io.Out):
-            outputs_variable_list += [o.variable]
-          else:
-            outputs_variable_list += [o]
+            if isinstance(o, io.Out):
+                outputs_variable_list += [o.variable]
+            else:
+                outputs_variable_list += [o]
 
         #backport
         #outputs_variable_list = [o.variable if isinstance(o, io.Out) else o for o in outputs_list]
@@ -469,9 +469,9 @@ class Method(Component):
                 inputs.append(storage)
 
         if self.mode is None:
-          effective_mode = mode
+            effective_mode = mode
         else:
-          effective_mode = self.mode
+            effective_mode = self.mode
 
         #backport
         #effective_mode = mode if self.mode is None else self.mode
@@ -486,9 +486,9 @@ class Method(Component):
         else:
             rval = ''
         if isinstance(self.outputs, (list, tuple)):
-          inputs, outputs, updates = self.inputs, self.outputs
+            inputs, outputs, updates = self.inputs, self.outputs
         else:
-          inputs, outputs, updates =  [self.outputs], self.updates
+            inputs, outputs, updates =  [self.outputs], self.updates
 
         #backport
         #inputs, outputs, updates = self.inputs, self.outputs if isinstance(self.outputs, (list, tuple)) else [self.outputs], self.updates
@@ -505,9 +505,9 @@ class Method(Component):
 
     def __str__(self):
         if self.updates:
-          sep = "; "
+            sep = "; "
         else:
-          sep = ""
+            sep = ""
         return "Method(%s -> %s%s%s)" % \
             (self.inputs,
              self.outputs,
@@ -1095,9 +1095,9 @@ class Module(ComponentDict):
         # to look for submodules on which make_module_instance needs to be called
         def recurse(v):
             if isinstance(v,list):
-              iter = enumerate(v)
+                iter = enumerate(v)
             else:
-              iter = v.iteritems()
+                iter = v.iteritems()
             #backport
             #iter = enumerate(v) if isinstance(v,list) else v.iteritems()
             for sk,sv in iter:
@@ -1120,7 +1120,7 @@ class Module(ComponentDict):
                     self[k] = self.__wrapper__(recurse(v))
                 try:
                     self[k] = self.__wrapper__(v)
-                except:
+                except Exception:
                     if isinstance(v, Component):
                         raise
                     else:

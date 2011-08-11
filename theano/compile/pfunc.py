@@ -143,7 +143,7 @@ def rebuild_collect_shared( outputs
         replace = []
     try:
         replace_pairs = replace.items()
-    except:
+    except Exception:
         replace_pairs = replace
 
     for v_orig, v_repl in replace_pairs:
@@ -476,6 +476,4 @@ def iter_over_pairs(pairs):
     if isinstance(pairs, dict):
         return pairs.iteritems()
     else:
-         return pairs
-
-
+        return pairs
