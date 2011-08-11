@@ -296,7 +296,10 @@ class ProfileStats(object):
         es += ['     %8.2es ']
 
         hs += ['<#call>']
-        es += ['  %4d  ']
+        es += [' %4d  ']
+
+        hs += ['<id>']
+        es += ['%3d']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
         maxlen = self.line_width - upto_length
@@ -312,17 +315,19 @@ class ProfileStats(object):
                 t*100/local_time,
                 t,
                 a,
+                a.env.toposort().index(a),
                 self.apply_callcount[a])
             for a, t in self.apply_time.items()]
         atimes.sort()
         atimes.reverse()
         tot=0
-        for (f, t, a, nb_call) in atimes[:N]:
+        for (f, t, a, nd_id, nb_call) in atimes[:N]:
             tot+=t
             ftot=tot*100/local_time
             if nb_call==0:
                 continue
             print >> file, format_str %(f,ftot, t, t/nb_call, nb_call,
+                                        nd_id,
                                         str(a)[:maxlen])
             # Same as before, this I've sacrificied some information making
             # the output more readable
@@ -330,8 +335,8 @@ class ProfileStats(object):
             #        f, ftot, t, tot, t/nb_call,nb_call, str(a))
         print >> file, '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(atimes)-N),
-                  sum(f for f, t, a, nb_call in atimes[N:]),
-                  sum(t for f, t, a, nb_call in atimes[N:]))
+                  sum(f for f, t, a, nd_id, nb_call in atimes[N:]),
+                  sum(t for f, t, a, nd_id, nb_call in atimes[N:]))
         print >> file, ''
 
     def summary_function(self, file):
