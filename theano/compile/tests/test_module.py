@@ -472,7 +472,7 @@ class T_module(unittest.TestCase):
         m = M.make()
         try:
             m.y = 77 #fail?
-        except:
+        except Exception:
             pass
         assert m.y == 40
         assert m.f(20) == 100

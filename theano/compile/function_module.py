@@ -597,7 +597,7 @@ class Function(object):
         t0_fn = time.time()
         try:
             self.fn()
-        except:
+        except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function
                 # the C VM needs this because the exception manipulation
@@ -1107,7 +1107,7 @@ try:
     # compatible with python 2.4, we implement pickling of slice
     # ourself.
     cPickle.dumps(slice(0, 10, 100))
-except:
+except TypeError:
     # This slice pickle implementation seam backward and forward compatible.
     def _pickle_slice(s):
         return (slice, (s.start, s.stop, s.step))
@@ -1120,7 +1120,7 @@ def check_equal(x, y):
     for checker in __checkers:
         try:
             return checker(x, y)
-        except:
+        except Exception:
             continue
     return x == y
     #raise Exception('No checker for equality between %s and %s' % (x, y))

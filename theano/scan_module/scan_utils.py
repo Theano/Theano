@@ -249,7 +249,7 @@ def isNaN_or_Inf_or_None(x):
         isNaN = numpy.isnan(x)
         isInf = numpy.isinf(x)
         isStr = isinstance(x, str)
-    except:
+    except Exception:
         isNaN = False
         isInf = False
         isStr = False
@@ -258,7 +258,7 @@ def isNaN_or_Inf_or_None(x):
             val   = get_constant_value(x)
             isInf = numpy.isinf(val)
             isNaN = numpy.isnan(val)
-        except:
+        except Exception:
             isNaN = False
             isInf = False
     if isinstance(x, gof.Constant) and isinstance(x.data, str):

@@ -1120,7 +1120,7 @@ class Module(ComponentDict):
                     self[k] = self.__wrapper__(recurse(v))
                 try:
                     self[k] = self.__wrapper__(v)
-                except:
+                except Exception:
                     if isinstance(v, Component):
                         raise
                     else:
