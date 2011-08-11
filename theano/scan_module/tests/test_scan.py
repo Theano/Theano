@@ -1,6 +1,7 @@
 import time
 import unittest
 
+import cPickle
 import numpy
 
 import theano
@@ -186,6 +187,33 @@ class T_Scan(unittest.TestCase):
 
     def setUp(self):
         utt.seed_rng()
+
+    # generator network, only one output , type scalar ; no sequence or
+    # non sequence arguments
+    def test_pickling(self):
+        def f_pow2(x_tm1):
+            return 2*x_tm1
+
+        state = theano.tensor.scalar('state')
+        n_steps = theano.tensor.iscalar('nsteps')
+        output, updates = theano.scan(f_pow2, [],state, [],n_steps = n_steps, truncate_gradient
+                = -1, go_backwards = False)
+        _my_f = theano.function([state,n_steps], output, updates = updates,
+                               allow_input_downcast = True)
+
+        ### TESTING PICKLE-ing this function
+        cPickle.dump(_my_f, open('tmp_scan_test_pickle.pkl','wb'),-1)
+        my_f = cPickle.load(open('tmp_scan_test_pickle.pkl'))
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        state = rng.uniform()
+        steps = 5
+
+        numpy_values = numpy.array([ state*(2**(k+1)) for k
+                                    in xrange(steps) ])
+        theano_values = my_f(state,steps)
+        assert numpy.allclose(numpy_values,theano_values)
+
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments

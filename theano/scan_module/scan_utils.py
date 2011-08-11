@@ -696,6 +696,11 @@ def reconstruct_graph(inputs, outputs, tag = None):
     givens = {}
     for nw_x, x in zip(nw_inputs, inputs):
         givens[x] = nw_x
+    allinputs = theano.gof.graph.inputs(outputs)
+    for inp in allinputs:
+        if isinstance(inp, theano.Constant):
+            givens[inp] = inp.clone()
+
     nw_outputs = clone( outputs, replace=givens)
     return (nw_inputs, nw_outputs)
 
