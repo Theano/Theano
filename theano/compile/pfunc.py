@@ -476,6 +476,4 @@ def iter_over_pairs(pairs):
     if isinstance(pairs, dict):
         return pairs.iteritems()
     else:
-         return pairs
-
-
+        return pairs
