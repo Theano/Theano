@@ -211,7 +211,7 @@ class _metadict:
     def __setitem__(self, item, value):
         try:
             self.d[item] = value
-        except:
+        except Exception:
             for i, (key,val) in enumerate(self.l):
                 if key == item:
                     self.l[i] = (item, value)
@@ -220,14 +220,14 @@ class _metadict:
     def get(self, item, default):
         try:
             return self.d[item]
-        except:
+        except Exception:
             for item2, value in self.l:
                 try:
                     if item == item2:
                         return value
                     if item.equals(item2):
                         return value
-                except:
+                except Exception:
                     if item is item2:
                         return value
             else:
@@ -954,7 +954,7 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.popleft()
                 current_node = node
                 self.process_node(env, node)
-        except:
+        except Exception:
             self.detach_updater(env, u)
             raise
         self.detach_updater(env, u)
@@ -988,7 +988,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
                 node = q.pop()
                 current_node = node
                 self.process_node(env, node)
-        except:
+        except Exception:
             self.detach_updater(env, u)
             raise
         self.detach_updater(env, u)
@@ -1003,8 +1003,6 @@ class OpKeyOptimizer(NavigatorOptimizer):
         env.extend(toolbox.NodeFinder())
 
 
-
-from utils import D
 
 class ChangeTracker:
     def __init__(self):

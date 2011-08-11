@@ -36,11 +36,9 @@ AddConfigVar('gcc.cxxflags',
         StrParam(""))
 
 # gof imports
-from env import Env
 import graph
 import link
 import utils
-import op
 
 from compilelock import get_lock, release_lock
 
@@ -899,7 +897,7 @@ class CLinker(link.Linker):
                     isig = (i.signature(), topological_pos, i_idx)
                     try:
                         hash(isig)
-                    except: #generic constants don't have a hashable signature
+                    except Exception: #generic constants don't have a hashable signature
                         error_on_play[0] = True
                         return None
                     constant_ids[id(i)] = isig
@@ -1145,7 +1143,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
                 else:
                     exc_value = exc_type(_exc_value, task)
                 exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
-            except:
+            except Exception:
                 print >> sys.stderr, 'ERROR retrieving error_storage', error_storage
                 raise
 
@@ -1350,7 +1348,7 @@ class DualLinker(link.Linker):
                     thunk2()
                     for output1, output2 in zip(thunk1.outputs, thunk2.outputs):
                         self.checker(output1, output2)
-                except:
+                except Exception:
                     link.raise_with_op(node1)
 
         return f, i1, o1

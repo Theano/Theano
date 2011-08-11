@@ -270,9 +270,9 @@ class Unlocker(object):
         # not exist), we still want to try and remove the directory.
         try:
             self.os.remove(self.os.path.join(self.tmp_dir, 'lock'))
-        except:
+        except Exception:
             pass
         try:
             self.os.rmdir(self.tmp_dir)
-        except:
+        except Exception:
             pass

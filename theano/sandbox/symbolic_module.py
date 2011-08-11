@@ -278,7 +278,7 @@ if 0:
             if isinstance(val, theano.Variable):
                 try:
                     kres = klass.KlassMember(val)
-                except:
+                except Exception:
                     kres = klass.KlassVariable(val)
                 setattr(SymMod, key, kres)
             elif callable(val) and getattr(val, '__is_symbolic'):

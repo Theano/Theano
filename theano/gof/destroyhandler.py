@@ -226,7 +226,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             droot, impact, root_destroyer = self.refresh_droot_impact()
             try:
                 return [root_destroyer[droot[r]]]
-            except:
+            except Exception:
                 return []
 
         env.destroyers = get_destroyers_of

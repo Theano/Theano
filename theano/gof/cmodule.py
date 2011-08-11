@@ -887,7 +887,7 @@ class ModuleCache(object):
                         # the same process.
                         self.module_hash_to_key_data[module_hash] = key_data
 
-                except:
+                except Exception:
                     # This may happen e.g. when an Op has no C implementation. In
                     # any case, we do not want to keep around the temporary work
                     # directory, as it may cause trouble if we create too many of
