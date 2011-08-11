@@ -455,7 +455,8 @@ def perform(
             # if optimization gets applied compared to when optimization
             # do not get applied
             if i < n_steps:
-                outs[idx][0] = outs[idx][0][:-(n_steps - i)]
+                sh0 = outs[idx][0].shape[0]
+                outs[idx][0] = outs[idx][0][:sh0-(n_steps - i)]
 
     t_call = time.time() - t0_call
 
