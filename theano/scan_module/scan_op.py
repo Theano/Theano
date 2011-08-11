@@ -850,6 +850,16 @@ class Scan(PureOp):
                 # if optimization gets applied compared to when optimization
                 # do not get applied
                 if i < n_steps:
+                    # The reason I don't use out[idx][0][:i] is because for
+                    # certain outputs (those with multiple taps),
+                    # outs[idx][0] has more then n_steps entries, with the
+                    # initial state  at the begining. When indexing in it I
+                    # usually have to do something like
+                    # outs[idx][0][i+offset]. To do something similar here,
+                    # I would have first to compute the maximal tap for
+                    # every output and then do outs[0][:i+maximal_tap],
+                    # which implies I think more computations then this
+                    # little trick that I used
                     outs[idx][0] = outs[idx][0][:-(n_steps - i)]
 
         t_call = time.time() - t0_call
