@@ -63,7 +63,7 @@ from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.25
+    return 0.265
 
 @cython.boundscheck(False)
 def perform(
