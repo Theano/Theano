@@ -455,6 +455,12 @@ def perform(
             # if optimization gets applied compared to when optimization
             # do not get applied
             if i < n_steps:
+
+	    # Cython can not handle negative indices ( because of a
+	    # derictive at the begining of the function that says not
+	    # to do boundschecks). The directive is used to make the
+	    # code faster, so this workaround is better then removing
+	    # the directive.
                 sh0 = outs[idx][0].shape[0]
                 outs[idx][0] = outs[idx][0][:sh0-(n_steps - i)]
 
