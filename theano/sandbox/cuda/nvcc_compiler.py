@@ -264,7 +264,7 @@ def nvcc_module_compile_str(
                     continue
                 if l[l.index(':'):].startswith(': warning: label'):
                     continue
-            except:
+            except Exception:
                 pass
             print >> sys.stderr, l
         print >> sys.stderr, '==============================='

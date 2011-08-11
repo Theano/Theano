@@ -61,7 +61,7 @@ class SymbolicModule(object):
 def issymbolicmodule(thing):
     try:
         return issubclass(thing, SymbolicModule)
-    except:
+    except Exception:
         return False
 
 def issymbolicmethod(thing):

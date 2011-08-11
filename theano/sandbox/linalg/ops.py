@@ -12,7 +12,7 @@ from theano.gof.opt import Optimizer
 
 try:
     import scipy.linalg
-except:
+except ImportError:
     pass # some ops (e.g. Cholesky) won't work
 
 class Hint(Op):
