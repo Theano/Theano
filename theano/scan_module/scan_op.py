@@ -842,7 +842,15 @@ class Scan(PureOp):
             # not actually computed
             elif store_steps[idx] > i - self.mintaps[idx]:
                 outs[idx][0][i-self.mintaps[idx]:] = 0
-
+                # This is a fix for a bug introduced by while. If you say
+                # you want to loop up to a condition, you expect the output
+                # to have that length ( and not the maximal length possible)
+                #
+                # Without this the behaviour of a scan op is not consistent
+                # if optimization gets applied compared to when optimization
+                # do not get applied
+                if i < n_steps:
+                    outs[idx][0] = outs[idx][0][:-(n_steps - i)]
 
         t_call = time.time() - t0_call
         # NOTE: make this match what's in function_module.Function
