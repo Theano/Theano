@@ -12,7 +12,7 @@ from theano.gof.opt import Optimizer
 
 try:
     import scipy.linalg
-except:
+except ImportError:
     pass # some ops (e.g. Cholesky) won't work
 
 class Hint(Op):
@@ -342,7 +342,7 @@ class MatrixInverse(Op):
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.linalg.inv(x).astype(x.dtype)
-        except:
+        except Exception:
             print 'Failed to invert', node.inputs[0]
             raise
     def grad(self, inputs, g_outputs):
@@ -470,7 +470,7 @@ class Det(Op):
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.asarray(scipy.linalg.det(x), dtype=x.dtype)
-        except:
+        except Exception:
             print 'Failed to compute determinant', x
             raise
     def grad(self, inputs, g_outputs):

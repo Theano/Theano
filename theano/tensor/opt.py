@@ -78,7 +78,7 @@ def scalarconsts_rest(inputs):
             v = get_constant_value(i)
             consts.append(v)
             origconsts.append(i)
-        except:
+        except Exception:
             nonconsts.append(i)
     return consts, origconsts, nonconsts
 
@@ -937,7 +937,7 @@ def local_subtensor_make_vector(node):
         if x.owner and x.owner.op == make_vector:
             try:
                 idx, = node.op.idx_list
-            except:
+            except Exception:
                 #'how can you have multiple indexes into a shape?'
                 raise
 
@@ -954,7 +954,7 @@ def local_subtensor_make_vector(node):
                 try:
                     v = get_constant_value(idx)
                     return [x.owner.inputs[v]]
-                except:
+                except Exception:
                     pass
             else:
                 # it is a slice of ints and/or Variables
@@ -964,7 +964,7 @@ def local_subtensor_make_vector(node):
                     return [make_vector(*x.owner.inputs.__getitem__(idx))]
                 except TypeError:
                     pass
-                except:
+                except Exception:
                     _logger.error('failed to index with "%s"' % str(idx))
                     raise
 
@@ -1291,7 +1291,7 @@ def local_useless_subtensor(node):
                 # tracker keep. Subtensor accept any scalar int{8,16,32,64}
                 # as index type.
                 assert str(length_pos.type.dtype) == "int64"
-                assert str(length_pos_shape_i.type.dtype) in ["int8", "int16", 
+                assert str(length_pos_shape_i.type.dtype) in ["int8", "int16",
                                                               "int32", "int64"]
                 # We already know that start and step are not variables
                 # and so they don't appear in the input of the node

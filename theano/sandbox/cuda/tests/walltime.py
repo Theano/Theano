@@ -1,12 +1,10 @@
 import sys, time
-from theano.compile.sharedvalue import shared
 from theano.compile.pfunc import pfunc
 from theano import tensor
 
 import numpy
 
 import theano.sandbox.cuda as tcn
-from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
 
 def compare_fns(fns, input, reps=10):
     times = {}
@@ -15,7 +13,7 @@ def compare_fns(fns, input, reps=10):
             print 'TOPOSORT', implname
             for i, n in enumerate(impl.maker.env.toposort()):
                 print i, n
-        except:
+        except Exception:
             pass
         t0 = time.time()
         for i in xrange(reps):

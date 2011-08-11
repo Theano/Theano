@@ -406,7 +406,7 @@ def local_softmax_with_bias(node):
 
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
-                except:
+                except Exception:
                     #if our arguments have the wrong types, then forget about it
                     return
 
@@ -1149,7 +1149,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
     if isinstance(node.op, tensor.AdvancedSubtensor):
         try:
             log, rows, labels = node.inputs
-        except:
+        except Exception:
             pass
         if log and log.owner and log.owner.op == tensor.log:
             sm = log.owner.inputs[0]
@@ -1160,7 +1160,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
         if pre_log and isinstance(pre_log.op, tensor.AdvancedSubtensor):
             try:
                 sm, rows, labels = pre_log.inputs
-            except:
+            except Exception:
                 pass
 
 
@@ -1187,7 +1187,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     sm = None
     try:
         d_sm, sm = node.inputs
-    except:
+    except Exception:
         return
 
     if (sm is not None) and sm.owner and (sm.owner.op in (softmax, softmax_with_bias)):
@@ -1245,7 +1245,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     if d_sm.owner and isinstance(d_sm.owner.op, tensor.AdvancedIncSubtensor):
         try:
             z, incr, rows, labels = d_sm.owner.inputs
-        except:
+        except Exception:
             return
         # Check that z == zeros_like(softmax(x))
         # We know z has the right size because z has the same size as d_sm,
@@ -1313,7 +1313,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if adv_subtensor is not None:
                 try:
                     maybe_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
-                except:
+                except Exception:
                     return
 
                 if not (maybe_sm is sm and maybe_rows is rows and maybe_labels is labels):
@@ -1336,7 +1336,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         # AdvIncSubtensor(zeros, grad_nll, arange(len(y)), y) / softmax
         try:
             num, denom = d_sm.owner.inputs
-        except:
+        except Exception:
             return
 
         if denom != sm:
@@ -1346,7 +1346,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         if num.owner and isinstance(num.owner.op, tensor.AdvancedIncSubtensor):
             try:
                 z, incr, rows, labels = num.owner.inputs
-            except:
+            except Exception:
                 return
 
             # Check z is zeros_like(log(sm))
@@ -1499,7 +1499,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
             if output[0].shape!=new_shape:
                 try:
                     output[0].resize(new_shape)
-                except:
+                except Exception:
                     output[0]=numpy.empty(new_shape, dtype=mat.dtype)
             out=output[0]
 
@@ -1544,7 +1544,7 @@ class Prepend_scalar_to_each_row(gof.Op):
             if output[0].shape!=new_shape:
                 try:
                     output[0].resize(new_shape)
-                except:
+                except Exception:
                     output[0]=numpy.empty(new_shape, dtype=mat.dtype)
             out=output[0]
         out[:,0].fill(val)

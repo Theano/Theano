@@ -341,7 +341,7 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
         try:
             t0, t1, t2 = t[0:3]
             assert t0 == '-'
-        except:
+        except Exception:
             raise ValueError('invalid token in config.blas.ldflags', t)
         if libs_dir and t1 == 'L':
             rval.append(t[2:])
@@ -997,7 +997,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
             return scale*thing
     try:
         r.type.broadcastable
-    except:
+    except Exception:
         return None
 
     if ((r.type.ndim not in (1, 2)) or
@@ -1083,7 +1083,7 @@ def _factor_canonicalized(lst):
     while i < len(lst)-1:
         try:
             s_i,M_i = lst[i]
-        except:
+        except Exception:
             i += 1
             continue
 
@@ -1091,7 +1091,7 @@ def _factor_canonicalized(lst):
         while j < len(lst):
             try:
                 s_j,M_j = lst[j]
-            except:
+            except Exception:
                 j += 1
                 continue
 
@@ -1113,7 +1113,7 @@ def _gemm_from_factored_list(lst):
         try:
             s, M = sM
             return True
-        except:
+        except Exception:
             return False
     lst = [(T.cast(sM[0],sM[1].type.dtype), sM[1])
             for sM in lst if is_pair(sM)]
@@ -1135,7 +1135,7 @@ def _gemm_from_factored_list(lst):
             if gemm_of_sM_list:
                 def item_to_var(t):
                     try: s,M = t
-                    except: return t
+                    except Exception: return t
                     if s == 1: return M
                     if s == -1: return -M
                     return s*M
@@ -1608,4 +1608,3 @@ from opt import register_specialize, register_canonicalize
 def local_print_as_we_go_along(node):
     if node.op in (T.sub, T.add):
         debugprint(node)
-

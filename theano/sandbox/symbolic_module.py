@@ -40,14 +40,14 @@ class InitGraph(type):
 
 class SymbolicModule(object):
     #installs class attributes from build_graph after declaration
-    __metaclass__ = InitGraph 
+    __metaclass__ = InitGraph
 
     #if we call this function, it will return a new SymbolicModule
     def __new__(self, **kwargs):
         class SymMod(SymbolicModule):
             @staticmethod
             def build_graph(*bg_args, **bg_kwargs):
-                #this one is like self.build_graph, 
+                #this one is like self.build_graph,
                 #except that the kwargs are automatically inserted
                 kwcopy = copy.copy(kwargs)
                 kwcopy.update(bg_kwargs)
@@ -55,13 +55,13 @@ class SymbolicModule(object):
         setattr(SymMod, '__name__', self.__name__ + '_derived')
         return SymMod
     @staticmethod
-    def build_graph(): 
+    def build_graph():
         return {}
 
 def issymbolicmodule(thing):
     try:
         return issubclass(thing, SymbolicModule)
-    except:
+    except Exception:
         return False
 
 def issymbolicmethod(thing):
@@ -87,7 +87,7 @@ def compile_fn(f, path_locals, common_inputs):
     #make new inputs for the vars named in args
     # this has the effect of creating new storage for these arguments
     # The common storage doesn't get messed with.
-    inputs = [In(path_locals.get(name,name)) for name in args] 
+    inputs = [In(path_locals.get(name,name)) for name in args]
     inputs.extend([v for k,v in common_inputs.items() if k not in args])
     outputs = f()
     #print 'inputs', inputs
@@ -136,7 +136,7 @@ def compile(smod, initial_values={}):
     inputs = {}
     for path_locals, val in walker(smod):
         if isinstance(val, theano.Variable) and (val.owner is None) and (val not in inputs):
-            inputs[val] = theano.In(val, value=theano.gof.Container(val, ['a'])) 
+            inputs[val] = theano.In(val, value=theano.gof.Container(val, ['a']))
 
     assert len(inputs) == len([v for v in inputs.items()])
 
@@ -188,7 +188,7 @@ def compile(smod, initial_values={}):
             else :
                 # check for weird objects that we would like to disallow
                 # not all objects can be transfered by the clone mechanism below
-                raise TypeError('reflecting not supported for', 
+                raise TypeError('reflecting not supported for',
                         (thing, type(thing), getattr(thing, '__name__', None)))
         return reflected[thing]
     rval = reflect(smod)
@@ -278,7 +278,7 @@ if 0:
             if isinstance(val, theano.Variable):
                 try:
                     kres = klass.KlassMember(val)
-                except:
+                except Exception:
                     kres = klass.KlassVariable(val)
                 setattr(SymMod, key, kres)
             elif callable(val) and getattr(val, '__is_symbolic'):
@@ -320,7 +320,7 @@ if 0:
         else:
             def params(): return [w, b]
         return just_symbolic(locals())
-        
+
     if 0:
         print 'logistic_regression', logistic_regression
         print 'tanh_layer', tanh_layer
@@ -349,7 +349,7 @@ if 0:
             name = symbolic_module.name if name is None else name
 
         def __init__(self, constructor_fn=None):
-            """ A constructor fn builds 
+            """ A constructor fn builds
             - a graph on top of the variable table, and
             - compilable methods.
             """
@@ -387,7 +387,7 @@ if 0:
 
         return locals()
 
-    #at this point there is a neural_net module all built and compiled, 
+    #at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
     @SymbolicModule_fromFn
@@ -404,7 +404,7 @@ if 0:
         transform = d[:npc,:].T / v[:npc]
         return locals()
 
-    #at this point there is a neural_net module all built and compiled, 
+    #at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
 
@@ -431,4 +431,3 @@ if 0:
         """stats_collector(nnet_on_pca.x, 'mean')
         """
         return mean_collector(x=r)
-

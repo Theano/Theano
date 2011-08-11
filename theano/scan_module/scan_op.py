@@ -1104,7 +1104,7 @@ class Scan(PureOp):
                     # states) it is more of a safety check ( all random
                     # states should be after n_outs_not_shared ...
                     g_outs[i] = tensor.zeros_like(scan_outputs[i])
-                except:
+                except Exception:
                     g_outs[i] = theano.tensor.constant(
                         numpy.array(0, theano.config.floatX))
 
