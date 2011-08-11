@@ -2318,7 +2318,8 @@ class T_Scan(unittest.TestCase):
         vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out = f(vx)
-        assert numpy.sum(out[24:]) == 0
+        assert len(out) == 24
+
 
     def test_while1(self):
         x = tensor.vector('x')
@@ -2332,7 +2333,8 @@ class T_Scan(unittest.TestCase):
         vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
-        assert numpy.sum(out[24:]) == 0
+        print 'len_out', len(out)
+        assert len(out) == 24
         assert numpy.all(out2 == vx + 2)
         lssc = [x for x in f.maker.env.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
@@ -2351,8 +2353,8 @@ class T_Scan(unittest.TestCase):
         vx = numpy.zeros((50,), dtype = theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
-        assert numpy.sum(out[24:]) == 0
-        assert numpy.sum(out2[24:]) == 0
+        assert len(out) == 24
+        assert len(out2) == 24
         lssc = [x for x in f.maker.env.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
