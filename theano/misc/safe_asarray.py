@@ -28,7 +28,7 @@ def _asarray(a, dtype, order=None):
     used internally. It is imported so as to be available directly through
         theano._asarray
     """
-    if dtype == 'floatX':
+    if str(dtype) == 'floatX':
         dtype = theano.config.floatX
     dtype = numpy.dtype(dtype)  # Convert into dtype object.
     rval = numpy.asarray(a, dtype=dtype, order=order)
