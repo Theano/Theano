@@ -309,7 +309,7 @@ class GpuSoftmax (Op):
         return shape
     def c_code_cache_version(self):
         #return ()
-        return (3,) + inline_softmax.code_version
+        return (4,) + inline_softmax.code_version
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -335,12 +335,17 @@ class GpuSoftmax (Op):
             }
         }
         {
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024);
+//TODO, detect the maximum number of thread per block.
+            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 1024);
+            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
+
             kSoftmax_%(nodename)s
                 <<<
                 // todo: cap these at the card limits, implement loops in kernel
-                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024),
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
+                    n_blocks,
+                    n_threads,
+                    n_shared_bytes
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
                         CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -371,11 +376,15 @@ class GpuSoftmax (Op):
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
-                      "buf[threadIdx.x] = x[blockIDX * sx0 + threadIdx.x * sx1]",
-                      "buf2[threadIdx.x] = buf[threadIdx.x]",
+                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                        "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
+                        "buf2[tx] = buf[tx]",
+                      "}",
                       "__syncthreads()",
                       inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
-                      "sm[blockIDX * N + threadIdx.x] = buf[threadIdx.x]",
+                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                        "sm[blockIDX * N + tx] = buf[tx]",# This set all value correctly
+                      "}",
                       "__syncthreads()",
                     "}",
                     ])
@@ -398,7 +407,7 @@ class GpuSoftmaxWithBias (Op):
         return  [shape[0]]
     def c_code_cache_version(self):
         #return ()
-        return (3,) + inline_softmax.code_version
+        return (4,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -436,12 +445,17 @@ class GpuSoftmaxWithBias (Op):
             }
         }
         {
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024);
+//TODO, detect the maximum number of thread per block.
+            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 1024);
+            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
+
             kSoftmaxWithBias_%(nodename)s
                 <<<
                 // todo: cap these at the card limits, implement loops in kernel
-                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024),
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
+                    n_blocks,
+                    n_threads,
+                    n_shared_bytes
                 >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
                         CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -476,13 +490,17 @@ class GpuSoftmaxWithBias (Op):
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
-                       "buf[threadIdx.x] = x[blockIDX * sx0 + threadIdx.x * sx1]",
-                       "buf[threadIdx.x] += b[threadIdx.x * sb0]",
-                       "buf2[threadIdx.x] = buf[threadIdx.x]",
+                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                         "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
+                         "buf[tx] += b[tx * sb0]",
+                         "buf2[tx] = buf[tx]",
+                      "}",
                        "__syncthreads()",
                        inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
-                       "sm[blockIDX * N + threadIdx.x] = buf[threadIdx.x]",
-                       "__syncthreads()",
+                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                         "sm[blockIDX * N + tx] = buf[tx]",
+                      "}",
+                      "__syncthreads()",
                     "}",
                     ])
 

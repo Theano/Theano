@@ -105,13 +105,20 @@ def inline_reduce_prod(N, buf, pos, count):
     return inline_reduce(N, buf, pos, count, lambda a, b: "%s * %s"%(a,b))
 
 
-@code_version((1,) + inline_reduce_max.code_version + inline_reduce_sum.code_version)
+@code_version((2,) + inline_reduce_max.code_version + inline_reduce_sum.code_version)
 def inline_softmax(N, buf, buf2, threadPos, threadCount):
     """
+
+    :param N: length of the buffer
+    :param threadPos: index of executing thread
+    :param threadCount: number of executing threads
+
     :Precondition: buf and buf2 contain two identical copies of the input to softmax
     :Postcondition: buf contains the softmax, buf2 contains un-normalized softmax
 
     :note: buf and buf2 should be in gpu shared memory, we access it many times.
+
+    :note2: We use __i as an int variable in a loop
     """
     return [
             #get max of buf (trashing all but buf[0])
@@ -119,14 +126,18 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
             '__syncthreads()',
             'float row_max = '+buf+'[0]',
             '__syncthreads()',
-            buf+'['+threadPos+'] = exp('+buf2+'['+threadPos+'] - row_max)',
-            buf2+'['+threadPos+'] = '+buf+'['+threadPos+']',
+            'for(int __i='+threadPos+'; __i<'+N+'; __i+='+threadCount+'){',
+                buf+'[__i] = exp('+buf2+'[__i] - row_max)',
+                buf2+'[__i] = '+buf+'[__i]',
+            '}',
             '__syncthreads()',
             inline_reduce_sum(N, buf, threadPos, threadCount),
             '__syncthreads()',
             'float row_sum = '+buf+'[0]',
             '__syncthreads()',
             # divide each exp() result by the sum to complete the job.
-            buf+'['+threadPos+'] = '+buf2+'['+threadPos+'] / row_sum'
+            'for(int __i='+threadPos+'; __i<'+N+'; __i+='+threadCount+'){',
+                buf+'[__i] = '+buf2+'[__i] / row_sum',
+            '}',
+            '__syncthreads()',
             ]
-

@@ -88,6 +88,7 @@ GPU:
    * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
  * Removed a warning when nvcc is not available and the user did not requested it.
  * renamed config option cuda.nvccflags -> nvcc.flags
+ * Allow GpuSoftmax and GpuSoftmaxWithBias to work with bigger input.
 
 Bugs fixed:
 
