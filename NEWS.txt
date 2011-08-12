@@ -1,41 +1,4 @@
-Modifications in the 0.4.1 release candidate 2(9 August 2011)
-
-Know bug:
-
- * CAReduce with nan in inputs don't return the good output (`Ticket <http://trac-hg.assembla.com/theano/ticket/763>`_).
-
-   * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
-   * This is not a new bug, just a bug discovered since the last release that we didn't had time to fix.
-
-Deprecation (will be removed in Theano 0.5):
-
- * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
- * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
- * scan interface change:
-
-   * The use of `return_steps` for specifying how many entries of the output
-     scan has been depricated
-
-     * The same thing can be done by applying a subtensor on the output
-       return by scan to select a certain slice
-   * The inner function (that scan receives) should return its outputs and
-     updates following this order:
-
-        [outputs], [updates], [condition]. One can skip any of the three if not
-        used, but the order has to stay unchanged.
- * tensor.grad(cost, wrt) will return an object of the "same type" as wrt 
-   (list/tuple/TensorVariable).
-
-   * Currently tensor.grad return a type list when the wrt is a list/tuple of 
-     more then 1 element.
-
-Decrecated in 0.4.0:
-
- * Dividing integers with / is deprecated: use // for integer division, or
-   cast one of the integers to a float type if you want a float result (you may
-   also change this behavior with config.int_division).
- * tag.shape attribute deprecated (#633)
- * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
+Modifications in the 0.4.1 (12 August 2011)
 
 New features:
 
@@ -110,6 +73,43 @@ Crash fixed:
 
    * Compilation crash fixed under Ubuntu 11.04
    * Compilation crash fixed with CUDA 4.0
+
+Know bug:
+
+ * CAReduce with nan in inputs don't return the good output (`Ticket <http://trac-hg.assembla.com/theano/ticket/763>`_).
+
+   * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
+   * This is not a new bug, just a bug discovered since the last release that we didn't had time to fix.
+
+Deprecation (will be removed in Theano 0.5, warning generated if you use them):
+
+ * The string mode (accepted only by theano.function()) FAST_RUN_NOGC. Use Mode(linker='c|py_nogc') instead.
+ * The string mode (accepted only by theano.function()) STABILIZE. Use Mode(optimizer='stabilize') instead.
+ * scan interface change:
+
+   * The use of `return_steps` for specifying how many entries of the output
+     scan has been depricated
+
+     * The same thing can be done by applying a subtensor on the output
+       return by scan to select a certain slice
+   * The inner function (that scan receives) should return its outputs and
+     updates following this order:
+
+        [outputs], [updates], [condition]. One can skip any of the three if not
+        used, but the order has to stay unchanged.
+ * tensor.grad(cost, wrt) will return an object of the "same type" as wrt 
+   (list/tuple/TensorVariable).
+
+   * Currently tensor.grad return a type list when the wrt is a list/tuple of 
+     more then 1 element.
+
+Decrecated in 0.4.0(Reminder, warning generated if you use them):
+
+ * Dividing integers with / is deprecated: use // for integer division, or
+   cast one of the integers to a float type if you want a float result (you may
+   also change this behavior with config.int_division).
+ * tag.shape attribute deprecated (#633)
+ * CudaNdarray_new_null is deprecated in favour of CudaNdarray_New
 
 Sandbox:
 
