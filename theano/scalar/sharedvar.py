@@ -42,7 +42,7 @@ def shared(value, name=None, strict=False, allow_downcast=None):
         raise TypeError()
     try:
         dtype=value.dtype
-    except:
+    except AttributeError:
         dtype=numpy.asarray(value).dtype
 
     dtype=str(dtype)
