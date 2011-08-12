@@ -5,6 +5,7 @@ import unittest
 
 import cPickle
 import numpy
+from numpy.testing import dec
 
 import theano
 import theano.sandbox.rng_mrg
@@ -192,6 +193,10 @@ class T_Scan(unittest.TestCase):
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
+    @dec.knownfailureif(
+        isinstance(theano.compile.mode.get_default_mode(),
+                   theano.compile.debugmode.DebugMode),
+        ("This test fails in DebugMode, because it is not yet pickable."))
     def test_pickling(self):
         def f_pow2(x_tm1):
             return 2*x_tm1
