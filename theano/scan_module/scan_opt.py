@@ -133,7 +133,8 @@ scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
                      'fast_run',
                      'scan')
 
-
+# This is a global opt for historical reason
+# It should be possible to change it to a local opt.
 class PushOutNonSeqScan(gof.Optimizer):
 
     def __init__(self):
