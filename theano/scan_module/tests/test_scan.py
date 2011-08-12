@@ -196,7 +196,7 @@ class T_Scan(unittest.TestCase):
     @dec.knownfailureif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
-        ("This test fails in DebugMode, because it is not yet pickable."))
+        ("This test fails in DebugMode, because it is not yet picklable."))
     def test_pickling(self):
         def f_pow2(x_tm1):
             return 2*x_tm1
