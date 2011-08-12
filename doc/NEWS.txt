@@ -45,7 +45,7 @@ Optimizations:
 
 GPU:
 
- * PyCUDA/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/pycuda.html>`_.
+ * PyCUDA/CUDAMat/Gnumpy/Theano bridge and `documentation <http://deeplearning.net/software/theano/tutorial/gpu_data_convert.html>`_.
 
    * New function to easily convert pycuda GPUArray object to and from CudaNdarray object
    * Fixed a bug if you crated a view of a manually created CudaNdarray that are view of GPUArray.
