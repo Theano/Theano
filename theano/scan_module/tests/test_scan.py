@@ -2387,7 +2387,10 @@ class T_Scan(unittest.TestCase):
         assert len(lssc) == 2
 
 
-    def test_bug_ticket766(self):
+    @dec.knownfailureif(True,
+                        ("This test fails because not typed outputs_info are always gived the smallest dtype. There is no upcast of outputs_info in scan for now."))
+    def test_outputs_info_not_typed(self):
+        # This was ticket 766
 
         coefficients = theano.tensor.vector("coefficients")
         x = tensor.scalar("x"); max_coefficients_supported = 10000
@@ -2405,45 +2408,31 @@ class T_Scan(unittest.TestCase):
                                           sequences=[coefficients, full_range],
                                           non_sequences=x)
 
+        # python int
+        polynomial3, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
+                                              prev + coeff * (free_var ** power),
+                                          outputs_info=0,
+                                          sequences=[coefficients, full_range],
+                                          non_sequences=x)
+
+        # python float
+        polynomial4, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
+                                              prev + coeff * (free_var ** power),
+                                          outputs_info=0.,
+                                          sequences=[coefficients, full_range],
+                                          non_sequences=x)
+
         calculate_polynomial = theano.function(inputs=[coefficients, x],
-                                             outputs=[polynomial1, polynomial2[-1]])
+                                             outputs=[polynomial1, polynomial2[-1], polynomial3[-1], polynomial4[-1]])
 
         test_coeff = numpy.asarray([1, 0, 2], dtype=theano.config.floatX)
         # This will be tested by DEBUG_MODE
         out=calculate_polynomial(test_coeff, 3)
         assert out[0]==19
         assert out[1]==19
+        assert out[2]==19
+        assert out[4]==19
         # 19.0
-
-    @dec.knownfailureif(True,
-                        ("This test fails because not typed outputs_info are always gived the smallest dtype. There is no upcast of outputs_info in scan for now."))
-    def test_outputs_info_not_typed(self):
-        coefficients = theano.tensor.vector("coefficients")
-        x = tensor.scalar("x"); max_coefficients_supported = 10000
-
-        # Generate the components of the polynomial
-        full_range=theano.tensor.arange(max_coefficients_supported)
-        # python float
-        polynomial1, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
-                                              prev + coeff * (free_var ** power),
-                                          outputs_info=0.,
-                                          sequences=[coefficients, full_range],
-                                          non_sequences=x)
-        # python int
-        polynomial2, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
-                                              prev + coeff * (free_var ** power),
-                                          outputs_info=0,
-                                          sequences=[coefficients, full_range],
-                                          non_sequences=x)
-
-        calculate_polynomial = theano.function(inputs=[coefficients, x],
-                                             outputs=[polynomial1, polynomial2])
-
-        test_coeff = numpy.asarray([1, 0, 2], dtype=theano.config.floatX)
-        # This will be tested by DEBUG_MODE
-        calculate_polynomial(test_coeff, 3)
-        # 19.0
-
 
     def test_bugFunctioProvidesIntermediateNodesAsInputs(self):
         # This is a bug recently reported by Ilya
