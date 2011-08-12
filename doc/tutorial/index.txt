@@ -35,7 +35,7 @@ you out.
     conditions
     loop
     using_gpu
-    pycuda
+    gpu_data_convert
     shape_info
     remarks
     debug_faq
