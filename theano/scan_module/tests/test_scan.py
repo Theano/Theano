@@ -2405,16 +2405,41 @@ class T_Scan(unittest.TestCase):
                                           sequences=[coefficients, full_range],
                                           non_sequences=x)
 
-        polynomial3, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
+        calculate_polynomial = theano.function(inputs=[coefficients, x],
+                                             outputs=[polynomial1, polynomial2[-1]])
+
+        test_coeff = numpy.asarray([1, 0, 2], dtype=theano.config.floatX)
+        # This will be tested by DEBUG_MODE
+        out=calculate_polynomial(test_coeff, 3)
+        assert out[0]==19
+        assert out[1]==19
+        # 19.0
+
+    @dec.knownfailureif(True,
+                        ("This test fails because not typed outputs_info are always gived the smallest dtype. There is no upcast of outputs_info in scan for now."))
+    def test_outputs_info_not_typed(self):
+        coefficients = theano.tensor.vector("coefficients")
+        x = tensor.scalar("x"); max_coefficients_supported = 10000
+
+        # Generate the components of the polynomial
+        full_range=theano.tensor.arange(max_coefficients_supported)
+        # python float
+        polynomial1, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
                                               prev + coeff * (free_var ** power),
                                           outputs_info=0.,
                                           sequences=[coefficients, full_range],
                                           non_sequences=x)
+        # python int
+        polynomial2, updates = theano.scan(fn=lambda coeff, power, prev, free_var:
+                                              prev + coeff * (free_var ** power),
+                                          outputs_info=0,
+                                          sequences=[coefficients, full_range],
+                                          non_sequences=x)
 
         calculate_polynomial = theano.function(inputs=[coefficients, x],
-                                             outputs=[polynomial1, polynomial2[-1]])
+                                             outputs=[polynomial1, polynomial2])
 
-        test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+        test_coeff = numpy.asarray([1, 0, 2], dtype=theano.config.floatX)
         # This will be tested by DEBUG_MODE
         calculate_polynomial(test_coeff, 3)
         # 19.0
