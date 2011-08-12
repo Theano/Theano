@@ -218,7 +218,7 @@ class T_Scan(unittest.TestCase):
             cPickle.dump(_my_f, open('tmp_scan_test_pickle.pkl','wb'),-1)
             my_f = cPickle.load(open('tmp_scan_test_pickle.pkl'))
         finally:
-            # Get back to the orinal dir, and temporary one.
+            # Get back to the orinal dir, and delete temporary one.
             os.chdir(origdir)
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
