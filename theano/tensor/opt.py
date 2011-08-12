@@ -930,9 +930,6 @@ def local_subtensor_make_vector(node):
     # we can do this for constant indexes
     if isinstance(node.op, T.Subtensor):
         # This optimization needs ShapeOpt and env.shape_feature
-        if not hasattr(node.env, 'shape_feature'):
-            return
-        shape_feature = node.env.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
             try:
