@@ -1,8 +1,11 @@
-.. _pycuda:
+.. _gpu_data_convert:
 
-====================
-PyCUDA compatibility
-====================
+===================================
+PyCUDA/CUDAMat/Gnumpy compatibility
+===================================
+
+PyCUDA
+======
 
 Currently PyCUDA and Theano have different object to store GPU
 data. The two implementations do not support the same set of features.
@@ -40,3 +43,16 @@ You can use gpu function compiled with PyCUDA in a Theano op. Look
 into the `HPCS2011 tutorial
 <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_ for an example.
 
+
+
+CUDAMat
+=======
+
+There is conversion function between CUDAMat object and Theano CudaNdArray. They are with the same principe as PyCUDA one's. They are in theano.misc.cudamat_utils.py
+
+WARNING: there is a strange problem with stride/shape with those converter. The test to work need a transpose and reshape...
+
+Gnumpy
+======
+
+There is conversion function between gnumpy garray object and Theano CudaNdArray. They are with the same principe as PyCUDA one's. They are in theano.misc.gnumpy_utils.py
