@@ -1,3 +1,5 @@
+import os, shutil
+from tempfile import mkdtemp
 import time
 import unittest
 
@@ -202,8 +204,19 @@ class T_Scan(unittest.TestCase):
                                allow_input_downcast = True)
 
         ### TESTING PICKLE-ing this function
-        cPickle.dump(_my_f, open('tmp_scan_test_pickle.pkl','wb'),-1)
-        my_f = cPickle.load(open('tmp_scan_test_pickle.pkl'))
+        origdir = os.getcwd()
+        tmpdir = None
+        try:
+            tmpdir = mkdtemp()
+            os.chdir(tmpdir)
+
+            cPickle.dump(_my_f, open('tmp_scan_test_pickle.pkl','wb'),-1)
+            my_f = cPickle.load(open('tmp_scan_test_pickle.pkl'))
+        finally:
+            # Get back to the orinal dir, and temporary one.
+            os.chdir(origdir)
+            if tmpdir is not None:
+                shutil.rmtree(tmpdir)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         state = rng.uniform()
