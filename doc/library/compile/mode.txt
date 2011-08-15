@@ -15,7 +15,7 @@ inputs-to-outputs graph is transformed into a callable object.
 
 Theano defines the following modes by name:
 
-- ``'FAST_COMPILE'``: Apply just a few graph optimizations, but use C implementations where possible.
+- ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
 - ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python 
     implementations. This mode can take much longer than the other modes, 
