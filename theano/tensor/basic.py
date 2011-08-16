@@ -3491,17 +3491,27 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     >>> new_r = inc_subtensor(r[10:], 5)
     """
     # retrieve idx_list from x.owner
-    if not isinstance(x.owner.op, Subtensor):
-        raise TypeError('x must be result of a subtensor operation')
-    if tolerate_inplace_aliasing:
-        destroyhandler_tolerate_aliased = [[0,1]]
+    if isinstance(x.owner.op, Subtensor):
+        if tolerate_inplace_aliasing:
+            destroyhandler_tolerate_aliased = [[0,1]]
+        else:
+            destroyhandler_tolerate_aliased = []
+        the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc,
+                destroyhandler_tolerate_aliased=destroyhandler_tolerate_aliased)
+        real_x = x.owner.inputs[0]
+        real_idxargs = x.owner.inputs[1:]
+        return the_op(real_x, y, *real_idxargs)
+    elif isinstance(x.owner.op, AdvancedSubtensor1):
+        real_x = x.owner.inputs[0]
+        ilist = x.owner.inputs[1]
+        if set_instead_of_inc:
+            raise NotImplementedError()
+        else:
+            return AdvancedIncSubtensor1(inplace)(real_x, y, ilist)
+    elif isinstance(x.owner.op, AdvancedSubtensor):
+        raise NotImplementedError()
     else:
-        destroyhandler_tolerate_aliased = []
-    the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc,
-            destroyhandler_tolerate_aliased=destroyhandler_tolerate_aliased)
-    real_x = x.owner.inputs[0]
-    real_idxargs = x.owner.inputs[1:]
-    return the_op(real_x, y, *real_idxargs)
+        raise TypeError('x must be result of a subtensor operation')
 
 
 class IncSubtensor(Op):
@@ -4897,18 +4907,14 @@ class AdvancedIncSubtensor1(Op):
         y_ = as_tensor_variable(y)
         ilist_ = as_tensor_variable(ilist)
 
-        assert x_.type.dtype == y_.type.dtype
-        assert x_.type.ndim == y_.type.ndim
-
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
             raise TypeError('index must be integers')
-        if ilist_.type.broadcastable != (False,):
+        if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        if x_.type.broadcastable[0]:
-            # the caller should have made a copy of x len(ilist) times
-            raise TypeError('cannot index into a broadcastable dimension')
+        if y_.type.ndim > x_.type.ndim:
+            raise TypeError('cannot reduce dimensionality of y')
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -4920,8 +4926,13 @@ class AdvancedIncSubtensor1(Op):
             x = x.copy()
         # x[idx] += y don't work if the same index is present many times.
         # It do it only once
-        for (j,i) in enumerate(idx):
-            x[i] += y[j]
+        #  -- Numpy also behaves this way, is it a bug in numpy?
+        if y.ndim:
+            for (j,i) in enumerate(idx):
+                x[i] += y[j]
+        else:
+            for i in idx:
+                x[i] += y
         out[0] = x
 
     def infer_shape(self, node, ishapes):
