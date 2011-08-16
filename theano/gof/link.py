@@ -33,8 +33,37 @@ def thunk_hook(type, value, trace):
 sys.excepthook = thunk_hook
 
 
-def raise_with_op(op, exc_info = None):
-    """WRITEME"""
+def raise_with_op(op, exc_info=None):
+    """
+    Re-raise an exception while annotating the exception object with
+    debug info.
+
+    Parameters
+    ----------
+    op : object
+        The Op object that resulted in the raised exception.
+    exc_info : tuple, optional
+        A tuple containing the exception type, exception object and
+        associated traceback, as would be returned by a call to
+        `sys.exc_info()` (which is done if `None` is passed).
+
+    Notes
+    -----
+
+    This re-raises the exception described by `exc_info` (or the last
+    one raised, if `exc_info` is omitted) and annotates the exception
+    object with several new members which may be helpful for debugging
+    Theano graphs. They are:
+
+     * __op_instance__: The Op that is responsible for the exception
+       being raised.
+     * __thunk_trace__: A traceback corresponding to the code that
+       actually generated the exception, if it is available.
+     * __applynode_index__: The index of the Apply node corresponding
+       to this op in `op.env.toposort()`.
+
+    The exception is not annotated if it is of type `KeyboardInterrupt`.
+    """
     if exc_info is None:
         exc_info = sys.exc_info()
     exc_type, exc_value, exc_trace = exc_info
@@ -46,9 +75,11 @@ def raise_with_op(op, exc_info = None):
     except AttributeError:
         trace = ()
     exc_value.__thunk_trace__ = trace
-    exc_value.args += (op, )
+    exc_value.__op_instance__ = op
     if op in op.env.toposort():
-        exc_value.args += ('Sequence id of Apply node='+str(op.env.toposort().index(op)),)
+        exc_value.__applynode_index__ = op.env.toposort().index(op)
+    else:
+        exc_value.__applynode_index__ = None
     raise exc_type, exc_value, exc_trace
 
 
@@ -283,7 +314,7 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
-            except Exception:
+            except:
                 raise_with_op(node)
         f = streamline_default_f
     elif nice_errors:
@@ -294,7 +325,7 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
             try:
                 for thunk, node in thunk_node_list:
                     thunk()
-            except Exception:
+            except:
                 raise_with_op(node)
         f = streamline_nice_errors_f
     else:
@@ -554,7 +585,7 @@ class WrapLinker(Linker):
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
-                except Exception:
+                except:
                     raise_with_op(node)
         f.thunk_groups = thunk_groups
 
