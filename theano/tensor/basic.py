@@ -2624,7 +2624,7 @@ def mean(input, axis = None, op = False):
         axis = [axis]
     for i in axis:
         s = s / shp[i]
-    if input.dtype.startswith('float'):
+    if str(input.dtype).startswith('float'):
         assert input.dtype == s.dtype
     return s
 
