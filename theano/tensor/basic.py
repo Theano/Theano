@@ -3493,7 +3493,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     # retrieve idx_list from x.owner
     if isinstance(x.owner.op, Subtensor):
         if tolerate_inplace_aliasing:
-            destroyhandler_tolerate_aliased = [[0,1]]
+            destroyhandler_tolerate_aliased = [[0, 1]]
         else:
             destroyhandler_tolerate_aliased = []
         the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc,
