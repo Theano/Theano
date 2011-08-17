@@ -2918,6 +2918,14 @@ class T_divimpl(unittest.TestCase):
         assert numpy.allclose(function([i, ii, d, f, c], true_div(ii,i))(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (3./5.))
 
+
+class T_mean(unittest.TestCase):
+    def test_regression_mean_of_ndarray_failure(self):
+        try:
+            T.mean(numpy.zeros(1))
+        except AttributeError:
+            self.fail()
+
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
 #         t = as_tensor_variable(1.0)
