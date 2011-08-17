@@ -2376,6 +2376,61 @@ class T_subtensor(unittest.TestCase):
             val = f()
             self.assertTrue(numpy.allclose(val, data[idx].shape))
 
+
+class TestIncSubtensor1(unittest.TestCase):
+    # test inc_subtensor
+    # also tests set_subtensor 
+
+    def setUp(self):
+        self.s = iscalar()
+        self.v = fvector()
+        self.m = dmatrix()
+        self.t = ctensor3()
+
+        self.adv1q = lvector() # advanced 1d query
+
+    def test_cant_adv_idx_into_scalar(self):
+        self.assertRaises(TypeError, lambda : self.s[self.adv1q])
+
+    def test_index_into_vec_w_vec(self):
+        a = self.v[self.adv1q]
+        assert a.type == self.v.type
+
+    def test_1d_set_adv_selection(self):
+        a = set_subtensor(self.v[self.adv1q], self.v[self.adv1q])
+
+        assert a.type == self.v.type
+
+        #TODO: compile a function and verify that the subtensor is removed
+        #      completely, because the whole expression is redundant.
+
+        f = theano.function([self.v, self.adv1q], a, allow_input_downcast=True)
+        aval = f([.4, .9, .1], [1,2])
+        assert numpy.allclose(aval, [.4, 0.9, 0.1])
+
+
+    def test_1d_inc_adv_selection(self):
+        a = inc_subtensor(self.v[self.adv1q], self.v[self.adv1q])
+
+        assert a.type == self.v.type
+        f = theano.function([self.v, self.adv1q], a, allow_input_downcast=True)
+        aval = f([.4, .9, .1], [1,2])
+        assert numpy.allclose(aval, [.4, 1.8, 0.2])
+
+
+    def test_1d_inc_adv_selection_w_broadcasting(self):
+        a = inc_subtensor(self.v[self.adv1q], 3.0)
+
+        assert a.type == self.v.type
+        f = theano.function([self.v, self.adv1q], a, allow_input_downcast=True)
+        aval = f([.4, .9, .1], [1,2])
+        assert numpy.allclose(aval, [.4, 3.9, 3.1])
+
+    def test_assigning_matrix_to_vector_selection(self):
+        self.assertRaises(TypeError,
+                lambda : inc_subtensor(self.v[self.adv1q], fmatrix()))
+
+
 class T_Join_and_Split(unittest.TestCase):
     """
     Split is tested by each verify_grad method.
