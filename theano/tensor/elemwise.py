@@ -1021,6 +1021,8 @@ class CAReduce(Op):
         return input_dtype
 
     def make_node(self, input):
+        input = as_tensor_variable(input)
+
         if self.axis is not None:
             for axis in self.axis:
                 if axis >= input.type.ndim or (axis<0 and abs(axis)>input.type.ndim):
