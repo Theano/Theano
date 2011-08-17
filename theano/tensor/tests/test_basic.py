@@ -2426,6 +2426,9 @@ class TestIncSubtensor1(unittest.TestCase):
         aval = f([.4, .9, .1], [1,2])
         assert numpy.allclose(aval, [.4, 3.9, 3.1])
 
+    def test_assigning_matrix_to_vector_selection(self):
+        self.assertRaises(TypeError,
+                lambda : inc_subtensor(self.v[self.adv1q], fmatrix()))
 
 
 class T_Join_and_Split(unittest.TestCase):

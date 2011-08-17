@@ -4919,7 +4919,10 @@ class AdvancedIncSubtensor1(Op):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
         if y_.type.ndim > x_.type.ndim:
-            raise TypeError('cannot reduce dimensionality of y')
+            opname = 'increment'
+            raise TypeError('cannot %s x subtensor with ndim=%s'
+            ' by y with ndim=%s to x subtensor with ndim=%s '%(
+                opname, x_.type.ndim, y_.type.ndim ))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
