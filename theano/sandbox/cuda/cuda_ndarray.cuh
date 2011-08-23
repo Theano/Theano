@@ -338,6 +338,12 @@ DllExport int CudaNdarray_reduce_min(CudaNdarray * self, CudaNdarray * A);
 DllExport int CudaNdarray_reduce_max(CudaNdarray * self, CudaNdarray * A);
 
 DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern);
+//PyObject* PyArray_TakeFrom(PyArrayObject* self, PyObject* indices, int axis, PyArrayObject* ret, NPY_CLIPMODE clipmode)
+//PyObject*
+//CudaNdarray_TakeFrom(CudaNdarray* self, PyObject* indices, int axis,
+//                     PyArrayObject* ret, NPY_CLIPMODE clipmode);
+PyObject* 
+CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
 static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
