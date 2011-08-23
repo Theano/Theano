@@ -1891,6 +1891,8 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
     """
+    assert_fast = None
+
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
         ilist_ = tensor.as_tensor_variable(ilist)
@@ -1908,11 +1910,35 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
         x, idx = inp
         out, = out_
-        o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),) +
-                                                        x.shape[1:])
-        for (j, i) in enumerate(idx):
-            o[j] = x[i]
-        out[0] = o
+        new_method = True
+        #TODO: if more then 3 dims, reshape the inputs if it is contiguous.
+        x_orig = x
+        if x.ndim > 3 and x.is_c_contiguous():
+            x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
+        if x.ndim <= 3:
+            if self.assert_fast is not None:
+                assert self.assert_fast == True, (
+                    "GpuAdvancedSubtensor1 used the fast version")
+
+            # Support x with dimensions 1,2,3 only.
+            o = x.take(cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32")),
+                       0, out_[0][0])  # idx, axis, return[, clipmode]
+            if x is not x_orig:
+                o = o.reshape((len(idx),) + x_orig.shape[1:])
+            out[0] = o
+        else:
+            if self.assert_fast is not None:
+                assert self.assert_fast == False, (
+                    "GpuAdvancedSubtensor1 didn't used the fast version")
+            if (out_[0][0] is None or out_[0][0].shape != (len(idx),) +
+                x.shape[1:]):
+                o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),) +
+                                                                x.shape[1:])
+            else:
+                o = out_[0][0]
+            for (j, i) in enumerate(idx):
+                o[j] = x[i]
+            out[0] = o
 
 
 class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
