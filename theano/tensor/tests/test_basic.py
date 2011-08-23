@@ -3117,7 +3117,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             for i in idx:
                 good[i] += numpy.exp(data[i])
             self.assertTrue(gval.ndim == data.ndim)
-            self.assertTrue(numpy.allclose(gval, good), (gval, good))
+            self.assertTrue(numpy.allclose(gval, good), (numpy.asarray(gval), good))
             self.assertTrue(numpy.allclose(gshape, data.shape))
 
             def fct(t):

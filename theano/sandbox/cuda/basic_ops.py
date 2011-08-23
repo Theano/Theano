@@ -2409,6 +2409,39 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
     """
+    def perform(self, node, inp, out_):
+        # TODO opt to make this inplace
+        x, y = inp[0:2]
+        out, = out_
+        if not self.inplace:
+            x = x.copy()
+        # x[idx] += y don't work if the same index is present many times.
+        # It do it only once
+        new_method = True
+        if not len(x.shape) in [1, 2] or len(inp) != 3:
+            new_method = False
+        if not new_method:
+#            import pdb;pdb.set_trace()
+            return super(GpuIncSubtensor, self).perform(node, inp, out_)
+            #for (j,i) in enumerate(idx):
+            #    x[i] += y[j]
+            #print x.shape, y.shape, idx.shape
+            #import pdb;pdb.set_trace()
+        else:
+            assert len(self.idx_list) == 0
+            idx = inp[2:]
+            unique, inverse = numpy.unique(idx, return_inverse=True)
+            idx_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32"))
+            unique_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(unique.astype("float32"))
+            inverse_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(inverse.astype("float32"))
+            #print "x", numpy.asarray(x)
+            #print "y", numpy.asarray(y)
+            #print "idx", idx
+            #print "unique", unique
+            #print "inverse", inverse
+            x.addto(y, idx_float32, unique_float32, inverse_float32, "clip")
+        out[0] = x
+
     def make_node(self, x, y, *inputs):
         assert isinstance(x.type, CudaNdarrayType)
         assert isinstance(y.type, CudaNdarrayType)

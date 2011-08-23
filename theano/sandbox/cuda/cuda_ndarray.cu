@@ -1095,6 +1095,285 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
 }
 
 
+/*
+ * d0,... are the output dims
+ * indices are a list of index to operate on
+ *         They are int32 viewed as float32.
+ * a is the array to add to
+ * b is the value
+ */
+__global__ void k_addto_3(const int d0, const int d1, const int d2,
+                          const int nb_indices, const float* indices, 
+                          const int nb_unique, const float* unique, 
+                          const float* inverse,
+                          float* a, 
+                          const int sA0, const int sA1, const int sA2,
+                          const float* b, 
+                          const int sB0, const int sB1, const int sB2){
+    for (int unique_idx = blockIdx.x; unique_idx < nb_unique; unique_idx += gridDim.x){
+        int unique_value = unique[unique_idx];
+        
+        //find the first subtensor of values to copy
+        for (int indices_idx = 0; indices_idx<nb_indices; indices_idx++){
+            while(indices_idx<nb_indices && indices[indices_idx]!=unique_value) indices_idx++;
+            if (indices_idx>=nb_indices)
+                continue;
+            int i0 =indices[indices_idx];
+
+            //copy that set of value
+            for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x){
+                for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y){
+                    int a_idx = i0*sA0 + i1*sA1 + i2*sA2;
+                    int b_idx = ((int)indices_idx)*sB0 + i1*sB1 + i2*sB2;
+                    a[a_idx] += b[b_idx];
+                }
+            }
+        }
+    }
+}
+
+//CudaNdarray_AddTo(CudaNdarray* self, PyObject* values, PyObject* indices
+//                  CudaNdarray* unique, CudaNdarray* inverse, NPY_CLIPMODE clipmode, );
+//TODO: set refcount correctly
+//TODO: find how to write consistently the function name
+//TODO: validate the index value!
+//TODO: Support/raise error if negative idx
+//TODO: check the shape of values,indices,unique,inverse are valid
+//self is the input
+PyObject*
+CudaNdarray_AddTo(CudaNdarray * self, PyObject *args){
+    int verbose = 0;
+    PyObject * values_obj = NULL;
+    PyObject * indices_obj = NULL;
+    PyObject * unique_obj = NULL;
+    PyObject * inverse_obj = NULL;
+    PyObject * clipmode_obj = NULL;
+    PyObject * raise_str = PyString_FromString("raise");
+    if (! PyArg_ParseTuple(args, "OOOO|O", &values_obj, &indices_obj,
+                           &unique_obj, &inverse_obj, &clipmode_obj))
+        return NULL;
+
+    //check argument value
+    CudaNdarray * values = NULL;
+    if (CudaNdarray_Check(values_obj))
+        values = (CudaNdarray*) values_obj;
+    else {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: values must be a CudaNdarray");
+        return NULL;
+    }
+
+    //Check argument indices
+    //TODO: if not a numpy.ndarray, convert to numpy.ndarray
+    //TODO: If a CudaNdarray, accept it and suppose the data is int32? is float32 number of int?
+    //TODO: Support ndarray of other dtype then int32
+    //TODO: support list of indices that are not c_contiguous
+    CudaNdarray * indices = NULL;
+    if (CudaNdarray_Check(indices_obj)) {
+        if (verbose) printf("cudandarray indices\n");
+        indices = (CudaNdarray*) indices_obj;
+        assert(indices);
+    } else if (PyArray_Check(indices_obj)) {
+
+        PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_AddTo: The indices must cudandarray with float32 value.");
+        return NULL;
+        if (verbose) printf("ndarray indices\n");
+        if (PyArray_TYPE(indices_obj) != NPY_INT32) {
+            PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: need a ndarray for indices with dtype int32");
+            return NULL;
+        }
+        if (((PyArrayObject*)indices_obj)->nd != 1) {
+            PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: need a CudaNdarray of indices with only 1 dimensions");
+            return NULL;
+        }
+        PyArray_Descr* float32_descr = PyArray_DescrFromType(NPY_FLOAT32);
+        PyObject * indices_float32 = NULL;
+        indices_float32 = PyArray_View((PyArrayObject*)indices_obj,
+                                                  float32_descr, NULL);
+        if (verbose) printf("ndarray indices\n");
+        //indices_float32 = PyArray_Cast((PyArrayObject*)indices_obj,
+        //                              NPY_FLOAT32);
+        //Py_INCREF(indices_float32);
+        if (verbose) printf("ndarray indices\n");
+        if (!indices_float32)
+            return NULL;
+
+        indices = (CudaNdarray*) CudaNdarray_New();
+        if (verbose) printf("ndarray after new\n");
+        if (! indices)
+            return NULL;
+        if (CudaNdarray_CopyFromArray(indices,
+                                      (PyArrayObject *)indices_float32))
+            return NULL;
+    } else {
+        PyObject_Print(indices_obj, stdout, 0);
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: need a CudaNdarray for indices1");
+        return NULL;
+    }
+
+    if (verbose) {
+        printf("indices used on the gpu\n");
+        fprint_CudaNdarray(stdout, indices);
+        PyObject * used_indices = CudaNdarray_CreateArrayObj(indices);
+        PyObject_Print(used_indices, stdout, 0);
+        Py_DECREF(used_indices);
+    }
+    if (verbose) printf("after print of object\n");
+    if(!CudaNdarray_is_c_contiguous(indices) != 0) {
+        PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_AddTo: The indices must be contiguous in memory.");
+        return NULL;
+    }
+    int nb_indices = CudaNdarray_SIZE(indices);
+    assert(nb_indices == CudaNdarray_HOST_DIMS(values)[0]);
+
+    //Check argument unique_obj
+    CudaNdarray * unique = NULL;
+    if (CudaNdarray_Check(indices_obj)) {
+        if (verbose) printf("cudandarray unique\n");
+        unique = (CudaNdarray*) unique_obj;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: unique must be a CudaNdarray");
+        return NULL;
+    }
+
+    //Check argument inverse_obj
+    CudaNdarray * inverse = NULL;
+    if (CudaNdarray_Check(indices_obj)) {
+        if (verbose) printf("cudandarray inverse\n");
+        inverse = (CudaNdarray*) inverse_obj;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_AddTo: inverse must be a CudaNdarray");
+        return NULL;
+    }
+
+    //Check argument clipmode
+    //TODO: add support for mode raise(default) and wrap
+    if (!clipmode_obj) {
+        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_AddTo: only the clip mode is currently supported");
+        return NULL;
+    }
+    char * clipmode = PyString_AsString(clipmode_obj);
+    if (! clipmode)
+        return NULL;
+    if (strcmp(clipmode, "clip") != 0) {
+        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_AddTo: only the clip mode is currently supported");
+        return NULL;
+    }
+
+    switch (self->nd) {
+        /*        case 0:
+            {
+                dim3 n_blocks(1, 1, 1);
+                dim3 n_threads(1);
+                k_addto_3<<<n_blocks, n_threads>>>(
+                        1, //d0
+                        1, //d1
+			1, //d2
+                        CudaNdarray_DEV_DATA(self),
+                        1, //strides
+                        1,
+                        1,
+                        CudaNdarray_DEV_DATA(other),
+                        1, //strides
+                        1,
+                        1);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if (cudaSuccess != err)
+                {
+                    PyErr_Format(
+                        PyExc_RuntimeError,
+                        "Cuda error: %s: %s.\n",
+                        "k_addto_3",
+                        cudaGetErrorString(err));
+                    return -1;
+                }
+            }
+            break;*/
+        case 1:
+            {
+                dim3 n_threads(1, 1, 1);
+                dim3 n_blocks(CudaNdarray_HOST_DIMS(indices)[0],1,1);
+                if (verbose) printf("kernel config with ndim=1: (n_blocks.x=%d, n_blocks.y=%d, n_threads.x=%i, n_threads.y=%i)\n", n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
+                k_addto_3<<<n_blocks, n_threads>>>(
+                        CudaNdarray_HOST_DIMS(self)[0], //dimensions
+                        1,
+                        1,
+                        CudaNdarray_HOST_DIMS(indices)[0],//nb_indices
+                        CudaNdarray_DEV_DATA(indices),
+                        CudaNdarray_HOST_DIMS(unique)[0],//nb_unique
+                        CudaNdarray_DEV_DATA(unique),
+                        CudaNdarray_DEV_DATA(inverse),
+                        CudaNdarray_DEV_DATA(self),
+                        CudaNdarray_HOST_STRIDES(self)[0], //strides
+                        1,
+                        1, 
+                        CudaNdarray_DEV_DATA(values),
+                        CudaNdarray_HOST_STRIDES(values)[0], //strides
+                        1,
+                        1);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if (cudaSuccess != err)
+                {
+                    PyErr_Format(
+                        PyExc_RuntimeError,
+                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_AddTo",
+                        cudaGetErrorString(err));
+                    return NULL;
+                }
+            }
+            break;
+        case 2:
+            {
+                dim3 n_threads(CudaNdarray_HOST_DIMS(self)[1], 1, 1);
+                dim3 n_blocks(CudaNdarray_HOST_DIMS(indices)[0],1,1);
+                if (verbose) printf("kernel config with ndim=1: (n_blocks.x=%d, n_blocks.y=%d, n_threads.x=%i, n_threads.y=%i)\n", n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
+                k_addto_3<<<n_blocks, n_threads>>>(
+                        CudaNdarray_HOST_DIMS(self)[0], //dimensions
+                        CudaNdarray_HOST_DIMS(self)[1], //dimensions
+                        1,
+                        CudaNdarray_HOST_DIMS(indices)[0],//nb_indices
+                        CudaNdarray_DEV_DATA(indices),
+                        CudaNdarray_HOST_DIMS(unique)[0],//nb_unique
+                        CudaNdarray_DEV_DATA(unique),
+                        CudaNdarray_DEV_DATA(inverse),
+                        CudaNdarray_DEV_DATA(self),
+                        CudaNdarray_HOST_STRIDES(self)[0], //strides
+                        CudaNdarray_HOST_STRIDES(self)[1],
+                        1, 
+                        CudaNdarray_DEV_DATA(values),
+                        CudaNdarray_HOST_STRIDES(values)[0], //strides
+                        CudaNdarray_HOST_STRIDES(values)[1],
+                        1);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if (cudaSuccess != err)
+                {
+                    PyErr_Format(
+                        PyExc_RuntimeError,
+                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_AddTo",
+                        cudaGetErrorString(err));
+                    return NULL;
+                }
+            }
+            break;
+    default:
+        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_AddTo: only ipnut with 1 or 2 dimensions are currently supported");
+        
+    }        
+
+
+    //if (((PyObject *)indices) != indices_obj)
+    //    Py_DECREF(indices_obj);
+        
+    if (verbose) printf("AddTo SUCCEDED\n");
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+
 PyObject * CudaNdarray_SetStride(CudaNdarray * self, PyObject *args)
 {
     int pos, stride;
@@ -1203,6 +1482,9 @@ static PyMethodDef CudaNdarray_methods[] =
     {"take",
         (PyCFunction)CudaNdarray_TakeFrom, METH_VARARGS,
         "Equivalent of numpy.take"},
+    {"addto",
+        (PyCFunction)CudaNdarray_AddTo, METH_VARARGS,
+        "Equivalent of numpy.put"},
     {"_set_shape_i",
         (PyCFunction)CudaNdarray_SetShapeI, METH_VARARGS,
         "For integer arguments (i, s), set the 'i'th shape to 's'"},

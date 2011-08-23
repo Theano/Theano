@@ -439,6 +439,15 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
 static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
+//PyObject* PyArray_PutTo(PyArrayObject* self, PyObject* values, PyObject* indices, NPY_CLIPMODE clipmode)¶
+//PyObject* PyArray_TakeFrom(PyArrayObject* self, PyObject* indices, int axis, PyArrayObject* ret, NPY_CLIPMODE clipmode)
+//CudaNdarray_AddTo(CudaNdarray* self, PyObject* values, PyObject* indices
+//                  CudaNdarray* unique, CudaNdarray* inverse, NPY_CLIPMODE clipmode, );
+// return_inverse is the output of numpy.unique(self, return_inverse=True)
+PyObject* 
+CudaNdarray_AddTo(CudaNdarray * self, PyObject *args);
+
+
 #endif
 /*
   Local Variables:
