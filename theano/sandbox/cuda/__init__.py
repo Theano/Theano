@@ -275,10 +275,26 @@ def handle_shared_float32(tf):
     """
     if tf:
         import theano.compile
+        import copy_reg
         theano.compile.shared_constructor(float32_shared_constructor)
-
+        # this is a bit of hackery to make the shared variables load
+        # with the proper type.
+        copy_reg.pickle(theano.gof.graph.Apply, reduce_apply, 
+                        load_shared_pickle)
     else:
         raise NotImplementedError('removing our handler')
+
+def reduce_apply(apply):
+    if isinstance(apply.op, HostFromGpu) and len(apply.inputs) == 1 and \
+            isinstance(apply.inputs[0], CudaNdarraySharedVariable):
+        return load_shared_pickle, apply.inputs[0].get_value()
+    else:
+        # this will make protocol 2 a little bit less efficient
+        # but there is no way around it.
+        return apply.__reduce__()
+
+def load_shared_pickle(val):
+    return theano.tensor.as_tensor_variable(theano.shared(val))
 
 if config.device.startswith('gpu'):
     use(device=config.device, force=config.force_device)
