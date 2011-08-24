@@ -476,6 +476,16 @@ class Function(object):
         self._value = ValueAttribute()
         self._container = ContainerAttribute()
 
+        # Compute self.n_returned_outputs.
+        # This is used only when fn.need_update_inputs is False
+        # because we're using one of the VM objects and it is
+        # putting updates back into the input containers all by itself.
+        assert len(self.maker.expanded_inputs) == len(self.input_storage)
+        self.n_returned_outputs = len(self.output_storage)
+        for input in self.maker.expanded_inputs:
+            if input.update is not None:
+                self.n_returned_outputs -= 1
+
     def __contains__(self, item):
         return self.value.__contains__(item)
 
@@ -614,6 +624,7 @@ class Function(object):
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
+        print 'LEN OUT STOR', len(self.output_storage)
 
         # Remove internal references to required inputs.
         # These cannot be re-used anyway.
@@ -636,6 +647,8 @@ class Function(object):
             for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
                 if input.update is not None:
                     storage.data = outputs.pop()
+        else:
+            outputs = outputs[:self.n_returned_outputs]
 
         # Put default values back in the storage
         for i, (required, refeed, value) in enumerate(self.defaults):
