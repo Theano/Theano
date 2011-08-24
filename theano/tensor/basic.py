@@ -1270,9 +1270,12 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            if len(args) == 1 and isinstance(args[0],
-                                             (list, TensorVariable,
-                                              theano.tensor.sharedvar.TensorSharedVariable)):
+            if (len(args) == 1
+                    and isinstance(args[0], (
+                        list,
+                        TensorVariable,
+                        TensorConstant,
+                        theano.tensor.sharedvar.TensorSharedVariable))):
                 return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor(args)(self, *args)
