@@ -624,7 +624,6 @@ class Function(object):
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
-        print 'LEN OUT STOR', len(self.output_storage)
 
         # Remove internal references to required inputs.
         # These cannot be re-used anyway.
