@@ -150,6 +150,8 @@ If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 If you want the bleeding-edge without developing the code you can use
 pip for this
 
+GIT_TODO: update these pip install instructions to use github.
+
 .. code-block:: bash
 
     pip install --upgrade hg+http://hg.assembla.com/theano
@@ -166,7 +168,7 @@ get the code using `Mercurial <http://mercurial.selenic.com/>`__:
 
 .. code-block:: bash
 
-    hg clone http://hg.assembla.com/theano Theano
+    git clone git://github.com/Theano/Theano.git
 
 From here, the easiest way to get started is
 
@@ -547,7 +549,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
     .. code-block:: bash
 
-        hg clone http://hg.assembla.com/theano Theano
+        git clone git://github.com/Theano/Theano.git
 
 - Add (or edit) the ``PYTHONPATH`` environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
