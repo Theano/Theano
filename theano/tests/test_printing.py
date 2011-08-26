@@ -1,8 +1,5 @@
 """
-This is a REALLY PARTIAL TEST.
-
-I did them to help debug stuff.
-
+Tests of printing functionality
 """
 import logging
 import StringIO
@@ -10,8 +7,16 @@ import StringIO
 import theano
 import theano.tensor as tensor
 
+from theano.printing import min_informative_str
+
 
 def test_pydotprint_cond_highlight():
+    """
+    This is a REALLY PARTIAL TEST.
+
+    I did them to help debug stuff.
+    """
+
     x = tensor.dvector()
     f = theano.function([x], x*2)
     f([1,2,3,4])
