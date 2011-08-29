@@ -24,12 +24,33 @@ Accounts
 
 To obtain developer access: register with `GitHub
 <http://www.github.com/>`_ and create a fork of `Theano
-<http://www.github.com/Theano/Theano>`_. Hack in your patches / features to your own fork,
-and send a pull request.
-(Just the standard github workflow.)
-If you don't get any feedback, bug us on the theano-dev mailing list.
+<http://www.github.com/Theano/Theano>`_.
 
-For info on how to run your personal fork of Theano, see :ref:`install_bleeding_edge`.
+Clone your fork locally with
+
+.. code-block:: bash
+    git clone git@github.com:your_github_login/Theano.git
+
+and add a reference to the 'central' Theano repository with
+
+.. code-block:: bash
+    git remote add central git://github.com/Theano/Theano.git
+
+When working on a new feature in your own fork, start from an up-to-date copy
+of the trunk:
+
+.. code-block:: bash
+    git fetch central
+    git checkout -b my_shiny_feature central/master
+
+Once your code is ready for others to review, push your branch to your github fork:
+
+.. code-block:: bash
+    git push -u origin my_shiny_feature
+
+then go to your fork's github page on the github website, select your feature
+branch and hit the "Pull Request" button in the top right corner.
+If you don't get any feedback, bug us on the theano-dev mailing list.
 
 Details about ``PYTHONPATH``
 ----------------------------
@@ -70,12 +91,21 @@ mailing list.
 
 .. _theano-users: https://groups.google.com/group/theano-users
 
-To update your library to the latest revision, change directory (``cd``)
-to your ``Theano`` folder and execute the following command:
+To update your library to the latest revision, you should have a branch
+that tracks the main trunk. You can add one with:
 
 .. code-block:: bash
+    git fetch central
+    git branch trunk central/master
 
-    hg pull -u
+Once you have such a branch, in order to update it, do:
+
+.. code-block:: bash
+    git checkout trunk
+    git pull
+
+Keep in mind that this branch should be "read-only": if you want to patch
+Theano, do it in another branch like described above.
 
 Nightly test
 ============
