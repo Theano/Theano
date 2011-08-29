@@ -1,7 +1,0 @@
-.. _hg_primer:
-
-================
-hg in a Nutshell
-================
-
-Deleted. We're not using hg anymore, we switched to git.

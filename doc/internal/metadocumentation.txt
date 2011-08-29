@@ -134,7 +134,7 @@ be logged into ``ceylon``, Fred leaves a shell open for that.)
 
 The cronjob executes the scripts
 ``~/nightly_build/do_nightly_build_{theano,pylearn,deeplearning}``.
-These scripts perform an "hg pull -u" of theano (and pylearn, and
+These scripts perform an update of theano (and pylearn, and
 DeepLearningTutorials too), and execute nosetests (in various settings).
 
 The output is emailed automatically to the `theano-buildbot`_ mailing list.

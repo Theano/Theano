@@ -17,5 +17,4 @@ If you're feeling ambitious, go fix some `pylint
    mammouth
    metadocumentation
    python
-   hg_primer
    how_to_release

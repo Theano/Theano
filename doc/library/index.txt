@@ -46,12 +46,3 @@ There are also some top-level imports that you might find more convenient:
 
     Works like :func:`tensor.dot` for both sparse and dense matrix products
 
-
-.. function:: __src_version__()
-
-    Returns the mercurial (hg) identifier of the current tip.  
-    
-    If there are uncommitted modifications, this function raises an Exception.
-    If the theano package is not under mercurial control, then again this function
-    raises an Exception.
-
