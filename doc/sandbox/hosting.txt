@@ -14,8 +14,6 @@ Wishlist:
  - mailing list
  - reliability of hosting service
 
-Currently, [http://sharesource.org/ sharesource] and [http://www.assembla.com/ assembla] are the only hosting services that support mercurial that I know of.  Sharesource is young, but supports all the required features.  I'll make an account, and see what I can do with it...
-
 Should we get a domain name? To my dismay, theano.org, theano.com and theano.net are all taken. The first two seem legit, but theano.net doesn't look like it has anything on it and expires on May 29, so maybe there's a chance we can snag it? -ob
 
 We could also get [http://www.theano.io]. -jpt
