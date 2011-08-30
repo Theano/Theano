@@ -60,7 +60,7 @@ The following libraries and software are optional:
         For building the documentation. LaTeX_ and dvipng_ are also necessary
         for math to show up as images.
 
-    `Mercurial <http://mercurial.selenic.com/>`_
+    `Git <http://git-scm.com>`_
         To download bleeding-edge versions of Theano.
 
     `pydot <https://code.google.com/p/pydot/>`_
@@ -142,31 +142,33 @@ A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
 
 .. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
 
-Bleeding-edge (developer) install instructions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Bleeding-edge install instructions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
-If you want the bleeding-edge without developing the code you can use
-pip for this
+If you want the bleeding-edge without developing the code you can use pip for
+this with the command line below. Note that it will also try to download and
+upgrade Theano's dependencies (like numpy and scipy). If you do not wish to do
+so, add the ``--no-deps`` switch to it.
 
 .. code-block:: bash
 
-    pip install --upgrade hg+http://hg.assembla.com/theano
+    pip install --upgrade git+git://github.com/Theano/Theano.git
 
-or
+or (if you want to install to a custom directory):
 
 .. code-block:: bash
 
-    pip install --upgrade hg+http://hg.assembla.com/theano --install-option='--prefix=YOURPREFIX'
+    pip install --upgrade git+git://github.com/Theano/Theano.git --install-option='--prefix=YOURPREFIX'
 
 The following are general instructions that will set you up with the
 bleeding-edge version of Theano and allow you to hack it. First,
-get the code using `Mercurial <http://mercurial.selenic.com/>`__:
+get the code using `Git <http://git-scm.com>`__:
 
 .. code-block:: bash
 
-    hg clone http://hg.assembla.com/theano Theano
+    git clone git://github.com/Theano/Theano.git
 
 From here, the easiest way to get started is
 
@@ -177,9 +179,9 @@ From here, the easiest way to get started is
 
 This will install a ``.pth`` file in your ``site-packages`` directory that
 tells Python where to look for your Theano installation (i.e. in the
-directory your just checked out of Mercurial). Using ``develop`` mode is
+directory your just checked out of Github). Using ``develop`` mode is
 preferable to ``install`` as any modifications you make in the checkout
-directory (or changes you pull with Mercurial) will be automatically reflected
+directory (or changes you pull with Git) will be automatically reflected
 in the "installed" version without re-running ``python setup.py install``.
 
 If you do not have permission to modify your ``site-packages`` directory you
@@ -234,7 +236,7 @@ to your ``Theano`` folder and execute the following command:
 
 .. code-block:: bash
 
-    hg pull -u
+    git pull
 
 You should update frequently, bugs are fixed on a very regular basis.
 
@@ -250,7 +252,7 @@ a Python (or IPython) interpreter,
     >>> import theano
     >>> theano.test()
 
-You can also run them in-place from the Mercurial checkout directory by typing
+You can also run them in-place from the Git checkout directory by typing
 
 .. code-block:: bash
 
@@ -368,7 +370,7 @@ Mac
 
     .. code-block:: bash
 
-        $ sudo port install gcc44 py26-scipy mercurial
+        $ sudo port install gcc44 py26-scipy git
 
     This will install all the required Theano dependencies.  Note that
     compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
@@ -526,11 +528,9 @@ components as in Python(x,y) that are required by Theano, follow these steps:
 
 At this point, whether you installed Python(x,y) or individual components, you
 should have MinGW, Python, Numpy, Scipy and Nose installed.
-In order to download Theano you will also need Mercurial, which you can get
-`here <http://mercurial.selenic.com/downloads>`__.
-You may install either the command
-line Windows version or the TortoiseHG GUI version: it does not matter as
-far as installing Theano is concerned.
+In order to download Theano you will also need Git, which you can get
+`here <http://git-scm.com/download>`__ (download the latest version of the
+"Full installer for official Git" from the ``msysgit`` download page).
 
 Installing Theano
 ~~~~~~~~~~~~~~~~~
@@ -547,7 +547,7 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
     .. code-block:: bash
 
-        hg clone http://hg.assembla.com/theano Theano
+        git clone git://github.com/Theano/Theano.git
 
 - Add (or edit) the ``PYTHONPATH`` environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains

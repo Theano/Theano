@@ -22,33 +22,35 @@ To get up to speed, you'll need to
 Accounts
 --------
 
-To obtain developer access: register with `Assembla
-<http://www.assembla.com/>`_ and add yourself as a watcher on the `Theano
-space <http://www.assembla.com/spaces/theano>`_. Then send an email to an
-admin asking to be promoted to a member of the project.
+To obtain developer access: register with `GitHub
+<http://www.github.com/>`_ and create a fork of `Theano
+<http://www.github.com/Theano/Theano>`_.
 
-
-Theano code
------------
-
-*To get the source via Mercurial,* you must have `Mercurial
-<http://mercurial.selenic.com/>`__ installed.
-
-The code that makes up Theano is in a `single repository
-<http://www.assembla.com/spaces/theano/trac_mercurial_tool>`__. As a developer,
-you should clone this repository like this:
+Clone your fork locally with
 
 .. code-block:: bash
+    git clone git@github.com:your_github_login/Theano.git
 
-    hg clone 'http://username:password@hg.assembla.com/theano' Theano
-
-You can also clone the code anonymously:
+and add a reference to the 'central' Theano repository with
 
 .. code-block:: bash
+    git remote add central git://github.com/Theano/Theano.git
 
-    hg clone http://hg.assembla.com/theano Theano
+When working on a new feature in your own fork, start from an up-to-date copy
+of the trunk:
 
-Then follow the :ref:`install_bleeding_edge`.
+.. code-block:: bash
+    git fetch central
+    git checkout -b my_shiny_feature central/master
+
+Once your code is ready for others to review, push your branch to your github fork:
+
+.. code-block:: bash
+    git push -u origin my_shiny_feature
+
+then go to your fork's github page on the github website, select your feature
+branch and hit the "Pull Request" button in the top right corner.
+If you don't get any feedback, bug us on the theano-dev mailing list.
 
 Details about ``PYTHONPATH``
 ----------------------------
@@ -89,12 +91,21 @@ mailing list.
 
 .. _theano-users: https://groups.google.com/group/theano-users
 
-To update your library to the latest revision, change directory (``cd``)
-to your ``Theano`` folder and execute the following command:
+To update your library to the latest revision, you should have a branch
+that tracks the main trunk. You can add one with:
 
 .. code-block:: bash
+    git fetch central
+    git branch trunk central/master
 
-    hg pull -u
+Once you have such a branch, in order to update it, do:
+
+.. code-block:: bash
+    git checkout trunk
+    git pull
+
+Keep in mind that this branch should be "read-only": if you want to patch
+Theano, do it in another branch like described above.
 
 Nightly test
 ============

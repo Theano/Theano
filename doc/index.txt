@@ -40,7 +40,7 @@ setup.py install``.
 Those interested in bleeding-edge features should obtain the latest development
 version, available via::
 
-    hg clone http://hg.assembla.com/theano Theano
+    git clone git://github.com/Theano/Theano.git
 
 You can then place the checkout directory on your ``$PYTHONPATH`` or use
 ``python setup.py develop`` to install a ``.pth`` into your ``site-packages``
