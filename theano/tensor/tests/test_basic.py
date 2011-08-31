@@ -2977,9 +2977,16 @@ class T_divimpl(unittest.TestCase):
 class T_mean(unittest.TestCase):
     def test_regression_mean_of_ndarray_failure(self):
         try:
-            T.mean(numpy.zeros(1))
+            theano.tensor.mean(numpy.zeros(1))
         except AttributeError:
             self.fail()
+
+    def test0(self):
+        #Simple test...
+        x = theano.tensor.vector()
+        f = theano.function([x],theano.tensor.mean(x))
+        data = numpy.asarray(numpy.random.rand(50), dtype=config.floatX)
+        assert f(data) == numpy.mean(data)
 
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
