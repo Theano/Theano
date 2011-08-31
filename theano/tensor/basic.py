@@ -2622,7 +2622,7 @@ def mean(input, axis = None, op = False):
     if input.dtype == 'float32':
         shp = cast(shp, 'float32')
     if axis is None:
-        axis = range(input.type.ndim)
+        axis = range(input.ndim)
     elif isinstance(axis, int):
         axis = [axis]
     for i in axis:
