@@ -29,23 +29,27 @@ To obtain developer access: register with `GitHub
 Clone your fork locally with
 
 .. code-block:: bash
+
     git clone git@github.com:your_github_login/Theano.git
 
 and add a reference to the 'central' Theano repository with
 
 .. code-block:: bash
+
     git remote add central git://github.com/Theano/Theano.git
 
 When working on a new feature in your own fork, start from an up-to-date copy
 of the trunk:
 
 .. code-block:: bash
+
     git fetch central
     git checkout -b my_shiny_feature central/master
 
 Once your code is ready for others to review, push your branch to your github fork:
 
 .. code-block:: bash
+
     git push -u origin my_shiny_feature
 
 then go to your fork's github page on the github website, select your feature
@@ -80,8 +84,8 @@ Once you have completed these steps, you should run the tests like this:
 
 .. code-block:: python
 
-    >>> import theano
-    >>> theano.test()
+   import theano
+   theano.test()
 
 Or by running ``nosetests`` from your checkout directory.
 
@@ -95,12 +99,14 @@ To update your library to the latest revision, you should have a branch
 that tracks the main trunk. You can add one with:
 
 .. code-block:: bash
+
     git fetch central
     git branch trunk central/master
 
 Once you have such a branch, in order to update it, do:
 
 .. code-block:: bash
+
     git checkout trunk
     git pull
 
