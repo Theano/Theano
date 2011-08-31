@@ -995,17 +995,17 @@ class FunctionMaker(object):
             start_optimizer = time.time()
             optimizer(env)
             end_optimizer = time.time()
+
+            opt_time = end_optimizer - start_optimizer
+            mode.optimizer_time += opt_time
+            if profile:
+                profile.optimizer_time += opt_time
+            _logger.debug('Optimizing took %f seconds', opt_time)
+
+            #Add deep copy to respect the memory interface
+            insert_deepcopy(env, inputs, outputs+additional_outputs)
         finally:
             theano.config.compute_test_value = compute_test_value_orig
-
-        opt_time = end_optimizer - start_optimizer
-        mode.optimizer_time += opt_time
-        if profile:
-            profile.optimizer_time += opt_time
-        _logger.debug('Optimizing took %f seconds', opt_time)
-
-        #Add deep copy to respect the memory interface
-        insert_deepcopy(env, inputs, outputs+additional_outputs)
 
         # initialize the linker
         if not hasattr(linker, 'accept'):

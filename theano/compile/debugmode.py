@@ -1655,10 +1655,10 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
             try:
                 theano.config.compute_test_value = "off"
                 optimizer(env)
+
+                theano.compile.function_module.insert_deepcopy(env, inputs, outputs+additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
-
-            theano.compile.function_module.insert_deepcopy(env, inputs, outputs+additional_outputs)
 
             if i:
                 li = env.equivalence_tracker.event_list

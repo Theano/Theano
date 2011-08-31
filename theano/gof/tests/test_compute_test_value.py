@@ -372,3 +372,15 @@ class TestComputeTestValue(unittest.TestCase):
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
+
+    def test_disabled_during_compilation(self):
+        # We test that it is disabled when we include deep copy in the code
+        # This don't test that it is disabled during optimization, but the code do it.
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = 'raise'
+            init_Mu1 = theano.shared(numpy.zeros((5,),dtype=config.floatX)).dimshuffle('x',0)
+
+            f = theano.function([], outputs=[init_Mu1])
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value
