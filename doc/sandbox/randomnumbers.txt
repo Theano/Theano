@@ -37,61 +37,61 @@ So the proposal is to provide the missing functionality (the last three requirem
 
 == Syntax ==
 
-{{{
-#!python
-# create a random generator, providing a default seed to condition how RandomOp instances are produced.
-r = MetaRandom(metaseed=872364)
+.. code-block:: python
 
-# create a different random generator
-rr = MetaRandom(metaseed=99) 
+    #!python
+    # create a random generator, providing a default seed to condition how RandomOp instances are produced.
+    r = MetaRandom(metaseed=872364)
 
-# create an Op to produce a stream of random numbers.
-# This generates random numbers uniformly between 0.0 and 1.0 excluded
-# u will remember that it was made from r.
-u = r.uniform(shape=(3,4,5), low=0.0, high=1.0)
+    # create a different random generator
+    rr = MetaRandom(metaseed=99) 
 
-# create a second Op for more random numbers
-# v will remember that it was made from r.
-v = r.uniform(shape=(8,), low=-1.0, high=0.0)
+    # create an Op to produce a stream of random numbers.
+    # This generates random numbers uniformly between 0.0 and 1.0 excluded
+    # u will remember that it was made from r.
+    u = r.uniform(shape=(3,4,5), low=0.0, high=1.0)
 
-# create a third Op with a different underlying random state
-# w will remember that it was made from rr.
-w = rr.uniform(shape=(), low=-10., high=10.)
+    # create a second Op for more random numbers
+    # v will remember that it was made from r.
+    v = r.uniform(shape=(8,), low=-1.0, high=0.0)
 
-# compile a function to draw random numbers
-# note: un-named state inputs will be added automatically.
-# note: it is not necessary to draw samples for u, even though
-#       u was created by r before v.
-fn_v = compile.function([], [v])
+    # create a third Op with a different underlying random state
+    # w will remember that it was made from rr.
+    w = rr.uniform(shape=(), low=-10., high=10.)
 
-# this prints some representation of v's rng in fn_v.
-# The .rng property works for Result instances produced by MetaRandom.
-print fn_v.state[v.rng]
+    # compile a function to draw random numbers
+    # note: un-named state inputs will be added automatically.
+    # note: it is not necessary to draw samples for u, even though
+    #       u was created by r before v.
+    fn_v = compile.function([], [v])
 
-# compile a function to draw each of u, v, w
-# note: un-named state inputs will be added automatically
-# note: This function (especially its internal state) is independent from fn_v.
-fn_uvw = compile.function([], [u,v,w])
+    # this prints some representation of v's rng in fn_v.
+    # The .rng property works for Result instances produced by MetaRandom.
+    print fn_v.state[v.rng]
 
-# N.B. The random number streams of fn_v and fn_uvw are independent.
-assert fn_v.state[v.rng] != fn_uvw.state[v.rng]
+    # compile a function to draw each of u, v, w
+    # note: un-named state inputs will be added automatically
+    # note: This function (especially its internal state) is independent from fn_v.
+    fn_uvw = compile.function([], [u,v,w])
 
-fn_v()  # returns random numbers A (according to metaseed 872364)
-fn_v()  # returns different random numbers B
+    # N.B. The random number streams of fn_v and fn_uvw are independent.
+    assert fn_v.state[v.rng] != fn_uvw.state[v.rng]
 
-# note that v's stream here is identical to the one in fn_v()
-fn_uvw() # returns random numbers C, A, E
+    fn_v()  # returns random numbers A (according to metaseed 872364)
+    fn_v()  # returns different random numbers B
 
-#explicitly re-seed v's random stream in fn_v
-r.seed(fn_v, 872364)
-fn_v()    # returns random numbers A (as above)
-fn_v()    # returns random numbers B (as above)
+    # note that v's stream here is identical to the one in fn_v()
+    fn_uvw() # returns random numbers C, A, E
 
-#re-seed w's random stream in fn_uvw, but not u's or v's
-rr.seed(fn_uvw, 99)
-fn_uvw() # returns random numbers D, B, E
+    #explicitly re-seed v's random stream in fn_v
+    r.seed(fn_v, 872364)
+    fn_v()    # returns random numbers A (as above)
+    fn_v()    # returns random numbers B (as above)
 
-}}}
+    #re-seed w's random stream in fn_uvw, but not u's or v's
+    rr.seed(fn_uvw, 99)
+    fn_uvw() # returns random numbers D, B, E
+
 
 == {{{MetaRandom}}} ==
 
@@ -106,30 +106,31 @@ The use of multiple {{{MetaRandom}}} objects in a single function is mostly for 
 
 The typical case is that only one (global) {{{MetaRandom}}} object is used to produce all the random streams in a function, so seeding (once) will reset the entire function.
 
-{{{
-class MetaRandom(obj):
-   def __init__(self, metaseed=<N>): ... # new functions will be initialized so that seed(fn, <N>) has no effect on output.
+.. code-block:: python
+
+    class MetaRandom(obj):
+     def __init__(self, metaseed=<N>): ... # new functions will be initialized so that seed(fn, <N>) has no effect on output.
    
-   def __contains__(self, Result): ...   # True if Result was returned by a call to self.<distribution>
-   def results(self): ...                # Iterate over returned Result instances in creation order.
+     def __contains__(self, Result): ...   # True if Result was returned by a call to self.<distribution>
+     def results(self): ...                # Iterate over returned Result instances in creation order.
 
-   def seed(self, fn, bits): ...         # See below.
-   def getstate(self, fn): ...           # See below.
-   def setstate(self, fn, state): ...    # See below.
+     def seed(self, fn, bits): ...         # See below.
+     def getstate(self, fn): ...           # See below.
+     def setstate(self, fn, state): ...    # See below.
 
-   def uniform(...): ...                 # return a Result of an Apply of a RandomOp.  
+     def uniform(...): ...                 # return a Result of an Apply of a RandomOp.  
                                          # The return value is also stored internally for __contains__ and results().
-   def normal(...): ...
-   def bernoulli(...): ...
-   ...
-}}}
+     def normal(...): ...
+     def bernoulli(...): ...
+     ...
 
 
 === {{{MetaRandom.getstate}}} ===
 
-{{{
-def getstate(self, fn): ...
-}}}
+.. code-block:: python
+
+    def getstate(self, fn): ...
+
  ''return''::
    list, set, dict, instance... something to store the random number generators associated with every one of {{{self}}}'s members in {{{fn}}}
 
@@ -137,9 +138,10 @@ def getstate(self, fn): ...
 
 Re-install the random number generators in {{{rstates}}} to the {{{randomobj}}} members in {{{fn}}
 
-{{{
-def setstate(self, fn, rstates): ....
-}}}
+.. code-block:: python
+
+   def setstate(self, fn, rstates): ....
+
  ''fn::
    a CompileFunction instance, generally with some Apply instances inside that are members of {{{self}}}.
  ''rstates''::
@@ -150,9 +152,10 @@ def setstate(self, fn, rstates): ....
 
 === {{{MetaRandom.seed}}} ===
 
-{{{
-def seed(self, fn, bits): ....
-}}}
+.. code-block:: python
+
+    def seed(self, fn, bits): ....
+
  ''fn::
    a CompileFunction instance, generally with some Apply instances inside that are members of {{{self}}}.
  ''bits''::
@@ -164,10 +167,11 @@ Set the states of self's members in fn in a deterministic way based on bits.
 Each member of self should generate independent samples after this call.
 
 Seed is like a dynamically-computed setstate.  If the user runs
-{{{
-r.seed(fn, 99)
-state_99 = r.getstate(fn)
-}}}
+.. code-block:: python
+
+    r.seed(fn, 99)
+    state_99 = r.getstate(fn)
+
 then any time afterward both {{{r.setstate(fn, state_99)}}} and {{{r.seed(fn, 99)}}} will put {{{fn}}} into the same state.
 
 
@@ -175,64 +179,61 @@ then any time afterward both {{{r.setstate(fn, state_99)}}} and {{{r.seed(fn, 99
 = Potential Other syntax =
 
 
-{{{
-#!python
-# create a random state
-r = RandomState(name = 'r')
+.. code-block:: python
 
-# create a different random state
-rr = RandomState(name = 'rr')
+    #!python
+    # create a random state
+    r = RandomState(name = 'r')
 
-# create an Op to produce a stream of random numbers.
-# That stream is a function of r's seed.
-# This generates random numbers uniformly between 0.0 and 1.0 excluded
-u = r.uniform(shape=(3,4,5), 0.0, 1.0)
+    # create a different random state
+    rr = RandomState(name = 'rr')
 
-# create a second Op for more random numbers
-# This stream is seeded using a different function of r's seed.
-# u and v should be independent
-v = r.uniform(shape=(8,), -1.0, 0.0)
+    # create an Op to produce a stream of random numbers.
+    # That stream is a function of r's seed.
+    # This generates random numbers uniformly between 0.0 and 1.0 excluded
+    u = r.uniform(shape=(3,4,5), 0.0, 1.0)
 
-# create a third Op with a different underlying random state
-w = rr.uniform(shape=(), -10., 10.)
+    # create a second Op for more random numbers
+    # This stream is seeded using a different function of r's seed.
+    # u and v should be independent
+    v = r.uniform(shape=(8,), -1.0, 0.0)
 
-# compile a function to draw random numbers
-# note: it is not necessary to draw samples for u.
-# we provide the seed for the RandomState r in the inputs list as a "Type 4" input
-fn_v = compile.function([(r, 872364)], [v])
+    # create a third Op with a different underlying random state
+    w = rr.uniform(shape=(), -10., 10.)
 
-# compile a function to draw each of u, v, w
-# we provide the seeds for the RandomStates r and rr in the inputs list as "Type 4" inputs
-# note: the random state for r here is seeded independently from the one in fn_v, which means
-#       random number generation of fn_v and fn_uvw will not interfere. Since the seed is the
-#       same, it means they will produce the same sequence of tensors for the output v.
-fn_uvw = compile.function([(r, 872364), (rr, 99)], [u,v,w])
+    # compile a function to draw random numbers
+    # note: it is not necessary to draw samples for u.
+    # we provide the seed for the RandomState r in the inputs list as a "Type 4" input
+    fn_v = compile.function([(r, 872364)], [v])
 
-
-fn_v()  # returns random numbers A
-fn_v()  # returns different random numbers B
-
-# note that v's stream here is identical to the one in fn_v()
-fn_uvw() # returns random numbers C, A, E
-
-#re-seed v's random stream in fn
-fn_v.r = 872364
-
-### Is this state readable? What should we do here:
-print fn_v.r
-
-fn()    # returns random numbers A
-
-### Is this state well-defined?  
-### Does there even exist a number such that fn_v.r = N would have no effect on the rng states?
-print fn_v.r
-
-fn()    # returns random numbers B
-
-#re-seed w's random stream, but not u's or v's
-fn_uvw.rr = 99
-fn_uvw() # returns random numbers D, B, E
-
-}}}
+    # compile a function to draw each of u, v, w
+    # we provide the seeds for the RandomStates r and rr in the inputs list as "Type 4" inputs
+    # note: the random state for r here is seeded independently from the one in fn_v, which means
+    #       random number generation of fn_v and fn_uvw will not interfere. Since the seed is the
+    #       same, it means they will produce the same sequence of tensors for the output v.
+    fn_uvw = compile.function([(r, 872364), (rr, 99)], [u,v,w])
 
 
+    fn_v()  # returns random numbers A
+    fn_v()  # returns different random numbers B
+
+    # note that v's stream here is identical to the one in fn_v()
+    fn_uvw() # returns random numbers C, A, E
+
+    #re-seed v's random stream in fn
+    fn_v.r = 872364
+
+    ### Is this state readable? What should we do here:
+    print fn_v.r
+
+    fn()    # returns random numbers A
+
+    ### Is this state well-defined?  
+    ### Does there even exist a number such that fn_v.r = N would have no effect on the rng states?
+    print fn_v.r
+
+    fn()    # returns random numbers B
+
+    #re-seed w's random stream, but not u's or v's
+    fn_uvw.rr = 99
+    fn_uvw() # returns random numbers D, B, E
