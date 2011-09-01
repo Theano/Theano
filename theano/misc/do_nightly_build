@@ -9,7 +9,7 @@ if [ "$1" == "--buildbot" ]; then
     ROOT_CWD=/Tmp/nightly_build
     FLAGS=compiledir=/Tmp/lisa_theano_compile_dir_theano
     cd ${ROOT_CWD}/Theano
-    hg summary
+    git rev-parse HEAD
     cd ..
     ARGS="Theano"
     PROFILING="--with-coverage --cover-package=theano"
