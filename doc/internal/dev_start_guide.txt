@@ -26,6 +26,9 @@ To obtain developer access: register with `GitHub
 <http://www.github.com/>`_ and create a fork of `Theano
 <http://www.github.com/Theano/Theano>`_.
 
+Typical development workflow
+----------------------------
+
 Clone your fork locally with
 
 .. code-block:: bash
@@ -57,17 +60,17 @@ branch and hit the "Pull Request" button in the top right corner.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
 
-History not clean
------------------
+Cleaning up history
+-------------------
 
-In some case you could have stuff commited in your feature branch that
+Sometimes you may have commits in your feature branch that
 are not needed in the final pull request. There is a `page
-<http://sandofsky.com/blog/git-workflow.html>`_ that talk about
+<http://sandofsky.com/blog/git-workflow.html>`_ that talks about
 this. In summary:
 
 * Commits to the trunk should be a lot cleaner than commits to your
-  feature branch; not just for ease of reviewing like I said but also
-  because intermediate commits can break blame (the bisecting tool)
+  feature branch; not just for ease of reviewing but also
+  because intermediate commits can break blame (the bisecting tool).
 * `git merge --squash` will put all of the commits from your feature branch into one commit.
 * There are other tools that are useful if your branch is too big for one squash.
 
