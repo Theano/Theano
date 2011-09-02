@@ -10,9 +10,11 @@ family=['theano-buildbot@googlegroups.com']
 me='lisa@iro.umontreal.ca'
 
 #Those file contain the output of the do_nightly_build script.
-files=["/tmp/do_nightly_build_theano", "/tmp/do_nightly_build_pylearn", "/tmp/do_nightly_build_deeplearning"]
+files=["/tmp/do_nightly_build_theano", "/tmp/do_nightly_build_pylearn", "/tmp/do_nightly_build_deeplearning", "/tmp/do_nightly_build_pylearn2"]
+msgs=['Theano buildbot', 'Pylearn buildbot', 'Deep Learning Tutorial buildbot', 'Pylearn2 buildbot']
 
 print files
+print msgs
 print sys.argv
 if len(sys.argv)==2:
     files=[x+sys.argv[1] for x in files]
@@ -112,6 +114,5 @@ def mysend(subject, file):
     s.close()
     print "Finished sending email for",subject
 
-mysend('Theano buildbot',files[0])
-mysend('Pylearn buildbot',files[1])
-mysend('Deep Learning Tutorial buildbot',files[2])
+for msg, file in zip(msgs, files):
+    mysend(msg, file)
