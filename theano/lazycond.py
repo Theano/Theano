@@ -594,10 +594,10 @@ pushout_equilibrium.register("ifelse_lift",
                                         ignore_newtrees = True),
                              'fast_run', 'ifelse')
 
-#pushout_equilibrium.register("ifelse_merge_ifs",
-#                             opt.in2out(cond_merge_random_op,
-#                                        ignore_newtrees = True),
-#                             'fast_run', 'ifelse')
+pushout_equilibrium.register("ifelse_merge_ifs",
+                             opt.in2out(cond_merge_random_op,
+                                        ignore_newtrees = True),
+                             'fast_run', 'ifelse')
 
 
 pushout_equilibrium.register("ifelse_merge_nodes",
