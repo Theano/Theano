@@ -2338,17 +2338,19 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 
 
 @constructor
-def ones_like(model):
-    """WRITEME"""
-    #return Ones(model.type.ndim)(shape(model))
-    ret= fill(model, constant(1.0, dtype=model.type.dtype))
+def ones_like(model, dtype=None):
+    """equivalent of numpy.ones_like"""
+    if dtype is None:
+        dtype = model.type.dtype
+    ret= fill(model, constant(1.0, dtype=dtype))
     return ret
 
 @constructor
-def zeros_like(model):
-    """WRITEME"""
-    #return Zeros(model.type.ndim)(shape(model))
-    return fill(model, constant(0.0, dtype=model.type.dtype))
+def zeros_like(model, dtype=None):
+    """equivalent of numpy.zeros_like"""
+    if dtype is None:
+        dtype = model.type.dtype
+    return fill(model, constant(0.0, dtype=dtype))
 
 
 def zeros(shape, dtype=config.floatX):
