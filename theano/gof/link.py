@@ -314,7 +314,6 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
-            # N.B.: used instead of except: to not catch KeyboardInterrupt
             except Exception:
                 raise_with_op(node)
         f = streamline_default_f
@@ -326,7 +325,6 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
             try:
                 for thunk, node in thunk_node_list:
                     thunk()
-            # N.B.: used instead of except: to not catch KeyboardInterrupt
             except Exception:
                 raise_with_op(node)
         f = streamline_nice_errors_f
@@ -587,7 +585,6 @@ class WrapLinker(Linker):
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
-                # N.B.: used instead of except: to not catch KeyboardInterrupt
                 except Exception:
                     raise_with_op(node)
         f.thunk_groups = thunk_groups
