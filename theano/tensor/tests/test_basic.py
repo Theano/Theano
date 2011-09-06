@@ -915,6 +915,15 @@ ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         inplace = True,
                                         skip = skip_scipy)
 
+ZerosLikeTester =  makeBroadcastTester(op = zeros_like,
+                                        expected = numpy.zeros_like,
+                                        good = _good_broadcast_unary_normal,
+                                        grad = _grad_broadcast_unary_normal)
+
+OnesLikeTester =  makeBroadcastTester(op = ones_like,
+                                        expected = numpy.ones_like,
+                                        good = _good_broadcast_unary_normal,
+                                        grad = _grad_broadcast_unary_normal)
 
 DotTester = makeTester(name = 'DotTester',
                         op = dot,
