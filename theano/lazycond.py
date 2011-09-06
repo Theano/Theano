@@ -3,6 +3,14 @@ IfElse is an Op that works with the LazyLinker to support conditional graph eval
 
 :TODO: Add text to library documentation describing the IfElse Op.
 """
+
+__docformat__ = 'restructedtext en'
+__authors__ = ( "Razvan Pascanu "
+                "James Bergstra "
+                "Dumitru Erhan ")
+__copyright__ = "(c) 2010, Universite de Montreal"
+__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
+
 from copy import deepcopy
 import logging
 
