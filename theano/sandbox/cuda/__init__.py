@@ -2,6 +2,7 @@ import atexit, logging, os, stat, sys
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
 from theano.configparser import config, AddConfigVar, StrParam
+from theano.tensor.sharedvar import load_shared_variable
 import nvcc_compiler
 
 _logger_name = 'theano.sandbox.cuda'
@@ -275,10 +276,24 @@ def handle_shared_float32(tf):
     """
     if tf:
         import theano.compile
+        import copy_reg
         theano.compile.shared_constructor(float32_shared_constructor)
-
+        # this is a bit of hackery to make the shared variables load
+        # with the proper type.
+        copy_reg.pickle(theano.tensor.basic.TensorVariable, 
+                        reduce_tensor_variable, 
+                        load_shared_variable)
     else:
         raise NotImplementedError('removing our handler')
+
+def reduce_tensor_variable(var):
+    if isinstance(var.owner.op, HostFromGpu) and len(var.owner.inputs) == 1 \
+            and isinstance(var.owner.inputs[0], CudaNdarraySharedVariable):
+        return load_shared_variable, (var.owner.inputs[0].get_value(),)
+    else:
+        # this will make protocol 2 a little bit less efficient
+        # but there is no way around it.
+        return var.__reduce__()
 
 if config.device.startswith('gpu'):
     use(device=config.device, force=config.force_device)

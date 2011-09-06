@@ -5,9 +5,17 @@ from basic import TensorType, _tensor_py_operators, autocast_int, autocast_float
 from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
+def load_shared_variable(val):
+    return theano.tensor.as_tensor_variable(theano.shared(val))
+
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
-    pass
+    def __reduce_ex__(self, proto):
+        # This is for loading on the GPU if present.
+        if self.dtype == 'float32':
+            return load_shared_variable, (self.get_value(),)
+        else:
+            return super(TensorSharedVariable, self).__reduce_ex__(proto)
 
 @shared_constructor
 def tensor_constructor(value, name=None, strict=False, allow_downcast=None, borrow=False, broadcastable=None):
