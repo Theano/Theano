@@ -26,6 +26,17 @@ To obtain developer access: register with `GitHub
 <http://www.github.com/>`_ and create a fork of `Theano
 <http://www.github.com/Theano/Theano>`_.
 
+Coding style
+------------
+
+We didn't had any coding style when we started Theano. We now use
+`this one
+<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
+except that we don't use the numpy docstring standard.
+
+We won't make one big change to the coding style, but as we change
+code, we update it.
+
 Typical development workflow
 ----------------------------
 
