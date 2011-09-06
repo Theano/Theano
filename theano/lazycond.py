@@ -26,17 +26,7 @@ from scan_module.scan_utils import clone
 
 _logger = logging.getLogger('theano.lazycond')
 
-@gof.local_optimizer([None])
-def ifelse_make_inplace(node):
-    op = node.op
-    if isinstance(op, IfElse) and not op.as_view :
-        _logger.debug('ifelse_make_inplace applied')
-        return IfElse(as_view = True,
-                    gpu = op.gpu, name=op.name).make_node(*node.inputs).outputs
-    return False
 
-optdb.register('ifelse_make_inplace', opt.in2out(ifelse_make_inplace,
-    ignore_newtrees=True), 95, 'fast_run', 'inplace')
 
 
 class IfElse(PureOp):
