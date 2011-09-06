@@ -34,8 +34,8 @@ We didn't had any coding style when we started Theano. We now use
 <http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
 except that we don't use the numpy docstring standard.
 
-We won't make one big change to the coding style, but as we change
-code, we update it.
+We do not plan to change all existing code to follow this coding
+style, but as we modify the code, we update it accordingly.
 
 Typical development workflow
 ----------------------------
