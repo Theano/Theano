@@ -584,3 +584,67 @@ def cond_merge_random_op(main_node):
             return main_outs
 
 
+
+
+
+pushout_equilibrium = gof.EquilibriumDB()
+
+pushout_equilibrium.register("ifelse_lift",
+                             opt.in2out(cond_lift_single_if,
+                                        ignore_newtrees = True),
+                             'fast_run', 'ifelse')
+
+#pushout_equilibrium.register("ifelse_merge_ifs",
+#                             opt.in2out(cond_merge_random_op,
+#                                        ignore_newtrees = True),
+#                             'fast_run', 'ifelse')
+
+
+pushout_equilibrium.register("ifelse_merge_nodes",
+                             gof.MergeOptimizer(skip_const_merge=False),
+                             'fast_run', 'ifelse')
+
+pushout_equilibrium.register("ifelse_remove_identical_inside",
+                       opt.in2out(cond_remove_identical,
+                                  ignore_newtrees = True),
+                             'fast_run', 'ifelse')
+
+pushout_equilibrium.register('ifelse_sameCondTrue_inside',
+                       opt.in2out(cond_merge_ifs_true,
+                                  ignore_newtrees=True),
+                       'fast_run', 'ifelse')
+
+pushout_equilibrium.register('ifelse_sameCondFalse_inside',
+                       opt.in2out(cond_merge_ifs_false,
+                                  ignore_newtrees=True),
+                       'fast_run', 'ifelse')
+
+
+ifelse_seqopt.register('ifelse_condPushOut_equilibrium',
+                       pushout_equilibrium,
+                       1, 'fast_run', 'ifelse')
+
+ifelse_seqopt.register('merge_nodes_1',
+                       gof.MergeOptimizer(skip_const_merge=False),
+                       2, 'fast_run', 'ifelse')
+
+
+ifelse_seqopt.register('ifelse_sameCondTrue',
+                       opt.in2out(cond_merge_ifs_true,
+                                  ignore_newtrees=True),
+                       3, 'fast_run', 'ifelse')
+
+
+
+
+ifelse_seqopt.register('ifelse_sameCondFalse',
+                       opt.in2out(cond_merge_ifs_false,
+                                  ignore_newtrees=True),
+                       4, 'fast_run', 'ifelse')
+
+
+ifelse_seqopt.register('ifelse_removeIdenetical',
+                       opt.in2out(cond_remove_identical,
+                                  ignore_newtrees = True),
+                       7, 'fast_run', 'ifelse')
+
