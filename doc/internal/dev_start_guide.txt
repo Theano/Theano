@@ -87,6 +87,7 @@ You can keep you local repo up to date with central/master with those commands:
    git fetch central
    git merge central/master
 
+<<<<<<< HEAD
 Cleaning up history
 -------------------
 
@@ -100,6 +101,19 @@ this. In summary:
   because intermediate commits can break blame (the bisecting tool).
 * `git merge --squash` will put all of the commits from your feature branch into one commit.
 * There are other tools that are useful if your branch is too big for one squash.
+=======
+If you want to fix a commit done in a pull request(i.e. fix small
+typo) to keep the history clean, you can do it like this:
+
+.. code-block:: bash
+
+   git checkout branch
+   git commit --amend
+   git push -u origin  my_shiny_feature:my_shiny_feature
+
+You can find more information and tips in the `numpy development
+<http://docs.scipy.org/doc/numpy/dev/gitwash/development_workflow.html>`_
+page.
 
 
 Details about ``PYTHONPATH``
