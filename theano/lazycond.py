@@ -302,3 +302,18 @@ def ifelse( cond, true_branch, false_branch, name = None):
     else:
         return rval
 
+
+
+@gof.local_optimizer([None])
+def cond_make_inplace(node):
+    op = node.op
+    if isinstance(op, IfElse) and not op.as_view :
+        return IfElse(n_outs  = op.n_outs,
+                      as_view = True,
+                      gpu   = op.gpu,
+                      name  = op.name ).make_node(*node.inputs).outputs
+    return False
+
+optdb.register('cond_make_inplace', opt.in2out(cond_make_inplace,
+    ignore_newtrees=True), 95, 'fast_run', 'inplace')
+
