@@ -2110,6 +2110,21 @@ class T_subtensor(unittest.TestCase):
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         self.assertRaises(IndexError, f)
 
+    def test_adv_sub1_broadcast(self):
+        ones = numpy.ones((1,3), dtype=self.dtype)
+        n = self.shared(ones*5, broadcastable=(True, False))
+        idx = tensor.lvector()
+        t = n[idx]
+        self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+
+        f = function([idx], t, mode=self.mode)
+        topo = f.maker.env.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+        assert len(topo_)==1
+        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+        self.assertTrue(numpy.allclose(f([0]),ones[0]*5))
+        self.assertRaises(IndexError, f, [0,1])
+
     def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 

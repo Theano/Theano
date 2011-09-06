@@ -1751,9 +1751,6 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        if x_.type.broadcastable[0]:
-            # the caller should have made a copy of x len(ilist) times
-            raise TypeError('cannot index into a broadcastable dimension')
 
         return Apply(self, [x_, ilist_], [x_.type()])
 
