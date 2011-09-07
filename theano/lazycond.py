@@ -292,7 +292,13 @@ def ifelse( cond, true_branch, false_branch, name = None):
     if type(false_branch) not in (list, tuple):
         false_branch = [false_branch]
 
-    assert len(true_branch) == len(false_branch)
+    if len(true_branch) != len(false_branch):
+        raise ValueError(( 'The number of values on the `then` branch'+
+                          ' should have the same number of variables as '+
+                          'the `else` branch : (variables on `then` '+
+                          '%d'%len(true_branch)+ ', variables on `else` '+
+                          '%d'%len(false_branch)+')'))
+
     new_ifelse = IfElse(n_outs = len(true_branch),
                         as_view=False,
                         gpu = False,
