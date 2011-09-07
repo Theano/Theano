@@ -31,7 +31,10 @@ _logger = logging.getLogger('theano.lazycond')
 
 class IfElse(PureOp):
     """
-    Op that works with CVM/VM to support conditional graph evaluation.
+    Op that works with CVM/VM to support conditional graph evaluation. Note,
+    this op is not suppose to be used directly, it should be used through
+    the `ifelse` function. The op supports mutile values that are all
+    conditioned by the same 'tf'.
 
     Example usage:
 
