@@ -79,9 +79,9 @@ def _kmap_hash(a):
 def as_sparse_variable(x, name=None):
     """
     Wrapper around SparseVariable constructor.
-    @param x:  A sparse matrix. as_sparse_variable reads dtype and format properties
-               out of this sparse matrix.
-    @return:   SparseVariable version of sp.
+    @param x: A sparse matrix. as_sparse_variable reads dtype and format
+    properties out of this sparse matrix.
+    @return: SparseVariable version of sp.
 
     @todo Verify that sp is sufficiently sparse, and raise a warning if it is not
     """

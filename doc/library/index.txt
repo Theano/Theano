@@ -17,6 +17,7 @@ Types and Ops that you can use to build and compile expression graphs.
    printing
    compile/index
    sparse/index
+   sparse/sandbox
    scalar/index
    gof/index
    scan
