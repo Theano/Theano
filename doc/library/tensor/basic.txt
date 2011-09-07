@@ -1137,4 +1137,51 @@ Gradient / Differentiation
 
 
 
+R op
+====
+
+
+See the tutorial for the R op documentation.
+
+list of ops that support R-op:
+ * with test [Most is tensor/tests/test_rop.py]
+    * SpecifyShape
+    * MaxAndArgmax
+    * Subtensor
+    * IncSubtensor set_subtensor too
+    * Alloc
+    * Dot
+    * Elemwise
+    * Sum
+    * Softmax
+    * Shape
+    * Join
+    * Rebroadcast
+    * Reshape
+    * Flatten
+    * DimShuffle
+    * Scan [In scan_module/tests/test_scan.test_rop]
+
+ * without test
+    * Split
+    * ARange
+    * ScalarFromTensor
+    * AdvancedSubtensor1
+    * AdvancedIncSubtensor1
+    * AdvancedIncSubtensor
+
+Partial list of ops without support for R-op:
+
+ * All sparse ops
+ * All linear algebra ops.
+ * PermuteRowElements
+ * Tile
+ * AdvancedSubtensor
+ * TensorDot
+ * Outer
+ * Prod
+ * MulwithoutZeros
+ * ProdWithoutZeros
+ * CAReduce(for max,... done for MaxAndArgmax op)
+ * MaxAndArgmax(only for matrix on axis 0 or 1)
 
