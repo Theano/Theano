@@ -3,53 +3,7 @@
 
  Tests for the R operator / L operator
 
-ops without:
-
-    PermuteRowElements
-    Tile
-    AdvancedSubtensor
-    TensorDot
-    Outer
-    Prod
-    MulwithoutZeros
-    ProdWithoutZeros
-    CAReduce(for max,... done for MaxAndArgmax op)
-    MaxAndArgmax(only for matrix on axis 0 or 1)
-
-list of ops that support R-op:
- * with test
-    * SpecifyShape
-    * MaxAndArgmax
-    * Subtensor
-    * IncSubtensor set_subtensor too
-    * Alloc
-    * Dot
-    * Elemwise
-    * Sum
-    * Softmax
-    * Shape
-    * Join
-    * Rebroadcast
-    * Reshape
-    * Flatten
-    * DimShuffle
-    * Scan [ RP: scan has a test in scan_module/tests/test_scan.test_rop ]
-
-
- * without test
-    * Split
-    * ARange
-    * ScalarFromTensor
-    * AdvancedSubtensor1
-    * AdvancedIncSubtensor1
-    * AdvancedIncSubtensor
-
-
-
-
-
-
-
+ For the list of op with r op defined, with or without missing test see this file: defined see this file
 
 """
 

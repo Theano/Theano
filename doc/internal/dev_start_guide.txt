@@ -70,6 +70,31 @@ then go to your fork's github page on the github website, select your feature
 branch and hit the "Pull Request" button in the top right corner.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
+When the your pull request have been merged, you can delete the branch
+from the github list of branch. That is usefull to don't have too many
+that stay there!
+
+.. code-block:: bash
+
+   git push origin :my_shiny_feature
+
+
+You can keep you local repo up to date with central/master with those commands:
+
+.. code-block:: bash
+
+   git checkout master
+   git fetch central
+   git merge central/master
+
+If you want to fix a commit done in a pull request(i.e. fix small
+typo) to keep the history clean, you can do it like this:
+
+.. code-block:: bash
+
+   git checkout branch
+   git commit --amend
+   git push -u origin  my_shiny_feature:my_shiny_feature
 
 Cleaning up history
 -------------------
@@ -85,6 +110,17 @@ this. In summary:
 * `git merge --squash` will put all of the commits from your feature branch into one commit.
 * There are other tools that are useful if your branch is too big for one squash.
 
+
+To checkout another user branch in his repo:
+
+.. code-block:: bash
+
+   git remote add REPO_NAME HIS_REPO_PATH
+   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOVE_BRANCH_NAME
+
+You can find move information and tips in the `numpy development
+<http://docs.scipy.org/doc/numpy/dev/gitwash/development_workflow.html>`_
+page.
 
 
 Details about ``PYTHONPATH``
