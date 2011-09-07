@@ -53,3 +53,19 @@ There are no GPU implementations for sparse matrices implemented in Theano.
 Some documentation for sparse has been written
 `here <http://deeplearning.net/software/theano/sandbox/sparse.html>`_.
 
+
+===================================================================
+:mod:`sparse.sandbox` --  Sparse Op
+===================================================================
+
+.. module:: sparse.sandbox
+   :platform: Unix, Windows
+   :synopsis: Sparse Op
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.sparse.basic
+    :members:
+
