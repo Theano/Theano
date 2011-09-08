@@ -363,4 +363,7 @@ For example:
 >>> v2 = f()             # v2 != v1
 
 
+Others Random Distributions
+---------------------------
 
+Threre is :ref:`others distribution implemented <libdoc_tensor_raw_random>`. 
