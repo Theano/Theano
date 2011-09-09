@@ -259,3 +259,9 @@ AddConfigVar('compute_test_value',
         "If 'True', Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
         EnumStr('off', 'ignore', 'warn', 'raise'),
         in_c_key=False)
+
+
+AddConfigVar('exception_verbosity',
+        "If 'low', the text of exceptions will generally refer to apply nodes by their __str__. If 'high', some exceptions will also refer to apply nodes by calling min_informative_str on them.",
+        EnumStr('low','high'),
+        in_c_key=False)
