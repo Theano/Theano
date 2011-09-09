@@ -2075,6 +2075,8 @@ class T_subtensor(unittest.TestCase):
                           (numpy.random.rand(4,5), [2,3]),
                           (numpy.random.rand(4,2,3), [0,3]),
                           (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
+                          # Test with TensorConstant index.
+                          (numpy.random.rand(4,2,3), constant([3,3,1,1,2,2,0,0])),
                           ]:
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data)
@@ -2084,7 +2086,10 @@ class T_subtensor(unittest.TestCase):
             self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
 
             val = self.eval_output_and_check(t, list=True)
-            good = data[idx]
+            if isinstance(idx, list):
+                good = data[idx]
+            else:
+                good = data[idx.data]
             self.assertTrue(val.ndim == data.ndim)
             self.assertTrue(numpy.allclose(val, good), (val, good))
 
