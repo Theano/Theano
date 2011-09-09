@@ -261,7 +261,20 @@ AddConfigVar('compute_test_value',
         in_c_key=False)
 
 
+"""Note to developers:
+    Generally your exceptions should use an apply node's __str__
+    method when exception_verbosity == 'low'. When exception_verbosity
+    == 'high', you should include a call to printing.min_informative_str
+    on all important apply nodes.
+"""
 AddConfigVar('exception_verbosity',
-        "If 'low', the text of exceptions will generally refer to apply nodes by their __str__. If 'high', some exceptions will also refer to apply nodes by calling min_informative_str on them.",
+        "If 'low', the text of exceptions will generally refer " \
+        + "to apply nodes with short names such as " \
+        + "Elemwise{add_no_inplace}. If 'high', some exceptions " \
+        + "will also refer to apply nodes with long descriptions " \
+        + """ like:
+        A. Elemwise{add_no_inplace}
+                B. log_likelihood_v_given_h
+                C. log_likelihood_h""",
         EnumStr('low','high'),
         in_c_key=False)
