@@ -50,16 +50,18 @@ def Rop(f, wrt, eval_points):
         If `wrt` is a list/tuple, then return a list/tuple with the results.
         """
 
-    using_list = isinstance(wrt, list)
-    using_tuple = isinstance(wrt, tuple)
+    using_list = isinstance(f, list)
+    using_tuple = isinstance(f, tuple)
 
-    if not (using_list or using_tuple):
+
+    if not isinstance(wrt, (list,tuple)):
         wrt = [ wrt ]
 
     if not isinstance(eval_points, (list, tuple)):
         eval_points = [ eval_points ]
 
-    if not isinstance(f, (list,tuple)):
+
+    if not (using_list or using_tuple):
         f = [f]
 
     assert len(wrt) == len(eval_points)
@@ -161,9 +163,10 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     if type(eval_points) not in (list, tuple):
         eval_points = [eval_points]
 
-    using_list = isinstance(f, list)
-    using_tuple = isinstance(f, tuple)
-    if not (using_list or using_tuple):
+    using_list = isinstance(wrt, list)
+    using_tuple = isinstance(wrt, tuple)
+
+    if not isinstance(f, (list, tuple)):
         f = [f]
 
     inputs = gof.graph.inputs(f)
@@ -179,7 +182,8 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     # such subtle cases can be fixed by a more careful implementation of the
     # gradient, but for now Theano needs to throw an exception, and make the
     # user aware that it does not know how to compute that gradient
-    if not isinstance(wrt, (list, tuple)):
+
+    if not (using_list or using_tuple):
         wrt = [wrt]
     ret = []
     for p in wrt:
