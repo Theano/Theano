@@ -100,11 +100,13 @@ Community
     (theano-users, Aug 2, 2010)
 
 
+* Register to `theano-announce`_ if you want to be kept informed on important change on theano(low volume).
+
 * Register and post to `theano-users`_ if you want to talk to all Theano users.
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* Register to `theano-announce`_ if you want to be kept informed on important change on theano(low volume).
+* Register to `theano-github`_ if you want to receive an email for all change to the github repository.
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
@@ -136,6 +138,7 @@ Community
 .. _theano-dev: http://groups.google.com/group/theano-dev
 .. _theano-users: http://groups.google.com/group/theano-users
 .. _theano-announce: http://groups.google.com/group/theano-announce
+.. _theano-github: http://groups.google.com/group/theano-github
 .. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
