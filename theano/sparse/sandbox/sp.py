@@ -14,7 +14,6 @@ import theano
 import theano.sparse
 from theano import sparse, gof, Op, tensor
 from theano.gof.python25 import all, any
-from theano.printing import Print
 
 def register_specialize(lopt, *tags, **kwargs):
     theano.compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run', *tags)
@@ -282,6 +281,7 @@ def clean(x):
 
 class ConvolutionIndices(Op):
     """Build indices for a sparse CSC matrix that could implement A (convolve) B.
+
        This generates a sparse matrix M, which generates a stack of image patches
        when computing the dot product of M with image patch. Convolution is then
        simply the dot product of (img x M) and the kernels.
@@ -300,24 +300,25 @@ class ConvolutionIndices(Op):
     def evaluate(inshp, kshp, (dx,dy)=(1,1), nkern=1, mode='valid', ws=True):
         """Build a sparse matrix which can be used for performing...
         * convolution: in this case, the dot product of this matrix with the input
-          images will generate a stack of images patches. Convolution is then a
-          tensordot operation of the filters and the patch stack.
+        images will generate a stack of images patches. Convolution is then a
+        tensordot operation of the filters and the patch stack.
         * sparse local connections: in this case, the sparse matrix allows us to operate
-          the weight matrix as if it were fully-connected. The structured-dot with the
-          input image gives the output for the following layer.
+        the weight matrix as if it were fully-connected. The structured-dot with the
+        input image gives the output for the following layer.
 
-        @param ker_shape: shape of kernel to apply (smaller than image)
-        @param img_shape: shape of input images
-        @param mode: 'valid' generates output only when kernel and image overlap
-            full' full convolution obtained by zero-padding the input
-        @param ws: True if weight sharing, false otherwise
-        @param (dx,dy): offset parameter. In the case of no weight sharing, gives the
-            pixel offset between two receptive fields. With weight sharing gives the
-            offset between the top-left pixels of the generated patches
+        :param ker_shape: shape of kernel to apply (smaller than image)
+        :param img_shape: shape of input images
+        :param mode: 'valid' generates output only when kernel and image overlap
+                     fully. Convolution obtained by zero-padding the input
+        :param ws: True if weight sharing, false otherwise
+        :param (dx,dy): offset parameter. In the case of no weight sharing,
+                        gives the pixel offset between two receptive fields.
+                        With weight sharing gives the offset between the
+                        top-left pixels of the generated patches
 
-        @rtype: tuple(indices, indptr, logical_shape, sp_type, out_img_shp)
-        @returns: the structure of a sparse matrix, and the logical dimensions of the image
-        which will be the result of filtering.
+        :rtype: tuple(indices, indptr, logical_shape, sp_type, out_img_shp)
+        :returns: the structure of a sparse matrix, and the logical dimensions
+                  of the image which will be the result of filtering.
         """
         N = numpy
 
@@ -475,36 +476,46 @@ convolution_indices = ConvolutionIndices()
 
 def applySparseFilter(kerns, kshp, nkern, images, imgshp, step=(1,1), bias=None, mode='valid'):
     """
-     === Input / Output conventions===
     "images" is assumed to be a matrix of shape batch_size x img_size, where the second
     dimension represents each image in raster order
 
     Output feature map will have shape:
+
+    .. code-block:: python
+
        batch_size x number of kernels * output_size
-    IMPORTANT: note that this means that each feature map is contiguous in memory.
-               The memory layout will therefore be:
-               [ <feature_map_0> <feature_map_1> ... <feature_map_n>],
-               where <feature_map> represents a "feature map" in raster order
+
+    .. note::
+
+        IMPORTANT: note that this means that each feature map is contiguous in memory.
+        The memory layout will therefore be:
+        [ <feature_map_0> <feature_map_1> ... <feature_map_n>],
+        where <feature_map> represents a "feature map" in raster order
+
     Note that the concept of feature map doesn't really apply to sparse filters without
     weight sharing. Basically, nkern=1 will generate one output img/feature map,
     nkern=2 a second feature map, etc.
 
     kerns is a 1D tensor, and assume to be of shape:
+
+    .. code-block:: python
+
        nkern * N.prod(outshp) x N.prod(kshp)
+
     Each filter is applied seperately to consecutive output pixels.
 
-    @param kerns: nkern*outsize*ksize vector containing kernels
-    @param kshp: tuple containing actual dimensions of kernel (not symbolic)
-    @param nkern: number of kernels to apply at each pixel in the input image.
+    :param kerns: nkern*outsize*ksize vector containing kernels
+    :param kshp: tuple containing actual dimensions of kernel (not symbolic)
+    :param nkern: number of kernels to apply at each pixel in the input image.
                   nkern=1 will apply a single unique filter for each input pixel.
-    @param images: bsize x imgsize matrix containing images on which to apply filters
-    @param imgshp: tuple containing actual image dimensions (not symbolic)
-    @param step: determines number of pixels between adjacent receptive fields
+    :param images: bsize x imgsize matrix containing images on which to apply filters
+    :param imgshp: tuple containing actual image dimensions (not symbolic)
+    :param step: determines number of pixels between adjacent receptive fields
                  (tuple containing dx,dy values)
-    @param mode: 'full', 'valid' see CSM.evaluate function for details
-    @output out1: symbolic result
-    @output out2: logical shape of the output img (nkern,height,width)
-                  (after dot product, not of the sparse matrix!)
+    :param mode: 'full', 'valid' see CSM.evaluate function for details
+    :return: out1, symbolic result
+    :return: out2, logical shape of the output img (nkern,height,width)
+             (after dot product, not of the sparse matrix!)
     """
 
     # inshp contains either 2 entries (height,width) or 3 (nfeatures,h,w)
@@ -529,44 +540,56 @@ def applySparseFilter(kerns, kshp, nkern, images, imgshp, step=(1,1), bias=None,
 def convolve(kerns, kshp, nkern, images, imgshp, step=(1,1), bias=None,\
              mode='valid', flatten=True):
     """Convolution implementation by sparse matrix multiplication.
-    @note: For best speed, put the matrix which you expect to be smaller as the 'kernel'
-    argument
 
-    === Input / Output conventions===
+    :note: For best speed, put the matrix which you expect to be
+           smaller as the 'kernel' argument
+
     "images" is assumed to be a matrix of shape batch_size x img_size, where the second
     dimension represents each image in raster order
 
     If flatten is "False", the output feature map will have shape:
+
+    .. code-block:: python
+
         batch_size x number of kernels x output_size
 
     If flatten is "True", the output feature map will have shape:
+
+    .. code-block:: python
+
         batch_size x number of kernels * output_size
-    IMPORTANT: note that this means that each feature map (image generate by each
-               kernel) is contiguous in memory. The memory layout will therefore be:
-               [ <feature_map_0> <feature_map_1> ... <feature_map_n>],
-               where <feature_map> represents a "feature map" in raster order
+
+    .. note::
+
+        IMPORTANT: note that this means that each feature map (image
+        generate by each kernel) is contiguous in memory. The memory
+        layout will therefore be: [ <feature_map_0> <feature_map_1>
+        ... <feature_map_n>], where <feature_map> represents a
+        "feature map" in raster order
 
     kerns is a 2D tensor of shape nkern x N.prod(kshp)
 
-    @param kerns: 2D tensor containing kernels which are applied at every pixel
-    @param kshp: tuple containing actual dimensions of kernel (not symbolic)
-    @param nkern: number of kernels/filters to apply.
+    :param kerns: 2D tensor containing kernels which are applied at every pixel
+    :param kshp: tuple containing actual dimensions of kernel (not symbolic)
+    :param nkern: number of kernels/filters to apply.
                   nkern=1 will apply one common filter to all input pixels
-    @param images: tensor containing images on which to apply convolution
-    @param imgshp: tuple containing image dimensions
-    @param step: determines number of pixels between adjacent receptive fields
+    :param images: tensor containing images on which to apply convolution
+    :param imgshp: tuple containing image dimensions
+    :param step: determines number of pixels between adjacent receptive fields
                  (tuple containing dx,dy values)
-    @param mode: 'full', 'valid' see CSM.evaluate function for details
-    @param sumdims: dimensions over which to sum for the tensordot operation. By default
-    ((2,),(1,)) assumes kerns is a nkern x kernsize matrix and images is a batchsize x
-    imgsize matrix containing flattened images in raster order
-    @param flatten: flatten the last 2 dimensions of the output. By default, instead of
-    generating a batchsize x outsize x nkern tensor, will flatten to
-    batchsize x outsize*nkern
-    @output out1: symbolic result
-    @output out2: logical shape of the output img (nkern,heigt,width)
+    :param mode: 'full', 'valid' see CSM.evaluate function for details
+    :param sumdims: dimensions over which to sum for the tensordot operation.
+                    By default ((2,),(1,)) assumes kerns is a nkern x kernsize
+                    matrix and images is a batchsize x imgsize matrix
+                    containing flattened images in raster order
+    :param flatten: flatten the last 2 dimensions of the output. By default,
+                    instead of generating a batchsize x outsize x nkern tensor,
+                    will flatten to batchsize x outsize*nkern
 
-    @TODO: test for 1D and think of how to do n-d convolutions
+    :return: out1, symbolic result
+    :return: out2, logical shape of the output img (nkern,heigt,width)
+
+    :TODO: test for 1D and think of how to do n-d convolutions
     """
     N = numpy
     # start by computing output dimensions, size, etc
@@ -619,13 +642,13 @@ def max_pool(images, imgshp, maxpoolshp):
     Max pooling downsamples by taking the max value in a given area, here defined by
     maxpoolshp. Outputs a 2D tensor of shape batch_size x output_size.
 
-    @param images: 2D tensor containing images on which to apply convolution.
+    :param images: 2D tensor containing images on which to apply convolution.
                    Assumed to be of shape batch_size x img_size
-    @param imgshp: tuple containing image dimensions
-    @param maxpoolshp: tuple containing shape of area to max pool over
+    :param imgshp: tuple containing image dimensions
+    :param maxpoolshp: tuple containing shape of area to max pool over
 
-    @output out1: symbolic result (2D tensor)
-    @output out2: logical shape of the output
+    :return: out1, symbolic result (2D tensor)
+    :return: out2, logical shape of the output
     """
     N = numpy
     poolsize = N.int64(N.prod(maxpoolshp))
