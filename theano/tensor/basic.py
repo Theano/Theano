@@ -2495,11 +2495,12 @@ class Alloc(gof.Op):
         for i, s in enumerate(sh):
             if s.type.dtype[:3] not in ('int', 'uin'):
                 if config.exception_verbosity == 'high':
-                    raise TypeError('Shape arguments to Alloc must be integers,' + \
-                        'but argument '+str(i)+' is not for apply node: '+\
-                        min_informative_str(s))
+                    s_as_str = '\n' + min_informative_str(s)
                 else:
-                    raise TypeError('Shape arguments must be integers', s)
+                    s_as_str = str(s)
+                raise TypeError('Shape arguments to Alloc must be integers, '
+                                'but argument %s is not for apply node: %s' %
+                                (i, s_as_str))
             # if s is constant 1, then we're broadcastable in that dim
             try:
                 const_shp = get_constant_value(s)
