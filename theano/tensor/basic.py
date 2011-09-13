@@ -21,7 +21,7 @@ import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
 from theano import compile, printing
-from theano.printing import pprint
+from theano.printing import pprint, min_informative_str
 
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
@@ -2492,9 +2492,15 @@ class Alloc(gof.Op):
         v = as_tensor_variable(value)
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
-        for s in sh:
+        for i, s in enumerate(sh):
             if s.type.dtype[:3] not in ('int', 'uin'):
-                raise TypeError('Shape arguments must be integers', s)
+                if config.exception_verbosity == 'high':
+                    s_as_str = '\n' + min_informative_str(s)
+                else:
+                    s_as_str = str(s)
+                raise TypeError('Shape arguments to Alloc must be integers, '
+                                'but argument %s is not for apply node: %s' %
+                                (i, s_as_str))
             # if s is constant 1, then we're broadcastable in that dim
             try:
                 const_shp = get_constant_value(s)
