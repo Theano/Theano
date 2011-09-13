@@ -1,5 +1,6 @@
 """ test code snippet in the Theano tutorials.
 """
+from __future__ import unicode_literals
 
 import os, shutil, unittest
 import theano
