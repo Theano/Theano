@@ -239,7 +239,7 @@ class SparseType(gof.Type):
         else:
             raise NotImplementedError('unsupported dtype "%s" not in list' % dtype, list(self.dtype_set))
 
-        assert isinstance(format, str)
+        assert isinstance(format, basestring)
         if format in self.format_cls:
             self.format = format
         else:

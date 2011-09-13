@@ -521,7 +521,7 @@ class CLinker(link.Linker):
                 pass
             else:
                 # The following will be executed if the "try" block succeeds
-                assert isinstance(c_support_code_apply[-1], str), (
+                assert isinstance(c_support_code_apply[-1], basestring), (
                         str(node.op)+" didn't returned a string for c_support_code_apply")
 
             # emit c_code
@@ -529,7 +529,7 @@ class CLinker(link.Linker):
                 behavior = op.c_code(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
-            assert isinstance(behavior,str), str(node.op)+" didn't returned a string for c_code"
+            assert isinstance(behavior, basestring), str(node.op)+" didn't returned a string for c_code"
 
             try:
                 cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)

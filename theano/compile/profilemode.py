@@ -184,7 +184,7 @@ class ProfileMode(Mode):
 
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, str) or linker is None:
+        if isinstance(linker, basestring) or linker is None:
             linker = predefined_linkers[linker]
 
         if not config.ProfileMode.profile_memory:
@@ -194,7 +194,7 @@ class ProfileMode(Mode):
         linker = WrapLinker([linker], p_thunk)
 
         self.linker = linker
-        if isinstance(optimizer, str) or optimizer is None:
+        if isinstance(optimizer, basestring) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 

@@ -269,7 +269,7 @@ class Variable(utils.object2):
         if index is not None and not isinstance(index, int):
             raise TypeError("index must be an int", index)
         self.index = index
-        if name is not None and not isinstance(name, str):
+        if name is not None and not isinstance(name, basestring):
             raise TypeError("name must be a string", name)
         self.name = name
     def __str__(self):

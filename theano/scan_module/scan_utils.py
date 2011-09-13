@@ -245,7 +245,7 @@ def isNaN_or_Inf_or_None(x):
     try:
         isNaN = numpy.isnan(x)
         isInf = numpy.isinf(x)
-        isStr = isinstance(x, str)
+        isStr = isinstance(x, basestring)
     except Exception:
         isNaN = False
         isInf = False
@@ -258,7 +258,7 @@ def isNaN_or_Inf_or_None(x):
         except Exception:
             isNaN = False
             isInf = False
-    if isinstance(x, gof.Constant) and isinstance(x.data, str):
+    if isinstance(x, gof.Constant) and isinstance(x.data, basestring):
         isStr = True
     else:
         isStr = False
