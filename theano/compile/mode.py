@@ -313,7 +313,7 @@ def get_mode(orig_string):
         string = config.mode
     else:
         string = orig_string
-    if not isinstance(string, str):
+    if not isinstance(string, basestring):
         return string #it is hopefully already a mode...
 
     global instanciated_default_mode
