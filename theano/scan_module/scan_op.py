@@ -355,9 +355,9 @@ class Scan(PureOp):
                            self.outputs[:slices] ]
         wrapped_outputs += self.outputs[slices:]
         profile = None
-        if (theano.config.profile or (isinstance(self.profile, (str,bool,int))
+        if (theano.config.profile or (isinstance(self.profile, (basestring, bool, int))
                                       and self.profile)):
-            if isinstance(self.profile, str):
+            if isinstance(self.profile, basestring):
                 profile = ScanProfileStats(name = self.profile)
             else:
                 profile = ScanProfileStats(name = self.name)

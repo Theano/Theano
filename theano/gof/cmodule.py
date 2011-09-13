@@ -268,7 +268,7 @@ def get_module_hash(src_code, key):
             # This should be the C++ compilation command line parameters or the
             # libraries to link against.
             to_hash += list(key_element)
-        elif isinstance(key_element, str):
+        elif isinstance(key_element, basestring):
             if key_element.startswith('md5:'):
                 # This is the md5 hash of the config options. We can stop
                 # here.
@@ -298,7 +298,7 @@ def get_safe_part(key):
     # Find the md5 hash part.
     c_link_key = key[1]
     for key_element in c_link_key[1:]:
-        if isinstance(key_element, str) and key_element.startswith('md5:'):
+        if isinstance(key_element, basestring) and key_element.startswith('md5:'):
             md5 = key_element[4:]
             break
 

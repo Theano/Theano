@@ -245,10 +245,10 @@ class Mode(object):
         linker, optimizer = state
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, str) or linker is None:
+        if isinstance(linker, basestring) or linker is None:
             linker = predefined_linkers[linker]
         self.linker = linker
-        if isinstance(optimizer, str) or optimizer is None:
+        if isinstance(optimizer, basestring) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         if isinstance(optimizer, gof.Query):
             self.provided_optimizer = optimizer
@@ -271,9 +271,9 @@ class Mode(object):
     optimizer = property(__get_optimizer)
 
     def get_linker_optimizer(self, linker, optimizer):
-        if isinstance(linker, str) or linker is None:
+        if isinstance(linker, basestring) or linker is None:
             linker = predefined_linkers[linker]
-        if isinstance(optimizer, str) or optimizer is None:
+        if isinstance(optimizer, basestring) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         return (linker, optimizer)
 
@@ -313,7 +313,7 @@ def get_mode(orig_string):
         string = config.mode
     else:
         string = orig_string
-    if not isinstance(string, str):
+    if not isinstance(string, basestring):
         return string #it is hopefully already a mode...
 
     global instanciated_default_mode

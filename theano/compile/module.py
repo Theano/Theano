@@ -305,7 +305,7 @@ class Method(Component):
                 # return self.resolve(x).r
 
         def resolve_inputs():
-            if isinstance(self.inputs, (io.In, gof.Variable, str)):
+            if isinstance(self.inputs, (io.In, gof.Variable, basestring)):
                 inputs = [self.inputs]
             else:
                 inputs = list(self.inputs)
@@ -313,7 +313,7 @@ class Method(Component):
                 passthrough=(gof.Variable, io.In)) for input in inputs]
 
         def resolve_outputs():
-            if isinstance(self.outputs, (io.Out, gof.Variable, str, type(None))):
+            if isinstance(self.outputs, (io.Out, gof.Variable, basestring, type(None))):
                 output = self.outputs
                 self.outputs = resolve_variable(output,
                     passthrough=(gof.Variable, io.Out, type(None)))

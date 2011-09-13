@@ -63,7 +63,7 @@ if 0:
                 _nodes = nodes
                 nodes = reduce(list.__iadd__,
                                [reduce(list.__iadd__,
-                                       [[n for n, i in out.clients if not isinstance(n, str)] for out in node.outputs],
+                                       [[n for n, i in out.clients if not isinstance(n, basestring)] for out in node.outputs],
                                        []) for node in nodes],
                                [])
                 candidates = tracks
@@ -121,7 +121,7 @@ if 0:
 #         for candidate in candidates:
 #             if candidate.current.inputs is not None:
 #                 for in1, in2 in zip(candidate.current.inputs, node.inputs):
-#                     if isinstance(in1, str):
+#                     if isinstance(in1, basestring):
 #                         candidate.match[in1] = in2
 #         for client in node.clients:
             

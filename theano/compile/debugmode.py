@@ -58,7 +58,7 @@ AddConfigVar('DebugMode.warn_input_not_reused',
         in_c_key=False)
 
 def is_valid_check_preallocated_output_param(param):
-    if not isinstance(param, str):
+    if not isinstance(param, basestring):
         return False
     valid = ["previous", "c_contiguous", "f_contiguous", "neg_strides", "ALL", ""]
     for p in param.split(":"):

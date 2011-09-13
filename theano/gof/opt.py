@@ -698,7 +698,7 @@ class PatternSub(LocalOptimizer):
                     return match(real_pattern, expr, u, pattern.get('allow_multiple_clients', allow_multiple_clients))
                 else:
                     return retry_with_equiv()
-            elif isinstance(pattern, str):
+            elif isinstance(pattern, basestring):
                 v = unify.Var(pattern)
                 if u[v] is not v and u[v] is not expr:
                     return retry_with_equiv()
@@ -721,7 +721,7 @@ class PatternSub(LocalOptimizer):
             if isinstance(pattern, (list, tuple)):
                 args = [build(p, u) for p in pattern[1:]]
                 return pattern[0](*args)
-            elif isinstance(pattern, str):
+            elif isinstance(pattern, basestring):
                 return u[unify.Var(pattern)]
             elif isinstance(pattern, (int,float)):
                 return pattern
