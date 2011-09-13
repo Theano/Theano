@@ -309,9 +309,7 @@ class ConvolutionIndices(Op):
         :param ker_shape: shape of kernel to apply (smaller than image)
         :param img_shape: shape of input images
         :param mode: 'valid' generates output only when kernel and image overlap
-                             full' full convolution obtained by zero-padding
-                             the input
-
+                     fully. Convolution obtained by zero-padding the input
         :param ws: True if weight sharing, false otherwise
         :param (dx,dy): offset parameter. In the case of no weight sharing,
                         gives the pixel offset between two receptive fields.
