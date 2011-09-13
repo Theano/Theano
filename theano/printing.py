@@ -190,7 +190,7 @@ class PatternPrinter:
     def __init__(self, *patterns):
         self.patterns = []
         for pattern in patterns:
-            if isinstance(pattern, str):
+            if isinstance(pattern, basestring):
                 self.patterns.append((pattern, ()))
             else:
                 self.patterns.append((pattern[0], pattern[1:]))

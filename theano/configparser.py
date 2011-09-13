@@ -243,7 +243,7 @@ class EnumStr(ConfigParam):
 
         # All options should be strings
         for val in self.all:
-            if not isinstance(val, str):
+            if not isinstance(val, basestring):
                 raise ValueError('Valid values for an EnumStr parameter '
                         'should be strings', val, type(val))
 

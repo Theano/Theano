@@ -105,7 +105,7 @@ class RandomFunction(gof.Op):
     def __setstate__(self, state):
         self.state = state
         fn, outtype, inplace, ndim_added = state
-        if isinstance(fn, str):
+        if isinstance(fn, basestring):
             self.fn = getattr(numpy.random.RandomState, fn)
         else:
             self.fn = fn

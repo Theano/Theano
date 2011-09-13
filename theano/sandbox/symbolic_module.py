@@ -119,7 +119,7 @@ def compile(smod, initial_values={}):
                 elif issymbolicmodule(val):
                     for s in modwalker(val.__dict__, [v for k,v in sym_items(val)]):
                         yield s
-                elif isinstance(val, (str, int, float)):
+                elif isinstance(val, (basestring, int, float)):
                     pass
                 elif isinstance(val, theano.Variable):
                     pass
@@ -170,7 +170,7 @@ def compile(smod, initial_values={}):
                 reflected[thing] = cmod
                 for key, val in sym_items(thing):
                     setattr(CMod, key, reflect(val))
-            elif isinstance(thing, (str, int, float)):
+            elif isinstance(thing, (basestring, int, float)):
                 reflected[thing] = thing
             elif isinstance(thing, theano.Variable):
                 if thing.owner is None:
