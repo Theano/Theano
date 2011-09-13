@@ -106,7 +106,7 @@ Community
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* Register to `theano-github`_ if you want to receive an email for all change to the github repository.
+* Register to `theano-github`_ if you want to receive an email for all changes to the GitHub repository.
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
