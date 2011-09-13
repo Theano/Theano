@@ -924,15 +924,15 @@ The bitwise operators possess this interface:
 
 .. function:: bitwise_and(a, b)
 
-   Alias for and_. bitwise_and is the numpy name.
+   Alias for `and_`. bitwise_and is the numpy name.
 
 .. function:: bitwise_or(a, b)
 
-   Alias for or_. bitwise_or is the numpy name.
+   Alias for `or_`. bitwise_or is the numpy name.
 
 .. function:: bitwise_xor(a, b)
 
-   Alias for xor_. bitwise_xor is the numpy name.
+   Alias for `xor_`. bitwise_xor is the numpy name.
 
 .. function:: bitwise_not(a, b)
 

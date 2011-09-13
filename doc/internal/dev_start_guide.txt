@@ -37,6 +37,12 @@ except that we don't use the numpy docstring standard.
 We do not plan to change all existing code to follow this coding
 style, but as we modify the code, we update it accordingly.
 
+Mailing list
+------------
+
+See the theano main page for the theano-dev, theano-buildbot and
+theano-github mailing list. They are usefull to Theano contributor's.
+
 Typical development workflow
 ----------------------------
 
@@ -145,7 +151,7 @@ circumvent circular dependencies might make it so you have to import files in
 a certain order, which is best handled by the package's own ``__init__.py``.
 
 More instructions
-=================
+-----------------
 
 Once you have completed these steps, you should run the tests like this:
 
@@ -181,7 +187,7 @@ Keep in mind that this branch should be "read-only": if you want to patch
 Theano, do it in another branch like described above.
 
 Nightly test
-============
+------------
 
 Each night we execute all the unit tests automatically.  The result is sent by
 email to the `theano-buildbot`_ mailing list.
@@ -190,3 +196,12 @@ email to the `theano-buildbot`_ mailing list.
 
 For more detail, see :ref:`see <metadocumentation_nightly_build>`.
 
+To run all the test with the same configuration as the buildbot, run this script:
+
+.. code-block:: bash
+
+   theano/misc/do_nightly_build
+
+This function accept argument that it forward to nosetests. So you can
+run only some tests or enable pdb by giving the equivalent nosetests
+parameters.
