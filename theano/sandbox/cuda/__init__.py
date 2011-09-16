@@ -170,6 +170,7 @@ if cuda_available:
     from basic_ops import host_from_gpu, gpu_from_host, as_cuda_array
     import opt
     import cuda_ndarray
+    from rng_curand import CURAND_RandomStreams
 
 
 def use(device,
