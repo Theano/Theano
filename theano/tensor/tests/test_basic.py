@@ -1809,6 +1809,8 @@ class T_subtensor(unittest.TestCase):
         self.inc_sub = inc_sub
         self.adv_sub1 = adv_sub1
         self.adv_incsub1 = adv_incsub1
+        if mode is None:
+            mode = theano.compile.mode.get_default_mode()
         self.mode = mode
         self.dtype = dtype
         self.ignore_topo = ignore_topo
@@ -2092,6 +2094,19 @@ class T_subtensor(unittest.TestCase):
                 good = data[idx.data]
             self.assertTrue(val.ndim == data.ndim)
             self.assertTrue(numpy.allclose(val, good), (val, good))
+
+            # Test reuse of output memory
+            if isinstance(self.adv_sub1,tensor.AdvancedSubtensor1):
+                op = self.adv_sub1()
+                # When idx is a TensorConstant.
+                if hasattr(idx, "data"):
+                    idx = idx.data
+                test_out = [[None]]
+                op.perform(None, [data, idx],test_out)
+                out1 = test_out[0][0]
+                op.perform(None, [data, idx],test_out)
+                out2 = test_out[0][0]
+                assert out1 is out2
 
     def test_err_invalid_list(self):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
