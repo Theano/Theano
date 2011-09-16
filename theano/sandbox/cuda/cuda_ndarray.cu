@@ -593,6 +593,12 @@ __global__ void k_copy_reshape_rowmajor(unsigned int numEls,
         z_i[0] = a_i[0]; //copy one lousy float!
     }
 }
+
+// Reshape self to the new shape gived by the tuple shape.
+//
+// If self is c contiguous, it return a view. Otherwise it always do a copy.
+// TODO: make it return a view when the strides allow it event if it is not 
+//       c contiguous
 PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
 {
     // check shape tuple
@@ -717,6 +723,7 @@ PyObject * CudaNdarray_View(CudaNdarray * self)
     }
     return (PyObject*)rval;
 }
+
 PyObject * CudaNdarray_SetStride(CudaNdarray * self, PyObject *args)
 {
     int pos, stride;
@@ -803,6 +810,9 @@ static PyMethodDef CudaNdarray_methods[] =
     {"copy",
         (PyCFunction)CudaNdarray_Copy, METH_NOARGS,
         "Create a copy of this object"},
+    {"is_c_contiguous",
+        (PyCFunction)CudaNdarray_IS_C_Contiguous, METH_NOARGS,
+        "Return True is the object is c contiguous. False otherwise."},
     {"reduce_sum",
         (PyCFunction)CudaNdarray_ReduceSum, METH_O,
         "Reduce over the given dimensions by summation"},

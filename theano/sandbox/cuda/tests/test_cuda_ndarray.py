@@ -909,6 +909,11 @@ def test_base():
     e = b.reshape((5,2,2,3))
     assert e.base is a
 
+def test_is_c_contiguous():
+    a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
+    assert a.is_c_contiguous()
+    assert a[1].is_c_contiguous()
+    assert not a[::2].is_c_contiguous()
 
 if __name__ == '__main__':
     test_zeros_basic_3d_tensor()
