@@ -4880,7 +4880,11 @@ class AdvancedSubtensor1(Op):
         x, i = inp
         out, = out_
         # Copy always implied by numpy advanced indexing semantic.
-        out[0] = x[i]
+        if out[0] is not None and out[0].shape==(len(i),)+x.shape[1:]:
+            o = out[0]
+        else:
+            o = None
+        out[0] = x.take(i, axis=0, out=o)
 
     def grad(self, inputs, grads):
         gz, = grads
