@@ -29,6 +29,7 @@ def test_uniform_basic():
         assert v.min() < v.max()
         assert .25 <= v.mean() <= .75
 
+
 def test_normal_basic():
     rng = CURAND_RandomStreams(234)
 
@@ -53,7 +54,13 @@ def test_normal_basic():
         assert v.min() < v.max()
         assert -.5 <= v.mean() <= .5
 
-def test_speed():
+
+def compare_speed():
+    # To run this speed comparison
+    # cd <directory of this file>
+    # THEANO_FLAGS=device=gpu \
+    #   python -c 'import test_rng_curand; test_rng_curand.compare_speed()'
+
     mrg = MRG_RandomStreams()
     crn = CURAND_RandomStreams(234)
 
