@@ -1887,16 +1887,18 @@ class T_subtensor(unittest.TestCase):
 
     def test2_ok_range_finite(self):
         n = self.shared(numpy.ones((3,4), dtype=self.dtype)*5)
-        t = n[0:2,3]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
-        f = inplace_func([], t, mode=self.mode)
-        topo = f.maker.env.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-        assert len(topo_)==1
-        assert isinstance(topo_[0].op, self.sub)
-        tval = f()
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue(tval[1] == 5.0)
+        # Also check negative index
+        for idx in [(slice(0,2),3),((slice(0,2),-1)),(slice(0,2),-4)]:
+            t = n[idx]#l]#0:2,3]
+            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            f = inplace_func([], t, mode=self.mode)
+            topo = f.maker.env.toposort()
+            topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
+            assert len(topo_)==1
+            assert isinstance(topo_[0].op, self.sub)
+            tval = f()
+            self.assertTrue(tval.shape == (2,))
+            self.assertTrue(numpy.allclose(tval, n.get_value()[idx]))
 
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
@@ -1948,20 +1950,22 @@ class T_subtensor(unittest.TestCase):
 
     def test2_err_bounds0(self):
         n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
-        t = n[0,4]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
-        # Silence expected warnings
-        _logger = logging.getLogger('theano.gof.opt')
-        oldlevel = _logger.level
-        _logger.setLevel(logging.CRITICAL)
-        try:
+        for idx in [(0,4),(0,-4)]:
+            t = n[idx]
+            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            # Silence expected warnings
+            _logger = logging.getLogger('theano.gof.opt')
+            oldlevel = _logger.level
+            _logger.setLevel(logging.CRITICAL)
             try:
-                tval = self.eval_output_and_check([t])
-                assert 0
-            except IndexError, e:
-                pass
-        finally:
-            _logger.setLevel(oldlevel)
+                try:
+                    tval = self.eval_output_and_check([t])
+                    assert 0
+                except IndexError, e:
+                    pass
+            finally:
+                _logger.setLevel(oldlevel)
+
     def test2_err_bounds1(self):
         n = self.shared((numpy.ones((2,3), dtype=self.dtype)*5))
         t = n[4:5,2]
@@ -2077,6 +2081,10 @@ class T_subtensor(unittest.TestCase):
                           (numpy.random.rand(4,5), [2,3]),
                           (numpy.random.rand(4,2,3), [0,3]),
                           (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
+                          (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
+                          # Test 4 dims as gpu code use another algo in that case
+                          # This new algo is not as much optimized for that case.
+                          (numpy.random.rand(4,4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
                           # Test with TensorConstant index.
                           (numpy.random.rand(4,2,3), constant([3,3,1,1,2,2,0,0])),
                           ]:
@@ -2119,16 +2127,18 @@ class T_subtensor(unittest.TestCase):
 
     def test_err_bound_list(self):
         n = self.shared(numpy.ones((2,3),dtype=self.dtype)*5)
-        t = n[[0,4]]
+        l = lvector()
+        t = n[l]
         # We test again AdvancedSubtensor1 as we transfer data to the cpu.
         self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
 
-        f = function([], t, mode=self.mode)
+        f = function([l], t, mode=self.mode)
         topo = f.maker.env.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
-        self.assertRaises(IndexError, f)
+        for shp in [[0,4],[0,-3], [-10]]:
+            self.assertRaises(IndexError, f, shp)
 
     def test_adv_sub1_broadcast(self):
         ones = numpy.ones((1,3), dtype=self.dtype)
