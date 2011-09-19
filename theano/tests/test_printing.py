@@ -36,6 +36,12 @@ def test_pydotprint_cond_highlight():
 
     assert s.getvalue() == 'pydotprint: cond_highlight is set but there is no IfElse node in the graph\n'
 
+def test_pydotprint_profile():
+    """ Just check that pydotprint don't crash with ProfileMode"""
+
+    A = tensor.matrix()
+    f = theano.function([A],A+1,mode='ProfileMode')
+    theano.printing.pydotprint(f)
 
 def test_min_informative_str():
     """ evaluates a reference output to make sure the
