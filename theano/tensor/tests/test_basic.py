@@ -2398,6 +2398,28 @@ class T_subtensor(unittest.TestCase):
                     self.assertTrue(not any([isinstance(node.op, self.adv_sub1) for node in topo]))
                 f()
 
+    def test_wrong_exception_regression(self):
+        a = fscalar()
+        b = fscalar()
+        c = vector()
+        try:
+            c[a:b]
+        except NotImplementedError:
+            self.fail()
+        except TypeError:
+            pass
+        try:
+            c[a:]
+        except NotImplementedError:
+            self.fail()
+        except TypeError:
+            pass
+        try:
+            c[:b]
+        except NotImplementedError:
+            self.fail()
+        except TypeError:
+            pass
 
     def test_grad_list(self):
         data = numpy.random.rand(4)
