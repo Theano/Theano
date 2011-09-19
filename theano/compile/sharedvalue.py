@@ -7,6 +7,16 @@ import logging
 import traceback
 import warnings
 
+# Python 2.4 doesn't contain this, but it's just a convenience, so replace
+# it with a no-op decorator if it doesn't exist.
+try:
+    from functools import wraps
+except ImportError:
+    def wraps(*arg):
+        def _wrap(f):
+            return f
+        return _wrap
+
 # Theano imports
 from theano import config
 from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
@@ -122,28 +132,10 @@ class SharedVariable(Variable):
         cp.tag = copy.copy(self.tag)
         return cp
 
-    def _value_get(self):
-        warnings.warn(("The .value property of shared variables is deprecated."
-            " You should use the .get_value() method instead."),
-            stacklevel=2)
-        return self.get_value(borrow=config.shared.value_borrows, return_internal_type=False)
-    def _value_set(self, new_value):
-        warnings.warn(("The .value property of shared variables is deprecated."
-            " You should use the .set_value() method instead."),
-            stacklevel=2)
-        return self.set_value(new_value, borrow=config.shared.value_borrows)
-
-    #TODO: USE A CONFIG VARIABLE TO set these get/set methods to the non-borrowing versions
-    #      Semantically things are clearer when using non-borrow versions.  That should be the
-    #      default.  The default support transparently (if slowly) when the 'raw' value is in a
-    #      different memory space (e.g. GPU or other machine).
-    value = property(_value_get, _value_set,
-            doc=("DEPRECATED. Shortcut for self.get_value() and "
-                 "self.set_value(). "
-                 "The `borrow` argument to these methods is read from "
-                 "`theano.config.shared.value_borrows`. "
-                 "You should call get_value() and set_value() directly."))
-
+    @wraps(get_value)
+    def value(self, *args, **kwargs):
+        """Alias for get_value."""
+        return self.get_value(*args, **kwargs)
 
     def filter_update(self, update):
         """
