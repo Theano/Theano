@@ -1260,12 +1260,13 @@ class _tensor_py_operators:
             args = args,
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
-        # standard indexing is used, else, advanced indexing
+        # standard indexing is used; if it fails with
+        # AdvancedIndexingError, advanced indexing
         advanced = False
         for arg in args:
             try:
                 Subtensor.convert(arg)
-            except TypeError:
+            except AdvancedIndexingError:
                 advanced = True
                 break
 
@@ -2957,6 +2958,12 @@ def transpose(x, **kwargs):
     return DimShuffle(x.broadcastable, dims, inplace=True)(tensor_copy(x))
 
 
+class AdvancedIndexingError(TypeError):
+    """A class raised as an exception when Subtensor
+       is asked to perform advanced indexing  """
+    def __init__(self, *args):
+        super(AdvancedIndexingError, self).__init__(*args)
+
 class Subtensor(Op):
     """Return a subtensor view
 
@@ -3002,8 +3009,13 @@ class Subtensor(Op):
 
     @staticmethod
     def convert(entry, slice_ok=True):
+        invalid_scal_types = [scal.float64, scal.float32 ]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
         tensor_types = [lscalar, iscalar, wscalar, bscalar]
+        invalid_tensor_types = [fscalar, dscalar, cscalar, zscalar ]
+        if isinstance(entry, gof.Variable) and (entry.type in invalid_scal_types \
+                or entry.type in invalid_tensor_types):
+            raise TypeError("Expected an integer")
         if isinstance(entry, gof.Variable) and entry.type in scal_types:
             return entry.type
         elif isinstance(entry, gof.Type) and entry in scal_types:
@@ -3041,7 +3053,7 @@ class Subtensor(Op):
         elif isinstance(entry, int):
             return entry
         else:
-            raise TypeError(Subtensor.e_indextype, entry)
+            raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
     def __init__(self, idx_list):
         self.idx_list = tuple(map(self.convert, idx_list))
