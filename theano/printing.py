@@ -382,7 +382,7 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and pstate.target is n
 pp = pprint
 
 
-# colors not used: orange, ambre#FFBF00, purple, pink,
+# colors not used: orange, amber#FFBF00, purple, pink,
 # used by default: green, blue, grey, red
 default_colorCodes = {'GpuFromHost' : 'red',
               'HostFromGpu' : 'red',
@@ -428,11 +428,16 @@ def pydotprint(fct, outfile=None,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
 
-    In the graph, ellipses are Apply Nodes (the execution of an op) and boxes are variables.
-    If variables have names they are used as text (if multiple vars have the same name, they will be merged in the graph).
-    Otherwise, if the variable is constant, we print its value and finally we print the type + a unique number to prevent multiple vars from being merged.
-    We print the op of the apply in the Apply box with a number that represents the toposort order of application of those Apply.
-    If an Apply has more than 1 input, we label each edge between an input and the Apply node with the input's index.
+    In the graph, ellipses are Apply Nodes (the execution of an op)
+    and boxes are variables.  If variables have names they are used as
+    text (if multiple vars have the same name, they will be merged in
+    the graph).  Otherwise, if the variable is constant, we print its
+    value and finally we print the type + a unique number to prevent
+    multiple vars from being merged.  We print the op of the apply in
+    the Apply box with a number that represents the toposort order of
+    application of those Apply.  If an Apply has more than 1 input, we
+    label each edge between an input and the Apply node with the
+    input's index.
 
     green boxes are inputs to the graph
     blue boxes are outputs of the graph
