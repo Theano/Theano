@@ -29,7 +29,7 @@ def test_pydotprint_cond_highlight():
     theano.theano_logger.removeHandler(orig_handler)
     theano.theano_logger.addHandler(new_handler)
     try:
-        theano.printing.pydotprint(f, cond_highlight = True)
+        theano.printing.pydotprint(f, cond_highlight = True, print_output_file=False)
     finally:
         theano.theano_logger.addHandler(orig_handler)
         theano.theano_logger.removeHandler(new_handler)
@@ -41,7 +41,7 @@ def test_pydotprint_profile():
 
     A = tensor.matrix()
     f = theano.function([A],A+1,mode='ProfileMode')
-    theano.printing.pydotprint(f)
+    theano.printing.pydotprint(f, print_output_file=False)
 
 def test_min_informative_str():
     """ evaluates a reference output to make sure the

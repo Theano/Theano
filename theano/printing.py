@@ -396,7 +396,8 @@ def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
                high_contrast=True, cond_highlight=None, colorCodes=None,
                max_label_size=50, scan_graphs=False,
-               var_with_name_simple=False
+               var_with_name_simple=False,
+               print_output_file=True
                ):
     """
     print to a file in png format the graph of op of a compile theano fct.
@@ -658,7 +659,8 @@ def pydotprint(fct, outfile=None,
         outfile+='.'+format
     g.write(outfile, prog='dot', format=format)
 
-    print 'The output file is available at',outfile
+    if print_output_file:
+        print 'The output file is available at',outfile
     if scan_graphs:
         scan_ops = [(idx, x) for idx,x in enumerate(fct_env.toposort()) if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         path, fn = os.path.split(outfile)
