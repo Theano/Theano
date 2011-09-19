@@ -3040,7 +3040,7 @@ class T_mean(unittest.TestCase):
         x = theano.tensor.vector()
         f = theano.function([x],theano.tensor.mean(x))
         data = numpy.asarray(numpy.random.rand(50), dtype=config.floatX)
-        assert f(data) == numpy.mean(data)
+        assert numpy.allclose(f(data), numpy.mean(data))
 
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
