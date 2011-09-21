@@ -8,7 +8,7 @@ Interactive Debugger
 
 The interactive debugger should allow the user to go step by step in a graph to debug it. It should allow setting breakpoints on arbitrary Ops or subgraphs. If we can group ops by the user's function that defined them, we could have a logical grouping of the graph into subgraphs.
 
-The debugger should save the inputs at each step so the user loses no info through inplace operations. Ideally, the debugger should be a normal python shell enrished with commands to control the flow and all the inputs should be made available so the user can use numpy interactively on them.
+The debugger should save the inputs at each step so the user loses no info through inplace operations. Ideally, the debugger should be a normal python shell enriched with commands to control the flow and all the inputs should be made available so the user can use numpy interactively on them.
 
 Command wishlist
  * py_perform (perform the current operation using the python implementation)

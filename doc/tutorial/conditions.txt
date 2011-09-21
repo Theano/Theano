@@ -9,7 +9,7 @@ Conditions
 - Build condition over symbolic variables.
 - IfElse Op takes a `boolean` condition and two variables to compute as input.
 - Switch take a `tensor` as condition and two variables to compute as input.
-  - Switch is an elemwise operation. It is more general then ifelse.
+  - Switch is an elementwise operation. It is more general than IfElse.
 - While Switch Op evaluates both 'output' variables, IfElse Op is lazy and only
   evaluates one variable respect to the condition.
 

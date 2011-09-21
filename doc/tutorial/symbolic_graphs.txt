@@ -74,7 +74,7 @@ output. You can now print the name of the op that is applied to get
 'Elemwise{mul,no_inplace}'
 
 So a elementwise multiplication is used to compute ``y``. This
-muliplication is done between the inputs:
+multiplication is done between the inputs:
 
 >>> len(y.owner.inputs)
 2
@@ -126,7 +126,7 @@ When compiling a Theano function, what you give to the
 :func:`theano.function <function.function>` is actually a graph
 (starting from the outputs variables you can traverse the graph up to
 the input variables). While this graph structure shows how to compute
-the output from the input, it also offers the posibility to improve the  
+the output from the input, it also offers the possibility to improve the  
 way this computation is carried out. The way optimizations work in 
 Theano is by identifying and replacing certain patterns in the graph 
 with other specialized patterns that produce the same results but are either 
