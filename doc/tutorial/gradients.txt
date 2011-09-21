@@ -221,15 +221,15 @@ array([[ 0.,  0.],
     as the output.
 
 
-Hesian times a vector
+Hessian times a vector
 =====================
 
 If you need to compute the Hessian times a vector, you can make use of the
-above defined operators to do it more efficiently then actually computing
+above defined operators to do it more efficiently than actually computing
 the exact Hessian and then doing the product. Due to the symmetry of the 
 Hessian matrix, you have two options that will
-give you the same result (though might exhibit different performaces, so we
-suggest to profile the methods before using any of the two):
+give you the same result, though these options might exhibit different performance, so we
+suggest to profile the methods before using either of the two:
 
 
 >>> x = T.dvector('x')

@@ -366,4 +366,4 @@ For example:
 Others Random Distributions
 ---------------------------
 
-Threre is :ref:`others distribution implemented <libdoc_tensor_raw_random>`. 
+There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
