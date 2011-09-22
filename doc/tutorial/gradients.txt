@@ -222,7 +222,7 @@ array([[ 0.,  0.],
 
 
 Hessian times a vector
-=====================
+======================
 
 If you need to compute the Hessian times a vector, you can make use of the
 above defined operators to do it more efficiently than actually computing
