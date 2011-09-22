@@ -86,7 +86,7 @@ Short-term serialization
 
 If you are confident that the class instance you are serializing will be
 deserialized by a compatible version of the code, pickling the whole model is
-an adequate solution. It would be the cas, for instance, if you are saving
+an adequate solution. It would be the case, for instance, if you are saving
 models and reloading them during the same execution of your program, or if the
 class you're saving has been really stable for a while.
 
