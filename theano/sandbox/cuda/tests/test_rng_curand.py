@@ -3,14 +3,21 @@ import theano
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
+if theano.config.mode=='FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+
 def test_uniform_basic():
     rng = CURAND_RandomStreams(234)
 
     u0 = rng.uniform((10,10))
     u1 = rng.uniform((10,10))
 
-    f0 = theano.function([], u0)
-    f1 = theano.function([], u1)
+    f0 = theano.function([], u0, mode=mode_with_gpu)
+    f1 = theano.function([], u1, mode=mode_with_gpu)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
@@ -36,8 +43,8 @@ def test_normal_basic():
     u0 = rng.normal((10,10))
     u1 = rng.normal((10,10))
 
-    f0 = theano.function([], u0)
-    f1 = theano.function([], u1)
+    f0 = theano.function([], u0, mode=mode_with_gpu)
+    f1 = theano.function([], u1, mode=mode_with_gpu)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
@@ -88,4 +95,3 @@ def compare_speed():
             # don't time the first call, it has some startup cost
             f.fn.time_thunks = (i>0)
             f()
-
