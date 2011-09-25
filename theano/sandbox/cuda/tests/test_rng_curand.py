@@ -3,6 +3,12 @@ import theano
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
+# Skip tests if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available == False:
+    raise SkipTest('Optional package cuda disabled')
+
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
 else:
