@@ -344,7 +344,7 @@ class PureOp(object):
             # ensure that the test value is correct
             return v.type.filter(v.tag.test_value)
 
-        raise AttributeError('%s has not test value' % v)
+        raise AttributeError('%s has no test value' % v)
 
     def __call__(self, *inputs, **kwargs):
         """Optional: Return some or all output[s] of `make_node`.
