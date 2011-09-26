@@ -94,7 +94,7 @@ class NotImplementedOp(PureOp):
 
 
 def test_ifelse():
-    a = generic()
+    a = T.scalar()
     b = generic()
     c = generic()
 
@@ -105,15 +105,15 @@ def test_ifelse():
 
     try:
         print "case 1"
-        f( True, 'a', 'b')
+        f( 1, 'a', 'b')
         assert False
     except NotImplementedOp.E:
         pass
     print "... passed"
 
     print "case 2"
-    print f( False, 'a', 'b')
-    assert f( False, 'a', 'b') == 'b'
+    print f( 0, 'a', 'b')
+    assert f( 0, 'a', 'b') == 'b'
     print "... passed"
 
 
@@ -123,8 +123,8 @@ def more_complex_test():
 
     x1 = T.scalar('x1')
     x2 = T.scalar('x2')
-    c1 = generic('c1')
-    c2 = generic('c2')
+    c1 = T.scalar('c1')
+    c2 = T.scalar('c2')
     t1 = ifelse(c1,x1,notimpl(x2))
     t1.name = 't1'
     t2 = t1*10
