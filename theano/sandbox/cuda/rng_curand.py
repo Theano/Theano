@@ -64,6 +64,9 @@ class CURAND_Base(theano.gof.Op):
 
     def __hash__(self):
         return hash((type(self), self._config()))
+    def __str__(self):
+        return self.__class__.__name__+"{inplace=%s, out_dtype=%s}"%(
+            self.destructive, self.output_type)
 
     def make_node(self, generator, size):
         return theano.gof.Apply(self, [generator, size],
