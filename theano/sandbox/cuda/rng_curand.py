@@ -13,7 +13,7 @@ import theano.gof
 from theano.sandbox.cuda import CudaNdarrayType
 from theano.tensor import (get_vector_length, cast, opt)
 from theano.compile import optdb
-from theano.gof import local_optimizer
+from theano.gof import local_optimizer, Variable
 
 config = theano.config
 
