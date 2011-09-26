@@ -10,16 +10,20 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 
 __docformat__ = "restructuredtext en"
-import logging
 
-from theano import config
-import graph
-import numpy
-import utils
+
+import logging
 import warnings
-from env import Env
-import cc
+
+import numpy
+
 import theano
+from theano import config
+
+import cc
+import graph
+import utils
+from env import Env
 
 
 class CLinkerObject(object):
