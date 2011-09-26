@@ -20,7 +20,7 @@ from theano.gof import Apply, Constant, Op, Type, Value, Variable
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
-from theano.gof.op import get_test_value
+from theano.gof.op import get_test_value, missing_test_message
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 
@@ -5227,23 +5227,27 @@ class Dot(Op):
             try:
                 iv0 = get_test_value(inputs[0])
             except AttributeError:
-                raise AttributeError('first input passed to Dot.R_op has no test value')
+                missing_test_message('first input passed to Dot.R_op has no test value')
+                debugger_available = False
 
             try:
                 iv1 = get_test_value(inputs[1])
             except AttributeError:
-                raise AttributeError('second input passed to Dot.R_op has no test value')
-
+                missing_test_message('second input passed to Dot.R_op has no test value')
+                debugger_available = False
 
             try:
                 ev0 = get_test_value(eval_points[0])
             except AttributeError:
-                raise AttributeError('first eval point passed to Dot.R_op has no test value')
+                missing_test_message('first eval point passed to Dot.R_op has no test value')
+                debugger_available = False
             try:
                 ev1 = get_test_value(eval_points[1])
             except AttributeError:
-                raise AttributeError('second eval point passed to Dot.R_op has no test value')
+                missing_test_message('second eval point passed to Dot.R_op has no test value')
+                debugger_available = False
 
+        if debugger_available:
             input_values = [ iv0, iv1]
             eval_point_values = [ ev0, ev1 ]
 

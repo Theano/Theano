@@ -563,3 +563,23 @@ def get_test_value(v):
             return v
         raise
 
+def missing_test_message(msg):
+    """ Displays msg, a message saying that some test_value is missing,
+    in the appropriate form based on config.compute_test_value:
+
+        off: the interactive debugger is off, so we do nothing
+        ignore: the interactive debugger is set to ignore missing inputs,
+                so do nothing
+        warn: display msg as a warning
+        raise: raise an AttributeError with msg as the exception text
+    """
+
+
+    action = config.compute_test_value
+
+    if action == 'raise':
+        raise AttributeError(msg)
+    elif action == 'warn':
+        warnings.warn(msg, stacklevel = 2)
+    else:
+        assert action in [ 'ignore', 'off' ]
