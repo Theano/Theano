@@ -1,5 +1,6 @@
 import numpy
 import theano
+from theano.tensor import vector
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -9,14 +10,19 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-def test_uniform_basic():
+def check_uniform_basic(shape_as_theano_variable):
     rng = CURAND_RandomStreams(234)
+    if shape_as_theano_variable:
+        shape = vector(dtype='int64')
+        givens = {shape: (10, 10)}
+    else:
+        shape = (10, 10)
+        givens = {}
+    u0 = rng.uniform(shape)
+    u1 = rng.uniform(shape)
 
-    u0 = rng.uniform((10, 10))
-    u1 = rng.uniform((10, 10))
-
-    f0 = theano.function([], u0, mode=mode_with_gpu)
-    f1 = theano.function([], u1, mode=mode_with_gpu)
+    f0 = theano.function([], u0, mode=mode_with_gpu, givens=givens)
+    f1 = theano.function([], u1, mode=mode_with_gpu, givens=givens)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
@@ -36,14 +42,24 @@ def test_uniform_basic():
         assert .25 <= v.mean() <= .75
 
 
-def test_normal_basic():
+def test_uniform_basic():
+    yield check_uniform_basic, True
+    yield check_uniform_basic, False
+
+
+def check_normal_basic(shape_as_theano_variable):
     rng = CURAND_RandomStreams(234)
+    if shape_as_theano_variable:
+        shape = vector(dtype='int64')
+        givens = {shape: (10, 10)}
+    else:
+        shape = (10, 10)
+        givens = {}
+    u0 = rng.normal(shape)
+    u1 = rng.normal(shape)
 
-    u0 = rng.normal((10, 10))
-    u1 = rng.normal((10, 10))
-
-    f0 = theano.function([], u0, mode=mode_with_gpu)
-    f1 = theano.function([], u1, mode=mode_with_gpu)
+    f0 = theano.function([], u0, mode=mode_with_gpu, givens=givens)
+    f1 = theano.function([], u1, mode=mode_with_gpu, givens=givens)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
@@ -59,6 +75,11 @@ def test_normal_basic():
         assert v.shape == (10, 10)
         assert v.min() < v.max()
         assert -.5 <= v.mean() <= .5
+
+
+def test_normal_basic():
+    yield check_normal_basic, True
+    yield check_normal_basic, False
 
 
 def compare_speed():
