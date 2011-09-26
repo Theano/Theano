@@ -188,10 +188,16 @@ class TestMakeThunk(unittest.TestCase):
         assert compute_map[o][0]
         assert storage_map[o][0] == 4
 
+
+def test_test_value_python_objects():
+    for x in (range(3), 0, 0.5, 1):
+        assert (op.get_test_value(x) == x).all()
+
+
 def test_test_value_ndarray():
     x = numpy.zeros((5,5))
     v = op.get_test_value(x)
-    assert v is x
+    assert (v == x).all()
 
 def test_test_value_constant():
     x = T.as_tensor_variable(numpy.zeros((5,5)))
