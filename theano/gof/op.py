@@ -545,3 +545,21 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
+
+
+def get_test_value(v):
+    """
+    Extract test value from variable v. Raises AttributeError if there is none.
+
+    For an ndarray, the value is the ndarray itself
+    For a Constant, the test value is v.value.
+    For a Shared variable, it is the internal value.
+    For another Variable, it is the content of v.tag.test_value."""
+
+    try:
+        return PureOp._get_test_value(v)
+    except AttributeError:
+        if hasattr(v,'__array__'):
+            return v
+        raise
+
