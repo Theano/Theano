@@ -5,11 +5,17 @@ import numpy
 
 import theano
 
-from theano.gof.op import *
+import theano.gof.op as op
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
-
+import theano.tensor as T
 from theano import scalar
+from theano import shared
+
+config = theano.config
+Op = op.Op
+utils = op.utils
+
 
 def as_variable(x):
     assert isinstance(x, Variable)
@@ -181,6 +187,34 @@ class TestMakeThunk(unittest.TestCase):
         assert not required # We provided all inputs
         assert compute_map[o][0]
         assert storage_map[o][0] == 4
+
+def test_test_value_ndarray():
+    x = numpy.zeros((5,5))
+    v = op.get_test_value(x)
+    assert v is x
+
+def test_test_value_constant():
+    x = T.as_tensor_variable(numpy.zeros((5,5)))
+    v = op.get_test_value(x)
+
+    assert numpy.all(v == numpy.zeros((5,5)))
+
+def test_test_value_shared():
+    x = shared(numpy.zeros((5,5)))
+    v = op.get_test_value(x)
+
+    assert numpy.all(v == numpy.zeros((5,5)))
+
+def test_test_value_op():
+    try:
+        prev_value = config.compute_test_value
+        config.compute_test_value = 'raise'
+        x = T.log(numpy.ones((5,5)))
+        v = op.get_test_value(x)
+
+        assert numpy.allclose(v, numpy.zeros((5,5)))
+    finally:
+        config.compute_test_value = prev_value
 
 if __name__ == '__main__':
     unittest.main()
