@@ -191,7 +191,7 @@ class TestMakeThunk(unittest.TestCase):
 def test_test_value_ndarray():
     x = numpy.zeros((5,5))
     v = op.get_test_value(x)
-    assert v is x
+    assert (v == x).all()
 
 def test_test_value_constant():
     x = T.as_tensor_variable(numpy.zeros((5,5)))

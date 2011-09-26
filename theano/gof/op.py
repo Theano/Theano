@@ -19,6 +19,7 @@ import utils
 import warnings
 from env import Env
 import cc
+import theano
 
 
 class CLinkerObject(object):
@@ -549,17 +550,16 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
 def get_test_value(v):
     """
-    Extract test value from variable v. Raises AttributeError if there is none.
+    Extract test value from `v`. Raises AttributeError if there is none.
 
-    For an ndarray, the value is the ndarray itself
+    If input `v` is not already a variable, it is turned into one by calling
+    `as_tensor_variable(v)`, so that this function can be applied e.g.
+    on numpy arrays or Python lists and scalars, considering them as constants.
+
     For a Constant, the test value is v.value.
     For a Shared variable, it is the internal value.
-    For another Variable, it is the content of v.tag.test_value."""
-
-    try:
-        return PureOp._get_test_value(v)
-    except AttributeError:
-        if hasattr(v,'__array__'):
-            return v
-        raise
+    For another Variable, it is the content of v.tag.test_value.
+    """
+    v_tensor = theano.tensor.as_tensor_variable(v)
+    return PureOp._get_test_value(v_tensor)
 
