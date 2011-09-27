@@ -10,13 +10,38 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-def check_uniform_basic(shape_as_theano_variable,
-                        dim_as_theano_variable=False):
+def check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False):
+    """
+    check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False)
+
+    Runs a basic sanity check on the `uniform` method of a
+    `CURAND_RandomStreams` object.
+
+    Checks that variates
+
+     * are in the range [0, 1]
+     * have a mean in the right neighbourhood (near 0.5)
+     * are of the specified shape
+     * successive calls produce different arrays of variates
+
+    Parameters
+    ----------
+    shape_as_symbolic : boolean
+        If `True`, est the case that the shape tuple is a symbolic
+        variable rather than known at compile-time.
+
+    dim_as_symbolic : boolean
+        If `True`, test the case that an element of the shape
+        tuple is a Theano symbolic. Irrelevant if `shape_as_symbolic`
+        is `True`.
+    """
     rng = CURAND_RandomStreams(234)
-    if shape_as_theano_variable:
+    if shape_as_symbolic:
+        # instantiate a TensorConstant with the value (10, 10)
         shape = constant((10, 10))
     else:
-        if dim_as_theano_variable:
+        # Only one dimension is symbolic, with the others known
+        if dim_as_symbolic:
             shape = (10, constant(10))
         else:
             shape = (10, 10)
@@ -45,18 +70,46 @@ def check_uniform_basic(shape_as_theano_variable,
 
 
 def test_uniform_basic():
+    """
+    Run the tests for `uniform` with different settings for the
+    shape tuple passed in.
+    """
     yield check_uniform_basic, False
     yield check_uniform_basic, False, True
     yield check_uniform_basic, True
 
 
-def check_normal_basic(shape_as_theano_variable,
-                       dim_as_theano_variable=False):
+def check_normal_basic(shape_as_symbolic, dim_as_symbolic=False):
+    """
+    check_normal_basic(shape_as_symbolic, dim_as_symbolic=False)
+
+    Runs a basic sanity check on the `normal` method of a
+    `CURAND_RandomStreams` object.
+
+    Checks that variates
+
+     * have a mean in the right neighbourhood (near 0)
+     * are of the specified shape
+     * successive calls produce different arrays of variates
+
+    Parameters
+    ----------
+    shape_as_symbolic : boolean
+        If `True`, est the case that the shape tuple is a symbolic
+        variable rather than known at compile-time.
+
+    dim_as_symbolic : boolean
+        If `True`, test the case that an element of the shape
+        tuple is a Theano symbolic. Irrelevant if `shape_as_symbolic`
+        is `True`.
+    """
     rng = CURAND_RandomStreams(234)
-    if shape_as_theano_variable:
+    if shape_as_symbolic:
+        # instantiate a TensorConstant with the value (10, 10)
         shape = constant((10, 10))
     else:
-        if dim_as_theano_variable:
+        if dim_as_symbolic:
+            # Only one dimension is symbolic, with the others known
             shape = (10, constant(10))
         else:
             shape = (10, 10)
@@ -83,6 +136,10 @@ def check_normal_basic(shape_as_theano_variable,
 
 
 def test_normal_basic():
+    """
+    Run the tests for `normal` with different settings for the
+    shape tuple passed in.
+    """
     yield check_normal_basic, False
     yield check_normal_basic, False, True
     yield check_normal_basic, True
