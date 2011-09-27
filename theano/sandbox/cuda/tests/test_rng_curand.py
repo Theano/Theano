@@ -1,6 +1,6 @@
 import numpy
 import theano
-from theano.tensor import vector
+from theano.tensor import vector, constant
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -10,13 +10,17 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-def check_uniform_basic(shape_as_theano_variable):
+def check_uniform_basic(shape_as_theano_variable,
+                        dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
         shape = vector(dtype='int64')
         givens = {shape: (10, 10)}
     else:
-        shape = (10, 10)
+        if dim_as_theano_variable:
+            shape = (10, constant(10))
+        else:
+            shape = (10, 10)
         givens = {}
     u0 = rng.uniform(shape)
     u1 = rng.uniform(shape)
@@ -43,17 +47,21 @@ def check_uniform_basic(shape_as_theano_variable):
 
 
 def test_uniform_basic():
-    yield check_uniform_basic, True
     yield check_uniform_basic, False
+    yield check_uniform_basic, False, True
+    yield check_uniform_basic, True
 
-
-def check_normal_basic(shape_as_theano_variable):
+def check_normal_basic(shape_as_theano_variable,
+                       dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
         shape = vector(dtype='int64')
         givens = {shape: (10, 10)}
     else:
-        shape = (10, 10)
+        if dim_as_theano_variable:
+            shape = (10, constant(10))
+        else:
+            shape = (10, 10)
         givens = {}
     u0 = rng.normal(shape)
     u1 = rng.normal(shape)
@@ -78,8 +86,9 @@ def check_normal_basic(shape_as_theano_variable):
 
 
 def test_normal_basic():
-    yield check_normal_basic, True
     yield check_normal_basic, False
+    yield check_normal_basic, False, True
+    yield check_normal_basic, True
 
 
 def compare_speed():
