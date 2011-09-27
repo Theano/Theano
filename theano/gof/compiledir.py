@@ -1,10 +1,13 @@
 
+import cPickle
 import errno
-import os, sys
+import os
 import platform
 import re
 
+import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
+
 
 def default_compiledirname():
     platform_id = '-'.join([
@@ -25,7 +28,7 @@ def filter_compiledir(path):
     valid = True
     if not os.access(path, os.R_OK | os.W_OK):
         try:
-            os.makedirs(path, 0770) #read-write-execute for user and group
+            os.makedirs(path, 0770)  # read-write-execute for user and group
         except OSError, e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
@@ -59,3 +62,43 @@ AddConfigVar('compiledir',
                 default_compiledirname()),
             filter=filter_compiledir,
             allow_override=False))
+
+
+def print_compiledir_content():
+
+    def flatten(a):
+        if isinstance(a, (tuple, list, set)):
+            l = []
+            for item in a:
+                l.extend(flatten(item))
+            return l
+        else:
+            return [a]
+
+    compiledir = theano.config.compiledir
+    print "List compiled ops in this theano cache:", compiledir
+    print "sub directory/Op/Associated Type"
+    print
+    table = []
+
+    for dir in os.listdir(compiledir):
+        file = None
+        try:
+            try:
+                file = open(os.path.join(compiledir, dir, "key.pkl"))
+                keydata = cPickle.load(file)
+                ops = list(set([x for x in flatten(keydata.keys)
+                                if isinstance(x, theano.gof.Op)]))
+                assert len(ops) == 1
+                types = list(set([x for x in flatten(keydata.keys)
+                                  if isinstance(x, theano.gof.Type)]))
+                table.append((dir, ops[0], types))
+            except IOError:
+                pass
+        finally:
+            if file is not None:
+                file.close()
+
+    table = sorted(table, key=lambda t: str(t[1]))
+    for dir, op, types in table:
+        print dir, op, types
