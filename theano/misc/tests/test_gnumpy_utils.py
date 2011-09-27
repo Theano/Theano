@@ -13,8 +13,9 @@ import gnumpy
 
 def test(shape=(3,4,5)):
     """
-Make sure that the gnumpy conversion is exact.
-"""
+    Make sure that the gnumpy conversion is exact from garray to
+    CudaNdarray back to garray.
+    """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.ftensor3('U'))
     ii = theano.function([U], gpu(U+1))
@@ -34,13 +35,14 @@ Make sure that the gnumpy conversion is exact.
     u = (A+1).asarray()
     v = B.asarray()
     w = B2
-    assert abs(u-v).max() == 0
-    assert abs(u-w).max() == 0
+    assert (u == v).all()
+    assert (u == w).all()
 
 def test2(shape=(3,4,5)):
     """
-Make sure that the gnumpy conversion is exact.
-"""
+    Make sure that the gnumpy conversion is exact from CudaNdarray to
+    garray back to CudaNdarray.
+    """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.ftensor3('U'))
     ii = theano.function([U], gpu(U+1))
@@ -54,12 +56,11 @@ Make sure that the gnumpy conversion is exact.
 #    assert A_cnd._strides == A_gar.strides, garray don't have strides
 
     B = garray_to_cudandarray(A_gar)
-    from numpy import array
-    B2 = array(B)
+    B2 = numpy.array(B)
 
     assert A_cnd.shape == B.shape
 #    assert A_cnd.dtype == B.dtype # dtype always float32
     assert A_cnd._strides == B._strides
     assert A_cnd.gpudata == B.gpudata
     v = numpy.asarray(B)
-    assert abs(v-A).max() == 0
+    assert (v == A).all()
