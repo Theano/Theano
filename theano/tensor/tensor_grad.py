@@ -64,6 +64,20 @@ def Rop(f, wrt, eval_points):
 
     assert len(wrt) == len(eval_points)
 
+    for pack in enumerate(zip(wrt, eval_points)):
+        i = pack[0]
+        wrt_elem, eval_point = pack[1]
+
+        wrt_elem = as_tensor_variable(wrt_elem)
+        eval_point = as_tensor_variable(eval_point)
+
+        wrt_dim = len(wrt_elem.type.broadcastable)
+        eval_dim = len(eval_point.type.broadcastable)
+
+        if wrt_dim != eval_dim:
+            raise ValueError('Element '+str(i)+' of wrt/eval_point have mismatched '
+                    'dimensionality: '+str(wrt_dim)+' versus '+str(eval_dim))
+
     seen_nodes = {}
 
     def _traverse(node):
