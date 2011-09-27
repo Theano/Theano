@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import logging, os, sys
+import theano
 from theano import config
 from theano.gof.cc import get_module_cache
 
@@ -25,7 +26,8 @@ elif sys.argv[1] in ('clear'):
                         config.compiledir)
         _logger.debug('Remaining elements (%s): %s' %
                       (len(items), ', '.join(items)))
-
+elif sys.argv[1] in ('list'):
+    theano.gof.compiledir.print_compiledir_content()
 else:
     print 'command "%s" not recognized' % sys.argv[1]
     print 'Type "theano-cache" to print the cache location'
