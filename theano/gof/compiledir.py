@@ -72,7 +72,6 @@ def print_compiledir_content():
             for item in a:
                 l.extend(flatten(item))
             return l
-            return [flatten(item) for item in a]
         else:
             return [a]
 
