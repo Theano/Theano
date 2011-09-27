@@ -51,6 +51,7 @@ def test_uniform_basic():
     yield check_uniform_basic, False, True
     yield check_uniform_basic, True
 
+
 def check_normal_basic(shape_as_theano_variable,
                        dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
