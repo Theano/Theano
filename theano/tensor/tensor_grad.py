@@ -75,9 +75,6 @@ def Rop(f, wrt, eval_points):
         eval_dim = len(eval_point.type.broadcastable)
 
         if wrt_dim != eval_dim:
-            from theano.printing import min_informative_str
-            print min_informative_str(wrt_elem)
-            print min_informative_str(eval_point)
             raise ValueError('Element '+str(i)+' of wrt/eval_point have mismatched '
                     'dimensionality: '+str(wrt_dim)+' versus '+str(eval_dim))
 
