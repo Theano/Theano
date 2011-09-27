@@ -1,5 +1,6 @@
 import numpy
 import theano
+from theano.tensor import vector, constant, specify_shape
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -15,11 +16,43 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-def test_uniform_basic():
-    rng = CURAND_RandomStreams(234)
+def check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False):
+    """
+    check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False)
 
-    u0 = rng.uniform((10, 10))
-    u1 = rng.uniform((10, 10))
+    Runs a basic sanity check on the `uniform` method of a
+    `CURAND_RandomStreams` object.
+
+    Checks that variates
+
+     * are in the range [0, 1]
+     * have a mean in the right neighbourhood (near 0.5)
+     * are of the specified shape
+     * successive calls produce different arrays of variates
+
+    Parameters
+    ----------
+    shape_as_symbolic : boolean
+        If `True`, est the case that the shape tuple is a symbolic
+        variable rather than known at compile-time.
+
+    dim_as_symbolic : boolean
+        If `True`, test the case that an element of the shape
+        tuple is a Theano symbolic. Irrelevant if `shape_as_symbolic`
+        is `True`.
+    """
+    rng = CURAND_RandomStreams(234)
+    if shape_as_symbolic:
+        # instantiate a TensorConstant with the value (10, 10)
+        shape = constant((10, 10))
+    else:
+        # Only one dimension is symbolic, with the others known
+        if dim_as_symbolic:
+            shape = (10, constant(10))
+        else:
+            shape = (10, 10)
+    u0 = rng.uniform(shape)
+    u1 = rng.uniform(shape)
 
     f0 = theano.function([], u0, mode=mode_with_gpu)
     f1 = theano.function([], u1, mode=mode_with_gpu)
@@ -42,11 +75,52 @@ def test_uniform_basic():
         assert .25 <= v.mean() <= .75
 
 
-def test_normal_basic():
-    rng = CURAND_RandomStreams(234)
+def test_uniform_basic():
+    """
+    Run the tests for `uniform` with different settings for the
+    shape tuple passed in.
+    """
+    yield check_uniform_basic, False
+    yield check_uniform_basic, False, True
+    yield check_uniform_basic, True
 
-    u0 = rng.normal((10, 10))
-    u1 = rng.normal((10, 10))
+
+def check_normal_basic(shape_as_symbolic, dim_as_symbolic=False):
+    """
+    check_normal_basic(shape_as_symbolic, dim_as_symbolic=False)
+
+    Runs a basic sanity check on the `normal` method of a
+    `CURAND_RandomStreams` object.
+
+    Checks that variates
+
+     * have a mean in the right neighbourhood (near 0)
+     * are of the specified shape
+     * successive calls produce different arrays of variates
+
+    Parameters
+    ----------
+    shape_as_symbolic : boolean
+        If `True`, est the case that the shape tuple is a symbolic
+        variable rather than known at compile-time.
+
+    dim_as_symbolic : boolean
+        If `True`, test the case that an element of the shape
+        tuple is a Theano symbolic. Irrelevant if `shape_as_symbolic`
+        is `True`.
+    """
+    rng = CURAND_RandomStreams(234)
+    if shape_as_symbolic:
+        # instantiate a TensorConstant with the value (10, 10)
+        shape = constant((10, 10))
+    else:
+        if dim_as_symbolic:
+            # Only one dimension is symbolic, with the others known
+            shape = (10, constant(10))
+        else:
+            shape = (10, 10)
+    u0 = rng.normal(shape)
+    u1 = rng.normal(shape)
 
     f0 = theano.function([], u0, mode=mode_with_gpu)
     f1 = theano.function([], u1, mode=mode_with_gpu)
@@ -65,6 +139,16 @@ def test_normal_basic():
         assert v.shape == (10, 10)
         assert v.min() < v.max()
         assert -.5 <= v.mean() <= .5
+
+
+def test_normal_basic():
+    """
+    Run the tests for `normal` with different settings for the
+    shape tuple passed in.
+    """
+    yield check_normal_basic, False
+    yield check_normal_basic, False, True
+    yield check_normal_basic, True
 
 
 def compare_speed():
