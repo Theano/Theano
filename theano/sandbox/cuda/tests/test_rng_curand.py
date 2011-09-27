@@ -1,6 +1,6 @@
 import numpy
 import theano
-from theano.tensor import vector, constant
+from theano.tensor import vector, constant, specify_shape
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -14,7 +14,7 @@ def check_uniform_basic(shape_as_theano_variable,
                         dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
-        shape = vector(dtype='int64')
+        shape = specify_shape(vector(dtype='int64'), (2,))
         givens = {shape: (10, 10)}
     else:
         if dim_as_theano_variable:
@@ -55,7 +55,7 @@ def check_normal_basic(shape_as_theano_variable,
                        dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
-        shape = vector(dtype='int64')
+        shape = specify_shape(vector(dtype='int64'), (2,))
         givens = {shape: (10, 10)}
     else:
         if dim_as_theano_variable:
