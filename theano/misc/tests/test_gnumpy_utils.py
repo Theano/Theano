@@ -5,21 +5,22 @@ from theano.misc.gnumpy_utils import gnumpy_available
 
 if not gnumpy_available:
     from nose.plugins.skip import SkipTest
-    raise SkipTest("gnumpy not installed. Skip test of theano op with pycuda code.")
+    raise SkipTest("gnumpy not installed. Skip test related to it.")
 
-from theano.misc.gnumpy_utils import garray_to_cudandarray, cudandarray_to_garray
+from theano.misc.gnumpy_utils import (garray_to_cudandarray,
+                                      cudandarray_to_garray)
 
 import gnumpy
 
-def test(shape=(3,4,5)):
+
+def test(shape=(3, 4, 5)):
     """
     Make sure that the gnumpy conversion is exact from garray to
     CudaNdarray back to garray.
     """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.ftensor3('U'))
-    ii = theano.function([U], gpu(U+1))
-
+    ii = theano.function([U], gpu(U + 1))
 
     A = gnumpy.rand(*shape)
     A_cnd = garray_to_cudandarray(A)
@@ -32,21 +33,21 @@ def test(shape=(3,4,5)):
     from numpy import array
     B2 = array(B_cnd)
 
-    u = (A+1).asarray()
+    u = (A + 1).asarray()
     v = B.asarray()
     w = B2
     assert (u == v).all()
     assert (u == w).all()
 
-def test2(shape=(3,4,5)):
+
+def test2(shape=(3, 4, 5)):
     """
     Make sure that the gnumpy conversion is exact from CudaNdarray to
     garray back to CudaNdarray.
     """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.ftensor3('U'))
-    ii = theano.function([U], gpu(U+1))
-
+    ii = theano.function([U], gpu(U + 1))
 
     A = numpy.random.rand(*shape).astype('float32')
     A_cnd = theano.sandbox.cuda.CudaNdarray(A)
