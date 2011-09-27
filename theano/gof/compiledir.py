@@ -78,17 +78,27 @@ def print_compiledir_content():
 
     compiledir = theano.config.compiledir
     print "List compiled op in theano this cache", compiledir
+    print "sub directory/Op/Associated Type"
+    print
+    table = []
+
     for dir in os.listdir(compiledir):
         file = None
         try:
             file = open(os.path.join(compiledir, dir, "key.pkl"))
             keydata = cPickle.load(file)
             ops = list(set([x for x in flatten(keydata.keys)
-                       if isinstance(x, theano.gof.Op)]))
+                            if isinstance(x, theano.gof.Op)]))
             assert len(ops) == 1
-            print dir, ops[0]
+            types = list(set([x for x in flatten(keydata.keys)
+                              if isinstance(x, theano.gof.Type)]))
+            table.append((dir, ops[0], types))
         except IOError:
             pass
         finally:
             if file is not None:
                 file.close()
+
+    table = sorted(table, key=lambda t: str(t[1]))
+    for dir, op, types in table:
+        print dir, op, types
