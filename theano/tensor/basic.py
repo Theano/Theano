@@ -5256,7 +5256,7 @@ class Dot(Op):
                     raise ValueError('input '+str(i)+' and eval_point '+str(i)+' to Dot.R_op '
                             'should have the '
                         'same shape, but their shapes are %s and %s, respectively' % ( \
-                                str(input_values[i].shape), str(eval_point_values[i]) ) )
+                                str(input_values[i].shape), str(eval_point_values[i].shape) ) )
 
         t1 = self(eval_points[0], inputs[1])
         t2 = self(inputs[0], eval_points[1])
