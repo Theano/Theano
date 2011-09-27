@@ -14,19 +14,17 @@ def check_uniform_basic(shape_as_theano_variable,
                         dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
-        shape = specify_shape(vector(dtype='int64'), (2,))
-        givens = {shape: (10, 10)}
+        shape = constant((10, 10))
     else:
         if dim_as_theano_variable:
             shape = (10, constant(10))
         else:
             shape = (10, 10)
-        givens = {}
     u0 = rng.uniform(shape)
     u1 = rng.uniform(shape)
 
-    f0 = theano.function([], u0, mode=mode_with_gpu, givens=givens)
-    f1 = theano.function([], u1, mode=mode_with_gpu, givens=givens)
+    f0 = theano.function([], u0, mode=mode_with_gpu)
+    f1 = theano.function([], u1, mode=mode_with_gpu)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
@@ -56,19 +54,17 @@ def check_normal_basic(shape_as_theano_variable,
                        dim_as_theano_variable=False):
     rng = CURAND_RandomStreams(234)
     if shape_as_theano_variable:
-        shape = specify_shape(vector(dtype='int64'), (2,))
-        givens = {shape: (10, 10)}
+        shape = constant((10, 10))
     else:
         if dim_as_theano_variable:
             shape = (10, constant(10))
         else:
             shape = (10, 10)
-        givens = {}
     u0 = rng.normal(shape)
     u1 = rng.normal(shape)
 
-    f0 = theano.function([], u0, mode=mode_with_gpu, givens=givens)
-    f1 = theano.function([], u1, mode=mode_with_gpu, givens=givens)
+    f0 = theano.function([], u0, mode=mode_with_gpu)
+    f1 = theano.function([], u1, mode=mode_with_gpu)
 
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
