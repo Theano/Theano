@@ -32,5 +32,6 @@ else:
     print 'command "%s" not recognized' % sys.argv[1]
     print 'Type "theano-cache" to print the cache location'
     print 'Type "theano-cache clear" to erase the cache'
+    print 'Type "theano-cache list" to print the cache containt'
     sys.exit(1)
 

@@ -1,4 +1,5 @@
 
+import cPickle
 import errno
 import os
 import platform
@@ -64,7 +65,6 @@ AddConfigVar('compiledir',
 
 
 def print_compiledir_content():
-    import cPickle
 
     def flatten(a):
         if isinstance(a, (tuple, list, set)):
@@ -77,7 +77,7 @@ def print_compiledir_content():
             return [a]
 
     compiledir = theano.config.compiledir
-    print "List compiled op in theano this cache", compiledir
+    print "List compiled ops in this theano cache:", compiledir
     print "sub directory/Op/Associated Type"
     print
     table = []
@@ -85,16 +85,17 @@ def print_compiledir_content():
     for dir in os.listdir(compiledir):
         file = None
         try:
-            file = open(os.path.join(compiledir, dir, "key.pkl"))
-            keydata = cPickle.load(file)
-            ops = list(set([x for x in flatten(keydata.keys)
-                            if isinstance(x, theano.gof.Op)]))
-            assert len(ops) == 1
-            types = list(set([x for x in flatten(keydata.keys)
-                              if isinstance(x, theano.gof.Type)]))
-            table.append((dir, ops[0], types))
-        except IOError:
-            pass
+            try:
+                file = open(os.path.join(compiledir, dir, "key.pkl"))
+                keydata = cPickle.load(file)
+                ops = list(set([x for x in flatten(keydata.keys)
+                                if isinstance(x, theano.gof.Op)]))
+                assert len(ops) == 1
+                types = list(set([x for x in flatten(keydata.keys)
+                                  if isinstance(x, theano.gof.Type)]))
+                table.append((dir, ops[0], types))
+            except IOError:
+                pass
         finally:
             if file is not None:
                 file.close()
