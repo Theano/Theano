@@ -261,3 +261,14 @@ class test_RopLop(unittest.TestCase):
                 self.mat_in_shape[0], self.mat_in_shape[1], self.in_shape[0])
         self.check_rop_lop(out3d.flatten(),
                 self.mat_in_shape[0] * self.mat_in_shape[1] * self.in_shape[0])
+
+    def test_invalid_input(self):
+        success = False
+
+        try:
+            tensor.Rop(0., [ tensor.matrix() ], [ tensor.vector() ] )
+            success = True
+        except ValueError:
+            pass
+
+        assert not success

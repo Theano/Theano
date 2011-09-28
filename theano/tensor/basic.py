@@ -20,6 +20,7 @@ from theano.gof import Apply, Constant, Op, Type, Value, Variable
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
+from theano.gof.op import get_test_value, missing_test_message
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 
@@ -5216,8 +5217,50 @@ class Dot(Op):
         # simply c \dot b + a \dot d
         if None in eval_points:
             return [None]
-        t1 = self.make_node(eval_points[0], inputs[1]).outputs[0]
-        t2 = self.make_node(inputs[0], eval_points[1]).outputs[0]
+
+        assert len(inputs) == 2
+        assert len(eval_points) == 2
+
+        debugger_available = config.compute_test_value != 'off'
+
+        if debugger_available:
+            try:
+                iv0 = get_test_value(inputs[0])
+            except AttributeError:
+                missing_test_message('first input passed to Dot.R_op has no test value')
+                debugger_available = False
+
+            try:
+                iv1 = get_test_value(inputs[1])
+            except AttributeError:
+                missing_test_message('second input passed to Dot.R_op has no test value')
+                debugger_available = False
+
+            try:
+                ev0 = get_test_value(eval_points[0])
+            except AttributeError:
+                missing_test_message('first eval point passed to Dot.R_op has no test value')
+                debugger_available = False
+            try:
+                ev1 = get_test_value(eval_points[1])
+            except AttributeError:
+                missing_test_message('second eval point passed to Dot.R_op has no test value')
+                debugger_available = False
+
+        if debugger_available:
+            input_values = [ iv0, iv1]
+            eval_point_values = [ ev0, ev1 ]
+
+            for i in xrange(2):
+                if input_values[i].shape != eval_point_values[i].shape:
+                    raise ValueError('input '+str(i)+' and eval_point '+str(i)+' to Dot.R_op '
+                            'should have the '
+                        'same shape, but their shapes are %s and %s, respectively' % ( \
+                                str(input_values[i].shape), str(eval_point_values[i].shape) ) )
+
+        t1 = self(eval_points[0], inputs[1])
+        t2 = self(inputs[0], eval_points[1])
+
         return [t1+t2]
 
 
