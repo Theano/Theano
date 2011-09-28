@@ -1120,8 +1120,17 @@ def _gemm_from_factored_list(lst):
             return True
         except Exception:
             return False
-    lst = [(T.cast(sM[0],sM[1].type.dtype), sM[1])
-            for sM in lst if is_pair(sM)]
+
+    lst2 = []
+    # Remove the tuple that can't be casted correctly.
+    # This can happen when we try to cast a complex to a real
+    for sM in lst:
+        if is_pair(sM):
+            try:
+                lst2.append(T.cast(sM[0],sM[1].type.dtype), sM[1])
+            except TypeError:
+                pass
+    lst = lst2
 
     # Try every pair in the sM_list, trying to turn it into a gemm operation
     for i in xrange(len(lst) - 1):
