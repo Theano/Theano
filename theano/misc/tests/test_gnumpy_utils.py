@@ -31,11 +31,10 @@ def test(shape=(3, 4, 5)):
     B = cudandarray_to_garray(B_cnd)
     assert A_cnd.shape == A.shape
     from numpy import array
-    B2 = array(B_cnd)
 
     u = (A + 1).asarray()
     v = B.asarray()
-    w = B2
+    w = array(B_cnd)
     assert (u == v).all()
     assert (u == w).all()
 
@@ -57,7 +56,6 @@ def test2(shape=(3, 4, 5)):
 #    assert A_cnd._strides == A_gar.strides, garray don't have strides
 
     B = garray_to_cudandarray(A_gar)
-    B2 = numpy.array(B)
 
     assert A_cnd.shape == B.shape
 #    assert A_cnd.dtype == B.dtype # dtype always float32
