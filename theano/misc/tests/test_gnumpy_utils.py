@@ -25,8 +25,8 @@ def test(shape=(3, 4, 5)):
     A = gnumpy.rand(*shape)
     A_cnd = garray_to_cudandarray(A)
     assert A_cnd.shape == A.shape
-#    assert A_cnd.dtype == A_gar.dtype # dtype always float32
-#    assert A_cnd._strides == A_gar.strides, garray don't have strides
+    # dtype always float32
+    # garray don't have strides
     B_cnd = ii(A_cnd)
     B = cudandarray_to_garray(B_cnd)
     assert A_cnd.shape == A.shape
@@ -52,13 +52,13 @@ def test2(shape=(3, 4, 5)):
     A_cnd = theano.sandbox.cuda.CudaNdarray(A)
     A_gar = cudandarray_to_garray(A_cnd)
     assert A_cnd.shape == A_gar.shape
-#    assert A_cnd.dtype == A_gar.dtype # dtype always float32
-#    assert A_cnd._strides == A_gar.strides, garray don't have strides
+    # dtype always float32
+    # garray don't have strides
 
     B = garray_to_cudandarray(A_gar)
 
     assert A_cnd.shape == B.shape
-#    assert A_cnd.dtype == B.dtype # dtype always float32
+    # dtype always float32
     assert A_cnd._strides == B._strides
     assert A_cnd.gpudata == B.gpudata
     v = numpy.asarray(B)
