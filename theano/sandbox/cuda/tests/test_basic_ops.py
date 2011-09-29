@@ -921,6 +921,10 @@ def test_shared_cudandarray():
 
 class test_size(unittest.TestCase):
 
+    """
+    Ensure the `size` attribute of CUDA tensors behaves as in numpy.
+    """
+
     def test_matrix(self):
         x = cuda.fmatrix()
         y = numpy.zeros((5, 7), dtype='float32')
@@ -937,7 +941,8 @@ class test_size(unittest.TestCase):
         assert y.size == theano.function([x], x.size)(y)
 
     def test_shared(self):
-        y = cuda.CudaNdarray.zeros((2, 3))
+        # NB: we also test higher order tensors at the same time.
+        y = cuda.CudaNdarray.zeros((1, 2, 3, 4))
         x = cuda.shared_constructor(y)
         assert y.size == theano.function([], x.size)()
 
