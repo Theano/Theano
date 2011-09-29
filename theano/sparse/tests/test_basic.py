@@ -571,11 +571,13 @@ def test_sparse_shared_memory():
     assert (result_.todense() == result.todense()).all()
 
 
-class test_size(unittest.TestCase):
-
-    def test_csc_matrix(self):
-        x = theano.sparse.csc_matrix()
-        y = scipy.sparse.csc_matrix((5, 7))
+def test_size():
+    """
+    Ensure the `size` attribute of sparse matrices behaves as in numpy.
+    """
+    for sparse_type in ('csc_matrix', 'csr_matrix'):
+        x = getattr(theano.sparse, sparse_type)()
+        y = getattr(scipy.sparse, sparse_type)((5, 7))
         get_size = theano.function([x], x.size)
         def check():
             assert y.size == get_size(y)
