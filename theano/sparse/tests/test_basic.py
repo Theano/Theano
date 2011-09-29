@@ -570,6 +570,26 @@ def test_sparse_shared_memory():
     result_ = f_(a,a)
     assert (result_.todense() == result.todense()).all()
 
+
+def test_size():
+    """
+    Ensure the `size` attribute of sparse matrices behaves as in numpy.
+    """
+    for sparse_type in ('csc_matrix', 'csr_matrix'):
+        x = getattr(theano.sparse, sparse_type)()
+        y = getattr(scipy.sparse, sparse_type)((5, 7))
+        get_size = theano.function([x], x.size)
+        def check():
+            assert y.size == get_size(y)
+        # We verify that the size is correctly updated as we store more data
+        # into the sparse matrix (including zeros).
+        check()
+        y[0, 0] = 1
+        check()
+        y[0, 1] = 0
+        check()
+
+
 import theano.tensor.tests.test_sharedvar
 test_shared_options=theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_ = theano.sparse.shared,
