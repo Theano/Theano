@@ -163,6 +163,12 @@ class _sparse_py_operators:
     ndim = property(lambda self: self.type.ndim)
     dtype = property(lambda self: self.type.dtype)
 
+    # Note that the `size` attribute of sparse matrices behaves differently
+    # from dense matrices: it is the number of elements stored in the matrix
+    # rather than the total number of elements that may be stored. Note also
+    # that stored zeros *do* count in the size.
+    size = property(lambda self: csm_data(self).size)
+
 
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)

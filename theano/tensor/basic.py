@@ -1214,6 +1214,7 @@ class _tensor_py_operators:
     T = property(lambda self: transpose(self))
 
     shape = property(lambda self: shape(self))
+    size = property(lambda self: prod(self.shape))
     def reshape(self, shape, ndim=None):
         """Return a reshaped view/copy of this variable.
 
