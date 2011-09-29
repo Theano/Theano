@@ -5153,6 +5153,10 @@ class test_complex_mod(unittest.TestCase):
 
 class test_size(unittest.TestCase):
 
+    """
+    Ensure the `size` attribute of tensors behaves as in numpy.
+    """
+
     def test_matrix(self):
         x = tensor.matrix()
         y = numpy.zeros((5, 7))
@@ -5169,6 +5173,7 @@ class test_size(unittest.TestCase):
         assert y.size == function([x], x.size)(y)
 
     def test_shared(self):
+        # NB: we also test higher order tensors at the same time.
         y = numpy.zeros((1, 2, 3, 4))
         x = tensor.shared(y)
         assert y.size == function([], x.size)()
