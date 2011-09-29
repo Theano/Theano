@@ -584,6 +584,7 @@ def test_upcasting_scalar_nogemm():
 
     on_opt_error = config.on_opt_error
     try:
+        config.on_opt_error = 'raise'
         rval = T.dot(w, v) * alpha + t
         f = theano.function([w, v, t, alpha], rval)
     finally:
