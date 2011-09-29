@@ -20,7 +20,6 @@ from theano.gof import Apply, Constant, Op, Type, Value, Variable
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
-from theano.gof.op import get_test_value, missing_test_message
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 
@@ -5225,26 +5224,26 @@ class Dot(Op):
 
         if debugger_available:
             try:
-                iv0 = get_test_value(inputs[0])
+                iv0 = gof.op.get_test_value(inputs[0])
             except AttributeError:
-                missing_test_message('first input passed to Dot.R_op has no test value')
+                gof.op.missing_test_message('first input passed to Dot.R_op has no test value')
                 debugger_available = False
 
             try:
-                iv1 = get_test_value(inputs[1])
+                iv1 = gof.op.get_test_value(inputs[1])
             except AttributeError:
-                missing_test_message('second input passed to Dot.R_op has no test value')
+                gof.op.missing_test_message('second input passed to Dot.R_op has no test value')
                 debugger_available = False
 
             try:
-                ev0 = get_test_value(eval_points[0])
+                ev0 = gof.op.get_test_value(eval_points[0])
             except AttributeError:
-                missing_test_message('first eval point passed to Dot.R_op has no test value')
+                gof.op.missing_test_message('first eval point passed to Dot.R_op has no test value')
                 debugger_available = False
             try:
-                ev1 = get_test_value(eval_points[1])
+                ev1 = gof.op.get_test_value(eval_points[1])
             except AttributeError:
-                missing_test_message('second eval point passed to Dot.R_op has no test value')
+                gof.op.missing_test_message('second eval point passed to Dot.R_op has no test value')
                 debugger_available = False
 
         if debugger_available:
