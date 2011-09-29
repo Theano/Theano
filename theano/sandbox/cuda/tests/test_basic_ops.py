@@ -1,4 +1,4 @@
-import sys, time
+import sys, time, unittest
 
 from theano.compile.pfunc import pfunc
 from theano import tensor
@@ -917,6 +917,29 @@ def test_shared_cudandarray():
     '''Test that we can create a CudaNdarraySharedVariable from a CudaNdarray'''
     a = cuda.shared_constructor(cuda.CudaNdarray.zeros((2,3)))
     assert isinstance(a.type, tcn.CudaNdarrayType)
+
+
+class test_size(unittest.TestCase):
+
+    def test_matrix(self):
+        x = cuda.fmatrix()
+        y = numpy.zeros((5, 7), dtype='float32')
+        assert y.size == theano.function([x], x.size)(y)
+
+    def test_vector(self):
+        x = cuda.fvector()
+        y = numpy.zeros(7, dtype='float32')
+        assert y.size == theano.function([x], x.size)(y)
+
+    def test_scalar(self):
+        x = cuda.fscalar()
+        y = numpy.array(7, dtype='float32')
+        assert y.size == theano.function([x], x.size)(y)
+
+    def test_shared(self):
+        y = cuda.CudaNdarray.zeros((2, 3))
+        x = cuda.shared_constructor(y)
+        assert y.size == theano.function([], x.size)()
 
 
 import theano.tensor.tests.test_sharedvar
