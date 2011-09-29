@@ -24,13 +24,13 @@ We describe the details of the compressed sparse matrix types.
         is faster if we are modifying the array. After initial inserts,
         we can then convert to the appropriate sparse matrix format.
 
-Their is also those type that exist:
+The following types also exist:
     ``dok_matrix``
         Dictionary of Keys format. From their doc: This is an efficient structure for constructing sparse matrices incrementally.
     ``coo_matrix``
         Coordinate format. From their lil doc: consider using the COO format when constructing large matrices.
 
-Their seam new format planed for scipy 0.7.x:
+There seems to be a new format planned for scipy 0.7.x:
     ``bsr_matrix``
         Block Compressed Row (BSR). From their doc: The Block Compressed Row (BSR) format is very similar to the Compressed Sparse Row (CSR) format. BSR is appropriate for sparse matrices with dense sub matrices like the last example below. Block matrices often arise in vector-valued finite element discretizations. In such cases, BSR is considerably more efficient than CSR and CSC for many sparse arithmetic operations.
     ``dia_matrix``
