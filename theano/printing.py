@@ -466,7 +466,8 @@ def pydotprint(fct, outfile=None,
     try:
         import pydot as pd
     except ImportError:
-        print "failed to import pydot. Yous must install pydot for this function to work."
+        print ("Failed to import pydot. You must install pydot for "
+               "`pydotprint` to work.")
         return
 
     g=pd.Dot()
@@ -708,7 +709,8 @@ def pydotprint_variables(vars,
     try:
         import pydot as pd
     except ImportError:
-        print "failed to import pydot. Yous must install pydot for this function to work."
+        print ("Failed to import pydot. You must install pydot for "
+               "`pydotprint_variables` to work.")
         return
     g=pd.Dot()
     my_list = {}
