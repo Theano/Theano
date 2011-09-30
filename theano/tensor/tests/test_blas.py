@@ -983,7 +983,7 @@ class BaseGemv(object):
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         mult = array(1, dtype=self.dtype)
         if self.dtype in [complex64,complex128]:
-            mult = array(1+1j, dtype=self.dtype)
+            mult = array(1 + 1j, dtype=self.dtype)
         alpha = array(1., dtype=self.dtype) * mult
         beta = array(1., dtype=self.dtype) * mult
         a = rng.randn(3,3).astype(self.dtype) * mult
