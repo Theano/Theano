@@ -1212,7 +1212,7 @@ class GemmOptimizer(Optimizer):
                         break
                     except InconsistencyError, e:
                         # TODO: retry other applications of gemm (see comment
-                        # in _gemm_from_node
+                        # in _gemm_from_node)
                         pass
 
 
