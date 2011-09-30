@@ -12,7 +12,7 @@ from itertools import izip
 import numpy, theano
 #from copy import copy as python_copy
 
-from theano import gof, shared
+from theano import gof
 from theano.gof import Apply, Constant, Op, Type, Value, Variable
 
 

@@ -645,7 +645,7 @@ class Test_aliasing_rules(unittest.TestCase):
     """
 
     def shared(self, x):
-        return tensor.shared(x)
+        return tensor._shared(x)
 
     def test_shared_constructor_copies(self):
         # shared constructor makes copy

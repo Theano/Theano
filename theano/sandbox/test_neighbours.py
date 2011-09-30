@@ -333,7 +333,7 @@ def speed_neibs_wrap_centered():
 
 def test_neibs_grad():
     shape = (2,3,4,4)
-    images = T.shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
+    images = shared(numpy.arange(numpy.prod(shape), dtype='float32').reshape(shape))
 
     cost = T.sum(T.sqr(images2neibs(images, (2,2))), axis=[0,1])
 
