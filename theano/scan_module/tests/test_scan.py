@@ -2597,7 +2597,7 @@ def test_speed():
     if 1:
         r = numpy.arange(10000).astype(theano.config.floatX).reshape(-1,10)
         shared_r = theano.shared(r)
-        s_i = tensor.shared(numpy.array(1))
+        s_i = theano.shared(numpy.array(1))
         s_rinc = tensor.inc_subtensor(shared_r[s_i], shared_r[s_i-1],
                 tolerate_inplace_aliasing=True)
         theano.printing.debugprint(s_rinc)

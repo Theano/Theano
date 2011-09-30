@@ -622,7 +622,7 @@ def makeSharedTester(shared_constructor_,
     return SharedTester
 
 test_shared_options=makeSharedTester(
-    shared_constructor_ = tensor.shared,
+    shared_constructor_ = tensor._shared,
     dtype_ = theano.config.floatX,
     get_value_borrow_true_alias_ = True,
     shared_borrow_true_alias_ = True,
