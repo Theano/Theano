@@ -533,6 +533,13 @@ class TensorType(Type):
         This function is not meant to be called in user code.  It is for
         `Linker` instances to use when running a compiled graph.
         """
+        # Explicit error message when one accidentally uses a Variable as
+        # input (typical mistake, especially with shared variables).
+        if isinstance(data, Variable):
+            raise TypeError(
+                    'Expected an array-like object, but found a Variable: '
+                    'maybe you are trying to call a function on a (possibly '
+                    'shared) variable instead of a numeric array?')
         if (type(data) is numpy.ndarray) and (data.dtype is self.numpy_dtype):
             pass # fall through to ndim check
         elif strict:
