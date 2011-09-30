@@ -5,7 +5,8 @@ import theano.tensor as T
 #from theano.gof import Env
 from theano.printing import pp
 
-import numpy, theano
+import numpy
+import theano
 from numpy import (arange, array, common_type, complex64, complex128, float32,
                   float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_, assert_array_almost_equal
@@ -13,10 +14,11 @@ from numpy.testing import assert_, assert_array_almost_equal
 #from numpy.testing.noseclasses import KnownFailureTest
 
 #from theano.tensor.blas import *
-from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar, _is_real_matrix,
-        _gemm_canonicalize, _factor_canonicalized, Gemm, Gemv, gemm_inplace, gemm_no_inplace,
-        InconsistencyError,
-        Ger, ger, ger_destructive)
+from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
+                                _is_real_matrix, _gemm_canonicalize,
+                                _factor_canonicalized, Gemm, Gemv,
+                                gemm_inplace, gemm_no_inplace,
+                                InconsistencyError, Ger, ger, ger_destructive)
 from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy, deepcopy
@@ -29,7 +31,8 @@ import theano.tensor.blas_scipy
 
 if config.mode == 'FAST_COMPILE':
     mode_not_fast_compile = 'FAST_RUN'
-else: mode_not_fast_compile = config.mode
+else:
+    mode_not_fast_compile = config.mode
 
 mode_blas_opt = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
 
@@ -675,9 +678,9 @@ def test_inplace1():
 
 def test_dot22():
     for dtype1 in ['float32', 'float64', 'complex64', 'complex128']:
-        a=T.matrix(dtype = dtype1)
+        a = T.matrix(dtype=dtype1)
         for dtype2 in ['float32', 'float64', 'complex64', 'complex128']:
-            b=T.matrix(dtype = dtype2)
+            b = T.matrix(dtype=dtype2)
             f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
             topo = f.maker.env.toposort()
             if dtype1 == dtype2:
@@ -691,12 +694,12 @@ def test_dot22():
                 bv=rng.uniform(size=b_shp).astype(dtype2)
                 f(av,bv)
 
-            cmp((3,4),(4,5))
-            cmp((0,4),(4,5))
-            cmp((3,0),(0,5))
-            cmp((3,4),(4,0))
-            cmp((0,4),(4,0))
-            cmp((0,0),(0,0))
+            cmp((3, 4), (4, 5))
+            cmp((0, 4), (4, 5))
+            cmp((3, 0), (0, 5))
+            cmp((3, 4), (4, 0))
+            cmp((0, 4), (4, 0))
+            cmp((0, 0), (0, 0))
 
 def test_dot22scalar():
     ## including does not seem to work for 'local_dot_to_dot22' and
@@ -706,11 +709,11 @@ def test_dot22scalar():
     #m = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     for dtype1 in ['complex64', 'complex128']:
-        a=T.matrix('a', dtype = dtype1)
+        a = T.matrix('a', dtype=dtype1)
         for dtype2 in ['complex64', 'complex128']:
-            b=T.matrix('b', dtype = dtype2)
+            b = T.matrix('b', dtype=dtype2)
             for dtype3 in ['complex64', 'complex128']:
-                c=T.matrix('c', dtype = dtype3)
+                c = T.matrix('c', dtype=dtype3)
                 for dtype4 in ['complex64', 'complex128']:
                     cst = theano.tensor.basic.constant(.2, dtype=dtype4)
                     cst2 = theano.tensor.basic.constant(.1, dtype=dtype4)
@@ -978,11 +981,11 @@ def matrixmultiply(a, b):
 class BaseGemv(object):
     def get_data(self,x_stride=1,y_stride=1):
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        mult = array(1, dtype = self.dtype)
+        mult = array(1, dtype=self.dtype)
         if self.dtype in [complex64,complex128]:
-            mult = array(1+1j, dtype = self.dtype)
-        alpha = array(1., dtype = self.dtype) * mult
-        beta = array(1., dtype = self.dtype) * mult
+            mult = array(1+1j, dtype=self.dtype)
+        alpha = array(1., dtype=self.dtype) * mult
+        beta = array(1., dtype=self.dtype) * mult
         a = rng.randn(3,3).astype(self.dtype) * mult
         x = arange(shape(a)[0]*x_stride,dtype=self.dtype) * mult
         y = arange(shape(a)[1]*y_stride,dtype=self.dtype) * mult

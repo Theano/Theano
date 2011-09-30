@@ -1206,12 +1206,15 @@ class GemmOptimizer(Optimizer):
                     try:
                         env.replace_all_validate(
                                 zip(node.outputs, new_outputs),
-                                reason = 'GemmOptimizer')
+                                reason='GemmOptimizer'
+                        )
                         did_something = True
                         break
                     except InconsistencyError, e:
-                        #TODO: retry other applications of gemm (see comment in _gemm_from_node
+                        # TODO: retry other applications of gemm (see comment
+                        # in _gemm_from_node
                         pass
+
 
 class Dot22(GemmRelated):
     """Compute a matrix-matrix product.
@@ -1227,7 +1230,7 @@ class Dot22(GemmRelated):
             raise TypeError('dtype mismatch to Dot22')
         bz = (x.type.broadcastable[0], y.type.broadcastable[1])
         outputs = [T.tensor(x.type.dtype, bz)]
-        return Apply(self, [x,y], outputs)
+        return Apply(self, [x, y], outputs)
 
     def perform(self, node, inp, out):
         x, y = inp
@@ -1235,9 +1238,11 @@ class Dot22(GemmRelated):
         try:
             z[0] = numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
-            # The error raised by numpy has no shape information, we mean to add that
+            # The error raised by numpy has no shape information, we mean to
+            # add that
             e.args = e.args + (x.shape, y.shape)
             raise
+
     def __str__(self):
         return "_dot22"
 
@@ -1250,10 +1255,12 @@ class Dot22(GemmRelated):
             npy_intp dims[2];
             dims[0] = %(_x)s->dimensions[0];
             dims[1] = %(_y)s->dimensions[1];
-            %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
+            %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
+                            type_num_%(_x)s);
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
-                PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22 output");
+                PyErr_SetString(PyExc_MemoryError,
+                                "failed to alloc dot22 output");
                 %(fail)s
             }
         }
@@ -1270,16 +1277,19 @@ class Dot22(GemmRelated):
                 double a = 1.0;
                 double b = 0.0;
         """
-    def c_code(self, node, name, inp, out, sub): #DEBUG
+
+    def c_code(self, node, name, inp, out, sub):  # DEBUG
         _x, _y = inp
         _zout, = out
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code' \
                     % self.__class__.__name__)
-        if len(self.c_libraries())<=0:
-            return super(Dot22, self).c_code(node, name, (_x, _y), (_zout, ), sub)
+        if len(self.c_libraries()) <= 0:
+            return super(Dot22, self).c_code(node, name, (_x, _y),
+                                             (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
+
     def c_code_cache_version(self):
         gv = self.build_gemm_version()
         if gv:
@@ -1436,6 +1446,7 @@ optdb.register('InplaceBlasOpt',
         blas_opt_inplace,
         70.0, 'fast_run', 'inplace')
 
+
 class Dot22Scalar(GemmRelated):
     """Compute a matrix-matrix product.
     This is a specialization of the more general Dot()
@@ -1473,6 +1484,7 @@ class Dot22Scalar(GemmRelated):
             # The error raised by numpy has no shape information, we mean to add that
             e.args = e.args + (x.shape, y.shape)
             raise
+
     def __str__(self):
         return "_dot22scalar"
 
@@ -1492,6 +1504,7 @@ class Dot22Scalar(GemmRelated):
         #undef REAL
         float b = 0.0;
         """
+
     case_double_ab_constants = """
         #define REAL double
         double a = (%(_a)s->descr->type_num == PyArray_FLOAT)
@@ -1500,16 +1513,18 @@ class Dot22Scalar(GemmRelated):
         #undef REAL
         double b = 0.0;
         """
+
     def c_code(self, node, name, inp, out, sub): #DEBUG
         _x, _y, _a = inp
         _zout, = out
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code' \
                     % self.__class__.__name__)
-        if len(self.c_libraries())<=0:
+        if len(self.c_libraries()) <= 0:
             return super(Dot22Scalar, self).c_code(node, name, (_x, _y), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
+
     def c_code_cache_version(self):
         gv = self.build_gemm_version()
         if gv:
@@ -1558,10 +1573,10 @@ def local_dot22_to_dot22scalar(node):
             for i,x in enumerate(m.owner.inputs):
                 if _as_scalar(x) and (theano.scalar.upcast(x.type.dtype,d.type.dtype)
                                       == d.type.dtype):
-                    scalar_idx=i
+                    scalar_idx = i
                     break
 
-            if scalar_idx<0:
+            if scalar_idx < 0:
                 _logger.info('Not optimizing dot22 with inputs %s %s, as the type '
                              'of the scalar cannot be upcasted to the matrix type',
                              node.inputs, [x.type for x in node.inputs])
@@ -1593,7 +1608,7 @@ def local_dot22_to_dot22scalar(node):
                     == d.type.dtype)):
             scalar_idx = i
             break
-    if scalar_idx<0:
+    if scalar_idx < 0:
         _logger.info('Not optimizing dot22 with inputs %s %s, as the type '
                 'of the scalar cannot be upcasted to the matrix type',
                 node.inputs, [x.type for x in node.inputs])
