@@ -1218,9 +1218,10 @@ class Dot22(GemmRelated):
     This is a specialization of the more general Dot()
     """
     def make_node(self, x, y):
-        if x.type.ndim != 2 or x.type.dtype not in ('float32', 'float64'):
+        dtypes = ('float32', 'float64', 'complex64', 'complex128')
+        if x.type.ndim != 2 or x.type.dtype not in dtypes:
             raise TypeError(x)
-        if y.type.ndim != 2 or y.type.dtype not in ('float32', 'float64'):
+        if y.type.ndim != 2 or y.type.dtype not in dtypes:
             raise TypeError(y)
         if y.type.dtype != x.type.dtype:
             raise TypeError('dtype mismatch to Dot22')
@@ -1301,7 +1302,7 @@ def local_dot_to_dot22(node):
         _logger.info('Not optimizing dot with inputs %s %s %s %s', x, y, x.type, y.type)
         return
 
-    if y.type.dtype.startswith('float'):
+    if y.type.dtype.startswith('float') or y.type.dtype.startswith('complex'):
         if x.ndim == 2 and y.ndim == 2:
             #print "local_dot_to_dot22: MM"
             return [_dot22(*node.inputs)]
@@ -1502,6 +1503,9 @@ class Dot22Scalar(GemmRelated):
     def c_code(self, node, name, inp, out, sub): #DEBUG
         _x, _y, _a = inp
         _zout, = out
+        if node.inputs[0].type.dtype.startswith('complex'):
+            raise utils.MethodNotDefined('%s.c_code' \
+                    % self.__class__.__name__)
         if len(self.c_libraries())<=0:
             return super(Dot22Scalar, self).c_code(node, name, (_x, _y), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
@@ -1550,12 +1554,18 @@ def local_dot22_to_dot22scalar(node):
         m = node.inputs[mul_idx]
 
         if len(m.owner.inputs)==2 and any([_as_scalar(x) for x in m.owner.inputs]):
-            scalar_idx = 0
+            scalar_idx = -1
             for i,x in enumerate(m.owner.inputs):
-                if _as_scalar(x):
+                if _as_scalar(x) and (theano.scalar.upcast(x.type.dtype,d.type.dtype)
+                                      == d.type.dtype):
                     scalar_idx=i
                     break
 
+            if scalar_idx<0:
+                _logger.info('Not optimizing dot22 with inputs %s %s, as the type '
+                             'of the scalar cannot be upcasted to the matrix type',
+                             node.inputs, [x.type for x in node.inputs])
+                return False
             a = T.cast(_as_scalar(m.owner.inputs[scalar_idx]), d.type.dtype)
             assert not a.type.ndim
             dot=_dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
