@@ -674,23 +674,29 @@ def test_inplace1():
     assert [n.op for n in f.maker.env.nodes] == [gemm_no_inplace]
 
 def test_dot22():
-    a=T.matrix()
-    b=T.matrix()
-    f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
-    topo = f.maker.env.toposort()
-    assert _dot22 in [x.op for x in topo]
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    for dtype1 in ['float32', 'float64', 'complex64', 'complex128']:
+        a=T.matrix(dtype = dtype1)
+        for dtype2 in ['float32', 'float64', 'complex64', 'complex128']:
+            b=T.matrix(dtype = dtype2)
+            f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
+            topo = f.maker.env.toposort()
+            if dtype1 == dtype2:
+                assert _dot22 in [x.op for x in topo], (dtype1,dtype2)
+            else:
+                assert T.dot in [x.op for x in topo], (dtype1,dtype2)
+            rng = numpy.random.RandomState(unittest_tools.fetch_seed())
 
-    def cmp(a_shp, b_shp):
-        av=rng.uniform(size=a_shp).astype(config.floatX)
-        bv=rng.uniform(size=b_shp).astype(config.floatX)
-        f(av,bv)
-    cmp((3,4),(4,5))
-    cmp((0,4),(4,5))
-    cmp((3,0),(0,5))
-    cmp((3,4),(4,0))
-    cmp((0,4),(4,0))
-    cmp((0,0),(0,0))
+            def cmp(a_shp, b_shp):
+                av=rng.uniform(size=a_shp).astype(dtype1)
+                bv=rng.uniform(size=b_shp).astype(dtype2)
+                f(av,bv)
+
+            cmp((3,4),(4,5))
+            cmp((0,4),(4,5))
+            cmp((3,0),(0,5))
+            cmp((3,4),(4,0))
+            cmp((0,4),(4,0))
+            cmp((0,0),(0,0))
 
 def test_dot22scalar():
     ## including does not seem to work for 'local_dot_to_dot22' and
@@ -698,75 +704,102 @@ def test_dot22scalar():
     ## TODO: exclude other optimizations in BlasOpt?
     #m = theano.compile.get_default_mode().including('local_dot_to_dot22','local_dot22_to_dot22scalar','specialize')
     #m = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
-    a=T.matrix()
-    b=T.matrix()
-    c=T.matrix()
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    for dtype1 in ['complex64', 'complex128']:
+        a=T.matrix('a', dtype = dtype1)
+        for dtype2 in ['complex64', 'complex128']:
+            b=T.matrix('b', dtype = dtype2)
+            for dtype3 in ['complex64', 'complex128']:
+                c=T.matrix('c', dtype = dtype3)
+                for dtype4 in ['complex64', 'complex128']:
+                    cst = theano.tensor.basic.constant(.2, dtype=dtype4)
+                    cst2 = theano.tensor.basic.constant(.1, dtype=dtype4)
 
-    def cmp(a_shp, b_shp, c_shp, sqr_shp=(5,5)):
-        av=rng.uniform(size=a_shp).astype(config.floatX)
-        bv=rng.uniform(size=b_shp).astype(config.floatX)
-        cv=rng.uniform(size=c_shp).astype(config.floatX)
-        sv=rng.uniform(size=sqr_shp).astype(config.floatX)
+                    def check_dot22scalar(func, len_topo_scalar=-1):
+                        topo = func.maker.env.toposort()
+                        ops = [x.op for x in topo]
+                        dtype4_upcast = theano.scalar.upcast(dtype4, dtype1, dtype2)
+                        if dtype1 == dtype2 == dtype3 == dtype4_upcast:
+                            if len_topo_scalar>0:
+                                assert len(topo) == len_topo_scalar
+                            assert _dot22scalar in ops, (dtype1, dtype2, dtype3, dtype4)
+                        elif dtype1 == dtype2 == dtype4_upcast:
+                            if not (len_topo_scalar > 0):
+                                assert len(topo) == len_topo_scalar
+                                assert _dot22scalar in ops, (dtype1, dtype2, dtype3, dtype4)
+                            else:
+                                # Currently there is a problem of optimization order
+                                # The constant get upcasted to float64 before we try to merge it
+                                # with the dot22 of float32. So this prevent the merge.
+                                assert _dot22scalar in ops or _dot22 in ops, (dtype1, dtype2, dtype3, dtype4)
 
-        if True:
-            f = theano.function([a,b],0.2*T.dot(a,b),mode=mode_blas_opt)
-            topo = f.maker.env.toposort()
-            assert _dot22scalar in [x.op for x in topo]
-            assert len(topo)==1
-            f(av,bv)
+                        elif dtype1 == dtype2:
+                            assert _dot22 in ops, (dtype1, dtype2, dtype3, dtype4)
+                        else:
+                            assert T.dot in ops, (dtype1, dtype2, dtype3, dtype4)
 
-        if True:
-            f = theano.function([a,b,c],0.2*c*T.dot(a,b),mode=mode_blas_opt)
-            topo = f.maker.env.toposort()
-            assert _dot22scalar in [x.op for x in topo]
-            assert len(topo)==2
-            f(av,bv,cv)
 
-        f = theano.function([a,b,c],c * 0.2*T.dot(a,b),mode=mode_blas_opt)
-        topo = f.maker.env.toposort()
-        assert _dot22scalar in [x.op for x in topo]
-        assert len(topo)==2
-        f(av,bv,cv)
+                    def cmp(a_shp, b_shp, c_shp, sqr_shp=(5,5)):
+                        av=rng.uniform(size=a_shp).astype(dtype1)
+                        bv=rng.uniform(size=b_shp).astype(dtype2)
+                        cv=rng.uniform(size=c_shp).astype(dtype3)
+                        sv=rng.uniform(size=sqr_shp).astype(dtype1)
 
-        ## Here, canonicalize also seems needed
-        ## TODO: add only the optimizations needed?
-        m2 = mode_blas_opt.including('canonicalize')
-        f = theano.function([a,b,c],0.1*c * 0.2*T.dot(a,b),mode=m2)
-        topo = f.maker.env.toposort()
-        assert _dot22scalar in [x.op for x in topo]
-        assert len(topo)==2
-        f(av,bv,cv)
+                        if False:
+                            f = theano.function([a,b],cst*T.dot(a,b),mode=mode_blas_opt)
+                            topo = f.maker.env.toposort()
+                            check_dot22scalar(f, 1)
 
-        f = theano.function([a,b,c],c * 0.2*a*T.dot(a,b),mode=m2)
-        topo = f.maker.env.toposort()
-        assert _dot22scalar in [x.op for x in topo]
-        assert len(topo)==2
-        f(sv,sv,sv)
+                            f(av,bv)
 
-        f = theano.function([a,b,c],0.2*c *a*T.dot(a,b),mode=mode_blas_opt)
-        topo = f.maker.env.toposort()
-        #currently the canonizer don't always merge all Mul together...
-        # dot22scalar optimizer does not do a recursive search
-        # therefore, it doesn't find potential matches of the scalar.
-        # TODO: combine with the 'canonicalization' that is part of the Gemm optimizer.
-        #
-        #    assert _dot22scalar in [x.op for x in topo]
-        #    assert len(topo)==2
-        f(sv,sv,sv)
+                        if True:
+                            f = theano.function([a,b,c],cst*c*T.dot(a,b),mode=mode_blas_opt)
+                            topo = f.maker.env.toposort()
+                            check_dot22scalar(f, 2)
 
-        f = theano.function([a,b,c],c * a*0.2*T.dot(a,b),mode=m2)
-        topo = f.maker.env.toposort()
-        assert _dot22scalar in [x.op for x in topo]
-        assert len(topo)==2
-        f(sv,sv,sv)
+                            f(av,bv,cv)
 
-    cmp((3,4),(4,5),(3,5))
-    cmp((0,4),(4,5),(0,5))
-    cmp((3,0),(0,5),(3,5))
-    cmp((3,4),(4,0),(3,0),(0,0))
-    cmp((0,4),(4,0),(0,0))
-    cmp((0,0),(0,0),(0,0))
+                        f = theano.function([a,b,c],c * cst*T.dot(a,b),mode=mode_blas_opt)
+                        topo = f.maker.env.toposort()
+                        check_dot22scalar(f, 2)
+                        f(av,bv,cv)
+
+                        ## Here, canonicalize also seems needed
+                        ## TODO: add only the optimizations needed?
+                        m2 = mode_blas_opt.including('canonicalize')
+                        f = theano.function([a,b,c],cst2 *c * cst*T.dot(a,b),mode=m2)
+                        topo = f.maker.env.toposort()
+                        check_dot22scalar(f, 2)
+                        f(av,bv,cv)
+
+                        if dtype1 == dtype2 == dtype3:
+                            f = theano.function([a,b,c],c * cst*a*T.dot(a,b),mode=m2)
+                            topo = f.maker.env.toposort()
+                            check_dot22scalar(f, 2)
+                            f(sv,sv,sv)
+
+                            f = theano.function([a,b,c],cst*c *a*T.dot(a,b),mode=mode_blas_opt)
+                            topo = f.maker.env.toposort()
+                            #currently the canonizer don't always merge all Mul together...
+                            # dot22scalar optimizer does not do a recursive search
+                            # therefore, it doesn't find potential matches of the scalar.
+                            # TODO: combine with the 'canonicalization' that is part of the Gemm optimizer.
+                            #
+                            #    assert _dot22scalar in [x.op for x in topo]
+                            #    assert len(topo)==2
+                            f(sv,sv,sv)
+
+                            f = theano.function([a,b,c],c * a*cst*T.dot(a,b),mode=m2)
+                            topo = f.maker.env.toposort()
+                            check_dot22scalar(f, 2)
+                            f(sv,sv,sv)
+
+                    cmp((3,4),(4,5),(3,5))
+                    cmp((0,4),(4,5),(0,5))
+                    cmp((3,0),(0,5),(3,5))
+                    cmp((3,4),(4,0),(3,0),(0,0))
+                    cmp((0,4),(4,0),(0,0))
+                    cmp((0,0),(0,0),(0,0))
 
 def test_dot_w_self():
     # This can trigger problems in the optimization because what would normally be a gemm must
