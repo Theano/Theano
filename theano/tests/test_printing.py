@@ -1,8 +1,12 @@
 """
 Tests of printing functionality
 """
+
+
 import logging
 import StringIO
+
+from nose.plugins.skip import SkipTest
 
 import theano
 import theano.tensor as tensor
@@ -16,6 +20,12 @@ def test_pydotprint_cond_highlight():
 
     I did them to help debug stuff.
     """
+
+    # Skip test if pydot is not available.
+    try:
+        import pydot
+    except ImportError:
+        raise SkipTest('pydot not available')
 
     x = tensor.dvector()
     f = theano.function([x], x*2)
