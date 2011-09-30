@@ -5159,22 +5159,22 @@ class test_size(unittest.TestCase):
 
     def test_matrix(self):
         x = tensor.matrix()
-        y = numpy.zeros((5, 7))
+        y = numpy.zeros((5, 7), dtype = config.floatX)
         assert y.size == function([x], x.size)(y)
 
     def test_vector(self):
         x = tensor.vector()
-        y = numpy.zeros(7)
+        y = numpy.zeros(7, dtype = config.floatX)
         assert y.size == function([x], x.size)(y)
 
     def test_scalar(self):
         x = tensor.scalar()
-        y = numpy.array(7)
+        y = numpy.array(7, dtype = config.floatX)
         assert y.size == function([x], x.size)(y)
 
     def test_shared(self):
         # NB: we also test higher order tensors at the same time.
-        y = numpy.zeros((1, 2, 3, 4))
+        y = numpy.zeros((1, 2, 3, 4), dtype = config.floatX)
         x = tensor.shared(y)
         assert y.size == function([], x.size)()
 
