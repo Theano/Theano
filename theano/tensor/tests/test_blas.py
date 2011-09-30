@@ -674,23 +674,29 @@ def test_inplace1():
     assert [n.op for n in f.maker.env.nodes] == [gemm_no_inplace]
 
 def test_dot22():
-    a=T.matrix()
-    b=T.matrix()
-    f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
-    topo = f.maker.env.toposort()
-    assert _dot22 in [x.op for x in topo]
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    for dtype1 in ['float32', 'float64', 'complex64', 'complex128']:
+        a=T.matrix(dtype = dtype1)
+        for dtype2 in ['float32', 'float64', 'complex64', 'complex128']:
+            b=T.matrix(dtype = dtype2)
+            f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
+            topo = f.maker.env.toposort()
+            if dtype1 == dtype2:
+                assert _dot22 in [x.op for x in topo], (dtype1,dtype2)
+            else:
+                assert T.dot in [x.op for x in topo], (dtype1,dtype2)
+            rng = numpy.random.RandomState(unittest_tools.fetch_seed())
 
-    def cmp(a_shp, b_shp):
-        av=rng.uniform(size=a_shp).astype(config.floatX)
-        bv=rng.uniform(size=b_shp).astype(config.floatX)
-        f(av,bv)
-    cmp((3,4),(4,5))
-    cmp((0,4),(4,5))
-    cmp((3,0),(0,5))
-    cmp((3,4),(4,0))
-    cmp((0,4),(4,0))
-    cmp((0,0),(0,0))
+            def cmp(a_shp, b_shp):
+                av=rng.uniform(size=a_shp).astype(dtype1)
+                bv=rng.uniform(size=b_shp).astype(dtype2)
+                f(av,bv)
+
+            cmp((3,4),(4,5))
+            cmp((0,4),(4,5))
+            cmp((3,0),(0,5))
+            cmp((3,4),(4,0))
+            cmp((0,4),(4,0))
+            cmp((0,0),(0,0))
 
 def test_dot22scalar():
     ## including does not seem to work for 'local_dot_to_dot22' and

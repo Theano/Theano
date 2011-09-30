@@ -1218,9 +1218,10 @@ class Dot22(GemmRelated):
     This is a specialization of the more general Dot()
     """
     def make_node(self, x, y):
-        if x.type.ndim != 2 or x.type.dtype not in ('float32', 'float64'):
+        dtypes = ('float32', 'float64', 'complex64', 'complex128')
+        if x.type.ndim != 2 or x.type.dtype not in dtypes:
             raise TypeError(x)
-        if y.type.ndim != 2 or y.type.dtype not in ('float32', 'float64'):
+        if y.type.ndim != 2 or y.type.dtype not in dtypes:
             raise TypeError(y)
         if y.type.dtype != x.type.dtype:
             raise TypeError('dtype mismatch to Dot22')
@@ -1301,7 +1302,7 @@ def local_dot_to_dot22(node):
         _logger.info('Not optimizing dot with inputs %s %s %s %s', x, y, x.type, y.type)
         return
 
-    if y.type.dtype.startswith('float'):
+    if y.type.dtype.startswith('float') or y.type.dtype.startswith('complex'):
         if x.ndim == 2 and y.ndim == 2:
             #print "local_dot_to_dot22: MM"
             return [_dot22(*node.inputs)]
