@@ -113,7 +113,7 @@ def test_consistency_cpu_serial():
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            rstate = tensor.shared(numpy.array([stream_rstate.copy()], dtype='int32'))
+            rstate = theano.shared(numpy.array([stream_rstate.copy()], dtype='int32'))
             new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None, dtype=config.floatX, size=(1,))
             # Not really necessary, just mimicking rng_mrg.MRG_RandomStreams' behavior
             sample.rstate = rstate
@@ -152,7 +152,7 @@ def test_consistency_cpu_parallel():
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
         rstate = numpy.asarray(rstate)
-        rstate = tensor.shared(rstate)
+        rstate = theano.shared(rstate)
 
         new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None,
                 dtype=config.floatX, size=(n_substreams,))

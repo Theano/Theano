@@ -10,6 +10,7 @@ from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 from theano.tensor import *
+from theano.tensor import _shared
 from theano.tensor import basic as tensor # for hidden symbols
 from theano.tensor import inplace
 
@@ -1796,7 +1797,7 @@ class T_subtensor(unittest.TestCase):
     """
     This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
-    def __init__(self, name, shared=shared,
+    def __init__(self, name, shared=_shared,
                  sub=theano.tensor.basic.Subtensor,
                  inc_sub=theano.tensor.basic.IncSubtensor,
                  adv_sub1=theano.tensor.basic.AdvancedSubtensor1,
@@ -2361,7 +2362,7 @@ class T_subtensor(unittest.TestCase):
 
         for idx in idxs:
             # Should stay on the cpu.
-            idx_ = shared(numpy.asarray(idx))
+            idx_ = _shared(numpy.asarray(idx))
             t = n[idx_]
             gn = grad(sum(exp(t)), n)
             f = function([], [gn, gn.shape], mode=self.mode)
@@ -5175,7 +5176,7 @@ class test_size(unittest.TestCase):
     def test_shared(self):
         # NB: we also test higher order tensors at the same time.
         y = numpy.zeros((1, 2, 3, 4), dtype=config.floatX)
-        x = tensor.shared(y)
+        x = theano.shared(y)
         assert y.size == function([], x.size)()
 
 
