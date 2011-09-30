@@ -537,7 +537,7 @@ class TensorType(Type):
         # input (typical mistake, especially with shared variables).
         if isinstance(data, Variable):
             raise TypeError(
-                    'Expected a tensor-like object, but found a Variable: '
+                    'Expected an array-like object, but found a Variable: '
                     'maybe you are trying to call a function on a (possibly '
                     'shared) variable instead of a numeric array?')
         if (type(data) is numpy.ndarray) and (data.dtype is self.numpy_dtype):
