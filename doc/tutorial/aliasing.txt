@@ -159,7 +159,7 @@ For the transparent use of different type of optimization Theano can make,
 there is the policy that get_value() always return by default the same object type
 it received when the shared variable was created. So if you created manually data on
 the gpu and create a shared variable on the gpu with this data, get_value will always
-return gpu data event when return_internal_type=False.
+return gpu data even when return_internal_type=False.
 
 *Take home message:*
 
