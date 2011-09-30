@@ -109,7 +109,7 @@ Real example
   # Declare Theano symbolic variables
   x = T.matrix("x")
   y = T.vector("y")
-  w = theano.shared(rng.randn(100), name="w")
+  w = theano.shared(rng.randn(feats), name="w")
   b = theano.shared(0., name="b")
   print "Initial model:"
   print w.get_value(), b.get_value()
