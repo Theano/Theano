@@ -577,7 +577,7 @@ def test_size():
     """
     for sparse_type in ('csc_matrix', 'csr_matrix'):
         x = getattr(theano.sparse, sparse_type)()
-        y = getattr(scipy.sparse, sparse_type)((5, 7))
+        y = getattr(scipy.sparse, sparse_type)((5, 7)).astype(config.floatX)
         get_size = theano.function([x], x.size)
         def check():
             assert y.size == get_size(y)
