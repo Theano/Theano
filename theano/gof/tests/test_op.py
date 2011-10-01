@@ -222,5 +222,109 @@ def test_test_value_op():
     finally:
         config.compute_test_value = prev_value
 
+
+def test_get_debug_values_no_debugger():
+    'get_debug_values should return [] when debugger is off'
+
+    prev_value = config.compute_test_value
+    try:
+        config.compute_test_value = 'off'
+
+        x = T.vector()
+
+        for x_val in op.get_debug_values(x):
+            assert False
+
+    finally:
+        config.compute_test_value = prev_value
+
+def test_get_det_debug_values_ignore():
+    """get_debug_values should return [] when debugger is ignore
+        and some values are missing """
+
+
+    prev_value = config.compute_test_value
+    try:
+        config.compute_test_value = 'ignore'
+
+        x = T.vector()
+
+        for x_val in op.get_debug_values(x):
+            assert False
+
+    finally:
+        config.compute_test_value = prev_value
+
+
+def test_get_debug_values_success():
+    """tests that get_debug_value returns values when available
+    (and the debugger is on)"""
+
+    prev_value = config.compute_test_value
+    for mode in [ 'ignore', 'warn', 'raise' ]:
+
+        try:
+            config.compute_test_value = mode
+
+            x = T.vector()
+            x.tag.test_value = numpy.zeros((4,))
+            y = numpy.zeros((5,5))
+
+            iters = 0
+
+            for x_val, y_val in op.get_debug_values(x, y):
+
+                assert x_val.shape == (4,)
+                assert y_val.shape == (5,5)
+
+                iters += 1
+
+            assert iters == 1
+
+        finally:
+            config.compute_test_value = prev_value
+
+def test_get_debug_values_exc():
+    """tests that get_debug_value raises an exception when
+        debugger is set to raise and a value is missing """
+
+    prev_value = config.compute_test_value
+    try:
+        config.compute_test_value = 'raise'
+
+        x = T.vector()
+
+        try:
+            for x_val in op.get_debug_values(x):
+                assert False
+            raised = False
+        except AttributeError:
+            raised = True
+
+        assert raised
+
+    finally:
+        config.compute_test_value = prev_value
+
+def test_debug_error_message():
+    """tests that debug_error_message raises an
+    exception when it should."""
+
+    prev_value = config.compute_test_value
+
+    for mode in [ 'ignore', 'raise' ]:
+
+        try:
+            config.compute_test_value = mode
+
+            try:
+                op.debug_error_message('msg')
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            config.compute_test_value = prev_value
+
 if __name__ == '__main__':
     unittest.main()

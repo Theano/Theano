@@ -587,3 +587,54 @@ def missing_test_message(msg):
         warnings.warn(msg, stacklevel = 2)
     else:
         assert action in [ 'ignore', 'off' ]
+
+def debug_error_message(msg):
+    """ Displays a message saying that an error was found in some
+    test_values. Becomes a warning or a ValueError depending on
+    config.compute_test_value"""
+
+    action = config.compute_test_value
+
+    #this message should never be called when the debugger is off
+    assert action != 'off'
+
+    if action in ['raise','ignore']:
+        raise ValueError(msg)
+    else:
+        assert action == 'warn'
+        warnings.warn(msg, stacklevel = 2)
+
+def get_debug_values(*args):
+
+    """ Given a list of variables, does one of three things:
+
+        1. If the interactive debugger is off, returns an empty list
+        2. If the interactive debugger is on, and all variables have
+            debug values, returns a list containing a single element.
+            This single element is a tuple containing debug values of
+            all the variables.
+        3. If the interactive debugger is on, and some variable does
+            have a debug value, issue a missing_test_message about
+            the variable, and, if still in control of execution, return
+            an empty list
+
+        Intended use:
+
+        for val_1, ..., val_n in get_debug_values(var_1, ..., var_n):
+            if some condition on val_1, ..., val_n is not met:
+                debug_error_message("condition was not met")
+    """
+
+    if config.compute_test_value == 'off':
+        return []
+
+    rval = []
+
+    for i, arg in enumerate(args):
+        try:
+            rval.append(get_test_value(arg))
+        except AttributeError:
+            missing_test_message("Argument "+str(i)+" has no test value")
+            return []
+
+    return [ tuple(rval) ]
