@@ -618,9 +618,20 @@ class Elemwise(Op):
         # of the current apply node is c
         ograds = map(as_tensor_variable, ograds)
 
-        scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
-        scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
-        scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
+        prev_setting = theano.config.compute_test_value
+
+        try:
+
+            theano.config.compute_test_value = 'off'
+
+            scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
+            scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
+            scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
+
+        finally:
+
+            theano.config.compute_test_value = prev_setting
+
         nd = len(inputs[0].type.broadcastable) # this is the same for everyone
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
