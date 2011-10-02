@@ -604,6 +604,20 @@ def debug_error_message(msg):
         assert action == 'warn'
         warnings.warn(msg, stacklevel = 2)
 
+def debug_assert(condition, msg):
+
+    if not condition:
+
+        action = config.compute_test_value
+
+        if action in ['raise', 'ignore']:
+            raise AssertionError(msg)
+        else:
+            assert action == 'warn'
+            warnings.warn(msg, stacklevel = 2)
+
+
+
 def get_debug_values(*args):
 
     """ Given a list of variables, does one of three things:
@@ -614,7 +628,7 @@ def get_debug_values(*args):
             This single element is a tuple containing debug values of
             all the variables.
         3. If the interactive debugger is on, and some variable does
-            have a debug value, issue a missing_test_message about
+            not have a debug value, issue a missing_test_message about
             the variable, and, if still in control of execution, return
             an empty list
 
