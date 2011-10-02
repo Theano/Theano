@@ -15,8 +15,6 @@ __docformat__ = "restructuredtext en"
 import logging
 import warnings
 
-import numpy
-
 import theano
 from theano import config
 
