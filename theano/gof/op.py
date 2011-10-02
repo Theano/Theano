@@ -648,7 +648,10 @@ def get_debug_values(*args):
         try:
             rval.append(get_test_value(arg))
         except AttributeError:
-            missing_test_message("Argument "+str(i)+" has no test value")
+            if hasattr(arg, 'name') and arg.name is not None:
+                missing_test_message("Argument " + str(i) + "('" + arg.name + "') has no test value")
+            else:
+                missing_test_message("Argument " + str(i) + " has no test value")
             return []
 
     return [ tuple(rval) ]
