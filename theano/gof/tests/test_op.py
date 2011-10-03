@@ -267,7 +267,7 @@ def test_get_debug_values_success():
             config.compute_test_value = mode
 
             x = T.vector()
-            x.tag.test_value = numpy.zeros((4,))
+            x.tag.test_value = numpy.zeros((4,), dtype=config.floatX)
             y = numpy.zeros((5,5))
 
             iters = 0
