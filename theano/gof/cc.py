@@ -983,22 +983,26 @@ class CLinker(link.Linker):
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.build_dynamic_module()
+        c_compiler = self.c_compiler()
+        libs = self.libraries()
+        preargs = self.compile_args()
+        compiler_name = c_compiler.__name__
+        if compiler_name == 'nvcc_module_compile_str' and config.lib.amdlibm:
+            # This lib does not work correctly with nvcc in device code.
+            # and newer version of g++ as 4.5.1.
+            # example of errors: "/usr/lib/gcc/x86_64-redhat-linux/4.5.1/include/mmintrin.h(49): error: identifier "__builtin_ia32_emms" is undefined"
+
+            if '<amdlibm.h>' in mod.includes:
+                mod.includes.remove('<amdlibm.h>')
+            if '-DREPLACE_WITH_AMDLIBM' in preargs:
+                preargs.remove('-DREPLACE_WITH_AMDLIBM')
+            if 'amdlibm' in libs:
+                libs.remove('amdlibm')
         src_code = mod.code()
         yield src_code
         get_lock()
         try:
             _logger.debug("LOCATION %s", str(location))
-            c_compiler = self.c_compiler()
-            libs = self.libraries()
-            preargs = self.compile_args()
-            if c_compiler.__name__=='nvcc_module_compile_str' and config.lib.amdlibm:
-                # This lib does not work correctly with nvcc in device code.
-                if '<amdlibm.h>' in mod.includes:
-                    mod.includes.remove('<amdlibm.h>')
-                if '-DREPLACE_WITH_AMDLIBM' in preargs:
-                    preargs.remove('-DREPLACE_WITH_AMDLIBM')
-                if 'amdlibm' in libs:
-                    libs.remove('amdlibm')
             try:
                 module = c_compiler(
                     module_name=mod.name,
