@@ -1716,6 +1716,22 @@ class Cos(UnaryScalarOp):
         return "%(z)s = cos(%(x)s);" % locals()
 cos = Cos(upgrade_to_float, name = 'cos')
 
+class Arccos(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arccos(x)
+    def grad(self, (x, ), (gz, )):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return - gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
+        else:
+            return None,
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = acos(%(x)s);" % locals()
+arccos = Arccos(upgrade_to_float, name = 'arccos')
+
 class Sin(UnaryScalarOp):
     def impl(self, x):
         return numpy.sin(x)

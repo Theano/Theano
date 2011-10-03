@@ -2284,6 +2284,10 @@ def sqrt(a):
 def cos(a):
     """cosine of a"""
 
+@_scal_elemwise_with_nfunc('arccos',1,1)
+def arccos(a):
+    """arccosine of a"""
+
 @_scal_elemwise_with_nfunc('sin', 1, 1)
 def sin(a):
     """sine of a"""

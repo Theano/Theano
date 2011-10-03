@@ -791,6 +791,16 @@ _grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
                                   #empty = (numpy.asarray([]),),
                                   )
 
+_good_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1.-1e-7, (2, 3)),),
+                                  integers = (randint_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
+                                  complex = (randc128_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
+                                  empty = (numpy.asarray([]),),)
+
+_grad_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
+                                  #complex = (randc128_ranged(-1000, 1000, (2, 3)),),
+                                  #empty = (numpy.asarray([]),),
+                                  )
+
 
 SinTester = makeBroadcastTester(op = sin,
                                   expected = numpy.sin,
@@ -810,6 +820,15 @@ CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
                                          expected = numpy.cos,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
+                                         inplace = True)
+ArccosTester = makeBroadcastTester(op = arccos,
+                                  expected = numpy.arccos,
+                                  good = _good_broadcast_unary_arccos,
+                                  grad = _grad_broadcast_unary_arccos)
+ArccosInplaceTester = makeBroadcastTester(op = inplace.arccos_inplace,
+                                         expected = numpy.arccos,
+                                         good = _good_broadcast_unary_arccos,
+                                         grad = _grad_broadcast_unary_arccos,
                                          inplace = True)
 
 tan_grad_rtol = None
