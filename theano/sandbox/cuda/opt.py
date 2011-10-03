@@ -943,9 +943,17 @@ def get_device_type_sizes():
 
 def max_inputs_to_GpuElemwise(node):
     """
-    return the maximum number of input this Apply node to an GpuElemwise can accept.
-    This is needed as currently their is a limit of 256 bytes of paramter for the gpu function.
-    This mesure the number of paramter we put in our gpu function and compute the maximum number of inputs that respect the 256 bytes limits.
+    return the maximum number of input this GpuElemwise Apply node can
+    accept.
+
+    This is needed as currently their is a limit of 256 bytes of
+    paramter for the gpu function on device of compute capability
+    1.x. There is a 4k bytes limit on device compute capability
+    2.x (not used).
+
+    This mesure the number of paramter we put in our gpu function and
+    compute the maximum number of inputs that respect the 256 bytes
+    limits.
     """
     type_sizes = get_device_type_sizes()
     int_size = type_sizes['int_size']
@@ -961,6 +969,11 @@ def max_inputs_to_GpuElemwise(node):
     nb_bytes_avail = argument_limit - size_param_mandatory
     nb_bytes_per_inputs = (ndim*int_size) + gpu_ptr_size
     max_nb_inputs = nb_bytes_avail // nb_bytes_per_inputs
+
+    # There is a case this don't algo don't work. Is this related to
+    # the order of paramter to the gpu function?
+    if node.inputs[0].type.ndim==1 and max_nb_inputs>14:
+        return 14
     return max_nb_inputs
 
 def split_huge_add_or_mul(node):
