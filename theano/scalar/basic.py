@@ -1730,7 +1730,7 @@ class Arccos(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = acos(%(x)s);" % locals()
-arccos = Arccos(upgrade_to_float, name = 'cos')
+arccos = Arccos(upgrade_to_float, name = 'arccos')
 
 class Sin(UnaryScalarOp):
     def impl(self, x):
