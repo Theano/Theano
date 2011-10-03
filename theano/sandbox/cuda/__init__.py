@@ -288,7 +288,7 @@ def handle_shared_float32(tf):
         raise NotImplementedError('removing our handler')
 
 def reduce_tensor_variable(var):
-    if isinstance(var.owner.op, HostFromGpu) and len(var.owner.inputs) == 1 \
+    if var.owner and isinstance(var.owner.op, HostFromGpu) and len(var.owner.inputs) == 1 \
             and isinstance(var.owner.inputs[0], CudaNdarraySharedVariable):
         return load_shared_variable, (var.owner.inputs[0].get_value(),)
     else:
