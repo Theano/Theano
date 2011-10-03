@@ -145,6 +145,10 @@ def cos_inplace(a):
     """cosine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arccos_inplace(a):
+    """arccosine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def sin_inplace(a):
     """sine of `a` (inplace on `a`)"""
 
