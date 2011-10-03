@@ -577,7 +577,11 @@ class ModuleCache(object):
                             # As a result, we delete it instead (which is also
                             # simpler to implement).
                             _rmtree(root, ignore_nocleanup=True,
-                                    msg='deprecated cache entry')
+                                    msg=(
+                                        'invalid cache entry format -- this '
+                                        'should not happen unless your cache '
+                                        'was really old'),
+                                    level=logging.WARN)
                             continue
 
                         # Check the path to the module stored in the KeyData
