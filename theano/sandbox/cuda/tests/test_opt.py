@@ -186,27 +186,26 @@ def test_huge_elemwise_fusion():
     f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     #theano.printing.debugprint(f)
-    assert len(topo)==1
-    assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo])==0
-    assert sum([isinstance(node.op, tensor.Elemwise) for node in topo])==1
+    assert len(topo) == 1
+    assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo]) == 0
+    assert sum([isinstance(node.op, tensor.Elemwise) for node in topo]) == 1
     #let debugmode catch errors
-    gen = lambda : theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    f(gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen())
+    gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    f(gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen())
 
     def gen(shape):
         return theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
-
-    max_var = 16  #excluded
+    max_var = 16  # excluded
     for shape in [(2,),
-                  (2,2),
-                  (2,2,2),
-                  (2,2,2,2),
-                  (2,2,2,2,2),  # 5d
-                  (2,2,2,2,2,2),
-#                  (2,2,2,2,2,2,2),
-#                  (2,2,2,2,2,2,2,2),
-#                  (2,2,2,1,1,1,1,2,2),  # 9d
+                  (2, 2),
+                  (2, 2, 2),
+                  (2, 2, 2, 2),
+                  (2, 2, 2, 2, 2),  # 5d
+                  (2, 2, 2, 2, 2, 2),
+#                  (2, 2, 2, 2, 2, 2, 2),
+#                  (2, 2, 2, 2, 2, 2, 2, 2),
+#                  (2, 2, 2, 1, 1, 1, 1, 2, 2),  # 9d
                   ]:
         vals = [cuda.shared_constructor(gen(shape)) for x in range(max_var)]
         for use_tan in [True, False]:
@@ -215,19 +214,21 @@ def test_huge_elemwise_fusion():
             else:
                 vars = vals
             for nb_var in range(1, max_var):
-                out = reduce(lambda x, y: x+y, vars[:nb_var])
+                out = reduce(lambda x, y: x + y, vars[:nb_var])
                 if not isinstance(out.type, CudaNdarrayType):
                     out = cuda.gpu_from_host(out)
                 f = pfunc([], [out], mode=mode_with_gpu)
-
                 topo = f.maker.env.toposort()
                 #print shape, nb_var, use_tan, len(topo)
-                assert (sum([isinstance(node.op, cuda.GpuElemwise) for node in topo]) == len(topo) or
+                assert (sum([isinstance(node.op, cuda.GpuElemwise)
+                             for node in topo]) == len(topo) or
                         (nb_var == 1 and use_tan == False))
-                assert sum([isinstance(node.op, tensor.Elemwise) for node in topo]) == 0
+                assert sum([isinstance(node.op, tensor.Elemwise)
+                            for node in topo]) == 0
 
                 #let debugmode catch errors
                 f()
+
 
 def test_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly"""

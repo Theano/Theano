@@ -964,16 +964,17 @@ def max_inputs_to_GpuElemwise(node):
     size_param_mandatory = int_size #for numels
     size_param_mandatory += int_size *  ndim # for the shape
     size_param_mandatory += sum((gpu_ptr_size + int_size * ndim)
-            for i in node.outputs)
+                                 for i in node.outputs)
 
     nb_bytes_avail = argument_limit - size_param_mandatory
-    nb_bytes_per_inputs = (ndim*int_size) + gpu_ptr_size
+    nb_bytes_per_inputs = (ndim * int_size) + gpu_ptr_size
     max_nb_inputs = nb_bytes_avail // nb_bytes_per_inputs
 
     # There is a case this don't algorithm doesn't work. Is this related to
     # the order of the parameters to the gpu function?
-    if node.inputs[0].type.ndim==1 and max_nb_inputs>14:
+    if node.inputs[0].type.ndim == 1 and max_nb_inputs > 14:
         return 14
+
     return max_nb_inputs
 
 def split_huge_add_or_mul(node):
