@@ -39,16 +39,18 @@ def _asarray(a, dtype, order=None):
     if rval.dtype.num != dtype.num:
         # Type mismatch between the data type we asked for, and the one
         # returned by numpy.asarray.
-        if (dtype.num == numpy.dtype(numpy.int32).num or
-                dtype.num == numpy.dtype(numpy.int64).num):
+        # If both types have the same string description (byte order, basic
+        # type, and number of bytes), then it is safe to return a view.
+        if (dtype.str == rval.dtype.str):
             # Silent fix.
             return rval.view(dtype=dtype)
         else:
             # Unexpected mismatch: better know what is going on!
             raise TypeError('numpy.array did not return the data type we '
-                    'asked for (%s #%s), instead it returned type %s #%s: function '
-                    'theano._asarray may need to be extended to handle this '
-                    'data type as well.' %
-                    (dtype, dtype.num, rval.dtype, rval.dtype.num))
+                    'asked for (%s %s #%s), instead it returned type '
+                    '%s %s #%s: function '
+                    'theano._asarray may need to be modified to handle this '
+                    'data type.' %
+                    (dtype, dtype.str, dtype.num, rval.dtype, rval.str, rval.dtype.num))
     else:
         return rval
