@@ -86,7 +86,9 @@ class Optimizer(object):
         pass
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
+        name = getattr(self, 'name', None)
+        print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__,
+                                           name, id(self))
 
 class FromFunctionOptimizer(Optimizer):
     """WRITEME"""
@@ -191,7 +193,8 @@ class SeqOptimizer(Optimizer, list):
         return list.__repr__(self)
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s (%i)" %(' '*level, self.__class__.__name__, id(self))
+        name = getattr(self, 'name', None)
+        print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__, name, id(self))
         for opt in self:
             opt.print_summary(stream, level=level+2)
 
@@ -752,8 +755,10 @@ class PatternSub(LocalOptimizer):
         return str(self)
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s(%s, %s) id=%i" %(' '*level,
+        name = getattr(self, '__name__', getattr(self, 'name', None))
+        print >> stream, "%s%s %s(%s, %s) id=%i" %(' '*level,
                 self.__class__.__name__,
+                name,
                 str(self.in_pattern),
                 str(self.out_pattern),
                 id(self))
@@ -1114,7 +1119,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             _logger.error("EquilibriumOptimizer max'ed out by "+opt_name)
 
     def print_summary(self, stream=sys.stdout, level=0):
-        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
+        name = getattr(self, 'name', None)
+        print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__, name, id(self))
         for lopt in self.local_optimizers:
             lopt.print_summary(stream, level=level+2)
 
