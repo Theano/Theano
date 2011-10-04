@@ -88,7 +88,7 @@ Deprecation (will be removed in Theano 0.5, warning generated if you use them):
  * scan interface change:
 
    * The use of `return_steps` for specifying how many entries of the output
-     scan has been depricated
+     scan has been deprecated
 
      * The same thing can be done by applying a subtensor on the output
        return by scan to select a certain slice

@@ -389,10 +389,10 @@ def scan(fn,
     for i in xrange(n_outs):
         if outs_info[i] is not None:
             if isinstance(outs_info[i], dict):
-                # DEPRICATED :
+                # DEPRECATED :
                 if outs_info[i].get('return_steps', None):
                     _logger.warning(("Using `return_steps` has been "
-                            "depricated. Simply select the entries you "
+                            "deprecated. Simply select the entries you "
                             "need using a subtensor. Scan will optimize "
                             "memory consumption, so do not worry about "
                             "that."))
