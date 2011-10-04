@@ -85,7 +85,7 @@ class Optimizer(object):
         """
         pass
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
         print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__,
                                            name, id(self))
@@ -99,7 +99,7 @@ class FromFunctionOptimizer(Optimizer):
         #env.extend(toolbox.ReplaceValidate())
         pass
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" %(' '*level,
                 str(self.apply),
                 id(self))
@@ -192,11 +192,14 @@ class SeqOptimizer(Optimizer, list):
     def __repr__(self):
         return list.__repr__(self)
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
         print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__, name, id(self))
-        for opt in self:
-            opt.print_summary(stream, level=level+2)
+        # This way, -1 will do all depth
+        if depth != 0:
+            depth -= 1
+            for opt in self:
+                opt.print_summary(stream, level=level+2, depth=depth)
 
 
 
@@ -433,7 +436,7 @@ class LocalOptimizer(object):
         #env.extend(toolbox.ReplaceValidate())
         pass
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
@@ -445,7 +448,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
         return self._tracks
     def __str__(self):
         return getattr(self, '__name__', '<FromFunctionLocalOptimizer instance>')
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" %(' '*level,
                 str(self.transform),
                 id(self))
@@ -476,10 +479,12 @@ class LocalOptGroup(LocalOptimizer):
             if repl:
                 return repl
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
-        for lopt in self.opts:
-            lopt.print_summary(stream, level=level+2)
+        if depth != 0:
+            depth -= 1
+            for lopt in self.opts:
+                lopt.print_summary(stream, level=level+2, depth=depth)
 
 
 class _LocalOpKeyOptGroup(LocalOptGroup):
@@ -559,7 +564,7 @@ class OpRemove(LocalOptimizer):
     def __str__(self):
         return "%s(x) -> x" % (self.op)
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s(%s) id=%i" %(' '*level,
                 self.__class__.__name__,
                 str(self.op),
@@ -754,7 +759,7 @@ class PatternSub(LocalOptimizer):
     def __repr__(self):
         return str(self)
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, '__name__', getattr(self, 'name', None))
         print >> stream, "%s%s %s(%s, %s) id=%i" %(' '*level,
                 self.__class__.__name__,
@@ -925,9 +930,10 @@ class NavigatorOptimizer(Optimizer):
         if self.local_opt:
             self.local_opt.add_requirements(env)
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s (%i)" %(' '*level, self.__class__.__name__, id(self))
-        self.local_opt.print_summary(stream, level=level+2)
+        if depth != 0:
+            self.local_opt.print_summary(stream, level=level+2, depth=depth-1)
 
 
 class TopoOptimizer(NavigatorOptimizer):
@@ -1118,11 +1124,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         if max_use_abort:
             _logger.error("EquilibriumOptimizer max'ed out by "+opt_name)
 
-    def print_summary(self, stream=sys.stdout, level=0):
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
         print >> stream, "%s%s %s id=%i" %(' '*level, self.__class__.__name__, name, id(self))
-        for lopt in self.local_optimizers:
-            lopt.print_summary(stream, level=level+2)
+        if depth != 0:
+            for lopt in self.local_optimizers:
+                lopt.print_summary(stream, level=level+2, depth=depth-1)
 
 
 #################
