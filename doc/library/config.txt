@@ -472,9 +472,12 @@ import theano and print the config variable, as in:
     augmented with test values, by writing to their ``'tag.test_value'``
     attribute (e.g. x.tag.test_value = numpy.random.rand(5,4)).
 
-    ``'warn'`` will result in a UserWarning being raised when some Op inputs
-    do not contain an appropriate test value. ``'raise'`` will instead raise
-    an Exception when a problem is encountered during this debugging phase.
+    When not ``'off'``, the value of this option dictates what happens when
+    an Op's inputs do not provide appropriate test values:
+       - ``'ignore'`` will silently skip the debug mechanism for this Op
+       - ``'warn'`` will raise a UserWarning and skip the debug mechanism for
+         this Op
+       - ``'raise'`` will raise an Exception
     
 .. attribute:: config.exception_verbosity
 
