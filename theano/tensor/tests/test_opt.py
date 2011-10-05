@@ -274,7 +274,8 @@ class test_canonize(unittest.TestCase):
         This part are that case that should have been done, but that are not implemented.
         Test with and without DimShuffle
         """
-        raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
+        raise SkipTest("Current implementation of Canonizer does not "
+                       "implement all cases. Skip the corresponding test.")
 
         shp=(5,5)
         fx, fy, fz = fmatrices('xyz')
@@ -605,7 +606,8 @@ class test_canonize(unittest.TestCase):
 
 
     def test_multiple_case_that_fail(self):
-        raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
+        raise SkipTest("Current implementation of Canonizer does not "
+                       "implement all cases. Skip the corresponding test.")
 
         shp=(4,4)
         fx, fy, fz = fmatrices('xyz')
