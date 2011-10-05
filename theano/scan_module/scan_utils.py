@@ -131,8 +131,7 @@ def clone( output
     graph. It returns a copy of the initial subgraph with the corresponding
     substitutions.
 
-
-    :type output: Theano Variables ( or Theano expressions)
+    :type output: Theano Variables (or Theano expressions)
     :param outputs: Theano expression that represents the computational
                     graph
 
