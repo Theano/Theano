@@ -22,6 +22,7 @@ from theano.gof.python25 import any, all, combinations
 from theano.compile.mode import get_default_mode
 from theano import function
 from theano.tests import unittest_tools as utt
+import theano.tensor as T
 
 
 imported_scipy_special = False
@@ -3662,6 +3663,25 @@ class test_grad(unittest.TestCase):
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
 
+
+    def test_grad_keep_type(self):
+        """Tests that the theano grad method returns a list if it is passed a list
+        and a single variable if it is passed a single variable.
+        pylearn2 depends on theano behaving this way but theano developers have
+        repeatedly changed it """
+
+        X = T.matrix()
+        y = X.sum()
+
+        G = T.grad(y, [X])
+
+        assert isinstance(G,list)
+
+        G = T.grad(y, X)
+
+        assert not isinstance(G,list)
+
+
     def test_1None_rval(self):
         """grad: Test returning a single zero value from grad"""
         o = test_grad.O()
@@ -5197,6 +5217,7 @@ class test_size(unittest.TestCase):
         y = numpy.zeros((1, 2, 3, 4), dtype=config.floatX)
         x = theano.shared(y)
         assert y.size == function([], x.size)()
+
 
 
 if __name__ == '__main__':

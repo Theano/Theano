@@ -233,10 +233,8 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 # Gradient
 #########################
 
-# TODO For Theano 0.5, change default value of `keep_wrt_type` to True
-# and get rid of the `None` option (in docstring and in code).
 def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
-         disconnected_inputs='raise', keep_wrt_type=None):
+         disconnected_inputs='raise', keep_wrt_type=True):
     """
     :type cost: Scalar (0-dimensional) `Variable`
     :type wrt: `Variable` or list of `Variable`s.
@@ -260,10 +258,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     returned output is of the same type. When False, if `wrt` is a one-element
     list or tuple, then the returned value is a single `Variable` (and if
     `wrt` is a list or tuple with at least two elements, then the returned
-    value is always a list -- never a tuple). This option may also be set to
-    None, in which case it behaves as if it was False, but a warning is also
-    issued when `wrt` is a one-element list or tuple, since we intend to change
-    the default behavior in a future Theano version.
+    value is always a list -- never a tuple).
     This option has no effect when `wrt` is a single `Variable` (in which case
     the returned value is always a single `Variable`).
 
@@ -338,20 +333,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         ret = tuple(ret)
 
     if len(ret) == 1:
-        if (using_list or using_tuple) and keep_wrt_type is None:
-            warnings.warn(
-                    "The return type of `tensor.grad(cost, wrt)` will change "
-                    "in the case where `wrt` is a one-element list/tuple. "
-                    "In the future `grad(cost, wrt)` will return by default "
-                    "an object of the same type as `wrt` (so if `wrt` is a "
-                    "list/tuple, a list/tuple will be returned, while if it "
-                    "is a single Variable, then a single Variable will be "
-                    "returned). You may get rid of this warning by adding "
-                    "'keep_wrt_type=True' (or False) when calling "
-                    "`tensor.grad`, depending on whether you want the new "
-                    "or old behavior.",
-                    stacklevel=2)
-        if keep_wrt_type:
+        if keep_wrt_type and (using_list or using_tuple):
             return ret
         else:
             return ret[0]
