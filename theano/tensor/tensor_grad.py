@@ -632,7 +632,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         g_cost = cast(g_cost, o_output.dtype)
 
     symbolic_grad = grad(cost, tensor_pt, g_cost,
-                         disconnected_inputs='ignore')
+                         disconnected_inputs='ignore',
+                         keep_wrt_type=True)
     #if o_output.dtype in ['float32','float64']:
     #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
 
@@ -644,8 +645,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
 
         analytic_grad = grad_fn(*[p.copy() for p in pt])
 
-        if not isinstance(analytic_grad, (list, tuple)):
-            analytic_grad = [analytic_grad]
+        # Since `tensor_pt` is a list, `analytic_grad` should be one too.
+        assert isinstance(analytic_grad, list)
 
         max_arg, max_err_pos, max_abs_err, max_rel_err =\
                 num_grad.max_err(analytic_grad, abs_tol, rel_tol)
