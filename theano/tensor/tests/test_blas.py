@@ -808,13 +808,13 @@ def test_dot_w_self():
     # This can trigger problems in the optimization because what would normally be a gemm must
     # not be because the output is aliased to one of the inputs.
 
-    A = shared(value = numpy.ones((2,2)))
+    A = shared(value=numpy.ones((2,2)))
     B = T.matrix()
 
     p = T.dot(A,A)*B
 
-    grad = T.grad(T.mean(p),[A])
-    f = theano.function([B], p, updates = { A : A - grad[0]} )
+    grad = T.grad(T.mean(p), A)
+    f = theano.function([B], p, updates={A : A - grad})
 
     # tests correctness in debugmode
     f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))
