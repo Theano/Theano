@@ -77,7 +77,7 @@ class IfElse(PureOp):
                 self.gpu == other.gpu and
                 self.name == other.name)
 
-    def __hash__(self, other):
+    def __hash__(self):
         return (hash(type(self)) ^
                 # view_map included in as_view
                 # and dict are not hashable
