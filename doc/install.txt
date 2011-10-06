@@ -359,43 +359,72 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     arguments to gcc, but the problem is not fixed yet.
 
 
-Mac
----
+MacOS
+-----
 
-- If the above required libraries are not already installed on your Mac,
-  one option is first, to install `MacPorts <http://www.macports.org/>`__.
+There are various ways to install Theano dependencies on a Mac.
+Here we describe the process in details using MacPorts, but if you did
+it differently and it worked, please let us know the details on the
+`theano-users`_ mailing-list, so that we can add alternate instructions
+here.
+
+MacPorts
+~~~~~~~~
+
+Using `MacPorts <http://www.macports.org/>`__ to install all required
+Theano dependencies is easy, but be aware that it will take a long time
+(a few hours) to build and install everything.
+
+- MacPorts requires installing XCode first (which can be found in the
+  Mac App Store), if you do not have it already.
+
+- Download and install `MacPorts <http://www.macports.org/>`__, then
+  ensure its package list is up-to-date with ``sudo port selfupdate``.
 
 - Then, in order to install one or more of the required libraries, use
-    "port install", e.g. as follows:
+  ``port install``, e.g. as follows:
 
     .. code-block:: bash
 
-        $ sudo port install gcc44 py26-scipy git
+        $ sudo port install py27-numpy +atlas py27-scipy +atlas py27-pip
 
-    This will install all the required Theano dependencies.  Note that
-    compiling gcc takes significant time (hours)! SciPy depends on ATLAS (a
-    good BLAS implementation) and NumPy, so these will be installed for you
-    automatically.
+  This will install all the required Theano dependencies. gcc will
+  be automatically installed (since it is a SciPy dependency), but be
+  aware that it takes a long time to compile (hours)!
+  Having NumPy and SciPy linked with ATLAS (an optimized BLAS
+  implementation) is not mandatory, but recommended if you care about
+  performance.
 
-- You might have some old versions of gcc, SciPy, NumPy, Python installed on
-  your system, perhaps via Xcode. It is a good idea to use **either** the
+- You might have some different versions of gcc, SciPy, NumPy, Python installed
+  on your system, perhaps via Xcode. It is a good idea to use **either** the
   MacPorts version of everything **or** some other set of compatible versions
-  (provided by Fink, or by Xcode). The advantages of MacPorts are the
+  (e.g. provided by Xcode or Fink). The advantages of MacPorts are the
   transparency with which everything can be installed and the fact that
-  packages are updated quite frequently.
+  packages are updated quite frequently. The following steps describe how to
+  make sure you are using the MacPorts version of these packages.
 
-- In order to use the MacPorts version of python, you might
-  need to explicitly select it with ``sudo port select python26``. The
-  reason this is necessary is because you might have an Apple-provided python
+- In order to use the MacPorts version of python, you will probably
+  need to explicitly select it with ``sudo port select python python27``. The
+  reason this is necessary is because you may have an Apple-provided python
   (via, for example, an Xcode installation). After performing this step, you
   should check that the symbolic link provided by ``which python`` points to
-  the MacPorts python. For instance, on Snow Leopard with the latest MacPorts,
+  the MacPorts python. For instance, on MacOS X Lion with MacPorts 2.0.3,
   the output of ``which python`` is ``/opt/local/bin/python`` and this symbolic
-  link points to ``/opt/local/bin/python2.6``. When executing ``sudo
-  port select python26-apple`` (which you should **not** do), the link
-  points to ``/usr/bin/python2.6``.
+  link points to ``/opt/local/bin/python2.7``. When executing ``sudo
+  port select python python27-apple`` (which you should **not** do), the link
+  points to ``/usr/bin/python2.7``.
 
-- Once this is fixed, please check that the ``scipy`` module that is imported in
+- Similarly, make sure that you are using the MacPorts-provided gcc:
+  use ``sudo port select gcc`` to see which gcc installs you have on the
+  system. Then execute for instance ``sudo port select gcc mp-gcc44``
+  to create a symlink that points to the correct (MacPorts) gcc (version 4.4
+  in this case).
+
+- At this point, if you have not done so already, it may be a good idea to
+  close and restart your terminal, to make sure all configuration changes
+  are properly taken into account.
+
+- Afterwards, please check that the ``scipy`` module that is imported in
   Python is the right one (and is a recent one). For instance, ``import
   scipy`` followed by ``print scipy.version`` and ``print scipy.__path__``
   should result in a version number of at least 0.7.0 and a path that starts
@@ -405,40 +434,52 @@ Mac
 
 - Please follow the same procedure with ``numpy``.
 
-- Put ``export PYTHONPATH=/opt/local/lib/python2.6/site-packages:$PYTHONPATH``
-  in your ``.bashrc`` in order to include your MacPorts Python packages
-  (NumPy, SciPy) in Python's path.
-
-- Make sure that the gcc version that you have installed on your system is
-  up-to-date (at the very least 3.4, but 4.x is better). If you have an old
-  version of Xcode lying around, chances are that your gcc install is old. You
-  should also check  ``which gcc``: if it says  ``/usr/bin/gcc`` then you
-  should use the MacPorts-provided gcc.
-  Use ``sudo port select gcc`` to see which gcc
-  installs you have on the system. Then execute ``sudo port select gcc mp-gcc44``
-  to create a symlink that points to the correct (MacPorts) gcc (version 4.4
-  in this case).
-
 - This is covered in the MacPorts installation process, but make sure that
-  your ``PATH`` environmental variable contains ``/opt/local/bin`` and
+  your ``PATH`` environment variable contains ``/opt/local/bin`` and
   ``/opt/local/sbin`` before any other paths (to ensure that the python and
   gcc binaries that you installed with MacPorts are visible first).
 
-- Likewise, you need to
-  ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH`` if this is not
-  the case already (so that we link to the correct libraries). You may also
-  need to add
+- MacPorts does not create automatically ``nosetests`` and ``pip`` symlinks
+  pointing to the MacPorts version, so you can add them yourself with
+
+    .. code-block:: bash
+
+        $ sudo ln -s /opt/local/bin/nosetests-2.7 /opt/local/bin/nosetests
+        $ sudo ln -s /opt/local/bin/pip-2.7 /opt/local/bin/pip
+
+- At this point you are ready to install Theano with
+
+    .. code-block:: bash
+
+        $ sudo pip install Theano
+
+  And if you are in no hurry, you can run its test-suite with
+
+    .. code-block:: bash
+
+        $ python -c "import theano; theano.test()"
+
+
+Troubleshooting MacOS issues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Although the above steps should be enough, running Theano on a Mac may
+sometimes cause unexpected crashes, typically due to multiple versions of
+Python or other system libraries. If you encounter such problems, you may
+try the following.
+
+- You can ensure MacPorts shared libraries are given priority at run-time
+  with ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH``. In order
+  to do the same at compile time, you can add to your ``~/.theanorc``:
 
     .. code-block:: cfg
 
       [gcc]
       cxxflags = -L/opt/local/lib
 
-  to ``~/.theanorc``.
-
 - An obscure ``Bus error`` can sometimes be caused when linking
   Theano-generated object files against the ``framework`` library in Leopard.
-  For this reason, we've disabled linking with ``-framework Python``, since on
+  For this reason, we have disabled linking with ``-framework Python``, since on
   most configurations this solves the ``Bus error`` problem. If this default
   configuration causes problems with your Python/Theano installation and you think
   that linking with ``-framework Python`` might help, then either set
@@ -451,11 +492,15 @@ Mac
       [cmodule]
       mac_framework_link=True
 
-Please infom us if you have trouble installing and running Theano on your mac.
-We would be especially interested in dependencies that we missed
-listing, as well as tests that fail on your platform (use the
-``theano-users@googlegroups.com`` mailing list, but note that you must
-first register to it, by going to `theano-users`_).
+- More generally, to investigate libraries issues, you can use the ``otool -L``
+  command on ``.so`` files found under your ``~/.theano`` directory. This will
+  list shared libraries dependencies, and may help identify incompatibilities.
+
+Please infom us if you have trouble installing and running Theano on your Mac.
+We would be especially interested in dependencies that we missed listing,
+alternate installation steps, GPU instructions, as well as tests that fail on
+your platform (use the ``theano-users@googlegroups.com`` mailing list, but
+note that you must first register to it, by going to `theano-users`_).
 
 
 Windows
