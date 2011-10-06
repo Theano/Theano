@@ -1097,7 +1097,7 @@ Alloc13GradTester = makeBroadcastTester(
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):
-        # Theano does not accept None as a basic.
+        # Theano does not accept None as a tensor.
         # So we must use a real value.
         M = M_
         # Currently DebugMode does not support None as inputs even if this is
