@@ -743,7 +743,7 @@ class Elemwise(Op):
                 # Since numpy 1.6, function created with numpy.frompyfunc
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
-            if hasattr(variable,'shape') and storage[0].shape != variable.shape:
+            if hasattr(variable, 'shape') and storage[0].shape != variable.shape:
                 if numpy.prod(variable.shape) == 0:
                     # numpy don't resize from a shape (1,5) to (0,5)
                     # This bypass the inplace... But I it is important in this case.

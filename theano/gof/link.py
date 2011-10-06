@@ -17,18 +17,23 @@ def thunk_hook(type, value, trace):
     and prints it out on L{stderr}.
 
     The normal excepthook is then called.
+
+    :note: This hook replaced by nosetests, so it does not run in nose tests.
     """
     if hasattr(value, '__thunk_trace__'):
         trace2 = value.__thunk_trace__
         if trace2 is None:
             print>>sys.stderr, "Could not find where this Op was defined."
-            print>>sys.stderr, " * You might have instantiated this Op directly instead of using a constructor."
-            print>>sys.stderr, " * The Op you constructed might have been optimized. Try turning off optimizations."
+            print>>sys.stderr, (" * You might have instantiated this Op "
+                    "directly instead of using a constructor.")
+            print>>sys.stderr, (" * The Op you constructed might have been"
+                    " optimized. Try turning off optimizations.")
         elif trace2:
             print>>sys.stderr, "Definition in: "
             for line in traceback.format_list(trace2):
                 print>>sys.stderr, line,
-            print>>sys.stderr, "For the full definition stack trace set the Theano flags traceback.limit to -1"
+            print>>sys.stderr, ("For the full definition stack trace set"
+                    " the Theano flags traceback.limit to -1")
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
 
