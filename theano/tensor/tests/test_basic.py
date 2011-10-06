@@ -168,7 +168,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                 try:
                     #node = self.op.make_node(*inputrs)
                     node = safe_make_node(self.op, *inputrs)
-                except:
+                except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while making a node with inputs %s" \
                         % (self.op, testname, inputs)
@@ -177,7 +177,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode = mode)
-                except:
+                except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
                         % (self.op, testname)
@@ -237,7 +237,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                 inputrs = [value(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op,*inputrs)
-                except:
+                except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
                         % (self.op, testname, inputs)
@@ -246,7 +246,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
-                except:
+                except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
                         % (self.op, testname)
@@ -270,7 +270,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     inputrs = [value(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs, mode=self.mode, rel_tol=_grad_rtol)
-                    except:
+                    except Exception:
                         type, exc_value, traceback = sys.exc_info()
                         err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
                             % (self.op, testname, inputs)
@@ -2540,7 +2540,7 @@ class T_Join_and_Split(unittest.TestCase):
         b = as_tensor_variable(2)
         try:
             s = join(0, a, b)
-        except:
+        except TypeError:
             return
         self.fail()
 
