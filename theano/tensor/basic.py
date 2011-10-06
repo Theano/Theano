@@ -4977,7 +4977,7 @@ class AdvancedIncSubtensor1(Op):
         gx = g_output
         gy = advanced_subtensor1(g_output, *idx_list)
 
-        return [gx, gy] + [None]*len(idx_list)
+        return [gx, gy] + [None] * len(idx_list)
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
