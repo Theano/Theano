@@ -1,44 +1,38 @@
 import itertools
+import logging
 import operator
 import StringIO
 import sys
 import unittest
+import warnings
+from copy import copy
 
 from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
-from theano.tensor import _shared
-import theano.tensor as T
-from theano.tensor import (wvector, bvector, autocast_float_as, argmin,
-        max_and_argmax, cscalar, Subtensor, ctensor3, join,
+import theano
+from theano import compile, config, function, gof, tensor
+from theano.compile.mode import get_default_mode
+from theano.gof.python25 import any, all, combinations
+from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
+        argmin, max_and_argmax, cscalar, Subtensor, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, izip, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         basic, clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
-        inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,  Reshape,
-        row, scalar, scalars, second, smallest, stack, sub, Tensor,
+        inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
+        Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, tensordot_grad,  TensorType, unbroadcast,
         var, value, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min)
-import warnings
-
-from copy import copy
-from theano import compile, config
-from theano import gof
-from theano.gof.python25 import any, all, combinations
-
-from theano.compile.mode import get_default_mode
-from theano import function
 from theano.tests import unittest_tools as utt
 
-import theano
-import logging
 
 imported_scipy_special = False
 mode_no_scipy = get_default_mode()
@@ -513,7 +507,7 @@ _good_broadcast_div_mod_normal_float = dict(empty2 = (numpy.asarray([0]), numpy.
 def no_complex(d):
     """Remove pairs from dictionary d when the value contains complex data."""
     return dict((k, v) for k, v in d.iteritems()
-                if all(str(x.dtype) not in basic.complex_dtypes for x in v))
+                if all(str(x.dtype) not in tensor.complex_dtypes for x in v))
 
 
 # 'No-complex' versions.
@@ -541,7 +535,7 @@ if config.floatX=='float32':
     # float32.
     # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
-TrueDivTester = makeBroadcastTester(op = T.true_div,
+TrueDivTester = makeBroadcastTester(op = tensor.true_div,
                                   expected = lambda x, y: check_floatX((x, y), x / y),
                                   good = _good_broadcast_div_mod_normal_float,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
@@ -557,7 +551,7 @@ TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          grad_rtol=div_grad_rtol,
                                          inplace = True)
 
-ModTester = makeBroadcastTester(op = T.mod,
+ModTester = makeBroadcastTester(op = tensor.mod,
                                   expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
                                   good = _good_broadcast_div_mod_normal_float_no_complex,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
@@ -640,7 +634,7 @@ _grad_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (
 
 
 
-AbsTester = makeBroadcastTester(op = basic.abs_,
+AbsTester = makeBroadcastTester(op = tensor.abs_,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
@@ -653,7 +647,7 @@ AbsInplaceTester = makeBroadcastTester(op = inplace.abs__inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-NegTester = makeBroadcastTester(op = T.neg,
+NegTester = makeBroadcastTester(op = tensor.neg,
                                   expected = lambda x: -x,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
@@ -663,7 +657,7 @@ NegInplaceTester = makeBroadcastTester(op = inplace.neg_inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-SgnTester = makeBroadcastTester(op = T.sgn,
+SgnTester = makeBroadcastTester(op = tensor.sgn,
                                 expected = numpy.sign,
                                 good = _good_broadcast_unary_normal_no_complex,
                                 grad = _grad_broadcast_unary_normal,)
@@ -672,7 +666,7 @@ SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                        good = _good_broadcast_unary_normal_no_complex,
                                        grad = _grad_broadcast_unary_normal,
                                        inplace = True)
-CeilTester = makeBroadcastTester(op = T.ceil,
+CeilTester = makeBroadcastTester(op = tensor.ceil,
                                   expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
                                   good = _good_broadcast_unary_normal_no_complex,
                                   grad = _grad_broadcast_unary_normal)
@@ -682,7 +676,7 @@ CeilInplaceTester = makeBroadcastTester(op = inplace.ceil_inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-FloorTester = makeBroadcastTester(op = T.floor,
+FloorTester = makeBroadcastTester(op = tensor.floor,
                                   expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
                                   good = _good_broadcast_unary_normal_no_complex,
                                   grad = _grad_broadcast_unary_normal)
@@ -692,7 +686,7 @@ FloorInplaceTester = makeBroadcastTester(op = inplace.floor_inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-RoundHalfToEvenTester = makeBroadcastTester(op = T.round_half_to_even,
+RoundHalfToEvenTester = makeBroadcastTester(op = tensor.round_half_to_even,
                                   expected = numpy.round,
                                   good = _good_broadcast_unary_normal_float_no_complex)
 # TODO: Why complex are accepted in the next one?
@@ -704,7 +698,7 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_ev
 #numpy.vectorize don't handle correctly empty ndarray.
 #see in their file numpy/lib/function_base.py in class vectorize.__call__
 #This happen in float32 mode.
-RoundHalfAwayFromZeroTester = makeBroadcastTester(op = T.round_half_away_from_zero,
+RoundHalfAwayFromZeroTester = makeBroadcastTester(op = tensor.round_half_away_from_zero,
                                   expected = theano.scalar.basic.round_half_away_from_zero_vec,
                                   good = _good_broadcast_unary_normal_float_no_empty_no_complex)#_good_broadcast_unary_normal_float)
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half_away_from_zero_inplace,
@@ -712,7 +706,7 @@ RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half
                                          good = _good_broadcast_unary_normal_float_no_empty_no_complex,
                                          inplace = True)
 
-SqrTester = makeBroadcastTester(op = T.sqr,
+SqrTester = makeBroadcastTester(op = tensor.sqr,
                                   expected = numpy.square,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
@@ -722,7 +716,7 @@ SqrInplaceTester = makeBroadcastTester(op = inplace.sqr_inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-ExpTester = makeBroadcastTester(op = T.exp,
+ExpTester = makeBroadcastTester(op = tensor.exp,
                                   expected = numpy.exp,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
@@ -744,7 +738,7 @@ _grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
                                       #empty = (numpy.asarray([]),),
                                       )
 
-LogTester = makeBroadcastTester(op = T.log,
+LogTester = makeBroadcastTester(op = tensor.log,
                                   expected = numpy.log,
                                   good = _good_broadcast_unary_positive,
                                   grad = _grad_broadcast_unary_positive)
@@ -754,7 +748,7 @@ LogInplaceTester = makeBroadcastTester(op = inplace.log_inplace,
                                          grad = _grad_broadcast_unary_positive,
                                          inplace = True)
 
-Log2Tester = makeBroadcastTester(op = T.log2,
+Log2Tester = makeBroadcastTester(op = tensor.log2,
                                    expected = numpy.log2,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
@@ -764,7 +758,7 @@ Log2InplaceTester = makeBroadcastTester(op = inplace.log2_inplace,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
-Log10Tester = makeBroadcastTester(op = T.log10,
+Log10Tester = makeBroadcastTester(op = tensor.log10,
                                    expected = numpy.log10,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
@@ -774,7 +768,7 @@ Log10InplaceTester = makeBroadcastTester(op = inplace.log10_inplace,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
-Log1pTester = makeBroadcastTester(op = T.log1p,
+Log1pTester = makeBroadcastTester(op = tensor.log1p,
                                   expected = numpy.log1p,
                                   good = _good_broadcast_unary_positive,
                                   grad = _grad_broadcast_unary_positive)
@@ -785,7 +779,7 @@ Log1pInplaceTester = makeBroadcastTester(op = inplace.log1p_inplace,
                                          inplace = True)
 
 
-SqrtTester = makeBroadcastTester(op = T.sqrt,
+SqrtTester = makeBroadcastTester(op = tensor.sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
@@ -818,7 +812,7 @@ _grad_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1-1e-7, (2, 
                                   )
 
 
-SinTester = makeBroadcastTester(op = T.sin,
+SinTester = makeBroadcastTester(op = tensor.sin,
                                   expected = numpy.sin,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
@@ -828,7 +822,7 @@ SinInplaceTester = makeBroadcastTester(op = inplace.sin_inplace,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
-CosTester = makeBroadcastTester(op = T.cos,
+CosTester = makeBroadcastTester(op = tensor.cos,
                                   expected = numpy.cos,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
@@ -837,7 +831,7 @@ CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
-ArccosTester = makeBroadcastTester(op = T.arccos,
+ArccosTester = makeBroadcastTester(op = tensor.arccos,
                                   expected = numpy.arccos,
                                   good = _good_broadcast_unary_arccos,
                                   grad = _grad_broadcast_unary_arccos)
@@ -852,7 +846,7 @@ if config.floatX=='float32':
 #We raise the relative tolerence for the grad as their is error in float32
 #This is probably caused by our way of computing the gradient error.
     tan_grad_rtol = 0.052
-TanTester = makeBroadcastTester(op = T.tan,
+TanTester = makeBroadcastTester(op = tensor.tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
@@ -869,7 +863,7 @@ TanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
                                          inplace = True)
 
 
-CoshTester = makeBroadcastTester(op = T.cosh,
+CoshTester = makeBroadcastTester(op = tensor.cosh,
                                    expected = numpy.cosh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
@@ -879,7 +873,7 @@ CoshInplaceTester = makeBroadcastTester(op = inplace.cosh_inplace,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-SinhTester = makeBroadcastTester(op = T.sinh,
+SinhTester = makeBroadcastTester(op = tensor.sinh,
                                    expected = numpy.sinh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
@@ -889,7 +883,7 @@ SinhInplaceTester = makeBroadcastTester(op = inplace.sinh_inplace,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-TanhTester = makeBroadcastTester(op = T.tanh,
+TanhTester = makeBroadcastTester(op = tensor.tanh,
                                    expected = numpy.tanh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
@@ -919,7 +913,7 @@ else:
     expected_erfc = []
     skip_scipy = "scipy is not present"
 
-ErfTester = makeBroadcastTester(op = T.erf,
+ErfTester = makeBroadcastTester(op = tensor.erf,
                                 expected = expected_erf,
                                 good = _good_broadcast_unary_normal,
                                 grad = _grad_broadcast_unary_normal,
@@ -935,7 +929,7 @@ ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
                                        inplace = True,
                                        skip = skip_scipy)
 
-ErfcTester = makeBroadcastTester(op = T.erfc,
+ErfcTester = makeBroadcastTester(op = tensor.erfc,
                                  expected = expected_erfc,
                                  good = _good_broadcast_unary_normal_no_int_no_complex,
                                  grad = _grad_broadcast_unary_normal,
@@ -951,12 +945,12 @@ ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         inplace = True,
                                         skip = skip_scipy)
 
-ZerosLikeTester =  makeBroadcastTester(op = T.zeros_like,
+ZerosLikeTester =  makeBroadcastTester(op = tensor.zeros_like,
                                         expected = numpy.zeros_like,
                                         good = _good_broadcast_unary_normal,
                                         grad = _grad_broadcast_unary_normal)
 
-OnesLikeTester =  makeBroadcastTester(op = T.ones_like,
+OnesLikeTester =  makeBroadcastTester(op = tensor.ones_like,
                                         expected = numpy.ones_like,
                                         good = _good_broadcast_unary_normal,
                                         grad = _grad_broadcast_unary_normal)
@@ -1104,9 +1098,9 @@ def test_eye():
         # allowed.
         if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
             M = N
-        N_symb = basic.iscalar()
-        M_symb = basic.iscalar()
-        k_symb = basic.iscalar()
+        N_symb = tensor.iscalar()
+        M_symb = tensor.iscalar()
+        k_symb = tensor.iscalar()
         f = function([N_symb, M_symb, k_symb],
                      eye(N_symb, M_symb, k_symb, dtype=dtype))
         result = f(N, M, k)
@@ -1130,7 +1124,7 @@ def test_eye():
 def test_identity():
     def check(dtype):
         obj = rand_of_dtype((2,), dtype)
-        sym = basic.vector(dtype=dtype)
+        sym = tensor.vector(dtype=dtype)
         f = function([sym], tensor_copy(sym))
         assert numpy.all(obj == f(obj))
         assert obj.dtype == f(obj).dtype
@@ -1152,16 +1146,16 @@ class CastTester(unittest.TestCase):
                       (rand_of_dtype((2,), dtype), dtype))
                      for dtype in ALL_DTYPES])
         for testname, (obj, dtype) in good:
-            inp = basic.vector(dtype=obj.dtype)
-            out = basic.cast(inp, dtype=dtype)
+            inp = tensor.vector(dtype=obj.dtype)
+            out = tensor.cast(inp, dtype=dtype)
             f = function([inp], out)
             assert f(obj).dtype == numpy.dtype(dtype)
 
     def test_cast_from_real_to_complex(self):
         for real_dtype in REAL_DTYPES:
             for complex_dtype in COMPLEX_DTYPES:
-                inp = basic.vector(dtype=real_dtype)
-                out = basic.cast(inp, dtype=complex_dtype)
+                inp = tensor.vector(dtype=real_dtype)
+                out = tensor.cast(inp, dtype=complex_dtype)
                 f = function([inp], out)
                 obj = rand_of_dtype((2, ), real_dtype)
                 assert f(obj).dtype == numpy.dtype(complex_dtype)
@@ -1169,8 +1163,8 @@ class CastTester(unittest.TestCase):
     def test_cast_from_complex_to_real_raises_error(self):
         for real_dtype in REAL_DTYPES:
             for complex_dtype in COMPLEX_DTYPES:
-                inp = basic.vector(dtype=real_dtype)
-                self.assertRaises(TypeError, basic.cast(inp, dtype=complex_dtype))
+                inp = tensor.vector(dtype=real_dtype)
+                self.assertRaises(TypeError, tensor.cast(inp, dtype=complex_dtype))
 
 ClipTester = makeTester(name='ClipTester',
                         op=clip,
@@ -1204,9 +1198,9 @@ ClipTester = makeTester(name='ClipTester',
 class T_Clip(unittest.TestCase):
     def test_complex_value(self):
         for dtype in ['complex64', 'complex128']:
-            a = basic.vector(dtype=dtype)
-            b = basic.scalar()
-            c = basic.scalar()
+            a = tensor.vector(dtype=dtype)
+            b = tensor.scalar()
+            c = tensor.scalar()
             self.assertRaises(TypeError, clip, a, b, c)
 
 #TODO: consider moving this function / functionality to gradient.py
@@ -1304,7 +1298,7 @@ def test_nan_inf_constant_signature():
             assert (x.signature() == y.signature()) == (i == j)
 
     # Also test that nan !=0 and nan != nan.
-    x = basic.scalar()
+    x = tensor.scalar()
     mode = get_default_mode()
     if isinstance(mode, theano.compile.debugmode.DebugMode):
         # Disable the check preventing usage of NaN / Inf values.
@@ -1833,10 +1827,10 @@ class T_subtensor(unittest.TestCase):
     This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
     def __init__(self, name, shared=_shared,
-                 sub=basic.Subtensor,
-                 inc_sub=basic.IncSubtensor,
-                 adv_sub1=basic.AdvancedSubtensor1,
-                 adv_incsub1=basic.AdvancedIncSubtensor1,
+                 sub=tensor.Subtensor,
+                 inc_sub=tensor.IncSubtensor,
+                 adv_sub1=tensor.AdvancedSubtensor1,
+                 adv_incsub1=tensor.AdvancedIncSubtensor1,
                  mode=None,
                  dtype=theano.config.floatX,
                  ignore_topo=(theano.compile.function_module.DeepCopyOp)):
@@ -2129,7 +2123,7 @@ class T_subtensor(unittest.TestCase):
             t = n[idx]
 
             # We test again AdvancedSubtensor1 as we transfer data to the cpu.
-            self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+            self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
             val = self.eval_output_and_check(t, list=True)
             if isinstance(idx, list):
@@ -2140,7 +2134,7 @@ class T_subtensor(unittest.TestCase):
             self.assertTrue(numpy.allclose(val, good), (val, good))
 
             # Test reuse of output memory
-            if isinstance(self.adv_sub1,basic.AdvancedSubtensor1):
+            if isinstance(self.adv_sub1,tensor.AdvancedSubtensor1):
                 op = self.adv_sub1()
                 # When idx is a TensorConstant.
                 if hasattr(idx, "data"):
@@ -2166,7 +2160,7 @@ class T_subtensor(unittest.TestCase):
         l = lvector()
         t = n[l]
         # We test again AdvancedSubtensor1 as we transfer data to the cpu.
-        self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = function([l], t, mode=self.mode)
         topo = f.maker.env.toposort()
@@ -2179,9 +2173,9 @@ class T_subtensor(unittest.TestCase):
     def test_adv_sub1_broadcast(self):
         ones = numpy.ones((1,3), dtype=self.dtype)
         n = self.shared(ones*5, broadcastable=(True, False))
-        idx = basic.lvector()
+        idx = tensor.lvector()
         t = n[idx]
-        self.assertTrue(isinstance(t.owner.op, theano.tensor.basic.AdvancedSubtensor1))
+        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = function([idx], t, mode=self.mode)
         topo = f.maker.env.toposort()
@@ -2211,7 +2205,7 @@ class T_subtensor(unittest.TestCase):
             t_shapes = f()
             for t_shape, shape in zip(t_shapes,shapes):
                 assert numpy.all(t_shape == shape)
-            assert theano.tensor.Subtensor not in [ x.op for x in
+            assert tensor.Subtensor not in [ x.op for x in
                                            f.maker.env.toposort() ]
 
     def test_shape_i_scalar(self):
@@ -2223,13 +2217,12 @@ class T_subtensor(unittest.TestCase):
         mode_opt = compile.mode.get_mode(mode_opt)
         v_data = numpy.array(numpy.arange(5), dtype=self.dtype)
         t_data = self.shared(v_data)
-        start  = theano.tensor.iscalar('b')
-        stop   = theano.tensor.iscalar('e')
-        step   = theano.tensor.iscalar('s')
+        start  = tensor.iscalar('b')
+        stop   = tensor.iscalar('e')
+        step   = tensor.iscalar('s')
         f = function([start,stop,step], t_data[start:stop:step].shape, mode = mode_opt)
         f2 = function([start,stop,step],t_data[start:stop:step])
-        assert theano.tensor.Subtensor not in [x.op for x in
-                                               f.maker.env.toposort() ]
+        assert tensor.Subtensor not in [x.op for x in f.maker.env.toposort()]
         for start in [-8,-5,-4,-1,0,1,4,5,8]:
             for stop in [-8,-5,-4,-1,0,1,4,5,8]:
                 for step in [-3,-1,2,5]:
@@ -2238,17 +2231,16 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_slice_canonical_form_0(self):
-        start  = theano.tensor.iscalar('b')
-        stop   = theano.tensor.iscalar('e')
-        step   = theano.tensor.iscalar('s')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,stop,step),
-                                                          length)
+        start  = tensor.iscalar('b')
+        stop   = tensor.iscalar('e')
+        step   = tensor.iscalar('s')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(start,stop,step), length)
         f = function([start,stop,step, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2263,16 +2255,15 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_slice_canonical_form_1(self):
-        stop   = theano.tensor.iscalar('e')
-        step   = theano.tensor.iscalar('s')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,stop,step),
-                                                          length)
+        stop   = tensor.iscalar('e')
+        step   = tensor.iscalar('s')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(None,stop,step), length)
         f = function([stop,step, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2286,16 +2277,15 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_slice_canonical_form_2(self):
-        start  = theano.tensor.iscalar('b')
-        step   = theano.tensor.iscalar('s')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,None,step),
-                                                          length)
+        start  = tensor.iscalar('b')
+        step   = tensor.iscalar('s')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(start,None,step), length)
         f = function([start,step, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2309,16 +2299,15 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_slice_canonical_form_3(self):
-        start  = theano.tensor.iscalar('b')
-        stop   = theano.tensor.iscalar('e')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,stop,None),
-                                                          length)
+        start  = tensor.iscalar('b')
+        stop   = tensor.iscalar('e')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(start,stop,None), length)
         f = function([start,stop, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2331,15 +2320,14 @@ class T_subtensor(unittest.TestCase):
                 assert numpy.all(t_out.shape == v_out.shape)
 
     def test_slice_canonical_form_4(self):
-        step   = theano.tensor.iscalar('s')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,None,step),
-                                                          length)
+        step   = tensor.iscalar('s')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(None,None,step), length)
         f = function([step, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2352,15 +2340,14 @@ class T_subtensor(unittest.TestCase):
 
 
     def test_slice_canonical_form_5(self):
-        start  = theano.tensor.iscalar('b')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(start,None,None),
-                                                          length)
+        start  = tensor.iscalar('b')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(start,None,None), length)
         f = function([start, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2372,15 +2359,14 @@ class T_subtensor(unittest.TestCase):
             assert numpy.all(t_out.shape == v_out.shape)
 
     def test_slice_canonical_form_6(self):
-        stop   = theano.tensor.iscalar('e')
-        length = theano.tensor.iscalar('l')
-        cnf = theano.tensor.basic.get_canonical_form_slice(slice(None,stop,None),
-                                                          length)
+        stop   = tensor.iscalar('e')
+        length = tensor.iscalar('l')
+        cnf = tensor.get_canonical_form_slice(slice(None,stop,None), length)
         f = function([stop, length], [
-            theano.tensor.as_tensor_variable(cnf[0].start),
-            theano.tensor.as_tensor_variable(cnf[0].stop),
-            theano.tensor.as_tensor_variable(cnf[0].step),
-            theano.tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[0].start),
+            tensor.as_tensor_variable(cnf[0].stop),
+            tensor.as_tensor_variable(cnf[0].step),
+            tensor.as_tensor_variable(cnf[1]) ])
 
         length = 5
         a = numpy.arange(length)
@@ -2581,8 +2567,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_stack_scalar_make_vector(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
         not Join. Test that the floatX dtype stay floatX, not downcasted to int64'''
-        a = basic.scalar('a')
-        b = basic.scalar('b')
+        a = tensor.scalar('a')
+        b = tensor.scalar('b')
         s = stack(a, b, a, b)
         f = function([a,b], s)
         val = f(1,2)
@@ -2596,8 +2582,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_stack_scalar_make_vector_dtype(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
         event when the scalar don't have the same dtype.'''
-        a = basic.iscalar('a')
-        b = basic.lscalar('b')
+        a = tensor.iscalar('a')
+        b = tensor.lscalar('b')
         s = stack(a, b, a, b)
         f = function([a,b], s)
         val = f(1,2)
@@ -2610,8 +2596,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_stack_scalar_make_vector_constant(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
         event when the scalar are simple int type.'''
-        a = basic.iscalar('a')
-        b = basic.lscalar('b')
+        a = tensor.iscalar('a')
+        b = tensor.lscalar('b')
         #test when the constant is the first element.
         #The first element is used in a special way
         s = stack(10,a,b, numpy.int8(3))
@@ -2725,12 +2711,12 @@ class T_Join_and_Split(unittest.TestCase):
         assert not c.type.broadcastable[1]
 
         # Opt can remplace the int by a Theano constant
-        c = join(theano.tensor.constant(1), a, b)
+        c = join(tensor.constant(1), a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # In case futur opt insert other useless stuff
-        c = join(theano.tensor.cast(theano.tensor.constant(1), dtype="int32"),
+        c = join(tensor.cast(tensor.constant(1), dtype="int32"),
                  a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
@@ -2875,7 +2861,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         if theano.config.mode != 'FAST_COMPILE':
             for node in f.maker.env.toposort():
-                assert not isinstance(node.op, basic.Join)
+                assert not isinstance(node.op, tensor.Join)
 
         # Test dim 1
         z = join(1,x1,x2,x3)
@@ -2885,7 +2871,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         if theano.config.mode != 'FAST_COMPILE':
             for node in f.maker.env.toposort():
-                assert not isinstance(node.op, basic.Join)
+                assert not isinstance(node.op, tensor.Join)
 
         # Test hide error
         if theano.config.mode in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']:
@@ -3035,7 +3021,7 @@ class T_add(unittest.TestCase):
 
 class T_ceil(unittest.TestCase):
     def test_complex(self):
-        self.assertRaises(TypeError, T.ceil, T.zvector())
+        self.assertRaises(TypeError, tensor.ceil, tensor.zvector())
 
 class T_exp(unittest.TestCase):
     def test_grad_0(self):
@@ -3089,14 +3075,14 @@ class T_divimpl(unittest.TestCase):
 class T_mean(unittest.TestCase):
     def test_regression_mean_of_ndarray_failure(self):
         try:
-            theano.tensor.mean(numpy.zeros(1))
+            tensor.mean(numpy.zeros(1))
         except AttributeError:
             self.fail()
 
     def test0(self):
         #Simple test...
-        x = theano.tensor.vector()
-        f = theano.function([x],theano.tensor.mean(x))
+        x = tensor.vector()
+        f = theano.function([x],tensor.mean(x))
         data = numpy.asarray(numpy.random.rand(50), dtype=config.floatX)
         assert numpy.allclose(f(data), numpy.mean(data))
 
@@ -3668,7 +3654,7 @@ class test_grad(unittest.TestCase):
         """grad: Test passing a single variable param"""
         o = test_grad.O()
         a1 = o.make_node()
-        self.assertTrue(o.gval0 is T.grad(a1.outputs[0], a1.inputs[0]))
+        self.assertTrue(o.gval0 is tensor.grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
         """grad: Test passing multiple variable params"""
@@ -3687,14 +3673,14 @@ class test_grad(unittest.TestCase):
         requires changing this test or making it fail you are almost certainly
         making a common mistake, NOT fixing something. """
 
-        X = T.matrix()
+        X = tensor.matrix()
         y = X.sum()
 
-        G = T.grad(y, [X])
+        G = tensor.grad(y, [X])
 
         assert isinstance(G,list)
 
-        G = T.grad(y, X)
+        G = tensor.grad(y, X)
 
         assert not isinstance(G,list)
 
@@ -3855,7 +3841,7 @@ class T_reshape(unittest.TestCase):
 def test_make_column_matrix_broadcastable():
     # The goal of the operation made by `b` is to ensure the second dimension
     # of the column matrix is broadcastable.
-    a = T.dmatrix()
+    a = tensor.dmatrix()
     b = a.reshape((a.shape[0], )).dimshuffle(0, 'x')
     f = function([a], b)
     assert (f(numpy.zeros((3, 1))) + numpy.ones(2) == numpy.ones((3, 2))).all()
@@ -4791,7 +4777,7 @@ def _test_autocast_numpy():
     assert config.cast_policy == 'numpy'
     # Go through some typical scalar values.
     def ok(z):
-        assert basic.constant(z).dtype == numpy.asarray(z).dtype
+        assert tensor.constant(z).dtype == numpy.asarray(z).dtype
     for x in ([2**i for i in xrange(63)] +
               [0] +
               [0., 1., 1.1, 1.5]):
@@ -4813,9 +4799,9 @@ def _test_autocast_numpy_floatX():
             floatX == 'float32' and
             not hasattr(z, 'dtype')):
             # Special case where we use 'float32' instead of 'float64'.
-            assert basic.constant(z).dtype == 'float32'
+            assert tensor.constant(z).dtype == 'float32'
         else:
-            assert basic.constant(z).dtype == numpy.asarray(z).dtype
+            assert tensor.constant(z).dtype == numpy.asarray(z).dtype
     try:
         # Test with various values of `config.floatX`.
         for floatX in ('float32', 'float64'):
@@ -4854,9 +4840,9 @@ class test_arithmetic_cast(unittest.TestCase):
         # scalar == scalar stored as a 0d array
         # array == 1d array
         # i_scalar == scalar type used internally by Theano
-        theano_scalar = lambda dtype: basic.scalar(dtype=str(dtype))
+        theano_scalar = lambda dtype: tensor.scalar(dtype=str(dtype))
         numpy_scalar = lambda dtype: numpy.array(1, dtype=dtype)
-        theano_array = lambda dtype: basic.vector(dtype=str(dtype))
+        theano_array = lambda dtype: tensor.vector(dtype=str(dtype))
         numpy_array = lambda dtype: numpy.array([1], dtype=dtype)
         theano_i_scalar = lambda dtype: theano.scalar.Scalar(str(dtype))()
         numpy_i_scalar = numpy_scalar
@@ -4877,8 +4863,8 @@ class test_arithmetic_cast(unittest.TestCase):
                             # special way (depending on `config.int_division`).
                             is_int_division = (
                                     op is operator.div and
-                                    a_type in basic.discrete_dtypes and
-                                    b_type in basic.discrete_dtypes)
+                                    a_type in tensor.discrete_dtypes and
+                                    b_type in tensor.discrete_dtypes)
                             # We will test all meaningful combinations of
                             # scalar and array operations.
                             for combo in (
@@ -5093,10 +5079,10 @@ def test_mod_compile():
     The c_code generated is not compiling as of 30 June 2010. I fix the compilation in the same commit.
     """
 
-    x = basic.vector()
-    y = basic.vector()
+    x = tensor.vector()
+    y = tensor.vector()
     shape = x.shape
-    out = basic.switch(basic.eq(3%x.shape[0],0),y,y[:-1])
+    out = tensor.switch(tensor.eq(3%x.shape[0],0),y,y[:-1])
 
     f = theano.function([x,y],out)
 
@@ -5114,7 +5100,7 @@ def test_unalign():
     b[:] = numpy.random.rand(len(b))
     out_numpy = 2*a + 3*b
 
-    av,bv = basic.vectors('ab')
+    av,bv = tensor.vectors('ab')
     f = theano.function([av,bv],2*av+3*bv)
     f.maker.env.toposort()
     # FAST_COMPILE use the python code that support unaligned data
@@ -5132,12 +5118,12 @@ def test_unalign():
             raise Exception("Theano raised an exception when none was expected")
 
 def test_dimshuffle_duplicate():
-    x = theano.tensor.vector()
+    x = tensor.vector()
 
     success = False
 
     try:
-        y = theano.tensor.DimShuffle((False, ), (0, 0))(x)
+        y = tensor.DimShuffle((False, ), (0, 0))(x)
     except ValueError, e:
         assert str(e).find("may not appear twice") != -1
         success = True
@@ -5147,28 +5133,28 @@ def test_dimshuffle_duplicate():
 class T_get_constant_value(unittest.TestCase):
 
     def test_get_constant_value(self):
-        a = basic.stack(1,2,3)
+        a = tensor.stack(1,2,3)
         assert get_constant_value(a[0])==1
         assert get_constant_value(a[1])==2
         assert get_constant_value(a[2])==3
 
-        b = basic.iscalar()
-        a = basic.stack(b,2,3)
+        b = tensor.iscalar()
+        a = tensor.stack(b,2,3)
         self.assertRaises(TypeError, get_constant_value, a[0])
         assert get_constant_value(a[1])==2
         assert get_constant_value(a[2])==3
 
         # For now get_constant_value goes through only MakeVector and Join of
         # scalars.
-        v = basic.ivector()
-        a = basic.stack(v,2,3)
+        v = tensor.ivector()
+        a = tensor.stack(v,2,3)
         self.assertRaises(TypeError, get_constant_value, a[0])
         self.assertRaises(TypeError, get_constant_value, a[1])
         self.assertRaises(TypeError, get_constant_value, a[2])
 
         # Test the case SubTensor(Shape(v)) when the dimensions
         # is broadcastable.
-        v = basic.row()
+        v = tensor.row()
         assert get_constant_value(v.shape[0])==1
 
     def test_subtensor_of_constant(self):
@@ -5215,17 +5201,17 @@ class test_size(unittest.TestCase):
     """
 
     def test_matrix(self):
-        x = basic.matrix()
+        x = tensor.matrix()
         y = numpy.zeros((5, 7), dtype=config.floatX)
         assert y.size == function([x], x.size)(y)
 
     def test_vector(self):
-        x = basic.vector()
+        x = tensor.vector()
         y = numpy.zeros(7, dtype=config.floatX)
         assert y.size == function([x], x.size)(y)
 
     def test_scalar(self):
-        x = basic.scalar()
+        x = tensor.scalar()
         y = numpy.array(7, dtype=config.floatX)
         assert y.size == function([x], x.size)(y)
 
