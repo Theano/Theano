@@ -102,6 +102,28 @@ typo) to keep the history clean, you can do it like this:
    git commit --amend
    git push -u origin  my_shiny_feature:my_shiny_feature
 
+
+Coding Style Auto Check
+-----------------------
+
+In Theano, we use the same coding style as the `Pylearn
+<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
+project. The principal thing to know is that we follow the
+`pep8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
+
+We use git hooks provided in the project `pygithooks
+<https://github.com/lumberlabs/pygithooks>`_ to validate that commits
+respect pep8. This happens when each user commits, not when we
+push/merge to the Theano repository. Github doesn't allow us to have
+code executed when we push to the repository. So we ask all
+contributors to use those hooks.
+
+For historic reason, we currently don't have all files respecting pep8.
+We decided to fix everything incrementally. So not all files respect it
+now. So we strongly suggest that you use the "increment" pygithooks
+config option to have a good workflow. See the pygithooks main page
+for how to set it up for Theano and how to enable this option.
+
 Cleaning up history
 -------------------
 
@@ -185,6 +207,20 @@ Once you have such a branch, in order to update it, do:
 
 Keep in mind that this branch should be "read-only": if you want to patch
 Theano, do it in another branch like described above.
+
+Optional
+--------
+
+You can instruct git to do color diff. For this, you need to add those lines in the file ~/.gitconfig
+
+.. code-block:: bash
+
+
+    [color]
+       branch = auto
+       diff = auto
+       interactive = auto
+       status = auto
 
 Nightly test
 ------------
