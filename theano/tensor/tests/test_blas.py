@@ -578,7 +578,24 @@ def test_upcasting_scalar_nogemm():
     f = theano.function([w, v, t, alpha], rval)
     t = f.maker.env.toposort()
     assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
-    theano.printing.debugprint(f, print_type=True)
+    #theano.printing.debugprint(f, print_type=True)
+
+    v = T.fmatrix('v')
+    w = T.fmatrix('w')
+    t = T.fmatrix('t')
+    alpha = T.cscalar('a')
+
+    on_opt_error = config.on_opt_error
+    try:
+        config.on_opt_error = 'raise'
+        rval = T.dot(w, v) * alpha + t
+        f = theano.function([w, v, t, alpha], rval)
+    finally:
+        config.on_opt_error = on_opt_error
+
+    t = f.maker.env.toposort()
+    assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
+    #theano.printing.debugprint(f, print_type=True)
 
 def test_gemm_nested():
     X,Y,Z,a,b = T.dmatrix('X'), T.dmatrix('Y'), T.dmatrix('Z'), T.dscalar('a'), T.dscalar('b')
