@@ -186,6 +186,22 @@ Once you have such a branch, in order to update it, do:
 Keep in mind that this branch should be "read-only": if you want to patch
 Theano, do it in another branch like described above.
 
+Optional
+--------
+
+You can instruc git to do color diff. For this, you need to add those line in the file ~/.gitconfig
+
+.. code-block:: bash
+
+
+    [diff]
+       color = auto
+    [color]
+       branch = auto
+       diff = auto
+       interactive = auto
+       status = auto
+
 Nightly test
 ------------
 
