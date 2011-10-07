@@ -194,8 +194,6 @@ You can instruct git to do color diff. For this, you need to add those lines in 
 .. code-block:: bash
 
 
-    [diff]
-       color = auto
     [color]
        branch = auto
        diff = auto
