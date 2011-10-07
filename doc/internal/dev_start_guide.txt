@@ -111,15 +111,15 @@ In Theano, we use the same coding style as the `Pylearn
 project. The principal thing to know is that we follow the
 `pep8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
 
-We use git hook provided in the project `pygithooks
-<https://github.com/lumberlabs/pygithooks>`_ to validate that commit
-respect pep8. This happen when each user commit, not when we
-push/merge to the Theano repository. Github don't allow us to have
+We use git hooks provided in the project `pygithooks
+<https://github.com/lumberlabs/pygithooks>`_ to validate that commits
+respect pep8. This happens when each user commits, not when we
+push/merge to the Theano repository. Github doesn't allow us to have
 code executed when we push to the repository. So we ask all
-contributor to use those hooks.
+contributors to use those hooks.
 
-For historic reason, we currently don't have all file respecting pep8.
-We decided fix everything incrementally. So not all file respect it
+For historic reason, we currently don't have all files respecting pep8.
+We decided to fix everything incrementally. So not all files respect it
 now. So we strongly suggest that you use the "increment" pygithooks
 config option to have a good workflow. See the pygithooks main page
 for how to set it up for Theano and how to enable this option.
