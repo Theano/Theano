@@ -1113,11 +1113,23 @@ def _gemm_from_factored_list(lst):
     """Returns None, or a list to replace node.outputs
     """
 
+    # Make every pair in list have matching dtypes
+    # sM can be a tuple of 2 elements of a theano variable
+    # We should not use __len__ as the theano variable don't support
+    # it. I don't want to change this to ininstance(sM, tuple)
+    # as I'm not able to make a test that triger
+    def is_pair(sM):
+        try:
+            s, M = sM
+            return True
+        except Exception:
+            return False
+
     lst2 = []
     # Remove the tuple that can't be casted correctly.
     # This can happen when we try to cast a complex to a real
     for sM in lst:
-        if len(sM) == 2:
+        if is_pair(sM):
             sm0, sm1 = sM
             sm0 = T.as_tensor_variable(sm0)
             if theano.scalar.upcast(sm0.dtype, sm1.dtype) == sm1.dtype:
