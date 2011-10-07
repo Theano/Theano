@@ -1114,10 +1114,10 @@ def _gemm_from_factored_list(lst):
     """
 
     # Make every pair in list have matching dtypes
-    # sM can be a tuple of 2 elements of a theano variable
-    # We should not use __len__ as the theano variable don't support
-    # it. I don't want to change this to ininstance(sM, tuple)
-    # as I'm not able to make a test that triger
+    # sM can be a tuple of 2 elements or a theano variable.
+    # We should not use __len__ as theano variables don't support
+    # it. I don't want to change this to isinstance(sM, tuple)
+    # as I'm not able to make a test that triggers this case.
     def is_pair(sM):
         try:
             s, M = sM
