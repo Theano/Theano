@@ -189,7 +189,7 @@ Theano, do it in another branch like described above.
 Optional
 --------
 
-You can instruc git to do color diff. For this, you need to add those line in the file ~/.gitconfig
+You can instruct git to do color diff. For this, you need to add those lines in the file ~/.gitconfig
 
 .. code-block:: bash
 

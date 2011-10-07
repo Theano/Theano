@@ -4909,7 +4909,8 @@ class AdvancedSubtensor1(Op):
         else:
             o = None
 
-        # I have read that using clip or wrap mode make it a lot faster when the output is provided
+        # I have read that using clip or wrap mode make it a lot faster when
+        # the output is provided
         out[0] = x.take(i, axis=0, out=o)
 
     def grad(self, inputs, grads):
