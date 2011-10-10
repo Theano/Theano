@@ -187,7 +187,8 @@ class Stack(VM):
 
     def __init__(self, nodes, thunks, pre_call_clear,
             storage_map, compute_map,
-            env, allow_gc):
+            env, allow_gc,
+            callback=None):
         super(Stack, self).__init__(nodes, thunks, pre_call_clear)
 
         self.allow_gc = allow_gc
@@ -199,6 +200,7 @@ class Stack(VM):
         self.outputs_size = {}
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
+        self.callback = callback
 
         ords = env.orderings()
 
@@ -278,6 +280,13 @@ class Stack(VM):
                     try:
                         t0 = time.time()
                         thunks[self.node_idx[current_apply]]()
+                        if self.callback:
+                            self.callback(
+                                    current_apply,
+                                    thunk=thunks[self.node_idx[current_apply]],
+                                    storage_map=storage_map,
+                                    compute_map=compute_map,
+                                    )
                         if config.profile:
                             dt = time.time() - t0
                             self.apply_time[current_apply] += dt
@@ -324,6 +333,13 @@ class Stack(VM):
                     t0 = time.time()
                     requires = thunks[self.node_idx[current_apply]]()
                     dt = time.time() - t0
+                    if self.callback:
+                        self.callback(
+                                current_apply,
+                                thunk=thunks[self.node_idx[current_apply]],
+                                storage_map=storage_map,
+                                compute_map=compute_map,
+                                )
                     self.apply_time[current_apply] += dt
 
                 except Exception:
@@ -377,10 +393,11 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=True, use_cloop = False):
+    def __init__(self, allow_gc=True, use_cloop=False, callback=None):
         self.env = None
         self.allow_gc = allow_gc
-        self.use_cloop=use_cloop
+        self.use_cloop = use_cloop
+        self.callback = callback
 
     def accept(self, env, no_recycling = []):
         """
@@ -406,7 +423,13 @@ class VM_Linker(link.LocalLinker):
 
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
-        if self.use_cloop:
+        if self.callback is not None:
+            vm = Stack(
+                    nodes, thunks, pre_call_clear,
+                    storage_map, compute_map,
+                    self.env, self.allow_gc,
+                    callback=self.callback)
+        elif self.use_cloop:
             # create a map from nodes to ints and vars to ints
             nodes_idx = {}
             vars_idx = {}
