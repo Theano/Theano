@@ -394,6 +394,18 @@ class VM_Linker(link.LocalLinker):
     """
 
     def __init__(self, allow_gc=True, use_cloop=False, callback=None):
+        """
+        allow_gc - force the virtual machine to clean up unnecessary references,
+            in order to allow garbage collection on intermediate values during
+            computation of a function.
+
+        use_cloop - use the C-based virtual machine if possible
+
+        callback - a callable object to call after each call to a thunk within
+            the virtual machine.  It will be called with four arguments called
+            'node', 'thunk', 'storage_map', and 'compute_map'.
+
+        """
         self.env = None
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
