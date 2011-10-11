@@ -2,6 +2,7 @@ import commands
 import distutils
 import logging
 import os
+import re
 import subprocess
 import sys
 import warnings
@@ -216,15 +217,8 @@ def nvcc_module_compile_str(
         except ValueError, e:
             done = True
 
-    # The fix below was suggested by Nicolas Pinto:
-    #   http://groups.google.com/group/theano-users/browse_thread/thread/c84bfe31bb411493
-    # TODO It is a bit hack-ish, is it possible to find a more generic fix?
-
-    # Remove last argument of python-config --ldflags if we are using
-    # MacPython 2.7.
-    fwk_str = 'Python.framework/Versions/2.7/Python'
-    if fwk_str in cmd:
-        cmd.pop(cmd.index(fwk_str))
+    # Fix for MacOS X.
+    cmd = remove_python_framework_dir(cmd)
 
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
     _logger.debug('Running cmd %s', ' '.join(cmd))
@@ -275,3 +269,35 @@ def nvcc_module_compile_str(
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()
     return dlimport(lib_filename)
+
+
+def remove_python_framework_dir(cmd):
+    """
+    Search for Python framework directory and get rid of it.
+
+    :param cmd: A list of strings corresponding to compilation arguments. On
+    MacOS X, one of these strings may be of the form
+    "/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Python"
+    and it needs to be removed as otherwise compilation will fail.
+
+    :return: The same list as `cmd`, but without the element of the form
+    mentioned above, if one exists.
+    """
+    # The fix below was initially suggested by Nicolas Pinto:
+    #   http://groups.google.com/group/theano-users/browse_thread/thread/c84bfe31bb411493
+    # It was improved later following a bug report by Benjamin Hamner:
+    #   https://groups.google.com/group/theano-users/browse_thread/thread/374ec2dadd3ac369/024e2be792f98d86
+    # TODO It is a bit hack-ish, is it possible to find a more generic fix?
+    fwk_pattern = 'Python.framework/Versions/2\.[0-9]/Python$'
+    rval = [element for element in cmd
+            if (re.search(fwk_pattern, element) is None
+                # Keep this element if it turns out to be part of an argument
+                # like -L.
+                or element.startswith('-'))]
+    if len(rval) < len(cmd) - 1:
+        warnings.warn("'remove_python_framework_dir' removed %s elements from "
+                      "the command line, while it is expected to remove at "
+                      "most one. If compilation fails, this would be a good "
+                      "place to start looking for a problem." %
+                      (len(cmd) - len(rval)))
+    return rval
