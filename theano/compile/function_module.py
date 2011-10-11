@@ -538,7 +538,7 @@ class Function(object):
                         function_name += 'with name "'+self.name+'" '
                     #end if
                     e.args = tuple(["Bad input argument to " + function_name +
-                                    " at index %d" % i] + list(e.args))
+                                    " at index %d(0-based)" % i] + list(e.args))
                     raise
                 #end except
             #end if
