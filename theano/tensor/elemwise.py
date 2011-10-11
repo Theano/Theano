@@ -277,7 +277,8 @@ class DimShuffle(Op):
 
         # set the strides of the broadcasted dimensions
         # this algorithm is from numpy: PyArray_Newshape() in cvs/numpy/numpy/core/src/multiarraymodule.c
-        strides_statements.append('if (strides['+str(nd_out)+'-1] == 0) strides['+str(nd_out)+'-1] = %(basename)s->descr->elsize')
+        if nd_out > 0:
+            strides_statements.append('if (strides['+str(nd_out)+'-1] == 0) strides['+str(nd_out)+'-1] = %(basename)s->descr->elsize')
         for i in xrange(nd_out-2,-1, -1):
             strides_statements.append("if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]"%dict(i=str(i)))
 
@@ -326,7 +327,7 @@ class DimShuffle(Op):
         return full_code % dict(locals(), **sub)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def grad(self, inp, grads):
         x, = inp
