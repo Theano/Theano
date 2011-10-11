@@ -228,6 +228,24 @@ class Stack(VM):
             self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4, "t64": 8, "128": 16}
             atexit.register(self.atexit_print_all)
 
+    def run_thunk_of_node(self, node):
+        """Run the thunk corresponding to Apply instance `node`
+
+        Calls self.callback if it is defined.
+        """
+        idx = self.node_idx[node]
+        t0 = time.time()
+        rval = self.thunks[idx]()
+        dt = max(time.time() - t0, 1e-10)
+        if self.callback is not None:
+            self.callback(
+                    node,
+                    thunk=self.thunks[idx],
+                    storage_map=self.storage_map,
+                    compute_map=self.compute_map,
+                    )
+        return rval, dt
+
     def __call__(self):
         storage_map = self.storage_map
         compute_map = self.compute_map
@@ -278,17 +296,9 @@ class Stack(VM):
 
                 if computed_ins and not computed_outs:
                     try:
-                        t0 = time.time()
-                        thunks[self.node_idx[current_apply]]()
-                        if self.callback:
-                            self.callback(
-                                    current_apply,
-                                    thunk=thunks[self.node_idx[current_apply]],
-                                    storage_map=storage_map,
-                                    compute_map=compute_map,
-                                    )
+                        _, dt = self.run_thunk_of_node(current_apply)
+                        del _
                         if config.profile:
-                            dt = time.time() - t0
                             self.apply_time[current_apply] += dt
                             ## Computing the memory footprint of the the op
                             # ?? What about inplace .. if the op is inplace
@@ -330,16 +340,7 @@ class Stack(VM):
             elif not computed_outs:
                 # Try and run it to see if it works
                 try:
-                    t0 = time.time()
-                    requires = thunks[self.node_idx[current_apply]]()
-                    dt = time.time() - t0
-                    if self.callback:
-                        self.callback(
-                                current_apply,
-                                thunk=thunks[self.node_idx[current_apply]],
-                                storage_map=storage_map,
-                                compute_map=compute_map,
-                                )
+                    requires, dt = self.run_thunk_of_node(current_apply)
                     self.apply_time[current_apply] += dt
 
                 except Exception:
@@ -352,13 +353,11 @@ class Stack(VM):
                         apply_stack.append(current_apply)
                         if current_apply.inputs[r].owner:
                             apply_stack.append(current_apply.inputs[r].owner)
-
-
                 else:
                     if config.profile:
                         size = []
                         for (idx,o) in enumerate(thunks[self.node_idx[current_apply]].outputs):
-                            if not hasattr(o[0],'size'):
+                            if not hasattr(o[0], 'size'):
                                 size.append(-1)
                                 continue
                             s=o[0].size
