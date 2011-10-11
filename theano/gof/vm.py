@@ -239,7 +239,7 @@ class Stack(VM):
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
-                    node,
+                    node=node,
                     thunk=self.thunks[idx],
                     storage_map=self.storage_map,
                     compute_map=self.compute_map,
