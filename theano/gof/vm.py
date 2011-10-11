@@ -239,6 +239,10 @@ class Stack(VM):
         idx = self.node_idx[node]
         t0 = time.time()
         rval = self.thunks[idx]()
+
+        # Some thunks on some computers run faster than the granularity
+        # of the time.time clock.
+        # Profile output looks buggy if a node has run but takes 0 time.
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
