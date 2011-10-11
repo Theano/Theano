@@ -403,9 +403,9 @@ Theano dependencies is easy, but be aware that it will take a long time
   packages are updated quite frequently. The following steps describe how to
   make sure you are using the MacPorts version of these packages.
 
-- In order to use the MacPorts version of python, you will probably
+- In order to use the MacPorts version of Python, you will probably
   need to explicitly select it with ``sudo port select python python27``. The
-  reason this is necessary is because you may have an Apple-provided python
+  reason this is necessary is because you may have an Apple-provided Python
   (via, for example, an Xcode installation). After performing this step, you
   should check that the symbolic link provided by ``which python`` points to
   the MacPorts python. For instance, on MacOS X Lion with MacPorts 2.0.3,
@@ -436,7 +436,7 @@ Theano dependencies is easy, but be aware that it will take a long time
 
 - This is covered in the MacPorts installation process, but make sure that
   your ``PATH`` environment variable contains ``/opt/local/bin`` and
-  ``/opt/local/sbin`` before any other paths (to ensure that the python and
+  ``/opt/local/sbin`` before any other paths (to ensure that the Python and
   gcc binaries that you installed with MacPorts are visible first).
 
 - MacPorts does not create automatically ``nosetests`` and ``pip`` symlinks
