@@ -28,7 +28,7 @@ class test_DimShuffle(unittest.TestCase):
                                   ((1, 4, 3, 2, 1), (3, 2, 1), (2, 3, 4)),
                                   ((1, 1, 4), (1, 2), (1, 4)),
                                   ((1, 1, 1), (), ()),
-                                  ((1,), ('x','x'), (1,1)),]:
+                                  ((1,), ('x', 'x'), (1, 1)),]:
             ib = [(entry == 1) for entry in xsh]
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
