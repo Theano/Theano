@@ -3412,6 +3412,23 @@ class t_dot(unittest.TestCase):
         # results have size 1.
         #
         def val_for(r):
+            if r.dtype.startswith('complex'):
+                # We want to test complex at the same time, so we give a value
+                # To the imaginary component.
+                # This stange way to doing thing is the only way that worked on
+                # numpy 1.4.1
+                if r.ndim == 0:
+                    return numpy.asarray(numpy.complex(1.1,2.1), dtype=r.dtype)
+                if r.ndim == 1:
+                    if r.dtype == 'complex64':
+                        return numpy.complex64([numpy.complex(1.2,2.2)])
+                    elif r.dtype == 'complex128':
+                        return numpy.complex128([numpy.complex(1.2,2.2)])
+                elif r.ndim == 2:
+                    if r.dtype == 'complex64':
+                        return numpy.complex64([[numpy.complex(1.3,2.3)]])
+                    elif r.dtype == 'complex128':
+                        return numpy.complex128([[numpy.complex(1.3,2.3)]])
 
             if r.ndim == 0:
                 return numpy.asarray(1.1, dtype=r.dtype)

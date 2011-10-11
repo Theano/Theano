@@ -20,8 +20,8 @@ try:
     _blas_ger_fns = {
             numpy.dtype('float32'):scipy.linalg.blas.fblas.sger,
             numpy.dtype('float64'):scipy.linalg.blas.fblas.dger,
-            #numpy.dtype('complex64'):scipy.linalg.blas.fblas.cger,
-            #numpy.dtype('complex128'):scipy.linalg.blas.fblas.zger,
+            numpy.dtype('complex64'):scipy.linalg.blas.fblas.cgeru,
+            numpy.dtype('complex128'):scipy.linalg.blas.fblas.zgeru,
             }
     optimizations_enabled = True
 except ImportError, e:
