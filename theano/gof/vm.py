@@ -1,6 +1,7 @@
 """
 VMs that run Theano graph computations.
 """
+import logging
 import sys
 import time
 import link
@@ -12,6 +13,8 @@ config = theano.config
 
 from theano.configparser import config, AddConfigVar, BoolParam
 from theano import config
+
+logger = logging.getLogger(__file__)
 
 AddConfigVar('profile',
         "If VM should collect profile information",
@@ -435,6 +438,8 @@ class VM_Linker(link.LocalLinker):
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
         if self.callback is not None:
+            if use_cloop:
+                logger.warn('CLoop does not support callback, using Stack VM.')
             vm = Stack(
                     nodes, thunks, pre_call_clear,
                     storage_map, compute_map,
