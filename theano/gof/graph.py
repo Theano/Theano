@@ -470,8 +470,8 @@ def inputs(variable_list, blockers = None):
         started at the nodes in `variable_list`.
 
     """
-    anc = ancestors(variable_list, blockers)
-    rval = [r for r in ancestors if r.owner is None]
+    vlist = ancestors(variable_list, blockers)
+    rval = [r for r in vlist if r.owner is None]
     return rval
 
 
