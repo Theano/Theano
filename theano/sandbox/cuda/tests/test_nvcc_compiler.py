@@ -20,6 +20,7 @@ def test_remove_python_framework_dir():
     cmd.append(
         '-L/opt/local/Library/Frameworks/Python.framework/Versions/2.7/Python')
     assert remove_python_framework_dir(cmd) == cmd[0:-2] + cmd[-1:]
+
     # We test for the warning only if we can use 'catch_warnings' (Python 2.6+)
     # as otherwise it is difficult to do it properly.
     try:
@@ -27,7 +28,13 @@ def test_remove_python_framework_dir():
     except AttributeError:
         return
     cmd.append('Frameworks/Python.framework/Versions/2.6/Python')
-    with warnings.catch_warnings(record=True) as record:
+    # Python 2.4 "emulation" of `with` statement. It is necessary even if this
+    # code is not executed, because using `with` would result in a SyntaxError.
+    with_context = warnings.catch_warnings(record=True)
+    record = with_context.__enter__()
+    try:
         assert remove_python_framework_dir(cmd) == cmd[0:-3] + cmd[-2:-1]
         assert len(record) == 1
         assert 'remove_python_framework_dir' in str(record[0].message)
+    finally:
+        with_context.__exit__(None, None, None)
