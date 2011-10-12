@@ -319,7 +319,7 @@ class Stack(VM):
                                 s=o[0].size
                                 dtype = str(o[0].dtype)
                                 dtype2 = dtype[-3:]
-                                s *= memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                                s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
                                 size.append(s)
                             self.outputs_size[current_apply] = size
                     except Exception:
@@ -370,7 +370,7 @@ class Stack(VM):
                             s=o[0].size
                             dtype = str(o[0].dtype)
                             dtype2 = dtype[-2:]
-                            s *= memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                            s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
                             size.append(s)
                         self.outputs_size[current_apply] = size
                     if self.allow_gc:
@@ -442,7 +442,7 @@ class VM_Linker(link.LocalLinker):
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
         if self.callback is not None:
-            if use_cloop:
+            if self.use_cloop:
                 logger.warn('CLoop does not support callback, using Stack VM.')
             vm = Stack(
                     nodes, thunks, pre_call_clear,
