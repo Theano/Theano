@@ -27,7 +27,13 @@ def test_remove_python_framework_dir():
     except AttributeError:
         return
     cmd.append('Frameworks/Python.framework/Versions/2.6/Python')
-    with warnings.catch_warnings(record=True) as record:
+
+    try:
+        record = warnings.catch_warnings(record=True)
+        record2 = record.__enter__()
+
         assert remove_python_framework_dir(cmd) == cmd[0:-3] + cmd[-2:-1]
-        assert len(record) == 1
-        assert 'remove_python_framework_dir' in str(record[0].message)
+        assert len(record2) == 1
+        assert 'remove_python_framework_dir' in str(record2[0].message)
+    finally:
+        record.__exit__(None, None, None)
