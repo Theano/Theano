@@ -442,7 +442,7 @@ class VM_Linker(link.LocalLinker):
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
         if self.callback is not None:
-            if use_cloop:
+            if self.use_cloop:
                 logger.warn('CLoop does not support callback, using Stack VM.')
             vm = Stack(
                     nodes, thunks, pre_call_clear,
