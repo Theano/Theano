@@ -1,6 +1,7 @@
 import gc
 import sys
 import time
+import unittest
 try:
     import line_profiler
 except ImportError:
@@ -8,12 +9,49 @@ except ImportError:
 import numpy
 
 from theano import function
-from theano.gof import vm,link, OpWiseCLinker
+from theano.gof import vm
+from theano.gof import link
+from theano.gof import OpWiseCLinker
 from theano.compile import Mode
 
 from theano import tensor
 from theano.lazycond import ifelse
 import theano
+
+class TestCallbacks(unittest.TestCase):
+    """
+    Test the VM_Linker's callback argument, which can be useful for debugging.
+    """
+    def setUp(self):
+        self.n_callbacks = {}
+
+    def callback(self, node, thunk, storage_map, compute_map):
+        self.n_callbacks.setdefault(node.op, 0)
+        self.n_callbacks[node.op] += 1
+
+    def test_callback(self):
+        a, b, c = tensor.scalars('abc')
+        f = function([a,b,c], (a + b) + c,
+                mode=Mode(
+                    optimizer=None,
+                    linker=vm.VM_Linker(callback=self.callback)))
+
+        f(1, 2, 3)
+        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort())
+        f(1, 2, 3)
+        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort()) * 2
+
+
+    def test_callback_with_ifelse(self):
+        a, b, c = tensor.scalars('abc')
+        f = function([a,b,c], ifelse(a, 2*b, 2*c),
+                mode=Mode(
+                    optimizer=None,
+                    linker=vm.VM_Linker(callback=self.callback)))
+
+        f(1, 2, 3)
+        assert self.n_callbacks[ifelse] == 2
+
 
 def test_speed():
 
