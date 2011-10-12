@@ -319,7 +319,7 @@ class Stack(VM):
                                 s=o[0].size
                                 dtype = str(o[0].dtype)
                                 dtype2 = dtype[-3:]
-                                s *= memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                                s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
                                 size.append(s)
                             self.outputs_size[current_apply] = size
                     except Exception:
@@ -370,7 +370,7 @@ class Stack(VM):
                             s=o[0].size
                             dtype = str(o[0].dtype)
                             dtype2 = dtype[-2:]
-                            s *= memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                            s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
                             size.append(s)
                         self.outputs_size[current_apply] = size
                     if self.allow_gc:
