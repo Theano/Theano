@@ -14,7 +14,7 @@ config = theano.config
 from theano.configparser import config, AddConfigVar, BoolParam
 from theano import config
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 AddConfigVar('profile',
         "If VM should collect profile information",
