@@ -1,6 +1,6 @@
 import numpy
 import theano
-from theano.tensor import vector, constant, specify_shape
+from theano.tensor import constant
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
