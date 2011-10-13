@@ -289,7 +289,7 @@ def remove_python_framework_dir(cmd):
     #   https://groups.google.com/group/theano-users/browse_thread/thread/374ec2dadd3ac369/024e2be792f98d86
     # It was modified by Graham Taylor to support Enthought Python Distribution 7.x
     # TODO It is a bit hack-ish, is it possible to find a more generic fix?
-    fwk_pattern = '(Python|EPD64).framework/Versions/(2\.[0-9]|7\.[0-9])/Python$'
+    fwk_pattern = '(Python|EPD(32|64)).framework/Versions/(2\.[0-9]|7\.[0-9])/Python$'
     rval = [element for element in cmd
             if (re.search(fwk_pattern, element) is None
                 # Keep this element if it turns out to be part of an argument
