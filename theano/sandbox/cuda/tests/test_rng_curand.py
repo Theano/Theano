@@ -1,6 +1,6 @@
 import numpy
 import theano
-from theano.tensor import vector, constant, specify_shape
+from theano.tensor import constant
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 
@@ -10,7 +10,9 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-if theano.config.mode == 'FAST_COMPILE':
+# The PyCObject that represents the cuda random stream object
+# can't be deep copied. This is needed for DebugMode
+if theano.config.mode in ['FAST_COMPILE', 'DebugMode', 'DEBUG_MODE']:
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
