@@ -858,7 +858,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_code_cache_version(self):
-        return (4)
+        return (5)
 
     def c_support_code(self):
         return """
@@ -942,6 +942,76 @@ using namespace std;
             d["all_shape"]="1"
             d["dim_zz_const"]="const"
             d["dim_zz_affect"]=""
+            d["assert_size"]="""
+// Check the batch size and the number of kernel (sometimes constant in the graph)
+if(img2d_dim[0] != %(self_bsize)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the batch size in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)img2d_dim[0], (long)%(self_bsize)s);
+    %(fail)s;
+}
+if(kerns_dim[0] != %(self_nkern)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the number of kernel in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)kerns_dim[0], (long)%(self_nkern)s);
+    %(fail)s;
+}
+
+// Check the size of the image (sometimes constant in the graph)
+if(img2d_dim[1] != %(self_imshp0)s){
+    PyErr_Format(PyExc_ValueError,
+      "the stack size in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)img2d_dim[1], (long)%(self_imshp0)s);
+    %(fail)s;
+}
+if(img2d_dim[2] != %(self_imshp1)s){
+    PyErr_Format(PyExc_ValueError,
+      "the number of row in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)img2d_dim[2], (long)%(self_imshp1)s);
+    %(fail)s;
+}
+if(img2d_dim[3] != %(self_imshp2)s){
+    PyErr_Format(PyExc_ValueError,
+      "the number of col in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)img2d_dim[3], (long)%(self_imshp2)s);
+    %(fail)s;
+}
+
+// Check the size of the output (sometimes constant in the graph)
+if(dim_zz[0] != %(self_outshp0)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the precomputed number of row in the output(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)dim_zz[0], (long)%(self_outshp0)s);
+    %(fail)s;
+}
+if(dim_zz[1] != %(self_outshp1)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the precomputed number of col in the output(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)dim_zz[1], (long)%(self_outshp1)s);
+    %(fail)s;
+}
+
+// Check the size of the filter (sometimes constant in the graph)
+if(kerns_dim[1] %% %(self_imshp0)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the stack size in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)kerns_dim[1], (long)%(self_imshp0)s);
+    %(fail)s;
+}
+if(kerns_dim[2] %% %(self_kshp0)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the number of row in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)kerns_dim[2], (long)%(self_kshp0)s);
+    %(fail)s;
+}
+if(kerns_dim[3] %% %(self_kshp1)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the number of columns in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      (long)kerns_dim[3], (long)%(self_kshp1)s);
+    %(fail)s;
+}
+
+"""%(locals())
         else:
             d["self_bsize"]="%(img2d)s->dimensions[0]"%d
             d["self_nkern"]="%(filtersflipped)s->dimensions[0]"%d
@@ -964,6 +1034,7 @@ using namespace std;
     dim_zz[1] = (int)ceil((dim_im[1]-dim_ker1+1)/float(%(self_dy)s));
   }
 """% d
+            d["assert_size"]=""
 
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
@@ -1071,6 +1142,8 @@ if(%(filtersflipped)s->nd==3){
       ("kernel don't have a good shape. " + param).c_str());
     %(fail)s;
 }
+
+%(assert_size)s
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
@@ -1355,6 +1428,8 @@ if ((!%(z)s)
   PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
 
+%(assert_size)s
+
 int Os[2];
 Os[0] = dim_im[0]-dim_ker0+1;
 Os[1] = dim_im[1]-dim_ker1+1;
@@ -1555,18 +1630,7 @@ if(%(filtersflipped)s->nd==3){
     %(fail)s;
 }
 
-if(img2d_dim[0] %% %(self_bsize)s!=0){
-    PyErr_Format(PyExc_ValueError,
-      "the batch size of the image(%%ld) must be a multiple of the bsize value at ConvOp construction(%%ld).",
-      (long)img2d_dim[0],(long)%(self_bsize)s);
-    %(fail)s;
-}
-if(kerns_dim[0] %% %(self_nkern)s!=0){
-    PyErr_Format(PyExc_ValueError,
-      "the number of kernel(%%ld) must be a multiple of the nkern value at ConvOp construction(%%ld).",
-      (long)kerns_dim[0], (long)%(self_nkern)s);
-    %(fail)s;
-}
+%(assert_size)s
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
@@ -1799,18 +1863,7 @@ if(%(filtersflipped)s->nd==3){
     %(fail)s;
 }
 
-if(img2d_dim[0] != %(self_bsize)s){
-    PyErr_Format(PyExc_ValueError,
-      "the batch size of the image(%%ld) must be a multiple of the bsize value at ConvOp construction(%%ld).",
-      (long)img2d_dim[0],(long)%(self_bsize)s);
-    %(fail)s;
-}
-if(kerns_dim[0] != %(self_nkern)s){
-    PyErr_Format(PyExc_ValueError,
-      "the number of kernel(%%ld) must be a multiple of the nkern value at ConvOp construction(%%ld).",
-      (long)kerns_dim[0], (long)%(self_nkern)s);
-    %(fail)s;
-}
+%(assert_size)s
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
