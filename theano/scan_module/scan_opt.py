@@ -132,6 +132,10 @@ scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
                      5,
                      'fast_run',
                      'scan')
+# We need this as some scan optimization move some computation outside of scan.
+# So we need to reapply some optimization that was done before.
+proxydb = theano.gof.ProxyDB(theano.tensor.blas.blas_optdb)
+optdb.register('BlasOpt2', proxydb, 1.91, 'fast_run')
 
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
