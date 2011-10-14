@@ -1370,6 +1370,57 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog)==2
         f([1,2,3], 4) # let debugmode test something
 
+    def test7(self):
+        # test that Subtensor(Rebroadcast(x)) gets optimized into
+        # Rebroadcast(Subtensor(x)).
+        
+        # test basic case
+        x = tensor.matrix('x')
+        xval = numpy.random.rand(1,10).astype(config.floatX)
+        assert x.broadcastable == (False,False)
+        newx = tensor.Rebroadcast((0,True),(1,False))(x)
+        assert newx.broadcastable == (True,False)
+
+        f1 = function([x], newx[:2,:5], mode=mode_opt)
+        prog=f1.maker.env.toposort()
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.Rebroadcast)
+        assert (f1(xval) == xval[:2,:5]).all()
+
+        # corner case 1: rebroadcast changes dims which are dropped through subtensor
+        y = tensor.tensor4('x')
+        yval = numpy.random.rand(1,10,1,3).astype(config.floatX)
+        assert y.broadcastable == (False,False,False,False)
+        newy = tensor.Rebroadcast((0,True),(2,True))(y)
+        assert newy.broadcastable == (True,False,True,False)
+
+        f2 = function([y], newy[:,3,0,:], mode=mode_opt)
+        prog=f2.maker.env.toposort()
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.Rebroadcast)
+        assert (f2(yval) == yval[:,3,0,:]).all()
+        
+        # corner case 2: subtensor idx_list is shorter than resulting broadcast pattern
+        f3 = function([y], newy[:,3,0], mode=mode_opt)
+        prog=f3.maker.env.toposort()
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.Rebroadcast)
+        assert (f3(yval) == yval[:,3,0]).all()
+
+        # corner case 3: subtensor idx_list is shorter than rebroadcast.axis
+        z = tensor.tensor4('x')
+        zval = numpy.random.rand(4,10,3,1).astype(config.floatX)
+        assert z.broadcastable == (False,False,False,False)
+        newz = tensor.Rebroadcast((3,True))(z)
+        assert newz.broadcastable == (False,False,False,True)
+
+        out = newz[:,3,0]
+        f4= function([z], newz[:,3,0], mode=mode_opt)
+        prog=f4.maker.env.toposort()
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.Rebroadcast)
+        assert (f4(zval) == zval[:,3,0]).all()
+ 
 class test_local_subtensor_merge(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

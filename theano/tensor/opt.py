@@ -1311,13 +1311,16 @@ def local_subtensor_lift(node):
     """
     unary(x)[idx] -> unary(x[idx])#any broadcast pattern.
 
+    Handles the following unary ops:
     elemwise(x,...)[idx] -> elemwise(x[idx],...)
-    when x,... are broadcasted scalar or not broadcasted at all
+      when x,... are broadcasted scalar or not broadcasted at all
+    rebroadcast(x)[idx] => rebroadcast(x[idx]) 
     """
     if isinstance(node.op, T.Subtensor):
         u = node.inputs[0]
         if not u.owner or len(u.clients) > 1:
             return False
+
         if isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
@@ -1345,6 +1348,35 @@ def local_subtensor_lift(node):
                         else:
                             new_inputs.append(i.dimshuffle(['x']*node.outputs[0].ndim))
                 return [u.owner.op(*new_inputs)]
+
+        if isinstance(u.owner.op, T.Rebroadcast):
+            # make sure that Subtensor and Rebroadcast only have 1 input/output
+            assert len(node.inputs) == 1
+            assert len(u.owner.inputs) == 1
+
+            # Subtensor might reduce dim., adapt broadcast pattern accordingly
+            new_axis = []
+
+            # loop through indices being subtensor-ed
+            # i indexes broadcastable pattern before subtensor
+            # j indexes broadcastable pattern after subtensor
+            j = 0
+            for (i,x) in enumerate(node.op.idx_list):
+                # if its not a slice, it will reduce the dimension, should
+                # not appear in the broascastable dimensions
+                if isinstance(x, slice):
+                    new_axis += [(j, u.broadcastable[i])]
+                    j += 1
+            # now keep the broadcastable pattern of all 
+            # items not appearing in subtensor list
+            for i in xrange(len(node.op.idx_list), len(u.broadcastable)):
+                new_axis += [(j,u.broadcastable[i])]
+                j += 1
+
+            subt_x = T.Subtensor(node.op.idx_list)(u.owner.inputs[0])
+            rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
+
+            return [rbcast_subt_x]
 
 
 def merge_two_slices(slice1, len1, slice2, len2):
