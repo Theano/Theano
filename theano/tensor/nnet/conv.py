@@ -943,16 +943,16 @@ using namespace std;
             d["dim_zz_const"]="const"
             d["dim_zz_affect"]=""
             d["assert_size"]="""
-// Check the batch size and the number of kernel (sometimes constant in the graph)
+// Check the batch size and the number of kernels (sometimes constant in the graph)
 if(img2d_dim[0] != %(self_bsize)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the batch size in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the batch size in the image (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)img2d_dim[0], (long)%(self_bsize)s);
     %(fail)s;
 }
 if(kerns_dim[0] != %(self_nkern)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the number of kernel in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the number of kernels in the filter (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)kerns_dim[0], (long)%(self_nkern)s);
     %(fail)s;
 }
@@ -960,19 +960,19 @@ if(kerns_dim[0] != %(self_nkern)s!=0){
 // Check the size of the image (sometimes constant in the graph)
 if(img2d_dim[1] != %(self_imshp0)s){
     PyErr_Format(PyExc_ValueError,
-      "the stack size in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the image stack size (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)img2d_dim[1], (long)%(self_imshp0)s);
     %(fail)s;
 }
 if(img2d_dim[2] != %(self_imshp1)s){
     PyErr_Format(PyExc_ValueError,
-      "the number of row in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the number of rows in the image (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)img2d_dim[2], (long)%(self_imshp1)s);
     %(fail)s;
 }
 if(img2d_dim[3] != %(self_imshp2)s){
     PyErr_Format(PyExc_ValueError,
-      "the number of col in the image(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the number of columns in the image (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)img2d_dim[3], (long)%(self_imshp2)s);
     %(fail)s;
 }
@@ -980,13 +980,13 @@ if(img2d_dim[3] != %(self_imshp2)s){
 // Check the size of the output (sometimes constant in the graph)
 if(dim_zz[0] != %(self_outshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the precomputed number of row in the output(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the precomputed number of rows in the output (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)dim_zz[0], (long)%(self_outshp0)s);
     %(fail)s;
 }
 if(dim_zz[1] != %(self_outshp1)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the precomputed number of col in the output(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the precomputed number of columns in the output (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)dim_zz[1], (long)%(self_outshp1)s);
     %(fail)s;
 }
@@ -994,19 +994,19 @@ if(dim_zz[1] != %(self_outshp1)s!=0){
 // Check the size of the filter (sometimes constant in the graph)
 if(kerns_dim[1] %% %(self_imshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the stack size in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the filter stack size (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)kerns_dim[1], (long)%(self_imshp0)s);
     %(fail)s;
 }
 if(kerns_dim[2] %% %(self_kshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the number of row in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the number of rows in the filter (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)kerns_dim[2], (long)%(self_kshp0)s);
     %(fail)s;
 }
 if(kerns_dim[3] %% %(self_kshp1)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the number of columns in the filter(%%ld) at run time is different then at build time(%%ld) for the ConvOp.",
+      "the number of columns in the filter (%%ld) at run time is different than at build time (%%ld) for the ConvOp.",
       (long)kerns_dim[3], (long)%(self_kshp1)s);
     %(fail)s;
 }
