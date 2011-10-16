@@ -222,6 +222,7 @@ class TestConv2D(unittest.TestCase):
         """
         self.assertRaises(AssertionError, self.validate, (3,2,8,8), (4,3,5,5),
                           'valid')
+
     def test_invalid_input_shape(self):
         """
         Tests that when the shape gived at build time is not the same as
@@ -231,44 +232,52 @@ class TestConv2D(unittest.TestCase):
             for unroll_kern in [None, 2, 4]:
                 for unroll_patch in [None, True, False]:
                     for mode in ['valid', 'full']:
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_image_shape = (2,2,8,8),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_image_shape=(2, 2, 8, 8),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_image_shape = (3,1,8,8),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_image_shape=(3, 1, 8, 8),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_image_shape = (3,2,7,8),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_image_shape=(3, 2, 7, 8),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_image_shape = (3,2,8,7),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_image_shape=(3, 2, 8, 7),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
 
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_filter_shape = (3,2,5,5),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_filter_shape=(3, 2, 5, 5),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_filter_shape = (4,1,5,5),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_filter_shape=(4, 1, 5, 5),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_filter_shape = (4,2,6,5),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_filter_shape=(4, 2, 6, 5),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate, (3,2,8,8), (4,2,5,5),
-                                          mode, N_filter_shape = (4,2,5,6),
+                        self.assertRaises(ValueError, self.validate,
+                                          (3, 2, 8, 8), (4, 2, 5, 5),
+                                          mode, N_filter_shape=(4, 2, 5, 6),
                                           unroll_batch=unroll_batch,
                                           unroll_kern=unroll_kern,
                                           unroll_patch=unroll_patch)
