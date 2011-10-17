@@ -1,4 +1,8 @@
-import sys, time
+import sys
+import time
+import unittest
+
+
 import numpy
 
 from nose.plugins.skip import SkipTest
@@ -86,7 +90,7 @@ def _params_allgood_header():
 
 def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
-        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
+        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False, kshp=None):
     #
     # This function is the core of several of the big unit-test drivers,
     # but it can also be used very directly on its own to test a specific
@@ -124,7 +128,10 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         t1 = time.time()
         i = cuda_tensor4()
         k = cuda_tensor4()
-        op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,subsample=subsample, version=version, verbose=verbose)(i,k)
+        op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
+                                              subsample=subsample,
+                                              version=version,
+                                              verbose=verbose, kshp=kshp)(i,k)
         f=theano.function([i,k],op, mode=theano_mode)
         gpuval = f(img,kern)
         t2 = time.time()
@@ -180,7 +187,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
 
     return rval
 
-def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, ones=False):
+def exec_conv(version, shapes, verbose, random, mode,
+              print_=None, rtol=1e-5, ones=False, kshp=None):
     if verbose>0:
         _params_allgood_header()
     nb_failed = 0
@@ -204,7 +212,8 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
                         id=id,
                         print_=print_,
                         rtol=rtol,
-                        ones=ones)
+                        ones=ones,
+                        kshp=kshp)
             except Exception, e:
                 print ver, id,(ishape, kshape, subshape, istride, kstride)
                 print e
@@ -583,6 +592,35 @@ def test_subsample():
 #    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
 
 
+class TestConv2DGPU(unittest.TestCase):
+    def test_invalid_input_shape(self):
+        """
+        Tests that when the shape gived at build time is not the same as
+        run time we raise an error
+        """
+        verbose = 0
+        random = True
+        print_ = False
+        ones = False
+        if ones:
+            random = False
+
+        global theano_mode
+        theano_mode_orig = theano_mode
+        try:
+            if theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
+                theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+                for mode in ['valid', 'full']:
+                    for shapes in [((3,2,8,8), (4,2,5,5), (8,8)),
+                                   ((3,2,8,8), (4,2,5,5), (5,8)),
+                                   #((3,2,8,8), (4,2,5,5), (8,5)),# We use only the number of columns.
+                                   ]:
+
+                        self.assertRaises(ValueError, _params_allgood, shapes[0], shapes[1],
+                                          verbose=verbose, random=random, mode=mode,
+                                          print_=print_, ones=ones, kshp=shapes[2])
+        finally:
+            theano_mode = theano_mode_orig
 def _test_dummy():
     ishape = (1, 1, 5, 5)
     kshape = (1, 1, 3, 3)
