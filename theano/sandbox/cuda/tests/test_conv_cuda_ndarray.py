@@ -559,7 +559,7 @@ def test_full():
 
 def test_subsample():
     # implement when
-    shapes = [ 
+    shapes = [
             ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
             , ((1, 1, 1, 1), (1, 1, 1, 1), (2,2), (1,1), (1,1))
             , ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3), (1,1), (1,1))
@@ -580,7 +580,7 @@ def test_subsample():
     ones = False
     if ones:
         random = False
-    
+
     exec_conv(version_valid, shapes, verbose, random, 'valid', print_=print_, ones=ones)
     exec_conv(version_full, shapes, verbose, random, 'full', print_=print_, ones=ones)
 
@@ -609,9 +609,10 @@ class TestConv2DGPU(unittest.TestCase):
             if theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
                 theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
                 for mode in ['valid', 'full']:
-                    for shapes in [((3,2,8,8), (4,2,5,5), (8,8)),
-                                   ((3,2,8,8), (4,2,5,5), (5,8)),
-                                   #((3,2,8,8), (4,2,5,5), (8,5)),# We use only the number of columns.
+                    for shapes in [((3, 2, 8, 8), (4, 2, 5, 5), (8, 8)),
+                                   ((3, 2, 8, 8), (4, 2, 5, 5), (5, 8)),
+                                   #((3, 2, 8, 8), (4, 2, 5, 5), (8, 5)),
+                                   # We use only the number of columns.
                                    ]:
 
                         self.assertRaises(ValueError, _params_allgood, shapes[0], shapes[1],
