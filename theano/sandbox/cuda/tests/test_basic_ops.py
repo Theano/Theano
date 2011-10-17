@@ -792,6 +792,20 @@ def test_gpualloc_output_to_gpu():
     assert numpy.allclose(f(5),f_gpu(5))
 
 import theano.tensor.tests.test_basic
+class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = mode_with_gpu.excluding('constant_folding')
+        self.join_op = cuda.GpuJoin
+        self.split_op = tensor.Split
+        # No Make vector on the gpu, Join used instead
+        self.make_vector_op = cuda.GpuJoin
+        self.floatX = "float32"
+        # In FAST_COMPILE mode, we force the FAST_RUN mode for optimization.
+        self.hide_error = not theano.config.mode in ['DebugMode', 'DEBUG_MODE']
+        self.shared = cuda.shared_constructor
+
+
 # This is to don't duplicate test.
 class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     shared=staticmethod(cuda.shared_constructor)

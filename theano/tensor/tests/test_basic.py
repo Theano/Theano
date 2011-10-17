@@ -2539,10 +2539,10 @@ class T_Join_and_Split(unittest.TestCase):
         self.mode = theano.compile.get_default_mode().excluding('constant_folding')
         self.join_op = Join
         self.split_op = Split
+        self.make_vector_op = opt.MakeVector
         self.floatX = config.floatX
         self.hide_error = not theano.config.mode in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']
         self.shared = shared
-
 
     def eval_outputs_and_check_join(self, outputs):
         f = theano.function([], outputs, self.mode)
@@ -2553,10 +2553,13 @@ class T_Join_and_Split(unittest.TestCase):
             return variables[0]
         return variables
 
-    def eval_outputs_and_check_vector(self, outputs):
+    def eval_outputs_and_check_vector(self, outputs,
+                                      make_vector_op = None):
+        if make_vector_op is None:
+            make_vector_op = self.make_vector_op
         f = theano.function([], outputs, self.mode)
         topo = f.maker.env.toposort()
-        assert [True for node in topo if isinstance(node.op, opt.MakeVector)]
+        assert [True for node in topo if isinstance(node.op, make_vector_op)]
         variables = f()
         if isinstance(variables,(tuple,list)) and len(variables) == 1:
             return variables[0]
@@ -2572,14 +2575,15 @@ class T_Join_and_Split(unittest.TestCase):
         self.fail()
 
     def test_stack_mixed_type_constants(self):
+        # tested only on cpu as gpu support only float32
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
-        c = shared(numpy.asarray(3.0))
+        c = shared(numpy.asarray(3.0).astype(self.floatX))
         s = stack(a, b, c)
 
 
         want = numpy.array([1, 2, 3])
-        out = self.eval_outputs_and_check_vector([s])
+        out = self.eval_outputs_and_check_vector([s], opt.MakeVector)
         self.assertTrue((out == want).all())
 
     def test_stack_scalar(self):
