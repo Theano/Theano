@@ -84,7 +84,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     const int out_size_byte = out_size*sizeof(float);
     if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
       PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-		   " %d kernel columns, but the kernel we received had %d colums!",
+		   " %d kernel columns, but the kernel we received had %d columns!",
 		   THEANO_KERN_WID, CudaNdarray_HOST_DIMS(kern)[3]);
       return -1;
     }
@@ -768,7 +768,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
     if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
       PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-		   " %d kernel columns, but the kernel we received had %d colums!",
+		   " %d kernel columns, but the kernel we received had %d columns!",
 		   THEANO_KERN_WID, CudaNdarray_HOST_DIMS(kern)[3]);
       return -1;
     }
