@@ -90,13 +90,18 @@ def _params_allgood_header():
 
 def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
-        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False, kshp=None):
+        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False, compile_kshp=None):
     #
     # This function is the core of several of the big unit-test drivers,
     # but it can also be used very directly on its own to test a specific
     # kind of convolution.
     #
     # See `test_example` (above) for an example of how to use this directly.
+    #
+    # :param kshape: (4d)The shape of the kernel at run time.
+    # :param compile_kshp: (2d) hardcode the shape of the kernel in the generated code
+    #                      This is supposed to be faster, but we need to check
+    #                      That we raise an error if the input have the wrong shape.
     #
     if ones:
         assert not random
@@ -131,7 +136,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
                                               subsample=subsample,
                                               version=version,
-                                              verbose=verbose, kshp=kshp)(i,k)
+                                              verbose=verbose, kshp=compile_kshp)(i,k)
         f=theano.function([i,k],op, mode=theano_mode)
         gpuval = f(img,kern)
         t2 = time.time()
@@ -617,7 +622,7 @@ class TestConv2DGPU(unittest.TestCase):
 
                         self.assertRaises(ValueError, _params_allgood, shapes[0], shapes[1],
                                           verbose=verbose, random=random, mode=mode,
-                                          print_=print_, ones=ones, kshp=shapes[2])
+                                          print_=print_, ones=ones, compile_kshp=shapes[2])
         finally:
             theano_mode = theano_mode_orig
 def _test_dummy():
