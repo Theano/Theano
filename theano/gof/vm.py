@@ -20,24 +20,8 @@ AddConfigVar('profile',
         "If VM should collect profile information",
         BoolParam(False))
 
+raise_with_op = link.raise_with_op
 
-def raise_with_op(op, exc_info = None):
-    """WRITEME"""
-    if exc_info is None:
-        exc_info = sys.exc_info()
-    exc_type, exc_value, exc_trace = exc_info
-    if exc_type == KeyboardInterrupt:
-        # print a simple traceback from KeyboardInterrupt
-        raise exc_type, exc_value, exc_trace
-    try:
-        trace = op.tag.trace
-    except AttributeError:
-        trace = ()
-    exc_value.__thunk_trace__ = trace
-    exc_value.args += (op, )
-    if op in op.env.toposort():
-        exc_value.args += ('Sequence id of Apply node='+str(op.env.toposort().index(op)),)
-    raise exc_type, exc_value, exc_trace
 
 class VM(object):
     """
@@ -114,6 +98,7 @@ class VM(object):
             self.call_times[i] = 0.0
             self.call_counts[i] = 0
 
+
 class Loop(VM):
     """
     Unconditional start-to-finish program execution in Python.
@@ -140,6 +125,7 @@ class Loop(VM):
                     thunk()
             except:
                 raise_with_op(node)
+
 
 class LoopGC(VM):
     """
@@ -178,6 +164,7 @@ class LoopGC(VM):
                         old_s[0] = None
             except:
                 raise_with_op(node)
+
 
 class Stack(VM):
     """
@@ -385,6 +372,7 @@ class Stack(VM):
                                 if empty_storage_map:
                                     storage_map[i][0] = None
 
+
 try:
     import lazylinker_c
     class CVM(lazylinker_c.CLazyLinker, VM):
@@ -393,6 +381,7 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
+
 
 class VM_Linker(link.LocalLinker):
     """

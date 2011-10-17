@@ -8,6 +8,33 @@ from copy import copy
 from theano.gof.python25 import all
 
 __excepthook = sys.excepthook
+
+def log_thunk_trace(value, f=sys.stderr):
+    """Log theano's diagnostic stack trace for an exception
+    raised by raise_with_op.
+    """
+    # in future, consider accepting `write` as arg rather than file
+    # to support writing to a logger
+    def write(msg):
+        print >> f, "log_thunk_trace: %s" % msg.strip()
+
+    if hasattr(value, '__thunk_trace__'):
+        trace2 = value.__thunk_trace__
+        write("There was a problem executing an Op.")
+        if trace2 is None:
+            write("Could not find where this Op was defined.")
+            write(" * You might have instantiated this Op "
+                    "directly instead of using a constructor.")
+            write(" * The Op you constructed might have been"
+                    " optimized. Try turning off optimizations.")
+        elif trace2:
+            write("Definition in: ")
+            for line in traceback.format_list(trace2):
+                write(line)
+            write("For the full definition stack trace set"
+                    " the Theano flags traceback.limit to -1")
+
+
 def thunk_hook(type, value, trace):
     """WRITEME
     This function is meant to replace excepthook and do some
@@ -20,20 +47,7 @@ def thunk_hook(type, value, trace):
 
     :note: This hook replaced by nosetests, so it does not run in nose tests.
     """
-    if hasattr(value, '__thunk_trace__'):
-        trace2 = value.__thunk_trace__
-        if trace2 is None:
-            print>>sys.stderr, "Could not find where this Op was defined."
-            print>>sys.stderr, (" * You might have instantiated this Op "
-                    "directly instead of using a constructor.")
-            print>>sys.stderr, (" * The Op you constructed might have been"
-                    " optimized. Try turning off optimizations.")
-        elif trace2:
-            print>>sys.stderr, "Definition in: "
-            for line in traceback.format_list(trace2):
-                print>>sys.stderr, line,
-            print>>sys.stderr, ("For the full definition stack trace set"
-                    " the Theano flags traceback.limit to -1")
+    log_thunk_trace(value)
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
 
@@ -85,8 +99,15 @@ def raise_with_op(op, exc_info=None):
         exc_value.__applynode_index__ = op.env.toposort().index(op)
     else:
         exc_value.__applynode_index__ = None
+
+    # nose and unittest catch the exception and do not run th thunk_hook
+    # so it can be useful to just blurt out errors right here
+    if raise_with_op.print_thunk_trace:
+        log_thunk_trace(exc_value)
+
     raise exc_type, exc_value, exc_trace
 
+raise_with_op.print_thunk_trace = False
 
 class Linker(object):
     """WRITEME"""
