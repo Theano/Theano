@@ -581,8 +581,6 @@ def test_subsample():
     if ones:
         random = False
     
-    #test
-    random = False
     exec_conv(version_valid, shapes, verbose, random, 'valid', print_=print_, ones=ones)
     exec_conv(version_full, shapes, verbose, random, 'full', print_=print_, ones=ones)
 
