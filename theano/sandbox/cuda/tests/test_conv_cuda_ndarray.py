@@ -193,7 +193,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
     return rval
 
 def exec_conv(version, shapes, verbose, random, mode,
-              print_=None, rtol=1e-5, ones=False, kshp=None):
+              print_=None, rtol=1e-5, ones=False):
     if verbose>0:
         _params_allgood_header()
     nb_failed = 0
@@ -217,8 +217,7 @@ def exec_conv(version, shapes, verbose, random, mode,
                         id=id,
                         print_=print_,
                         rtol=rtol,
-                        ones=ones,
-                        kshp=kshp)
+                        ones=ones)
             except Exception, e:
                 print ver, id,(ishape, kshape, subshape, istride, kstride)
                 print e
