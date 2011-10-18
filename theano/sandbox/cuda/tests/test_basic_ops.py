@@ -648,46 +648,6 @@ def test_hostfromgpu_shape_i():
 import theano.sandbox.cuda as cuda_ndarray
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuDimShuffle
 
-def test_gpujoin_concatenate_one_element():
-    m = T.fmatrix()
-    c = T.concatenate([m])
-    f = theano.function(inputs=[m], outputs=[c], mode=mode_with_gpu)
-    topo = f.maker.env.toposort()
-    assert len(topo)==1
-    assert isinstance(topo[0].op,theano.compile.DeepCopyOp)
-
-def test_gpujoin_twomatrices_joincolumns():
-    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
-    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = tcn.shared_constructor(_a)
-    b = tcn.shared_constructor(_b)
-
-    c = gpu_join(1,a,b)
-
-    f = theano.function([], c)
-
-    assert numpy.all(f() == numpy.concatenate([_a,_b], axis=1))
-
-def test_gpujoin_twomatrices_badshapes():
-    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
-    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = tcn.shared_constructor(_a)
-    b = tcn.shared_constructor(_b)
-
-    # try to join on dimension 0 where they don't agree (2!=3)
-    c = gpu_join(0,a,b)
-
-    f = theano.function([], c)
-
-    try:
-        f()
-        assert False
-    except ValueError:
-        assert True
-
-
-
-
 def test_gpujoin_preserves_broadcasting():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
@@ -797,6 +757,7 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.join_op = cuda.GpuJoin
+        # No gpu split.
         self.split_op = tensor.Split
         # No Make vector on the gpu, Join used instead
         self.make_vector_op = cuda.GpuJoin

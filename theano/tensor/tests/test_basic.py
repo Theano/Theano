@@ -2578,7 +2578,7 @@ class T_Join_and_Split(unittest.TestCase):
         # tested only on cpu as gpu support only float32
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
-        c = shared(numpy.asarray(3.0).astype(self.floatX))
+        c = shared(numpy.asarray(3.0, dtype=self.floatX))
         s = stack(a, b, c)
 
 
@@ -2640,6 +2640,17 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n.op,opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.env.outputs[0].dtype == 'int64'
+
+    def test_join_concatenate_one_element(self):
+        ''' Fast test of concatenate as this is an alias for join.
+        also test that we remove the Join op if there is only 1 input'''
+        m = tensor.fmatrix()
+        c = tensor.concatenate([m])
+        f = theano.function(inputs=[m], outputs=[c],
+                            mode=self.mode.including('local_join_1'))
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op,theano.compile.DeepCopyOp)
 
     def test_join_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
