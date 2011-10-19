@@ -4,6 +4,7 @@ import theano
 from theano import tensor, function
 from theano.tensor.basic import _allclose
 from theano.tests import unittest_tools as utt
+from theano import config
 
 utt.seed_rng()
 
@@ -94,19 +95,17 @@ def test_det_grad():
 
 def test_extract_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
-    x = theano.tensor.fmatrix()
+    x = theano.tensor.matrix()
     g = extract_diag(x)
     f = theano.function([x], g)
 
-    v = numpy.array([0.1, 0.2, 0.4]).astype('float32')
-    m = numpy.diag(v)
+    m = rng.rand(3,3).astype(config.floatX)
+    v = numpy.diag(m)
     r = f(m)
     # The right diagonal is extracted
     assert (r == v).all()
-    # Make sure we don't have a view
-    assert r.base is None
 
-    m = rng.rand(2, 3).astype('float32')
+    m = rng.rand(2, 3).astype(config.floatX)
     ok = False
     try:
         r = f(m)
@@ -114,10 +113,10 @@ def test_extract_diag():
         ok = True
     assert ok
 
-    xx = theano.tensor.fvector()
+    xx = theano.tensor.vector()
     ok = False
     try:
-        g = extract_diag(xx)
+        extract_diag(xx)
     except TypeError:
         ok = True
     assert ok
