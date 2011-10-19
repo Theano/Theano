@@ -2,7 +2,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
-from theano.sandbox.cuda import CudaNdarrayType, cuda_available, cuda_enabled
+from theano.sandbox.cuda import CudaNdarrayType, cuda_available
 
 import theano
 
@@ -17,12 +17,11 @@ def test_shared_pickle():
     v = numpy.array([1.0, 2.0], dtype='float32')
 
     # This test will always be on the GPU
-    if cuda_enabled:
-        assert isinstance(g, theano.tensor.basic.TensorVariable)
-        assert isinstance(g.owner, theano.gof.graph.Apply)
-        assert isinstance(g.owner.op, theano.sandbox.cuda.HostFromGpu)
-        assert isinstance(g.owner.inputs[0], CudaNdarrayType.SharedVariable)
-        assert (g.owner.inputs[0].get_value() == v).all()
+    assert isinstance(g, theano.tensor.basic.TensorVariable)
+    assert isinstance(g.owner, theano.gof.graph.Apply)
+    assert isinstance(g.owner.op, theano.sandbox.cuda.HostFromGpu)
+    assert isinstance(g.owner.inputs[0], CudaNdarrayType.SharedVariable)
+    assert (g.owner.inputs[0].get_value() == v).all()
 
     # Make sure it saves the same way (so that the tests before are not bogus)
     s = theano.tensor.as_tensor_variable(theano.shared(v))
