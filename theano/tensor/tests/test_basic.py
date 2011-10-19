@@ -2760,35 +2760,37 @@ class T_Join_and_Split(unittest.TestCase):
         a join operation on non-join axes are True if one or
         more inputs is broadcastable on that dimension.
         """
-        a = TensorType(dtype=self.floatX, broadcastable=[0, 0, 1])()
-        b = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
-        c = join(1, a, b)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(1, 4, 1).astype(self.floatX)
+        b_val = rng.rand(1, 3, 1).astype(self.floatX)
+
+        a = self.shared(a_val, broadcastable=(False, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(1, a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # Opt can remplace the int by a Theano constant
-        c = join(tensor.constant(1), a, b)
+        c = self.join_op()(theano.tensor.constant(1), a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # In case futur opt insert other useless stuff
-        c = join(tensor.cast(tensor.constant(1), dtype="int32"),
+        c = self.join_op()(theano.tensor.cast(theano.tensor.constant(1), dtype="int32"),
                  a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
-        f = function([a,b], c, mode=self.mode)
+        f = function([], c, mode=self.mode)
         topo = f.maker.env.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1).astype(self.floatX)
-        b_val = rng.rand(1, 3, 1).astype(self.floatX)
-        f(a_val, b_val)
+        f()
         utt.verify_grad((lambda a,b: join(1,a,b)), [a_val, b_val], rng=rng)
+
         # Should raise an error if dimension 0 does not match
-        bad_a_val = rng.rand(2, 4, 1).astype(self.floatX)
-        self.assertRaises(ValueError, f, bad_a_val, b_val)
+        a.set_value(rng.rand(2, 4, 1).astype(self.floatX))
+        self.assertRaises(ValueError, f)
 
     def test_broadcastable_flag_assignment_mixed_thisaxes(self):
         """
@@ -2796,21 +2798,29 @@ class T_Join_and_Split(unittest.TestCase):
         is False when some inputs are broadcastable on that
         dimension.
         """
-        a = TensorType(dtype=self.floatX, broadcastable=[0, 0, 1])()
-        b = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
-        c = join(0, a, b)
-        assert not c.type.broadcastable[0]
-
-        f = function([a,b], c, mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
-
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(2, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 4, 1).astype(self.floatX)
-        f(a_val, b_val)
+
+        a = self.shared(a_val, broadcastable=(False, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(0, a, b)
+        assert not c.type.broadcastable[0]
+
+        f = function([], c, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
         # Should raise an error if b_val.shape[0] is not 1
+        # We can't set the value|
+        self.assertRaises(TypeError, b.set_value,
+                          rng.rand(3, 4, 1).astype(self.floatX))
+        a = TensorType(dtype=self.floatX, broadcastable=[0, 0, 1])()
+        b = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        f = function([a, b], c, mode=self.mode)
         bad_b_val = rng.rand(3, 4, 1).astype(self.floatX)
         self.assertRaises(TypeError, f, a_val, bad_b_val)
 
@@ -2820,49 +2830,46 @@ class T_Join_and_Split(unittest.TestCase):
         broadcastable on the join dimension results in the output
         being non-broadcastable on the join dimension.
         """
-        a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
-        b = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
-        c = join(0, a, b)
-        assert not c.type.broadcastable[0]
-
-        f = function([a,b], c, mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
-
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 4, 1).astype(self.floatX)
-        f(a_val, b_val)
+
+        a = self.shared(a_val, broadcastable=(True, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(0, a, b)
+        assert not c.type.broadcastable[0]
+
+        f = function([], c, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
         utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
-        # Should raise an error if length of dimension 0 is not 1
-        bad_a_val = rng.rand(2, 4, 1).astype(self.floatX)
-        bad_b_val = rng.rand(3, 4, 1).astype(self.floatX)
-        self.assertRaises(TypeError, f, bad_a_val, b_val)
-        self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
         """
         Test that all broadcastable flags are preserved by a
         single-input join.
         """
-        a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
-        b = join(0, a)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(1, 4, 1).astype(self.floatX)
+        a = self.shared(a_val, broadcastable=(True, False, True))
+        b = self.join_op()(0, a)
         assert b.type.broadcastable[0]
         assert b.type.broadcastable[2]
         assert not b.type.broadcastable[1]
 
-        f = function([a], b, mode=self.mode)
+        f = function([], b, mode=self.mode)
         topo = f.maker.env.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert not [True for node in topo if isinstance(node.op, self.join_op)]
 
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1).astype(self.floatX)
-        f(a_val)
+        f()
         utt.verify_grad((lambda a: join(0,a)), [a_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        bad_a_val = rng.rand(2, 4, 1).astype(self.floatX)
-        self.assertRaises(TypeError, f, bad_a_val)
+        self.assertRaises(TypeError, a.set_value,
+                          rng.rand(2, 4, 1).astype(self.floatX))
+        #self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
         """
