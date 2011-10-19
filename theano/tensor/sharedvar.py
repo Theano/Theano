@@ -5,6 +5,9 @@ from basic import TensorType, _tensor_py_operators, autocast_int, autocast_float
 from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
+def load_shared_variable(val):
+    return tensor_constructor(val)
+
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     pass
