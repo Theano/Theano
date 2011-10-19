@@ -448,8 +448,11 @@ alloc_diag = AllocDiag()
 
 def diag(x):
     """Numpy-compatibility method
+    
+    If `x` is a matrix, return its diagonal.
+    If `x` is a vector return a matrix with it as its diagonal.
 
-    For vector `x`, return a zero matrix except for `x` as diagonal.
+    * This method does not support the `k` argument that numpy supports.
     """
     xx = as_tensor_variable(x)
     if xx.type.ndim == 1:
