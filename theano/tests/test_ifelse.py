@@ -37,6 +37,17 @@ class test_ifelse(unittest.TestCase):
         assert numpy.allclose(vx, f(1, vx, vy))
         assert numpy.allclose(vy, f(0, vx, vy))
 
+    def test_lazy_if_on_generics(self):
+        x = theano.generic()
+        y = theano.generic()
+        c = tensor.iscalar('c')
+        f = theano.function([c, x, y], ifelse(c, x, y))
+
+        vx = ['testX']
+        vy = ['testY']
+        assert f(1, vx, vy) == vx
+        assert f(0, vx, vy) == vy
+
     def test_grad_lazy_if(self):
         # Tests that we can compute the gradients through lazy if
         x = tensor.vector('x')
