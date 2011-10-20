@@ -69,7 +69,6 @@ class IfElse(PureOp):
             for idx in xrange(n_outs):
                 view_map[idx] = [idx + 1]
             self.view_map = view_map
-            #raise NotImplementedError('Cond must copy for now')
         self.as_view = as_view
         self.gpu = gpu
         self.n_outs = n_outs
@@ -87,12 +86,10 @@ class IfElse(PureOp):
         return True
 
     def __hash__(self):
-
         rval = (hash(type(self)) ^
                 hash(self.as_view) ^
                 hash(self.gpu) ^
                 hash(self.n_outs))
-
         return rval
 
     def __str__(self):
@@ -107,6 +104,7 @@ class IfElse(PureOp):
     def infer_shape(self, node, inputs_shapes):
         # By construction, corresponding then/else pairs have the same number
         # of dimensions
+
         ts_shapes = inputs_shapes[1:][:self.n_outs]
         fs_shapes = inputs_shapes[1:][self.n_outs:]
         new_ts_inputs = []
@@ -150,9 +148,6 @@ class IfElse(PureOp):
             out_shapes += [tuple(current_shape)]
         return out_shapes
 
-    def R_op(self, inputs, eval_points):
-        return self.make_node(inputs[0], *eval_points[1:]).outputs
-
     def make_node(self, c, *args):
         if not self.gpu:
             # When gpu is true, we are given only cuda ndarrays, and we want
@@ -177,6 +172,9 @@ class IfElse(PureOp):
                              'with 0 standing for False, anything else '
                              'for True'))
         return Apply(self, [c] + list(args), [t.type() for t in ts])
+
+    def R_op(self, inputs, eval_points):
+        return self.make_node(inputs[0], *eval_points[1:]).outputs
 
     def grad(self, ins, grads):
         ts = ins[1:][:self.n_outs]
