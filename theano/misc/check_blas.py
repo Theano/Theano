@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     if verbose:
         print """
-        Some result that you can compare again. They where 10 executions of gemm in float64 with matrix of shape 2000x2000 on FC9.
+        Some result that you can compare again. They where 10 executions of gemm in float64 with matrix of shape 2000x2000.
 
         Cpu tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB), Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
                     Xeon E5450(3Ghz, 12M L2 cache, 1333Mhz FSB), Xeon X5560(2.8Ghz, 12M L2 cache, 6.4GT/s QPI, hyper-threads enabled?)
