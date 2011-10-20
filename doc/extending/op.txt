@@ -40,7 +40,7 @@ following methods:
   variables of the computation must be put. More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
-      obtained via ``mul``'s ``make_node`` method. It is typically not
+      obtained via the ``Op``'s ``make_node`` method. It is typically not
       used in simple Ops, but it contains symbolic information that
       could be required for complex Ops.
 
@@ -94,18 +94,14 @@ following methods:
   lifetime of self.  Op instances should be immutable in this
   sense.
 
-.. function:: __ne__(other)
-
-  *Default:* ``(not (self==other))``
-
 .. function:: grad(inputs, output_gradients)
 
-  Optional.
+  Optional (but needed if you want to have it work with {tensor,sparse}.grad())
 
   If the Op you are defining is differentiable, you can define its
   gradient symbolically in this method.
 
-  Both the ``inputs`` and ``output_gradients`` will be
+  Both the ``inputs`` and ``output_gradients`` will be list of Theano
   Variables. This method must return a list containing one Variable
   (or ``None``) for each input. Each returned Variable represents the
   gradient with respect to that input given the symbolic gradients
