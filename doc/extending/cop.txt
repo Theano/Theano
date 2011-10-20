@@ -1,3 +1,4 @@
+.. _cop:
 
 ====================================
 Implementing the arithmetic Ops in C

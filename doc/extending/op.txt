@@ -161,8 +161,9 @@ following methods:
 
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
 
-For more details, including the interface for providing a C
-implementation of ``perform()``, refer to the documentation for :ref:`op`.
+Also you can provide a :ref:`C implementation <cop>` of
+``perform()``. For other details refer to the documentation for
+:ref:`op`.
 
 
 Defining an Op: ``mul``
