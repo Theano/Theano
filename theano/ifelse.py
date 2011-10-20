@@ -52,7 +52,7 @@ class IfElse(PureOp):
 
     Example usage:
 
-        ``rval = ifelse(condition, rval_if_true1, rval_if_true2, .., rval_if_trueN,
+        ``rval = ifelse(condition, rval_if_true1, .., rval_if_trueN,
                         rval_if_false1, rval_if_false2, .., rval_if_falseN)``
 
     :note:
@@ -271,17 +271,17 @@ def ifelse(condition, then_branch, else_branch, name=None):
     :type then_branch: list of theano expressions/ theano expressions
     :param then_branch:
         A single theano variable or a list of theano variables that the
-        function should return as the output if ``condition`` evaluates to true.
-        The number of variables should match those in the ``else_branch``, and
-        there should be a one to one correspondance (type wise) with the
-        tensors provided in the else branch
+        function should return as the output if ``condition`` evaluates to
+        true. The number of variables should match those in the
+        ``else_branch``, and there should be a one to one correspondance
+        (type wise) with the tensors provided in the else branch
 
     :type else_branch: list of theano expressions/ theano expressions
     :param else_branch:
         A single theano variable or a list of theano variables that the
-        function should return as the output if ``condition`` evaluates to false.
-        The number of variables should match those in the then branch, and
-        there should be a one to one correspondace (type wise) with the
+        function should return as the output if ``condition`` evaluates to
+        false. The number of variables should match those in the then branch,
+        and there should be a one to one correspondace (type wise) with the
         tensors provided in the then branch.
 
     :return:
