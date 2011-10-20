@@ -145,8 +145,17 @@ following methods:
 
    Optional.
 
-   This function is needed for shape optimization. If
-   TODO
+   This function is needed for shape optimization. ``shapes`` is a
+   list with one tuple for each input the Apply node linked to this op
+   have.  Each tuple contain 1 element for each dimensions of the
+   corresponding inputs.  The value is the the corresponding
+   dimensions shape of the corresponding inputs.
+
+   This sound complicated, but this is just the corresponding inputs
+   shape in symbolic variable.
+
+   The function should return a list with one tuple for each output.
+   Each tuple should contain the corresponding output's shape.
 
 .. function:: make_thunk(node, storage_map, compute_map, no_recycling)
 
@@ -154,7 +163,11 @@ following methods:
 
 .. function:: R_op(inputs, eval_points)
 
-   TODO
+   Optional.
+
+   This function is needed for theano.tensor.Rop to work with this op.
+
+   TODO: add more detail.
 
 .. attribute:: default_output
 
