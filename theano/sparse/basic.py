@@ -1473,7 +1473,8 @@ class Dot(gof.op.Op):
         if not _is_sparse_variable(x) and not _is_sparse_variable(y):
             raise TypeError(x)
 
-        return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out, broadcastable=(False, False))])
+        return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
+                         broadcastable=(False, False))])
     
     def perform(self, node, (x, y), (out, )):
         x_is_sparse = _is_sparse(x)
@@ -1617,7 +1618,8 @@ class UsmmCscDense(gof.Op):
         assert y.ndim == 2
         assert z.ndim == 2
 
-        dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype, y.type.dtype, z.type.dtype)
+        dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
+            y.type.dtype, z.type.dtype)
         alpha = tensor.as_tensor_variable(alpha)
 
         if self.inplace:
