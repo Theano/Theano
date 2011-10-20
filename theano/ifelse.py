@@ -258,11 +258,11 @@ class IfElse(PureOp):
         return thunk
 
 
-def ifelse(condition, true_branch, false_branch, name=None):
+def ifelse(condition, then_branch, else_branch, name=None):
     """
     This function corresponds to an if statement, returning (and evaluating)
-    inputs in the ``true_branch`` if ``condition`` evaluates to True or
-    inputs in the ``false_branch`` if ``condition`` evalutates to False.
+    inputs in the ``then_branch`` if ``condition`` evaluates to True or
+    inputs in the ``else_branch`` if ``condition`` evalutates to False.
 
     :type condition: scalar like
     :param condition:
@@ -270,49 +270,49 @@ def ifelse(condition, true_branch, false_branch, name=None):
         If it evaluates to 0 it corresponds to False, anything else stands
         for True.
 
-    :type true_branch: list of theano expressions/ theano expressions
-    :param true_branch:
+    :type then_branch: list of theano expressions/ theano expressions
+    :param then_branch:
         A single theano variable or a list of theano variables that the
         function should return as the output if ``condition`` evaluates to true.
-        The number of variables should match those in the false_branch, and
+        The number of variables should match those in the ``else_branch``, and
         there should be a one to one correspondance (type wise) with the
-        tensors provided in the false branch
+        tensors provided in the else branch
 
-    :type false_branch: list of theano expressions/ theano expressions
-    :param false_branch:
+    :type else_branch: list of theano expressions/ theano expressions
+    :param else_branch:
         A single theano variable or a list of theano variables that the
         function should return as the output if ``condition`` evaluates to false.
-        The number of variables should match those in the true branch, and
+        The number of variables should match those in the then branch, and
         there should be a one to one correspondace (type wise) with the
-        tensors provided in the true branch.
+        tensors provided in the then branch.
 
     :return:
         A list of theano variables or a single variable (depending on the
-        nature of the ``true_branch`` and ``false_branch``). More exactly if
-        ``true_branch`` and ``false_branch`` is a tensor, then
+        nature of the ``then_branch`` and ``else_branch``). More exactly if
+        ``then_branch`` and ``else_branch`` is a tensor, then
         the return variable will be just a single variable, otherwise a
         list. The value returns correspond either to the values in the
-        ``true_branch`` or in the ``false_branch`` depending on the value of
+        ``then_branch`` or in the ``else_branch`` depending on the value of
         ``cond``.
     """
-    if type(true_branch) not in (list, tuple):
-        true_branch = [true_branch]
-    if type(false_branch) not in (list, tuple):
-        false_branch = [false_branch]
+    if type(then_branch) not in (list, tuple):
+        then_branch = [then_branch]
+    if type(else_branch) not in (list, tuple):
+        else_branch = [else_branch]
 
-    if len(true_branch) != len(false_branch):
+    if len(then_branch) != len(else_branch):
         raise ValueError(('The number of values on the `then` branch'
                           ' should have the same number of variables as '
                           'the `else` branch : (variables on `then` '
-                          '%d' % len(true_branch) + ', variables on `else` '
-                          '%d' % len(false_branch) + ')'))
+                          '%d' % len(then_branch) + ', variables on `else` '
+                          '%d' % len(else_branch) + ')'))
 
-    new_ifelse = IfElse(n_outs=len(true_branch),
+    new_ifelse = IfElse(n_outs=len(then_branch),
                         as_view=False,
                         gpu=False,
                         name=name)
 
-    ins = [cond] + list(true_branch) + list(false_branch)
+    ins = [cond] + list(then_branch) + list(else_branch)
     rval = new_ifelse.make_node(*ins).outputs
     if type(rval) in (list, tuple) and len(rval) == 1:
         return rval[0]
