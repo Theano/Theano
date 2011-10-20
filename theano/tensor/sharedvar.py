@@ -6,6 +6,9 @@ from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
 def load_shared_variable(val):
+    """This function is only here to keep some pickles loading
+    after a failed fix done in August 2011.
+    It can be removed after sufficient time has passed."""
     return tensor_constructor(val)
 
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
