@@ -48,6 +48,9 @@ grad?
 - Dot
     - performs the true dot
     - dot(sparse, dense), dot(dense, sparse), dot(sparse, sparse)
+    - When the operation has the form dot(csr_matrix, dense) the gradient of
+    this operation can be performed inplace by UsmmCscDense. This leads to
+    significant speed-ups.
 
 Subtensor selection (aka. square-bracket notation, aka indexing) is not implemented, but the
 CSR and CSC datastructures support effecient implementations.
