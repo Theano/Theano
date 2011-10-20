@@ -1,8 +1,14 @@
 """
-IfElse is an Op that works with the LazyLinker to support conditional graph
-evaluation.
+IfElse introduces lazy evaluation in Theano (coupled with the CVM/VM
+linkers). It resembles the if clause of any programming languages, that
+has a `then` and `else` branch, and executes either one or the other
+according to the condition provided.
 
-:TODO: Add text to library documentation describing the IfElse Op.
+This op contrast the already existent `swtich` op, that will evaluate both
+branches of the clause and afterwards pick (according to the condition)
+which value to report. Note also that `switch` is an elemwise operations (so
+it picks each entry of a matrix according to the condition) while `ifelse`
+is a global operation with a scalar condition.
 """
 
 __docformat__ = 'restructedtext en'
@@ -30,14 +36,23 @@ _logger = logging.getLogger('theano.ifelse')
 
 class IfElse(PureOp):
     """
-    Op that works with CVM/VM to support conditional graph evaluation. Note,
-    this op is not suppose to be used directly, it should be used through
-    the `ifelse` function. The op supports mutile values that are all
-    conditioned by the same 'tf'.
+    Op that provides conditional graph evaluation if used with the CVM/VM
+    linkers. Note that there exist a helpful function `ifelse` that should
+    be used to instantiate the op!
+
+    According to a scalar condition `condition` the op evaluates and then
+    returns all the tensors provided on the `then` branch, otherwise it
+    evaluates and returns the tensors provided on the `else` branch. The op
+    supports multiple tensors on each branch, conditioned that the same
+    number of tensors are on the `then` as on the `else` and there is a one
+    to one correspondance between them (shape and dtype wise).
+
+    The `then` branch is defined as the first N tensors (after the
+    condition), while the `else` branch is defined as the last N tensors.
 
     Example usage:
 
-        ``rval = ifelse(tf, rval_if_true1, rval_if_true2, .., rval_if_trueN,
+        ``rval = ifelse(condition, rval_if_true1, rval_if_true2, .., rval_if_trueN,
                         rval_if_false1, rval_if_false2, .., rval_if_falseN)``
 
     :note:
@@ -243,34 +258,38 @@ class IfElse(PureOp):
         return thunk
 
 
-def ifelse(cond, true_branch, false_branch, name=None):
+def ifelse(condition, true_branch, false_branch, name=None):
     """
-    This function corresponds to a if statement, returning inputs in the
-    ``true_branch`` if ``cond`` evaluates to True or inputs in the
-    ``false_branch`` if ``cond`` evalutates to False.
+    This function corresponds to an if statement, returning (and evaluating)
+    inputs in the ``true_branch`` if ``condition`` evaluates to True or
+    inputs in the ``false_branch`` if ``condition`` evalutates to False.
 
-    :param cond:
-        ``cond`` should be a tensor scalar representing the condition. If it
-        evaluates to 0 it corresponds to False, anything else stands for
-        True.
+    :type condition: scalar like
+    :param condition:
+        ``condition`` should be a tensor scalar representing the condition.
+        If it evaluates to 0 it corresponds to False, anything else stands
+        for True.
 
+    :type true_branch: list of theano expressions/ theano expressions
     :param true_branch:
         A single theano variable or a list of theano variables that the
-        function should return as the output if ``cond`` evaluates to true.
+        function should return as the output if ``condition`` evaluates to true.
         The number of variables should match those in the false_branch, and
-        the types (of each) should also correspond to those in the false
-        branch.
+        there should be a one to one correspondance (type wise) with the
+        tensors provided in the false branch
 
+    :type false_branch: list of theano expressions/ theano expressions
     :param false_branch:
         A single theano variable or a list of theano variables that the
-        function should return as the output if ``cond`` evaluates to false.
+        function should return as the output if ``condition`` evaluates to false.
         The number of variables should match those in the true branch, and
-        the types (of each) should also match those in the true branch.
+        there should be a one to one correspondace (type wise) with the
+        tensors provided in the true branch.
 
     :return:
-        A list of theano variables or a single variable ( depending on the
+        A list of theano variables or a single variable (depending on the
         nature of the ``true_branch`` and ``false_branch``). More exactly if
-        ``true_branch`` and ``false_branch`` contain a single element, then
+        ``true_branch`` and ``false_branch`` is a tensor, then
         the return variable will be just a single variable, otherwise a
         list. The value returns correspond either to the values in the
         ``true_branch`` or in the ``false_branch`` depending on the value of
