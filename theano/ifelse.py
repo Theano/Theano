@@ -295,6 +295,18 @@ def ifelse(condition, then_branch, else_branch, name=None):
         ``then_branch`` or in the ``else_branch`` depending on the value of
         ``cond``.
     """
+    if type(then_branch) is not type(else_branch):
+        raise ValueError(('The two branches should be identical. '
+                          'This error could be raised if for example '
+                          ' you provided a one element list on the then '
+                          ' branch but a tensor on the else branch'))
+
+    rval_type = None
+    if type(then_branch) is list:
+        rval_type = list
+    elif type(then_branch) is tuple:
+        rval_type = tuple
+
     if type(then_branch) not in (list, tuple):
         then_branch = [then_branch]
     if type(else_branch) not in (list, tuple):
@@ -314,10 +326,13 @@ def ifelse(condition, then_branch, else_branch, name=None):
 
     ins = [cond] + list(then_branch) + list(else_branch)
     rval = new_ifelse.make_node(*ins).outputs
-    if type(rval) in (list, tuple) and len(rval) == 1:
+
+    if rval_type is None:
         return rval[0]
+    elif rval_type is list:
+        return list(rval)
     else:
-        return rval
+        return tuple(rval)
 
 
 @gof.local_optimizer([None])
