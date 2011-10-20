@@ -24,7 +24,7 @@ from tensor import opt
 from scan_module.scan_utils import find_up
 from scan_module.scan_utils import clone
 
-_logger = logging.getLogger('theano.lazycond')
+_logger = logging.getLogger('theano.ifelse')
 
 
 
