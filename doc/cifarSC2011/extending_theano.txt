@@ -11,6 +11,7 @@ Theano graphs
 - Theano works with symbolic graphs
 - Those graphs are bi-partite graphs (graph with 2 types of nodes)
 - Those 2 nodes types are Apply and Variable nodes
+- Apply node have a link to the Op that it execute
 
 Inputs and Outputs are lists of Theano variables
 
@@ -25,21 +26,59 @@ Op contract
 
     import theano
 
-    class MyOp(Op):
+    class MyOp(theano.Op):
+        def make_node(self, *inputs):
         def __eq__(self, other):
         def __hash__(self):
         def __str__(self):
-        def make_node(self, x):
+
         # Python implementation:
         def perform(self, node, inputs_storage, output_storage):
-        # C implementation: [see theano web site]
+
+        # C implementation: [see theano web site for other functions]
+	def c_code(...):
+	# ...
+
         # others implementation (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
+
         # optional:
         def __init__(self, ...):
         def grad(self, inputs, g):
+	def R_op(self, inputs, eval_points):
         def infer_shape(node, (i0_shapes, ...))
 
+.. ../extending/op.txt
+
+There is 2 mandatory function. The first is :func:`make_node`. The
+second is the one that do/tell the computation to do at run
+time. Currently you have 4 posibility: implement the :func:`perform`
+and/or :func:`c_code <Op.c_code>` (and other related :ref:`c functions
+<cop>`), or the :func:`make_thunk` function. The ``perform`` allow you
+to easily wrap an existing python function in Theano. The ``c_code``
+and related function allow you to have your op generate c code and
+have Theano compile and link to it. The ``make_thunk`` function will
+be called during compilation and should generate a ``thunk``: a
+function that when called will do the wanted computation. This is
+usefull if you want to generate code and compile it yourself. For
+example, this allow you to use PyCUDA to compile gpu code.
+
+There is 2 mandatory/highly suggested function. They are needed to for a basic
+optimization that merge duplicate computation in a Theano function. So
+if you don't want Theano to do you computation multiple time for no
+good reason, implement them! Those function are :func:`__eq__` and
+:func:`__hash__`.
+
+The :func:`infer_shape` method allow some very interesting
+optimization like don't performing the computation of your op just to
+take the shape your Op's output.
+
+The :func:`grad` method is needed you want want differentiation to
+work with your op.
+
+The :func:`__str__` is usefull to have a better printing of you op.
+
+The :func:`R_op` is needed if you want theano.tensor.Rop to work with your op.
 
 Op example
 ----------

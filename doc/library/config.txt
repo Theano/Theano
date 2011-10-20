@@ -474,10 +474,11 @@ import theano and print the config variable, as in:
 
     When not ``'off'``, the value of this option dictates what happens when
     an Op's inputs do not provide appropriate test values:
-       - ``'ignore'`` will silently skip the debug mechanism for this Op
-       - ``'warn'`` will raise a UserWarning and skip the debug mechanism for
-         this Op
-       - ``'raise'`` will raise an Exception
+
+        - ``'ignore'`` will silently skip the debug mechanism for this Op
+        - ``'warn'`` will raise a UserWarning and skip the debug mechanism for
+          this Op
+        - ``'raise'`` will raise an Exception
     
 .. attribute:: config.exception_verbosity
 
