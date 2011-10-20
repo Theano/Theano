@@ -11,6 +11,7 @@ Theano graphs
 - Theano works with symbolic graphs
 - Those graphs are bi-partite graphs (graph with 2 types of nodes)
 - Those 2 nodes types are Apply and Variable nodes
+- Apply node have a link to the Op that it execute
 
 Inputs and Outputs are lists of Theano variables
 
@@ -25,19 +26,26 @@ Op contract
 
     import theano
 
-    class MyOp(Op):
+    class MyOp(theano.Op):
+        def make_node(self, *inputs):
         def __eq__(self, other):
         def __hash__(self):
         def __str__(self):
-        def make_node(self, x):
+
         # Python implementation:
         def perform(self, node, inputs_storage, output_storage):
-        # C implementation: [see theano web site]
+
+        # C implementation: [see theano web site for other functions]
+	def c_code(...):
+	# ...
+
         # others implementation (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
+
         # optional:
         def __init__(self, ...):
         def grad(self, inputs, g):
+	def R_op(self, inputs, eval_points):
         def infer_shape(node, (i0_shapes, ...))
 
 
