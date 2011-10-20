@@ -18,7 +18,7 @@ Conditions
 .. code-block:: python
 
   from theano import tensor as T
-  from theano.lazycond import ifelse
+  from theano.ifelse import ifelse
   import theano, time, numpy
 
   a,b = T.scalars('a','b')
