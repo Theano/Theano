@@ -394,9 +394,6 @@ class ExtractDiag(Op):
         self.view = view
         if self.view:
             self.view_map = {0:[0]}
-            self.perform = self.perform_view
-        else:
-            self.perform = self.perform_noview
     def __eq__(self, other):
         return type(self) == type(other) and self.view == other.view
     def __hash__(self):
@@ -406,20 +403,16 @@ class ExtractDiag(Op):
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
-    def perform_noview(self, node, (x,), (z,)):
+    def perform(self, node, (x,), (z,)):
         #for some reason numpy.diag(x) is really slow
         N,M = x.shape
         assert N==M
         rval = x[0]
         rval.strides = (x.strides[0]+x.strides[1],)
-        z[0] = rval.copy()
-    def perform_view(self, node, (x,), (z,)):
-        N,M = x.shape
-        a,b = x.strides
-        assert N==M
-        rval = x[0]
-        rval.strides = a+b,
-        z[0] = rval
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
     def __str__(self):
         return 'ExtractDiag{view=%s}'%self.view
     def grad(self, inputs, g_outputs):
