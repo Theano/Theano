@@ -31,23 +31,6 @@ following methods:
   ordered correctly: a subsequent ``self.make_node(*apply.inputs)``
   must produce something equivalent to the first ``apply``.
 
-.. attribute:: default_output
-
-  *Default:* None
-
-  If this member variable is an integer, then the default
-  implementation of ``__call__`` will return
-  ``node.outputs[self.default_output]``, where ``node`` was returned
-  by ``make_node``.  Otherwise, the entire list of outputs will be
-  returned.
-
-.. function:: __call__(*inputs)
-
-  Syntactic shortcut to make_node which returns the output
-  Variables of the Op.
-
-  *Default:* this is done for you by Op.
-
 .. function:: perform(node, inputs, output_storage)
 
   This method computes the function associated to this Op. The
@@ -158,6 +141,45 @@ following methods:
   Both the partial derivation and that multiplication have to be done by
   :func:`grad`.
 
+.. function:: infer_shape(node, shapes)
+
+   Optional.
+
+   This function is needed for shape optimization. If
+   TODO
+
+.. function:: make_thunk(node, storage_map, compute_map, no_recycling)
+
+   TODO
+
+.. function:: R_op(inputs, eval_points)
+
+   TODO
+
+.. attribute:: default_output
+
+  *Default:* None
+
+  If this member variable is an integer, then the default
+  implementation of ``__call__`` will return
+  ``node.outputs[self.default_output]``, where ``node`` was returned
+  by ``make_node``.  Otherwise, the entire list of outputs will be
+  returned.
+
+.. function:: __call__(*inputs)
+
+  Syntactic shortcut to make_node which returns the output
+  Variables of the Op.
+
+  *Default:* this is done for you by Op.
+
+.. function:: __str__()
+
+   *Default:* python default: module_path_to_your_class.CLASSNAME
+
+   This allow you to have a better printing of Op. If an Op have parameter
+   it is highly recommented that it make the ``__str__`` function
+   print the name of the op and the Op's parameters values.
 
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
 
