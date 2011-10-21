@@ -12,6 +12,8 @@ except ImportError:
 import theano
 from theano import compile, config
 from theano.sparse import enable_sparse
+from theano.gof.python25 import product
+
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
 
@@ -24,6 +26,15 @@ from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 from theano.tests import unittest_tools as utt
 from theano import tensor
 from theano.tensor.basic import _allclose
+
+
+def as_sparse_format(data, format):
+    if format == 'csc':
+        return scipy.sparse.csc_matrix(data)
+    elif format == 'csr':
+        return scipy.sparse.csr_matrix(data)
+    else:
+        raise NotImplementedError()
 
 
 def eval_outputs(outputs):
@@ -512,6 +523,152 @@ class test_structureddot(unittest.TestCase):
             self.assertTrue(numpy.allclose(theano_result, scipy_result))
             if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
                 self.assertFalse(theano_time > overhead_rtol*scipy_time + overhead_tol)
+
+
+class DotTests(unittest.TestCase):
+    def setUp(self):
+        x_size = (10, 1000)
+        y_size = (1000, 10000)
+
+        self.x_csr = scipy.sparse.csr_matrix(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
+        self.x_csc = scipy.sparse.csc_matrix(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
+        self.y = numpy.asarray(numpy.random.uniform(-1, 1, y_size), dtype=theano.config.floatX)
+        self.y_csr = scipy.sparse.csr_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
+        self.y_csc = scipy.sparse.csc_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
+
+    def test_csr_dense(self):
+        x = theano.sparse.csr_matrix('x')
+        y = theano.tensor.matrix('y')
+
+        f_a = theano.function([x, y], theano.sparse.dot(x, y))
+        f_b = lambda x, y: x * y
+
+        assert abs(f_a(self.x_csr, self.y) - f_b(self.x_csr, self.y)).max() < 1e-4
+
+    def test_csc_dense(self):
+        x = theano.sparse.csc_matrix('x')
+        y = theano.tensor.matrix('y')
+
+        f_a = theano.function([x, y], theano.sparse.dot(x, y))
+        f_b = lambda x, y: x * y
+
+        assert (abs(f_a(self.x_csc, self.y) - f_b(self.x_csc, self.y)).max()
+                < 1e-4)
+
+    def test_sparse_sparse(self):
+        for d1, d2 in [('float32', 'float32'),
+                       ('float32', 'float64'),
+                       ('float64', 'float32'),
+                       ('float64', 'float64'),
+                       ]:
+            for x_f, y_f in [('csc','csc'),
+                             ('csc','csr'),
+                             ('csr','csc'),
+                             ('csr','csr'),
+                             ]:
+                x = theano.sparse.SparseType(format=x_f, dtype=d1)('x')
+                y = theano.sparse.SparseType(format=x_f, dtype=d2)('x')
+
+                f_a = theano.function([x, y], theano.sparse.dot(x, y))
+                f_b = lambda x, y: x * y
+
+                vx = getattr(self,'x_'+x_f).astype(d1)
+                vy = getattr(self,'y_'+y_f).astype(d2)
+                assert abs(f_a(vx, vy) - f_b(vx, vy)).max() < 1e-4
+
+
+class UsmmTests(unittest.TestCase):
+    def setUp(self):
+        x_size = (10, 200)
+        y_size = (200, 2000)
+        z_size = (x_size[0], y_size[1])
+
+        self.x = numpy.asarray(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
+        self.y = numpy.asarray(numpy.random.uniform(-1, 1, y_size), dtype=theano.config.floatX)
+        self.z = numpy.asarray(numpy.random.uniform(-1, 1, z_size), dtype=theano.config.floatX)
+
+    def test(self):
+        def mat(format, name, dtype):
+            if format == 'dense':
+                return theano.tensor.matrix(name, dtype=dtype)
+            else:
+                return theano.sparse.matrix(format, name, dtype=dtype)
+
+        params = product(*([['float32', 'float64']] * 4 +
+                           [['dense', 'csc', 'csr']] * 2))
+
+        for dtype1, dtype2, dtype3, dtype4, format1, format2 in params:
+            if format1 == 'dense' and format2 == 'dense':
+                # Usmm won't be used!
+                continue
+            x = mat(format1, 'x', dtype1)
+            y = mat(format2, 'y', dtype2)
+            a = theano.tensor.scalar('a', dtype=dtype3)
+            z = theano.tensor.shared(
+                numpy.asarray(self.z, dtype=dtype4).copy()
+            )
+
+            f_b = lambda z, a, x, y: z - a * (x * y)
+            x_data = numpy.asarray(self.x, dtype=dtype1)
+            if format1 != 'dense':
+                x_data = as_sparse_format(x_data, format1)
+            y_data = numpy.asarray(self.y, dtype=dtype2)
+            if format2 != 'dense':
+                y_data = as_sparse_format(y_data, format2)
+            z_data = numpy.asarray(self.z, dtype=dtype3)
+
+            f_b_out = f_b(z_data, 1, x_data, y_data)
+
+            # Can it work inplace?
+            inplace = dtype4 == theano.scalar.upcast(dtype1, dtype2, dtype3)
+
+            # To make it easier to check the toposort
+            mode = theano.compile.mode.get_default_mode().excluding('fusion')
+
+            if inplace:
+                updates = {z: z - a * theano.sparse.dot(x, y)}
+                f_a = theano.function([a, x, y], [],
+                                      updates=updates,
+                                      mode=mode)
+                f_a(1, x_data, y_data)
+                assert abs(z.get_value(borrow=True) - f_b_out).max() < 1e-4
+            else:
+                f_a = theano.function([a, x, y],
+                                      z - a * theano.sparse.dot(x, y),
+                                      mode=mode)
+                f_a_out = f_a(1, x_data, y_data)
+                assert abs(f_a_out - f_b_out).max() < 1e-4
+            topo = f_a.maker.env.toposort()
+            up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
+            if y.type.dtype == up and format1 == 'csc' and format2 == 'dense':
+                assert (sum([isinstance(node.op, tensor.Elemwise) and
+                             isinstance(node.op.scalar_op,
+                                        theano.scalar.basic.Cast)
+                             for node in topo]) == len(topo) - 5)
+                new_topo = []
+                for node in topo:
+                    if not isinstance(node.op, tensor.Elemwise) and \
+                       isinstance(node.op.scalar_op, theano.scalar.basic.Cast):
+                        new_topo.append(node)
+                topo = new_topo
+                assert len(topo) == 5, topo
+                # Usmm is tested at the same time in debugmode
+                # Check if the optimization local_usmm and local_usmm_csx is
+                # applied
+                assert isinstance(topo[0].op,
+                                  theano.sparse.basic.CSMProperties)
+                assert isinstance(topo[1].op, theano.tensor.DimShuffle)
+                assert isinstance(topo[2].op, theano.tensor.Subtensor)
+                assert topo[3].op == theano.tensor.neg
+                assert isinstance(topo[4].op, theano.sparse.UsmmCscDense)
+                if inplace:
+                    assert topo[4].op.inplace
+            else:
+                assert len(topo)==3, topo
+                assert isinstance(topo[0].op, theano.tensor.DimShuffle)
+                assert topo[1].op == theano.tensor.neg
+                assert isinstance(topo[2].op, theano.sparse.Usmm)
+
 
 def test_shape_i():
     sparse_dtype = 'float32'
