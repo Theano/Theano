@@ -141,17 +141,21 @@ following methods:
 
    Optional.
 
-   This function is needed for shape optimization. ``shapes`` is a
-   list with one tuple for each input the Apply node linked to this op
-   have.  Each tuple contain 1 element for each dimensions of the
-   corresponding inputs.  The value is the the corresponding
-   dimensions shape of the corresponding inputs.
+   This method is needed for shape optimization. ``shapes`` is a
+   list with one tuple for each input to the Apply node linked to this Op.
+   Each tuple contains 1 element for each dimension of the
+   corresponding input.  The value corresponds to the input's size
+   along the given dimension.
 
-   This sound complicated, but this is just the corresponding inputs
-   shape in symbolic variable.
+   This sounds complicated, but this is just the corresponding input's
+   shape in a symbolic variable.
 
    The function should return a list with one tuple for each output.
-   Each tuple should contain the corresponding output's shape.
+   Each tuple should contain the corresponding output's computed shape.
+
+   Implementing this method will allow Theano to compute the output's
+   shape without computing the output itself, potentially sparing you
+   a costly recomputation.
 
 .. function:: make_thunk(node, storage_map, compute_map, no_recycling)
 
@@ -186,14 +190,16 @@ following methods:
 
    *Default:* python default: module_path_to_your_class.CLASSNAME
 
-   This allow you to have a better printing of Op. If an Op have parameter
-   it is highly recommented that it make the ``__str__`` function
-   print the name of the op and the Op's parameters values.
+   This allows you to specify a more informative string representation of your
+   Op. If an Op has parameters, it is highly recommended to have the
+   ``__str__`` method include the name of the op and the Op's parameters'
+   values.
 
-At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
+At a bare minimum, a new Op must define ``make_node`` and ``perform``, which
+have no defaults.
 
-Also you can provide a :ref:`C implementation <cop>` of
-``perform()``. For other details refer to the documentation for
+You can also provide a :ref:`C implementation <cop>` of
+``perform()``. For more details, refer to the documentation for
 :ref:`op`.
 
 
