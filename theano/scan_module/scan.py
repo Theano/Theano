@@ -53,7 +53,7 @@ from theano.tensor import opt
 from theano import tensor
 from theano import config
 from theano.updates import Updates
-from theano.sandbox import cuda
+
 
 import scan_op
 import scan_utils
@@ -914,6 +914,11 @@ def scan( fn
                    shared_inner_outputs  )
     if condition is not None:
         inner_outs.append(condition)
+    # Cuda is imported here, instead of being imported on top of the file
+    # because forces on the user some dependencies that we might do not want
+    # to. Currently we are working on removing the dependencies on sandbox
+    # code completeley.
+    from theano.sandbox import cuda
     if cuda.cuda_available:
         # very often we end up in this situation when we want to
         # replace w with w_copy, where w is CudaNdarray

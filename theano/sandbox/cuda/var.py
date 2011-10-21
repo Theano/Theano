@@ -140,6 +140,12 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
                 other.type.broadcastable)))
         return GpuFromHost()(other)
 
+    def __getitem__(self, *args):
+        # Defined to explicitly use the implementation from `_operators`, since
+        # the definition in `SharedVariable` is only meant to raise an error.
+        return _operators.__getitem__(self, *args)
+
+
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 def cuda_shared_constructor(value, name=None, strict=False,

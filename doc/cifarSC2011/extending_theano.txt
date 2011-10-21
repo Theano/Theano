@@ -67,31 +67,33 @@ Op contract
 
 .. ../extending/op.txt
 
-There are 2 mandatory methods. The first is :func:`make_node`. The
-second is the one that expresses what computation should be done at run
-time. Currently you have 4 possibilities: implement the :func:`perform`
-and/or :func:`c_code <Op.c_code>` (and other related :ref:`C functions
-<cop>`), or the :func:`make_thunk` method. The ``perform`` method allows you
-to easily wrap an existing Python function in Theano. The ``c_code``
-and related methods allow you to have your op generate C code and
-have Theano compile and link to it. The ``make_thunk`` method will
-be called during compilation and should generate a ``thunk``: a
-method that when called will do the desired computation. This is
-useful if you want to generate code and compile it yourself. For
-example, this allow you to use PyCUDA to compile GPU code.
+There are 2 mandatory methods that one needs to implement.
+The first one is :func:`make_node`. The second one 
+would describe the computations that are required to be done
+at run time. Currently there are 2 different possibilites:
+implement the :func:`perform`
+and/or :func:`c_code <Op.c_code>` (and other related :ref:`c methods
+<cop>`), or the :func:`make_thunk` method. The ``perform`` allows
+to easily wrap an existing python function into Theano. The ``c_code``
+and related methods allow the op to generate c code that will be 
+compiled and linked by Theano. On the other hand, the ``make_thunk``
+method will be called only once during compilation and should generate
+a ``thunk``: a standalone function that when called will do the wanted computations.
+This is usefull if you want to generate code and compile it yourself. For
+example, this allows you to use PyCUDA to compile gpu code.
 
-There are 2 mandatory/highly recommended methods. They are needed for a basic
-optimization that merges duplicate computations in a Theano function. Thus,
-if you don't want Theano to perform your computations multiple times for no
-good reason, implement these! Those methods are :func:`__eq__` and
+Also there are 2 methods that are highly recommended to be implemented. They are
+needed in order to merge duplicate computations involving your op. So if you
+do not want Theano to execute your op multiple times with the same inputs,
+do implement them. Those methods are :func:`__eq__` and
 :func:`__hash__`.
 
-The :func:`infer_shape` method allows for some very interesting
-optimizations, such as not performing your op's computations simply to
-determine the shape your Op's output.
+The :func:`infer_shape` method allows to infer shape of some variable, somewhere in the
+middle of the computational graph without actually computing the outputs (when possible).
+This could be helpful if one only needs the shape of the output instead of the actual outputs.
 
-The :func:`grad` method is needed if you want symbolic differentiation to
-work with your Op.
+The :func:`grad` method is required if you want to differentiate some cost whose expression
+includes your op.
 
 The :func:`__str__` is useful in order to provide a more meaningful string
 representation of your Op.
