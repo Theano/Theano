@@ -7,6 +7,9 @@ import logging
 import traceback
 import warnings
 
+# Third-party imports
+import numpy
+
 # Theano imports
 from theano import config
 from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
@@ -167,6 +170,28 @@ class SharedVariable(Variable):
             # value is modified after the function is created.
             update = shared(update)
         return update
+
+    def __getitem__(self, *args):
+        # __getitem__ is not available for generic SharedVariable objects.
+        # We raise a TypeError like Python would do if __getitem__ was not
+        # implemented at all, but with a more explicit error message to help
+        # Theano users figure out the root of the problem more easily.
+        value = self.get_value(borrow=True)
+        if isinstance(value, numpy.ndarray):
+            # Array probably had an unknown dtype.
+            msg = ("a Numpy array with dtype: '%s'. This data type is not "
+                   "currently recognized by Theano tensors: please cast "
+                   "your data into a supported numeric type if you need "
+                   "Theano tensor functionalities." % value.dtype)
+        else:
+            msg = ('an object of type: %s. Did you forget to cast it into '
+                   'a Numpy array before calling theano.shared()?' %
+                   type(value))
+        
+        raise TypeError(
+                "The generic 'SharedVariable' object is not subscriptable. "
+                "This shared variable contains %s" % msg)
+
 
 def shared_constructor(ctor):
     shared.constructors.append(ctor)
