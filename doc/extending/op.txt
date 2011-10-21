@@ -162,9 +162,30 @@ following methods:
 
    Optional.
 
-   This function is needed for theano.tensor.Rop to work with this op.
+   This function implements the application of the R-operator on the
+   function represented by your op. Let assume that function is :math:`f`,
+   with input :math:`x`, applying the R-operator means computing the 
+   Jacobian of :math:`f` and right-multiplying it by :math:`v`, the evaluation 
+   point, namely: :math:`\frac{\partial f}{\partial x} v`. 
 
-   TODO: add more detail.
+   ``inputs`` are the symbolic variables corresponding to the value of 
+   the input where you want to evaluate the jacobian, and ``eval_points``
+   are the symbolic variables corresponding to the value you want to
+   right multiply the jacobian with. 
+
+   Same conventions as for the grad method hold. If your op is not
+   differentiable, you can return None. Note that in contrast to 
+   the method :func:`grad`, for :func:`R_op` you need to return the
+   same number of outputs as there are ouputs of the op. You can think
+   of it in the following terms. You have all your inputs concatenated
+   into a single vector :math:`x`. You do the same with the evaluation 
+   points (which are as many as inputs and of the shame shape) and obtain
+   another vector :math:`v`. For each output, you reshape it into a vector, 
+   compute the jacobian of that vector with respect to :math:`x` and 
+   multiply it by :math:`v`. As a last step you reshape each of these
+   vectors you obtained for each outputs (that have the same shape as 
+   the outputs) back to their corresponding shapes and return them as the 
+   output of the :func:`R_op` method.
 
 .. attribute:: default_output
 
