@@ -1661,7 +1661,10 @@ class UsmmCscDense(gof.Op):
 
         dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
             y.type.dtype, z.type.dtype)
-
+        
+        if dtype_out in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported in operands')
+        
         if self.inplace:
             assert z.type.dtype == dtype_out
 
@@ -1674,12 +1677,7 @@ class UsmmCscDense(gof.Op):
             y = tensor.cast(y, dtype_out)
         if dtype_out != z.type.dtype:
             z = tensor.cast(z, dtype_out)
-    
-        if node.inputs[1].type.dtype in ('complex64', 'complex128'):
-            raise NotImplementedError('Complex types are not supported for x_val')
-        if node.inputs[5].type.dtype in ('complex64', 'complex128'):
-            raise NotImplementedError('Complex types are not supported for y')
-
+        
         r = gof.Apply(self, [alpha, x_val, x_ind, x_ptr, x_nrows, y, z], 
                 [tensor.tensor(dtype_out, (False, y.type.broadcastable[1]))])
         return r
