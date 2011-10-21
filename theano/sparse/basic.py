@@ -1684,8 +1684,8 @@ class UsmmCscDense(gof.Op):
         dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
             y.type.dtype, z.type.dtype)
         
-        if dtype_out in ('complex64', 'complex128'):
-            raise NotImplementedError('Complex types are not supported in operands')
+        if dtype_out not in ('float32', 'float64'):
+            raise NotImplementedError('only float types are supported in operands')
         
         if self.inplace:
             assert z.type.dtype == dtype_out
