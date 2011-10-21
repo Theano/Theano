@@ -1,7 +1,10 @@
+from pkg_resources import parse_version as V
 import sys
+
 try:
     import scipy
-    enable_sparse = scipy.__version__ >= '0.7'
+    enable_sparse = V(scipy.__version__) >= V('0.7')
+
     if not enable_sparse:
         sys.stderr.write("WARNING: scipy version = %s."
                 " We request version >=0.7.0 for the sparse code as it has"

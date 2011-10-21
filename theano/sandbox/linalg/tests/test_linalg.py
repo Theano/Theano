@@ -1,3 +1,5 @@
+from pkg_resources import parse_version as V
+
 import numpy
 
 import theano
@@ -6,7 +8,7 @@ from theano.tensor.basic import _allclose
 
 try:
     import scipy
-    if scipy.__version__ < '0.7':
+    if V(scipy.__version__) < V('0.7'):
         raise ImportError()
     use_scipy = True
 except ImportError:
