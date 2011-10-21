@@ -403,7 +403,9 @@ class ExtractDiag(Op):
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, ins, outs):
+        x, = ins
+        z, = outs
         #for some reason numpy.diag(x) is really slow
         N,M = x.shape
         assert N==M
