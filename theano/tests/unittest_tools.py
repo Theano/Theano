@@ -25,16 +25,12 @@ def fetch_seed(pseed=None):
     seed = pseed or config.unittests.rseed
     if seed=='random':
         seed = None
-    #backport
-    #seed = None if seed=='random' else seed
 
     try:
         if seed:
             seed = int(seed)
         else:
             seed = None
-        #backport
-        #seed = int(seed) if seed else None
     except ValueError:
         print >> sys.stderr, 'Error: config.unittests.rseed contains '\
                 'invalid seed, using None instead'
@@ -73,7 +69,6 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
 # except verify_grad.E_grad, e:
 #     print e.num_grad.gf
 #     print e.analytic_grad
-#     ...
-#
+#     raise
 #
 verify_grad.E_grad = T.verify_grad.E_grad
