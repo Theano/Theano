@@ -426,6 +426,10 @@ class ExtractDiag(Op):
     def grad(self, inputs, g_outputs):
         return [alloc_diag(g_outputs[0])]
 
+    def infer_shape(self, node, shapes):
+        x_s, = shapes
+        return [(x_s[0],)]
+
 extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
 

@@ -21,6 +21,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        matrix_inverse,
                                        #solve,
                                        #diag,
+                                       ExtractDiag,
                                        extract_diag,
                                        #alloc_diag,
                                        det,
@@ -121,6 +122,13 @@ def test_extract_diag():
     except TypeError:
         ok = True
     assert ok
+
+    f = theano.function([x], g.shape)
+    topo = f.maker.env.toposort()
+    assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
+    m = rng.rand(3,3).astype(config.floatX)
+    assert f(m) == 3
+
 # not testing the view=True case since it is not used anywhere.
 
 
