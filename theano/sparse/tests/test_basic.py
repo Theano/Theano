@@ -534,7 +534,6 @@ class DotTests(unittest.TestCase):
         self.y_csr = scipy.sparse.csr_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
         self.y_csc = scipy.sparse.csc_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
 
-
     def test_csr_dense(self):
         x = theano.sparse.csr_matrix('x')
         y = theano.tensor.matrix('y')
@@ -542,7 +541,7 @@ class DotTests(unittest.TestCase):
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
 
-        assert abs(f_a(self.x_csr, self.y) - f_b(self.x_csr, self.y)).max() < 10**-4
+        assert abs(f_a(self.x_csr, self.y) - f_b(self.x_csr, self.y)).max() < 1e-4
 
     def test_csc_dense(self):
         x = theano.sparse.csc_matrix('x')
@@ -551,7 +550,9 @@ class DotTests(unittest.TestCase):
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
 
-        assert abs(f_a(self.x_csc, self.y) - f_b(self.x_csc, self.y)).max() < 10**-4
+        assert (abs(f_a(self.x_csc, self.y) - f_b(self.x_csc, self.y)).max()
+                < 1e-4)
+
     def test_sparse_sparse(self):
         for d1, d2 in [('float32', 'float32'),
                        ('float32', 'float64'),
@@ -571,7 +572,7 @@ class DotTests(unittest.TestCase):
 
                 vx = getattr(self,'x_'+x_f).astype(d1)
                 vy = getattr(self,'y_'+y_f).astype(d2)
-                assert abs(f_a(vx, vy) - f_b(vx, vy)).max() < 10**-4
+                assert abs(f_a(vx, vy) - f_b(vx, vy)).max() < 1e-4
 
 
 class UsmmTests(unittest.TestCase):
@@ -627,12 +628,12 @@ class UsmmTests(unittest.TestCase):
                                                           updates={ z : z - a * theano.sparse.dot(x, y)},
                                                           mode = mode)
                                     f_a(1, x_data, y_data)
-                                    assert abs(z.get_value(borrow=True) - f_b_out).max() < 10**-4
+                                    assert abs(z.get_value(borrow=True) - f_b_out).max() < 1e-4
                                 else:
                                     f_a = theano.function([a, x, y], z - a * theano.sparse.dot(x, y),
                                                           mode = mode)
                                     f_a_out = f_a(1, x_data, y_data)
-                                    assert abs(f_a_out - f_b_out).max() < 10**-4
+                                    assert abs(f_a_out - f_b_out).max() < 1e-4
                                 topo = f_a.maker.env.toposort()
                                 if (y.type.dtype == theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
                                     and format1=='csc' and format2=='dense'):
