@@ -645,18 +645,18 @@ def cond_merge_random_op(main_node):
 
 pushout_equilibrium = gof.EquilibriumDB()
 
-pushout_equilibrium.register("ifelse_lift",
+pushout_equilibrium.register("cond_lift_single_if",
                              opt.in2out(cond_lift_single_if,
                                         ignore_newtrees=True),
                              'fast_run', 'ifelse')
 
-pushout_equilibrium.register("ifelse_merge_ifs",
+pushout_equilibrium.register("cond_merge_random_op",
                              opt.in2out(cond_merge_random_op,
                                         ignore_newtrees=True),
                              'fast_run', 'ifelse')
 
 
-pushout_equilibrium.register("ifelse_merge_nodes",
+pushout_equilibrium.register("ifelse_merge",
                              gof.MergeOptimizer(skip_const_merge=False),
                              'fast_run', 'ifelse')
 
