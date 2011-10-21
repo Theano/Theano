@@ -1706,9 +1706,6 @@ class UsmmCscDense(gof.Op):
                 [tensor.tensor(dtype_out, (False, y.type.broadcastable[1]))])
         return r
 
-    #def perform(self, node, (alpha, x_val, x_ind, x_ptr, x_nrows, y, z), (out,)):
-    #    raise NotImplemented()
-    
     def c_support_code(self):
         return blas.blas_header_text()
 
