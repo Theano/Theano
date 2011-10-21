@@ -394,15 +394,19 @@ class ExtractDiag(Op):
         self.view = view
         if self.view:
             self.view_map = {0:[0]}
+
     def __eq__(self, other):
         return type(self) == type(other) and self.view == other.view
+
     def __hash__(self):
         return hash(type(self))^hash(self.view)
+
     def make_node(self, _x):
         x = as_tensor_variable(_x)
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
+
     def perform(self, node, ins, outs):
         x, = ins
         z, = outs
@@ -415,13 +419,16 @@ class ExtractDiag(Op):
             z[0] = rval
         else:
             z[0] = rval.copy()
+
     def __str__(self):
         return 'ExtractDiag{view=%s}'%self.view
+
     def grad(self, inputs, g_outputs):
         return [alloc_diag(g_outputs[0])]
-extract_diag = ExtractDiag()
 
+extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
+
 
 class AllocDiag(Op):
     def __eq__(self, other):
@@ -485,6 +492,7 @@ def trace(X):
     Returns the sum of diagonal elements of matrix X.
     """
     return extract_diag(X).sum()
+
 
 def spectral_radius_bound(X, log2_exponent):
     """

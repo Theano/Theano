@@ -93,6 +93,7 @@ def test_det_grad():
     r = rng.randn(5,5)
     tensor.verify_grad(det, [r], rng=numpy.random)
 
+
 def test_extract_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = theano.tensor.matrix()
@@ -121,6 +122,7 @@ def test_extract_diag():
         ok = True
     assert ok
 # not testing the view=True case since it is not used anywhere.
+
 
 def test_trace():
     rng = numpy.random.RandomState(utt.fetch_seed())
