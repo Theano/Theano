@@ -17,6 +17,7 @@ from theano import compile
 from theano import scalar
 from theano import config
 from theano.gof.python25 import all, any
+from theano.tensor import blas
 
 sparse_formats = ['csc', 'csr']
 
