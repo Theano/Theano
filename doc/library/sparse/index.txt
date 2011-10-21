@@ -43,7 +43,14 @@ grad?
       constant.  This function is called "structured_dot"
     - theano.sparse.structured_dot and its grad (structured_dot_grad)
     - theano.dot call it.
+    - dot(sparse, dense) and dot(dense, sparse), dot(sparse, sparse)
+
+- Dot
+    - performs the true dot without special semantics.
     - dot(sparse, dense), dot(dense, sparse), dot(sparse, sparse)
+    - When the operation has the form dot(csr_matrix, dense) the gradient of
+    this operation can be performed inplace by UsmmCscDense. This leads to
+    significant speed-ups.
 
 Subtensor selection (aka. square-bracket notation, aka indexing) is not implemented, but the
 CSR and CSC datastructures support effecient implementations.

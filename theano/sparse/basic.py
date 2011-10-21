@@ -17,6 +17,9 @@ from theano import compile
 from theano import scalar
 from theano import config
 from theano.gof.python25 import all, any
+from theano.tensor import blas
+
+sparse_formats = ['csc', 'csr']
 
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
@@ -1448,4 +1451,463 @@ class StructuredDotGradCSR(gof.Op):
         }
 
         """% dict(locals(), **sub)
+
+
 sdg_csr = StructuredDotGradCSR()
+
+
+class Dot(gof.op.Op):
+    """
+    Operation for efficiently calculating the dot product when
+    one or all operands is sparse. Supported format are CSC and CSR.
+    The output of the operation is dense.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [()]
+        raise NotImplementedError()
+
+    def make_node(self, x, y):
+        dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
+
+        if not _is_sparse_variable(x) and not _is_sparse_variable(y):
+            raise TypeError(x)
+
+        return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
+                         broadcastable=(False, False))])
+
+    def perform(self, node, inputs, out):
+        x, y = inputs
+        out = out[0]
+        x_is_sparse = _is_sparse(x)
+        y_is_sparse = _is_sparse(y)
+
+        if not x_is_sparse and not y_is_sparse:
+            raise TypeError(x)
+
+        rval = x * y
+
+        if x_is_sparse and y_is_sparse:
+            rval = rval.todense()
+
+        out[0] = rval
+
+    def grad(self, (x, y), (gz,)):
+        assert _is_sparse_variable(x) or _is_sparse_variable(y)
+        rval = []
+
+        if _is_dense_variable(y):
+            rval.append(tensor.dot(gz, y.T))
+        else:
+            rval.append(dot(gz, y.T))
+        if _is_dense_variable(x):
+            rval.append(tensor.dot(x.T, gz))
+        else:
+            rval.append(dot(x.T, gz))
+
+        return rval
+_dot = Dot()
+
+
+def dot(x, y):
+    """
+    Operation for efficiently calculating the dot product when
+    one or all operands is sparse. Supported format are CSC and CSR.
+    The output of the operation is dense.
+    """
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
+
+    x_is_sparse_variable = _is_sparse_variable(x)
+    y_is_sparse_variable = _is_sparse_variable(y)
+
+    if not x_is_sparse_variable and not y_is_sparse_variable:
+        raise TypeError()
+
+    return _dot(x, y)
+
+
+class Usmm(gof.op.Op):
+    """
+    Performs the expression is alpha * x y + z
+
+    x or y are sparse matrix(the other can be sparse or dense)
+    z is a dense matrix
+    alpha is a scalar
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __str__(self):
+        return 'Usmm{no_inplace}'
+
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [()]
+        raise NotImplementedError()
+
+    def make_node(self, alpha, x, y, z):
+        if not _is_sparse_variable(x) and not _is_sparse_variable(y):
+            # If x and y are tensor, we don't want to use this class
+            # We should use Dot22 and Gemm in that case.
+            raise TypeError(x)
+
+        dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
+                                  y.type.dtype, z.type.dtype)
+        alpha = tensor.as_tensor_variable(alpha)
+        z = tensor.as_tensor_variable(z)
+
+        assert z.ndim == 2
+        assert alpha.type.broadcastable == (True,) * alpha.ndim
+        if not _is_sparse_variable(x):
+            x = tensor.as_tensor_variable(x)
+            assert x.ndim == 2
+        if not _is_sparse_variable(y):
+            y = tensor.as_tensor_variable(y)
+            assert y.ndim == 2
+
+        return gof.Apply(self, [alpha, x, y, z],
+                         [tensor.tensor(dtype=dtype_out,
+                                        broadcastable=(False, False))])
+
+    def perform(self, node, (alpha, x, y, z), (out, )):
+        x_is_sparse = _is_sparse(x)
+        y_is_sparse = _is_sparse(y)
+
+        if not x_is_sparse and not y_is_sparse:
+            raise TypeError(x)
+
+        rval = x * y
+        if isinstance(rval, scipy.sparse.spmatrix):
+            rval = rval.toarray()
+        if rval.dtype == alpha.dtype:
+            rval *= alpha  # Faster because operation is inplace
+        else:
+            rval = rval * alpha
+        if rval.dtype == z.dtype:
+            rval += z   # Faster because operation is inplace
+        else:
+            rval = rval + z
+
+        out[0] = rval
+usmm = Usmm()
+
+
+class UsmmCscDense(gof.Op):
+    """
+    Performs the expression is alpha * x y + z
+    This is an optimized operation for the case when x is in CSC format.
+
+    x are sparse matrix
+    y, z is a dense matrix
+    alpha is a scalar
+    """
+    def __init__(self, inplace):
+        self.inplace = inplace
+        if inplace:
+            self.destroy_map = {0: [6]}
+
+    def __str__(self):
+        if self.inplace:
+            return 'UsmmCscDense{inplace}'
+        else:
+            return 'UsmmCscDense{no_inplace}'
+
+    def __eq__(self, other):
+        return (type(self) == type(other)) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return hash(type(self)) ^ self.inplace
+
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [()]
+        raise NotImplementedError()
+
+    def make_node(self, alpha, x_val, x_ind, x_ptr, x_nrows, y, z):
+        alpha = tensor.as_tensor_variable(alpha)
+        x_val = tensor.as_tensor_variable(x_val)
+        x_ind = tensor.as_tensor_variable(x_ind)
+        x_ptr = tensor.as_tensor_variable(x_ptr)
+        x_nrows = tensor.as_tensor_variable(x_nrows)
+        y = tensor.as_tensor_variable(y)
+        z = tensor.as_tensor_variable(z)
+        assert x_ind.dtype == 'int32'
+        assert x_ptr.dtype == 'int32'
+        assert x_nrows.dtype == 'int32'
+        assert alpha.ndim == 2 and alpha.type.broadcastable == (True, True)
+        assert x_val.ndim == 1
+        assert y.ndim == 2
+        assert z.ndim == 2
+
+        dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
+            y.type.dtype, z.type.dtype)
+        
+        if dtype_out not in ('float32', 'float64'):
+            raise NotImplementedError('only float types are supported in operands')
+        
+        if self.inplace:
+            assert z.type.dtype == dtype_out
+
+        # axpy work only with the same dtype, so we should upcast the input
+        if dtype_out != alpha.type.dtype:
+            alpha = tensor.cast(alpha, dtype_out)
+        if dtype_out != x_val.type.dtype:
+            x_val = tensor.cast(x_val, dtype_out)
+        if dtype_out != y.type.dtype:
+            y = tensor.cast(y, dtype_out)
+        if dtype_out != z.type.dtype:
+            z = tensor.cast(z, dtype_out)
+        
+        r = gof.Apply(self, [alpha, x_val, x_ind, x_ptr, x_nrows, y, z],
+                [tensor.tensor(dtype_out, (False, y.type.broadcastable[1]))])
+        return r
+
+    def c_support_code(self):
+        return blas.blas_header_text()
+
+    def c_libraries(self):
+        return blas.ldflags()
+
+    def c_compile_args(self):
+        return blas.ldflags(libs=False, flags=True)
+
+    def c_lib_dirs(self):
+        return blas.ldflags(libs=False, libs_dir=True)
+
+    def c_header_dirs(self):
+        return blas.ldflags(libs=False, include_dir=True)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        alpha, x_val, x_ind, x_ptr, x_nrows, y, z = inputs
+        zn = outputs[0]
+        if node.inputs[1].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for '
+                                      'x_val')
+        if node.inputs[5].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for y')
+        if node.inputs[6].type.dtype != node.outputs[0].type.dtype:
+            raise NotImplementedError('z and output must have same type')
+
+        if node.inputs[1].type.dtype == "float32":
+            conv_type = "float"
+            axpy = "saxpy_"
+        else:
+            conv_type = "double"
+            axpy = "daxpy_"
+        # retrieve dtype numbers
+        typenum_alpha = node.inputs[0].type.dtype_specs()[-1]
+        typenum_x_val = node.inputs[1].type.dtype_specs()[-1]
+        typenum_y = node.inputs[5].type.dtype_specs()[-1]
+        typenum_z = node.inputs[6].type.dtype_specs()[-1]
+        typenum_zn = node.outputs[0].type.dtype_specs()[-1]
+
+        inplace = int(self.inplace)
+
+        rval = """
+        if (%(x_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_val) != 1"); %(fail)s;}
+        if (%(x_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ind) != 1"); %(fail)s;}
+        if (%(x_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ptr) != 1"); %(fail)s;}
+        if (%(x_nrows)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_nrows) != 0"); %(fail)s;}
+        if (%(y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+
+        if (%(x_val)s->descr->type_num != %(typenum_x_val)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for x_val"); %(fail)s;}
+
+        if (%(y)s->descr->type_num != %(typenum_y)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for y"); %(fail)s;}
+
+        if (%(z)s->descr->type_num != %(typenum_z)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for z"); %(fail)s;}
+
+        if (%(alpha)s->descr->type_num != %(typenum_alpha)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for alpha"); %(fail)s;}
+
+        if (%(x_ind)s->descr->type_num != PyArray_INT32) {
+        PyErr_SetString(PyExc_NotImplementedError, "x_ind dtype not INT32"); %(fail)s;}
+
+        if (%(x_ptr)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "x_ptr dtype not INT32"); %(fail)s;}
+
+        if (%(x_nrows)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "x_nrows dtype not INT32"); %(fail)s;}
+
+        if (%(x_val)s->dimensions[0] != %(x_ind)s->dimensions[0])
+        {PyErr_SetString(PyExc_NotImplementedError, "x_val and x_ind have different lengths"); %(fail)s;}
+
+        if (%(x_ptr)s->dimensions[0] != %(y)s->dimensions[0]+1)
+        {PyErr_SetString(PyExc_NotImplementedError, "x's number of columns doesn't match y's rows"); %(fail)s;}
+
+        if (%(z)s->dimensions[0] != ((npy_int32 *)%(x_nrows)s->data)[0] || %(z)s->dimensions[1] != %(y)s->dimensions[1])
+        {PyErr_SetString(PyExc_NotImplementedError, "The dimension of the allocated output doesn't match the correct output size."); %(fail)s;}
+
+        if (PyArray_SIZE(%(alpha)s) != 1)
+        {PyErr_SetString(PyExc_NotImplementedError, "The number of element in alpha must be 1"); %(fail)s;}
+
+        if (%(alpha)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of alpha must be 2"); %(fail)s;}
+
+        if (%(x_val)s->nd != 1)
+        {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of x_val must be 1"); %(fail)s;}
+
+        if (%(y)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of y must be 2"); %(fail)s;}
+
+        if (%(z)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of z must be 2"); %(fail)s;}
+
+        if (%(inplace)s)
+        {
+            if (%(typenum_zn)s != %(typenum_z)s) {
+            PyErr_SetString(PyExc_NotImplementedError, "When inplace the output dtype must be the same as the input"); %(fail)s;}
+
+            Py_XDECREF(%(zn)s);
+            %(zn)s = %(z)s;
+            Py_INCREF(%(zn)s);
+        }
+        else if (!%(zn)s
+            || (%(zn)s->dimensions[0] != ((npy_int32 *)%(x_nrows)s->data)[0])
+            || (%(zn)s->dimensions[1] != %(y)s->dimensions[1])
+            )
+        {
+            {Py_XDECREF(%(zn)s);}
+            npy_intp dims[] = {0,0};
+            dims[0] = ((npy_int32 *)%(x_nrows)s->data)[0];
+            dims[1] = %(y)s->dimensions[1];
+            %(zn)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_zn)s);
+        }
+
+        {
+            // sparse array has size MxK, dense KxN, output MxN
+            npy_intp M = %(zn)s->dimensions[0];
+            npy_intp N = %(zn)s->dimensions[1];
+            npy_intp K = %(y)s->dimensions[0];
+
+            // pointers to access actual data in the arrays passed as params.
+            dtype_%(z)s* __restrict__ Dz   = (dtype_%(z)s*)%(z)s->data;
+            dtype_%(zn)s* __restrict__ Dzn   = (dtype_%(zn)s*)%(zn)s->data;
+            const dtype_%(x_val)s* __restrict__ Dval = (dtype_%(x_val)s*)%(x_val)s->data;
+            const npy_int32 * __restrict__ Dind = (npy_int32*)%(x_ind)s->data;
+            const npy_int32 * __restrict__ Dptr = (npy_int32*)%(x_ptr)s->data;
+            const dtype_%(alpha)s alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
+
+            npy_intp Sz = %(z)s->strides[1] / %(z)s->descr->elsize;
+            npy_intp Szn = %(zn)s->strides[1] / %(zn)s->descr->elsize;
+            npy_intp Sval = %(x_val)s->strides[0] / %(x_val)s->descr->elsize;
+            npy_intp Sind = %(x_ind)s->strides[0] / %(x_ind)s->descr->elsize;
+            npy_intp Sptr = %(x_ptr)s->strides[0] / %(x_ptr)s->descr->elsize;
+            npy_intp Sy = %(y)s->strides[1] / %(y)s->descr->elsize;
+
+
+            if (!(%(inplace)s))
+            {
+                memcpy(Dzn, Dz, M*N*sizeof(dtype_%(zn)s));
+            }
+
+            for (npy_int32 k = 0; k < K; ++k)
+            {
+                for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1)*Sptr]; ++m_idx)
+                {
+                    const npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
+
+                    const dtype_%(x_val)s Amk = alpha * Dval[m_idx * Sval]; // actual value at that location
+
+                    const dtype_%(y)s* y_row = (dtype_%(y)s*)(%(y)s->data + %(y)s->strides[0] * k);
+
+                    const dtype_%(zn)s* z_row = (dtype_%(zn)s*)(%(zn)s->data + %(zn)s->strides[0] * m);
+
+                    %(axpy)s((int*)&N, (%(conv_type)s*)&Amk, (%(conv_type)s*)y_row, (int*)&Sy, (%(conv_type)s*)z_row, (int*)&Szn);
+                }
+            }
+        }
+        """ % dict(locals(), **sub)
+
+        return rval
+
+
+usmm_csc_dense = UsmmCscDense(inplace=False)
+usmm_csc_dense_inplace = UsmmCscDense(inplace=True)
+
+
+local_usmm = gof.opt.PatternSub(
+    (tensor.sub, 'z',
+     (tensor.mul,
+      {'pattern': 'alpha',
+       'constraint': lambda expr: numpy.all(expr.type.broadcastable)},
+    (_dot, 'x', 'y'))),
+    (usmm, (tensor.neg, 'alpha'), 'x', 'y', 'z'))
+
+
+register_specialize(local_usmm, name="local_usmm")
+
+
+@gof.local_optimizer([usmm])
+def local_usmm_csx(node):
+    if node.op == usmm:
+        alpha, x, y, z = node.inputs
+
+        x_is_sparse_variable = _is_sparse_variable(x)
+        y_is_sparse_variable = _is_sparse_variable(y)
+
+        if x_is_sparse_variable and not y_is_sparse_variable:
+            if x.type.format == 'csc':
+                x_val, x_ind, x_ptr, x_shape = csm_properties(x)
+                x_nsparse = x_shape[0]
+                dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
+                                          y.type.dtype, z.type.dtype)
+                # Sparse cast is not implemented.
+                if y.type.dtype != dtype_out:
+                    return False
+
+                return [usmm_csc_dense(alpha, x_val, x_ind, x_ptr,
+                                       x_nsparse, y, z)]
+    return False
+register_specialize(local_usmm_csx)
+
+
+@gof.local_optimizer([usmm_csc_dense])
+def local_usmm_csc_dense_inplace(node):
+    if node.op == usmm_csc_dense:
+        return [usmm_csc_dense_inplace(*node.inputs)]
+register_specialize(local_usmm_csc_dense_inplace, 'inplace')
