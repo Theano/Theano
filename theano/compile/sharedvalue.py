@@ -187,7 +187,7 @@ class SharedVariable(Variable):
             msg = ('an object of type: %s. Did you forget to cast it into '
                    'a Numpy array before calling theano.shared()?' %
                    type(value))
-        
+
         raise TypeError(
                 "The generic 'SharedVariable' object is not subscriptable. "
                 "This shared variable contains %s" % msg)

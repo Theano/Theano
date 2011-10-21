@@ -10,8 +10,8 @@ Theano graphs
 
 - Theano works with symbolic graphs
 - Those graphs are bi-partite graphs (graph with 2 types of nodes)
-- The 2 types are Apply nodes and Variable nodes
-- Apply nodes have a link to the Op they execute
+- The 2 types of nodes are Apply and Variable nodes
+- Each Apply node has a link to the Op that it executes
 
 Inputs and Outputs are lists of Theano variables
 
@@ -28,25 +28,42 @@ Op contract
 
     class MyOp(theano.Op):
         def make_node(self, *inputs):
+            pass
+
         def __eq__(self, other):
+            pass
+
         def __hash__(self):
+            pass
+
         def __str__(self):
+            pass
 
         # Python implementation:
         def perform(self, node, inputs_storage, output_storage):
+            pass
 
         # C implementation: [see theano web site for other functions]
 	def c_code(...):
 	# ...
+            pass
 
         # others implementation (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
+            pass
 
         # optional:
         def __init__(self, ...):
+            pass
+
         def grad(self, inputs, g):
+            pass
+
 	def R_op(self, inputs, eval_points):
+            pass
+
         def infer_shape(node, (i0_shapes, ...))
+            pass
 
 .. ../extending/op.txt
 
@@ -78,9 +95,11 @@ This could be helpful if one only needs the shape of the output instead of the a
 The :func:`grad` method is required if you want to differentiate some cost whose expression
 includes your op.
 
-The :func:`__str__` is usefull to generate a better name for your op when printing.
+The :func:`__str__` method is useful in order to provide a more meaningful
+string representation of your Op.
 
-The :func:`R_op` is needed if you want theano.tensor.Rop to work with your op.
+The :func:`R_op` method is needed if you want `theano.tensor.Rop` to
+work with your op.
 
 Op example
 ----------
@@ -92,13 +111,17 @@ Op example
     class DoubleOp(theano.Op):
         def __eq__(self, other):
             return type(self) == type(other)
+
         def __hash__(self):
             return hash(type(self))
+
         def __str__(self):
             return self.__class__.__name__
+
         def make_node(self, x):
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
+
         def perform(self, node, inputs, output_storage):
             x = inputs[0]
             z = output_storage[0]
@@ -123,7 +146,7 @@ Exercises 8
 - Modify and execute to compute: x * y
 - Modify and execute the example to return 2 outputs: x + y and x - y
 
-  - Our current elemwise fusion generate computation with only 1 outputs
+  - Our current element-wise fusion generates computation with only 1 output.
 
 
 
