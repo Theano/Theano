@@ -350,6 +350,30 @@ ifelse_equilibrium = gof.EquilibriumDB()
 ifelse_seqopt = gof.SequenceDB()
 ifelse_equilibrium.register('seq_ifelse', ifelse_seqopt, 'fast_run',
                             'ifelse')
+''' Comments:
+I've wrote this comments to explain how the optimization of ifelse function
+(for future developers that need to parse this part of code. Please try to
+keep this comments in sync with whatever changes you add to the code.
+
+ifelse optimization are registered before canonicalize !
+
+The optimizations are called in sequence as follows:
+    * equilibrium shell (runs until no change):
+        * ifelse_lift
+        * ifelse_merge_ifs
+        * ifelse_merge_nodes
+        * ifelse_remove_identical_inside
+        * ifelse_sameCondTrue_inside
+        * ifelse_sameCondFalse_inside
+    * merge_nodes_1
+    * ifelse_sameCondTrue
+    * ifelse_sameCondFalse
+    * ifelse_removeIdentical
+
+where, each of the optimization do the following things:
+    `ifelse_lift` (def cond_lift_single_if):
+
+'''
 optdb.register('ifelse_equilibriumOpt', ifelse_equilibrium, .5, 'fast_run',
                'ifelse')
 
