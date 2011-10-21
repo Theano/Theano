@@ -31,23 +31,6 @@ following methods:
   ordered correctly: a subsequent ``self.make_node(*apply.inputs)``
   must produce something equivalent to the first ``apply``.
 
-.. attribute:: default_output
-
-  *Default:* None
-
-  If this member variable is an integer, then the default
-  implementation of ``__call__`` will return
-  ``node.outputs[self.default_output]``, where ``node`` was returned
-  by ``make_node``.  Otherwise, the entire list of outputs will be
-  returned.
-
-.. function:: __call__(*inputs)
-
-  Syntactic shortcut to make_node which returns the output
-  Variables of the Op.
-
-  *Default:* this is done for you by Op.
-
 .. function:: perform(node, inputs, output_storage)
 
   This method computes the function associated to this Op. The
@@ -57,7 +40,7 @@ following methods:
   variables of the computation must be put. More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
-      obtained via ``mul``'s ``make_node`` method. It is typically not
+      obtained via the ``Op``'s ``make_node`` method. It is typically not
       used in simple Ops, but it contains symbolic information that
       could be required for complex Ops.
 
@@ -111,18 +94,14 @@ following methods:
   lifetime of self.  Op instances should be immutable in this
   sense.
 
-.. function:: __ne__(other)
-
-  *Default:* ``(not (self==other))``
-
 .. function:: grad(inputs, output_gradients)
 
-  Optional.
+  Optional (but needed if you want to have it work with {tensor,sparse}.grad())
 
   If the Op you are defining is differentiable, you can define its
   gradient symbolically in this method.
 
-  Both the ``inputs`` and ``output_gradients`` will be
+  Both the ``inputs`` and ``output_gradients`` will be list of Theano
   Variables. This method must return a list containing one Variable
   (or ``None``) for each input. Each returned Variable represents the
   gradient with respect to that input given the symbolic gradients
@@ -158,11 +137,64 @@ following methods:
   Both the partial derivation and that multiplication have to be done by
   :func:`grad`.
 
+.. function:: infer_shape(node, shapes)
+
+   Optional.
+
+   This function is needed for shape optimization. ``shapes`` is a
+   list with one tuple for each input the Apply node linked to this op
+   have.  Each tuple contain 1 element for each dimensions of the
+   corresponding inputs.  The value is the the corresponding
+   dimensions shape of the corresponding inputs.
+
+   This sound complicated, but this is just the corresponding inputs
+   shape in symbolic variable.
+
+   The function should return a list with one tuple for each output.
+   Each tuple should contain the corresponding output's shape.
+
+.. function:: make_thunk(node, storage_map, compute_map, no_recycling)
+
+   TODO
+
+.. function:: R_op(inputs, eval_points)
+
+   Optional.
+
+   This function is needed for theano.tensor.Rop to work with this op.
+
+   TODO: add more detail.
+
+.. attribute:: default_output
+
+  *Default:* None
+
+  If this member variable is an integer, then the default
+  implementation of ``__call__`` will return
+  ``node.outputs[self.default_output]``, where ``node`` was returned
+  by ``make_node``.  Otherwise, the entire list of outputs will be
+  returned.
+
+.. function:: __call__(*inputs)
+
+  Syntactic shortcut to make_node which returns the output
+  Variables of the Op.
+
+  *Default:* this is done for you by Op.
+
+.. function:: __str__()
+
+   *Default:* python default: module_path_to_your_class.CLASSNAME
+
+   This allow you to have a better printing of Op. If an Op have parameter
+   it is highly recommented that it make the ``__str__`` function
+   print the name of the op and the Op's parameters values.
 
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
 
-For more details, including the interface for providing a C
-implementation of ``perform()``, refer to the documentation for :ref:`op`.
+Also you can provide a :ref:`C implementation <cop>` of
+``perform()``. For other details refer to the documentation for
+:ref:`op`.
 
 
 Defining an Op: ``mul``
