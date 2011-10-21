@@ -12,6 +12,8 @@ except ImportError:
 import theano
 from theano import compile, config
 from theano.sparse import enable_sparse
+from theano.gof.python25 import product
+
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
 
@@ -592,69 +594,80 @@ class UsmmTests(unittest.TestCase):
             else:
                 return theano.sparse.matrix(format, name, dtype=dtype)
 
-        for dtype1 in ['float32', 'float64']:
-            for dtype2 in ['float32', 'float64']:
-                for dtype3 in ['float32', 'float64']:
-                    for dtype4 in ['float32', 'float64']:
-                        for format1 in ['dense', 'csc','csr']:
-                            for format2 in ['dense', 'csc','csr']:
-                                if format1 == 'dense' and format2 == 'dense':
-                                    # Usmm won't be used!
-                                    continue
-                                x = mat(format1, 'x', dtype1)
-                                y = mat(format2, 'y', dtype2)
-                                a = theano.tensor.scalar('a', dtype=dtype3)
-                                z = theano.tensor.shared(numpy.asarray(self.z,dtype=dtype4).copy())
+        params = product(*([['float32', 'float64']] * 4 +
+                           [['dense', 'csc', 'csr']] * 2))
 
-                                f_b = lambda z, a, x, y: z - a * (x * y)
-                                x_data = numpy.asarray(self.x, dtype = dtype1)
-                                if format1 != 'dense':
-                                    x_data = as_sparse_format(x_data, format1)
-                                y_data = numpy.asarray(self.y, dtype = dtype2)
-                                if format2 != 'dense':
-                                    y_data = as_sparse_format(y_data, format2)
-                                z_data = numpy.asarray(self.z, dtype = dtype3)
+        for dtype1, dtype2, dtype3, dtype4, format1, format2 in params:
+            if format1 == 'dense' and format2 == 'dense':
+                # Usmm won't be used!
+                continue
+            x = mat(format1, 'x', dtype1)
+            y = mat(format2, 'y', dtype2)
+            a = theano.tensor.scalar('a', dtype=dtype3)
+            z = theano.tensor.shared(
+                numpy.asarray(self.z, dtype=dtype4).copy()
+            )
 
-                                f_b_out = f_b(z_data, 1, x_data, y_data)
+            f_b = lambda z, a, x, y: z - a * (x * y)
+            x_data = numpy.asarray(self.x, dtype=dtype1)
+            if format1 != 'dense':
+                x_data = as_sparse_format(x_data, format1)
+            y_data = numpy.asarray(self.y, dtype=dtype2)
+            if format2 != 'dense':
+                y_data = as_sparse_format(y_data, format2)
+            z_data = numpy.asarray(self.z, dtype=dtype3)
 
-                                # Can it work inplace?
-                                inplace = dtype4 == theano.scalar.upcast(dtype1, dtype2, dtype3)
+            f_b_out = f_b(z_data, 1, x_data, y_data)
 
-                                # To make it easier to check the toposort
-                                mode = theano.compile.mode.get_default_mode().excluding('fusion')
+            # Can it work inplace?
+            inplace = dtype4 == theano.scalar.upcast(dtype1, dtype2, dtype3)
 
-                                if inplace:
-                                    f_a = theano.function([a, x, y], [],
-                                                          updates={ z : z - a * theano.sparse.dot(x, y)},
-                                                          mode = mode)
-                                    f_a(1, x_data, y_data)
-                                    assert abs(z.get_value(borrow=True) - f_b_out).max() < 1e-4
-                                else:
-                                    f_a = theano.function([a, x, y], z - a * theano.sparse.dot(x, y),
-                                                          mode = mode)
-                                    f_a_out = f_a(1, x_data, y_data)
-                                    assert abs(f_a_out - f_b_out).max() < 1e-4
-                                topo = f_a.maker.env.toposort()
-                                if (y.type.dtype == theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
-                                    and format1=='csc' and format2=='dense'):
+            # To make it easier to check the toposort
+            mode = theano.compile.mode.get_default_mode().excluding('fusion')
 
-                                    assert sum([isinstance(node.op, tensor.Elemwise) and isinstance(node.op.scalar_op, theano.scalar.basic.Cast) for node in topo])==len(topo)-5
-                                    topo = [node for node in topo if not(isinstance(node.op, tensor.Elemwise) and isinstance(node.op.scalar_op, theano.scalar.basic.Cast))]
-                                    assert len(topo)==5, topo
-                                    # Usmm is tested at the same time in debugmode
-                                    # Check if the optimization local_usmm and local_usmm_csx is applied
-                                    assert isinstance(topo[0].op, theano.sparse.basic.CSMProperties)
-                                    assert isinstance(topo[1].op, theano.tensor.DimShuffle)
-                                    assert isinstance(topo[2].op, theano.tensor.Subtensor)
-                                    assert topo[3].op == theano.tensor.neg
-                                    assert isinstance(topo[4].op, theano.sparse.UsmmCscDense)
-                                    if inplace:
-                                        assert topo[4].op.inplace
-                                else:
-                                    assert len(topo)==3, topo
-                                    assert isinstance(topo[0].op, theano.tensor.DimShuffle)
-                                    assert topo[1].op == theano.tensor.neg
-                                    assert isinstance(topo[2].op, theano.sparse.Usmm)
+            if inplace:
+                updates = {z: z - a * theano.sparse.dot(x, y)}
+                f_a = theano.function([a, x, y], [],
+                                      updates=updates,
+                                      mode=mode)
+                f_a(1, x_data, y_data)
+                assert abs(z.get_value(borrow=True) - f_b_out).max() < 1e-4
+            else:
+                f_a = theano.function([a, x, y],
+                                      z - a * theano.sparse.dot(x, y),
+                                      mode=mode)
+                f_a_out = f_a(1, x_data, y_data)
+                assert abs(f_a_out - f_b_out).max() < 1e-4
+            topo = f_a.maker.env.toposort()
+            up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
+            if y.type.dtype == up and format1 == 'csc' and format2 == 'dense':
+                assert (sum([isinstance(node.op, tensor.Elemwise) and
+                             isinstance(node.op.scalar_op,
+                                        theano.scalar.basic.Cast)
+                             for node in topo]) == len(topo) - 5)
+                new_topo = []
+                for node in topo:
+                    if not isinstance(node.op, tensor.Elemwise) and \
+                       isinstance(node.op.scalar_op, theano.scalar.basic.Cast):
+                        new_topo.append(node)
+                topo = new_topo
+                assert len(topo) == 5, topo
+                # Usmm is tested at the same time in debugmode
+                # Check if the optimization local_usmm and local_usmm_csx is
+                # applied
+                assert isinstance(topo[0].op,
+                                  theano.sparse.basic.CSMProperties)
+                assert isinstance(topo[1].op, theano.tensor.DimShuffle)
+                assert isinstance(topo[2].op, theano.tensor.Subtensor)
+                assert topo[3].op == theano.tensor.neg
+                assert isinstance(topo[4].op, theano.sparse.UsmmCscDense)
+                if inplace:
+                    assert topo[4].op.inplace
+            else:
+                assert len(topo)==3, topo
+                assert isinstance(topo[0].op, theano.tensor.DimShuffle)
+                assert topo[1].op == theano.tensor.neg
+                assert isinstance(topo[2].op, theano.sparse.Usmm)
 
 
 def test_shape_i():
