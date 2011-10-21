@@ -1491,8 +1491,10 @@ class Dot(gof.op.Op):
 
         return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
                          broadcastable=(False, False))])
-    
-    def perform(self, node, (x, y), (out, )):
+
+    def perform(self, node, inputs, out):
+        x, y = inputs
+        out = out[0]
         x_is_sparse = _is_sparse(x)
         y_is_sparse = _is_sparse(y)
 
@@ -1708,8 +1710,10 @@ class UsmmCscDense(gof.Op):
 
     def c_header_dirs(self):
         return blas.ldflags(libs=False, include_dir=True)
-    
-    def c_code(self, node, name, (alpha, x_val, x_ind, x_ptr, x_nrows, y, z), (zn,), sub):
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        alpha, x_val, x_ind, x_ptr, x_nrows, y, z = inputs
+        zn = outputs[0]
         if node.inputs[1].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for x_val')
         if node.inputs[5].type.dtype in ('complex64', 'complex128'):
