@@ -53,7 +53,7 @@ from theano.tensor import opt
 from theano import tensor
 from theano import config
 from theano.updates import Updates
-from theano.sandbox import cuda
+
 
 import scan_op
 import scan_utils
@@ -914,6 +914,8 @@ def scan( fn
                    shared_inner_outputs  )
     if condition is not None:
         inner_outs.append(condition)
+
+    from theano.sandbox import cuda
     if cuda.cuda_available:
         # very often we end up in this situation when we want to
         # replace w with w_copy, where w is CudaNdarray
