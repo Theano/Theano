@@ -444,22 +444,26 @@ class numeric_grad(object):
             self.gf = self.gf[0]
 
     @staticmethod
-    def abs_rel_err(a, b, eps=1e-8):
+    def abs_rel_err(a, b):
         """Return absolute and relative error between a and b.
 
-        The relative error is a small number when a and b are close, relative to how big they are.
+        The relative error is a small number when a and b are close, relative
+        to how big they are.
 
         Formulas used:
             abs_err = abs(a - b)
-            rel_err = abs_err / (abs(a) + abs(b))
+            rel_err = abs_err / max(abs(a) + abs(b), 1e-8)
+
+        The denominator is clipped at 1e-8 to avoid dividing by 0 when a and b
+        are both close to 0.
 
         The tuple (abs_err, rel_err) is returned
         """
         abs_err = abs(a - b)
-        rel_err = abs_err / (abs(a) + abs(b) + eps)
+        rel_err = abs_err / numpy.maximum(abs(a) + abs(b), 1e-8)
         return (abs_err, rel_err)
 
-    def abs_rel_errors(self, g_pt, eps=1e-8):
+    def abs_rel_errors(self, g_pt):
         """Return the abs and rel error of gradient estimate `g_pt`
 
         `g_pt` must be a list of ndarrays of the same length as self.gf,
@@ -479,7 +483,7 @@ class numeric_grad(object):
                 raise ValueError(
                         'argument element %i has wrong shape %s' % (
                             i, str((a.shape, b.shape))))
-            errs.append(numeric_grad.abs_rel_err(a, b, eps))
+            errs.append(numeric_grad.abs_rel_err(a, b))
         return errs
 
     def max_err(self, g_pt, abs_tol, rel_tol):
