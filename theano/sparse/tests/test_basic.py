@@ -527,30 +527,30 @@ class DotTests(unittest.TestCase):
     def setUp(self):
         x_size = (10, 1000)
         y_size = (1000, 10000)
-        
+
         self.x_csr = scipy.sparse.csr_matrix(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
         self.x_csc = scipy.sparse.csc_matrix(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
         self.y = numpy.asarray(numpy.random.uniform(-1, 1, y_size), dtype=theano.config.floatX)
         self.y_csr = scipy.sparse.csr_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
         self.y_csc = scipy.sparse.csc_matrix(numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
 
-    
+
     def test_csr_dense(self):
         x = theano.sparse.csr_matrix('x')
         y = theano.tensor.matrix('y')
-    
+
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
-        
+
         assert abs(f_a(self.x_csr, self.y) - f_b(self.x_csr, self.y)).max() < 10**-4
 
     def test_csc_dense(self):
         x = theano.sparse.csc_matrix('x')
         y = theano.tensor.matrix('y')
-    
+
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
-        
+
         assert abs(f_a(self.x_csc, self.y) - f_b(self.x_csc, self.y)).max() < 10**-4
     def test_sparse_sparse(self):
         for d1, d2 in [('float32', 'float32'),
@@ -579,11 +579,11 @@ class UsmmTests(unittest.TestCase):
         x_size = (10, 200)
         y_size = (200, 2000)
         z_size = (x_size[0], y_size[1])
-        
+
         self.x = numpy.asarray(numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
         self.y = numpy.asarray(numpy.random.uniform(-1, 1, y_size), dtype=theano.config.floatX)
         self.z = numpy.asarray(numpy.random.uniform(-1, 1, z_size), dtype=theano.config.floatX)
-    
+
     def test(self):
         def mat(format, name, dtype):
             if format == 'dense':
