@@ -10,8 +10,8 @@ Theano graphs
 
 - Theano works with symbolic graphs
 - Those graphs are bi-partite graphs (graph with 2 types of nodes)
-- Those 2 nodes types are Apply and Variable nodes
-- Apply node have a link to the Op that it execute
+- The 2 types are Apply nodes and Variable nodes
+- Apply nodes have a link to the Op they execute
 
 Inputs and Outputs are lists of Theano variables
 
