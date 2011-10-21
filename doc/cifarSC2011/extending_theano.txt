@@ -28,25 +28,42 @@ Op contract
 
     class MyOp(theano.Op):
         def make_node(self, *inputs):
+            pass
+
         def __eq__(self, other):
+            pass
+
         def __hash__(self):
+            pass
+
         def __str__(self):
+            pass
 
         # Python implementation:
         def perform(self, node, inputs_storage, output_storage):
+            pass
 
         # C implementation: [see theano web site for other functions]
 	def c_code(...):
 	# ...
+            pass
 
         # others implementation (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
+            pass
 
         # optional:
         def __init__(self, ...):
+            pass
+
         def grad(self, inputs, g):
+            pass
+
 	def R_op(self, inputs, eval_points):
+            pass
+
         def infer_shape(node, (i0_shapes, ...))
+            pass
 
 .. ../extending/op.txt
 
