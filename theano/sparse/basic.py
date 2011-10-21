@@ -1450,7 +1450,10 @@ class StructuredDotGradCSR(gof.Op):
         }
 
         """% dict(locals(), **sub)
+
+
 sdg_csr = StructuredDotGradCSR()
+
 
 class Dot(gof.op.Op):
     """
@@ -1505,12 +1508,17 @@ class Dot(gof.op.Op):
 
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) or _is_sparse_variable(y)
-        
-        rval = [
-            tensor.dot(gz, y.T) if _is_dense_variable(y) else dot(gz, y.T),
-            tensor.dot(x.T, gz) if _is_dense_variable(x) else dot(x.T, gz)
-        ]
-        
+        rval = []
+
+        if _is_dense_variable(y):
+            rval.append(tensor.dot(gz, y.T))
+        else:
+            rval.append(dot(gz, y.T))
+        if _is_dense_variable(x):
+            rval.append(tensor.dot(x.T, gz))
+        else:
+            rval.append(dot(x.T, gz))
+
         return rval
 _dot = Dot()
 
