@@ -95,10 +95,11 @@ This could be helpful if one only needs the shape of the output instead of the a
 The :func:`grad` method is required if you want to differentiate some cost whose expression
 includes your op.
 
-The :func:`__str__` is useful in order to provide a more meaningful string
-representation of your Op.
+The :func:`__str__` method is useful in order to provide a more meaningful
+string representation of your Op.
 
-The :func:`R_op` is needed if you want `theano.tensor.Rop` to work with your op.
+The :func:`R_op` method is needed if you want `theano.tensor.Rop` to
+work with your op.
 
 Op example
 ----------
