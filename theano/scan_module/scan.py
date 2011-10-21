@@ -914,7 +914,10 @@ def scan( fn
                    shared_inner_outputs  )
     if condition is not None:
         inner_outs.append(condition)
-
+    # Cuda is imported here, instead of being imported on top of the file
+    # because forces on the user some dependencies that we might do not want
+    # to. Currently we are working on removing the dependencies on sandbox
+    # code completeley.
     from theano.sandbox import cuda
     if cuda.cuda_available:
         # very often we end up in this situation when we want to
