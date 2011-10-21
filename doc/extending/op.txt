@@ -142,13 +142,14 @@ following methods:
    Optional.
 
    This function is needed for shape optimization. ``shapes`` is a
-   list with one tuple for each input the Apply node linked to this op
-   have.  Each tuple contain 1 element for each dimensions of the
-   corresponding inputs.  The value is the the corresponding
-   dimensions shape of the corresponding inputs.
+   list with one tuple for each input of the Apply node (which corresponds
+   to the inputs of the op).  Each tuple contains 1 element for 
+   each dimension of the corresponding input. The value is the 
+   shape (number of elements) along the corresponding dimension of that
+   specific input.
 
-   This sound complicated, but this is just the corresponding inputs
-   shape in symbolic variable.
+   While this might sound complicated, it is nothing more then the shape
+   of each input as symbolic variables (one per dimension).
 
    The function should return a list with one tuple for each output.
    Each tuple should contain the corresponding output's shape.
@@ -180,15 +181,15 @@ following methods:
   Syntactic shortcut to make_node which returns the output
   Variables of the Op.
 
-  *Default:* this is done for you by Op.
+  *Default:* this is implemented in the parent class and you do not need to change it.
 
 .. function:: __str__()
 
    *Default:* python default: module_path_to_your_class.CLASSNAME
 
-   This allow you to have a better printing of Op. If an Op have parameter
-   it is highly recommented that it make the ``__str__`` function
-   print the name of the op and the Op's parameters values.
+   This allows for better printing of the Op. If the Op parameterizable, it is highly
+   recommended to implement this method, showing the value of the different parameters
+   in the current instance's name.
 
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
 
