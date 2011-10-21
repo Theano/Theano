@@ -333,28 +333,34 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
             return ret
 
 
-class numeric_grad:
-    """WRITEME"""
+class numeric_grad(object):
+    """
+    Compute the numeric derivative of a scalar-valued function at a particular
+    point.
+    """
 
     # Note on step sizes and tolerances:
     #
-    # There is a relationship between the step size and the function value and the measurement
-    # error that is incurred due to rounding.  The finite difference we measure is
-    # delta = f(x0) - f(x0+eps)
+    # There is a relationship between the step size and the function value and
+    # the measurement error that is incurred due to rounding.  The finite
+    # difference we measure is delta = f(x0) - f(x0+eps)
     #
     # For maximum precision, f should be close to zero.
-    # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
+    # For every power of 2 that f departs from zero, we lose a bit of
+    # precision in delta.
     #
-    # Even in this case of maximum accuracy, there is a tradeoff between stepsize and
-    # measurement error.
-    # Taking small steps allows us to measure large derivatives accuractly, but longer steps
-    # are required to measure small derivatives accurately.  However longer steps introduce
-    # bias into our measurement in general for non-linear functions.
+    # Even in this case of maximum accuracy, there is a tradeoff between
+    # stepsize and measurement error.  Taking small steps allows us to measure
+    # large derivatives accuractly, but longer steps are required to measure
+    # small derivatives accurately.  However longer steps introduce bias into
+    # our measurement in general for non-linear functions.
     #
-    # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
+    # It would be interesting to have a version of numeric grad that used an
+    # adaptive stepsize.
     #
-    # For now, we use a heuristic that catches very bad gradients, but is not perfectly
-    # accurate.
+    # For now, we use a heuristic that catches very bad gradients, but is not
+    # perfectly accurate.
+
     type_eps = {'float64': 1e-7,
             'float32': 3e-4,
             numpy.dtype('float64'):1e-7,
@@ -362,6 +368,9 @@ class numeric_grad:
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
+
+        :param f: a differentiable function such that f(*pt) is a scalar
+        :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
 
         This function computes the gradient by a one-sided finite differences of a
         fixed step size (eps).
@@ -453,20 +462,23 @@ class numeric_grad:
     def abs_rel_errors(self, g_pt):
         """Return the abs and rel error of gradient estimate `g_pt`
 
-        `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
-        is raised.
+        `g_pt` must be a list of ndarrays of the same length as self.gf,
+        otherwise a ValueError is raised.
 
-        Corresponding ndarrays in `g_pt` and `self.gf` must have the same shape or ValueError
-        is raised.
+        Corresponding ndarrays in `g_pt` and `self.gf` must have the same
+        shape or ValueError is raised.
 
         """
         if len(g_pt) != len(self.gf):
-            raise ValueError('argument has wrong number of elements', len(g_pt))
+            raise ValueError(
+                    'argument has wrong number of elements',
+                    len(g_pt))
         errs = []
         for i, (a, b) in enumerate(zip(g_pt, self.gf)):
             if a.shape != b.shape:
-                raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
-                    b.shape))))
+                raise ValueError(
+                        'argument element %i has wrong shape %s' % (
+                            i, str((a.shape, b.shape))))
             errs.append(numeric_grad.abs_rel_err(a,b))
         return errs
 
@@ -477,8 +489,8 @@ class numeric_grad:
         wrt the provided tolerances (abs_tol, rel_tol).
         A value > 1 means both tolerances are exceeded.
 
-        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over g_pt,
-        as well as abs_err and rel_err at this point.
+        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over
+        g_pt, as well as abs_err and rel_err at this point.
         """
         pos = []
         errs = []
@@ -511,9 +523,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
                     rng=numpy.random)
 
     Raises an Exception if the difference between the analytic gradient and
-    numerical gradient (computed through the Finite Difference Method) of a random
-    projection of the fun's output to a scalar exceeds
-    the given tolerance.
+    numerical gradient (computed through the Finite Difference Method) of a
+    random projection of the fun's output to a scalar exceeds the given
+    tolerance.
 
     :param fun: a Python function that takes Theano variables as inputs,
         and returns a Theano variable. For instance, an Op instance with
@@ -521,19 +533,21 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     :param pt: the list of numpy.ndarrays to use as input values.
         These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient of sum(u * fun) at pt
-    :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
+    :param rng: random number generator used to sample u, we test gradient of
+        sum(u * fun) at pt
+    :param eps: stepsize used in the Finite Difference Method (Default None is
+        type-dependent)
     :param abs_tol: absolute tolerance used as threshold for gradient comparison
     :param rel_tol: relative tolerance used as threshold for gradient comparison
 
-    :note: WARNING to unit-test writers: if `op` is a function that builds a graph,
-           try to make it a SMALL graph.  Often verify grad is run in
-           debug mode, which can be very slow if it has to verify a lot
-           of intermediate computations.
+    :note: WARNING to unit-test writers: if `op` is a function that builds a
+        graph, try to make it a SMALL graph.  Often verify grad is run in
+        debug mode, which can be very slow if it has to verify a lot of
+        intermediate computations.
 
-    :note: This op does not support multiple outputs. In tests/test_scan.py there is
-           an experimental verify_grad that covers that case as well by using random
-           projections.
+    :note: This op does not support multiple outputs. In tests/test_scan.py
+        there is an experimental verify_grad that covers that case as well by
+        using random projections.
     """
     assert isinstance(pt, (list,tuple))
     pt = [numpy.array(p) for p in pt]
@@ -553,8 +567,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
-        raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
-                'You may want to use theano.tests.unittest_tools.verify_grad instead of theano.tensor.verify_grad.')
+        raise TypeError('rng be instance of numpy.random.RandomState', (
+                '  hint: Maybe you meant to call'
+                '        theano.tests.unittest_tools.verify_grad instead of'
+                '        theano.tensor.verify_grad.'))
 
     # We allow input downcast in function, because numeric_grad works in the
     # most precise dtype used among the inputs, so we may need to cast some.
@@ -567,15 +583,18 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
                     allow_input_downcast=True, mode=mode)
         return f
 
-    tensor_pt = [TensorType(as_tensor_variable(p).dtype, as_tensor_variable(p).broadcastable)(name='input %i'%i) for i,p in enumerate(pt)]
+    tensor_pt = [TensorType(
+            as_tensor_variable(p).dtype,
+            as_tensor_variable(p).broadcastable)(name='input %i'%i)
+        for i, p in enumerate(pt)]
 
     #fun can be either a function or an actual Op instance
     o_output = fun(*tensor_pt)
 
-    if isinstance(o_output,list):
-        raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
-        # we could make loop over outputs making random projections R for each,
-        # but this doesn't handle the case where not all the outputs are
+    if isinstance(o_output, list):
+        raise NotImplementedError('verify gradient on multiple outputs')
+        # we could make loop over outputs making random projections R for
+        # each, but this doesn't handle the case where not all the outputs are
         # differentiable... so I leave this as TODO for now -JB.
 
     o_fn = function(tensor_pt, o_output)
@@ -597,18 +616,16 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     t_r = shared(random_projection())
 
     #random projection of o onto t_r
-    cost = theano.tensor.sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
+    cost = theano.tensor.sum(t_r * o_output)
     cost_fn = function(tensor_pt, cost)
 
     #todo-- determine if this is actually needed
-    g_cost = as_tensor_variable(1.0,name='g_cost')
+    g_cost = as_tensor_variable(1.0, name='g_cost')
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
 
     symbolic_grad = grad(cost, tensor_pt, g_cost,
                          disconnected_inputs='ignore')
-    #if o_output.dtype in ['float32','float64']:
-    #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
 
     grad_fn = function(tensor_pt, symbolic_grad)
 
