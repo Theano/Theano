@@ -294,6 +294,9 @@ class BadOptimization(DebugModeError):
         print >> sio, self.old_graph
         print >> sio, "  New Graph:"
         print >> sio, self.new_graph
+        print >> sio, ""
+        print >> sio, "Hint: relax the tolerance by setting tensor.cmp_sloppy=1"
+        print >> sio, "  or even tensor.cmp_sloppy=2 for less-strict comparison"
         return sio.getvalue()
 
 class BadDestroyMap(DebugModeError):

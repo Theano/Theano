@@ -1,3 +1,6 @@
+import logging
+
+logger = logging.getLogger(__name__)
 import numpy
 
 from theano.gof import Op, Apply
@@ -57,6 +60,7 @@ def hints(variable):
 @local_optimizer([])
 def remove_hint_nodes(node):
     if is_hint_node(node):
+        # transfer hints from graph to Feature
         try:
             for k,v in node.op.hints:
                 node.env.hints_feature.add_hint(node.inputs[0], k, v)
@@ -95,7 +99,7 @@ class HintsFeature(object):
 
     """
     def add_hint(self, r, k, v):
-        print 'adding hint', r, k, v
+        logger.debug('adding hint; %s, %s, %s' % (r, k, v))
         self.hints[r][k] = v
 
     def ensure_init_r(self, r):
@@ -171,9 +175,8 @@ def is_positive(v):
         return True
     #TODO: how to handle this - a registry?
     #      infer_hints on Ops?
-    print 'is_positive', v
+    logger.debug('is_positive: %s' % str(v))
     if v.owner and v.owner.op == tensor.pow:
-        print 'try for pow', v, v.owner.inputs
         try:
             exponent = tensor.get_constant_value(v.owner.inputs[1])
         except TypeError:
@@ -250,7 +253,6 @@ def local_log_prod_sqr(node):
             # we cannot always make this substitution because
             # the prod might include negative terms
             p = x.owner.inputs[0]
-            print "AAA", p
 
             # p is the matrix we're reducing with prod
             if is_positive(p):
@@ -316,7 +318,7 @@ class Cholesky(Op):
             destr = 'destructive'
         else:
             destr = 'non-destructive'
-        return 'Cholesky{%s,%s}'% (lu,destr)
+        return 'Cholesky{%s,%s}' % (lu, destr)
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
@@ -378,7 +380,10 @@ class Solve(Op):
     def make_node(self, A, b):
         A = as_tensor_variable(A)
         b = as_tensor_variable(b)
-        return Apply(self, [A,b], [b.type()])
+        otype = tensor.tensor(
+                broadcastable=b.broadcastable,
+                dtype = (A*b).dtype)
+        return Apply(self, [A,b], [otype])
     def perform(self, node, inputs, output_storage):
         A, b = inputs
         #TODO: use the A_structure to go faster
@@ -394,39 +399,45 @@ class ExtractDiag(Op):
         self.view = view
         if self.view:
             self.view_map = {0:[0]}
-            self.perform = self.perform_view
-        else:
-            self.perform = self.perform_noview
+
     def __eq__(self, other):
         return type(self) == type(other) and self.view == other.view
+
     def __hash__(self):
         return hash(type(self))^hash(self.view)
+
     def make_node(self, _x):
         x = as_tensor_variable(_x)
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
-    def perform_noview(self, node, (x,), (z,)):
+
+    def perform(self, node, ins, outs):
+        x, = ins
+        z, = outs
         #for some reason numpy.diag(x) is really slow
         N,M = x.shape
         assert N==M
         rval = x[0]
         rval.strides = (x.strides[0]+x.strides[1],)
-        z[0] = rval.copy()
-    def perform_view(self, node, (x,), (z,)):
-        N,M = x.shape
-        a,b = x.strides
-        assert N==M
-        rval = x[0]
-        rval.strides = a+b,
-        z[0] = rval
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
+
     def __str__(self):
         return 'ExtractDiag{view=%s}'%self.view
+
     def grad(self, inputs, g_outputs):
         return [alloc_diag(g_outputs[0])]
-extract_diag = ExtractDiag()
 
+    def infer_shape(self, node, shapes):
+        x_s, = shapes
+        return [(x_s[0],)]
+
+extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
+
 
 class AllocDiag(Op):
     def __eq__(self, other):
@@ -448,8 +459,11 @@ alloc_diag = AllocDiag()
 
 def diag(x):
     """Numpy-compatibility method
+    
+    If `x` is a matrix, return its diagonal.
+    If `x` is a vector return a matrix with it as its diagonal.
 
-    For vector `x`, return a zero matrix except for `x` as diagonal.
+    * This method does not support the `k` argument that numpy supports.
     """
     xx = as_tensor_variable(x)
     if xx.type.ndim == 1:
@@ -461,6 +475,7 @@ def diag(x):
 
 class Det(Op):
     """matrix determinant
+
     TODO: move this op to another file that request scipy.
     """
     def make_node(self, x):
@@ -487,6 +502,7 @@ def trace(X):
     Returns the sum of diagonal elements of matrix X.
     """
     return extract_diag(X).sum()
+
 
 def spectral_radius_bound(X, log2_exponent):
     """
