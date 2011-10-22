@@ -87,6 +87,9 @@ def broadcast_like(value, template, env, dtype=None):
     filled by broadcasting value through it. `value` will be casted as necessary.
 
     """
+    value = T.as_tensor_variable(value)
+    if value.type == template.type:
+        return value
     shape_of = env.shape_feature.shape_of
     if template not in shape_of:
         raise NotImplementedError('broadcast_like currently requires the template Variable to be in the env already')
