@@ -357,7 +357,7 @@ def local_lift_transpose_through_dot(node):
     x, y = node.inputs[0].owner.inputs
 
     if x.ndim == y.ndim == 2:
-        return [broadcast_like(T.dot(y.T, x.T), node.outputs[0], node.env)]
+        return [T.dot(y.T, x.T)]
 
 
 @gof.local_optimizer([])
