@@ -298,14 +298,19 @@ class Env(utils.object2):
         if node == 'output':
             r = self.outputs[i]
             if not r.type == new_r.type:
-                raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r)
+                raise TypeError("The type of the replacement must be the"
+                        " same as the type of the original Variable.",
+                        r, new_r)
             self.outputs[i] = new_r
         else:
             if node.env is not self:
-                raise Exception("Cannot operate on %s because it does not belong to this Env" % node)
+                raise Exception("Cannot operate on %s because it does not"
+                        " belong to this Env" % node)
             r = node.inputs[i]
             if not r.type == new_r.type:
-                raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r)
+                raise TypeError("The type of the replacement must be the"
+                        " same as the type of the original Variable.",
+                        r, new_r)
             node.inputs[i] = new_r
 
         self.__import_r__([new_r])
