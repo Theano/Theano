@@ -13,7 +13,7 @@ from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
-from theano import compile, config, function, gof, tensor
+from theano import compile, config, function, gof, tensor, shared
 from theano.compile.mode import get_default_mode
 from theano.gof.python25 import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
@@ -30,7 +30,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         var, value, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, TensorDot, lvector, true_div, max, min)
+        opt, ComplexError, TensorDot, lvector, true_div, max, min, Split)
 from theano.tests import unittest_tools as utt
 
 
