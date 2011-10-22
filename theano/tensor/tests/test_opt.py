@@ -11,27 +11,48 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.scalar as scal
+from theano import compile
 from theano import config
+from theano import function
 from theano import gof
-import theano.tensor.opt as opt
-from theano.tensor.opt import local_dimshuffle_lift, out2in, local_greedy_distributor, mul_canonizer, local_add_specialize
-from theano.tensor.opt import Shape_i
-from theano.tensor import scalar, iscalar, dscalar, lscalar, vectors, lvector, fvector, dvector, fmatrix, dmatrix, matrices, fmatrices, dmatrices, Subtensor, as_tensor_variable, Join, join
-
-from theano import tensor  #do not use, there is  an import * below that hides it
-from theano import tensor as T  #ugly but works for now...
-from theano.tensor import TensorType, inplace
+from theano import pprint
+from theano import shared
 from theano.gof import Env
 from theano.gof.python25 import any, all
+import theano.tensor.opt as opt
+from theano.tensor.opt import (
+        local_add_specialize,
+        local_dimshuffle_lift,
+        local_greedy_distributor,
+        mul_canonizer,
+        out2in,
+        Shape_i,
+        )
+from theano import tensor
+from theano import tensor as T
+from theano.tensor import scalar, iscalar, lscalar, fscalar, dscalar
+from theano.tensor import vector, ivector, lvector, fvector, dvector
+from theano.tensor import matrix, imatrix, lmatrix, fmatrix, dmatrix
+from theano.tensor import scalars, vectors, matrices, fmatrices, dmatrices
+from theano.tensor import (
+        as_tensor_variable,
+        inplace,
+        Join,
+        join,
+        Subtensor,
+        TensorType,
+        )
 from theano.tensor.elemwise import DimShuffle
-from theano import pprint, shared
 from theano.tests import unittest_tools as utt
 
-from theano import function, compile
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
     mode_opt = 'FAST_RUN'
 mode_opt = theano.compile.mode.get_mode(mode_opt)
+
+ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
+dimshuffle_lift = out2in(local_dimshuffle_lift)
+
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -40,11 +61,7 @@ def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     return x, y, z
 
 
-ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
-dimshuffle_lift = out2in(local_dimshuffle_lift)
-
 class test_dimshuffle_lift(unittest.TestCase):
-
     def test_double_transpose(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 0)), (1, 0))
@@ -83,14 +100,13 @@ class test_dimshuffle_lift(unittest.TestCase):
 
 
 def test_add_canonizer_problem0():
-    #observed in a real graph
-
     n_segments = 10
     label = lscalar('label')
     segment_labels = label + theano._asarray([0] * n_segments, dtype='int64')
 
     r = segment_labels * 5
     f = function([label], r)
+
 
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
@@ -130,9 +146,7 @@ class test_greedy_distribute(unittest.TestCase):
         assert numpy.all(r0 == r2)
 
 
-
 class test_canonize(unittest.TestCase):
-
     def test_muldiv(self):
         x, y, z = matrices('xyz')
         a, b, c, d = matrices('abcd')
@@ -633,6 +647,7 @@ class test_canonize(unittest.TestCase):
         """
         raise SkipTest("Not implemented")
 
+
 def test_local_merge_abs():
     x,y,z = T.matrices('xyz')
     x_val = numpy.random.rand(5,5).astype(config.floatX)
@@ -692,8 +707,8 @@ def test_const_type_in_mul_canonizer():
         f2(ival, wval, visbval, hidbval, betaval, aval),
         f1(ival, wval, visbval, hidbval, betaval, aval))
 
-class test_fusion(unittest.TestCase):
 
+class test_fusion(unittest.TestCase):
     def do(self, mode, shared_fn, shp, gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
@@ -1122,6 +1137,7 @@ def test_log1p():
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
+
 def test_log_add():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
@@ -1163,6 +1179,7 @@ def test_log_add():
     #TODO: test that the optimization works in the presence of broadcasting.
 
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
+
 
 def test_local_useless_subtensor():
     x = tensor.matrix('x')
@@ -1255,7 +1272,6 @@ def test_local_useless_subtensor():
 
 
 class test_local_subtensor_lift(unittest.TestCase):
-
     def test0(self):
         # basic test that the Op works
         x = tensor.matrix('x')
@@ -1420,7 +1436,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
         assert (f4(zval) == zval[:,3,0]).all()
- 
+
+
 class test_local_subtensor_merge(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -1649,8 +1666,8 @@ class test_local_subtensor_merge(unittest.TestCase):
                                 for s2 in s2r:
                                     f(x_val, b1,e1,s1,b2,e2,s2)
 
-class Test_alloc_zero(unittest.TestCase):
 
+class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
         mode = theano.compile.mode.get_default_mode()
         self.mode = mode.including("local_incsubtensor_of_allocs", "local_setsubtensor_of_allocs", "local_0_dot_x")
@@ -1796,6 +1813,7 @@ def test_local_fill_useless():
     # now filll is serving as a cast
     f = function([x,y], T.fill(x,y)*2, mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
 
 class test_shapeoptimizer(unittest.TestCase):
     def setUp(self):
@@ -1963,11 +1981,8 @@ class test_assert(unittest.TestCase):
         assert len(topo[0].inputs)==3
         assert topo[1].op==theano.compile.function_module.deep_copy_op
 
+
 def test_local_mul_specialize():
-
-    # test a few cases to make sure that the basics are covered
-    #
-
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
         mode = 'FAST_RUN'
@@ -2041,11 +2056,8 @@ def speed_local_pow_specialize_range():
         if not t2-t1<t3-t2:
             print "WARNING WE ARE SLOWER"
 
+
 def test_local_pow_specialize():
-
-    # test a few cases to make sure that the basics are covered
-    #
-
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
         mode = 'FAST_RUN'
@@ -2097,10 +2109,8 @@ def test_local_pow_specialize():
 #    assert nodes == [T.sqrt,T.inv]#Why this don't work?
     assert numpy.allclose(f(val_no0),val_no0**(-.5))
 
-def test_local_pow_specialize_device():
 
-    # test that on cpu we use more agressive optimization
-
+def test_local_pow_specialize_device_more_aggressive_on_cpu():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
         mode = 'FAST_RUN'
@@ -2140,8 +2150,8 @@ def test_local_pow_specialize_device():
     assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0),val_no0**(-16))
 
-class T_Rebroadcast(unittest.TestCase):
 
+class T_Rebroadcast(unittest.TestCase):
     def test_local_useless_rebroadcast(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
         v1 = T.vector()
@@ -2163,6 +2173,7 @@ class T_Rebroadcast(unittest.TestCase):
         rebroadcast_nodes = [n for n in e if isinstance(n.op, T.Rebroadcast)]
         assert len(rebroadcast_nodes) == 1
         assert rebroadcast_nodes[0].op.axis == {0: True}
+
 
 class T_useless_elemwise(unittest.TestCase):
     def setUp(self):
@@ -2252,6 +2263,7 @@ class T_useless_elemwise(unittest.TestCase):
         assert len(topo) == 1
         assert topo[0].op == theano.compile.function_module.deep_copy_op
 
+
 def test_constant_get_stabilized():
     """
     Currently Theano enable the constant_folding optimization before stabilization optimization.
@@ -2338,6 +2350,7 @@ class T_local_switch_sink(unittest.TestCase):
                     assert (res == numpy.asarray(self.resm[idx])).sum() == self.resm[idx].size
                 idx += 1
 
+
 class T_local_erf(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.mode.get_default_mode().including('canonicalize','fast_run').excluding('gpu','fusion')
@@ -2421,6 +2434,7 @@ class T_local_erf(unittest.TestCase):
         assert isinstance(topo[1].op,T.Elemwise)
         assert isinstance(topo[1].op.scalar_op,scal.Add) or isinstance(topo[1].op.scalar_op,scal.Sub)
         print f(val)
+
 
 class T_local_erfc(unittest.TestCase):
     def setUp(self):
@@ -2681,6 +2695,7 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         vy = numpy.array([[7,8,9],[10,11,12]], dtype='int64')
         assert numpy.all(f(vx,vy) == vy)
 
+
 class T_local_sum(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
@@ -2773,6 +2788,7 @@ class T_local_sum(unittest.TestCase):
             finally:
                 config.warn.sum_sum_bug = backup
 
+
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
@@ -2843,6 +2859,7 @@ class T_local_sum_dimshuffle(unittest.TestCase):
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
+
 
 def test_make_vector():
     b = T.bscalar()
@@ -2927,6 +2944,7 @@ def test_make_vector():
         except AssertionError:
             pass
 
+
 def test_local_join_1():
     #test for vector
     a = tensor.vector('a')
@@ -2966,6 +2984,7 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 1
     assert f.maker.env.outputs[0].dtype == config.floatX
 
+
 def test_local_mul_to_neg():
     """
     Test that a multiplication by -1 or -1.0 yields the appropriate data type
@@ -2986,8 +3005,8 @@ def test_local_mul_to_neg():
     else:
         raise NotImplementedError(config.cast_policy)
 
-def test_local_add_specialize():
 
+def test_local_add_specialize():
     # test of non-zero dimension
     a = tensor.vector()
     s = tensor.add(tensor.zeros_like(a))
@@ -3005,6 +3024,7 @@ def test_local_add_specialize():
     transformed = local_add_specialize.transform(s.owner)
     assert transformed
     assert transformed[0].type == s.type
+
 
 def test_local_tensor_scalar_tensor():
     dtypes = ['int8', 'int16', 'int32', 'int64',
@@ -3027,6 +3047,7 @@ def test_local_tensor_scalar_tensor():
         assert len(cast_nodes) == 0
         f(0)
 
+
 def test_local_scalar_tensor_scalar():
     dtypes = ['int8', 'int16', 'int32', 'int64',
             'uint8', 'uint16', 'uint32', 'uint64',
@@ -3048,6 +3069,7 @@ def test_local_scalar_tensor_scalar():
         assert len(cast_nodes) == 0
         f(0)
 
+
 def test_local_div_to_inv():
     num_len_s = tensor.lscalar('num_len')
     denom_s = tensor.scalar('denom')
@@ -3064,6 +3086,7 @@ def test_local_div_to_inv():
     out_val = f(3, 2.)
     assert out_val.shape == (1, 3)
     assert numpy.allclose(out_val, 0.5)
+
 
 if __name__ == '__main__':
 #    unittest.main()
