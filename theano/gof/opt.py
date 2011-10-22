@@ -651,6 +651,7 @@ class PatternSub(LocalOptimizer):
     def skip_identities(self, expr):
         if self.skip_identities_fn:
             return self.skip_identities_fn(expr)
+
     def op_key(self):
         return self.op
 
