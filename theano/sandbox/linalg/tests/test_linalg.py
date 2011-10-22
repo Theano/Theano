@@ -5,6 +5,10 @@ import numpy
 import theano
 from theano import tensor, function
 from theano.tensor.basic import _allclose
+from theano.tests import unittest_tools as utt
+from theano import config
+
+utt.seed_rng()
 
 try:
     import scipy
@@ -19,11 +23,12 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        matrix_inverse,
                                        #solve,
                                        #diag,
-                                       #extract_diag,
+                                       ExtractDiag,
+                                       extract_diag,
                                        #alloc_diag,
                                        det,
                                        #PSD_hint,
-                                       #trace,
+                                       trace,
                                        #spectral_radius_bound
                                        )
 
@@ -90,3 +95,61 @@ def test_det_grad():
 
     r = rng.randn(5,5)
     tensor.verify_grad(det, [r], rng=numpy.random)
+
+
+def test_extract_diag():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.tensor.matrix()
+    g = extract_diag(x)
+    f = theano.function([x], g)
+
+    m = rng.rand(3,3).astype(config.floatX)
+    v = numpy.diag(m)
+    r = f(m)
+    # The right diagonal is extracted
+    assert (r == v).all()
+
+    m = rng.rand(2, 3).astype(config.floatX)
+    ok = False
+    try:
+        r = f(m)
+    except Exception:
+        ok = True
+    assert ok
+
+    xx = theano.tensor.vector()
+    ok = False
+    try:
+        extract_diag(xx)
+    except TypeError:
+        ok = True
+    assert ok
+
+    f = theano.function([x], g.shape)
+    topo = f.maker.env.toposort()
+    assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
+    m = rng.rand(3,3).astype(config.floatX)
+    assert f(m) == 3
+
+# not testing the view=True case since it is not used anywhere.
+
+
+def test_trace():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.tensor.matrix()
+    g = trace(x)
+    f = theano.function([x], g)
+
+    m = rng.rand(4, 4).astype(config.floatX)
+    v = numpy.trace(m)
+    assert v == f(m)
+
+    xx = theano.tensor.vector()
+    ok = False
+    try:
+        trace(xx)
+    except TypeError:
+        ok = True
+    assert ok
+
+    
