@@ -313,6 +313,9 @@ class Env(utils.object2):
                         r, new_r)
             node.inputs[i] = new_r
 
+        if r is new_r:
+            return
+
         self.__import_r__([new_r])
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
