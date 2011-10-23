@@ -662,19 +662,19 @@ Compiling a faster BLAS
 
 .. note::
 
-   GotoBLAS is no longer maintained and have some installation
-   problem. GotoBLAS have been released under BSD. `OpenBLAS
+   GotoBLAS is no longer maintained and has been released under the BSD
+   license. `OpenBLAS
    <https://github.com/xianyi/OpenBLAS>`_ is a new project that
-   continue GotoBLAS that include fixes in the installation and
-   implementation of some function that Theano don't currently use.
-   We didn't try OpenBLAS on Windows.
+   continues GotoBLAS: it has a better installation process and implements
+   additional functions (not currently used by Theano).
+   We did not try OpenBLAS on Windows.
 
 If you want a faster and/or multithreaded BLAS library, you can
 compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
 GotoBLAS2 can be downloaded
-`here <http://cms.tacc.utexas.edu/tacc-projects/gotoblas2/downloads/>`__
+`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`__
 (we tested v1.13).
 To compile it, you will also need MSYS and Perl (installation steps are
 described below).
@@ -689,10 +689,8 @@ installation.
 If instead you installed Python(x,y), you will need to install MSYS on
 top of the MinGW installation included within Python(x,y), as follows:
 
-- Download the mingw-get command-line installer binary from the
-  `MinGW files <http://sourceforge.net/projects/mingw/>`_ (click
-  "View all files", and make sure you do not mix it up with
-  mingw-get-inst).
+- Download the `mingw-get command-line installer binary
+  <http://sourceforge.net/projects/mingw/files/Automated%20MinGW%20Installer/mingw-get/>`_.
 
 - Unpack it into your ``pythonxy\mingw`` directory.
 
