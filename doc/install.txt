@@ -662,12 +662,12 @@ Compiling a faster BLAS
 
 .. note::
 
-   GotoBLAS is no longer maintained and have some installation
-   problem. GotoBLAS have been released under BSD. `OpenBLAS
+   GotoBLAS is no longer maintained and has been released under the BSD
+   license. `OpenBLAS
    <https://github.com/xianyi/OpenBLAS>`_ is a new project that
-   continue GotoBLAS that include fixes in the installation and
-   implementation of some function that Theano don't currently use.
-   We didn't try OpenBLAS on Windows.
+   continues GotoBLAS: it has a better installation process and implements
+   additional functions (not currently used by Theano).
+   We did not try OpenBLAS on Windows.
 
 If you want a faster and/or multithreaded BLAS library, you can
 compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
