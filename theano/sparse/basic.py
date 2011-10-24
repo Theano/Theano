@@ -1505,7 +1505,7 @@ class Dot(gof.op.Op):
         rval = x * y
 
         if x_is_sparse and y_is_sparse:
-            rval = rval.todense()
+            rval = rval.toarray()
 
         out[0] = rval
 

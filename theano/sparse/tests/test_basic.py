@@ -560,6 +560,8 @@ class DotTests(unittest.TestCase):
                        ('float32', 'float64'),
                        ('float64', 'float32'),
                        ('float64', 'float64'),
+                       ('float32', 'int16'),
+                       ('float32', 'complex64'),
                        ]:
             for x_f, y_f in [('csc','csc'),
                              ('csc','csr'),
