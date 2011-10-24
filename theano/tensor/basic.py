@@ -2892,8 +2892,9 @@ def extract_constant(x):
      This function is basically a call to tensor.get_constant_value. The
      main difference is the behaviour in case of failure. While
      get_constant_value raises an TypeError, this function returns x,
-     as a tensor ( by removing the last scalar_from_tensor ) if needed
-     or None if that is the value of x.
+     as a tensor if possible. If x is a ScalarVariable from a
+     scalar_from_tensor, we remove the conversion. If x is just a
+     ScalarVariable, we convert it to a tensor with tensor_from_scalar.
     '''
     try:
         x = get_constant_value(x)

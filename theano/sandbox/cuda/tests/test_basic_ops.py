@@ -646,76 +646,6 @@ def test_hostfromgpu_shape_i():
 # -----------------------------------------------------------------------
 
 import theano.sandbox.cuda as cuda_ndarray
-from theano.sandbox.cuda.basic_ops import gpu_join, GpuDimShuffle
-
-def test_gpujoin_concatenate_one_element():
-    m = T.fmatrix()
-    c = T.concatenate([m])
-    f = theano.function(inputs=[m], outputs=[c], mode=mode_with_gpu)
-    topo = f.maker.env.toposort()
-    assert len(topo)==1
-    assert isinstance(topo[0].op,theano.compile.DeepCopyOp)
-
-def test_gpujoin_twomatrices_joincolumns():
-    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
-    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = tcn.shared_constructor(_a)
-    b = tcn.shared_constructor(_b)
-
-    c = gpu_join(1,a,b)
-
-    f = theano.function([], c)
-
-    assert numpy.all(f() == numpy.concatenate([_a,_b], axis=1))
-
-def test_gpujoin_twomatrices_badshapes():
-    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
-    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = tcn.shared_constructor(_a)
-    b = tcn.shared_constructor(_b)
-
-    # try to join on dimension 0 where they don't agree (2!=3)
-    c = gpu_join(0,a,b)
-
-    f = theano.function([], c)
-
-    try:
-        f()
-        assert False
-    except ValueError:
-        assert True
-
-
-
-
-def test_gpujoin_preserves_broadcasting():
-    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
-    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = tcn.shared_constructor(_a)
-    b = tcn.shared_constructor(_b)
-
-    # [0,0] : the two original dims were non-broadcastable
-    # [1,x,0]: new order and broadcastability
-    gpu_dimshuffle = GpuDimShuffle([0,0], [1,'x',0])
-
-    a_shuffled = gpu_dimshuffle(a)
-    b_shuffled = gpu_dimshuffle(b)
-
-    c = gpu_join(0,a_shuffled,b_shuffled)
-
-    assert c.type.broadcastable == (False,True,False)
-
-    f = theano.function([], c, mode=mode_with_gpu)
-
-    res = f()
-
-    a_reshaped = numpy.asarray([[[1,3]],[[2,4]]], dtype='float32')
-    b_reshaped = numpy.asarray([[[5,8]],[[6,9]],[[7,10]]], dtype='float32')
-
-    concat = numpy.concatenate([a_reshaped,b_reshaped], axis=0)
-
-    assert numpy.all(res == concat)
-
 
 def test_gpujoin_assert_cndas():
     # this will end up being an ndarray, as it's float64
@@ -723,7 +653,7 @@ def test_gpujoin_assert_cndas():
     a = theano.shared(_a)
 
     try:
-        c = gpu_join(1,a)
+        c = cuda.basic_ops.gpu_join(1, a)
         # can't "assert False" here, as we want the assertion
         # error from gpu_join
     except AssertionError:
@@ -792,6 +722,21 @@ def test_gpualloc_output_to_gpu():
     assert numpy.allclose(f(5),f_gpu(5))
 
 import theano.tensor.tests.test_basic
+class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = mode_with_gpu.excluding('constant_folding')
+        self.join_op = cuda.GpuJoin
+        # No gpu split.
+        self.split_op = tensor.Split
+        # No Make vector on the gpu, Join used instead
+        self.make_vector_op = cuda.GpuJoin
+        self.floatX = "float32"
+        # In FAST_COMPILE mode, we force the FAST_RUN mode for optimization.
+        self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
+        self.shared = cuda.shared_constructor
+
+
 # This is to don't duplicate test.
 class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     shared=staticmethod(cuda.shared_constructor)

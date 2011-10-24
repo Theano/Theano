@@ -13,7 +13,7 @@ from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
-from theano import compile, config, function, gof, tensor
+from theano import compile, config, function, gof, tensor, shared
 from theano.compile.mode import get_default_mode
 from theano.gof.python25 import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
@@ -30,7 +30,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         var, value, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, TensorDot, lvector, true_div, max, min)
+        opt, ComplexError, TensorDot, lvector, true_div, max, min, Split)
 from theano.tests import unittest_tools as utt
 
 
@@ -56,7 +56,7 @@ def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False):
 
 def eval_outputs(outputs):
     variables = inplace_func([], outputs)()
-    if isinstance(variables,(tuple,list)) and len(variables) == 1:
+    if isinstance(variables,(tuple, list)) and len(variables) == 1:
         return variables[0]
     return variables
 
@@ -2536,6 +2536,38 @@ class T_Join_and_Split(unittest.TestCase):
     def setUp(self):
         Join.debug = False
         utt.seed_rng()
+        self.mode = theano.compile.get_default_mode().excluding(
+            'constant_folding'
+        )
+        self.join_op = Join
+        self.split_op = Split
+        self.make_vector_op = opt.MakeVector
+        self.floatX = config.floatX
+        self.hide_error = theano.config.mode not in ['DebugMode',
+                                                     'DEBUG_MODE',
+                                                     'FAST_COMPILE']
+        self.shared = shared
+
+    def eval_outputs_and_check_join(self, outputs):
+        f = theano.function([], outputs, self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        variables = f()
+        if isinstance(variables, (tuple, list)) and len(variables) == 1:
+            return variables[0]
+        return variables
+
+    def eval_outputs_and_check_vector(self, outputs,
+                                      make_vector_op=None):
+        if make_vector_op is None:
+            make_vector_op = self.make_vector_op
+        f = theano.function([], outputs, self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, make_vector_op)]
+        variables = f()
+        if isinstance(variables, (tuple, list)) and len(variables) == 1:
+            return variables[0]
+        return variables
 
     def test_join_scalar(self):
         a = as_tensor_variable(1)
@@ -2547,37 +2579,40 @@ class T_Join_and_Split(unittest.TestCase):
         self.fail()
 
     def test_stack_mixed_type_constants(self):
+        # tested only on cpu as gpu support only float32
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
-        c = as_tensor_variable(3.0)
+        c = shared(numpy.asarray(3.0, dtype=self.floatX))
         s = stack(a, b, c)
-
         want = numpy.array([1, 2, 3])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        out = self.eval_outputs_and_check_vector([s], opt.MakeVector)
+        self.assertTrue((out == want).all())
 
     def test_stack_scalar(self):
-        a = as_tensor_variable(1)
-        b = as_tensor_variable(2)
-        c = as_tensor_variable(3)
+        a = self.shared(numpy.asarray(1., dtype=self.floatX))
+        b = as_tensor_variable(2.)
+        c = as_tensor_variable(3.)
         s = stack(a, b, c)
 
         want = numpy.array([1, 2, 3])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        out = self.eval_outputs_and_check_vector([s])
+        self.assertTrue((out == want).all())
 
     def test_stack_scalar_make_vector(self):
-        '''Test that calling stack() on scalars instantiates MakeVector,
-        not Join. Test that the floatX dtype stay floatX, not downcasted to int64'''
-        a = tensor.scalar('a')
-        b = tensor.scalar('b')
+        """Test that calling stack() on scalars instantiates MakeVector,
+        not Join. Test that the floatX dtype stay floatX, not downcasted
+        to int64"""
+        a = tensor.scalar('a', dtype=self.floatX)
+        b = tensor.scalar('b', dtype=self.floatX)
         s = stack(a, b, a, b)
-        f = function([a,b], s)
-        val = f(1,2)
+        f = function([a, b], s, mode=self.mode)
+        val = f(1, 2)
         print val
-        self.assertTrue(numpy.all(val == [1,2,1,2]))
-        e = f.maker.env.toposort()
-        assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
-        assert len([n for n in e if isinstance(n, Join)]) == 0
-        assert f.maker.env.outputs[0].dtype == config.floatX
+        self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
+        topo = f.maker.env.toposort()
+        assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
+        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
+        assert f.maker.env.outputs[0].dtype == self.floatX
 
     def test_stack_scalar_make_vector_dtype(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
@@ -2585,12 +2620,12 @@ class T_Join_and_Split(unittest.TestCase):
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
         s = stack(a, b, a, b)
-        f = function([a,b], s)
-        val = f(1,2)
-        self.assertTrue(numpy.all(val == [1,2,1,2]))
-        e = f.maker.env.toposort()
-        assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
-        assert len([n for n in e if isinstance(n, Join)]) == 0
+        f = function([a, b], s, mode=self.mode)
+        val = f(1, 2)
+        self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
+        topo = f.maker.env.toposort()
+        assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
+        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.env.outputs[0].dtype == 'int64'
 
     def test_stack_scalar_make_vector_constant(self):
@@ -2600,92 +2635,116 @@ class T_Join_and_Split(unittest.TestCase):
         b = tensor.lscalar('b')
         #test when the constant is the first element.
         #The first element is used in a special way
-        s = stack(10,a,b, numpy.int8(3))
-        f = function([a,b], s)
-        val = f(1,2)
-        self.assertTrue(numpy.all(val == [10,1,2,3]))
-        e = f.maker.env.toposort()
-        assert len([n for n in e if isinstance(n.op,opt.MakeVector)]) > 0
-        assert len([n for n in e if isinstance(n, Join)]) == 0
+        s = stack(10, a, b, numpy.int8(3))
+        f = function([a, b], s, mode=self.mode)
+        val = f(1, 2)
+        self.assertTrue(numpy.all(val == [10, 1, 2, 3]))
+        topo = f.maker.env.toposort()
+        assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
+        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.env.outputs[0].dtype == 'int64'
 
+    def test_join_concatenate_one_element(self):
+        ''' Fast test of concatenate as this is an alias for join.
+        also test that we remove the Join op if there is only 1 input'''
+        m = tensor.fmatrix()
+        c = tensor.concatenate([m])
+        f = theano.function(inputs=[m], outputs=[c],
+                            mode=self.mode.including('local_join_1'))
+        topo = f.maker.env.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, theano.compile.DeepCopyOp)
+
     def test_join_vector(self):
-        a = as_tensor_variable(numpy.array([1, 2, 3]))
-        b = as_tensor_variable(numpy.array([7, 8, 9]))
+        a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
+        b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
 
         s = join(0, a, b)
         want = numpy.array([1, 2, 3, 7, 8, 9])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
     def test_stack_vector(self):
-        a = as_tensor_variable(numpy.array([1, 2, 3]))
-        b = as_tensor_variable(numpy.array([7, 8, 9]))
+        a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
+        b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
 
         s = stack(a, b)
-        want = numpy.array([[1, 2, 3],[ 7, 8, 9]])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        want = numpy.array([[1, 2, 3], [7, 8, 9]])
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
     def test_join_matrix0(self):
-        a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor_variable(numpy.array([[7, 8, 9]]))
+        a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]],
+                                    dtype=self.floatX))
+        b = as_tensor_variable(numpy.array([[7, 8, 9]], dtype=self.floatX))
         s = join(0, a, b)
 
-        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9]])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        want = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
     def test_join_matrix1(self):
-        av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        bv= numpy.array([[7], [8]],dtype='float32')
-        a = as_tensor_variable(av)
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        bv = numpy.array([[7], [8]], dtype='float32')
+        a = self.shared(av)
         b = as_tensor_variable(bv)
         s = join(1, a, b)
         want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
-        self.assertTrue((eval_outputs([s]) == want).all())
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
-        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, rel_tol=1.0e-3)
+#        assert tensor.grad(join(1,a,b), a
+        utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
+                        eps=1.0e-4, rel_tol=1.0e-3)
 
     def test_join_matrix1_using_vertical_stack(self):
-        a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor_variable(numpy.array([[7, 8, 9]]))
-        c = as_tensor_variable(numpy.array([[9, 8, 7]]))
+        a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]], dtype=self.floatX))
+        b = as_tensor_variable(numpy.array([[7, 8, 9]], dtype=self.floatX))
+        c = as_tensor_variable(numpy.array([[9, 8, 7]], dtype=self.floatX))
         s = vertical_stack(a, b, c)
 
-        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9], [9, 8, 7]])
-        self.assertTrue((eval_outputs([s]) == want).all())
+        want = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [9, 8, 7]])
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
     def test_join_matrix1_using_horizontal_stack(self):
-        av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        bv=numpy.array([[7], [8]],dtype='float32')
-        cv=numpy.array([[3, 2, 1], [6, 5, 4]], dtype='float32')
-        a = as_tensor_variable(av)
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        bv = numpy.array([[7], [8]], dtype='float32')
+        cv = numpy.array([[3, 2, 1], [6, 5, 4]], dtype='float32')
+        a = self.shared(av)
         b = as_tensor_variable(bv)
         c = as_tensor_variable(cv)
         s = horizontal_stack(a, b, c)
-        want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
-        self.assertTrue((eval_outputs([s]) == want).all())
+        want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]],
+                           dtype='float32')
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
 
-        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, rel_tol=1.0e-3)
+        utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
+                        eps=1.0e-4, rel_tol=1.0e-3)
 
     def test_join_matrixV(self):
         """variable join axis"""
-        v = numpy.array([[1., 2., 3.], [4., 5., 6.]])
-        a = as_tensor_variable(v.copy())
+        v = numpy.array([[1., 2., 3.], [4., 5., 6.]], dtype=self.floatX)
+        a = self.shared(v.copy())
         b = as_tensor_variable(v.copy())
         ax = lscalar()
         s = join(ax, a, b)
 
-        f = inplace_func([ax], [s])
+        f = inplace_func([ax], [s], mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
 
-        want = numpy.array([[1, 2, 3], [4, 5, 6] ,[1, 2, 3], [4, 5, 6]])
+        want = numpy.array([[1, 2, 3], [4, 5, 6], [1, 2, 3], [4, 5, 6]])
         got = f(0)
         self.assertTrue((got == want).all(), (got, want))
 
-        want = numpy.array([[ 1, 2, 3, 1, 2, 3], [4, 5, 6, 4, 5, 6]])
+        want = numpy.array([[1, 2, 3, 1, 2, 3], [4, 5, 6, 4, 5, 6]])
         got = f(1)
         self.assertTrue((got == want).all(), (got, want))
 
-        utt.verify_grad(lambda a, b: join(0,a,b), [v, 2*v])
-        utt.verify_grad(lambda a, b: join(1,a,b), [v, 2*v])
+        utt.verify_grad(lambda a, b: join(0, a, b), [v, 2 * v])
+        utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v])
 
     def test_vector_len(self):
         x = lscalar('x')
@@ -2694,8 +2753,11 @@ class T_Join_and_Split(unittest.TestCase):
         triple = as_tensor_variable((x, y, 9.0))
         assert 3 == get_vector_length(triple)
 
-        a,b,c = triple
-        f = function([x,y], [b,c,a])
+        a, b, c = triple
+        f = function([x, y], [b, c, a], mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, opt.MakeVector)]
+
         assert numpy.allclose(f(4, 5), [5, 9, 4])
 
     def test_broadcastable_flag_assignment_mixed_otheraxes(self):
@@ -2704,32 +2766,38 @@ class T_Join_and_Split(unittest.TestCase):
         a join operation on non-join axes are True if one or
         more inputs is broadcastable on that dimension.
         """
-        a = TensorType(dtype=config.floatX, broadcastable=[0, 0, 1])()
-        b = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1])()
-        c = join(1, a, b)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(1, 4, 1).astype(self.floatX)
+        b_val = rng.rand(1, 3, 1).astype(self.floatX)
+
+        a = self.shared(a_val, broadcastable=(False, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(1, a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # Opt can remplace the int by a Theano constant
-        c = join(tensor.constant(1), a, b)
+        c = self.join_op()(theano.tensor.constant(1), a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # In case futur opt insert other useless stuff
-        c = join(tensor.cast(tensor.constant(1), dtype="int32"),
+        c = self.join_op()(theano.tensor.cast(theano.tensor.constant(1),
+                                              dtype="int32"),
                  a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
-        f = function([a,b], c)
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1).astype(config.floatX)
-        b_val = rng.rand(1, 3, 1).astype(config.floatX)
-        f(a_val, b_val)
-        utt.verify_grad((lambda a,b: join(1,a,b)), [a_val, b_val], rng=rng)
+        f = function([], c, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
+        utt.verify_grad((lambda a, b: join(1, a, b)), [a_val, b_val], rng=rng)
+
         # Should raise an error if dimension 0 does not match
-        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
-        self.assertRaises(ValueError, f, bad_a_val, b_val)
+        a.set_value(rng.rand(2, 4, 1).astype(self.floatX))
+        self.assertRaises(ValueError, f)
 
     def test_broadcastable_flag_assignment_mixed_thisaxes(self):
         """
@@ -2737,19 +2805,30 @@ class T_Join_and_Split(unittest.TestCase):
         is False when some inputs are broadcastable on that
         dimension.
         """
-        a = TensorType(dtype=config.floatX, broadcastable=[0, 0, 1])()
-        b = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1])()
-        c = join(0, a, b)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(2, 4, 1).astype(self.floatX)
+        b_val = rng.rand(1, 4, 1).astype(self.floatX)
+
+        a = self.shared(a_val, broadcastable=(False, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(0, a, b)
         assert not c.type.broadcastable[0]
 
-        f = function([a,b], c)
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(2, 4, 1).astype(config.floatX)
-        b_val = rng.rand(1, 4, 1).astype(config.floatX)
-        f(a_val, b_val)
-        utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
+        f = function([], c, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
+        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
         # Should raise an error if b_val.shape[0] is not 1
-        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
+        # We can't set the value|
+        self.assertRaises(TypeError, b.set_value,
+                          rng.rand(3, 4, 1).astype(self.floatX))
+        a = TensorType(dtype=self.floatX, broadcastable=[0, 0, 1])()
+        b = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1])()
+        c = join(0, a, b)
+        f = function([a, b], c, mode=self.mode)
+        bad_b_val = rng.rand(3, 4, 1).astype(self.floatX)
         self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
@@ -2758,53 +2837,57 @@ class T_Join_and_Split(unittest.TestCase):
         broadcastable on the join dimension results in the output
         being non-broadcastable on the join dimension.
         """
-        a = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1])()
-        b = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1])()
-        c = join(0, a, b)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(1, 4, 1).astype(self.floatX)
+        b_val = rng.rand(1, 4, 1).astype(self.floatX)
+
+        a = self.shared(a_val, broadcastable=(True, False, True))
+        b = self.shared(b_val, broadcastable=(True, False, True))
+        c = self.join_op()(0, a, b)
         assert not c.type.broadcastable[0]
 
-        f = function([a,b], c)
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1).astype(config.floatX)
-        b_val = rng.rand(1, 4, 1).astype(config.floatX)
-        f(a_val, b_val)
-        utt.verify_grad((lambda a,b: join(0,a,b)), [a_val, b_val], rng=rng)
-        # Should raise an error if length of dimension 0 is not 1
-        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
-        bad_b_val = rng.rand(3, 4, 1).astype(config.floatX)
-        self.assertRaises(TypeError, f, bad_a_val, b_val)
-        self.assertRaises(TypeError, f, a_val, bad_b_val)
+        f = function([], c, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
+        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
         """
         Test that all broadcastable flags are preserved by a
         single-input join.
         """
-        a = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1])()
-        b = join(0, a)
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.rand(1, 4, 1).astype(self.floatX)
+        a = self.shared(a_val, broadcastable=(True, False, True))
+        b = self.join_op()(0, a)
         assert b.type.broadcastable[0]
         assert b.type.broadcastable[2]
         assert not b.type.broadcastable[1]
 
-        f = function([a], b)
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 4, 1).astype(config.floatX)
-        f(a_val)
-        utt.verify_grad((lambda a: join(0,a)), [a_val], rng=rng)
+        f = function([], b, mode=self.mode)
+        topo = f.maker.env.toposort()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert not [True for node in topo if isinstance(node.op, self.join_op)]
+
+        f()
+        utt.verify_grad((lambda a: join(0, a)), [a_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        bad_a_val = rng.rand(2, 4, 1).astype(config.floatX)
-        self.assertRaises(TypeError, f, bad_a_val)
+        self.assertRaises(TypeError, a.set_value,
+                          rng.rand(2, 4, 1).astype(self.floatX))
+        #self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
         """
         Test that the right broadcastable flags get set for a  join
         with many inputs and many input dimensions.
         """
-        a = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1, 0, 0, 0])()
-        b = TensorType(dtype=config.floatX, broadcastable=[1, 1, 1, 0, 0, 0])()
-        c = TensorType(dtype=config.floatX, broadcastable=[1, 0, 0, 0, 0, 0])()
-        d = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1, 1, 0, 1])()
-        e = TensorType(dtype=config.floatX, broadcastable=[1, 0, 1, 0, 0, 1])()
+        a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 0])()
+        b = TensorType(dtype=self.floatX, broadcastable=[1, 1, 1, 0, 0, 0])()
+        c = TensorType(dtype=self.floatX, broadcastable=[1, 0, 0, 0, 0, 0])()
+        d = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 1, 0, 1])()
+        e = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 1])()
         f = join(0, a, b, c, d, e)
         fb = f.type.broadcastable
         assert not fb[0] and fb[1] and fb[2] and fb[3] and not fb[4] and fb[5]
@@ -2815,70 +2898,77 @@ class T_Join_and_Split(unittest.TestCase):
         hb = h.type.broadcastable
         assert hb[0] and hb[1] and hb[2] and hb[3] and not hb[4] and hb[5]
 
-        g = function([a,b,c,d,e], f)
+        f = function([a, b, c, d, e], f, mode=self.mode)
+        topo = f.maker.env.toposort()
+        assert [True for node in topo if isinstance(node.op, self.join_op)]
+
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
-        b_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
-        c_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
-        d_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
-        e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(config.floatX)
-        g(a_val, b_val, c_val, d_val, e_val)
-        utt.verify_grad((lambda a,b,c,d,e: join(0,a,b,c,d,e)),
-                [a_val, b_val, c_val, d_val, e_val], rng=rng)
+        a_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
+        b_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
+        c_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
+        d_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
+        e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
+        f(a_val, b_val, c_val, d_val, e_val)
+        utt.verify_grad((lambda a, b, c, d, e: join(0, a, b, c, d, e)),
+                        [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
-        bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(config.floatX)
+        bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(self.floatX)
         self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
         self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
         self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
         self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
         self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
-        bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
-        bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(config.floatX)
-        bad_c_val = rng.rand(1, 1, 2, 1, 2, 1).astype(config.floatX)
-        bad_d_val = rng.rand(1, 2, 1, 1, 2, 1).astype(config.floatX)
-        bad_e_val = rng.rand(1, 1, 1, 2, 2, 1).astype(config.floatX)
-        self.assertRaises(ValueError, g, bad_a_val, b_val, c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, bad_b_val, c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, bad_c_val, d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, bad_d_val, e_val)
-        self.assertRaises(ValueError, g, a_val, b_val, c_val, d_val, bad_e_val)
+        bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(self.floatX)
+        bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(self.floatX)
+        bad_c_val = rng.rand(1, 1, 2, 1, 2, 1).astype(self.floatX)
+        bad_d_val = rng.rand(1, 2, 1, 1, 2, 1).astype(self.floatX)
+        bad_e_val = rng.rand(1, 1, 1, 2, 2, 1).astype(self.floatX)
+        self.assertRaises(ValueError, f, bad_a_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, f, a_val, bad_b_val, c_val, d_val, e_val)
+        self.assertRaises(ValueError, f, a_val, b_val, bad_c_val, d_val, e_val)
+        self.assertRaises(ValueError, f, a_val, b_val, c_val, bad_d_val, e_val)
+        self.assertRaises(ValueError, f, a_val, b_val, c_val, d_val, bad_e_val)
 
     def test_infer_shape_join(self):
         x1 = matrix()
         x2 = matrix()
         x3 = matrix()
 
-        def get_mat(s1,s2):
-            return numpy.asarray( numpy.random.uniform(size=(s1,s2)),
-                                 dtype= config.floatX)
+        def get_mat(s1, s2):
+            return numpy.asarray(numpy.random.uniform(size=(s1, s2)),
+                                 dtype=self.floatX)
 
         # Test dim 0
-        z = join(0,x1,x2,x3)
-        f = theano.function([x1,x2,x3], z.shape)
-        out = f( get_mat(3,4), get_mat(2,4), get_mat(1,4))
-        assert (out == [6,4]).all()
+        z = join(0, x1, x2, x3)
+        f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
+        topo = f.maker.env.toposort()
+
+        out = f(get_mat(3, 4), get_mat(2, 4), get_mat(1, 4))
+        assert (out == [6, 4]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
             for node in f.maker.env.toposort():
                 assert not isinstance(node.op, tensor.Join)
 
         # Test dim 1
-        z = join(1,x1,x2,x3)
-        f = theano.function([x1,x2,x3], z.shape)
-        out = f( get_mat(3,4), get_mat(3,4), get_mat(3,5))
-        assert (out == [3,13]).all()
+        z = join(1, x1, x2, x3)
+        f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
+        topo = f.maker.env.toposort()
+
+        out = f( get_mat(3, 4), get_mat(3, 4), get_mat(3, 5))
+        assert (out == [3, 13]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
             for node in f.maker.env.toposort():
                 assert not isinstance(node.op, tensor.Join)
 
         # Test hide error
-        if theano.config.mode in ['DebugMode', 'DEBUG_MODE', 'FAST_COMPILE']:
-            self.assertRaises(ValueError, f, get_mat(3,4), get_mat(3,4), get_mat(2,5))
+        if not self.hide_error:
+            self.assertRaises(ValueError, f, get_mat(3, 4), get_mat(3, 4),
+                              get_mat(2, 5))
         else:
-            f(get_mat(3,4), get_mat(3,4), get_mat(2,5))
-
+            f(get_mat(3, 4), get_mat(3, 4), get_mat(2, 5))
 
 
 class test_comparison(unittest.TestCase):
