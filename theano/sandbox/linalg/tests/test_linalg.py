@@ -106,7 +106,7 @@ def test_rop_lop():
     v1 = rop_f(vx, vv)
     v2 = scan_f(vx, vv)
 
-    assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
+    assert _allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
 
     raised = False
     try:
@@ -128,7 +128,7 @@ def test_rop_lop():
 
     v1 = lop_f(vx, vv)
     v2 = scan_f(vx, vv)
-    assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
+    assert _allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
 
 def test_det_grad():
