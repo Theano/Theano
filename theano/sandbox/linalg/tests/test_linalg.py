@@ -9,8 +9,6 @@ from theano.tensor.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
 
-utt.seed_rng()
-
 try:
     import scipy
     if V(scipy.__version__) < V('0.7'):
