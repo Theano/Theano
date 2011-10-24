@@ -630,7 +630,7 @@ class UsmmTests(unittest.TestCase):
             else:
                 return theano.sparse.matrix(format, name, dtype=dtype)
 
-        params = product(*([['float32', 'float64']] * 4 +
+        params = product(*([['float32', 'float64', 'int16', 'complex64']] * 4 +
                            [['dense', 'csc', 'csr']] * 2))
 
         for dtype1, dtype2, dtype3, dtype4, format1, format2 in params:
@@ -671,8 +671,16 @@ class UsmmTests(unittest.TestCase):
                 f_a = theano.function([a, x, y],
                                       z - a * theano.sparse.dot(x, y),
                                       mode=mode)
-                f_a_out = f_a(1, x_data, y_data)
-                assert abs(f_a_out - f_b_out).max() < 1e-4
+                # In DebugMode there is a strange difference with complex
+                # So we raise a little the threashold a little.
+                try:
+                    orig = theano.tensor.basic.float64_rtol
+                    theano.tensor.basic.float64_rtol = 1e-5
+                    f_a_out = f_a(a_data, x_data, y_data)
+                finally:
+                    theano.tensor.basic.float64_rtol = orig
+
+            assert _allclose(f_a_out, f_b_out, rtol=1e-5)
             topo = f_a.maker.env.toposort()
             up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
 
