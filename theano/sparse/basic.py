@@ -1872,6 +1872,7 @@ register_specialize(local_usmm, name="local_usmm")
 
 @gof.local_optimizer([usmm])
 def local_usmm_csx(node):
+    """ usmm -> usmm_csc_dense """
     if node.op == usmm:
         alpha, x, y, z = node.inputs
 
@@ -1884,6 +1885,8 @@ def local_usmm_csx(node):
                 x_nsparse = x_shape[0]
                 dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
                                           y.type.dtype, z.type.dtype)
+                if dtype_out not in ('float32', 'float64'):
+                    return False
                 # Sparse cast is not implemented.
                 if y.type.dtype != dtype_out:
                     return False
