@@ -653,7 +653,7 @@ def test_gpujoin_assert_cndas():
     a = theano.shared(_a)
 
     try:
-        c = cuda.basic_ops.gpu_join(1,a)
+        c = cuda.basic_ops.gpu_join(1, a)
         # can't "assert False" here, as we want the assertion
         # error from gpu_join
     except AssertionError:
@@ -733,7 +733,7 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         self.make_vector_op = cuda.GpuJoin
         self.floatX = "float32"
         # In FAST_COMPILE mode, we force the FAST_RUN mode for optimization.
-        self.hide_error = not theano.config.mode in ['DebugMode', 'DEBUG_MODE']
+        self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
         self.shared = cuda.shared_constructor
 
 
