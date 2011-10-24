@@ -38,7 +38,7 @@ if 0:
     def test_cholesky():
         #TODO: test upper and lower triangular
         #todo: unittest randomseed
-        rng = numpy.random.RandomState(1234)
+        rng = numpy.random.RandomState(utt.fetch_seed())
 
         r = rng.randn(5, 5)
 
@@ -61,7 +61,6 @@ if 0:
 
 
 def test_inverse_correctness():
-    #todo: unittest randomseed
     rng = numpy.random.RandomState(utt.fetch_seed())
 
     r = rng.randn(4, 4).astype(theano.config.floatX)
@@ -81,6 +80,7 @@ def test_inverse_correctness():
 
 
 def test_inverse_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
 
@@ -135,7 +135,7 @@ def test_det_grad():
     # If scipy is not available, this test will fail, thus we skip it.
     if not use_scipy:
         raise SkipTest('Scipy is not available')
-    rng = numpy.random.RandomState(1234)
+    rng = numpy.random.RandomState(utt.fetch_seed())
 
     r = rng.randn(5, 5)
     tensor.verify_grad(det, [r], rng=numpy.random)
