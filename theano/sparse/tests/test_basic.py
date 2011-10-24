@@ -598,7 +598,18 @@ class DotTests(unittest.TestCase):
 
                 vx = getattr(self,'x_'+x_f).astype(d1)
                 vy = getattr(self,'y_'+y_f).astype(d2)
-                assert abs(f_a(vx, vy) - f_b(vx, vy)).max() < 1e-4
+                assert _allclose(f_a(vx, vy), f_b(vx, vy).toarray())
+
+                # Test infer_shape
+                f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
+                f_b = lambda x, y: (x * y).shape
+                assert numpy.all(f_a(vx, vy) == f_b(vx, vy))
+                topo = f_a.maker.env.toposort()
+                if theano.config.mode!='FAST_COMPILE':
+                    nb = 0
+                else:
+                    nb = 1
+                assert sum([isinstance(node.op, (Dot, Usmm, UsmmCscDense)) for node in topo]) == nb
 
 
 class UsmmTests(unittest.TestCase):
