@@ -398,9 +398,9 @@ def _allclose(a, b, rtol=None, atol=None):
     else:
         atol_ = float64_atol
         rtol_ = float64_rtol
-    if rtol_ is not None:
+    if rtol is not None:
         rtol_ = rtol
-    if atol_ is not None:
+    if atol is not None:
         atol_ = atol
 
     # Work around bug in Numpy, see http://projects.scipy.org/numpy/ticket/1684
