@@ -137,6 +137,7 @@ class DimShuffle(Op):
         d = dict(self.__dict__)
         del d['_hashval']
         return d
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         self._rehash()
@@ -218,12 +219,10 @@ class DimShuffle(Op):
             rval.insert(augm, 1)
         return [rval]
 
-
     def R_op(self, inputs, eval_points):
         if None in eval_points:
             return [None]
         return self.make_node(*eval_points).outputs
-
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
