@@ -42,30 +42,31 @@ if 0:
         #todo: unittest randomseed
         rng = numpy.random.RandomState(1234)
 
-        r = rng.randn(5,5)
+        r = rng.randn(5, 5)
 
-        pd = numpy.dot(r,r.T)
+        pd = numpy.dot(r, r.T)
 
         x = tensor.matrix()
         chol = cholesky(x)
-        f = function([x], tensor.dot(chol, chol.T)) # an optimization could remove this
+        # an optimization could remove this
+        f = function([x], tensor.dot(chol, chol.T))
 
         ch_f = function([x], chol)
 
         # quick check that chol is upper-triangular
         ch = ch_f(pd)
         print ch
-        assert ch[0,4] != 0
-        assert ch[4,0] == 0
-        assert numpy.allclose(numpy.dot(ch.T,ch),pd)
-        assert not numpy.allclose(numpy.dot(ch,ch.T),pd)
+        assert ch[0, 4] != 0
+        assert ch[4, 0] == 0
+        assert numpy.allclose(numpy.dot(ch.T, ch), pd)
+        assert not numpy.allclose(numpy.dot(ch, ch.T), pd)
 
 
 def test_inverse_correctness():
     #todo: unittest randomseed
-    rng = numpy.random.RandomState(12345)
+    rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(4,4).astype(theano.config.floatX)
+    r = rng.randn(4, 4).astype(theano.config.floatX)
 
     x = tensor.matrix()
     xi = matrix_inverse(x)
@@ -74,46 +75,45 @@ def test_inverse_correctness():
     assert ri.shape == r.shape
     assert ri.dtype == r.dtype
 
-    rir = numpy.dot(ri,r)
-    rri = numpy.dot(r,ri)
+    rir = numpy.dot(ri, r)
+    rri = numpy.dot(r, ri)
 
     assert _allclose(numpy.identity(4), rir), rir
     assert _allclose(numpy.identity(4), rri), rri
 
+
 def test_inverse_grad():
-
-    rng = numpy.random.RandomState(utt.fetch_seed())
-
-    r = rng.randn(4,4)
+    r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
+
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
     mv = tensor.matrix('mv')
-    v  = tensor.vector('v')
+    v = tensor.vector('v')
     y = matrix_inverse(mx).sum(axis=0)
 
     yv = tensor.Rop(y, mx, mv)
     rop_f = function([mx, mv], yv)
 
-    sy, _ = theano.scan( lambda i,y,x,v: (tensor.grad(y[i],x)*v).sum(),
-                       sequences = tensor.arange(y.shape[0]),
-                       non_sequences = [y,mx,mv])
-    scan_f = function([mx,mv], sy)
+    sy, _ = theano.scan(lambda i, y, x, v: (tensor.grad(y[i], x) * v).sum(),
+                       sequences=tensor.arange(y.shape[0]),
+                       non_sequences=[y, mx, mv])
+    scan_f = function([mx, mv], sy)
 
     rng = numpy.random.RandomState(utt.fetch_seed())
-    vx = numpy.asarray(rng.randn(4,4), theano.config.floatX)
-    vv = numpy.asarray(rng.randn(4,4), theano.config.floatX)
+    vx = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
+    vv = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
 
-    v1 = rop_f(vx,vv)
-    v2 = scan_f(vx,vv)
+    v1 = rop_f(vx, vv)
+    v2 = scan_f(vx, vv)
 
-    assert numpy.allclose(v1,v2), ('ROP mismatch: %s %s' % (v1, v2))
+    assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
 
     raised = False
     try:
         tmp = tensor.Rop(theano.clone(y,
-                                      replace={mx:break_op(mx)}), mx, mv)
+                                      replace={mx: break_op(mx)}), mx, mv)
     except ValueError:
         raised = True
     if not raised:
@@ -125,13 +125,12 @@ def test_rop_lop():
     yv = tensor.Lop(y, mx, v)
     lop_f = function([mx, v], yv)
 
-    sy = tensor.grad((v*y).sum(), mx)
+    sy = tensor.grad((v * y).sum(), mx)
     scan_f = function([mx, v], sy)
 
-
-    v1 = lop_f(vx,vv)
-    v2 = scan_f(vx,vv)
-    assert numpy.allclose(v1,v2), ('LOP mismatch: %s %s' % (v1, v2))
+    v1 = lop_f(vx, vv)
+    v2 = scan_f(vx, vv)
+    assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
 
 def test_det_grad():
@@ -140,7 +139,7 @@ def test_det_grad():
         raise SkipTest('Scipy is not available')
     rng = numpy.random.RandomState(1234)
 
-    r = rng.randn(5,5)
+    r = rng.randn(5, 5)
     tensor.verify_grad(det, [r], rng=numpy.random)
 
 
@@ -150,7 +149,7 @@ def test_extract_diag():
     g = extract_diag(x)
     f = theano.function([x], g)
 
-    m = rng.rand(3,3).astype(config.floatX)
+    m = rng.rand(3, 3).astype(config.floatX)
     v = numpy.diag(m)
     r = f(m)
     # The right diagonal is extracted
@@ -175,7 +174,7 @@ def test_extract_diag():
     f = theano.function([x], g.shape)
     topo = f.maker.env.toposort()
     assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
-    m = rng.rand(3,3).astype(config.floatX)
+    m = rng.rand(3, 3).astype(config.floatX)
     assert f(m) == 3
 
 # not testing the view=True case since it is not used anywhere.
@@ -198,5 +197,3 @@ def test_trace():
     except TypeError:
         ok = True
     assert ok
-
-    
