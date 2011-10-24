@@ -417,8 +417,12 @@ class ExtractDiag(Op):
         z, = outs
         #for some reason numpy.diag(x) is really slow
         N,M = x.shape
-        assert N==M
-        rval = x[0]
+
+        if x.shape[0] < x.shape [1]:
+            rval = x[:,0]
+        else:
+            rval = x[0]
+
         rval.strides = (x.strides[0]+x.strides[1],)
         if self.view:
             z[0] = rval
@@ -433,7 +437,8 @@ class ExtractDiag(Op):
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
-        return [(x_s[0],)]
+        shp = tensor.min(node.inputs[0].shape)
+        return [(shp,)]
 
 extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
