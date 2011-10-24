@@ -137,9 +137,10 @@ def test_trace():
     g = trace(x)
     f = theano.function([x], g)
 
-    m = rng.rand(4, 4).astype(config.floatX)
-    v = numpy.trace(m)
-    assert v == f(m)
+    for shp in [(2, 3), (3, 2), (3, 3)]:
+        m = rng.rand(*shp).astype(config.floatX)
+        v = numpy.trace(m)
+        assert v == f(m)
 
     xx = theano.tensor.vector()
     ok = False

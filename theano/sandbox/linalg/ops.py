@@ -395,6 +395,7 @@ solve = Solve() # general solve
 #TODO: Optimizations to replace multiplication by matrix inverse with solve() Op (still unwritten)
 
 class ExtractDiag(Op):
+    """ Return the diagonal of matrix """
     def __init__(self, view=False):
         self.view = view
         if self.view:
