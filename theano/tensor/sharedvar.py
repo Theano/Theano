@@ -6,16 +6,14 @@ from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
 def load_shared_variable(val):
-    return theano.tensor.as_tensor_variable(theano.shared(val))
+    """This function is only here to keep some pickles loading
+    after a failed fix done in August 2011.
+    It can be removed after sufficient time has passed."""
+    return tensor_constructor(val)
 
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
-    def __reduce_ex__(self, proto):
-        # This is for loading on the GPU if present.
-        if self.dtype == 'float32':
-            return load_shared_variable, (self.get_value(),)
-        else:
-            return super(TensorSharedVariable, self).__reduce_ex__(proto)
+    pass
 
 @shared_constructor
 def tensor_constructor(value, name=None, strict=False, allow_downcast=None, borrow=False, broadcastable=None):
