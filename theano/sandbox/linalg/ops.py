@@ -329,32 +329,54 @@ class Cholesky(Op):
 cholesky = Cholesky()
 
 class MatrixInverse(Op):
-    """Compute a matrix inverse"""
+    """Computes the inverse of a matrix :math:`A`.
+
+    Given a square matrix :math:`A`, ``matrix_inverse`` returns a square
+    matrix :math:`A_{inv}` such that the dot product :math:`A \cdot A_{inv}`
+    and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
+
+    :note: When possible, the call to this op will be optimized to the call
+    of ``solve``.
+    """
+
     def __init__(self):
         pass
+
     def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``MatrixInverse`` op, there are no properties to be exposed.
+        """
         return ()
+
     def __hash__(self):
         return hash((type(self), self.props()))
+
     def __eq__(self, other):
         return (type(self)==type(other) and self.props() == other.props())
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
+
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.linalg.inv(x).astype(x.dtype)
         except Exception:
             print 'Failed to invert', node.inputs[0]
             raise
+
     def grad(self, inputs, g_outputs):
         x, = inputs
         xi = self(x)
         gz, = g_outputs
         #TT.dot(gz.T,xi)
         return [-matrix_dot(xi,gz.T,xi).T]
+
     def __str__(self):
         return "MatrixInverse"
+
 matrix_inverse = MatrixInverse()
 
 class Solve(Op):
