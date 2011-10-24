@@ -327,6 +327,16 @@ class SparseType(gof.Type):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
 # for more dtypes, call SparseType(format, dtype)
+def matrix(format, name=None, dtype=None):
+    if dtype is None:
+        dtype = config.floatX
+    type = SparseType(format=format, dtype=dtype)
+    return type(name)
+def csc_matrix(name=None, dtype=None):
+    return matrix('csc', name, dtype)
+def csr_matrix(name=None, dtype=None):
+    return matrix('csr', name, dtype)
+# for more dtypes, call SparseType(format, dtype)
 csc_matrix = SparseType(format='csc', dtype=config.floatX)
 csr_matrix = SparseType(format='csr', dtype=config.floatX)
 csc_dmatrix = SparseType(format='csc', dtype='float64')
