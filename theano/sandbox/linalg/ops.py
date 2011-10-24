@@ -374,6 +374,18 @@ class MatrixInverse(Op):
             raise
 
     def grad(self, inputs, g_outputs):
+        """The gradient function should return:
+
+            :math:`V\\frac{\partial X^{-1}}{\partial X}`
+
+        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
+        ``inputs``. Using the matrix cookbook
+        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        once can deduce that the relation corresponds to :
+
+            :math:`(X^{-1} \cdot V^{T} \cdot X^{-1})^T`
+
+        """
         x, = inputs
         xi = self(x)
         gz, = g_outputs
