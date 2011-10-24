@@ -164,8 +164,14 @@ class HintsOptimizer(Optimizer):
 theano.compile.mode.optdb.register('HintsOpt', HintsOptimizer(), -1, 'fast_run', 'fast_compile')
 
 
-def PSD_hint(v):
-    return Hint(psd=True,symmetric=True)(v)
+def psd(v):
+    """
+    Apply a hint that the variable `v` is positive semi-definite, i.e.
+    it is a symmetric matrix and x^T A x >= for any vector x.
+    """
+    return Hint(psd=True, symmetric=True)(v)
+
+
 def is_psd(v):
     return hints(v).get('psd', False)
 def is_symmetric(v):
@@ -521,7 +527,7 @@ alloc_diag = AllocDiag()
 
 def diag(x):
     """Numpy-compatibility method
-    
+
     If `x` is a matrix, return its diagonal.
     If `x` is a vector return a matrix with it as its diagonal.
 
