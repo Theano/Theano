@@ -392,6 +392,28 @@ class MatrixInverse(Op):
         #TT.dot(gz.T,xi)
         return [-matrix_dot(xi,gz.T,xi).T]
 
+    def R_op(self, inputs, eval_points):
+        """The gradient function should return:
+
+            :math:`\\frac{\partial X^{-1}}{\partial X}V`
+
+        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
+        ``inputs``. Using the matrix cookbook
+        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        once can deduce that the relation corresponds to :
+
+            :math:`X^{-1} \cdot V \cdot X^{-1}`
+
+        """
+        x, = inputs
+        xi = self(x)
+        ev, = eval_points
+        if ev is None:
+            return [None]
+        #TT.dot(gz.T,xi)
+        return [-matrix_dot(xi,ev,xi)]
+
+
     def __str__(self):
         return "MatrixInverse"
 
