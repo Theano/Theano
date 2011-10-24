@@ -275,6 +275,12 @@ def local_log_pow(node):
 
 
 def matrix_dot(*args):
+    """ Shorthand for product between several dots
+
+    Given :math:`N` matrices :math:`A_0, A_1, .., A_N`, ``matrix_dot`` will
+    generate the matrix product between all in the given order, namely
+    :math:`A_0 \cdot A_1 \cdot A_2 \cdot .. \cdot A_N`.
+    """
     rval = args[0]
     for a in args[1:]:
         rval = theano.tensor.dot(rval, a)
