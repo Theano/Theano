@@ -18,7 +18,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_softmax_1hot_with_bias_dx,
                                 crossentropy_softmax_argmax_1hot_with_bias,
                                 sigmoid, softplus,
-                                Softmax, softmax, SoftmaxWithBias, softmax_grad,
+                                Softmax, softmax, softmax_op, SoftmaxWithBias, softmax_grad,
                                 softmax_with_bias,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
@@ -64,7 +64,9 @@ class T_Softmax(unittest.TestCase):
         f = theano.function([x], softmax(x))
 
         xv = numpy.random.randn(6).astype(config.floatX)
-        assert numpy.allclose(f(xv), numpy.exp(xv) / numpy.exp(xv).sum())
+        fval = f(xv)
+        assert fval.shape == (6,)
+        assert numpy.allclose(fval, numpy.exp(xv) / numpy.exp(xv).sum())
     def test_vector_grad(self):
         def f(a):
             return softmax(a)
@@ -110,7 +112,7 @@ class T_SoftmaxWithBias(unittest.TestCase):
                             T.nnet.softmax(T.dot(hid, W.T) + vbias))
         ops = [node.op for node in f.maker.env.toposort()]
         assert softmax_with_bias not in ops
-        assert softmax in ops
+        assert softmax_op in ops
 
         print f([0,1,0])
         print f.maker.env.toposort()
@@ -407,7 +409,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx :
                 has_cx1hotdx = True
-            if node.op == softmax:
+            if node.op == softmax_op:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
@@ -450,7 +452,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx :
                 has_cx1hotdx = True
-            if node.op == softmax:
+            if node.op == softmax_op:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
@@ -681,7 +683,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 ops = [node.op for node in g.maker.env.toposort()]
                 assert len(ops) == 4
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
-                assert softmax in ops
+                assert softmax_op in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
             except:
@@ -777,7 +779,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             for node in func.maker.env.toposort():
                 if node.op == crossentropy_softmax_argmax_1hot_with_bias:
                     has_cx1hot = True
-                if node.op == softmax:
+                if node.op == softmax_op:
                     has_softmax = True
 
             assert has_cx1hot
@@ -791,7 +793,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             for node in func.maker.env.toposort():
                 if node.op == crossentropy_softmax_1hot_with_bias_dx:
                     has_cx1hotdx = True
-                if node.op == softmax:
+                if node.op == softmax_op:
                     has_softmax = True
                 if node.op == softmax_grad:
                     has_softmaxdx = True
@@ -1025,7 +1027,7 @@ class Test_softmax_opt:
         printing.debugprint(f)
         print '==='
         assert len(f_ops) == 1
-        assert softmax in f_ops
+        assert softmax_op in f_ops
         f(self.rng.rand(3,4).astype(config.floatX))
 
     def test_grad(self):
@@ -1047,7 +1049,7 @@ class Test_softmax_opt:
 
         raise SkipTest('Optimization not enabled for the moment')
         assert len(g_ops) == 2
-        assert softmax in g_ops
+        assert softmax_op in g_ops
         assert softmax_grad in g_ops
         g(self.rng.rand(3,4), self.rng.uniform(.5, 1, (3,4)))
 

@@ -325,11 +325,12 @@ class Softmax(gof.Op):
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
-        if x.type.ndim not in (1, 2) \
-                or x.type.dtype not in ['float32', 'float64']:
-            raise ValueError('x must be 1-d or 2-d tensor of floats')
-        if x.ndim == 1:
-            x = tensor.shape_padleft(x, n_ones=1)
+        if x.type.ndim not in (2,):
+            raise NotImplementedError(
+                'Softmax only implemented for 2-d')
+        if 'float' not in str(x.type.dtype):
+            raise NotImplementedError(
+                'Softmax implemented only for floating-point')
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -357,14 +358,21 @@ class Softmax(gof.Op):
     def infer_shape(self, node, shape):
         return shape
 
-softmax = Softmax()
+softmax_op = Softmax()
+
+def softmax(x):
+    x_ = tensor.as_tensor_variable(x)
+    if x_.ndim == 1:
+        return softmax_op(x_.dimshuffle('x', 0)).dimshuffle(1)
+    else:
+        return softmax_op(x_)
 
 @opt.register_specialize
-@gof.local_optimizer([softmax])
+@gof.local_optimizer([])
 def local_softmax_with_bias(node):
     """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
     """
-    if node.op == softmax:
+    if node.op == softmax_op:
         x, = node.inputs
         if x.owner and x.owner.op == tensor.add:
             vectors = []
@@ -1043,7 +1051,7 @@ def crossentropy_to_crossentropy_with_softmax(env):
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
-                if sm.owner and sm.owner.op == softmax:
+                if sm.owner and sm.owner.op == softmax_op:
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
                             tensor.zeros_like(x[0]), one_of_n)
@@ -1082,7 +1090,7 @@ opt.register_specialize(local_crossentropy_to_crossentropy_with_softmax_grad)
 def local_argmax_pushdown(node):
     if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
             len(node.outputs[0].clients)>0 and node.inputs[0].owner.op in \
-            (softmax, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+            (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
         if theano.config.warn.argmax_pushdown_bug:
             logging.getLogger('theano.tensor.nnet.nnet').warn("WARNING: there "
@@ -1097,7 +1105,7 @@ def local_argmax_pushdown(node):
         x_max, x_argmax = node.outputs
         x, axis = node.inputs
         #TODO: Make a list/set of monotonic ops...
-        if x.owner and x.owner.op in (softmax, softplus, tensor.exp, tensor.log, tensor.tanh,
+        if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh,
                 sigmoid):
             pre_x, = x.owner.inputs
             return tensor._max_and_argmax(pre_x, axis)
@@ -1164,7 +1172,9 @@ def local_advanced_indexing_crossentropy_onehot(node):
                 pass
 
 
-    if sm is not None and sm.owner and sm.owner.op in (softmax, softmax_with_bias):
+    if (sm is not None
+            and sm.owner
+            and sm.owner.op in (softmax_op, softmax_with_bias)):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
@@ -1190,7 +1200,9 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     except Exception:
         return
 
-    if (sm is not None) and sm.owner and (sm.owner.op in (softmax, softmax_with_bias)):
+    if (sm is not None
+            and sm.owner
+            and (sm.owner.op in (softmax_op, softmax_with_bias))):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
