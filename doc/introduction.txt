@@ -137,6 +137,72 @@ A PDF version of the online documentation may be found `here
 <http://deeplearning.net/software/theano/theano.pdf>`_.
 
 
+Theano Vision
+=============
+
+This is the vision we have for Theano. This is to help people what to
+expect in the futur for Theano, but we don't promise to implement all
+that. This also should help you to understand where Theano fix related
+to all other computational tools.
+
+* Support tensor and sparse operation
+* Support linear algebra operation
+* Graph Transformation
+    * Differentiation/higher order differentiation
+    * R operation
+    * Speed/memory optimization
+    * Numeriacal stability optimization
+* Have an OpenCL back-end (for GPU, SIMD and multi-core)
+* Lazy evaluation
+* Loop
+* Parallel execution (SIMD, multi-core, multi-node on cluster,
+  multi-node distributed)
+* Support all numpy/scipy functionality
+* Easy wrapping of library function in Theano
+
+Note: There is no short term plan to work to make Theano work in multi-node in one Theano function.
+
+Theano Vision State
+===================
+
+Here is the state of that vision as of 24 October 2011 (after Theano release 0.4.1):
+
+* We support tensor by using the numpy.ndarray object and we have operations on them.
+* We support sparse by using the scipy.{csc,csr}_matrix object and have some operation on them (More are comming).
+* We have a start of more advanced linear algebra operations.
+* We have many graph transformation that cover the 4 categories.
+* We can improve the graph transformation with better storage optimization
+  and instruction selection
+    * Similar to auto-tuning during the optimization phase, but this
+      don't apply to only 1 op.
+    * Example of use: Determine if we should move computation to the
+      gpu or not depending of the input size.
+    * Possible implementation note: allow Theano Variable in the env to
+      have more then 1 owner.
+* We have a CUDA back-end for tensor of float32 only.
+* Make a generic GPU nd array(GPU tensor) (started in the
+  `compyte <https://github.com/inducer/compyte/wiki>`_ project)
+    * Move GPU backend outside of Theano(on top of PyCUDA/PyOpenCL)
+    * Will allow GPU to work on Windows and use an OpenCL backend on CPU.
+* Loop work, but not all related optimization done.
+* The cvm linker allow lazy evaluation. It work but some work still needed
+  to enable it by default.
+    * All test pass with linker=cvm?
+    * How to have DEBUG_MODE check it? Now DebugMode check it non lazily.
+    * The profiler using by cvm is less complete then PROFILE_MODE.
+* SIMD parallism on the cpu come from the compiler
+* Multi-core parallism is only supported for gemv, gemm if the external
+  implementation of it implement it.
+* No muli-node implementation in one Theano experiment.
+* Many, but not all numpy function/alias implemented.
+    * http://trac-hg.assembla.com/theano/ticket/781
+* Wrapping an existing python function in easy, but better documentation of
+  it would make it even easier.
+* We need to find a way to separate the Shared variable data memory
+  storage location vs object type(tensor, sparse, dtype, broadcast
+  flags).
+
+
 Contact us
 ==========
 

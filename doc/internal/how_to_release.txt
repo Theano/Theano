@@ -13,6 +13,8 @@ and all commit log messages.
 
 For the final release, copy the file Theano/NEWS.txt to Theano/doc/NEWS.txt
 
+Update the "Vision"/"Vision State" in the file Theano/doc/introduction.txt.
+
 Get a fresh copy of the repository
 ==================================
 
