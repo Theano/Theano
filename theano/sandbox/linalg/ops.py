@@ -376,7 +376,7 @@ class MatrixInverse(Op):
         try:
             z[0] = numpy.linalg.inv(x).astype(x.dtype)
         except numpy.linalg.LinAlgError:
-            print 'Failed to invert', node.inputs[0]
+            logger.debug('Failed to invert %s' % str(node.inputs[0]))
             raise
 
     def grad(self, inputs, g_outputs):
