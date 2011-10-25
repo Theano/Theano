@@ -40,11 +40,12 @@ try:
     import scipy.special
     imported_scipy_special = True
 except ImportError:
-    if config.mode=="FAST_COMPILE":
+    if config.mode == "FAST_COMPILE":
         mode_no_scipy = "FAST_RUN"
 
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
+
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False):
     if mode is None:
@@ -54,11 +55,13 @@ def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False):
             allow_input_downcast=allow_input_downcast,
             accept_inplace=True)
 
+
 def eval_outputs(outputs):
     variables = inplace_func([], outputs)()
-    if isinstance(variables,(tuple, list)) and len(variables) == 1:
+    if isinstance(variables, (tuple, list)) and len(variables) == 1:
         return variables[0]
     return variables
+
 
 def get_numeric_subclasses(cls=numpy.number, ignore=None):
     """
@@ -110,6 +113,7 @@ def get_numeric_types(with_int=True, with_float=True, with_complex=False,
     if only_theano_types:
         theano_types = [d.dtype for d in theano.scalar.all_types]
     rval = []
+
     def is_within(cls1, cls2):
         # Return True if scalars defined from `cls1` are within the hierarchy
         # starting from `cls2`.
@@ -120,6 +124,7 @@ def get_numeric_types(with_int=True, with_float=True, with_complex=False,
         return (cls1 is cls2 or
                 issubclass(cls1, cls2) or
                 isinstance(numpy.array([0], dtype=cls1)[0], cls2))
+
     for cls in get_numeric_subclasses():
         dtype = numpy.dtype(cls)
         if ((not with_complex and is_within(cls, numpy.complexfloating)) or
@@ -132,30 +137,39 @@ def get_numeric_types(with_int=True, with_float=True, with_complex=False,
     # We sort it to be deterministic, then remove the string and num elements.
     return [x[1] for x in sorted(rval, key=str)]
 
+
 def _numpy_checker(x, y):
     """
     Checks if x.data and y.data have the same contents.
     Used in DualLinker to compare C version with Python version.
     """
     x, y = x[0], y[0]
-    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(numpy.abs(x - y) > 1e-10):
+    if (x.dtype != y.dtype or x.shape != y.shape
+        or numpy.any(numpy.abs(x - y) > 1e-10)):
         raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
+
 def safe_make_node(op, *inputs):
-    """Emulate the behaviour of make_node when op is a function instead of an Op instance."""
+    """ Emulate the behaviour of make_node when op is a function.
+
+    Normally op in an instead of the Op class.
+    """
     node = op(*inputs)
     if isinstance(node, list):
         return node[0].owner
     else:
         return node.owner
 
-def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
-               bad_runtime = {}, grad = {}, mode = None, grad_rtol=None,
-               eps = 1e-10, skip = False):
+
+def makeTester(name, op, expected, checks={}, good={}, bad_build={},
+               bad_runtime={}, grad={}, mode=None, grad_rtol=None,
+               eps=1e-10, skip=False):
     if grad is True:
         grad = good
 
-    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad, _mode, _grad_rtol, _eps, skip_ = op, expected, checks, good, bad_build, bad_runtime, grad, mode, grad_rtol, eps, skip
+    _op, _expected, _checks, _good = op, expected, checks, good
+    _bad_build, _bad_runtime, _grad = bad_build, bad_runtime, grad
+    _mode, _grad_rtol, _eps, skip_ = mode, grad_rtol, eps, skip
 
     class Checker(unittest.TestCase):
 
@@ -186,14 +200,14 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     raise type, exc_value, traceback
 
                 try:
-                    f = inplace_func(inputrs, node.outputs, mode = mode)
+                    f = inplace_func(inputrs, node.outputs, mode=mode)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
                         % (self.op, testname)
                     exc_value.args = exc_value.args + (err_msg, )
                     raise type, exc_value, traceback
-                if isinstance(self.expected,dict) and testname in self.expected:
+                if isinstance(self.expected, dict) and testname in self.expected:
                     expecteds = self.expected[testname]
                     #with numpy version, when we print a number and read it back, we don't get exactly the same result
                     #So we accept rounding error in that case.
@@ -202,9 +216,9 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     expecteds = self.expected(*inputs)
                     eps = 1e-10
 
-                if any([i.dtype=='float32' for i in inputs]):
-                    eps=8e-6#1e-6
-                eps = numpy.max([eps,_eps])
+                if any([i.dtype == 'float32' for i in inputs]):
+                    eps = 8e-6  # 1e-6
+                eps = numpy.max([eps, _eps])
 
                 try:
                     variables = f(*inputs)
@@ -222,7 +236,10 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                     if variable.dtype != expected.dtype or variable.shape != expected.shape or \
                             numpy.any(numpy.abs(variable - expected) > eps):
                         self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s. numpy.allclose return %s %s"
-                                  % (self.op, testname, i, inputs, expected, variable, numpy.allclose(variable,expected,atol=eps), numpy.allclose(variable,expected)))
+                                  % (self.op, testname, i, inputs, expected,
+                                     variable,
+                                     numpy.allclose(variable, expected, atol=eps),
+                                     numpy.allclose(variable, expected)))
 
                 for description, check in self.checks.items():
                     if not check(inputs, variables):
@@ -246,7 +263,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {},
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = safe_make_node(self.op,*inputrs)
+                    node = safe_make_node(self.op, *inputrs)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
@@ -297,18 +314,25 @@ rand = lambda *shape: 2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.
 randint = lambda *shape: numpy.random.random_integers(-5, 5, shape)
 randcomplex = lambda *shape: numpy.complex128(2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1)
 
+
 def randint_nonzero(*shape):
     r = numpy.random.random_integers(-5, 4, shape)
     return r + (r == 0) * 5
 
+
 def rand_ranged(min, max, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype=config.floatX)
+    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+                         dtype=config.floatX)
+
 
 def randint_ranged(min, max, shape):
     return numpy.random.random_integers(min, max, shape)
 
+
 def randc128_ranged(min, max, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min, dtype='complex128')
+    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+                         dtype='complex128')
+
 
 def rand_of_dtype(shape, dtype):
     if 'int' in dtype:
@@ -320,7 +344,8 @@ def rand_of_dtype(shape, dtype):
     else:
         raise TypeError()
 
-def makeBroadcastTester(op, expected, checks = {}, name=None, **kwargs):
+
+def makeBroadcastTester(op, expected, checks={}, name=None, **kwargs):
     name = str(op)
     # Here we ensure the test name matches the name of the variable defined in
     # this script. This is needed to properly identify the test e.g. with the
@@ -340,48 +365,50 @@ def makeBroadcastTester(op, expected, checks = {}, name=None, **kwargs):
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
             _expected = expected
-            if not isinstance(_expected,dict):
-                expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
+            if not isinstance(_expected, dict):
+                expected = lambda *inputs: numpy.array(_expected(*inputs),
+                                                       dtype=inputs[0].dtype)
+
             def inplace_check(inputs, outputs):
                 # this used to be inputs[0] is output[0]
                 # I changed it so that it was easier to satisfy by the DebugMode
                 return numpy.all(inputs[0] == outputs[0])
-            checks = dict(checks, inplace_check=inplace_check) #lambda inputs, outputs: numpy.all(inputs[0] == outputs[0]))
+
+            checks = dict(checks, inplace_check=inplace_check)
         del kwargs['inplace']
     return makeTester(name, op, expected, checks, **kwargs)
 
 
-
-_good_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                     not_same_dimensions = (rand(2, 2), rand(2)),
-                                     scalar = (rand(2, 3), rand(1, 1)),
-                                     row = (rand(2, 3), rand(1, 3)),
-                                     column = (rand(2, 3), rand(2, 1)),
-                                     integers = (randint(2, 3), randint(2, 3)),
-                                     dtype_mixup_1 = (rand(2, 3), randint(2, 3)),
-                                     dtype_mixup_2 = (randint(2, 3), rand(2, 3)),
-                                     complex1 = (randcomplex(2,3),randcomplex(2,3)),
-                                     complex2 = (randcomplex(2,3),rand(2,3)),
+_good_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
+                                     not_same_dimensions=(rand(2, 2), rand(2)),
+                                     scalar=(rand(2, 3), rand(1, 1)),
+                                     row=(rand(2, 3), rand(1, 3)),
+                                     column=(rand(2, 3), rand(2, 1)),
+                                     integers=(randint(2, 3), randint(2, 3)),
+                                     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
+                                     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
+                                     complex1=(randcomplex(2, 3), randcomplex(2, 3)),
+                                     complex2=(randcomplex(2, 3), rand(2, 3)),
                                      # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     # complex3 = (rand(2,3),randcomplex(2,3)),
-                                     empty = (numpy.asarray([]),numpy.asarray([1])),
+                                     # complex3=(rand(2,3),randcomplex(2,3)),
+                                     empty=(numpy.asarray([]), numpy.asarray([1])),
                                      )
 
-_bad_build_broadcast_binary_normal = dict()#not_same_dimensions = (rand(2), rand(2, 2)))
+_bad_build_broadcast_binary_normal = dict()  # not_same_dimensions = (rand(2), rand(2, 2)))
 
-_bad_runtime_broadcast_binary_normal = dict(bad_shapes = (rand(2, 3), rand(3, 2)),
-                                            bad_row = (rand(2, 3), rand(1, 2)))
+_bad_runtime_broadcast_binary_normal = dict(bad_shapes=(rand(2, 3), rand(3, 2)),
+                                            bad_row=(rand(2, 3), rand(1, 2)))
 
-_grad_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                     scalar = (rand(2, 3), rand(1, 1)),
-                                     row = (rand(2, 3), rand(1, 3)),
-                                     column = (rand(2, 3), rand(2, 1)),
+_grad_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
+                                     scalar=(rand(2, 3), rand(1, 1)),
+                                     row=(rand(2, 3), rand(1, 3)),
+                                     column=(rand(2, 3), rand(2, 1)),
                                      #This don't work as verify grad don't support that
-                                     #empty = (numpy.asarray([]), numpy.asarray([1]))
-                                     #complex1 = (randcomplex(2,3),randcomplex(2,3)),
-                                     #complex2 = (randcomplex(2,3),rand(2,3)),
+                                     #empty=(numpy.asarray([]), numpy.asarray([1]))
+                                     #complex1=(randcomplex(2,3),randcomplex(2,3)),
+                                     #complex2=(randcomplex(2,3),rand(2,3)),
                                      # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     #complex3 = (rand(2,3),randcomplex(2,3)),
+                                     #complex3=(rand(2,3),randcomplex(2,3)),
                                      )
 
 
@@ -5162,6 +5189,15 @@ class test_broadcast(unittest.TestCase):
             assert isinstance(topo[0].op, opt.Shape_i)
             assert isinstance(topo[1].op, opt.MakeVector)
 
+
+def test_len():
+    for shape in [(5,), (3, 4), (7, 4, 6), (3, 4, 5)]:
+        x = tensor.tensor(dtype='floatX', broadcastable=(False,)*len(shape))
+        try:
+            len(x)
+            assert False, "Expected an error"
+        except TypeError:
+            pass
 
 
 def test_mod():
