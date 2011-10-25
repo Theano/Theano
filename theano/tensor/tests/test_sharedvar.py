@@ -637,25 +637,3 @@ test_shared_options=makeSharedTester(
     cast_value_ = numpy.asarray,
     op_by_matrix_ = False,
     name='test_shared_options')
-
-
-def test_shared_pickle():
-    import pickle
-    picklestring = "ctheano.tensor.sharedvar\nload_shared_variable\np0\n(cnumpy.core.multiarray\n_reconstruct\np1\n(cnumpy\nndarray\np2\n(I0\ntp3\nS'b'\np4\ntp5\nRp6\n(I1\n(I2\ntp7\ncnumpy\ndtype\np8\n(S'f4'\np9\nI0\nI1\ntp10\nRp11\n(I3\nS'<'\np12\nNNNI-1\nI-1\nI0\ntp13\nbI00\nS'\\x00\\x00\\x80?\\x00\\x00\\x00@'\np14\ntp15\nbtp16\nRp17\n."
-    g = pickle.loads(picklestring)
-    v = numpy.array([1.0, 2.0], dtype='float32')
-
-    assert g.type == theano.tensor.fvector
-    
-    if theano.config.device.startswith('cpu'):
-        assert isinstance(g, theano.tensor.sharedvar.TensorSharedVariable)
-        assert (g.get_value() == v).all()
-    if theano.config.device.startswith('gpu'):
-        assert isinstance(g, theano.tensor.basic.TensorVariable)
-        # we don't go digging deeper because we don't want to 
-        # import theano.sandbox.cuda.
-        # some other tests are there.
-
-    # Make sure it saves the same way (so that the tests before are not bogus)
-    s = theano.tensor.as_tensor_variable(theano.shared(v))
-    assert pickle.dumps(s) == picklestring
