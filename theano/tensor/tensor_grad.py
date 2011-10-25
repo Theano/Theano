@@ -1,9 +1,9 @@
 """Driver for gradient calculations."""
 
-__authors__   = "James Bergstra, Razvan Pascanu"
+__authors__ = "James Bergstra, Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
@@ -11,7 +11,7 @@ import __builtin__
 import logging
 import warnings
 
-import numpy #for numeric_grad
+import numpy  # for numeric_grad
 
 import theano
 from theano.tensor import TensorType, TensorVariable, ones_like, \
@@ -25,6 +25,7 @@ _logger = logging.getLogger('theano.tensor.tensor_grad')
 ########################
 # R Operator
 ########################
+
 
 def Rop(f, wrt, eval_points):
     """
@@ -53,13 +54,11 @@ def Rop(f, wrt, eval_points):
     using_list = isinstance(f, list)
     using_tuple = isinstance(f, tuple)
 
-
-    if not isinstance(wrt, (list,tuple)):
-        wrt = [ wrt ]
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [wrt]
 
     if not isinstance(eval_points, (list, tuple)):
-        eval_points = [ eval_points ]
-
+        eval_points = [eval_points]
 
     if not (using_list or using_tuple):
         f = [f]
@@ -72,7 +71,7 @@ def Rop(f, wrt, eval_points):
         if node is None:
             return None
         else:
-            op     = node.op
+            op = node.op
             inputs = node.inputs
             if not hasattr(op, 'R_op'):
                 raise Exception((' R_op was not implemented for %s'
@@ -83,23 +82,24 @@ def Rop(f, wrt, eval_points):
             local_eval_points = []
             for inp in inputs:
                 if inp in wrt:
-                    local_eval_points.append( eval_points[wrt.index(inp)] )
+                    local_eval_points.append(eval_points[wrt.index(inp)])
                 elif inp.owner is None:
-                    local_eval_points.append( zeros_like(inp) )
+                    local_eval_points.append(zeros_like(inp))
                 elif inp.owner in seen_nodes:
 
                     local_eval_points.append(
-                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ] )
+                        seen_nodes[inp.owner][inp.owner.outputs.index(inp)])
 
                 else:
                     # We actually need to compute the R_op for this node
 
                     _traverse(inp.owner)
                     local_eval_points.append(
-                        seen_nodes[inp.owner][inp.owner.outputs.index(inp) ])
-            for x,y in zip(inputs, local_eval_points):
+                        seen_nodes[inp.owner][inp.owner.outputs.index(inp)])
+            for x, y in zip(inputs, local_eval_points):
                 if y is not None:
-                    assert (as_tensor_variable(x).type == as_tensor_variable(y).type)
+                    assert (as_tensor_variable(x).type ==
+                            as_tensor_variable(y).type)
 
             seen_nodes[node] = op.R_op(node.inputs, local_eval_points)
             return None
@@ -111,12 +111,12 @@ def Rop(f, wrt, eval_points):
     rval = []
     for out in f:
         if out in wrt:
-            rval.append( eval_points[wrt.index(out)])
+            rval.append(eval_points[wrt.index(out)])
         elif seen_nodes[out.owner][out.owner.outputs.index(out)] is None:
-            raise ValueError(( 'The function is not differentiable with '
+            raise ValueError(('The function is not differentiable with '
                               'respect to the provided inputs !'))
         else:
-            rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)] )
+            rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)])
 
     if len(rval) == 1:
         if using_list:
@@ -158,7 +158,8 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
         consider_constant = []
 
     if not isinstance(f, TensorVariable):
-        raise TypeError('In tensor.Lop(), cost argument should be a TensorVariable.', f)
+        raise TypeError(('In tensor.Lop(), cost argument should be '
+                        'a TensorVariable.'), f)
 
     if type(eval_points) not in (list, tuple):
         eval_points = [eval_points]
@@ -171,7 +172,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 
     inputs = gof.graph.inputs(f)
     gmap = gradient.grad_sources_inputs(
-            zip(f,eval_points),
+            zip(f, eval_points),
             list(inputs) + list(consider_constant),
             warn_type=warn_type)
 
@@ -231,10 +232,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     :type g_cost: Scalar `Variable`, or None
     :param g_cost: an expression for the gradient through cost.  The default is
         ``ones_like(cost)``.
-    :param consider_constant: a list of expressions not to backpropagate through
+    :param consider_constant: a list of expressions not to backpropagate
+        through
 
-    :param warn_type: a value of True will cause warnings to be logged for any Op that emits a
-        gradient that does not match its input type.
+    :param warn_type: a value of True will cause warnings to be logged for any
+        Op that emits a gradient that does not match its input type.
 
     :type disconnected_inputs: string
     :param disconnected_inputs: Defines the behaviour if some of the variables
@@ -261,7 +263,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         consider_constant = []
 
     if not isinstance(cost, TensorVariable):
-        raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
+        raise TypeError(('In tensor.grad(), cost argument should be '
+                         'a TensorVariable.'), cost)
 
     if cost.type.ndim:
         raise TypeError(
@@ -277,7 +280,6 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
             [(cost, g_cost)],
             list(inputs) + list(consider_constant),
             warn_type=warn_type)
-
 
     # Note : If p is not in gmap there can be several reasons, among which
     # is the fact that p might not be part of the computational graph. A
@@ -313,11 +315,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
 
     if len(ret) == 1:
         if using_list or using_tuple:
-            warnings.warn(("The return type of tensor.grad will change in this "
-                           "case. In the future grad(cost, wrt) will return an "
-                           "object of the same type as wrt. So if wrt is a "
-                           "list/tuple, list/tuple will be returned. Idem for "
-                           "TensorVariable."),
+            warnings.warn(("The return type of tensor.grad will change in "
+                           "this case. In the future grad(cost, wrt) will "
+                           "return an object of the same type as wrt. So "
+                           "if wrt is a list/tuple, list/tuple will be "
+                           "returned. Idem for TensorVariable."),
                           stacklevel=2)
         # TODO: when we release Theano 0.5, uncomment the following lines
         #       and remove the warning. Don't forget the line in the currently
@@ -333,38 +335,43 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         #    return tuple(ret)
         return ret
 
+
 class numeric_grad:
     """WRITEME"""
 
     # Note on step sizes and tolerances:
     #
-    # There is a relationship between the step size and the function value and the measurement
-    # error that is incurred due to rounding.  The finite difference we measure is
+    # There is a relationship between the step size and the function value and
+    # the measurement error that is incurred due to rounding.  The finite
+    # difference we measure is
     # delta = f(x0) - f(x0+eps)
     #
     # For maximum precision, f should be close to zero.
-    # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
+    # For every power of 2 that f departs from zero, we lose a bit of precision
+    # in delta.
     #
-    # Even in this case of maximum accuracy, there is a tradeoff between stepsize and
-    # measurement error.
-    # Taking small steps allows us to measure large derivatives accuractly, but longer steps
-    # are required to measure small derivatives accurately.  However longer steps introduce
-    # bias into our measurement in general for non-linear functions.
+    # Even in this case of maximum accuracy, there is a tradeoff between
+    # stepsize and measurement error.
+    # Taking small steps allows us to measure large derivatives accuractly,
+    # but longer steps are required to measure small derivatives accurately.
+    # However longer steps introduce bias into our measurement in general
+    # for non-linear functions.
     #
-    # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
+    # It would be interesting to have a version of numeric grad that used an
+    # adaptive stepsize.
     #
-    # For now, we use a heuristic that catches very bad gradients, but is not perfectly
-    # accurate.
+    # For now, we use a heuristic that catches very bad gradients, but is not
+    # perfectly accurate.
     type_eps = {'float64': 1e-7,
             'float32': 3e-4,
-            numpy.dtype('float64'):1e-7,
-            numpy.dtype('float32'):3e-4}
+            numpy.dtype('float64'): 1e-7,
+            numpy.dtype('float32'): 3e-4}
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
 
-        This function computes the gradient by a one-sided finite differences of a
-        fixed step size (eps).
+        This function computes the gradient by a one-sided finite differences
+        of a fixed step size (eps).
 
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
@@ -390,13 +397,15 @@ class numeric_grad:
         dtypes = [str(p.dtype) for p in apt]
 
         # TODO: remove this eventually (why was this here in the first place ?)
-        # In the case of CSM, the arguments are a mixture of floats and integers...
-        #if not dtypes == [dtypes[0]] * len(apt):
-            #raise TypeError('All function arguments must have same dtype')
+        # In the case of CSM, the arguments are a mixture of floats and
+        # integers...
+        # if not dtypes == [dtypes[0]] * len(apt):
+        #      raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
 
-        working_dtype = __builtin__.min((self.type_eps[dt], dt) for dt in dtypes)[1]
+        working_dtype = __builtin__.min((self.type_eps[dt], dt)
+                                        for dt in dtypes)[1]
 
         #create un-initialized memory
         x = numpy.ndarray((total_size,), dtype=working_dtype)
@@ -405,16 +414,15 @@ class numeric_grad:
         if eps is None:
             eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
 
-
         #set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
         cur_pos = 0
         self.gf = []
-        for i,p in enumerate(apt):
+        for i, p in enumerate(apt):
             p_size = prod(p.shape)
             # set up alias
-            apt[i] = x[cur_pos:cur_pos+p_size].reshape(p.shape)
-            self.gf.append(gx[cur_pos:cur_pos+p_size].reshape(p.shape))
+            apt[i] = x[cur_pos: cur_pos + p_size].reshape(p.shape)
+            self.gf.append(gx[cur_pos: cur_pos + p_size].reshape(p.shape))
             # initialize with p's value
             apt[i][...] = p
             cur_pos += p_size
@@ -429,16 +437,17 @@ class numeric_grad:
             x[i] += eps
             f_eps = f(*apt)
 
-            gx[i] = numpy.asarray((f_eps - f_x)/eps)
+            gx[i] = numpy.asarray((f_eps - f_x) / eps)
 
         if packed_pt:
             self.gf = self.gf[0]
 
     @staticmethod
-    def abs_rel_err(a,b):
+    def abs_rel_err(a, b):
         """Return absolute and relative error between a and b.
 
-        The relative error is a small number when a and b are close, relative to how big they are.
+        The relative error is a small number when a and b are close, relative
+        to how big they are.
 
         Formulas used:
             abs_err = abs(a - b)
@@ -446,28 +455,29 @@ class numeric_grad:
 
         The tuple (abs_err, rel_err) is returned
         """
-        abs_err = abs(a-b)
+        abs_err = abs(a - b)
         rel_err = abs_err / (abs(a) + abs(b))
         return (abs_err, rel_err)
 
     def abs_rel_errors(self, g_pt):
         """Return the abs and rel error of gradient estimate `g_pt`
 
-        `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
-        is raised.
+        `g_pt` must be a list of ndarrays of the same length as self.gf,
+        otherwise a ValueError is raised.
 
-        Corresponding ndarrays in `g_pt` and `self.gf` must have the same shape or ValueError
-        is raised.
+        Corresponding ndarrays in `g_pt` and `self.gf` must have the same
+        shape or ValueError is raised.
 
         """
         if len(g_pt) != len(self.gf):
-            raise ValueError('argument has wrong number of elements', len(g_pt))
+            raise ValueError('argument has wrong number of elements',
+                             len(g_pt))
         errs = []
         for i, (a, b) in enumerate(zip(g_pt, self.gf)):
             if a.shape != b.shape:
-                raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
-                    b.shape))))
-            errs.append(numeric_grad.abs_rel_err(a,b))
+                raise ValueError('argument element %i has wrong shape %s'
+                                 % (i, str((a.shape, b.shape))))
+            errs.append(numeric_grad.abs_rel_err(a, b))
         return errs
 
     def max_err(self, g_pt, abs_tol, rel_tol):
@@ -477,8 +487,8 @@ class numeric_grad:
         wrt the provided tolerances (abs_tol, rel_tol).
         A value > 1 means both tolerances are exceeded.
 
-        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over g_pt,
-        as well as abs_err and rel_err at this point.
+        Return the argmax of min(abs_err / abs_tol, rel_err / rel_tol) over
+        g_pt, as well as abs_err and rel_err at this point.
         """
         pos = []
         errs = []
@@ -487,7 +497,7 @@ class numeric_grad:
 
         abs_rel_errs = self.abs_rel_errors(g_pt)
         for abs_err, rel_err in abs_rel_errs:
-            scaled_err = numpy.minimum(abs_err/abs_tol, rel_err/rel_tol)
+            scaled_err = numpy.minimum(abs_err / abs_tol, rel_err / rel_tol)
             max_i = scaled_err.argmax()
 
             pos.append(max_i)
@@ -501,8 +511,8 @@ class numeric_grad:
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=None,
-        mode=None, cast_to_output_type=False):
+def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
+                rel_tol=None, mode=None, cast_to_output_type=False):
     """ Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
@@ -511,9 +521,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
                     rng=numpy.random)
 
     Raises an Exception if the difference between the analytic gradient and
-    numerical gradient (computed through the Finite Difference Method) of a random
-    projection of the fun's output to a scalar exceeds
-    the given tolerance.
+    numerical gradient (computed through the Finite Difference Method) of a
+    random projection of the fun's output to a scalar exceed the given
+    tolerance.
 
     :param fun: a Python function that takes Theano variables as inputs,
         and returns a Theano variable. For instance, an Op instance with
@@ -521,21 +531,25 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     :param pt: the list of numpy.ndarrays to use as input values.
         These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient of sum(u * fun) at pt
-    :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
-    :param abs_tol: absolute tolerance used as threshold for gradient comparison
-    :param rel_tol: relative tolerance used as threshold for gradient comparison
+    :param rng: random number generator used to sample u, we test gradient of
+        sum(u * fun) at pt
+    :param eps: stepsize used in the Finite Difference Method (Default None
+        is type-dependent)
+    :param abs_tol: absolute tolerance used as threshold for gradient
+        comparison
+    :param rel_tol: relative tolerance used as threshold for gradient
+        comparison
 
-    :note: WARNING to unit-test writers: if `op` is a function that builds a graph,
-           try to make it a SMALL graph.  Often verify grad is run in
-           debug mode, which can be very slow if it has to verify a lot
+    :note: WARNING to unit-test writers: if `op` is a function that builds
+           a graph, try to make it a SMALL graph.  Often verify grad is run
+           in debug mode, which can be very slow if it has to verify a lot
            of intermediate computations.
 
-    :note: This op does not support multiple outputs. In tests/test_scan.py there is
-           an experimental verify_grad that covers that case as well by using random
-           projections.
+    :note: This op does not support multiple outputs. In tests/test_scan.py
+            there is an experimental verify_grad that covers that case as well
+            by using random projections.
     """
-    assert isinstance(pt, (list,tuple))
+    assert isinstance(pt, (list, tuple))
     pt = [numpy.array(p) for p in pt]
 
     for i, p in enumerate(pt):
@@ -543,7 +557,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
             raise TypeError(('verify_grad can work only with floating point '
                 'inputs, but input %i has dtype "%s".') % (i, p.dtype))
 
-    _type_tol = dict( # relativ error tolerances for different types
+    _type_tol = dict(  # relativ error tolerances for different types
             float32=1e-2,
             float64=1e-4)
 
@@ -553,8 +567,11 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
         rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
-        raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
-                'You may want to use theano.tests.unittest_tools.verify_grad instead of theano.tensor.verify_grad.')
+        raise TypeError(('rng should be a valid instance of '
+                        'numpy.random.RandomState. You may '
+                         'want to use theano.tests.unittest'
+                         '_tools.verify_grad instead of '
+                         'theano.tensor.verify_grad.'))
 
     # We allow input downcast in function, because numeric_grad works in the
     # most precise dtype used among the inputs, so we may need to cast some.
@@ -567,13 +584,16 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
                     allow_input_downcast=True, mode=mode)
         return f
 
-    tensor_pt = [TensorType(as_tensor_variable(p).dtype, as_tensor_variable(p).broadcastable)(name='input %i'%i) for i,p in enumerate(pt)]
+    tensor_pt = [TensorType(as_tensor_variable(p).dtype,
+                            as_tensor_variable(p).broadcastable)(
+                                name='input %i' % i) for i, p in enumerate(pt)]
 
     #fun can be either a function or an actual Op instance
     o_output = fun(*tensor_pt)
 
-    if isinstance(o_output,list):
-        raise NotImplementedError('cant (yet) autotest gradient of fun with multiple outputs')
+    if isinstance(o_output, list):
+        raise NotImplementedError(('cant (yet) autotest gradient of fun '
+                                   'with multiple outputs'))
         # we could make loop over outputs making random projections R for each,
         # but this doesn't handle the case where not all the outputs are
         # differentiable... so I leave this as TODO for now -JB.
@@ -589,32 +609,35 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None, rel_tol=No
     # random_projection should not have elements too small,
     # otherwise too much precision is lost in numerical gradient
     def random_projection():
-        plain =  rng.rand(*o_fn_out.shape) + 0.5
+        plain = rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type:
-            return numpy.array(plain,o_output.dtype)
+            return numpy.array(plain, o_output.dtype)
         return plain
 
     t_r = shared(random_projection())
 
-    #random projection of o onto t_r
-    cost = theano.tensor.sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
+    # random projection of o onto t_r
+    # This sum() is defined above, it's not the builtin sum.
+    cost = theano.tensor.sum(t_r * o_output)
+
     cost_fn = function(tensor_pt, cost)
 
     #todo-- determine if this is actually needed
-    g_cost = as_tensor_variable(1.0,name='g_cost')
+    g_cost = as_tensor_variable(1.0, name='g_cost')
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
 
     symbolic_grad = grad(cost, tensor_pt, g_cost,
                          disconnected_inputs='ignore')
     #if o_output.dtype in ['float32','float64']:
-    #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),("Expected grad of type %s, got %s "%( symbolic_grad.dtype, o_output.dtyp))
+    #    assert all([x.dtype == o_output.dtype for x in symbolic_grad]),\
+    #        ("Expected grad of type %s, got %s "%(
+    #                               symbolic_grad.dtype, o_output.dtyp))
 
     grad_fn = function(tensor_pt, symbolic_grad)
 
     for test_num in xrange(n_tests):
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
-
 
         analytic_grad = grad_fn(*[p.copy() for p in pt])
 
@@ -643,13 +666,13 @@ class GradientError(Exception):
         self.abs_tol = abs_tol
         self.rel_tol = rel_tol
 
-
     def __str__(self):
-        return """GradientError: numeric gradient and analytic gradient exceed tolerance:
+        return """GradientError: numeric gradient and analytic gradient exceed
+    tolerance:
         At position %i of argument %i,
             abs. error = %f,  abs. tolerance = %f
             rel. error = %f,  rel. tolerance = %f
-        """ %(self.err_pos, self.arg,
+        """ % (self.err_pos, self.arg,
               self.abs_err, self.abs_tol,
               self.rel_err, self.rel_tol)
 
