@@ -1222,10 +1222,10 @@ class _tensor_py_operators:
     shape = property(lambda self: shape(self))
     size = property(lambda self: prod(self.shape))
     def __len__(self):
-        # We can't implement __len__ as python request that this
-        # function return an integer >=0
-        raise RuntimeError("Theano Variable can't work with len(Theano"
-                           " Variable) due to python restriction. You can use"
+        # We can't implement __len__ as python requests that this
+        # function returns an integer >=0
+        raise TypeError("Theano Variables can't work with len(Theano"
+                           " Variable) due to Python restriction. You can use"
                            " TheanoVariable.shape[0] instead.")
 
     def reshape(self, shape, ndim=None):
