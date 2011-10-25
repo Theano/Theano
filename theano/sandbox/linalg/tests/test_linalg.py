@@ -77,6 +77,19 @@ def test_inverse_correctness():
     assert _allclose(numpy.identity(4), rir), rir
     assert _allclose(numpy.identity(4), rri), rri
 
+
+def test_inverse_singular():
+    singular = numpy.array([[1, 0, 0]] + [[0, 1, 0]] * 2,
+                           dtype=theano.config.floatX)
+    a = tensor.matrix()
+    f = function([a], matrix_inverse(a))
+    try:
+        f(singular)
+    except numpy.linalg.LinAlgError:
+        return
+    assert False
+
+
 def test_inverse_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(4, 4)
@@ -86,6 +99,7 @@ def test_inverse_grad():
 
     r = rng.randn(4,4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
+
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
