@@ -5163,6 +5163,16 @@ class test_broadcast(unittest.TestCase):
             assert isinstance(topo[1].op, opt.MakeVector)
 
 
+def test_len():
+    for shape in [(5,), (3, 4), (7, 4, 6), (3, 4, 5)]:
+        val = numpy.random.rand(*shape).astype(config.floatX)
+        x = tensor.tensor(dtype='floatX', broadcastable=(False,)*len(shape))
+        try:
+            len(x)
+            assert False, "Expected an error"
+        except RuntimeError:
+            pass
+
 
 def test_mod():
     """
