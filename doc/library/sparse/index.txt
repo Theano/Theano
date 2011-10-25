@@ -14,6 +14,8 @@ The sparse module has been used in:
 The sparse module is less mature than the tensor module.
 This documentation is also not mature.
 
+The sparse submodule is not loaded when we import theano. You must import theano.sparse to enable it.
+
 The sparse module provides two kinds of sparse tensors are supported: CSC matrices and CSR matrices.
 Operations that are implemented:
 
