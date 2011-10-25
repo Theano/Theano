@@ -164,8 +164,14 @@ class HintsOptimizer(Optimizer):
 theano.compile.mode.optdb.register('HintsOpt', HintsOptimizer(), -1, 'fast_run', 'fast_compile')
 
 
-def PSD_hint(v):
-    return Hint(psd=True,symmetric=True)(v)
+def psd(v):
+    """
+    Apply a hint that the variable `v` is positive semi-definite, i.e.
+    it is a symmetric matrix and x^T A x >= for any vector x.
+    """
+    return Hint(psd=True, symmetric=True)(v)
+
+
 def is_psd(v):
     return hints(v).get('psd', False)
 def is_symmetric(v):
@@ -275,6 +281,12 @@ def local_log_pow(node):
 
 
 def matrix_dot(*args):
+    """ Shorthand for product between several dots
+
+    Given :math:`N` matrices :math:`A_0, A_1, .., A_N`, ``matrix_dot`` will
+    generate the matrix product between all in the given order, namely
+    :math:`A_0 \cdot A_1 \cdot A_2 \cdot .. \cdot A_N`.
+    """
     rval = args[0]
     for a in args[1:]:
         rval = theano.tensor.dot(rval, a)
@@ -329,32 +341,88 @@ class Cholesky(Op):
 cholesky = Cholesky()
 
 class MatrixInverse(Op):
-    """Compute a matrix inverse"""
+    """Computes the inverse of a matrix :math:`A`.
+
+    Given a square matrix :math:`A`, ``matrix_inverse`` returns a square
+    matrix :math:`A_{inv}` such that the dot product :math:`A \cdot A_{inv}`
+    and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
+
+    :note: When possible, the call to this op will be optimized to the call
+    of ``solve``.
+    """
+
     def __init__(self):
         pass
+
     def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``MatrixInverse`` op, there are no properties to be exposed.
+        """
         return ()
+
     def __hash__(self):
         return hash((type(self), self.props()))
+
     def __eq__(self, other):
         return (type(self)==type(other) and self.props() == other.props())
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
+
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.linalg.inv(x).astype(x.dtype)
-        except Exception:
-            print 'Failed to invert', node.inputs[0]
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to invert %s' % str(node.inputs[0]))
             raise
+
     def grad(self, inputs, g_outputs):
+        """The gradient function should return:
+
+            :math:`V\\frac{\partial X^{-1}}{\partial X}`
+
+        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
+        ``inputs``. Using the matrix cookbook
+        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        once can deduce that the relation corresponds to :
+
+            :math:`(X^{-1} \cdot V^{T} \cdot X^{-1})^T`
+
+        """
         x, = inputs
         xi = self(x)
         gz, = g_outputs
         #TT.dot(gz.T,xi)
         return [-matrix_dot(xi,gz.T,xi).T]
+
+    def R_op(self, inputs, eval_points):
+        """The gradient function should return:
+
+            :math:`\\frac{\partial X^{-1}}{\partial X}V`
+
+        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
+        ``inputs``. Using the matrix cookbook
+        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        once can deduce that the relation corresponds to :
+
+            :math:`X^{-1} \cdot V \cdot X^{-1}`
+
+        """
+        x, = inputs
+        xi = self(x)
+        ev, = eval_points
+        if ev is None:
+            return [None]
+        #TT.dot(gz.T,xi)
+        return [-matrix_dot(xi,ev,xi)]
+
+
     def __str__(self):
         return "MatrixInverse"
+
 matrix_inverse = MatrixInverse()
 
 class Solve(Op):
@@ -459,7 +527,7 @@ alloc_diag = AllocDiag()
 
 def diag(x):
     """Numpy-compatibility method
-    
+
     If `x` is a matrix, return its diagonal.
     If `x` is a vector return a matrix with it as its diagonal.
 
