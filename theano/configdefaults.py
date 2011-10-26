@@ -138,7 +138,7 @@ AddConfigVar('nocleanup',
 
 AddConfigVar('tensor.cmp_sloppy',
         "Relax tensor._allclose (0) not at all, (1) a bit, (2) more",
-        IntParam(0, lambda i: i in (0,1,2)),
+        IntParam(0, lambda i: i in (0,1,2), allow_override=False),
         in_c_key=False)
 
 AddConfigVar('tensor.local_elemwise_fusion',
