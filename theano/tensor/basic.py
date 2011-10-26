@@ -5347,13 +5347,13 @@ class TensorDotGrad(Op):
         _gx = numpy.tensordot(gz, y, tdot_axes)
         idx = numpy.hstack((sum_over_x, self.axes[0]))
         newshapex = numpy.zeros(x.ndim)
-        newshapex[[newpos for newpos in idx]] = [i for i in xrange(x.ndim)]
+        newshapex[[newpos for newpos in idx]] = range(x.ndim)
         gx[0] = numpy.transpose(_gx, newshapex)
         tdot_axes = [sum_over_x, range(x.ndim - len(self.axes[0]))]
         _gy = numpy.tensordot(x, gz, tdot_axes)
         idy = numpy.hstack((self.axes[1], sum_over_y))
         newshapey = numpy.zeros(y.ndim)
-        newshapey[[newpos for newpos in idy]] = [i for i in xrange(y.ndim)]
+        newshapey[[newpos for newpos in idy]] = range(y.ndim)
         gy[0] = numpy.transpose(_gy, newshapey)
 
 tensordot_grad = TensorDotGrad
