@@ -478,7 +478,7 @@ def local_gpu_sum(node):
 
                     new_in_shp = [x_shape[0]]
                     new_mask = [reduce_mask[0]]
-                    for i in range(1, x.type.ndim):
+                    for i in xrange(1, x.type.ndim):
                         if reduce_mask[i] == reduce_mask[i-1]:
                             new_in_shp[-1] *= x_shape[i]
                         else:
@@ -993,7 +993,7 @@ def split_huge_add_or_mul(node):
             return False
         while len(node.inputs)>max_nb_inputs:
             inner_op = []
-            for i in range(0,len(node.inputs),max_nb_inputs):
+            for i in xrange(0,len(node.inputs),max_nb_inputs):
                 inner_op.append(node.op(*node.inputs[i:i+max_nb_inputs]))
             node = node.op(*inner_op).owner
     return node

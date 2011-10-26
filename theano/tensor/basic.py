@@ -1815,7 +1815,7 @@ class SpecifyShape(Op):
     def infer_shape(self, node, shapes):
         xshape, sshape = shapes
         new_shape=[]
-        for dim in range(node.inputs[0].ndim):
+        for dim in xrange(node.inputs[0].ndim):
             try:
                 s=get_constant_value(node.inputs[1][dim])
                 s=as_tensor_variable(s)
@@ -2677,7 +2677,7 @@ def var(input, axis = None):
     #make a pattern that will undo the reduction of dimensions caused by mean
     pattern = []
     next_dim = 0
-    for i in range(input_ndim):
+    for i in xrange(input_ndim):
         if i in axis:
             pattern.append('x')
         else:
@@ -3928,7 +3928,7 @@ class Rebroadcast(Op):
         if len(self.axis) == 0:
             broadcast_pattern = []
         else:
-            broadcast_pattern = ['?' for i in range(1+numpy.max(self.axis.keys()))]
+            broadcast_pattern = ['?' for i in xrange(1+numpy.max(self.axis.keys()))]
         for k,v in self.axis.iteritems():
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__, ','.join(broadcast_pattern))
@@ -3955,7 +3955,7 @@ class Rebroadcast(Op):
         assert len(ishapes)==1
         l = []
         one = constant(1)
-        for ax in range(len(ishapes[0])):
+        for ax in xrange(len(ishapes[0])):
             if self.axis.get(ax, False):
                 l.append(one)
             else:
@@ -3994,7 +3994,7 @@ def patternbroadcast(x, broadcastable):
 
     We apply the opt here not to pollute the graph especially during the gpu optimization
     """
-    rval = Rebroadcast(*[(i,broadcastable[i]) for i in range(len(broadcastable))])(x)
+    rval = Rebroadcast(*[(i,broadcastable[i]) for i in xrange(len(broadcastable))])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
 class Join(Op):
@@ -4158,7 +4158,7 @@ class Join(Op):
         # 'axis' dimension.
         return [gz[[slice(None)] * axis + [slice(idx[k], idx[k + 1])] + \
                 [slice(None)] * (n_dims - axis - 1)] \
-                for k in range(len(sizes_along_axis))]
+                for k in xrange(len(sizes_along_axis))]
 
     def vec_length(self, node):
         """Guess the length of a Join Variable"""
@@ -4235,7 +4235,7 @@ def shape_padleft(t, n_ones=1):
     """
     _t = as_tensor_variable(t)
 
-    pattern = ['x']*n_ones + [i for i in range(_t.type.ndim)]
+    pattern = ['x']*n_ones + [i for i in xrange(_t.type.ndim)]
     return DimShuffle(_t.broadcastable, pattern)(_t)
 
 @constructor
@@ -4246,7 +4246,7 @@ def shape_padright(t, n_ones=1):
     """
     _t = as_tensor_variable(t)
 
-    pattern = [i for i in range(_t.type.ndim)] + ['x']*n_ones
+    pattern = [i for i in xrange(_t.type.ndim)] + ['x']*n_ones
     return DimShuffle(_t.broadcastable, pattern)(_t)
 
 @constructor
@@ -4382,7 +4382,7 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
             out, = out_
             assert x.ndim == y.ndim
             # Make sure every dimension (save the first) is the same
-            for i in range(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
+            for i in xrange(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
             out[0] = numpy.vstack([x, y])
         def grad(self, inp, grads):
             """
@@ -4390,7 +4390,7 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
             that way we can do more sanity-checking::
                 assert x.ndim == y.ndim
                 # Make sure every dimension (save the first) is the same
-                for i in range(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
+                for i in xrange(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
                 etc...
             """
             x, y = inp
@@ -4482,13 +4482,13 @@ class Reshape(Op):
         #return [tuple([switch(eq(node.inputs[1][i], -1),
         #                         theano.tensor.opt.Shape_i(i)(node.outputs[0]),
         #                         node.inputs[1][i])
-        #                    for i in range(self.ndim)]
+        #                    for i in xrange(self.ndim)]
         #    )]
 
         # Here, we only simplify if the shape (node.inputs[1]) is a constant,
         # ideally it would suffice to check that it is always non-negative.
         oshape = []
-        for i in range(self.ndim):
+        for i in xrange(self.ndim):
             default_os_i = theano.tensor.opt.Shape_i(i)(node.outputs[0])
             try:
                 os_i = get_constant_value(node.inputs[1][i]).item()
@@ -4801,15 +4801,15 @@ class PermuteRowElements(Op):
             xs0 = x.shape[0]
             ys0 = y.shape[0]
             if xs0 == ys0:
-                for i in range(xs0):
+                for i in xrange(xs0):
                     self._rec_perform(node, x[i], y[i], inverse, out[i], curdim+1)
             elif ys0 == 1 and node.inputs[1].type.broadcastable[curdim]:
                 # Broadcast y
-                for i in range(xs0):
+                for i in xrange(xs0):
                     self._rec_perform(node, x[i], y[0], inverse, out[i], curdim+1)
             elif xs0 == 1 and node.inputs[0].type.broadcastable[curdim]:
                 # Broadcast x
-                for i in range(ys0):
+                for i in xrange(ys0):
                     self._rec_perform(node, x[0], y[i], inverse, out[i], curdim+1)
             else:
                 raise ValueError('Dimension mismatch: %s, %s' % (xs0, ys0))
@@ -4850,7 +4850,7 @@ class PermuteRowElements(Op):
         # If x has been broadcasted along some axes, we need to sum
         # the gradient over these axes, but keep the dimension (as
         # broadcastable)
-        broadcasted_dims = [dim for dim in range(gz.type.ndim)\
+        broadcasted_dims = [dim for dim in xrange(gz.type.ndim)\
                 if x.type.broadcastable[dim] and not gz.type.broadcastable[dim]]
         gx = Sum(axis = broadcasted_dims)(gx)
 
@@ -4858,7 +4858,7 @@ class PermuteRowElements(Op):
         # so we need to put them back.
         newdims = []
         i = 0
-        for dim in range(gz.type.ndim):
+        for dim in xrange(gz.type.ndim):
             if dim in broadcasted_dims:
                 newdims.append('x')
             else:
@@ -5348,13 +5348,13 @@ class TensorDotGrad(Op):
         _gx = numpy.tensordot(gz, y, [range(x.ndim-len(self.axes[0]),gz.ndim), sum_over_y])
         idx = numpy.hstack((sum_over_x, self.axes[0]))
         newshapex = numpy.zeros(x.ndim)
-        newshapex[[newpos for newpos in idx]] = [i for i in range(x.ndim)]
+        newshapex[[newpos for newpos in idx]] = [i for i in xrange(x.ndim)]
         gx[0] = numpy.transpose(_gx, newshapex)
 
         _gy = numpy.tensordot(x, gz, [sum_over_x, range(x.ndim-len(self.axes[0]))])
         idy = numpy.hstack((self.axes[1], sum_over_y))
         newshapey = numpy.zeros(y.ndim)
-        newshapey[[newpos for newpos in idy]] = [i for i in range(y.ndim)]
+        newshapey[[newpos for newpos in idy]] = [i for i in xrange(y.ndim)]
         gy[0] = numpy.transpose(_gy, newshapey)
 
 tensordot_grad = TensorDotGrad

@@ -315,7 +315,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
     %(ovar)s_loops_it = %(ovar)s_loops.begin();
     """ % locals()
 
-    for i in range(nnested):
+    for i in xrange(nnested):
         declare_totals += """
         int TOTAL_%(i)i = init_totals[%(ovar)s_loops_it->second];
         ++%(ovar)s_loops_it;
@@ -357,7 +357,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
     std::vector< std::pair<int, int> >::reverse_iterator %(ovar)s_loops_rit;
     """ % locals()
 
-    for i in range(nvars):
+    for i in xrange(nvars):
         var = sub["lv%i" % i]
         declare_strides_jumps += """
         %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
@@ -382,7 +382,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
         iterv = 'ITER_%i' % i
         total = 'TOTAL_%i' % i
         update = ''
-        for j in range(nvars):
+        for j in xrange(nvars):
             var = sub["lv%i" % j]
             update += "%(var)s_iter += %(var)s_jump_l%(i)i;\n" % locals()
 

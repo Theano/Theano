@@ -357,7 +357,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
     # Will contain the return value: a list of indices for each argument
     ret_indices = [ [()] for shape in all_shapes ]
 
-    for dim in range(len(out_shape)):
+    for dim in xrange(len(out_shape)):
         # Temporary list to generate the indices
         _ret_indices = [ [] for shape in all_shapes ]
 
@@ -377,7 +377,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
 
         for prev_index in zip(*ret_indices):
             for dim_index in zip(*ranges):
-                for i in range(len(all_shapes)):
+                for i in xrange(len(all_shapes)):
                     _ret_indices[i].append(prev_index[i] + (dim_index[i],))
         ret_indices = _ret_indices
 
@@ -488,7 +488,7 @@ def random_integers_helper(random_state, low, high, size):
         out_size = tuple(size)
     else:
         out_size = ()
-        for dim in range(out_ndim):
+        for dim in xrange(out_ndim):
             dim_len = max(low.shape[dim], high.shape[dim])
             out_size = out_size + (dim_len,)
 
@@ -602,7 +602,7 @@ def multinomial_helper(random_state, n, pvals, size):
         size = tuple(size)
     else:
         size = ()
-        for dim in range(ndim):
+        for dim in xrange(ndim):
             dim_len = max(n.shape[dim], pvals.shape[dim])
             size = size + (dim_len,)
     out_size = size+(pvals.shape[-1],)

@@ -94,7 +94,7 @@ class VM(object):
             profile.apply_cimpl[node] = hasattr(thunk,'cthunk')
 
         # clear the timer info out of the buffers
-        for i in range(len(self.call_times)):
+        for i in xrange(len(self.call_times)):
             self.call_times[i] = 0.0
             self.call_counts[i] = 0
 
@@ -459,9 +459,9 @@ class VM_Linker(link.LocalLinker):
             # put storage_map and compute_map into a int-based scheme
             n_applies = len(nodes)
             storage_map_list = [storage_map[vars_idx_inv[i]]
-                    for i in range(len(vars_idx_inv))]
+                    for i in xrange(len(vars_idx_inv))]
             compute_map_list = [compute_map[vars_idx_inv[i]]
-                    for i in range(len(vars_idx_inv))]
+                    for i in xrange(len(vars_idx_inv))]
             if nodes:
                 assert type(storage_map_list[0]) is list
                 assert type(compute_map_list[0]) is list

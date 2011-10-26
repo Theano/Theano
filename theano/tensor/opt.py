@@ -1043,7 +1043,7 @@ class Assert(T.Op):
         out = onames[0]
         check = []
         fail = sub['fail']
-        for idx in range(len(inames)-1):
+        for idx in xrange(len(inames)-1):
             i=inames[idx+1]
             dtype=node.inputs[idx+1].dtype
             check.append('if(!((npy_%(dtype)s*)PyArray_DATA(%(i)s))[0]){PyErr_SetString(PyExc_AssertionError,"Theano Assert failed!");%(fail)s}'%locals())
@@ -1138,7 +1138,7 @@ def local_alloc_elemwise(node):
             assert i.type.ndim == cmp_op.ndim
             if theano.config.experimental.local_alloc_elemwise_assert:
                 assert_op = assert_(assert_op,*[T.eq(i.shape[idx],cmp_op.shape[idx])\
-                                                    for idx in range(i.type.ndim) \
+                                                    for idx in xrange(i.type.ndim) \
                                                     if not i.type.broadcastable[idx]])
             new.append(i.owner.inputs[0])
         elif i.owner and isinstance(i.owner.op, T.DimShuffle) and i.owner.inputs[0].owner \
@@ -1146,7 +1146,7 @@ def local_alloc_elemwise(node):
             assert i.type.ndim == cmp_op.type.ndim
             if theano.config.experimental.local_alloc_elemwise_assert:
                 assert_op = assert_(assert_op,*[T.eq(i.shape[idx],cmp_op.shape[idx]) for idx \
-                                                    in range(i.type.ndim) if not i.type.broadcastable[idx]])
+                                                    in xrange(i.type.ndim) if not i.type.broadcastable[idx]])
             new.append(i.owner.inputs[0].owner.inputs[0])
         else: new.append(i)
     new[no_broad_idx]=assert_op
@@ -1322,7 +1322,7 @@ def local_subtensor_lift(node):
     Handles the following unary ops:
     elemwise(x,...)[idx] -> elemwise(x[idx],...)
       when x,... are broadcasted scalar or not broadcasted at all
-    rebroadcast(x)[idx] => rebroadcast(x[idx]) 
+    rebroadcast(x)[idx] => rebroadcast(x[idx])
     """
     if isinstance(node.op, T.Subtensor):
         u = node.inputs[0]
@@ -1375,7 +1375,7 @@ def local_subtensor_lift(node):
                 if isinstance(x, slice):
                     new_axis += [(j, u.broadcastable[i])]
                     j += 1
-            # now keep the broadcastable pattern of all 
+            # now keep the broadcastable pattern of all
             # items not appearing in subtensor list
             for i in xrange(len(node.op.idx_list), len(u.broadcastable)):
                 new_axis += [(j,u.broadcastable[i])]
@@ -1897,7 +1897,7 @@ def local_remove_switch_const_cond(node):
                 out = T.cast(out, node.outputs[0].dtype)
             if out.type.broadcastable != node.outputs[0].type.broadcastable:
                 # We need to copy data to the new dimensions during execution
-                out = T.alloc(out, *[node.outputs[0].shape[i] for i in range(out.ndim)])
+                out = T.alloc(out, *[node.outputs[0].shape[i] for i in xrange(out.ndim)])
             return [out]
 
         return False
@@ -2723,11 +2723,11 @@ def local_sum_alloc(node):
                     val = get_constant_value(input)
                     assert val.size == 1
                     val = val.reshape(1)[0]
-                    to_prod = [shapes[i] for i in range(len(shapes)) if i in node.op.axis]
+                    to_prod = [shapes[i] for i in xrange(len(shapes)) if i in node.op.axis]
                     if to_prod:
                         val *= T.mul(*to_prod)
                     return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
-                                    *[shapes[i] for i in range(len(shapes)) if i not in node.op.axis])]
+                                    *[shapes[i] for i in xrange(len(shapes)) if i not in node.op.axis])]
                 except TypeError, e:
                     pass
 
@@ -2905,7 +2905,7 @@ def local_pow_specialize_device(node):
                 pow2 = [xsym]
                 pow2_scal = [theano.scalar.Scalar(xsym.dtype)()]
                 y_to_do = abs(y)
-                for i in range(int(numpy.log2(y_to_do))):
+                for i in xrange(int(numpy.log2(y_to_do))):
                     pow2.append(T.sqr(pow2[i]))
                     pow2_scal.append(theano.scalar.sqr(pow2_scal[i]))
                 rval1 = None
@@ -3546,7 +3546,7 @@ def local_grad_log_erfc_neg(node):
         mul_inputs = check_input(mul_neg.owner.inputs)
 
         #put the constant first
-        for i in range(len(mul_inputs)):
+        for i in xrange(len(mul_inputs)):
             if isinstance(i, Constant):
                 if i==0:
                     break
@@ -3636,7 +3636,7 @@ a64=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))*numpy.sqrt(numpy.pi) for x 
 a32=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))*numpy.float32(numpy.sqrt(numpy.pi)) for x in numpy.asarray(r,dtype='float32')]
 for idx,(a,b,c,d,e) in enumerate(zip(r,p64,p32,a64,a32)):print a,b,c,d,e,c-b,e-b,numpy.absolute(c-b)<numpy.absolute(e-b)
 
-for i in range(1,len(p32)): print r[i], p32[i]-p32[i-1]#, show that the value don't look stable at some point before inf.
+for i in xrange(1,len(p32)): print r[i], p32[i]-p32[i-1]#, show that the value don't look stable at some point before inf.
 
 #float64 threshold is 26.63 the approx seam more precise at that point.
 r = numpy.arange(26.2,26.7,.001)
@@ -3649,7 +3649,7 @@ a128=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))*numpy.float128(numpy.sqrt(
 a64=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6)+63/(7*x**8))**(-1))*numpy.sqrt(numpy.pi) for x in r]
 for a,b,c,d in zip(r,p128,p64,a64):print a,b,c,d,c-b,d-b
 
-for i in range(1,len(p64)): print i, 64[i]-p64[i-1]
+for i in xrange(1,len(p64)): print i, 64[i]-p64[i-1]
    """
 
 # ###############
