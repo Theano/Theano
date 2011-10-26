@@ -136,9 +136,13 @@ AddConfigVar('nocleanup',
         BoolParam(False),
         in_c_key=False)
 
+# This flag is used when we import Theano to initialize global variables.
+# So changing it after import will not modify these global variables.
+# This could be done differently... but for now we simply prevent it from being
+# changed at runtime.
 AddConfigVar('tensor.cmp_sloppy',
         "Relax tensor._allclose (0) not at all, (1) a bit, (2) more",
-        IntParam(0, lambda i: i in (0,1,2)),
+        IntParam(0, lambda i: i in (0,1,2), allow_override=False),
         in_c_key=False)
 
 AddConfigVar('tensor.local_elemwise_fusion',
