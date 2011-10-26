@@ -76,9 +76,9 @@ class NeighbourhoodsFromImages(Op):
         self.code_string, self.code = self.make_py_code()
 
     def _compute_neigh_strides(self):
-        neigh_strides = [1 for i in range(len(self.strides))]
+        neigh_strides = [1 for i in xrange(len(self.strides))]
         cur_stride = 1
-        for i in range(len(self.strides)-1, -1, -1):
+        for i in xrange(len(self.strides)-1, -1, -1):
             neigh_strides[i] = cur_stride
             cur_stride *= self.dims_neighbourhoods[i]
         return neigh_strides
@@ -107,7 +107,7 @@ class NeighbourhoodsFromImages(Op):
 
     def out_shape(self, input_shape):
         dims = list(input_shape[:self.n_dims_before])
-        num_strides = [0 for i in range(len(self.strides))]
+        num_strides = [0 for i in xrange(len(self.strides))]
         neigh_flattened_dim = 1
         for i, ds in enumerate(self.dims_neighbourhoods):
             cur_stride = self.strides[i]
@@ -238,13 +238,13 @@ class NeighbourhoodsFromImages(Op):
 
     def _py_flattened_idx(self):
         return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i,i) \
-                    for i in range(len(self.strides))])
+                    for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
         input_idx = "".join(["outer_idx_%d," % (i,) \
                     for i in xrange(self.n_dims_before)])
         input_idx += "".join(["dim_%d_offset+neigh_idx_%d," % \
-                    (i,i) for i in range(len(self.strides))])
+                    (i,i) for i in xrange(len(self.strides))])
         out_idx = "".join(\
                 ["outer_idx_%d," % (i,) for i in \
                         range(self.n_dims_before)] + \

@@ -803,8 +803,8 @@ class GpuSum(Op):
         assert N in [1,2,3]
         makecall = self._makecall(node, name, x, z, fail)
         N_pattern = ''.join(['1']*N)
-        param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]"%locals() for i in range(N+1)])
-        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]"%locals() for i in range(N+1)])
+        param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]"%locals() for i in xrange(N+1)])
+        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]"%locals() for i in xrange(N+1)])
         threads_y = """
             //get as many y threads as we can fit
             while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
@@ -1326,8 +1326,8 @@ class GpuSum(Op):
                 for_i3 = "for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)"
 
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0]')
-            param_dim = ",".join(["const int d%(i)s"%locals() for i in range(nd_in)])
-            param_strides = ",".join(["const int sA%(i)s"%locals() for i in range(nd_in)])
+            param_dim = ",".join(["const int d%(i)s"%locals() for i in xrange(nd_in)])
+            param_strides = ",".join(["const int sA%(i)s"%locals() for i in xrange(nd_in)])
             decl = self._k_decl(node,nodename)
             init = self._k_init(node,nodename)
             print >> sio, """
@@ -1988,7 +1988,7 @@ class GpuContiguous(Op):
                 Py_INCREF(%(z)s);
 
             } else if ((NULL == %(z)s)"""%locals()
-        for i in range(len(node.inputs[0].type.broadcastable)):
+        for i in xrange(len(node.inputs[0].type.broadcastable)):
             str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])"%locals()
         str += """)
             {
