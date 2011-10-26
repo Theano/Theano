@@ -552,9 +552,9 @@ class NaiveAlgo(object):
             print >> sio, 'std::cerr << "\\n";'
 
             for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr inputs %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_ostr inputs %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
 
         print >> sio, """
         for(int id=0;id<nd_collapse;id++){
@@ -593,17 +593,17 @@ class NaiveAlgo(object):
             print >> sio, 'std::cerr << "\\n";'
 
             for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
     # collapse contiguous dimensions (ignoring scalars, generic version(collapse any dimensions, right, left, middle))
     # this is a good idea because we make less index calculation in the gpu.
 
-        print >> sio, "int nd_collapse_[%(nd)s] = {"%locals() +','.join(['1' for x in range(nd)]) +"};"
+        print >> sio, "int nd_collapse_[%(nd)s] = {"%locals() +','.join(['1' for x in xrange(nd)]) +"};"
         for ipos in xrange(len(node.inputs)):
             if not _logical_scalar(node.inputs[ipos]):
                 print >> sio, """
-                    int nd_collapse_%(ipos)s[%(nd)s] = {"""%locals() +','.join(['1' for x in range(nd)]) +"};"
+                    int nd_collapse_%(ipos)s[%(nd)s] = {"""%locals() +','.join(['1' for x in xrange(nd)]) +"};"
                 print >> sio, """
 can_collapse_%(nodename)s(nd_collapse, local_dims, local_str[%(ipos)s], nd_collapse_%(ipos)s);
 for(int i=0;i<nd_collapse;i++){
@@ -615,12 +615,12 @@ nd_collapse_[i]=0;
                     print >>sio, """
                     std::cerr<< "nd_collapse_%(ipos)s "<<
                     """%locals()
-                    print >>sio, ' << " " << '.join(["nd_collapse_%(ipos)s["%locals()+str(i)+"]" for i in range(nd)])
+                    print >>sio, ' << " " << '.join(["nd_collapse_%(ipos)s["%locals()+str(i)+"]" for i in xrange(nd)])
                     print >>sio, '<< "\\n";'
                     print >>sio, """
                     std::cerr<< "nd_collapse_ "<<
                     """%locals()
-                    print >>sio, ' << " " << '.join(["nd_collapse_["%locals()+str(i)+"]" for i in range(nd)])
+                    print >>sio, ' << " " << '.join(["nd_collapse_["%locals()+str(i)+"]" for i in xrange(nd)])
                     print >>sio, '<< "\\n";'
 
     # update the local stride.
@@ -664,8 +664,8 @@ nd_collapse_[i]=0;
           if(nd_collapse_[i]==1)nd_collapse--;
         }
         if(nd_collapse == 1 """%locals()
-        l=["local_str[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
-        l+=["local_ostr[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
+        l=["local_str[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in xrange(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
+        l+=["local_ostr[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in xrange(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
         if len(l)>0:
             print >> sio," && "," && ".join(l)
         print >> sio,"""){nd_collapse=0;} """
@@ -679,9 +679,9 @@ nd_collapse_[i]=0;
             print >> sio, 'std::cerr << "\\n";'
 
             for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in xrange(nd)])+'<<"\\n";'
 
 
         def launch_Ccontiguous(nodename, scalar_op, sync=True):
@@ -784,7 +784,7 @@ nd_collapse_[i]=0;
         print >> sio, "case 0: {"
         launch_Ccontiguous(nodename, scalar_op, self.sync)
         print >> sio, "        } break;"
-        for i in range(1, nd+1):
+        for i in xrange(1, nd+1):
             print >> sio, "case "+str(i)+": {"
             launch_General(nodename, scalar_op, i, self.sync)
             print >> sio, "        } break;"
@@ -800,7 +800,7 @@ nd_collapse_[i]=0;
     def c_support_code_apply(self, node, nodename):
         nd = node.outputs[0].type.ndim
         return "".join(
-            [self.c_src_kernel(node, nodename,x) for x in range(1,nd+1)]+
+            [self.c_src_kernel(node, nodename,x) for x in xrange(1,nd+1)]+
             [
             self.c_src_kernel_Ccontiguous(node, nodename),
             self.c_src_callkernel(node, nodename),

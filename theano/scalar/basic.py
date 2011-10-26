@@ -1958,9 +1958,9 @@ class Composite(ScalarOp):
                 raise ValueError("The env to Composite must be exclusively composed of ScalarOp instances.")
 
         subd = dict(zip(inputs,
-                        ["%%(i%i)s"%i for i in range(len(inputs))]) +
+                        ["%%(i%i)s"%i for i in xrange(len(inputs))]) +
                     zip(outputs,
-                        ["%%(o%i)s"%i for i in range(len(outputs))]))
+                        ["%%(o%i)s"%i for i in xrange(len(outputs))]))
 
         for orphan in env.variables: #env.orphans:
             if orphan.owner is None and orphan not in env.inputs:
@@ -2048,9 +2048,9 @@ class Composite(ScalarOp):
         raise NotImplementedError("grad is not implemented for Composite")
 
     def c_code(self, node, name, inames, onames, sub):
-        d = dict(zip(["i%i"%i for i in range(len(inames))],
+        d = dict(zip(["i%i"%i for i in xrange(len(inames))],
                      inames) +
-                 zip(["o%i"%i for i in range(len(onames))],
+                 zip(["o%i"%i for i in xrange(len(onames))],
                      onames),
                  **sub)
         d['name'] = name

@@ -382,8 +382,8 @@ class ConvolutionIndices(Op):
         # of the column values (order in which you write the values determines how the
         # vectorized data will get used later one)
 
-        for fmapi in range(inshp[0]): # loop over input features
-            for n in range(nkern): # loop over number of kernels (nkern=1 for weight sharing)
+        for fmapi in xrange(inshp[0]): # loop over input features
+            for n in xrange(nkern): # loop over number of kernels (nkern=1 for weight sharing)
 
                 # FOR EACH OUTPUT PIXEL...
                 for oy in N.arange(lbound[0],ubound[0],dy): # loop over output image height

@@ -1603,7 +1603,7 @@ def local_dot22_to_dot22scalar(node):
             # I'm asserting there are no such inputs here:
             assert dot22_idx != mul_idx
             assert all((i in (dot22_idx, mul_idx))
-                    for i in range(len(node.inputs)))
+                    for i in xrange(len(node.inputs)))
 
             return [T.mul(m.owner.inputs[1-i],dot)]
         elif m.owner and m.owner.op == T.mul:
