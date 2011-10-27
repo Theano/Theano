@@ -10,7 +10,7 @@ class AlreadyThere(Exception):
 
 
 class Bookkeeper:
-    
+
     def on_attach(self, env):
         for node in graph.io_toposort(env.inputs, env.outputs):
             self.on_import(env, node)
@@ -18,7 +18,7 @@ class Bookkeeper:
     def on_detach(self, env):
         for node in graph.io_toposort(env.inputs, env.outputs):
             self.on_prune(env, node)
-            
+
 
 class History:
 
@@ -27,7 +27,8 @@ class History:
 
     def on_attach(self, env):
         if hasattr(env, 'checkpoint') or hasattr(env, 'revert'):
-            raise AlreadyThere("History feature is already present or in conflict with another plugin.")
+            raise AlreadyThere("History feature is already present or in"
+                               " conflict with another plugin.")
         self.history[env] = []
         env.checkpoint = lambda: len(self.history[env])
         env.revert = partial(self.revert, env)
@@ -41,8 +42,9 @@ class History:
         if self.history[env] is None:
             return
         h = self.history[env]
-        h.append(lambda: env.change_input(node, i, r, reason=("Revert", reason)))
-    
+        h.append(lambda: env.change_input(node, i, r,
+                                          reason=("Revert", reason)))
+
     def revert(self, env, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
@@ -61,8 +63,10 @@ class Validator:
 
     def on_attach(self, env):
         if hasattr(env, 'validate'):
-            raise AlreadyThere("Validator feature is already present or in conflict with another plugin.")
+            raise AlreadyThere("Validator feature is already present or in"
+                               " conflict with another plugin.")
         env.validate = lambda: env.execute_callbacks('validate')
+
         def consistent():
             try:
                 env.validate()
@@ -81,9 +85,10 @@ class ReplaceValidate(History, Validator):
     def on_attach(self, env):
         History.on_attach(self, env)
         Validator.on_attach(self, env)
-        for attr in ('replace_validate', 'replace_all_validate'):            
+        for attr in ('replace_validate', 'replace_all_validate'):
             if hasattr(env, attr):
-                raise AlreadyThere("ReplaceValidate feature is already present or in conflict with another plugin.")
+                raise AlreadyThere("ReplaceValidate feature is already present"
+                                   " or in conflict with another plugin.")
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
 
@@ -101,10 +106,16 @@ class ReplaceValidate(History, Validator):
         for r, new_r in replacements:
             try:
                 env.replace(r, new_r, reason=reason)
+                print reason
             except Exception, e:
-                if 'The type of the replacement must be the same' not in str(e) and 'does not belong to this Env' not in str(e):
-                    print >> sys.stderr, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>", type(e), e, reason
-                env.revert(chk) # this might fail if the error is in a listener: (env.replace kinda needs better internal error handling)
+                if ('The type of the replacement must be the same' not in
+                    str(e) and 'does not belong to this Env' not in str(e)):
+                    out = sys.stderr
+                    print >> out, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>",
+                    print >> out, type(e), e, reason
+                # this might fail if the error is in a listener:
+                # (env.replace kinda needs better internal error handling)
+                env.revert(chk)
                 raise
         try:
             env.validate()
@@ -117,19 +128,21 @@ class NodeFinder(dict, Bookkeeper):
 
     def __init__(self):
         self.env = None
-    
+
     def on_attach(self, env):
         if self.env is not None:
             raise Exception("A NodeFinder instance can only serve one Env.")
         if hasattr(env, 'get_nodes'):
-            raise AlreadyThere("NodeFinder is already present or in conflict with another plugin.")
+            raise AlreadyThere("NodeFinder is already present or in conflict"
+                               " with another plugin.")
         self.env = env
         env.get_nodes = partial(self.query, env)
         Bookkeeper.on_attach(self, env)
 
     def on_detach(self, env):
         if self.env is not env:
-            raise Exception("This NodeFinder instance was not attached to the provided env.")
+            raise Exception("This NodeFinder instance was not attached to the"
+                            " provided env.")
         self.env = None
         del env.get_nodes
         Bookkeeper.on_detach(self, env)
@@ -137,7 +150,7 @@ class NodeFinder(dict, Bookkeeper):
     def on_import(self, env, node):
         try:
             self.setdefault(node.op, []).append(node)
-        except TypeError: #node.op is unhashable
+        except TypeError:  # node.op is unhashable
             return
         except Exception, e:
             print >> sys.stderr, 'OFFENDING node', type(node), type(node.op)
@@ -150,7 +163,7 @@ class NodeFinder(dict, Bookkeeper):
     def on_prune(self, env, node):
         try:
             nodes = self[node.op]
-        except TypeError: #node.op is unhashable
+        except TypeError:  # node.op is unhashable
             return
         nodes.remove(node)
         if not nodes:
@@ -160,16 +173,17 @@ class NodeFinder(dict, Bookkeeper):
         try:
             all = self.get(op, [])
         except TypeError:
-            raise TypeError("%s in unhashable and cannot be queried by the optimizer" % op)
+            raise TypeError("%s in unhashable and cannot be queried by the"
+                            " optimizer" % op)
         all = list(all)
         return all
 
 
 class PrintListener(object):
 
-    def __init__(self, active = True):
+    def __init__(self, active=True):
         self.active = active
-    
+
     def on_attach(self, env):
         if self.active:
             print "-- attaching to: ", env
@@ -188,7 +202,8 @@ class PrintListener(object):
 
     def on_change_input(self, env, node, i, r, new_r, reason=None):
         if self.active:
-            print "-- changing (%s.inputs[%s]) from %s to %s" % (node, i, r, new_r)
+            print "-- changing (%s.inputs[%s]) from %s to %s" % (
+                node, i, r, new_r)
 
 
 class PreserveNames:
