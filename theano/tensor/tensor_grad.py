@@ -60,7 +60,7 @@ def Rop(f, wrt, eval_points):
     if not isinstance(eval_points, (list, tuple)):
         eval_points = [eval_points]
 
-    if not (using_list or using_tuple):
+    if not isinstance(f, (list, tuple)):
         f = [f]
 
     assert len(wrt) == len(eval_points)
