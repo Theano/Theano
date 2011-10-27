@@ -32,50 +32,56 @@ def execute(execute=True, verbose=True):
     b = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
     c = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
 
-    f=theano.function([],updates={c:0.4*c+.8*T.dot(a,b)})
+    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
 
     if verbose:
         print 'Some theano flags:'
-        print '    blas.ldflags=',theano.config.blas.ldflags
-        print '    compiledir=',theano.config.compiledir
-        print '    floatX=',theano.config.floatX
+        print '    blas.ldflags=', theano.config.blas.ldflags
+        print '    compiledir=', theano.config.compiledir
+        print '    floatX=', theano.config.floatX
         print 'Some env flags:'
-        print '    MKL_NUM_THREADS=',os.getenv('MKL_NUM_THREADS')
-        print '    OMP_NUM_THREADS=',os.getenv('OMP_NUM_THREADS')
-        print '    GOTO_NUM_THREADS=',os.getenv('GOTO_NUM_THREADS')
+        print '    MKL_NUM_THREADS=', os.getenv('MKL_NUM_THREADS')
+        print '    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS')
+        print '    GOTO_NUM_THREADS=', os.getenv('GOTO_NUM_THREADS')
         print
-        print 'Numpy config:(used when the theano flags "blas.ldflags" is empty)'
-        numpy.show_config();
-        print 'Numpy dot module:',numpy.dot.__module__;
-        print 'Numpy file location that was loaded:',numpy.__file__;
-        print 'Numpy version:',numpy.__version__
+        print ('Numpy config: (used when the theano flags'
+               ' "blas.ldflags" is empty)')
+        numpy.show_config()
+        print 'Numpy dot module:', numpy.dot.__module__
+        print 'Numpy file location that was loaded:', numpy.__file__
+        print 'Numpy version:', numpy.__version__
         print
-        if any( [x.op.__class__.__name__=='Gemm' for x in f.maker.env.toposort()]):
+        if any([x.op.__class__.__name__ == 'Gemm' for x in
+                f.maker.env.toposort()]):
             print 'Used the cpu'
-        elif any( [x.op.__class__.__name__=='GpuGemm' for x in f.maker.env.toposort()]):
+        elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
+                  f.maker.env.toposort()]):
             print 'Used the gpu'
         else:
             print 'ERROR, not able to tell if theano used the cpu or the gpu'
             print f.maker.env.toposort()
-    t0=0
-    t1=-1
+    t0 = 0
+    t1 = -1
 
     if execute:
-        t0=time.time()
+        t0 = time.time()
         for i in range(iters):
             f()
-        t1=time.time()
+        t1 = time.time()
     if verbose and execute:
         print
-        print 'This execution time took %.2fs'%(t1-t0)
+        print 'This execution time took %.2fs' % (t1 - t0)
         print
-        print 'Try to run this script a few times. Experience show that the first time is not as fast as followings call. The difference is not big, but consistent.'
-    return t1-t0
+        print ('Try to run this script a few times. Experience show that'
+               ' the first time is not as fast as followings call. The'
+               ' difference is not big, but consistent.')
+    return t1 - t0
 
 
 def jobman_job(state, channel):
     execute()
     return channel.COMPLETE
+
 
 def test():
     execute()
@@ -94,11 +100,15 @@ if __name__ == "__main__":
 
     if verbose:
         print """
-        Some results that you can compare against. They were 10 executions of gemm in float64 with matrices of shape 2000x2000.
+        Some results that you can compare against. They were 10 executions
+        of gemm in float64 with matrices of shape 2000x2000.
 
-        CPU tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB), Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
-                    Xeon E5450(3Ghz, 12M L2 cache, 1333Mhz FSB), Xeon X5560(2.8Ghz, 12M L2 cache, 6.4GT/s QPI, hyper-threads enabled?)
-                    Core 2 E8500, Core i7 930(2.8Ghz, hyper-threads enabled), Core i7 950(3.07GHz, hyper-threads enabled)
+        CPU tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB),
+                    Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
+                    Xeon E5450(3Ghz, 12M L2 cache, 1333Mhz FSB),
+                    Xeon X5560(2.8Ghz, 12M L2 cache, hyper-threads?)
+                    Core 2 E8500, Core i7 930(2.8Ghz, hyper-threads enabled),
+                    Core i7 950(3.07GHz, hyper-threads enabled)
                     Xeon X5550(2.67GHz, 8M l2 cache?, hyper-threads enabled)
 
 
@@ -134,7 +144,8 @@ if __name__ == "__main__":
         goto2 1.13/16                                                     3.16s
 
         Test time in float32 with cuda 3.0.14
-        (cuda version 3.2RC and up are supposed to have faster gemm on the GTX4?? card)
+        (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??
+
         gpu/cuda version
         GTX580/3.2        0.20s
         GTX480/3.2        0.24s
@@ -151,6 +162,7 @@ if __name__ == "__main__":
         """
 
         print
-        print "We timed",iters,"executions of gemm with matrix of shapes",shapes
+        print "We timed", iters,
+        print "executions of gemm with matrix of shapes", shapes
     else:
         print t
