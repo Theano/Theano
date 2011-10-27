@@ -22,9 +22,7 @@ def test_pydotprint_cond_highlight():
     """
 
     # Skip test if pydot is not available.
-    try:
-        import pydot
-    except ImportError:
+    if not theano.printing.pydot_imported:
         raise SkipTest('pydot not available')
 
     x = tensor.dvector()
