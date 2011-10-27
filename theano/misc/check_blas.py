@@ -4,14 +4,16 @@
 #A,B,C matrix
 #a,b scalar
 
-s="""
+s = """
 result for shapes=(2000,2000) and iters=100
 GTX 470 7.22s
 GTX 285, 6.84s
 GTX 480 5.83s
 """
 
-import os, sys, time
+import os
+import sys
+import time
 
 import numpy
 import theano
@@ -20,15 +22,15 @@ import theano.tensor as T
 from theano.gof.python25 import any
 
 
-shapes=(2000,2000)
+shapes = (2000, 2000)
 iters = 10
 
 
 def execute(execute=True, verbose=True):
 
-    a=theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    b=theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    c=theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
+    a = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
+    b = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
+    c = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
 
     f=theano.function([],updates={c:0.4*c+.8*T.dot(a,b)})
 
