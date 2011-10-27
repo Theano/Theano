@@ -28,6 +28,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        det,
                                        #PSD_hint,
                                        trace,
+                                       matrix_dot,
                                        #spectral_radius_bound
                                        )
 
@@ -76,6 +77,24 @@ def test_inverse_correctness():
 
     assert _allclose(numpy.identity(4), rir), rir
     assert _allclose(numpy.identity(4), rri), rri
+
+
+def test_matrix_dot():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    n = rng.randint(4) + 2
+    rs = []
+    xs = []
+    for k in xrange(n):
+        rs += [rng.randn(4, 4).astype(theano.config.floatX)]
+        xs += [tensor.matrix()]
+    sol = matrix_dot(*xs)
+
+    theano_sol = function(xs, sol)(*rs)
+    numpy_sol = rs[0]
+    for r in rs[1:]:
+        numpy_sol = numpy.dot(numpy_sol, r)
+
+    assert _allclose(numpy_sol, theano_sol)
 
 
 def test_inverse_singular():
