@@ -7,6 +7,12 @@ import sys, os, StringIO
 
 import numpy
 
+try:
+    import pydot as pd
+    pydot_imported = True
+except ImportError:
+    pydot_imported = False
+
 import theano
 import gof
 from theano import config
@@ -463,11 +469,9 @@ def pydotprint(fct, outfile=None,
         raise ValueError(('pydotprint expects as input a theano.function or '
                          'the env of a function!'), fct)
 
-    try:
-        import pydot as pd
-    except ImportError:
-        print ("Failed to import pydot. You must install pydot for "
-               "`pydotprint` to work.")
+    if not pydot_imported:
+        raise RuntimeError ("Failed to import pydot. You must install pydot"
+                            " for `pydotprint` to work.")
         return
 
     g=pd.Dot()
