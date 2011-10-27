@@ -69,13 +69,13 @@ def test_min_informative_str():
     F = D + E
     G = C + F
 
-    mis = min_informative_str(G)
+    mis = min_informative_str(G).replace("\t", "        ")
 
     reference = """A. Elemwise{add,no_inplace}
-	B. C
-	C. Elemwise{add,no_inplace}
-		D. D
-		E. E"""
+        B. C
+        C. Elemwise{add,no_inplace}
+                D. D
+                E. E"""
 
     if mis != reference:
         print '--' + mis + '--'
