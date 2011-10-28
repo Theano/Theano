@@ -13,6 +13,14 @@ AddConfigVar('optdb.position_cutoff',
         'Where to stop eariler during optimization. It represent the position of the optimizer where to stop.',
         FloatParam(numpy.inf),
         in_c_key=False)
+#upgraded to 20 to avoid EquibriumOptimizer error
+# to be max'ed out by constant folding (can
+# I increase the max ratio only for
+# constant folding somehow?
+AddConfigVar('optdb.max_use_ratio',
+        'A ratio that prevent infinite loop in EquilibriumOptimizer.',
+        FloatParam(20),
+        in_c_key=False)
 
 class DB(object):
     def __hash__(self):
@@ -168,10 +176,7 @@ class EquilibriumDB(DB):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         return opt.EquilibriumOptimizer(opts,
                 max_depth=5,
-                max_use_ratio=20,#upgraded to 20 to avoid equibriumOptimizer
-                                # to be max'ed out by constant folding (can
-                                        # I increase the max ratio only for
-                                        # constant folding somehow?
+                max_use_ratio=config.optdb.max_use_ratio,
                 failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
 
