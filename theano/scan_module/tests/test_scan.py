@@ -2481,6 +2481,27 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
 
+
+    def test_grad_multiple_seqs_different_nsteps(self):
+        # Example provided Michael Forbes
+        # This test assures that we clip the sequences to n_steps before
+        # computing the gradient (so that when we reverse them we actually
+        # get the right values in
+        c = theano.tensor.vector('c')
+        x = theano.tensor.scalar('x')
+        _max_coefficients_supported = 100
+        full_range = theano.tensor.arange(_max_coefficients_supported)
+        components, updates = theano.scan(fn=lambda coeff, power,
+        free_var:
+                                             coeff * (free_var ** power),
+                                         outputs_info=None,
+                                         sequences=[c, full_range],
+                                         non_sequences=x)
+        P = components.sum()
+        dP = theano.tensor.grad(P, x)
+        tf = theano.function([c,x], dP)
+        assert tf([1.0,2.0,-3.0,4.0], 2.0) == 38
+
     def test_return_steps(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))

@@ -538,6 +538,7 @@ def scan( fn
         if getattr(seq['input'],'name', None) is not None:
             nw_seq.name = seq['input'].name + '[%d:]'%k
 
+    scan_seqs = [ seq[:actual_n_steps] for seq in scan_seqs]
     # Conventions :
     #   mit_mot = multiple input taps, multiple output taps ( only provided
     #             by the gradient function )
