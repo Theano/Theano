@@ -106,7 +106,6 @@ class ReplaceValidate(History, Validator):
         for r, new_r in replacements:
             try:
                 env.replace(r, new_r, reason=reason)
-                print reason
             except Exception, e:
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this Env' not in str(e)):
