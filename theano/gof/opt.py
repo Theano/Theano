@@ -1123,7 +1123,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
-            _logger.error("EquilibriumOptimizer max'ed out by "+opt_name)
+            _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name
+                          + ". You can safely raise the current threshold of "
+                          + "%f with the theano flasg 'optdb.max_use_ratio'." %
+                          config.optdb.max_use_ratio)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
