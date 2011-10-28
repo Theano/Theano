@@ -724,8 +724,8 @@ class T_Scan(unittest.TestCase):
         # assert that it was done in place
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Old way of doing inplace operations is depricated .. tests don't
-        # make sense anymroe
+        # Old way of doing inplace operations is deprecated .. tests don't
+        # make sense anymore.
 
         ##assert numpy.allclose( theano_x0 , vu2)
         ## assert numpy.allclose( theano_x1 , vu1)
@@ -794,8 +794,8 @@ class T_Scan(unittest.TestCase):
         # inplace !!
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Old way of doing inplace operations is depricated .. tests don't
-        # make sense anymroe
+        # Old way of doing inplace operations is deprecated .. tests don't
+        # make sense anymore.
         #assert not numpy.allclose( theano_x0 , vu2[1:4])
         #assert numpy.allclose( theano_x1 , vu1[0:3])
 
@@ -1552,7 +1552,7 @@ class T_Scan(unittest.TestCase):
         This unit test addresses the bug fix of changeset ba7157e95cb1.
 
         !!! test lost some of its meaning because return_steps has been
-        depricated !!!
+        deprecated !!!
         """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
