@@ -2489,18 +2489,17 @@ class T_Scan(unittest.TestCase):
         # get the right values in
         c = theano.tensor.vector('c')
         x = theano.tensor.scalar('x')
-        _max_coefficients_supported = 100
+        _max_coefficients_supported = 1000
         full_range = theano.tensor.arange(_max_coefficients_supported)
-        components, updates = theano.scan(fn=lambda coeff, power,
-        free_var:
-                                             coeff * (free_var ** power),
-                                         outputs_info=None,
-                                         sequences=[c, full_range],
-                                         non_sequences=x)
+        components, updates = theano.scan(
+            fn=lambda coeff, power, free_var: coeff * (free_var ** power),
+            outputs_info=None,
+            sequences=[c, full_range],
+            non_sequences=x)
         P = components.sum()
         dP = theano.tensor.grad(P, x)
-        tf = theano.function([c,x], dP)
-        assert tf([1.0,2.0,-3.0,4.0], 2.0) == 38
+        tf = theano.function([c, x], dP)
+        assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 38
 
     def test_return_steps(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
