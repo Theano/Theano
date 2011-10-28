@@ -1957,6 +1957,22 @@ class T_subtensor(unittest.TestCase):
             self.assertTrue(tval.shape == (2,))
             self.assertTrue(numpy.allclose(tval, n.get_value()[idx]))
 
+    def test1_0_dims(self):
+        n = self.shared(numpy.ones((), dtype=self.dtype))
+        t = theano.tensor.Subtensor([])(n)
+        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        # Silence expected error messages
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.level
+        _logger.setLevel(logging.CRITICAL)
+        mode = self.mode
+        self.mode = mode.excluding("local_useless_subtensor")
+        try:
+            self.eval_output_and_check(t)
+        finally:
+            self.mode = mode
+            _logger.setLevel(oldlevel)
+
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
