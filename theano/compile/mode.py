@@ -100,9 +100,14 @@ def register_optimizer(name, opt):
         raise ValueError('Optimizer name already taken: %s' % name)
     predefined_optimizers[name] = opt
 
+def register_OutputGuard_c_code(type):
+    OutputGuard.c_code_types.append(type)
+
 class OutputGuard(gof.Op):
     destroy_map = {0:[0]}
     view_map = {0:[0]}
+    c_code_types = []
+
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
     def __eq__(self, other):
@@ -124,12 +129,7 @@ class OutputGuard(gof.Op):
             return """
             %(z)s = %(x)s;
             """ % locals()
-        elif (isinstance(node.inputs[0].type,
-                (theano.tensor.TensorType,
-                    theano.sandbox.cuda.CudaNdarrayType,
-                    theano.tensor.raw_random.RandomStateType)) or
-                node.inputs[0].type.__class__.__name__ == 'SparseType'
-                ):
+        elif (isinstance(node.inputs[0].type, tuple(self.c_code_types))):
             # These are Python object types
             return """
             Py_XDECREF(%(z)s);
