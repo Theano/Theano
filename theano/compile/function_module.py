@@ -994,6 +994,8 @@ class FunctionMaker(object):
         try:
             theano.config.compute_test_value = "off"
             start_optimizer = time.time()
+            add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
+            gof.Op.add_stack_trace_on_call = False
             optimizer(env)
             end_optimizer = time.time()
 
@@ -1007,6 +1009,7 @@ class FunctionMaker(object):
             insert_deepcopy(env, inputs, outputs+additional_outputs)
         finally:
             theano.config.compute_test_value = compute_test_value_orig
+            gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
