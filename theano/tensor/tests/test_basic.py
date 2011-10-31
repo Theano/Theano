@@ -3150,6 +3150,25 @@ class T_exp(unittest.TestCase):
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
 
+    def test_approximation(self):
+        hid = tensor.vector('hid')
+        theano.config.tensor.fast_exp = True
+        f_true = theano.function([hid],
+                            exp(hid))
+        theano.config.tensor.fast_exp = False
+        f_false = theano.function([hid],
+                            exp(hid))
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vhid = numpy.asarray(rng.uniform(size=(20,)),
+                             dtype = theano.config.floatX)
+        v_false = f_false(vhid)
+        v_true = f_true(vhid)
+        if numpy.any(abs(v_false - v_true) > .1):
+            raise ValueError(
+                'Approximation is not close enough to expected value',
+                 v_false, v_true)
+
+
     def test_int(self):
         x = ivector()
         f = function([x], exp(x))
