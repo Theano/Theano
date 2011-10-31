@@ -1966,7 +1966,7 @@ class Composite(ScalarOp):
         _c_code = "{\n"
         i = 0
         j = 0
-        self.nodenames = ["%(name)s_" + ('subnode%i' % j)
+        self.nodenames = ["%(nodename)s_" + ('subnode%i' % j)
                 for j, n in enumerate(self.env.toposort())]
 
         for j, node in enumerate(self.env.toposort()):
@@ -2073,13 +2073,13 @@ class Composite(ScalarOp):
     def grad(self, inputs, output_grads):
         raise NotImplementedError("grad is not implemented for Composite")
 
-    def c_code(self, node, name, inames, onames, sub):
+    def c_code(self, node, nodename, inames, onames, sub):
         d = dict(zip(["i%i"%i for i in xrange(len(inames))],
                      inames) +
                  zip(["o%i"%i for i in xrange(len(onames))],
                      onames),
                  **sub)
-        d['name'] = name
+        d['nodename'] = nodename
         if not sub.has_key('id'):
             #The use of a dummy id is safe as the code is in a separate block.
             #It won't generate conflicting variable name.
@@ -2088,7 +2088,7 @@ class Composite(ScalarOp):
         return self._c_code % d
 
     def c_code_cache_version(self):
-        rval = [2]
+        rval = [3]
         for x in self.env.toposort():
             xv = x.op.c_code_cache_version()
             if xv:
@@ -2104,7 +2104,7 @@ class Composite(ScalarOp):
                 rval.append(
                         subnode.op.c_support_code_apply(
                             subnode,
-                            subnodename % dict(name=nodename)))
+                            subnodename % dict(nodename=nodename)))
             except gof.utils.MethodNotDefined:
                 pass
         return "\n".join(rval)
