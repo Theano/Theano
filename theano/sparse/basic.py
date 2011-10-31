@@ -327,6 +327,16 @@ class SparseType(gof.Type):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
 # for more dtypes, call SparseType(format, dtype)
+def matrix(format, name=None, dtype=None):
+    if dtype is None:
+        dtype = config.floatX
+    type = SparseType(format=format, dtype=dtype)
+    return type(name)
+def csc_matrix(name=None, dtype=None):
+    return matrix('csc', name, dtype)
+def csr_matrix(name=None, dtype=None):
+    return matrix('csr', name, dtype)
+# for more dtypes, call SparseType(format, dtype)
 csc_matrix = SparseType(format='csc', dtype=config.floatX)
 csr_matrix = SparseType(format='csr', dtype=config.floatX)
 csc_dmatrix = SparseType(format='csc', dtype='float64')
@@ -1505,7 +1515,7 @@ class Dot(gof.op.Op):
         rval = x * y
 
         if x_is_sparse and y_is_sparse:
-            rval = rval.todense()
+            rval = rval.toarray()
 
         out[0] = rval
 
@@ -1553,6 +1563,8 @@ class Usmm(gof.op.Op):
     x or y are sparse matrix(the other can be sparse or dense)
     z is a dense matrix
     alpha is a scalar
+
+    :note: We don't implement the infer_shape as it is inserted by optimization only
     """
     def __eq__(self, other):
         return type(self) == type(other)
@@ -1565,19 +1577,6 @@ class Usmm(gof.op.Op):
 
     def __str__(self):
         return 'Usmm{no_inplace}'
-
-    def infer_shape(self, node, shapes):
-        xshp, yshp = shapes
-        x, y = node.inputs
-        if x.ndim == 2 and y.ndim == 2:
-            return [(xshp[0], yshp[1])]
-        if x.ndim == 1 and y.ndim == 2:
-            return [(yshp[1],)]
-        if x.ndim == 2 and y.ndim == 1:
-            return [(xshp[0],)]
-        if x.ndim == 1 and y.ndim == 1:
-            return [()]
-        raise NotImplementedError()
 
     def make_node(self, alpha, x, y, z):
         if not _is_sparse_variable(x) and not _is_sparse_variable(y):
@@ -1634,6 +1633,8 @@ class UsmmCscDense(gof.Op):
     x are sparse matrix
     y, z is a dense matrix
     alpha is a scalar
+
+    :note: We don't implement the infer_shape as it is inserted by optimization only
     """
     def __init__(self, inplace):
         self.inplace = inplace
@@ -1651,19 +1652,6 @@ class UsmmCscDense(gof.Op):
 
     def __hash__(self):
         return hash(type(self)) ^ self.inplace
-
-    def infer_shape(self, node, shapes):
-        xshp, yshp = shapes
-        x, y = node.inputs
-        if x.ndim == 2 and y.ndim == 2:
-            return [(xshp[0], yshp[1])]
-        if x.ndim == 1 and y.ndim == 2:
-            return [(yshp[1],)]
-        if x.ndim == 2 and y.ndim == 1:
-            return [(xshp[0],)]
-        if x.ndim == 1 and y.ndim == 1:
-            return [()]
-        raise NotImplementedError()
 
     def make_node(self, alpha, x_val, x_ind, x_ptr, x_nrows, y, z):
         alpha = tensor.as_tensor_variable(alpha)
@@ -1884,6 +1872,7 @@ register_specialize(local_usmm, name="local_usmm")
 
 @gof.local_optimizer([usmm])
 def local_usmm_csx(node):
+    """ usmm -> usmm_csc_dense """
     if node.op == usmm:
         alpha, x, y, z = node.inputs
 
@@ -1896,6 +1885,8 @@ def local_usmm_csx(node):
                 x_nsparse = x_shape[0]
                 dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
                                           y.type.dtype, z.type.dtype)
+                if dtype_out not in ('float32', 'float64'):
+                    return False
                 # Sparse cast is not implemented.
                 if y.type.dtype != dtype_out:
                     return False

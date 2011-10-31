@@ -136,7 +136,9 @@ class BadCLinkerOutput(DebugModeError):
         sio = StringIO()
         print >> sio, "BadCLinkerOutput"
         print >> sio, "  variable:", self.r
-        print >> sio, "  Type    :", self.r.type
+        print >> sio, "  Outputs Type    :", self.r.type
+        print >> sio, "  Inputs Type:", [i.type for i in self.r.owner.inputs]
+        print >> sio, "  Apply   :", self.r.owner
         print >> sio, "  val_py  :", self.val_py
         print >> sio, "  val_c   :", self.val_c
         print >> sio, "  op      :", self.offending_op()
