@@ -37,13 +37,13 @@ gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
 optdb.register('gpu_opt',
                gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
-               'gpu')
+               'gpu', 'fast_run')
 # This second pass is needed as the fusion can put all the non float32 code
 # inside the elemwise. When it there is no float64 op, this is working.
 optdb.register('gpu_after_fusion',
                ProxyDB(gpu_seqopt),
                optdb.__position__.get('elemwise_fusion', 71) + .1,
-               'gpu')
+               'gpu', 'fast_run')
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
