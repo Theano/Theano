@@ -955,9 +955,10 @@ class ModuleCache(object):
         if found == 0:
             msg = 'Key not found in unpickled KeyData file'
             if key_data.keys:
-                # This is only to make debugging in pdb easier, by providing
-                # the offending key in the local context.
-                other_key = key_data.keys.__iter__().next()
+                # This is to make debugging in pdb easier, by providing
+                # the offending keys in the local context.
+                key_data_keys = list(key_data.keys)
+                ## import pdb; pdb.set_trace()
         elif found > 1:
             msg = 'Multiple equal keys found in unpickled KeyData file'
         if msg:
