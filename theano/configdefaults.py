@@ -150,6 +150,11 @@ AddConfigVar('tensor.local_elemwise_fusion',
         BoolParam(True),
         in_c_key=False)
 
+AddConfigVar('tensor.fast_exp',
+        "Enable or not in fast_exp that will use an approximation of exp which is much faster",
+        BoolParam(False),
+        in_c_key=True)
+
 AddConfigVar('gpu.local_elemwise_fusion',
         "Enable or not in fast_run mode(fast_run optimization) the gpu elemwise fusion optimization",
         BoolParam(True),
