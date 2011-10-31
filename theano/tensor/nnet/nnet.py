@@ -95,6 +95,8 @@ class SoftmaxWithBias(gof.Op):
 
         #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
+        %(exp_define)s
+
         npy_intp* Nx = %(x)s->dimensions;
 
         if (%(x)s->nd != 2)
@@ -170,7 +172,7 @@ class SoftmaxWithBias(gof.Op):
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
                 //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
-                dtype_%(sm)s sm_ij = exp(row_ij - row_max);
+                dtype_%(sm)s sm_ij = %(exp_function)s(row_ij - row_max);
                 //std::cout << "3 " << j << " " << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
@@ -196,6 +198,22 @@ class SoftmaxWithBias(gof.Op):
         x, b = inp
         sm, = out
         code_template = ''.join(self.c_code_template())
+        if theano.config.tensor.fast_exp:
+            sub['exp_define'] = """
+        static union{
+            double d;
+            struct{
+                int j,i;
+                } n;
+        } d2i;
+        #define EXP_A (1048576/M_LN2)
+        #define EXP_C 60801
+        #define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+            """
+            sub['exp_function'] = "FAST_EXP"
+        else:
+            sub['exp_define'] = ""
+            sub['exp_function'] = 'exp'
         return code_template % dict(locals(), **sub)
 
     @staticmethod

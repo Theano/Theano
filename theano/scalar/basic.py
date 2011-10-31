@@ -1663,12 +1663,32 @@ class Exp(UnaryScalarOp):
             return gz * exp(x),
         else:
             return None,
+
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = exp(%(x)s);" % locals()
-exp = Exp(upgrade_to_float, name = 'exp')
+        sub = {}
+        if theano.config.tensor.fast_exp:
+            sub['exp_define'] = """
+static union{
+    double d;
+    struct{
+        int j,i;
+        } n;
+} d2i;
+#define EXP_A (1048576/M_LN2)
+#define EXP_C 60801
+#define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+            """
+            sub['exp_function'] = "FAST_EXP"
+        else:
+            sub['exp_define'] = ""
+            sub['exp_function'] = 'exp'
 
+        return """
+    %(exp_define)s
+    %(z)s = %(exp_function)s(%(x)s);""" % dict(locals(), **sub)
+exp = Exp(upgrade_to_float, name = 'exp')
 class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x*x
