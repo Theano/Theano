@@ -144,7 +144,11 @@ def local_gpu_elemwise_0(node):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 # Don't set any inplace pattern.
                 # gpu_inplace_elemwise_optimizer will do it later
-                new_op = GpuElemwise(node.op.scalar_op)
+                try:
+                    new_op = GpuElemwise(node.op.scalar_op)
+                except ValueError:
+                    # This happens when scalar_op requires support code
+                    return False
 
                 #   first establish that float32 can store all inputs
                 upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
@@ -188,7 +192,11 @@ def local_gpu_elemwise_1(node):
             elemwise_node = host_i.owner
             # Don't set any inplace pattern.
             # gpu_inplace_elemwise_optimizer will do it later
-            new_op = GpuElemwise(elemwise_node.op.scalar_op)
+            try:
+                new_op = GpuElemwise(elemwise_node.op.scalar_op)
+            except ValueError:
+                # This happens when scalar_op requires support code
+                return False
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
                 gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
