@@ -1957,18 +1957,6 @@ class Composite(ScalarOp):
             if not isinstance(node.op, ScalarOp):
                 raise ValueError("The env to Composite must be exclusively composed of ScalarOp instances.")
 
-        subd = dict(zip(inputs,
-                        ["%%(i%i)s"%i for i in xrange(len(inputs))]) +
-                    zip(outputs,
-                        ["%%(o%i)s"%i for i in xrange(len(outputs))]))
-
-        for orphan in env.variables: #env.orphans:
-            if orphan.owner is None and orphan not in env.inputs:
-                if isinstance(orphan, Constant):
-                    subd[orphan] = orphan.type.c_literal(orphan.data)
-                else:
-                    raise ValueError("All orphans in the env to Composite must be Constant instances.")
-
         if not hasattr(self,"name"):
             l=[]
             for n in env.toposort():
@@ -1980,29 +1968,6 @@ class Composite(ScalarOp):
                     v=n.op.__class__.__name__
                 l.append(v)
             self.name="Composite{"+",".join(l)+"}"
-
-        _c_code = "{\n"
-        i = 0
-        j = 0
-        for node in env.toposort():
-            j += 1
-            for output in node.outputs:
-                if output not in subd:
-                    i += 1
-                    name = "V%%(id)s_tmp%i" % i
-                    subd[output] = name
-                    _c_code += "%s %s;\n" % (output.type.dtype_specs()[1], name)
-
-            s =     node.op.c_code(node,
-                                      "%(name)s",
-                                      [subd[input] for input in node.inputs],
-                                      [subd[output] for output in node.outputs],
-                                      dict(fail = "%(fail)s",
-                                           id = "%%(id)s_%i" % j))
-            _c_code += s
-            _c_code += "\n"
-        _c_code += "}\n"
-
 
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
@@ -2020,7 +1985,6 @@ class Composite(ScalarOp):
 
         _impls = [compose_impl(r) for r in env.outputs]
 
-        self._c_code = _c_code
         self._impls = _impls
         self.nin = len(inputs)
         self.nout = len(outputs)
@@ -2059,10 +2023,56 @@ class Composite(ScalarOp):
             #It won't generate conflicting variable name.
             d['id']='_DUMMY_ID_'
 
-        return self._c_code % d
+        subd = dict(
+                zip(self.env.inputs,
+                    ["%%(i%i)s"%i for i in xrange(len(self.env.inputs))])
+                + zip(self.env.outputs,
+                    ["%%(o%i)s"%i for i in xrange(len(self.env.outputs))]))
+
+        for orphan in self.env.variables: #env.orphans:
+            if orphan.owner is None and orphan not in self.env.inputs:
+                if isinstance(orphan, Constant):
+                    subd[orphan] = orphan.type.c_literal(orphan.data)
+                else:
+                    raise ValueError(
+                            "All orphans in the env to Composite must"
+                            " be Constant instances.")
+
+
+        _c_code = "{\n"
+        i = 0
+        j = 0
+        for node in self.env.toposort():
+            j += 1
+            for output in node.outputs:
+                if output not in subd:
+                    i += 1
+                    name = "V%%(id)s_tmp%i" % i
+                    subd[output] = name
+                    _c_code += "%s %s;\n" % (
+                            output.type.dtype_specs()[1], name)
+
+            s = node.op.c_code(node,
+                      "%(name)s",
+                      [subd[input] for input in node.inputs],
+                      [subd[output] for output in node.outputs],
+                      dict(fail = "%(fail)s",
+                          id = "%%(id)s_%i" % j))
+            _c_code += s
+            _c_code += "\n"
+        _c_code += "}\n"
+
+        return _c_code % d
 
     def c_code_cache_version(self):
-        return (1,)+tuple([x.op.c_code_cache_version() for x in self.env.toposort()])
+        rval = [1]
+        for x in self.env.toposort():
+            xv = x.op.c_code_cache_version()
+            if xv:
+                rval.append(xv)
+            else:
+                return ()
+        return tuple(rval)
 
     def c_support_code(self):
         str = ""
@@ -2099,13 +2109,12 @@ class Composite(ScalarOp):
         return self._hashval
 
     def __getstate__(self):
-        d = copy(self.__dict__)
-        d.pop('env')
-        d.pop('_impls')
-        return d
+        return dict(
+                inputs=self.inputs,
+                outputs=self.outputs)
 
     def __setstate__(self, d):
-        self.__dict__.update(d)
+        ## self.__dict__.update(d)
         # We must call init to set env and _impls again, as otherwise
         # self.perform will not work.
-        self.__init__(self.inputs, self.outputs)
+        self.__init__(d['inputs'], d['outputs'])
