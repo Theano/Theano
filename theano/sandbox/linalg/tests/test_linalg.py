@@ -182,20 +182,14 @@ def test_extract_diag():
     g = extract_diag(x)
     f = theano.function([x], g)
 
-    m = rng.rand(3,3).astype(config.floatX)
-    v = numpy.diag(m)
-    r = f(m)
-    # The right diagonal is extracted
-    assert (r == v).all()
-
-    m = rng.rand(2, 3).astype(config.floatX)
-    ok = False
-    try:
+    for shp in [(2, 3), (3, 2), (3, 3)]:
+        m = rng.rand(*shp).astype(config.floatX)
+        v = numpy.diag(m)
         r = f(m)
-    except Exception:
-        ok = True
-    assert ok
+        # The right diagonal is extracted
+        assert (r == v).all()
 
+    # Test we accept only matrix
     xx = theano.tensor.vector()
     ok = False
     try:
@@ -204,11 +198,14 @@ def test_extract_diag():
         ok = True
     assert ok
 
+    # Test infer_shape
     f = theano.function([x], g.shape)
     topo = f.maker.env.toposort()
-    assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
-    m = rng.rand(3,3).astype(config.floatX)
-    assert f(m) == 3
+    if config.mode != 'FAST_COMPILE':
+        assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
+    for shp in [(2, 3), (3, 2), (3, 3)]:
+        m = rng.rand(*shp).astype(config.floatX)
+        assert f(m) == min(shp)
 
 # not testing the view=True case since it is not used anywhere.
 
@@ -219,9 +216,10 @@ def test_trace():
     g = trace(x)
     f = theano.function([x], g)
 
-    m = rng.rand(4, 4).astype(config.floatX)
-    v = numpy.trace(m)
-    assert v == f(m)
+    for shp in [(2, 3), (3, 2), (3, 3)]:
+        m = rng.rand(*shp).astype(config.floatX)
+        v = numpy.trace(m)
+        assert v == f(m)
 
     xx = theano.tensor.vector()
     ok = False
