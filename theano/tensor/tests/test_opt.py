@@ -767,8 +767,8 @@ class test_fusion(unittest.TestCase):
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#0
             (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),#1
-            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
-            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
+            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),#2
+            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),#3
             (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
             (((fw+fx)+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
@@ -891,11 +891,19 @@ class test_fusion(unittest.TestCase):
                 t1=time.time()
                 out=out.get_value()
 
+            #print "CASE2/3", f.maker.env.toposort()
+            #print 'CASE2/3', f.maker.env
+            #print 'CASE2/3', f.maker.env.toposort()[3].op.scalar_op.env
+
             times[id]=t1-t0
             atol=1e-8
             if out_dtype=='float32':atol=1e-6
             if not numpy.allclose(out,answer*nb_repeat,atol=atol):
                 fail1.append(id)
+                print val_inputs
+                print out
+                print answer*nb_repeat
+                #assert 0
             topo=f.maker.env.toposort()
             if gpu:
                 import theano.sandbox.cuda as cuda
