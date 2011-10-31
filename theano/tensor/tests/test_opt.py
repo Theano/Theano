@@ -1162,6 +1162,24 @@ class TestCompositeCodegen(unittest.TestCase):
         fval = f([1, 2, 3])
         assert numpy.all(fval == [6, 12, 18])
 
+    def test_nested_gpu(self):
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
+        import theano.sandbox.cuda.opt
+
+        y = self.times_2(self.x)
+        z = self.times_3(y)
+        f = theano.function([self.x], cuda.gpu_from_host(z))
+        topo = f.maker.env.toposort()
+        assert len(topo) == 2
+        assert topo[1].op == cuda.gpu_from_host
+        # topo1 is doing the composite work on the CPU. Auto-generation of
+        # GPU code for ops with support code is not possible.
+        fval = numpy.asarray(f([1, 2, 3]))
+        assert numpy.all(fval == [6, 12, 18]), fval
+
 
 def test_log1p():
     m = theano.config.mode
