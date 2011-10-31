@@ -208,5 +208,9 @@ class test_div(unittest.TestCase):
         assert isinstance((a/c).owner.op, TrueDiv)
 
 
+# Testing of Composite is done in tensor/tests/test_opt.py
+# in test_fusion, TestCompositeCodegen
+
+
 if __name__ == '__main__':
     unittest.main()

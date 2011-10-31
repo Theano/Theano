@@ -853,7 +853,8 @@ class CLinker(link.Linker):
                           libraries=self.libraries()
                           )
     @staticmethod
-    def cmodule_key_(env, no_recycling, compile_args=[], libraries=[]):
+    def cmodule_key_(env, no_recycling, compile_args=[], libraries=[],
+            insert_config_md5=True):
         """
         Do the actual computation of cmodule_key in a static method
         to allow it to be reused in scalar.Composite.__eq__
@@ -871,11 +872,15 @@ class CLinker(link.Linker):
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+
         # IMPORTANT: The 'md5' prefix is used to isolate the compilation
         # parameters from the rest of the key. If you want to add more key
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
-        sig.append('md5:' + theano.configparser.get_config_md5())
+        if insert_config_md5:
+            sig.append('md5:' + theano.configparser.get_config_md5())
+        else:
+            sig.append('md5: <omitted>')
 
         # technically this should only be appended for gcc-compiled Ops
         # and the flags of other compilers should be inserted here... but it's not clear how to

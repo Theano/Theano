@@ -1081,6 +1081,7 @@ def tensor4(name=None, dtype=None):
 tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(tensor4, ftensor4, dtensor4,
         itensor4, ltensor4)
 
+
 class _tensor_py_operators:
     #UNARY
     def __abs__(self): return abs_(self)
@@ -1370,9 +1371,13 @@ class _tensor_py_operators:
     def get_constant_value(self):
         return get_constant_value(self)
 
+
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
+
+
 TensorType.Variable = TensorVariable
+
 
 class TensorConstantSignature(tuple):
     """A Signature object for comparing TensorConstant instances
@@ -1497,7 +1502,8 @@ class TensorValue(_tensor_py_operators, Value):
 
 Tensor = TensorType
 
-#QUESTION: why are we doing this!?
+
+# This bizarre push-import avoids a circular dependency.
 elemwise.as_tensor_variable = as_tensor_variable
 elemwise.TensorType = TensorType
 elemwise.TensorVariable = TensorVariable
@@ -1505,28 +1511,9 @@ elemwise.TensorConstant = TensorConstant
 elemwise.TensorValue = TensorValue
 
 
-
 #########################
 # Utilities
 #########################
-
-def _elemwise(scalar_op, name, doc_prefix=''):
-    straight = elemwise.Elemwise(scalar_op, name = name)
-    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
-
-    # don't add the inplace versions, they aren't supposed to be part of the user interface
-    _constructor_list.append(straight)
-
-    # This is here so that gen_oplist can detect which module declared these variables.
-
-    straight.__module__ = 'tensor'
-    inplace.__module__ = 'tensor'
-
-    if doc_prefix:
-        straight.__doc__ = doc_prefix + '\n' + straight.__doc__
-
-    return straight, inplace
 
 def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
@@ -1538,11 +1525,13 @@ def _redefine(real_symbol_value, module='tensor'):
         return real_symbol_value
     return decorator
 
+
 def _redefine_asRoutine(real_symbol_value):
     real_symbol_value.__epydoc_asRoutine = True
     def decorator(f):
         return real_symbol_value
     return decorator
+
 
 def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     """
