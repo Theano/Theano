@@ -37,13 +37,13 @@ gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
 optdb.register('gpu_opt',
                gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
-               'gpu')
+               'gpu', 'fast_run')
 # This second pass is needed as the fusion can put all the non float32 code
 # inside the elemwise. When it there is no float64 op, this is working.
 optdb.register('gpu_after_fusion',
                ProxyDB(gpu_seqopt),
                optdb.__position__.get('elemwise_fusion', 71) + .1,
-               'gpu')
+               'gpu', 'fast_run')
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
@@ -144,7 +144,11 @@ def local_gpu_elemwise_0(node):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 # Don't set any inplace pattern.
                 # gpu_inplace_elemwise_optimizer will do it later
-                new_op = GpuElemwise(node.op.scalar_op)
+                try:
+                    new_op = GpuElemwise(node.op.scalar_op)
+                except ValueError:
+                    # This happens when scalar_op requires support code
+                    return False
 
                 #   first establish that float32 can store all inputs
                 upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
@@ -188,7 +192,11 @@ def local_gpu_elemwise_1(node):
             elemwise_node = host_i.owner
             # Don't set any inplace pattern.
             # gpu_inplace_elemwise_optimizer will do it later
-            new_op = GpuElemwise(elemwise_node.op.scalar_op)
+            try:
+                new_op = GpuElemwise(elemwise_node.op.scalar_op)
+            except ValueError:
+                # This happens when scalar_op requires support code
+                return False
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i) for i in elemwise_node.inputs])
                 gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)

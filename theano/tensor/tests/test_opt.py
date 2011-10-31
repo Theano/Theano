@@ -767,8 +767,8 @@ class test_fusion(unittest.TestCase):
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#0
             (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),#1
-            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
-            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
+            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),#2
+            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),#3
             (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
             (((fw+fx)+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
@@ -891,11 +891,19 @@ class test_fusion(unittest.TestCase):
                 t1=time.time()
                 out=out.get_value()
 
+            #print "CASE2/3", f.maker.env.toposort()
+            #print 'CASE2/3', f.maker.env
+            #print 'CASE2/3', f.maker.env.toposort()[3].op.scalar_op.env
+
             times[id]=t1-t0
             atol=1e-8
             if out_dtype=='float32':atol=1e-6
             if not numpy.allclose(out,answer*nb_repeat,atol=atol):
                 fail1.append(id)
+                print val_inputs
+                print out
+                print answer*nb_repeat
+                #assert 0
             topo=f.maker.env.toposort()
             if gpu:
                 import theano.sandbox.cuda as cuda
@@ -1108,6 +1116,70 @@ class test_fusion(unittest.TestCase):
 
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
+
+class TestCompositeCodegen(unittest.TestCase):
+    """
+    Test The Composite Ops code generation in a case where there is multiple
+    scalar ops with support code.
+    """
+    def setUp(self):
+        class TimesN(theano.scalar.basic.UnaryScalarOp):
+            def __init__(self, n, *args, **kwargs):
+                self.n = n
+                theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
+
+            def impl(self, x):
+                return x * self.n
+
+            def c_support_code_apply(self, node, nodename):
+                n = str(self.n)
+                return """
+                float %(nodename)s_timesn(float x) { return x * %(n)s; }
+                """ % locals()
+
+            def c_code(self, node, name, (x, ), (z, ), sub):
+                return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
+
+        upgrade_to_float = theano.scalar.basic.upgrade_to_float
+
+        self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
+        self.times_2 = theano.tensor.elemwise.Elemwise(
+                self.scal_times_2,
+                name='times_2')
+
+        self.scal_times_3 = TimesN(3, upgrade_to_float, name='times_3')
+        self.times_3 = theano.tensor.elemwise.Elemwise(
+                self.scal_times_3,
+                name='times_3')
+
+        self.x = fvector()
+
+    def test_nested_composite(self):
+        y = self.times_2(self.x)
+        z = self.times_3(y)
+        f = function([self.x], z)
+        assert len(f.maker.env.toposort()) == 1
+        fval = f([1, 2, 3])
+        assert numpy.all(fval == [6, 12, 18])
+
+    def test_nested_gpu(self):
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
+        import theano.sandbox.cuda.opt
+
+        y = self.times_2(self.x)
+        z = self.times_3(y)
+        f = theano.function([self.x], cuda.gpu_from_host(z))
+        topo = f.maker.env.toposort()
+        assert len(topo) == 2
+        assert topo[1].op == cuda.gpu_from_host
+        # topo1 is doing the composite work on the CPU. Auto-generation of
+        # GPU code for ops with support code is not possible.
+        fval = numpy.asarray(f([1, 2, 3]))
+        assert numpy.all(fval == [6, 12, 18]), fval
+
 
 def test_log1p():
     m = theano.config.mode

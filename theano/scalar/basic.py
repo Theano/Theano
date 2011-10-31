@@ -1924,9 +1924,10 @@ complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 class Composite(ScalarOp):
     """
     Composite is an Op that takes a graph of scalar operations and
-    produces c code for the whole graph. Its biggest use would be to
-    implement the loop fusion optimizer (which I have yet to do
-    someday...)
+    produces c code for the whole graph. Its purpose is to implement loop
+    fusion.
+
+    Composite depends on all the Ops in its graph having C code.
     """
     def __str__(self):
         return self.name
@@ -1945,89 +1946,114 @@ class Composite(ScalarOp):
         super(Composite,out).__init__(output_types_preference, name)
         return out
 
-    def __init__(self, inputs, outputs):
-        self.inputs=copy(inputs)
-        self.outputs=copy(outputs)
+    def init_c_code(self):
+        """Return the C code for this Composite Op.  """
+        subd = dict(
+                zip(self.env.inputs,
+                    ["%%(i%i)s"%i for i in xrange(len(self.env.inputs))])
+                + zip(self.env.outputs,
+                    ["%%(o%i)s"%i for i in xrange(len(self.env.outputs))]))
 
-        env = Env(*gof.graph.clone(inputs, outputs))
-        gof.MergeOptimizer().optimize(env)
-        inputs, outputs = env.inputs, env.outputs
-
-        for node in env.nodes:
-            if not isinstance(node.op, ScalarOp):
-                raise ValueError("The env to Composite must be exclusively composed of ScalarOp instances.")
-
-        subd = dict(zip(inputs,
-                        ["%%(i%i)s"%i for i in xrange(len(inputs))]) +
-                    zip(outputs,
-                        ["%%(o%i)s"%i for i in xrange(len(outputs))]))
-
-        for orphan in env.variables: #env.orphans:
-            if orphan.owner is None and orphan not in env.inputs:
+        for orphan in self.env.variables: #env.orphans:
+            if orphan.owner is None and orphan not in self.env.inputs:
                 if isinstance(orphan, Constant):
                     subd[orphan] = orphan.type.c_literal(orphan.data)
                 else:
-                    raise ValueError("All orphans in the env to Composite must be Constant instances.")
-
-        if not hasattr(self,"name"):
-            l=[]
-            for n in env.toposort():
-                if hasattr(n.op,"name") and n.op.name is not None:
-                    v=n.op.name
-                    if v.startswith("Composite"):
-                        v = v[len("Composite"):]
-                else:
-                    v=n.op.__class__.__name__
-                l.append(v)
-            self.name="Composite{"+",".join(l)+"}"
+                    raise ValueError(
+                            "All orphans in the env to Composite must"
+                            " be Constant instances.")
 
         _c_code = "{\n"
         i = 0
         j = 0
-        for node in env.toposort():
-            j += 1
+        self.nodenames = ["%(nodename)s_" + ('subnode%i' % j)
+                for j, n in enumerate(self.env.toposort())]
+
+        for j, node in enumerate(self.env.toposort()):
             for output in node.outputs:
                 if output not in subd:
                     i += 1
                     name = "V%%(id)s_tmp%i" % i
                     subd[output] = name
-                    _c_code += "%s %s;\n" % (output.type.dtype_specs()[1], name)
-
-            s =     node.op.c_code(node,
-                                      "%(name)s",
-                                      [subd[input] for input in node.inputs],
-                                      [subd[output] for output in node.outputs],
-                                      dict(fail = "%(fail)s",
-                                           id = "%%(id)s_%i" % j))
+                    _c_code += "%s %s;\n" % (
+                            output.type.dtype_specs()[1], name)
+            s = node.op.c_code(node,
+                      self.nodenames[j],
+                      [subd[input] for input in node.inputs],
+                      [subd[output] for output in node.outputs],
+                      dict(fail = "%(fail)s",
+                          id = "%%(id)s_%i" % j))
             _c_code += s
             _c_code += "\n"
         _c_code += "}\n"
+        self._c_code = _c_code
 
-
+    def init_py_impls(self):
+        """Return a list of functions that compute each output of self
+        """
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
             # it will calculate *1 twice
             # it also doesn't follow env.toposort but that's (presumably)
             # still correct since we only have scalar ops
-            if r in env.inputs:
-                idx = env.inputs.index(r)
+            if r in self.env.inputs:
+                idx = self.env.inputs.index(r)
                 return lambda inputs: inputs[idx]
             elif r.owner is None: # in env.orphans:
                 return lambda inputs: r.data
             node = r.owner
             producers = [compose_impl(input) for input in node.inputs]
             return lambda inputs: node.op.impl(*[p(inputs) for p in producers])
+        self._impls = [compose_impl(r) for r in self.env.outputs]
 
-        _impls = [compose_impl(r) for r in env.outputs]
+    def init_name(self):
+        """Return a readable string representation of self.env
+        """
+        try:
+            rval = self.name
+        except AttributeError:
+            if 0:
+                l=[]
+                for n in env.toposort():
+                    if hasattr(n.op,"name") and n.op.name is not None:
+                        v=n.op.name
+                        if v.startswith("Composite"):
+                            v = v[len("Composite"):]
+                    else:
+                        v=n.op.__class__.__name__
+                    l.append(v)
+                rval = "Composite{"+",".join(l)+"}"
+            else:
+                for i, r in enumerate(self.env.inputs):
+                    r.name='i%i' % i
+                for i, r in enumerate(self.env.outputs):
+                    r.name='o%i' % i
+                io = set(self.env.inputs + self.env.outputs)
+                for i, r in enumerate(self.env.variables):
+                    if r not in io and len(r.clients) > 1:
+                        r.name='t%i' % i
+                rval = "Composite{%s}" % str(self.env)
+        self.name = rval
 
-        self._c_code = _c_code
-        self._impls = _impls
+    def init_env(self):
+        env = Env(*gof.graph.clone(self.inputs, self.outputs))
+        gof.MergeOptimizer().optimize(env)
+        for node in env.nodes:
+            if not isinstance(node.op, ScalarOp):
+                raise ValueError("The env to Composite must be exclusively composed of ScalarOp instances.")
+        self.env = env
+
+    def __init__(self, inputs, outputs):
+        self.inputs=copy(inputs)
+        self.outputs=copy(outputs)
+        self.inputs_type = tuple([input.type for input in inputs])
+        self.outputs_type = tuple([output.type for output in outputs])
         self.nin = len(inputs)
         self.nout = len(outputs)
-        self.env = env
-        self.inputs_type = tuple([input.type for input in self.env.inputs])
-        self.outputs_type = tuple([output.type for output in self.env.outputs])
-        self._rehash()
+        self.init_env()       # self.env
+        self.init_name()      # self.name
+        self.init_c_code()    # self._c_code and self.nodenames
+        self.init_py_impls()  # self._impls
 
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:
@@ -2047,13 +2073,13 @@ class Composite(ScalarOp):
     def grad(self, inputs, output_grads):
         raise NotImplementedError("grad is not implemented for Composite")
 
-    def c_code(self, node, name, inames, onames, sub):
+    def c_code(self, node, nodename, inames, onames, sub):
         d = dict(zip(["i%i"%i for i in xrange(len(inames))],
                      inames) +
                  zip(["o%i"%i for i in xrange(len(onames))],
                      onames),
                  **sub)
-        d['name'] = name
+        d['nodename'] = nodename
         if not sub.has_key('id'):
             #The use of a dummy id is safe as the code is in a separate block.
             #It won't generate conflicting variable name.
@@ -2062,42 +2088,63 @@ class Composite(ScalarOp):
         return self._c_code % d
 
     def c_code_cache_version(self):
-        return (1,)+tuple([x.op.c_code_cache_version() for x in self.env.toposort()])
+        rval = [3]
+        for x in self.env.toposort():
+            xv = x.op.c_code_cache_version()
+            if xv:
+                rval.append(xv)
+            else:
+                return ()
+        return tuple(rval)
 
-    def c_support_code(self):
-        str = ""
-        for node in self.env.toposort():
+    def c_support_code_apply(self, node, nodename):
+        rval = []
+        for subnode, subnodename in zip(self.env.toposort(), self.nodenames):
             try:
-                str += node.op.c_support_code()+"\n"
+                rval.append(
+                        subnode.op.c_support_code_apply(
+                            subnode,
+                            subnodename % dict(nodename=nodename)))
             except gof.utils.MethodNotDefined:
                 pass
-        return str
+        return "\n".join(rval)
 
     def __eq__(self, other):
-        if self is other: return True
-        if not isinstance(other, self.__class__): return False
-        if self.nin!=other.nin or self.nout != other.nout: return False
-        return self._hashval == other._hashval
-        # TODO The second `return` is useless. Should there be an `and`?
-        return self._cmodule_key == other._cmodule_key
-
-    def _rehash(self):
-#TODO: What no_recycling is used for? What I need to put their?
-#        no_recycling = []
-        self._cmodule_key = gof.CLinker.cmodule_key_(self.env, [])
-        self._hashval = hash(self._cmodule_key)
+        if self is other:
+            return True
+        if (type(self) != type(other)
+                or self.nin != other.nin
+                or self.nout != other.nout):
+            return False
+        # see __hash__ for comment on why there is no mention of env
+        # or module cache key here.
+        return (self._c_code == other._c_code)
 
     def __hash__(self):
-        return self._hashval
+        rval = hash((type(self),
+            self.nin,
+            self.nout,
+            self._c_code))
+        # Note that in general, the configparser settings at the time
+        # of code generation (__init__) affect the semantics of this Op.
+        # This function assumes that all relevant info about the configparser
+        # is embodied in _c_code.  So the _c_code, rather than self.env,
+        # is the signature of the semantics of this Op.
+        # _c_code is preserved through unpickling, so the Op will not change
+        # semantics when it is reloaded with different configparser
+        # settings.
+        return rval
 
     def __getstate__(self):
-        d = copy(self.__dict__)
-        d.pop('env')
-        d.pop('_impls')
-        return d
+        rval = dict(self.__dict__)
+        del rval['_impls']
+        del rval['env']
+        return rval
 
     def __setstate__(self, d):
         self.__dict__.update(d)
         # We must call init to set env and _impls again, as otherwise
         # self.perform will not work.
-        self.__init__(self.inputs, self.outputs)
+        self.init_env()
+        self.init_py_impls()
+        assert self._c_code

@@ -38,6 +38,10 @@ class NaiveAlgo(object):
         :param scalar_op: the scalar operation to execute on each element.
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
+        if scalar_op.c_support_code_apply(node=None, nodename="nodename"):
+            raise ValueError(('It is currently not possible to auto-generate'
+                    ' a GPU implementation for an elementwise Op with support'
+                    ' code'), scalar_op)
         self.scalar_op = scalar_op
         self.sync = sync
         self.inplace_pattern = inplace_pattern
@@ -799,12 +803,15 @@ nd_collapse_[i]=0;
 
     def c_support_code_apply(self, node, nodename):
         nd = node.outputs[0].type.ndim
-        return "".join(
-            [self.c_src_kernel(node, nodename,x) for x in xrange(1,nd+1)]+
-            [
-            self.c_src_kernel_Ccontiguous(node, nodename),
-            self.c_src_callkernel(node, nodename),
-            ])
+        defines =  """
+#define INTDIV_POW2(a, b) (a >> b)
+#define INTMOD_POW2(a, b) (a & ((1<<b)-1))
+        """
+        kernels = "".join(
+            [self.c_src_kernel(node, nodename, x) for x in xrange(1, nd + 1)]
+            + [self.c_src_kernel_Ccontiguous(node, nodename)],
+            + [self.c_src_callkernel(node, nodename)])
+        return defines + kernels
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         d = dict(sub)
@@ -951,8 +958,3 @@ nd_collapse_[i]=0;
         #print sio.getvalue()
         return sio.getvalue()
 
-    def c_support_code(self):
-        return """
-        #define INTDIV_POW2(a, b) (a >> b)
-        #define INTMOD_POW2(a, b) (a & ((1<<b)-1))
-        """

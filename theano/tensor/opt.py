@@ -629,18 +629,23 @@ class ShapeFeature(object):
     """
 
     def shape_ir(self, i, r):
-        #TODO: Write a doc string for this method
-
+        """Return symbolic r.shape[i] for tensor variable r, int i"""
         if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
-        #TODO: Write a doc string for this method
+        """Return a tuple of symbolic shape vars for tensor variable r"""
         return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
+        """Return a list of shape tuple or None for the outputs of node.
+        
+        This function is used for Ops that don't implement infer_shape.
+        Ops that do implement infer_shape should use the i_shapes parameter,
+        but this default implementation ignores it.
+        """
         rval = []
         for r in node.outputs:
             try:
@@ -650,16 +655,21 @@ class ShapeFeature(object):
         return rval
 
     def unpack(self, s_i):
+        """Return a symbolic integer scalar for the shape element s_i.
+        
+        The s_i argument was produced by the infer_shape() of an Op subclass.
+        """
         # unpack the s_i that the Op returned
         assert s_i is not None
         if s_i == 1:
             # don't make the optimizer merge a zillion ones together
+            # by always returning the same object to represent 1
             return self.lscalar_one
         if type(s_i) in (int,long) or isinstance(s_i, numpy.integer):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
-        if type(s_i) in (tuple,list):
+        if type(s_i) in (tuple, list):
             # this dimension is the same as many of the inputs
             # which tells us that if one of the inputs is known,
             # the others all become known.
@@ -676,11 +686,19 @@ class ShapeFeature(object):
                     s_i, type(s_i), getattr(s_i, 'type', None))
 
     def set_shape(self, r, s):
+        """Assign the shape `s` to previously un-shaped variable `r`.
+        
+        :type r: a variable
+        :type s: None or a tuple of symbolic integers
+        """
         assert r not in self.shape_of, 'r already in shape_of'
         if s is None:
             self.shape_of[r] = s
         else:
-            self.shape_of[r] = tuple([self.unpack(s_i) for s_i in s])
+            shape_vars = [self.unpack(s_i) for s_i in s]
+            self.shape_of[r] = tuple(shape_vars)
+            for sv in shape_vars:
+                self.shape_of_reverse_index.setdefault(sv, set()).add(r)
 
     def update_shape(self, r, other_r):
         '''Replace shape of r by shape of other_r.
@@ -692,16 +710,17 @@ class ShapeFeature(object):
         assert other_r in self.shape_of, ('other_r not in shape_of', other_r)
         other_shape = self.shape_of[other_r]
 
+        # If other_shape has no information, call is pointless.
+        if other_shape is None:
+            return
+
         if r in self.shape_of:
             r_shape = self.shape_of[r]
         else:
             # If no info is known on r's shape, use other_shape
             self.shape_of[r] = other_shape
-            return
-
-        # If other_shape has no information, use r_shape
-        if other_shape is None:
-            self.shape_of[r] = r_shape
+            for sv in other_shape:
+                self.shape_of_reverse_index.setdefault(sv, set()).add(r)
             return
 
         # Merge other_shape with r_shape, giving the priority to other_shape
@@ -711,14 +730,16 @@ class ShapeFeature(object):
             # For now, we consider 2 cases of uninformative other_shape[i]:
             #  - Shape_i(i)(other_r);
             #  - Shape_i(i)(r).
-            if (ps.owner and
-                    isinstance(getattr(ps.owner,'op',None), Shape_i) and
-                    ps.owner.op.i == i and
-                    ps.owner.inputs[0] in (r, other_r)):
+            if (ps.owner
+                    and isinstance(getattr(ps.owner, 'op', None), Shape_i)
+                    and ps.owner.op.i == i
+                    and ps.owner.inputs[0] in (r, other_r)):
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
         self.shape_of[r] = tuple(merged_shape)
+        for sv in self.shape_of[r]:
+            self.shape_of_reverse_index.setdefault(sv, set()).add(r)
 
     def set_shape_i(self, r, i, s_i):
         '''Replace element i of shape_of[r] by s_i'''
@@ -733,14 +754,16 @@ class ShapeFeature(object):
             else:
                 new_shape.append(s_j)
         self.shape_of[r] = tuple(new_shape)
+        for sv in self.shape_of[r]:
+            self.shape_of_reverse_index.setdefault(sv, set()).add(r)
 
     def init_r(self, r):
         '''Register r's shape in the shape_of dictionary.'''
         if r not in self.shape_of:
             try:
                 self.set_shape(r, self.shape_tuple(r))
-            except AttributeError:
-                self.set_shape(r,None)
+            except AttributeError: #XXX: where would this come from?
+                self.set_shape(r, None)
 
     def make_vector_shape(self, r):
         return make_vector(*self.shape_of[r])
@@ -757,8 +780,15 @@ class ShapeFeature(object):
         self.lscalar_one = T.constant(1, dtype='int64')
         assert self.lscalar_one.type == T.lscalar
 
-        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-        self.scheduled = {} # Variable ->
+        self.shape_of = {}
+        # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+
+        self.scheduled = {}
+        # Variable ->
+
+        self.shape_of_reverse_index = {}
+        # shape var -> graph v
+
         for node in env.toposort():
             self.on_import(env, node)
 
@@ -798,9 +828,11 @@ class ShapeFeature(object):
         # this is packed information
         # an element of o_shapes is either None or a tuple
         #   elements of the tuple can be either strings, or ints
-
         if len(o_shapes) != len(node.outputs):
-            raise Exception('len(o_shapes) = '+str(len(o_shapes))+' != len(node.outputs) = '+str(len(node.outputs)))
+            raise Exception('len(o_shapes) = '
+                    + str(len(o_shapes))
+                    + ' != len(node.outputs) = '
+                    + str(len(node.outputs)))
 
         for r, s in zip(node.outputs, o_shapes):
             self.set_shape(r, s)
@@ -818,23 +850,28 @@ class ShapeFeature(object):
         # the shape of new_r.  Say that r is *scheduled*.
         # At that point, node is no longer a client of r, but of new_r
         for (shpnode, idx) in (r.clients + [(node, i)]):
-            if isinstance(getattr(shpnode,'op', None), Shape_i):
+            if isinstance(getattr(shpnode, 'op', None), Shape_i):
                 self.scheduled[shpnode] = new_r
         # In case 2, if r is a variable that we've scheduled for shape update, then we
         # should cancel it.
-        # TODO: store some kind of reverse index?
-        for k,v in self.scheduled.items():
-            if v == r:
-                del self.scheduled[k]
+        unscheduled = [k for k, v in self.scheduled.items() if v == r]
+        for k in unscheduled:
+            del self.scheduled[k]
 
         # In either case, r could be in shape_of.values(), that is, r itself
         # is the shape of  something. In that case, we want to update
         # the value in shape_of, to keep it up-to-date.
-        for k,v in self.shape_of.iteritems():
-            if v is not None:
-                for ii, vi in enumerate(v):
-                    if vi == r:
-                        self.set_shape_i(k, ii, new_r)
+        for v in self.shape_of_reverse_index.get(r, []):
+            # The reverse index is only approximate. It is not updated on
+            # deletion of variables, or on change_input so it might be the
+            # case that there are a few extra `v`'s in it that no longer have
+            # a shape of r or possibly have been deleted from shape_of
+            # entirely. The important thing is that it permits to recall
+            # all variables with r in their shape.
+            for ii, svi in enumerate(self.shape_of.get(v, [])):
+                if svi == r:
+                    self.set_shape_i(v, ii, new_r)
+        self.shape_of_reverse_index[r] = set()
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an env feature.
@@ -926,6 +963,7 @@ def local_track_shape_i(node):
     if node in shape_feature.scheduled:
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
+        # XXX: what the heck is up with node.op.i ???
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 @register_specialize
