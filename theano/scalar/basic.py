@@ -2074,17 +2074,25 @@ class Composite(ScalarOp):
         return str
 
     def __eq__(self, other):
-        if self is other: return True
-        if not isinstance(other, self.__class__): return False
-        if self.nin!=other.nin or self.nout != other.nout: return False
-        return self._hashval == other._hashval
-        # TODO The second `return` is useless. Should there be an `and`?
-        return self._cmodule_key == other._cmodule_key
+        if self is other:
+            return True
+        if (type(self) != type(other)
+                or self.nin != other.nin
+                or self.nout != other.nout):
+            return False
+        rval = (self._cmodule_key == other._cmodule_key)
+        if rval:
+            assert hash(self) == hash(other)
+        return rval
 
     def _rehash(self):
-#TODO: What no_recycling is used for? What I need to put their?
-#        no_recycling = []
-        self._cmodule_key = gof.CLinker.cmodule_key_(self.env, [])
+        # delete the configparser md5 part out of the module key
+        # because for the purpose of identifying same/different
+        # Composite Ops, the flags governing C code generation are
+        # irrelevant.
+        self._cmodule_key = gof.CLinker.cmodule_key_(self.env,
+                no_recycling=[],  # irrelevant for comparing graphs
+                insert_config_md5=False)
         self._hashval = hash(self._cmodule_key)
 
     def __hash__(self):
