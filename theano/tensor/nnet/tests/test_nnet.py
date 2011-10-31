@@ -126,7 +126,13 @@ class T_SoftmaxWithBias(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vhid = numpy.asarray(rng.uniform(size=(20,)),
                              dtype = theano.config.floatX)
-        assert numpy.allclose(f_false(vhid), f_true(vhid))
+
+        v_false = f_false(vhid)
+        v_true = f_true(vhid)
+        if numpy.any(abs(v_false - v_true) > .1):
+            raise ValueError(
+                'Approximation is not close enough to expected value',
+                 v_false, v_true)
 
     def test_infer_shape(self):
         fff=theano.function([],outputs=softmax_with_bias(numpy.random.rand(3,4),numpy.random.rand(4)).shape)
