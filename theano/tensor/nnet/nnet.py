@@ -823,6 +823,22 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
         code_template = ''.join(self.c_code_template())
+        if theano.config.tensor.fast_exp:
+            sub['exp_define'] = """
+        static union{
+            double d;
+            struct{
+                int j,i;
+                } n;
+        } d2i;
+        #define EXP_A (1048576/M_LN2)
+        #define EXP_C 60801
+        #define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+            """
+            sub['exp_function'] = "FAST_EXP"
+        else:
+            sub['exp_define'] = ""
+            sub['exp_function'] = "exp"
         return code_template % dict(locals(), **sub)
 
 class CrossentropySoftmax1HotWithBiasDx (gof.Op):
