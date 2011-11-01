@@ -946,11 +946,17 @@ class ShapeFeature(object):
         # In either case, r could be in shape_of.values(), that is, r itself
         # is the shape of  something. In that case, we want to update
         # the value in shape_of, to keep it up-to-date.
-        for k, v in self.shape_of.iteritems():
-            if v is not None:
-                for ii, vi in enumerate(v):
-                    if vi == r:
-                        self.set_shape_i(k, ii, new_r)
+        for v in self.shape_of_reverse_index.get(r, []):
+            # The reverse index is only approximate. It is not updated on
+            # deletion of variables, or on change_input so it might be the
+            # case that there are a few extra `v`'s in it that no longer have
+            # a shape of r or possibly have been deleted from shape_of
+            # entirely. The important thing is that it permits to recall
+            # all variables with r in their shape.
+            for ii, svi in enumerate(self.shape_of.get(v, [])):
+                if svi == r:
+                    self.set_shape_i(v, ii, new_r)
+        self.shape_of_reverse_index[r] = set()
 
 
 class ShapeOptimizer(Optimizer):
