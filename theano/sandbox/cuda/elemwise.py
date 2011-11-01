@@ -8,7 +8,7 @@ The elemwise fct are also used with scalar operation! So it can happen that ndim
 import StringIO, sys
 import numpy
 from theano import Op, Type, Apply, Variable, Constant
-from theano import tensor, scalar
+from theano import tensor, scalar, gof
 
 import logging, copy
 _logger_name = 'theano.sandbox.cuda.elemwise'
@@ -42,8 +42,12 @@ class NaiveAlgo(object):
         :param scalar_op: the scalar operation to execute on each element.
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
-        if scalar_op.c_support_code_apply(node=None, nodename="nodename"):
-            raise SupportCodeError(scalar_op)
+        try:
+            code = scalar_op.c_support_code_apply(node=None, name="nodename")
+            if code:
+                raise SupportCodeError(scalar_op)
+        except gof.utils.MethodNotDefined:
+                pass
         self.scalar_op = scalar_op
         self.sync = sync
         self.inplace_pattern = inplace_pattern
