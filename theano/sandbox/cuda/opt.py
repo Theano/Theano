@@ -1272,7 +1272,7 @@ def gpu_scan_make_inplace(node):
         n_outs = len(ls)
         for idx in xrange(n_outs):
             if ls[idx] in ls[:idx]:
-                ls[idx] = deep_copy_op(ls[idx])
+                ls[idx] = compile.function_module.deep_copy_op(ls[idx])
 
         inputs = ls_begin + ls + ls_end
 
