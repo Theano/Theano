@@ -2097,14 +2097,14 @@ class Composite(ScalarOp):
                 return ()
         return tuple(rval)
 
-    def c_support_code_apply(self, node, nodename):
+    def c_support_code_apply(self, node, name):
         rval = []
         for subnode, subnodename in zip(self.env.toposort(), self.nodenames):
             try:
                 rval.append(
                         subnode.op.c_support_code_apply(
                             subnode,
-                            subnodename % dict(nodename=nodename)))
+                            subnodename % dict(nodename=name)))
             except gof.utils.MethodNotDefined:
                 pass
         return "\n".join(rval)
