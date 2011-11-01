@@ -104,6 +104,22 @@ def register_OutputGuard_c_code(type):
     OutputGuard.c_code_types.append(type)
 
 class OutputGuard(gof.Op):
+    """
+    This op is used only internaly by Theano.
+
+    Only the AddDestroyHandler optimizer tries to insert them in the graph.
+
+    This Op is declared as destructive while is not destroying
+    anything. It returns a view. This is used to prevent destruction of
+    the output variable of a Theano function.
+
+    There is mechanism in Theano that should prevent this, but the use
+    of OutputGuard add a safe guard. Maybe it is currently possible
+    that optimization run before the add_destroy_handler phase that
+    make some inplace optimization bypass this mechanism?
+
+    TODO: find a current full explaination.
+    """
     destroy_map = {0:[0]}
     view_map = {0:[0]}
     c_code_types = []
