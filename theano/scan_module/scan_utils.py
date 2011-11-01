@@ -373,18 +373,16 @@ def infer_shape(outs, inputs, input_shapes):
     '''
     Compute the shape of the outputs given the shape of the inputs
     of a theano graph.
+
+    We do it this way to don't compile the inner function just to get
+    the shape. Change to ShapeFeature could request change in this function.
     '''
-    # We use a ShapeFeature because it has all the necessary logic inside.
-    # We don't use the Feature interface, so we need to initialize some
-    # things by hand.
+    # We use a ShapeFeature because it has all the necessary logic
+    # inside.  We don't use the full ShapeFeature interface, but we
+    # let it initialize itself with an empty env, otherwise we will
+    # need to do it manually
     shape_feature = tensor.opt.ShapeFeature()
-
-    # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-    # All keys of shape_of should be either in valid or in invalid
-    shape_feature.shape_of = {}
-
-    # To avoid merging lots of ones together.
-    shape_feature.lscalar_one = tensor.constant(1, dtype='int64')
+    shape_feature.on_attach(theano.gof.Env([], []))
 
     # Initialize shape_of with the input shapes
     for inp, inp_shp in zip(inputs, input_shapes):
