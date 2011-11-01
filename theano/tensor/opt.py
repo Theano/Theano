@@ -963,7 +963,6 @@ def local_track_shape_i(node):
     if node in shape_feature.scheduled:
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
-        # XXX: what the heck is up with node.op.i ???
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 @register_specialize
