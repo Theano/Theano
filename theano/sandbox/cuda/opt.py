@@ -243,6 +243,11 @@ def local_gpu_dot_to_dot22(node):
 
     A more suitable solution would be to use the right cublas call
     """
+
+    # In case the got do input upcast, we much check that we can
+    # make it run on the gpu.
+    if node.outputs[0].dtype != 'float32':
+        return False
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op == tensor.basic.dot:
