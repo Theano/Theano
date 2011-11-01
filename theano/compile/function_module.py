@@ -994,8 +994,8 @@ class FunctionMaker(object):
         add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
         try:
             theano.config.compute_test_value = "off"
-            start_optimizer = time.time()
             gof.Op.add_stack_trace_on_call = False
+            start_optimizer = time.time()
             optimizer(env)
             end_optimizer = time.time()
 
