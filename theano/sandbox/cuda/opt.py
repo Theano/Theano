@@ -77,7 +77,7 @@ class InputToGpuOptimizer(Optimizer):
 
                     if new_input.type==input.type:
                         env.replace_validate(input, new_input, "InputToGpuOptimizer")
-                except Exception, e:
+                except TypeError, e:
                     #as we currently only support float32, this can fail.
                     #Using try except make that we won't need
                     pass
