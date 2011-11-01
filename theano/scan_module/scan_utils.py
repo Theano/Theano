@@ -370,8 +370,8 @@ def infer_shape(outs, inputs, input_shapes):
     Compute the shape of the outputs given the shape of the inputs
     of a theano graph.
 
-    We do it this way to don't compile the inner function just to get
-    the shape. Change to ShapeFeature could request change in this function.
+    We do it this way to avoid compiling the inner function just to get
+    the shape. Changes to ShapeFeature could require changes in this function.
     '''
     # We use a ShapeFeature because it has all the necessary logic
     # inside.  We don't use the full ShapeFeature interface, but we
