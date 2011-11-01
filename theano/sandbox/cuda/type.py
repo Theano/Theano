@@ -352,8 +352,8 @@ class CudaNdarrayType(Type):
         return ret
 
 
-# Register CudaNdarrayType to the OutputGuard list of know type
-# to have OutputGuard generate c code for this type
+# Register CudaNdarrayType to the OutputGuard list of known types
+# to have OutputGuard generate C code for this type.
 theano.compile.mode.register_OutputGuard_c_code(CudaNdarrayType)
 
 
