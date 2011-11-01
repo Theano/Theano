@@ -100,9 +100,30 @@ def register_optimizer(name, opt):
         raise ValueError('Optimizer name already taken: %s' % name)
     predefined_optimizers[name] = opt
 
+def register_OutputGuard_c_code(type):
+    OutputGuard.c_code_types.append(type)
+
 class OutputGuard(gof.Op):
+    """
+    This op is used only internally by Theano.
+
+    Only the AddDestroyHandler optimizer tries to insert them in the graph.
+
+    This Op is declared as destructive while it is not destroying
+    anything. It returns a view. This is used to prevent destruction of
+    the output variables of a Theano function.
+
+    There is a mechanism in Theano that should prevent this, but the use
+    of OutputGuard adds a safeguard: it may be possible for some optimization
+    run before the add_destroy_handler phase to bypass this mechanism, by
+    making in-place optimizations.
+
+    TODO: find a current full explanation.
+    """
     destroy_map = {0:[0]}
     view_map = {0:[0]}
+    c_code_types = []
+
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
     def __eq__(self, other):
@@ -124,12 +145,7 @@ class OutputGuard(gof.Op):
             return """
             %(z)s = %(x)s;
             """ % locals()
-        elif (isinstance(node.inputs[0].type,
-                (theano.tensor.TensorType,
-                    theano.sandbox.cuda.CudaNdarrayType,
-                    theano.tensor.raw_random.RandomStateType)) or
-                node.inputs[0].type.__class__.__name__ == 'SparseType'
-                ):
+        elif (isinstance(node.inputs[0].type, tuple(self.c_code_types))):
             # These are Python object types
             return """
             Py_XDECREF(%(z)s);

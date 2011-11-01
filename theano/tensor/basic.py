@@ -910,6 +910,10 @@ class TensorType(Type):
         else:
             return ()
 
+# Register CudaNdarrayType to the OutputGuard list of known types
+# to have OutputGuard generate C code for this type.
+theano.compile.mode.register_OutputGuard_c_code(TensorType)
+
 # Easy constructors
 
 def tensor(*args, **kwargs):
@@ -3307,8 +3311,25 @@ class Subtensor(Op):
         {
             %(fail)s;
         }
-        assert (xview->dimensions != %(x)s->dimensions);
-        assert (xview->strides != %(x)s->strides);
+
+        if ((xview->dimensions == %(x)s->dimensions)
+            && (%(x)s->dimensions != NULL))
+        {
+            PyErr_Format(PyExc_ValueError, "x and xview"
+                         "(with %%d dims) have the same dimensions"
+                         " pointers: %%p and %%p",
+                         %(x)s->nd, xview->dimensions, %(x)s->dimensions);
+            %(fail)s;
+        }
+        if (xview->strides == %(x)s->strides
+            && (%(x)s->dimensions != NULL))
+        {
+            PyErr_Format(PyExc_ValueError, "x and xview"
+                         "(with %%d dims) have the same strides"
+                         " pointers: %%p and %%p",
+                         %(x)s->nd, xview->strides, %(x)s->strides);
+            %(fail)s;
+        }
 
         for (; outer_ii < %(len_is_slice)s; ++outer_ii)
         {
@@ -3425,7 +3446,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub): #DEBUG
         part0 = self.helper_c_code(node, name, inputs, outputs, sub,
@@ -3446,6 +3467,10 @@ class Subtensor(Op):
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
+        # If `helper_c_code_cache_version` is not versioned we do not want to
+        # have a versioned version of this op's C code.
+        if len(hv) == 0:
+            return ()
         return (1, hv)
 
     def R_op(self, inputs, eval_points):

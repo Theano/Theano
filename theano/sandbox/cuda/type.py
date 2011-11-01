@@ -351,6 +351,12 @@ class CudaNdarrayType(Type):
             ret.append('-use_fast_math')
         return ret
 
+
+# Register CudaNdarrayType to the OutputGuard list of known types
+# to have OutputGuard generate C code for this type.
+theano.compile.mode.register_OutputGuard_c_code(CudaNdarrayType)
+
+
 # THIS WORKS
 # But CudaNdarray instances don't compare equal to one another, and what about __hash__ ?
 # So the unpickled version doesn't equal the pickled version, and the cmodule cache is not
