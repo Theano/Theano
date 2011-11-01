@@ -3467,8 +3467,8 @@ class Subtensor(Op):
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
-        # If the helper_c_code_cache_version is not versionned
-        # We don't want to have a versioned version of this op c code
+        # If `helper_c_code_cache_version` is not versioned we do not want to
+        # have a versioned version of this op's C code.
         if len(hv) == 0:
             return ()
         return (1, hv)
