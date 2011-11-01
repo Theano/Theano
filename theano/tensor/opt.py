@@ -922,9 +922,17 @@ class ShapeFeature(object):
             self.set_shape(r, s)
 
     def on_change_input(self, env, node, i, r, new_r):
+        if new_r not in self.shape_of:
+            # It happen that the env didn't called on_import for some
+            # new_r.  This happen when new_r don't have an
+            # owner(i.e. it is a constant or an input of the graph)
+            # update_shape suppose that r and new_r are in shape_of.
+            self.init_r(new_r)
+
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.
-        self.update_shape(new_r, r)
+        # We should give priority to new_r, so we put it last.
+        self.update_shape(r, new_r)
 
         # change_input happens in two cases:
         # 1) we are trying to get rid of r, or
