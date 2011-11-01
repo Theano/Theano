@@ -77,7 +77,7 @@ class InputToGpuOptimizer(Optimizer):
 
                     if new_input.type==input.type:
                         env.replace_validate(input, new_input, "InputToGpuOptimizer")
-                except Exception, e:
+                except TypeError, e:
                     #as we currently only support float32, this can fail.
                     #Using try except make that we won't need
                     pass
@@ -243,7 +243,12 @@ def local_gpu_dot_to_dot22(node):
 
     A more suitable solution would be to use the right cublas call
     """
+
+    # In case the got do input upcast, we much check that we can
+    # make it run on the gpu.
     if node.op == gpu_from_host:
+        if node.outputs[0].type.dtype != 'float32':
+            return False
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op == tensor.basic.dot:
             x, y = host_input.owner.inputs
@@ -264,6 +269,8 @@ def local_gpu_dot_to_dot22(node):
 
             return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
     if node.op == tensor.basic.dot:
+        if node.outputs[0].type.dtype != 'float32':
+            return False
         if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
             x, y = node.inputs
             if _is_real_vector(x) and _is_real_matrix(y):
@@ -1267,7 +1274,7 @@ def gpu_scan_make_inplace(node):
         n_outs = len(ls)
         for idx in xrange(n_outs):
             if ls[idx] in ls[:idx]:
-                ls[idx] = deep_copy_op(ls[idx])
+                ls[idx] = compile.function_module.deep_copy_op(ls[idx])
 
         inputs = ls_begin + ls + ls_end
 

@@ -815,9 +815,12 @@ nd_collapse_[i]=0;
         """
         kernels = "".join(
             [self.c_src_kernel(node, nodename, x) for x in xrange(1, nd + 1)]
-            + [self.c_src_kernel_Ccontiguous(node, nodename)],
+            + [self.c_src_kernel_Ccontiguous(node, nodename)]
             + [self.c_src_callkernel(node, nodename)])
         return defines + kernels
+
+    def c_support_code(self):
+        raise gof.utils.MethodNotDefined()
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         d = dict(sub)
