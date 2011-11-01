@@ -991,10 +991,10 @@ class FunctionMaker(object):
 
         # optimize the env
         compute_test_value_orig = theano.config.compute_test_value
+        add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
         try:
             theano.config.compute_test_value = "off"
             start_optimizer = time.time()
-            add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
             gof.Op.add_stack_trace_on_call = False
             optimizer(env)
             end_optimizer = time.time()
