@@ -3317,7 +3317,7 @@ class Subtensor(Op):
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same dimensions"
-                         " pointors: %%p and %%p",
+                         " pointers: %%p and %%p",
                          %(x)s->nd, xview->dimensions, %(x)s->dimensions);
             %(fail)s;
         }
@@ -3326,7 +3326,7 @@ class Subtensor(Op):
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same strides"
-                         " pointors: %%p and %%p",
+                         " pointers: %%p and %%p",
                          %(x)s->nd, xview->strides, %(x)s->strides);
             %(fail)s;
         }
