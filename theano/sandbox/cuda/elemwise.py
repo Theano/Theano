@@ -49,7 +49,7 @@ class NaiveAlgo(object):
             if code:
                 raise SupportCodeError(scalar_op)
         except gof.utils.MethodNotDefined:
-                pass
+            pass
         self.scalar_op = scalar_op
         self.sync = sync
         self.inplace_pattern = inplace_pattern
