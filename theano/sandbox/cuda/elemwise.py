@@ -28,6 +28,10 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
         else: l+=[data_str%ipos]
     return l
 
+class SupportCodeError(Exception):
+    """It is currently not possible to auto-generate a GPU implementation for
+    an elementwise Op with support code."""
+
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
@@ -39,9 +43,7 @@ class NaiveAlgo(object):
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
         if scalar_op.c_support_code_apply(node=None, nodename="nodename"):
-            raise ValueError(('It is currently not possible to auto-generate'
-                    ' a GPU implementation for an elementwise Op with support'
-                    ' code'), scalar_op)
+            raise SupportCodeError(scalar_op)
         self.scalar_op = scalar_op
         self.sync = sync
         self.inplace_pattern = inplace_pattern

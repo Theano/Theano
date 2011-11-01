@@ -22,6 +22,7 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
+from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.compile import optdb
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 
@@ -146,7 +147,7 @@ def local_gpu_elemwise_0(node):
                 # gpu_inplace_elemwise_optimizer will do it later
                 try:
                     new_op = GpuElemwise(node.op.scalar_op)
-                except ValueError:
+                except SupportCodeError:
                     # This happens when scalar_op requires support code
                     return False
 
@@ -194,7 +195,7 @@ def local_gpu_elemwise_1(node):
             # gpu_inplace_elemwise_optimizer will do it later
             try:
                 new_op = GpuElemwise(elemwise_node.op.scalar_op)
-            except ValueError:
+            except SupportCodeError:
                 # This happens when scalar_op requires support code
                 return False
             if all([i.dtype=='float32' for i in elemwise_node.inputs]):
