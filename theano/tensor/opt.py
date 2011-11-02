@@ -2971,8 +2971,7 @@ def local_sum_sum(node):
 
                 if (theano.config.warn.sum_sum_bug and
                     newaxis != newaxis_old and
-                    len(newaxis) == len(newaxis_old):
-
+                    len(newaxis) == len(newaxis_old)):
                     _logger.warn(
                             "WARNING (YOUR CURRENT CODE IS FINE): Theano "
                             "versions between version 9923a40c7b7a and August "
