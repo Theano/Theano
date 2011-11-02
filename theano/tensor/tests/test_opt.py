@@ -1120,7 +1120,8 @@ class test_fusion(unittest.TestCase):
 class TestCompositeCodegen(unittest.TestCase):
     """
     Test The Composite Ops code generation in a case where there is multiple
-    scalar ops with support code.
+    scalar ops with support code in the c_support_code_apply or c_support_code
+    function.
     """
     def setUp(self):
         class TimesN(theano.scalar.basic.UnaryScalarOp):
@@ -1140,6 +1141,22 @@ class TestCompositeCodegen(unittest.TestCase):
             def c_code(self, node, name, (x, ), (z, ), sub):
                 return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
 
+        class TimesNb(theano.scalar.basic.UnaryScalarOp):
+            def __init__(self, n, *args, **kwargs):
+                self.n = n
+                theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
+
+            def impl(self, x):
+                return x * self.n
+
+            def c_support_code(self, node, nodename):
+                n = str(self.n)
+                return """
+                float %(nodename)s_timesn(float x) { return x * %(n)s; }
+                """ % locals()
+
+            def c_code(self, node, name, (x, ), (z, ), sub):
+                return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
         self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
@@ -1152,11 +1169,28 @@ class TestCompositeCodegen(unittest.TestCase):
                 self.scal_times_3,
                 name='times_3')
 
+        self.scal_times_2b = TimesNb(2, upgrade_to_float, name='times_2b')
+        self.times_2b = theano.tensor.elemwise.Elemwise(
+                self.scal_times_2b,
+                name='times_2b')
+
+        self.scal_times_3b = TimesNb(3, upgrade_to_float, name='times_3b')
+        self.times_3b = theano.tensor.elemwise.Elemwise(
+                self.scal_times_3b,
+                name='times_3b')
+
         self.x = fvector()
 
     def test_nested_composite(self):
         y = self.times_2(self.x)
         z = self.times_3(y)
+        f = function([self.x], z)
+        assert len(f.maker.env.toposort()) == 1
+        fval = f([1, 2, 3])
+        assert numpy.all(fval == [6, 12, 18])
+
+        y = self.times_2b(self.x)
+        z = self.times_3b(y)
         f = function([self.x], z)
         assert len(f.maker.env.toposort()) == 1
         fval = f([1, 2, 3])
