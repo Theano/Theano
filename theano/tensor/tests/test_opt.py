@@ -1171,7 +1171,8 @@ class TestCompositeCodegen(unittest.TestCase):
 
         y = self.times_2(self.x)
         z = self.times_3(y)
-        f = theano.function([self.x], cuda.gpu_from_host(z))
+        f = theano.function([self.x], cuda.gpu_from_host(z),
+                mode=theano.compile.mode.get_default_mode().including('gpu'))
         topo = f.maker.env.toposort()
         assert len(topo) == 2
         assert topo[1].op == cuda.gpu_from_host
