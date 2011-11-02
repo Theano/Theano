@@ -141,24 +141,26 @@ def inplace_elemwise_optimizer_op(OP):
           x + y + z -> x += y += z
           (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
         """
-        #we should not validate too often as this take much time to execute!
-        #It is the _dfs_toposort() fct in theano/gof/destroyhandler.py
-        #that take so much time.
-        #Should we try to use another lib that do toposort?
+        # We should not validate too often as this takes too much time to
+        # execute!
+        # It is the _dfs_toposort() fct in theano/gof/destroyhandler.py
+        # that takes so much time.
+        # Should we try to use another lib that does toposort?
         #   igraph: http://igraph.sourceforge.net/
         #   networkx: https://networkx.lanl.gov/
-        #Should we try to use cython?
-        #   compiling only that fct is not enought, should we try to
-        #   add the deque class too?  and init the deque and other
-        #   list to an upper bound number of element?
-        #Should Theano do online toposort as in
-        # http://code.google.com/p/acyclic/?
+        # Should we try to use cython?
+        #   Compiling only that fct is not enough, should we try to add the
+        #   deque class too?
+        #   And init the deque and other list to an upper bound number of
+        #   elements?
+        # Maybe Theano should do online toposort as in
+        #   http://code.google.com/p/acyclic
         #
-        #The next longuest optimizer is the canonizer phase
-        #Then I think it is the [io_?]toposort(need to validate) so
-        #check if the solution is also applicable their.
+        # The next longest optimizer is the canonizer phase.
+        # Then I think it is the [io_?]toposort (need to validate) so check if
+        # the solution is also applicable there.
 
-        #we execute validate after this number of change.
+        # We execute `validate` after this number of change.
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
             if len(env.nodes) > 500:
@@ -229,10 +231,9 @@ def inplace_elemwise_optimizer_op(OP):
                             nb_change_no_validate = 0
                     except (ValueError, TypeError, InconsistencyError), e:
                         if check_each_change != 1 and not raised_warning:
-                            print >> sys.stderr, ("Their was some inplace"
-                                                  " optimization that was not"
-                                                  " done due to unexpected"
-                                                  " error:")
+                            print >> sys.stderr, (
+                                    "Some inplace optimization was not "
+                                    "performed due to unexpected error:")
                             print >> sys.stderr, e
                             raised_warning = True
                         env.revert(chk)
@@ -245,11 +246,10 @@ def inplace_elemwise_optimizer_op(OP):
         if nb_change_no_validate > 0:
             try:
                 env.validate()
-            except Exception, e:
+            except Exception:
                 if not raised_warning:
-                    print >> sys.stderr, ("Their was some inplace optimization"
-                                          " that was not done due to"
-                                          " unexpected error")
+                    print >> sys.stderr, ("Some inplace optimization was not "
+                                          "performed due to unexpected error")
                 env.revert(chk)
     return inplace_elemwise_optimizer
 
@@ -1031,8 +1031,8 @@ def local_fill_to_alloc(node):
 @gof.local_optimizer([T.alloc])
 def local_useless_alloc(node):
     """
-    if the input type is the same as the output type(dtype and broadcast)
-    their is no change in the shape of the input. So this is just a simple copy
+    If the input type is the same as the output type (dtype and broadcast)
+    there is no change in the shape of the input. So this is just a simple copy
     of the input. This is not needed.
     """
     if node.op == T.alloc:
@@ -2958,8 +2958,8 @@ def local_sum_sum(node):
                 assert len(newaxis) == len(list(summed.owner.op.axis) +
                                            list(node.op.axis))
 
-                #The old bugged logic. We keep it their to generate a
-                #warning when we generated bad code.
+                # The old bugged logic. We keep it there to generate a warning
+                # when we generated bad code.
                 alldims = range(summed.owner.inputs[0].type.ndim)
                 alldims = [d for i, d in enumerate(alldims) if i
                            in summed.owner.op.axis]
@@ -2969,19 +2969,22 @@ def local_sum_sum(node):
                                xrange(summed.owner.inputs[0].type.ndim)
                                if i not in alldims]
 
-                if (theano.config.warn.sum_sum_bug and newaxis != newaxis_old
-                    and len(newaxis) == len(newaxis_old)):
-                    _logger.warn("WARNING: YOUR CURRENT CODE IS FINE. Theano"
-                                 " version between version 9923a40c7b7a and"
-                                 " the 2 august 2010(fixation date), generated"
-                                 " an error in that case. This happen when"
-                                 " their is 2 consecutive sum in the graph"
-                                 " and the intermediate sum is not used"
-                                 " elsewhere in the code. Some safe guard"
-                                 " removed some bad code, but not in all case."
-                                 " You are in one such case. To disable this"
-                                 " warning, set the theano flags"
-                                 " warn.sum_sum_bug to False.")
+                if (theano.config.warn.sum_sum_bug and
+                    newaxis != newaxis_old and
+                    len(newaxis) == len(newaxis_old):
+
+                    _logger.warn(
+                            "WARNING (YOUR CURRENT CODE IS FINE): Theano "
+                            "versions between version 9923a40c7b7a and August "
+                            "2nd, 2010 generated bugged code in this case. "
+                            "This happens when there are two consecutive sums "
+                            "in the graph and the intermediate sum is not "
+                            "used elsewhere in the code. Some safeguard "
+                            "removed some bad code, but not in all cases. You "
+                            "are in one such case. To disable this warning "
+                            "(that you can safely ignore since this bug has "
+                            "been fixed) set the theano flag "
+                            "`warn.sum_sum_bug` to False.")
 
                 combined_sum = T.Sum(newaxis)
                 return [combined_sum(summed.owner.inputs[0])]
@@ -3857,12 +3860,11 @@ def local_log_erfc(node):
 #                            sqrt(pi)*-x/(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6)))
 #for float64: threshold=26.63 see at the end of the fct for the explaination
 #for float32: threshold=9.3 see at the end of the fct for the explaination
-#TODO: remove the contraint that their is only 2 inputs to mul and the
-#      exp(x**2) is the second.
-#TODO: at the test point 10 in float32, their is instability in the
-#      original value.  the original give -30.0, the stab -20.1 and in
-#      float64 -18.1.  Make the test don't generate error in that
-#      case!
+#TODO: remove the contraint that there are only 2 inputs to mul and exp(x**2)
+#      is the second.
+#TODO: at the test point 10 in float32, there is instability in the original
+#      value. The original gives -30.0, the stab -20.1 and in float64 -18.1.
+#      Make it so that the test does not generate an error in that case!
 @register_stabilize
 @register_specialize
 @gof.local_optimizer([T.true_div])
@@ -3904,15 +3906,15 @@ def local_grad_log_erfc_neg(node):
         sqr = neg.owner.inputs[0]
         x = sqr.owner.inputs[0]
     elif exp.owner.inputs[0].owner.op == T.mul:
-        #We should compare that -(erfc_x**2) is equivalent to mul_neg
-        #Their is currently not easy way to do this in the general case
-        #So we implement some common case for now.
+        # We should compare that -(erfc_x**2) is equivalent to mul_neg.
+        # There is currently no easy way to do this in the general case,
+        # so we implement some common case for now.
 
-        #in many case the neg are replaced by mul in the graph.
-        #This also allow to stabilize log(erfc(cst*x))
+        # In many cases the neg are replaced by mul in the graph.
+        # This also allows to stabilize log(erfc(cst*x)).
         mul_neg = exp.owner.inputs[0]
 
-        #in case that multiple mul are not fused together, we do it here.
+        # In case that multiple mul are not fused together, we do it here.
         def check_input(inputs):
             new_inputs = []
             for i in inputs:
@@ -3923,7 +3925,7 @@ def local_grad_log_erfc_neg(node):
             return new_inputs
         mul_inputs = check_input(mul_neg.owner.inputs)
 
-        #put the constant first
+        # Put the constant first.
         for i in xrange(len(mul_inputs)):
             if isinstance(i, Constant):
                 if i == 0:
@@ -4004,7 +4006,7 @@ The libm used for the test is amdlibm
 #exp(x**2)/erfc(-x) => when x>threashold,
 #-x*(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))*sqrt(pi) for float64:
 #threshold=26.63 see below for float32: threshold=9.3 see below TODO
-#remove the contraint that their is only 2 inputs to mul TODO: should
+#remove the contraint that there are only 2 inputs to mul TODO: should
 #we cast numpy.pi to x.dtype?
 
 #float32 threshold 9.3 as the approximation is more precise at that
@@ -4234,12 +4236,14 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         # There is a hard limit of 256 bytes for the formal argument list to a
         # GPU kernel function.
         max_nb_input = max_input_fct(node)
-        # The number of input to the new fused op if we don't fuse more inputs.
+        # The number of inputs to the new fused op if we do not fuse more
+        # inputs.
         new_nb_input = len(node.inputs)
-        # Did we fused something.  Needed as we can fuse unary op that
-        # don't change the number of input. And their is case where the
-        # input inputs are the same as the current node.  That won't
-        # change the number of inputs of the new op.
+        # Did we fuse something?
+        # Needed as we can fuse unary op that don't change the number of
+        # inputs.
+        # And there is a case where the inputs are the same as the current
+        # node. That won't change the number of inputs of the new op.
         fused = False
 
         for i in node.inputs:
