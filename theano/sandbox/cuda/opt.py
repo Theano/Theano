@@ -35,16 +35,18 @@ gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
         'fast_run', 'inplace')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
         'fast_run', 'gpu')
+# DO NOT PUT fast_run in gpu_opt! This will ALWAYS enable the GPU!
 optdb.register('gpu_opt',
                gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
-               'gpu', 'fast_run')
+               'gpu')
+# DO NOT PUT fast_run in gpu_after_fusion! This will ALWAYS enable the GPU!
 # This second pass is needed as the fusion can put all the non float32 code
 # inside the elemwise. When there is no float64 op, this is working.
 optdb.register('gpu_after_fusion',
                ProxyDB(gpu_seqopt),
                optdb.__position__.get('elemwise_fusion', 71) + .1,
-               'gpu', 'fast_run')
+               'gpu')
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
