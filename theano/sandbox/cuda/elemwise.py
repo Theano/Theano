@@ -43,7 +43,7 @@ class NaiveAlgo(object):
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
         try:
-            code = scalar_op.c_support_code_apply(node=None, name="nodename")
+            code = scalar_op.c_support_code_apply(None, "nodename")
             if code:
                 raise SupportCodeError(scalar_op)
         except gof.utils.MethodNotDefined:
