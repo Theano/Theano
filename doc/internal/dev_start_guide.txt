@@ -43,6 +43,14 @@ Mailing list
 See the Theano main page for the theano-dev, theano-buildbot and
 theano-github mailing list. They are useful to Theano contributors.
 
+Git config
+----------
+
+.. code-block:: bash
+
+   git config --global user.email you@yourdomain.example.com
+   git config --global user.name "Your Name Comes Here"
+
 Typical development workflow
 ----------------------------
 
