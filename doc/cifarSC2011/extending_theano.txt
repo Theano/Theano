@@ -149,11 +149,10 @@ Test it!
 Testing the gradient
 --------------------
 
-The function :ref:`verify_grad
-<validating_grad>`
-verify the gradient of an Op or Theano graph. It compare the
-analytic(symbolicaly computed) gradient and the numeric
-gradient(computed through the Finite Difference Method).
+The function :ref:`verify_grad <validating_grad>`
+verifies the gradient of an Op or Theano graph. It compares the
+analytic (symbolically computed) gradient and the numeric
+gradient (computed through the Finite Difference Method).
 
 To verify the grad method of the DoubleOp, you can use this:
 
@@ -162,6 +161,9 @@ To verify the grad method of the DoubleOp, you can use this:
    import numpy
    import theano.tests
    theano.tests.unittest_tools.verify_grad(DoubleOp(), [numpy.random.rand(5,7,2)])
+
+If nothing happens, then it works! If you want to see it fail, you can
+implement a wrong gradient (for instance removing the multiplication by 2).
 
 Exercises 8
 -----------
