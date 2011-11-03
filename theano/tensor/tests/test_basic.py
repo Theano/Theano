@@ -194,23 +194,26 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     node = safe_make_node(self.op, *inputrs)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while making a node with inputs %s" \
-                        % (self.op, testname, inputs)
+                    err_msg = ("Test %s::%s: Error occurred while"
+                            " making a node with inputs %s") % (
+                                    self.op, testname, inputs)
                     exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
+                    raise type(exc_value, traceback)
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
-                        % (self.op, testname)
+                    err_msg = ("Test %s::%s: Error occurred while"
+                        " trying to make a Function") % (self.op, testname)
                     exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
-                if isinstance(self.expected, dict) and testname in self.expected:
+                    raise type(exc_value, traceback)
+                if (isinstance(self.expected, dict)
+                        and testname in self.expected):
                     expecteds = self.expected[testname]
-                    #with numpy version, when we print a number and read it back, we don't get exactly the same result
-                    #So we accept rounding error in that case.
+                    # with numpy version, when we print a number and read it
+                    # back, we don't get exactly the same result #So we accept
+                    # rounding error in that case.
                     eps = 5e-9
                 else:
                     expecteds = self.expected(*inputs)
@@ -224,27 +227,38 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     variables = f(*inputs)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while calling the Function on the inputs %s" \
-                        % (self.op, testname, inputs)
+                    err_msg = ("Test %s::%s: Error occurred while calling"
+                    " the Function on the inputs %s") % (
+                            self.op, testname, inputs)
                     exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
+                    raise type(exc_value, traceback)
 
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
 
-                for i, (variable, expected) in enumerate(izip(variables, expecteds)):
-                    if variable.dtype != expected.dtype or variable.shape != expected.shape or \
-                            numpy.any(numpy.abs(variable - expected) > eps):
-                        self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s. numpy.allclose return %s %s"
-                                  % (self.op, testname, i, inputs, expected,
-                                     variable,
-                                     numpy.allclose(variable, expected, atol=eps),
-                                     numpy.allclose(variable, expected)))
+                for i, (variable, expected) in enumerate(
+                        izip(variables, expecteds)):
+                    if (variable.dtype != expected.dtype
+                            or variable.shape != expected.shape
+                            or numpy.any(abs(variable - expected) > eps):
+                        self.fail(("Test %s::%s: Output %s gave the wrong"
+                            " value. With inputs %s, expected %s, got %s."
+                            " numpy.allclose return %s %s") % (
+                                self.op,
+                                testname,
+                                i,
+                                inputs,
+                                expected,
+                                 variable,
+                                 numpy.allclose(variable, expected, atol=eps),
+                                 numpy.allclose(variable, expected)))
 
                 for description, check in self.checks.items():
                     if not check(inputs, variables):
-                        self.fail("Test %s::%s: Failed check: %s (inputs were %s, outputs were %s)"
-                                  % (self.op, testname, description, inputs, variables))
+                        self.fail(("Test %s::%s: Failed check: %s (inputs"
+                            " were %s, outputs were %s)") % (
+                                self.op, testname, description,
+                                inputs, variables))
 
         def test_bad_build(self):
             if skip:
@@ -252,8 +266,10 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
-                self.assertRaises(Exception, safe_make_node, self.op, *inputrs)
-                # The old error string was ("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
+                self.assertRaises(Exception,
+                    safe_make_node, self.op, *inputrs)
+                # The old error string was ("Test %s::%s: %s was successfully
+                # instantiated on the following bad inputs: %s"
                 # % (self.op, testname, node, inputs))
 
         def test_bad_runtime(self):
@@ -266,23 +282,25 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     node = safe_make_node(self.op, *inputrs)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
-                        % (self.op, testname, inputs)
+                    err_msg = ("Test %s::%s: Error occurred while trying"
+                    " to make a node with inputs %s") % (
+                        self.op, testname, inputs)
                     exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
+                    raise type(exc_value, traceback)
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
                 except Exception:
                     type, exc_value, traceback = sys.exc_info()
-                    err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
-                        % (self.op, testname)
+                    err_msg = ("Test %s::%s: Error occurred while trying"
+                    " to make a Function") % (self.op, testname)
                     exc_value.args = exc_value.args + (err_msg, )
-                    raise type, exc_value, traceback
+                    raise type(exc_value, traceback)
 
-                # Add tester return a ValueError. Should we catch only this one?
-                # TODO: test that only this one is raised and catch only this one
-                #       or the subset that get raised.
+                # Add tester return a ValueError. Should we catch only this
+                # one?
+                # TODO: test that only this one is raised and catch only this
+                # one or the subset that get raised.
                 self.assertRaises(Exception, f, *inputs)
 
         def test_grad(self):
@@ -296,13 +314,16 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     inputs = [copy(input) for input in inputs]
                     inputrs = [value(input) for input in inputs]
                     try:
-                        utt.verify_grad(self.op, inputs, mode=self.mode, rel_tol=_grad_rtol)
+                        utt.verify_grad(self.op, inputs,
+                                mode=self.mode,
+                                rel_tol=_grad_rtol)
                     except Exception:
                         type, exc_value, traceback = sys.exc_info()
-                        err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
-                            % (self.op, testname, inputs)
+                        err_msg = ("Test %s::%s: Error occurred while"
+                            " computing the gradient on the following"
+                            " inputs: %s" ) % (self.op, testname, inputs)
                         exc_value.args = exc_value.args + (err_msg, )
-                        raise type, exc_value, traceback
+                        raise type(exc_value, traceback)
             finally:
                 config.warn.sum_div_dimshuffle_bug = backup
 
@@ -310,9 +331,19 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
     return Checker
 
 
-rand = lambda *shape: 2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1
-randint = lambda *shape: numpy.random.random_integers(-5, 5, shape)
-randcomplex = lambda *shape: numpy.complex128(2 * numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX) - 1)
+def rand(*shape):
+    r = numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
+    return r * 2 - 1
+
+
+def randint(*shape):
+    return numpy.random.random_integers(-5, 5, shape)
+
+
+# XXX: this so-called complex random array as all-zero imaginary parts
+def randcomplex(*shape):
+    r = numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
+    return numpy.complex128(2 * r - 1)
 
 
 def randint_nonzero(*shape):
@@ -371,7 +402,8 @@ def makeBroadcastTester(op, expected, checks={}, name=None, **kwargs):
 
             def inplace_check(inputs, outputs):
                 # this used to be inputs[0] is output[0]
-                # I changed it so that it was easier to satisfy by the DebugMode
+                # I changed it so that it was easier to satisfy by the
+                # DebugMode
                 return numpy.all(inputs[0] == outputs[0])
 
             checks = dict(checks, inplace_check=inplace_check)
