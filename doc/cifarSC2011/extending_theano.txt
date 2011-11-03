@@ -131,18 +131,18 @@ Op example
             return i0_shapes
 
         def grad(self, inputs, output_grads):
-            return [output_grads[0]*2]
+            return [output_grads[0] * 2]
 
 Test it!
 
 .. code-block:: python
 
     x = theano.tensor.matrix()
-    f = theano.function([x],DoubleOp()(x))
+    f = theano.function([x], DoubleOp()(x))
     import numpy
-    inp = numpy.random.rand(5,5)
+    inp = numpy.random.rand(5, 5)
     out = f(inp)
-    assert numpy.allclose(inp*2, out)
+    assert numpy.allclose(inp * 2, out)
     print inp
     print out
 
