@@ -143,12 +143,12 @@ following methods:
 
    This function is needed for shape optimization. ``shapes`` is a
    list with one tuple for each input of the Apply node (which corresponds
-   to the inputs of the op).  Each tuple contains 1 element for 
-   each dimension of the corresponding input. The value is the 
-   shape (number of elements) along the corresponding dimension of that
+   to the inputs of the op).  Each tuple contains as many elements as the
+   number of dimensions of the corresponding input. The value of each element
+   is the shape (number of items) along the corresponding dimension of that
    specific input.
 
-   While this might sound complicated, it is nothing more then the shape
+   While this might sound complicated, it is nothing more than the shape
    of each input as symbolic variables (one per dimension).
 
    The function should return a list with one tuple for each output.
