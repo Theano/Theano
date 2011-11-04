@@ -198,7 +198,6 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                             " making a node with inputs %s") % (
                                     self.op, testname, inputs)
                     exc.args += (err_msg,)
-                    print err_msg
                     raise
 
                 try:
@@ -207,7 +206,6 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
                     exc.args += (err_msg,)
-                    print err_msg
                     raise
                 if (isinstance(self.expected, dict)
                         and testname in self.expected):
@@ -231,7 +229,6 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     " the Function on the inputs %s") % (
                             self.op, testname, inputs)
                     exc.args += (err_msg,)
-                    print err_msg
                     raise
 
                 if not isinstance(expecteds, (list, tuple)):
@@ -286,7 +283,6 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                         " to make a node with inputs %s") % (
                             self.op, testname, inputs)
                     exc.args += (err_msg,)
-                    print err_msg
                     raise
 
                 try:
@@ -295,7 +291,6 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a Function") % (self.op, testname)
                     exc.args += (err_msg,)
-                    print err_msg
                     raise
 
                 # Add tester return a ValueError. Should we catch only this
@@ -318,11 +313,10 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                         utt.verify_grad(self.op, inputs,
                                 mode=self.mode,
                                 rel_tol=_grad_rtol)
-                    except Exception:
+                    except Exception, exc:
                         err_msg = ("Test %s::%s: Error occurred while"
                             " computing the gradient on the following"
                             " inputs: %s" ) % (self.op, testname, inputs)
-                        print err_msg
                         exc.args += (err_msg,)
                         raise
             finally:
