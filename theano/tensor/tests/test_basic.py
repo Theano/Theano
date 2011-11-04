@@ -42,6 +42,7 @@ try:
 except ImportError:
     if config.mode == "FAST_COMPILE":
         mode_no_scipy = "FAST_RUN"
+floatX = config.floatX
 
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
@@ -658,38 +659,61 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
 
 #Those are corner case when rounding. Their is many rounding algo.
 #c round() fct and numpy round are not the same!
-corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
+corner_case = numpy.asarray(
+        [-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0,
+            0.49, 0.5, 0.9, 1, 1.5, 2, 2.5],
+        dtype=floatX)
+
 #we remove 0 here as the grad is not always computable numerically.
-corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5], dtype=config.floatX)
-_good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
-                                          corner_case = (corner_case,),
-                                          complex = (randcomplex(2,3),),
-                                          empty = (numpy.asarray([]),))
+corner_case_grad = numpy.asarray(
+        [-2.5, -2., -1.5, -1., -0.5, -.51, -.49,
+            0.49, 0.5, 0.9, 1, 1.5, 2, 2.5],
+        dtype=floatX)
 
-_good_broadcast_unary_normal_float_no_empty = copy(_good_broadcast_unary_normal_float)
-del _good_broadcast_unary_normal_float_no_empty['empty']
-_good_broadcast_unary_normal_float_no_empty_no_complex = copy(_good_broadcast_unary_normal_float_no_empty)
-del _good_broadcast_unary_normal_float_no_empty_no_complex['complex']
-_good_broadcast_unary_normal_float_no_complex = copy(_good_broadcast_unary_normal_float)
-del _good_broadcast_unary_normal_float_no_complex['complex']
+_good_broadcast_unary_normal_float = dict(
+        normal=[rand_ranged(-5, 5, (2, 3))],
+        corner_case=[corner_case],
+        complex=[randcomplex(2,3)],
+        empty=[numpy.asarray([])])
 
-_good_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
-                                    integers = (randint_ranged(-5, 5, (2, 3)),),
-                                    corner_case = (corner_case,),
-                                    complex = (randcomplex(2,3),),
-                                    empty = (numpy.asarray([]),))
+def copy_except(dct, *args):
+    """Return dct but with the keys named by args removed.
+    """
+    rval = copy(dct)
+    for a in args:
+        if a in rval:
+            del rval[a]
+    return rval
 
-_good_broadcast_unary_normal_no_complex = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
-                                               integers = (randint_ranged(-5, 5, (2, 3)),),
-                                               corner_case = (corner_case,),
-                                               #complex = (randcomplex(2,3),),
-                                               empty = (numpy.asarray([]),))
+_good_broadcast_unary_normal_float_no_empty = copy_except(
+        _good_broadcast_unary_normal_float, 'empty')
 
-_grad_broadcast_unary_normal = dict(normal = (numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX),),
-                                    corner_case = (corner_case_grad,),
-                                    #complex = (randcomplex(2,3),),
-                                    #empty = (numpy.asarray([]),)
-                                    )
+_good_broadcast_unary_normal_float_no_empty_no_complex = copy_except(
+        _good_broadcast_unary_normal_float_no_empty, 'complex')
+
+_good_broadcast_unary_normal_float_no_complex = copy_except(
+        _good_broadcast_unary_normal_float, 'complex')
+
+_good_broadcast_unary_normal = dict(
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX)],
+        integers=[randint_ranged(-5, 5, (2, 3))],
+        corner_case=[corner_case],
+        complex=[randcomplex(2,3)],
+        empty=[numpy.asarray([])],
+        )
+
+_good_broadcast_unary_normal_no_complex = dict(
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+        integers=[randint_ranged(-5, 5, (2, 3))],
+        corner_case=[corner_case],
+        empty=[numpy.asarray([])],
+        )
+
+_grad_broadcast_unary_normal = dict(
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+        corner_case = [corner_case_grad],
+        #empty = [numpy.asarray([])] # XXX: should this be included?
+        )
 
 
 
@@ -725,25 +749,39 @@ SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                        good = _good_broadcast_unary_normal_no_complex,
                                        grad = _grad_broadcast_unary_normal,
                                        inplace = True)
-CeilTester = makeBroadcastTester(op = tensor.ceil,
-                                  expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
-                                  good = _good_broadcast_unary_normal_no_complex,
-                                  grad = _grad_broadcast_unary_normal)
-CeilInplaceTester = makeBroadcastTester(op = inplace.ceil_inplace,
-                                         expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
-                                         good = _good_broadcast_unary_normal_no_complex,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
 
-FloorTester = makeBroadcastTester(op = tensor.floor,
-                                  expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
-                                  good = _good_broadcast_unary_normal_no_complex,
-                                  grad = _grad_broadcast_unary_normal)
-FloorInplaceTester = makeBroadcastTester(op = inplace.floor_inplace,
-                                         expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
-                                         good = _good_broadcast_unary_normal_no_complex,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
+
+CeilTester = makeBroadcastTester(op=tensor.ceil,
+        expected=lambda a: numpy.asarray(
+            numpy.ceil(a),
+            a.dtype),
+        good=_good_broadcast_unary_normal_no_complex,
+        # corner cases includes a lot of integers: points where Ceil is not
+        # continuous (not differentiable)
+        grad=copy_except(_grad_broadcast_unary_normal, 'corner_case'))
+
+CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
+        expected=lambda a: numpy.asarray(numpy.ceil(a), a.dtype),
+        good=_good_broadcast_unary_normal_no_complex,
+        # corner cases includes a lot of integers: points where Ceil is not
+        # continuous (not differentiable)
+        grad=copy_except(_grad_broadcast_unary_normal, 'corner_case'),
+        inplace=True)
+
+FloorTester = makeBroadcastTester(op=tensor.floor,
+        expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+        good=_good_broadcast_unary_normal_no_complex,
+        # XXX: why does grad of floor not give huge values at
+        #      the integer points in the 'corner_case' in
+        #      _grad_broadcast_unary_normal?  It seems this test should fail,
+        #      yet it does not...
+        grad=_grad_broadcast_unary_normal)
+
+FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
+        expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+        good=_good_broadcast_unary_normal_no_complex,
+        grad=_grad_broadcast_unary_normal,
+        inplace = True)
 
 RoundHalfToEvenTester = makeBroadcastTester(op = tensor.round_half_to_even,
                                   expected = numpy.round,
