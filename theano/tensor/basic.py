@@ -2822,6 +2822,14 @@ def int_div(a, b):
     """elementwise integer-division"""
     # see decorator for function body
 
+
+def ceil_intdiv(a, b):
+    """ return ceil(a/b) when a and b are int """
+# Is it faster to cast to float when this don't loose precission?
+# return cast(cast(a, scalar.upcast(a, 'float32')) / b, scal.upcast(a, b))
+    return int_div(a, b) + neq(a % b, 0)
+
+
 def mod_check(x, y):
     """Make sure we do not try to use complex numbers."""
     if (as_tensor_variable(x).dtype in complex_dtypes or

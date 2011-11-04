@@ -541,31 +541,37 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-_good_broadcast_div_mod_normal_float_inplace = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                                         scalar = (rand(2, 3), rand(1, 1)),
-                                         row = (rand(2, 3), rand(1, 3)),
-                                         column = (rand(2, 3), rand(2, 1)),
-                                         dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-                                         dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
-                                         #integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
-                                         #integers_known_to_fail = (numpy.array(-1), numpy.array(5))
-                                         complex1 = (randcomplex(2,3),randcomplex(2,3)),
-                                         complex2 = (randcomplex(2,3),rand(2,3)),
-                                         #complex3 = (rand(2,3),randcomplex(2,3)),# Inplace on the first element. Must have the same type.
-                                         empty1 = (numpy.asarray([]), numpy.asarray([1])),
-                                         #empty2 = (numpy.asarray([0]), numpy.asarray([])),
-                                         )
+# We can't have both input as interger as we need the output
+# to have the same dtype to work inplace.
+_good_broadcast_div_mod_normal_float_no_complex = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
+    dtype_mixup_2=(randint_nonzero(2, 3), rand(2, 3)),
+    #empty2=(numpy.asarray([0]), numpy.asarray([])),
+    )
+_good_broadcast_div_mod_normal_float_inplace = dict(
+    empty1=(numpy.asarray([]), numpy.asarray([1])),
+    complex1=(randcomplex(2, 3), randcomplex(2, 3)),
+    complex2=(randcomplex(2, 3), rand(2, 3)),
+    # Inplace on the first element. Must have the same type.
+    #complex3=(rand(2, 3) ,randcomplex(2, 3)),
+    **_good_broadcast_div_mod_normal_float_no_complex
+       )
 _good_broadcast_div_mod_normal_float = dict(empty2 = (numpy.asarray([0]), numpy.asarray([])),
                                             **_good_broadcast_div_mod_normal_float_inplace
                                             )
+
 def no_complex(d):
     """Remove pairs from dictionary d when the value contains complex data."""
     return dict((k, v) for k, v in d.iteritems()
                 if all(str(x.dtype) not in tensor.complex_dtypes for x in v))
 
 
-# 'No-complex' versions.
-_good_broadcast_div_mod_normal_float_no_complex = no_complex(
+# 'No-complex' versions, with empty2
+_good_broadcast_div_mod_normal_float_no_complex2 = no_complex(
                                         _good_broadcast_div_mod_normal_float)
 _good_broadcast_div_mod_normal_float_inplace_no_complex = no_complex(
                                 _good_broadcast_div_mod_normal_float_inplace)
@@ -605,9 +611,20 @@ TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          grad_rtol=div_grad_rtol,
                                          inplace = True)
 
+
+CeilIntDivTester = makeBroadcastTester(
+    op=tensor.ceil_intdiv,
+    expected=lambda x, y: check_floatX((x, y), (x // y) + ((x % y) != 0)),
+    good=_good_broadcast_div_mod_normal_float_no_complex,
+    # As we implement this function with neq, the gradient returned is always 0.
+#    grad=_grad_broadcast_div_mod_normal,
+#    grad_rtol=div_grad_rtol,
+    )
+
+
 ModTester = makeBroadcastTester(op = tensor.mod,
                                   expected = lambda x, y: numpy.asarray(x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
-                                  good = _good_broadcast_div_mod_normal_float_no_complex,
+                                  good = _good_broadcast_div_mod_normal_float_no_complex2,
 #                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
