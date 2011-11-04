@@ -374,6 +374,8 @@ A few tools have been developed to help automate the development of
 unitests for Theano Ops.
 
 
+.. _validating_grad:
+
 Validating the Gradient
 -----------------------
 

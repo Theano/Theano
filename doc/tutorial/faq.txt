@@ -1,0 +1,23 @@
+
+.. _faq:
+
+==========================
+Frequently Asked Questions
+==========================
+
+TypeError: object of type 'TensorVariable' has no len()
+-------------------------------------------------------
+
+If you receive this error:
+
+.. code-block:: python
+
+   TypeError: object of type 'TensorVariable' has no len()
+
+We can't implement the __len__ function on Theano Variables. This is
+because Python requires that this function returns an integer, but we
+can't do this as we are working with symbolic variables. You can use
+`var.shape[0]` as a workaround.
+
+Also we can't change the above error message into a more explicit one
+because of some other Python internal behavior that can't be modified.
