@@ -1206,13 +1206,16 @@ class Mod(BinaryScalarOp):
 
     def c_code(self, node, name, (x, y), (z, ), sub):
         """
-        We want the result to have the same sign as python, not the other implementation of mod.
+        We want the result to have the same sign as python, not the other
+        implementation of mod.
         """
-        #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
+        # raise NotImplementedError("Unlike Python, C's modulo returns negative
+        # modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
         if (str(t) in imap(str, discrete_types) or
-            t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64'] or
-            t in discrete_types):
+                t in ['uint8','int8','uint16','int16'] or
+                t in ['uint32','int32','uint64','int64'] or
+                t in discrete_types):
             # The above or's should not be needed anymore. However, for now we
             # keep them out of safety, and verify they are useless with an
             # assert.
