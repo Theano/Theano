@@ -2100,6 +2100,16 @@ class Composite(ScalarOp):
                 return ()
         return tuple(rval)
 
+    def c_support_code(self):
+        rval = []
+        for subnode in self.env.toposort():
+            try:
+                rval.append(subnode.op.c_support_code())
+            except gof.utils.MethodNotDefined:
+                pass
+        # remove duplicate code blocks
+        return "\n".join(sorted(set(rval)))
+
     def c_support_code_apply(self, node, name):
         rval = []
         for subnode, subnodename in zip(self.env.toposort(), self.nodenames):
@@ -2110,6 +2120,10 @@ class Composite(ScalarOp):
                             subnodename % dict(nodename=name)))
             except gof.utils.MethodNotDefined:
                 pass
+        # there should be no need to remove duplicate code blocks because
+        # each block should have been specialized for the given nodename.
+        # Any block that isn't specialized should be returned via
+        # c_support_code instead of c_support_code_apply.
         return "\n".join(rval)
 
     def __eq__(self, other):
