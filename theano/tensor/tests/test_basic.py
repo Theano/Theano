@@ -193,22 +193,22 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                 try:
                     #node = self.op.make_node(*inputrs)
                     node = safe_make_node(self.op, *inputrs)
-                except Exception:
-                    type, exc_value, traceback = sys.exc_info()
+                except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                             " making a node with inputs %s") % (
                                     self.op, testname, inputs)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type(exc_value, traceback)
+                    exc.args += (err_msg,)
+                    print err_msg
+                    raise
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
-                except Exception:
-                    type, exc_value, traceback = sys.exc_info()
+                except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type(exc_value, traceback)
+                    exc.args += (err_msg,)
+                    print err_msg
+                    raise
                 if (isinstance(self.expected, dict)
                         and testname in self.expected):
                     expecteds = self.expected[testname]
@@ -226,13 +226,13 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
 
                 try:
                     variables = f(*inputs)
-                except Exception:
-                    type, exc_value, traceback = sys.exc_info()
+                except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while calling"
                     " the Function on the inputs %s") % (
                             self.op, testname, inputs)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type(exc_value, traceback)
+                    exc.args += (err_msg,)
+                    print err_msg
+                    raise
 
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
@@ -241,7 +241,7 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                         izip(variables, expecteds)):
                     if (variable.dtype != expected.dtype
                             or variable.shape != expected.shape
-                            or numpy.any(abs(variable - expected) > eps):
+                            or numpy.any(abs(variable - expected) > eps)):
                         self.fail(("Test %s::%s: Output %s gave the wrong"
                             " value. With inputs %s, expected %s, got %s."
                             " numpy.allclose return %s %s") % (
@@ -281,22 +281,22 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                 inputrs = [value(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
-                except Exception:
-                    type, exc_value, traceback = sys.exc_info()
+                except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
-                    " to make a node with inputs %s") % (
-                        self.op, testname, inputs)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type(exc_value, traceback)
+                        " to make a node with inputs %s") % (
+                            self.op, testname, inputs)
+                    exc.args += (err_msg,)
+                    print err_msg
+                    raise
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
-                except Exception:
-                    type, exc_value, traceback = sys.exc_info()
+                except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
-                    " to make a Function") % (self.op, testname)
-                    exc_value.args = exc_value.args + (err_msg, )
-                    raise type(exc_value, traceback)
+                        " to make a Function") % (self.op, testname)
+                    exc.args += (err_msg,)
+                    print err_msg
+                    raise
 
                 # Add tester return a ValueError. Should we catch only this
                 # one?
@@ -319,12 +319,12 @@ def makeTester(name, op, expected, checks={}, good={}, bad_build={},
                                 mode=self.mode,
                                 rel_tol=_grad_rtol)
                     except Exception:
-                        type, exc_value, traceback = sys.exc_info()
                         err_msg = ("Test %s::%s: Error occurred while"
                             " computing the gradient on the following"
                             " inputs: %s" ) % (self.op, testname, inputs)
-                        exc_value.args = exc_value.args + (err_msg, )
-                        raise type(exc_value, traceback)
+                        print err_msg
+                        exc.args += (err_msg,)
+                        raise
             finally:
                 config.warn.sum_div_dimshuffle_bug = backup
 
@@ -5129,10 +5129,10 @@ class test_size(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if 1:
+    if 0:
         unittest.main()
     else:
-        testcase =  T_Join_and_Split
+        testcase = FloorInplaceTester
 
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
