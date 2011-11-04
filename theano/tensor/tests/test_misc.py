@@ -71,3 +71,14 @@ def test_bug_2009_07_17_borrowed_output():
     assert id_z != id_other
     # Just to be 100% sure, ensure that z was not altered.
     assert (z == z_backup).all()
+
+
+def test_deepcopied_type_filter():
+    a = copy.deepcopy(tensor.matrix())
+
+    # This should run cleanly.
+    # As of the time of writing, it fails.
+    a.type.filter(
+            numpy.ones((2,2), dtype=a.dtype),
+            strict=True)
+
