@@ -17,7 +17,11 @@ fi
 
 echo "nb element in the compiledir:"
 ls ${COMPILEDIR}|wc -l
-FLAGS=warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,$FLAGS
+FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,$FLAGS
+# Ignore user device and floatX config.
+# I do this as the test are done to run with device=cpu
+# And that we have one test for the float32 case.
+FLAGS=${FLAGS},device=cpu,floatX=float64
 export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 
 echo "executing nosetests with mode=FAST_COMPILE"
