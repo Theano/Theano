@@ -127,17 +127,43 @@ Op example
             z = output_storage[0]
             z[0] = x * 2
 
+        def infer_shape(self, node, i0_shapes):
+            return i0_shapes
+
+        def grad(self, inputs, output_grads):
+            return [output_grads[0] * 2]
+
 Test it!
 
->>> x = theano.tensor.matrix()
->>> f = theano.function([x],DoubleOp()(x))
->>> import numpy
->>> inp = numpy.random.rand(5,5)
->>> out = f(inp)
->>> assert numpy.allclose(inp*2, out)
->>> print inp
->>> print out
+.. code-block:: python
 
+    x = theano.tensor.matrix()
+    f = theano.function([x], DoubleOp()(x))
+    import numpy
+    inp = numpy.random.rand(5, 5)
+    out = f(inp)
+    assert numpy.allclose(inp * 2, out)
+    print inp
+    print out
+
+Testing the gradient
+--------------------
+
+The function :ref:`verify_grad <validating_grad>`
+verifies the gradient of an Op or Theano graph. It compares the
+analytic (symbolically computed) gradient and the numeric
+gradient (computed through the Finite Difference Method).
+
+To verify the grad method of the DoubleOp, you can use this:
+
+.. code-block:: python
+
+   import numpy
+   import theano.tests
+   theano.tests.unittest_tools.verify_grad(DoubleOp(), [numpy.random.rand(5,7,2)])
+
+If nothing happens, then it works! If you want to see it fail, you can
+implement a wrong gradient (for instance removing the multiplication by 2).
 
 Exercises 8
 -----------

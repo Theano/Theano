@@ -3857,6 +3857,9 @@ class Split(Op):
         return (type(self) == type(other) and
                 self.len_splits == other.len_splits)
 
+    def __str__(self):
+        return self.__class__.__name__ + "{%s}" % self.len_splits
+
     def __hash__(self):
         return hash(Split) ^ self.len_splits
 
