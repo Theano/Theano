@@ -670,23 +670,29 @@ _good_broadcast_unary_normal_float = dict(
         complex=[randcomplex(2,3)],
         empty=[numpy.asarray([])])
 
-def copy_except(dct, *args):
-    """Return dct but with the keys named by args removed.
+def copymod(dct, without=[], **kwargs):
+    """Return dct but with the keys named by args removed, and with
+    kwargs added.
     """
     rval = copy(dct)
-    for a in args:
+    for a in without:
         if a in rval:
             del rval[a]
+    for kw, val in kwargs.items():
+        dct[kw] = val
     return rval
 
-_good_broadcast_unary_normal_float_no_empty = copy_except(
-        _good_broadcast_unary_normal_float, 'empty')
+_good_broadcast_unary_normal_float_no_empty = copymod(
+        _good_broadcast_unary_normal_float,
+        without=['empty'])
 
-_good_broadcast_unary_normal_float_no_empty_no_complex = copy_except(
-        _good_broadcast_unary_normal_float_no_empty, 'complex')
+_good_broadcast_unary_normal_float_no_empty_no_complex = copymod(
+        _good_broadcast_unary_normal_float_no_empty,
+        without=['complex'])
 
-_good_broadcast_unary_normal_float_no_complex = copy_except(
-        _good_broadcast_unary_normal_float, 'complex')
+_good_broadcast_unary_normal_float_no_complex = copymod(
+        _good_broadcast_unary_normal_float,
+        without=['complex'])
 
 _good_broadcast_unary_normal = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)),dtype=config.floatX)],
@@ -750,16 +756,22 @@ CeilTester = makeBroadcastTester(op=tensor.ceil,
             numpy.ceil(a),
             a.dtype),
         good=_good_broadcast_unary_normal_no_complex,
-        # corner cases includes a lot of integers: points where Ceil is not
-        # continuous (not differentiable)
-        grad=copy_except(_grad_broadcast_unary_normal, 'corner_case'))
+        grad=copymod(_grad_broadcast_unary_normal,
+            without=['corner_case'],
+            # corner_case includes ints where ceil is not differentiable
+            extra=[numpy.asarray([-2.5, -1.5, -1.51, 0.49, .98, 1.02],
+                dtype=floatX)]))
 
 CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
         expected=lambda a: numpy.asarray(numpy.ceil(a), a.dtype),
         good=_good_broadcast_unary_normal_no_complex,
         # corner cases includes a lot of integers: points where Ceil is not
         # continuous (not differentiable)
-        grad=copy_except(_grad_broadcast_unary_normal, 'corner_case'),
+        grad=copymod(_grad_broadcast_unary_normal,
+            without=['corner_case'],
+            # corner_case includes ints where ceil is not differentiable
+            extra=[numpy.asarray([-2.5, -1.5, -1.51, 0.49, .98, 1.02],
+                dtype=floatX)]),
         inplace=True)
 
 FloorTester = makeBroadcastTester(op=tensor.floor,
