@@ -670,12 +670,15 @@ class GradientError(Exception):
 
 
     def __str__(self):
+        # args may have been inserted by e.g. makeTester
+        args_msg = ", ".join(str(a) for a in self.args)
         return """GradientError: numeric gradient and analytic gradient exceed tolerance:
         At position %i of argument %i,
             abs. error = %f,  abs. tolerance = %f
-            rel. error = %f,  rel. tolerance = %f
+            rel. error = %f,  rel. tolerance = %f\nException args: %s
         """ %(self.err_pos, self.arg,
               self.abs_err, self.abs_tol,
-              self.rel_err, self.rel_tol)
+              self.rel_err, self.rel_tol,
+              args_msg)
 
 verify_grad.E_grad = GradientError

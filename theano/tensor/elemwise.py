@@ -929,6 +929,9 @@ class Elemwise(Op):
     def c_headers(self):
         return ['<vector>', '<algorithm>']
 
+    def c_support_code(self):
+        return self.scalar_op.c_support_code()
+
     def c_support_code_apply(self, node, nodename):
         support_code = self.scalar_op.c_support_code_apply(node,
                 nodename + '_scalar_')
