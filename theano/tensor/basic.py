@@ -15,8 +15,6 @@ import numpy, theano
 from theano import gof
 from theano.gof import Apply, Constant, Op, Type, Value, Variable
 
-
-
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
@@ -544,21 +542,29 @@ class TensorType(Type):
                     'Expected an array-like object, but found a Variable: '
                     'maybe you are trying to call a function on a (possibly '
                     'shared) variable instead of a numeric array?')
-        if (type(data) is numpy.ndarray) and (data.dtype is self.numpy_dtype):
+
+        dtype_eq = theano.misc.safe_asarray.dtype_eq
+
+        if ((type(data) is numpy.ndarray)
+                and dtype_eq(data.dtype, self.numpy_dtype)):
             pass # fall through to ndim check
         elif strict:
             # If any of the two conditions above was not met,
             # we raise a meaningful TypeError.
             if not (type(data) is numpy.ndarray):
-                raise TypeError("%s expected a ndarray object." % self, data, type(data))
-            if not (data.dtype is self.numpy_dtype):
-                raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.numpy_dtype, data.dtype))
-            assert False, "This point in the program should never be reached."
+                raise TypeError("%s expected a ndarray object." % self,
+                        data, type(data))
+            if not dtype_eq(data.dtype, self.numpy_dtype):
+                raise TypeError(("%s expected a ndarray object with "
+                        "dtype = %s (got %s).") % (
+                            self, self.numpy_dtype, data.dtype))
+            assert False, "This point should never be reached."
         else:
             if allow_downcast:
                 # Convert to self.dtype, regardless of the type of data
-                data = theano._asarray(data, dtype=self.dtype) #TODO - consider to pad shape with ones
-                # to make it consistent with self.broadcastable... like vector->row type thing
+                data = theano._asarray(data, dtype=self.dtype)
+                # TODO: consider to pad shape with ones to make it consistent
+                # with self.broadcastable... like vector->row type thing
             else:
                 if isinstance(data, numpy.ndarray):
                     # Check if self.dtype can accurately represent data

@@ -8,6 +8,14 @@ import numpy
 
 import theano
 
+
+def dtype_eq(a, b):
+    """Returns true iff numpy.dtype objects `a` and `b` match for the purposes
+    of theano code generators.
+    """
+    return a == b and a.num == b.num
+
+
 def _asarray(a, dtype, order=None):
     """Convert the input to a Numpy array.
 
