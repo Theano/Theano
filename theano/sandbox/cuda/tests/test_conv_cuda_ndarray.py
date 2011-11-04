@@ -1,3 +1,6 @@
+"""
+Tests for GPU convolution
+"""
 import sys
 import time
 import unittest

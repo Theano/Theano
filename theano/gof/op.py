@@ -272,7 +272,8 @@ class CLinkerOp(CLinkerObject):
          - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise utils.MethodNotDefined("c_support_code_apply", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("c_support_code_apply",
+                type(self), self.__class__.__name__)
 
 
 class PureOp(object):

@@ -1,18 +1,21 @@
-import copy, sys
-import numpy, theano
+import copy
+import sys
+import numpy
+import theano
 from theano import tensor
 from theano.tensor.nnet import crossentropy_softmax_argmax_1hot_with_bias
 
-def test_bug_2009_06_02_trac_387():
 
+def test_bug_2009_06_02_trac_387():
     y = tensor.lvector('y')
-    #f = theano.function([y], tensor.stack(y[0] / 2))
-    #f = theano.function([y], tensor.join(0,tensor.shape_padleft(y[0] / 2,1)))
-    f = theano.function([y], tensor.int_div(tensor.DimShuffle(y[0].broadcastable, ['x'])(y[0]), 2))
+    f = theano.function([y],
+            tensor.int_div(
+                tensor.DimShuffle(y[0].broadcastable, ['x'])(y[0]), 2))
     sys.stdout.flush()
     print f(numpy.ones(1, dtype='int64') * 3)
-    #z = tensor.lscalar('z')
-    #f = theano.function([z], tensor.DimShuffle([], ['x'])(z) / 2)
+    # XXX: there is no assert, nor comment that DEBUGMODE is to do the
+    #      checking. What was the bug, and how is it being tested?
+
 
 def test_bug_2009_07_17_borrowed_output():
     """Regression test for a bug where output was borrowed by mistake."""
@@ -21,10 +24,10 @@ def test_bug_2009_07_17_borrowed_output():
     # The output should *NOT* be borrowed.
     g = theano.function([a, b],
             theano.Out(theano.tensor.dot(a, b), borrow=False))
-    
+
     x = numpy.zeros((1, 2))
     y = numpy.ones((2, 5))
-    
+
     z = g(x, y)
     print z         # Should be zero.
     x.fill(1)
@@ -51,11 +54,11 @@ def test_bug_2009_07_17_borrowed_output():
     output = nll_softmax_argmax[1]
     g = theano.function([test_output_activation_no_bias, test_b2, test_target],
             theano.Out(output, borrow=False))
-    
+
     a = numpy.zeros((1, 5))
     b = numpy.ones(5)
     c = numpy.zeros(1, dtype=numpy.int32)
-    
+
     z = g(a, b, c)
     z_backup = copy.copy(z)
     id_z = id(z)
@@ -68,4 +71,3 @@ def test_bug_2009_07_17_borrowed_output():
     assert id_z != id_other
     # Just to be 100% sure, ensure that z was not altered.
     assert (z == z_backup).all()
-    
