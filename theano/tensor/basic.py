@@ -544,14 +544,14 @@ class TensorType(Type):
                     'Expected an array-like object, but found a Variable: '
                     'maybe you are trying to call a function on a (possibly '
                     'shared) variable instead of a numeric array?')
-        if (type(data) is numpy.ndarray) and (data.dtype is self.numpy_dtype):
+        if (type(data) is numpy.ndarray) and (data.dtype == self.numpy_dtype):
             pass # fall through to ndim check
         elif strict:
             # If any of the two conditions above was not met,
             # we raise a meaningful TypeError.
             if not (type(data) is numpy.ndarray):
                 raise TypeError("%s expected a ndarray object." % self, data, type(data))
-            if not (data.dtype is self.numpy_dtype):
+            if not (data.dtype == self.numpy_dtype):
                 raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.numpy_dtype, data.dtype))
             assert False, "This point in the program should never be reached."
         else:
