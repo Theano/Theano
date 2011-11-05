@@ -5,7 +5,7 @@ import StringIO
 import sys
 import unittest
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -5140,6 +5140,37 @@ class test_size(unittest.TestCase):
         x = theano.shared(y)
         assert y.size == function([], x.size)()
 
+
+class test_numpy_assumptions(unittest.TestCase):
+
+    """
+    Verify that some assumptions Theano makes on Numpy's behavior still hold.
+    """
+
+    def test_ndarray_copy(self):
+        """
+        A copy or deepcopy of the ndarray type should not create a new object.
+
+        This is because Theano makes some comparisons of the form:
+            if type(x) is numpy.ndarray
+        """
+        assert copy(numpy.ndarray) is numpy.ndarray
+        assert deepcopy(numpy.ndarray) is numpy.ndarray
+
+    def test_dtype_equality(self):
+        """
+        Ensure dtype string comparisons are consistent.
+
+        Theano often uses string representations of dtypes (e.g. 'float32'). We
+        need to make sure that comparing the string representations is the same
+        as comparing the dtype objects themselves.
+        """
+        dtypes = get_numeric_types(with_complex=True)
+        # Perform all pairwise comparisons of dtypes, making sure comparing
+        # their string representation yields the same result.
+        for dtype1_idx, dtype1 in enumerate(dtypes):
+            for dtype2 in dtypes[dtype1_idx + 1:]:
+                assert (dtype1 == dtype2) == (str(dtype1) == str(dtype2))
 
 
 if __name__ == '__main__':
