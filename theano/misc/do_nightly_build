@@ -15,34 +15,35 @@ if [ "$1" == "--buildbot" ]; then
     PROFILING="--with-coverage --cover-package=theano"
 fi
 
-echo "nb element in the compiledir:"
+echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,$FLAGS
-# Ignore user device and floatX config.
-# I do this as the test are done to run with device=cpu
-# And that we have one test for the float32 case.
+# Ignore user device and floatX config, because:
+#   1. Tests are intended to be run with device=cpu.
+#   2. We explicitly add 'floatX=float32' in one run of the test suite below,
+#      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
 export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 
-echo "executing nosetests with mode=FAST_COMPILE"
+echo "Executing nosetests with mode=FAST_COMPILE"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
-echo "nb element in the compiledir:"
+echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
-echo "executing nosetests with mode=FAST_RUN"
+echo "Executing nosetests with mode=FAST_RUN"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
-echo "nb element in the compiledir:"
+echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
-echo "executing nosetests with mode=FAST_RUN,floatX=float32"
+echo "Executing nosetests with mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
-echo "nb element in the compiledir:"
+echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
-echo "executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
+echo "Executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
 THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}
 
-echo "nb element in the compiledir:"
+echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 echo
