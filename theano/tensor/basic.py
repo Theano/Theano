@@ -2830,7 +2830,7 @@ def ceil_intdiv(a, b):
     Works for all dtypes, but mostly useful when a and b are int.
     """
     # If a and b are int with not many significant bits, we could
-    # cast them to float to avoid doing the module. We do not know if this
+    # cast them to float to avoid doing the modulo. We do not know if this
     # is faster or not. But this is not safe for int64 as the cast will
     # lose precision.
     # e.g.: cast(cast(a, scalar.upcast(a, 'float32')) / b, scal.upcast(a, b))

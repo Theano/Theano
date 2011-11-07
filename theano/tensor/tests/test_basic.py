@@ -553,8 +553,6 @@ def copymod(dct, without=[], **kwargs):
         rval[kw] = val
     return rval
 
-# We can't have both input as interger as we need the output
-# to have the same dtype to work inplace.
 _good_broadcast_div_mod_normal_float_no_complex = dict(
     same_shapes=(rand(2, 3), rand(2, 3)),
     scalar=(rand(2, 3), rand(1, 1)),
@@ -563,10 +561,11 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
     dtype_mixup_2=(randint_nonzero(2, 3), rand(2, 3)),
 # Fix problem with integers and uintegers and add them.
-# Them remove there specific addition to CeilIntDivTester tests.
+# Them remove their specific addition to CeilIntDivTester tests.
 #    integer=(randint(2, 3), randint_nonzero(2, 3)),
 #    uinteger=(randint(2, 3).astype("uint8"),
 #              randint_nonzero(2, 3).astype("uint8")),
+    # This empty2 doesn't work for some tests. I don't remember why
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
     )
 
