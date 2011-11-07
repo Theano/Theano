@@ -1117,29 +1117,36 @@ class test_fusion(unittest.TestCase):
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
 
+
+class TimesN(theano.scalar.basic.UnaryScalarOp):
+    """Used in test TestCompositeCodegen
+
+    Must be outside of the class, otherwise, the c cache code can't
+    pickle this class and this cause stuff printing during test.
+    """
+    def __init__(self, n, *args, **kwargs):
+        self.n = n
+        theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
+
+    def impl(self, x):
+        return x * self.n
+
+    def c_support_code_apply(self, node, nodename):
+        n = str(self.n)
+        return """
+        float %(nodename)s_timesn(float x) { return x * %(n)s; }
+        """ % locals()
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
+
+
 class TestCompositeCodegen(unittest.TestCase):
     """
     Test The Composite Ops code generation in a case where there is multiple
     scalar ops with support code.
     """
     def setUp(self):
-        class TimesN(theano.scalar.basic.UnaryScalarOp):
-            def __init__(self, n, *args, **kwargs):
-                self.n = n
-                theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
-
-            def impl(self, x):
-                return x * self.n
-
-            def c_support_code_apply(self, node, nodename):
-                n = str(self.n)
-                return """
-                float %(nodename)s_timesn(float x) { return x * %(n)s; }
-                """ % locals()
-
-            def c_code(self, node, name, (x, ), (z, ), sub):
-                return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
-
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
         self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
