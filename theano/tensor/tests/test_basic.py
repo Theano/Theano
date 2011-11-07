@@ -541,6 +541,18 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
+def copymod(dct, without=[], **kwargs):
+    """Return dct but with the keys named by args removed, and with
+    kwargs added.
+    """
+    rval = copy(dct)
+    for a in without:
+        if a in rval:
+            del rval[a]
+    for kw, val in kwargs.items():
+        rval[kw] = val
+    return rval
+
 # We can't have both input as interger as we need the output
 # to have the same dtype to work inplace.
 _good_broadcast_div_mod_normal_float_no_complex = dict(
@@ -686,18 +698,6 @@ _good_broadcast_unary_normal_float = dict(
         corner_case=[corner_case],
         complex=[randcomplex(2,3)],
         empty=[numpy.asarray([])])
-
-def copymod(dct, without=[], **kwargs):
-    """Return dct but with the keys named by args removed, and with
-    kwargs added.
-    """
-    rval = copy(dct)
-    for a in without:
-        if a in rval:
-            del rval[a]
-    for kw, val in kwargs.items():
-        dct[kw] = val
-    return rval
 
 _good_broadcast_unary_normal_float_no_empty = copymod(
         _good_broadcast_unary_normal_float,
