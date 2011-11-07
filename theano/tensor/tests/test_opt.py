@@ -1158,7 +1158,8 @@ class TestCompositeCodegen(unittest.TestCase):
         y = self.times_2(self.x)
         z = self.times_3(y)
         f = function([self.x], z)
-        assert len(f.maker.env.toposort()) == 1
+        if config.mode != "FAST_COMPILE":
+            assert len(f.maker.env.toposort()) == 1
         fval = f([1, 2, 3])
         assert numpy.all(fval == [6, 12, 18])
 
@@ -1174,8 +1175,9 @@ class TestCompositeCodegen(unittest.TestCase):
         f = theano.function([self.x], cuda.gpu_from_host(z),
                 mode=theano.compile.mode.get_default_mode().including('gpu'))
         topo = f.maker.env.toposort()
-        assert len(topo) == 2
-        assert topo[1].op == cuda.gpu_from_host
+        if config.mode != "FAST_COMPILE":
+            assert len(topo) == 2
+            assert topo[1].op == cuda.gpu_from_host
         # topo1 is doing the composite work on the CPU. Auto-generation of
         # GPU code for ops with support code is not possible.
         fval = numpy.asarray(f([1, 2, 3]))
