@@ -1864,21 +1864,36 @@ def test_local_subtensor_alloc0():
     yx = tensor.alloc(y, x.shape[0], x.shape[1])
 
     # Slice of each row
-    z_mat = yx[:,3:]
+    z_mat = yx[:, 3:]
     assert z_mat.ndim == 2
 
     # Only one column
-    z_vec = yx[:,3]
+    z_vec = yx[:, 3]
     assert z_vec.ndim == 1
 
-    f = theano.function([x, y], z_mat)
-    g = theano.function([x, y], z_vec)
-
     # DebugMode should detect if something goes wrong.
-    xval = numpy.zeros((3,5), dtype=config.floatX)
-    yval = numpy.arange(5, dtype=config.floatX)
-    f(xval, yval)
-    g(xval, yval)
+    # test shape combination of odd and event shape.
+    for shape in [(3, 5), (4, 6), (3, 8), (4, 7)]:
+
+        xval = numpy.zeros(shape, dtype=config.floatX)
+        yval = numpy.arange(shape[1], dtype=config.floatX)
+
+        for slices in [
+            # results are vector
+            (slice(None), 3),
+            (2, slice(None)),
+            # results are matrix
+            (slice(None), slice(3, None)),
+            (slice(3, None), ),
+            (slice(3, None), slice(3, None)),
+            (slice(1, 3), slice(None, -1)),
+            (slice(None, None, 2)),
+            (slice(1, None, 2)),
+            ]:
+            z = yx.__getitem__(slices)
+            f = theano.function([x, y], z)
+            val = f(xval, yval)
+            assert xval.__getitem__(slices).shape == val.shape
 
 
 def test_local_fill_useless():

@@ -1795,13 +1795,14 @@ def local_subtensor_of_alloc(node):
             # That dimension is removed.
             pass
         else:
-            nw_dims += [(csl.stop - csl.start) // csl.step]
+            nw_dims += [T.ceil_intdiv((csl.stop - csl.start), csl.step)]
 
     nw_val = val[tuple(val_slices)]
     nw_dims += dims[len(slices):]
     rval = T.alloc(nw_val, *nw_dims)
     if type(rval) not in (list, tuple):
         rval = [rval]
+
     return rval
 
 
