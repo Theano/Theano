@@ -627,7 +627,11 @@ TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
 CeilIntDivTester = makeBroadcastTester(
     op=tensor.ceil_intdiv,
     expected=lambda x, y: check_floatX((x, y), (x // y) + ((x % y) != 0)),
-    good=_good_broadcast_div_mod_normal_float_no_complex,
+    good=copymod(_good_broadcast_div_mod_normal_float_no_complex,
+                 integer=(randint(2, 3), randint_nonzero(2, 3)),
+                 uinteger=(randint(2, 3).astype("uint8"),
+                           randint_nonzero(2, 3).astype("uint8")),
+                 ),
     # As we implement this function with neq, the gradient returned is always 0.
 #    grad=_grad_broadcast_div_mod_normal,
 #    grad_rtol=div_grad_rtol,

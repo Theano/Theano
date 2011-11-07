@@ -2824,10 +2824,23 @@ def int_div(a, b):
 
 
 def ceil_intdiv(a, b):
-    """ return ceil(a/b) when a and b are int """
-# Is it faster to cast to float when this don't loose precission?
-# return cast(cast(a, scalar.upcast(a, 'float32')) / b, scal.upcast(a, b))
-    return int_div(a, b) + neq(a % b, 0)
+    """
+    Safely compute ceil(float_division(a, b)).
+
+    Works for all dtypes, but mostly useful when a and b are int.
+    """
+    # If a and b are int with not many significant bits, we could
+    # cast them to float to avoid doing the module. We do not know if this
+    # is faster or not. But this is not safe for int64 as the cast will
+    # lose precision.
+    # e.g.: cast(cast(a, scalar.upcast(a, 'float32')) / b, scal.upcast(a, b))
+
+    # We cast for the case when a and b are uint*. Otherwise neq will
+    # force their upcast to int.
+    div = int_div(a, b)
+    ret = cast(neq(a % b, 0), div.dtype) + div
+    assert ret.dtype == scal.upcast(a.dtype, b.dtype)
+    return ret
 
 
 def mod_check(x, y):
