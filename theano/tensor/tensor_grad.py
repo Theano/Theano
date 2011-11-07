@@ -182,7 +182,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 
     inputs = gof.graph.inputs(f)
     gmap = gradient.grad_sources_inputs(
-            zip(f,eval_points),
+            zip(f, eval_points),
             list(inputs) + list(consider_constant),
             warn_type=warn_type)
 
