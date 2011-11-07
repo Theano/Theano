@@ -2822,6 +2822,27 @@ def int_div(a, b):
     """elementwise integer-division"""
     # see decorator for function body
 
+
+def ceil_intdiv(a, b):
+    """
+    Safely compute ceil(float_division(a, b)).
+
+    Works for all dtypes, but mostly useful when a and b are int.
+    """
+    # If a and b are int with not many significant bits, we could
+    # cast them to float to avoid doing the modulo. We do not know if this
+    # is faster or not. But this is not safe for int64 as the cast will
+    # lose precision.
+    # e.g.: cast(cast(a, scalar.upcast(a, 'float32')) / b, scal.upcast(a, b))
+
+    # We cast for the case when a and b are uint*. Otherwise neq will
+    # force their upcast to int.
+    div = int_div(a, b)
+    ret = cast(neq(a % b, 0), div.dtype) + div
+    assert ret.dtype == scal.upcast(a.dtype, b.dtype)
+    return ret
+
+
 def mod_check(x, y):
     """Make sure we do not try to use complex numbers."""
     if (as_tensor_variable(x).dtype in complex_dtypes or
