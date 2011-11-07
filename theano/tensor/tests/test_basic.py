@@ -751,6 +751,27 @@ SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                        inplace = True)
 
 
+IntDivTester = makeBroadcastTester(
+    op=tensor.int_div,
+    expected=lambda x, y: check_floatX((x, y), x // y),
+    good=_good_broadcast_div_mod_normal_float,
+    # I don't test the grad as the output are ints and
+    # this is a not continuous outputs
+#    grad=_grad_broadcast_div_mod_normal,
+    )
+
+
+IntDivInplaceTester = makeBroadcastTester(
+    op=inplace.int_div_inplace,
+    expected=lambda x, y: check_floatX((x, y), x // y),
+    good=_good_broadcast_div_mod_normal_float_inplace,
+    # I don't test the grad as the output are ints and
+    # this is a not continuous outputs
+#    grad=_grad_broadcast_div_mod_normal,
+    inplace=True
+    )
+
+
 CeilTester = makeBroadcastTester(op=tensor.ceil,
         expected=lambda a: numpy.asarray(
             numpy.ceil(a),
