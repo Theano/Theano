@@ -2839,7 +2839,7 @@ def ceil_intdiv(a, b):
     # force their upcast to int.
     div = int_div(a, b)
     ret = cast(neq(a % b, 0), div.dtype) + div
-    assert ret.dtype == scal.upcast(a.dtype, b.dtype)
+    assert ret.dtype == scal.upcast(div.owner.inputs[0], div.owner.inputs[1])
     return ret
 
 

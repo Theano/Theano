@@ -1865,59 +1865,94 @@ class Test_alloc_zero(unittest.TestCase):
                                       f.maker.env.toposort() ])
 
 
-def test_local_subtensor_alloc0():
+def test_local_subtensor_of_alloc():
     x = tensor.matrix('x')
     y = tensor.vector('y')
 
-    # The rows of yx are copies of x
+    # The rows of yx are copies of y
     yx = tensor.alloc(y, x.shape[0], x.shape[1])
 
     # Slice of each row
-    z_mat = yx[:,3:]
+    z_mat = yx[:, 3:]
     assert z_mat.ndim == 2
 
     # Only one column
-    z_vec = yx[:,3]
+    z_vec = yx[:, 3]
     assert z_vec.ndim == 1
 
-    f = theano.function([x, y], z_mat)
-    g = theano.function([x, y], z_vec)
-
     # DebugMode should detect if something goes wrong.
-    xval = numpy.zeros((3,5), dtype=config.floatX)
-    yval = numpy.arange(5, dtype=config.floatX)
-    f(xval, yval)
-    g(xval, yval)
+    # test shape combination of odd and event shape.
+    for shape in [(3, 5), (4, 6), (3, 8), (4, 7)]:
+
+        xval = numpy.zeros(shape, dtype=config.floatX)
+        yval = numpy.arange(shape[1], dtype=config.floatX)
+
+        for slices in [
+            # results are vector
+            (slice(None), 3),
+            (2, slice(None)),
+            # results are matrix
+            (slice(None), slice(3, None)),
+            (slice(3, None), ),
+            (slice(3, None), slice(3, None)),
+            (slice(1, 3), slice(None, -1)),
+            (slice(None, None, 2)),
+            (slice(1, None, 2)),
+            ]:
+            z = yx.__getitem__(slices)
+            f = theano.function([x, y], z)
+            val = f(xval, yval)
+            assert xval.__getitem__(slices).shape == val.shape
 
 
 def test_local_fill_useless():
-    m = theano.config.mode
-    if m == 'FAST_COMPILE':
-        m = 'FAST_RUN'
-
+    #Test opt local_fill_cut
     x = dvector()
     y = dvector()
     z = lvector()
+    m = dmatrix()
+
+    x_ = numpy.random.rand(5,)
+    y_ = numpy.random.rand(5,)
+    z_ = (numpy.random.rand(5,) * 5).astype("int64")
+    m_ = numpy.random.rand(5, 5)
 
     # basic case
-    f = function([x], T.fill(x,x)*2, mode=m)
+    f = function([x], T.fill(x, x) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_)
 
     # basic case
-    f = function([x,y], T.second(y,x)*2, mode=m)
+    f = function([x, y], T.second(y, x) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_, y_)
 
-    # now with different type
-    f = function([x,z], T.fill(z,x)*2, mode=m)
+    # basic case
+    f = function([x, y], T.fill(x, y) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_, y_)
+
+    # now with different type(cast)
+    f = function([x, z], T.fill(z, x) * 2, mode=mode_opt)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_, z_)
+
+    # now with different type(cast)
+    f = function([x, z], T.fill(x, z) * 2, mode=mode_opt)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_, z_)
 
     # now cutting out the input ??
-    f = function([x,y], T.fill(x,y)*2, mode=m)
+    f = function([x, y], T.fill(x, y) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    f(x_, y_)
 
-    # now filll is serving as a cast
-    f = function([x,y], T.fill(x,y)*2, mode=m)
-    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+    # Test with different number of dimensions
+    # The fill is not useless, so it should stay
+    f = function([m, x], T.fill(m, x) * 2, mode=mode_opt)
+    ops = [node.op.__class__ for node in f.maker.env.toposort()]
+    assert T.Alloc in ops
+    f(m_, x_)
 
 
 class test_shapeoptimizer(unittest.TestCase):
