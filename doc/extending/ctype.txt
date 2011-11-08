@@ -480,3 +480,19 @@ Final version
            return ""
 
    double = Double()
+
+
+Output Guard
+============
+
+We have an internal Op called OutputGuard. It is used for some
+verification of inplace/view Op. It have a c implementation that
+increment/decrement Python reference counts. If your type represent an
+Python object, OutputGuard c code should work with your type. You must
+tell OutputGuard to generate c code when working with your
+type. Otherwise, it will use python code. You tell him by executing
+this:
+
+.. code-block:: python
+
+   theano.compile.mode.register_OutputGuard_c_code(YOUR_TYPE_CLASS)
