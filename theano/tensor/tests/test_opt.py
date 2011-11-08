@@ -1117,29 +1117,36 @@ class test_fusion(unittest.TestCase):
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
 
+
+class TimesN(theano.scalar.basic.UnaryScalarOp):
+    """Used in test TestCompositeCodegen
+
+    Must be outside of the class, otherwise, the c cache code can't
+    pickle this class and this cause stuff printing during test.
+    """
+    def __init__(self, n, *args, **kwargs):
+        self.n = n
+        theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
+
+    def impl(self, x):
+        return x * self.n
+
+    def c_support_code_apply(self, node, nodename):
+        n = str(self.n)
+        return """
+        float %(nodename)s_timesn(float x) { return x * %(n)s; }
+        """ % locals()
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
+
+
 class TestCompositeCodegen(unittest.TestCase):
     """
     Test The Composite Ops code generation in a case where there is multiple
     scalar ops with support code.
     """
     def setUp(self):
-        class TimesN(theano.scalar.basic.UnaryScalarOp):
-            def __init__(self, n, *args, **kwargs):
-                self.n = n
-                theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
-
-            def impl(self, x):
-                return x * self.n
-
-            def c_support_code_apply(self, node, nodename):
-                n = str(self.n)
-                return """
-                float %(nodename)s_timesn(float x) { return x * %(n)s; }
-                """ % locals()
-
-            def c_code(self, node, name, (x, ), (z, ), sub):
-                return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
-
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
         self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
@@ -1158,7 +1165,8 @@ class TestCompositeCodegen(unittest.TestCase):
         y = self.times_2(self.x)
         z = self.times_3(y)
         f = function([self.x], z)
-        assert len(f.maker.env.toposort()) == 1
+        if config.mode != "FAST_COMPILE":
+            assert len(f.maker.env.toposort()) == 1
         fval = f([1, 2, 3])
         assert numpy.all(fval == [6, 12, 18])
 
@@ -1174,8 +1182,9 @@ class TestCompositeCodegen(unittest.TestCase):
         f = theano.function([self.x], cuda.gpu_from_host(z),
                 mode=theano.compile.mode.get_default_mode().including('gpu'))
         topo = f.maker.env.toposort()
-        assert len(topo) == 2
-        assert topo[1].op == cuda.gpu_from_host
+        if config.mode != "FAST_COMPILE":
+            assert len(topo) == 2
+            assert topo[1].op == cuda.gpu_from_host
         # topo1 is doing the composite work on the CPU. Auto-generation of
         # GPU code for ops with support code is not possible.
         fval = numpy.asarray(f([1, 2, 3]))
