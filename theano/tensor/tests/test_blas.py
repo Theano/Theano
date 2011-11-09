@@ -1040,7 +1040,7 @@ class BaseGemv(object):
         # The only op in the graph is a dot.
         # In the gemm case, we create a dot22 for that case
         # There is no dot21.
-        # Creating one is not usefull as this is not faster(in fact it would be slower!
+        # Creating one is not useful as this is not faster(in fact it would be slower!
         # as more code would be in python, numpy.dot will call gemv itself)
         # See ticket 594
         """

@@ -85,7 +85,7 @@ branch and hit the "Pull Request" button in the top right corner.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
 When the your pull request have been merged, you can delete the branch
-from the github list of branch. That is usefull to don't have too many
+from the github list of branch. That is useful to don't have too many
 that stay there!
 
 .. code-block:: bash

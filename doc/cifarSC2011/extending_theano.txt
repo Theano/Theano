@@ -79,7 +79,7 @@ and related methods allow the op to generate c code that will be
 compiled and linked by Theano. On the other hand, the ``make_thunk``
 method will be called only once during compilation and should generate
 a ``thunk``: a standalone function that when called will do the wanted computations.
-This is usefull if you want to generate code and compile it yourself. For
+This is useful if you want to generate code and compile it yourself. For
 example, this allows you to use PyCUDA to compile gpu code.
 
 Also there are 2 methods that are highly recommended to be implemented. They are
