@@ -333,7 +333,7 @@ In the following code, we use our new Op:
 
 Note that there is an implicit call to
 ``double.filter()`` on each argument, so if we give integers as inputs
-they are magically casted to the right type. Now, what if we try this?
+they are magically cast to the right type. Now, what if we try this?
 
 >>> x = double('x')
 >>> z = mul(x, 2)
