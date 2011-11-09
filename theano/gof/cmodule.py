@@ -1384,8 +1384,21 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #print >> sys.stderr, 'COMPILING W CMD', cmd
     _logger.debug('Running cmd: %s', ' '.join(cmd))
 
-    p = subprocess.Popen(cmd)
-    status = p.wait()
+    def print_command_line_error():
+        # Print command line when a problem occurred.
+        print >> sys.stderr, ("Problem occurred during compilation with the "
+                              "command line below:")
+        print >> sys.stderr, ' '.join(cmd)
+
+    try:
+        p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+    except Exception:
+        # An exception can occur here e.g. if `g++` is not found.
+        print_command_line_error()
+        raise
+
+    compile_stderr = p.communicate()[1]
+    status = p.returncode
 
     if status:
         print '==============================='
@@ -1393,8 +1406,9 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
             #gcc put its messages to stderr, so we add ours now
             print >> sys.stderr, '%05i\t%s'%(i+1, l)
         print '==============================='
-        print >> sys.stderr, "command line:",' '.join(cmd)
-        raise Exception('g++ return status', status)
+        print_command_line_error()
+        raise Exception('Compilation failed (return status=%s):\n%s' %
+                        (status, compile_stderr))
 
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()
