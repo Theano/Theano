@@ -65,7 +65,7 @@ class CudaNdarrayType(Type):
             return cuda.filter(data, self.broadcastable, strict, old_data)
 
         else: # (not strict) and (not allow_downcast)
-            # Check if data.dtype can be accurately casted to self.dtype
+            # Check if data.dtype can be accurately cast to self.dtype
             if isinstance(data, numpy.ndarray):
                 up_dtype = scal.upcast(self.dtype, data.dtype)
                 if up_dtype == self.dtype:

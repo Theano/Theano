@@ -561,7 +561,7 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
     dtype_mixup_2=(randint_nonzero(2, 3), rand(2, 3)),
 # Fix problem with integers and uintegers and add them.
-# Them remove their specific addition to CeilIntDivTester tests.
+# Then remove their specific addition to CeilIntDivTester tests.
 #    integer=(randint(2, 3), randint_nonzero(2, 3)),
 #    uinteger=(randint(2, 3).astype("uint8"),
 #              randint_nonzero(2, 3).astype("uint8")),

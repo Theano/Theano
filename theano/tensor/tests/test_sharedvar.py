@@ -17,7 +17,7 @@ def makeSharedTester(shared_constructor_,
                      shared_borrow_true_alias_,
                      set_value_borrow_true_alias_,
                      set_value_inplace_,
-                     set_casted_value_inplace_,
+                     set_cast_value_inplace_,
                      shared_constructor_accept_ndarray_,
                      internal_type_,
                      test_internal_type_,
@@ -38,7 +38,7 @@ def makeSharedTester(shared_constructor_,
     :param set_value_borrow_true_alias_: Should set_value(val,borrow=True) reuse the val memory space
     :param set_value_inplace_: Should this shared variable overwrite the current
                                memory when the new value is an ndarray
-    :param set_casted_value_inplace_: Should this shared variable overwrite the
+    :param set_cast_value_inplace_: Should this shared variable overwrite the
                                current memory when the new value is of the same
                                type as the internal type.
     :param shared_constructor_accept_ndarray_: Do the shared_constructor accept an ndarray as input?
@@ -71,7 +71,7 @@ def makeSharedTester(shared_constructor_,
         ref_fct = staticmethod(ref_fct_)
         set_value_borrow_true_alias = set_value_borrow_true_alias_
         set_value_inplace = set_value_inplace_
-        set_casted_value_inplace = set_casted_value_inplace_
+        set_cast_value_inplace = set_cast_value_inplace_
         shared_constructor_accept_ndarray = shared_constructor_accept_ndarray_
         cast_value = staticmethod(cast_value_)
         op_by_matrix = op_by_matrix_
@@ -379,14 +379,14 @@ def makeSharedTester(shared_constructor_,
                     self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
-            # Test by set_value with borrow=False when new data casted.
+            # Test by set_value with borrow=False when new data cast.
             # specificaly useful for gpu data
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd), borrow=False)
             assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
                     self.ref_fct(self.cast_value(nd)))
-            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_cast_value_inplace
 
             # Test by set_value with borrow=True
             nd += 1
@@ -396,12 +396,12 @@ def makeSharedTester(shared_constructor_,
                     self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
-            # Test by set_value with borrow=True when new data casted.
+            # Test by set_value with borrow=True when new data cast.
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
             assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)), self.ref_fct(self.cast_value(nd)))
-            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_casted_value_inplace
+            assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_cast_value_inplace
 
         def test_specify_shape(self):
             dtype = self.dtype
@@ -628,7 +628,7 @@ test_shared_options=makeSharedTester(
     shared_borrow_true_alias_ = True,
     set_value_borrow_true_alias_ = True,
     set_value_inplace_ = False,
-    set_casted_value_inplace_ = False,
+    set_cast_value_inplace_ = False,
     shared_constructor_accept_ndarray_ = True,
     internal_type_ = numpy.ndarray,
     test_internal_type_ = lambda a: isinstance(a,numpy.ndarray),

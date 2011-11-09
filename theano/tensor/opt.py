@@ -92,7 +92,7 @@ def scalarconsts_rest(inputs):
 
 def broadcast_like(value, template, env, dtype=None):
     """Return a Variable with the same shape and dtype as the template,
-    filled by broadcasting value through it. `value` will be casted as
+    filled by broadcasting value through it. `value` will be cast as
     necessary.
 
     """

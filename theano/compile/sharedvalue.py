@@ -53,11 +53,11 @@ class SharedVariable(Variable):
 
         :param value: A value to associate with this variable (a new container will be created).
 
-        :param strict: True -> assignments to .value will not be casted or copied, so they must
+        :param strict: True -> assignments to .value will not be cast or copied, so they must
         have the correct type.
 
         :param allow_downcast: Only applies if `strict` is False.
-        True -> allow assigned value to lose precision when casted during assignment.
+        True -> allow assigned value to lose precision when cast during assignment.
         False -> never allow precision loss.
         None -> only allow downcasting of a Python float to a scalar floatX.
 

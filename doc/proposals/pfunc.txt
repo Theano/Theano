@@ -64,7 +64,7 @@ The proposal is for two new ways of creating a *shared* variable:
     
             :param value: A value to associate with this variable (a new container will be created).
     
-            :param strict: True -> assignments to .value will not be casted or copied, so they must
+            :param strict: True -> assignments to .value will not be cast or copied, so they must
             have the correct type.
     
             :param container: The container to use for this variable. Illegal to pass this as well
@@ -185,7 +185,7 @@ Corner cases and exotic examples can be found in the tests.
     
             :param mutable: True -> function is allowed to modify this argument.
     
-            :param strict: False -> function arguments may be copied or casted to match the
+            :param strict: False -> function arguments may be copied or cast to match the
             type required by the parameter `variable`.  True -> function arguments must exactly match the type
             required by `variable`.
     

@@ -274,12 +274,12 @@ class Param(object):
 
 
         False: do not permit any output to be aliased to the input
-        :param strict: False -> function arguments may be copied or casted to match the
+        :param strict: False -> function arguments may be copied or cast to match the
         type required by the parameter `variable`.  True -> function arguments must exactly match the type
         required by `variable`.
 
         :param allow_downcast: Only applies if `strict` is False.
-        True -> allow assigned value to lose precision when casted during assignment.
+        True -> allow assigned value to lose precision when cast during assignment.
         False -> never allow precision loss.
         None -> only allow downcasting of a Python float to a scalar floatX.
 
@@ -346,7 +346,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     :param allow_input_downcast: True means that the values passed as
     inputs when calling the function can be silently downcasted to fit
     the dtype of the corresponding Variable, which may lose precision.
-    False means that it will only be casted to a more general, or
+    False means that it will only be cast to a more general, or
     precise, type. None (default) is almost like False, but allows
     downcasting of Python float scalars to floatX.
 
