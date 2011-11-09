@@ -1392,12 +1392,12 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
     try:
         p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+        compile_stderr = p.communicate()[1]
     except Exception:
-        # An exception can occur here e.g. if `g++` is not found.
+        # An exception can occur e.g. if `g++` is not found.
         print_command_line_error()
         raise
 
-    compile_stderr = p.communicate()[1]
     status = p.returncode
 
     if status:
