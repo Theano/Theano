@@ -1126,7 +1126,7 @@ def _gemm_from_factored_list(lst):
             return False
 
     lst2 = []
-    # Remove the tuple that can't be casted correctly.
+    # Remove the tuple that can't be cast correctly.
     # This can happen when we try to cast a complex to a real
     for sM in lst:
         if is_pair(sM):

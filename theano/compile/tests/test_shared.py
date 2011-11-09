@@ -95,7 +95,7 @@ class Test_SharedVariable(unittest.TestCase):
                 value=numpy.asarray([1., 2.]),
                 strict=False)
 
-        # check that assignments to value are casted properly
+        # check that assignments to value are cast properly
         u.set_value([3,4])
         assert type(u.get_value()) is numpy.ndarray
         assert str(u.get_value(borrow=True).dtype) == 'float64'

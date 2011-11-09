@@ -244,7 +244,7 @@ class NumpyAutocaster(object):
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
-        # returns either an exact x_==x, or the last casted x_
+        # returns either an exact x_==x, or the last cast x_
         return x_
 
 autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))

@@ -59,7 +59,7 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     :param allow_input_downcast: True means that the values passed as
     inputs when calling the function can be silently downcasted to fit
     the dtype of the corresponding Variable, which may lose precision.
-    False means that it will only be casted to a more general, or
+    False means that it will only be cast to a more general, or
     precise, type. None (default) is almost like False, but allows
     downcasting of Python float scalars to floatX.
 
