@@ -163,8 +163,8 @@ def local_gpu_elemwise_0(node):
                 elif numpy.all([i.type.dtype in upcastable for i in node.inputs]):
                     # second - establish that a new node with upcasted inputs has the same outputs
                     # types as the original node
-                    casted = node.op.make_node(*[tensor.cast(i, 'float32') for i in node.inputs])
-                    if [o.type for o in casted.outputs] == [o.type for o in node.outputs]:
+                    upcasted = node.op.make_node(*[tensor.cast(i, 'float32') for i in node.inputs])
+                    if [o.type for o in upcasted.outputs] == [o.type for o in node.outputs]:
 
                         new_inputs = [gpu_from_host(tensor.cast(i, 'float32')) for i in node.inputs]
                         gpu_elemwise = new_op(*new_inputs)

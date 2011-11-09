@@ -29,13 +29,13 @@ class SymbolicInput(object):
 
     strict: Bool (default: False)
         True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be casted automatically to the proper type
+        False: the value you pass for this input may be cast automatically to the proper type
 
     allow_downcast: Bool or None (default: None)
         Only applies when `strict` is False.
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
-        False: the value will only be casted to a more general, or precise, type.
+        False: the value will only be cast to a more general, or precise, type.
         None: Almost like False, but allows downcast of Python floats to floatX.
 
     autoname: Bool (default: True)
@@ -173,7 +173,7 @@ class In(SymbolicInput):
         Only applies when `strict` is False.
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
-        False: the value will only be casted to a more general, or precise, type.
+        False: the value will only be cast to a more general, or precise, type.
         None: Almost like False, but allows downcast of Python floats to floatX.
 
     autoname: Bool (default: True)

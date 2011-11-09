@@ -263,14 +263,14 @@ class TypedParam(ConfigParam):
     def __init__(self, default, mytype, is_valid=None, allow_override=True):
         self.mytype = mytype
         def filter(val):
-            casted_val = mytype(val)
+            cast_val = mytype(val)
             if callable(is_valid):
-                if is_valid(casted_val):
-                    return casted_val
+                if is_valid(cast_val):
+                    return cast_val
                 else:
                     raise ValueError('Invalid value (%s) for configuration variable "%s".'
                             % (val, self.fullname), val)
-            return casted_val
+            return cast_val
         super(TypedParam, self).__init__(default, filter,  allow_override=allow_override)
     def __str__(self):
         return '%s (%s) ' % (self.fullname, self.mytype)

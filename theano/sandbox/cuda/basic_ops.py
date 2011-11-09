@@ -2098,7 +2098,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
     if any([x[1].op.__class__.__name__.lower().startswith("gpu") for x in apply_time.keys()]):
         local_time = sum(apply_time.values())
         print
-        print 'Some info usefull for gpu:'
+        print 'Some info useful for gpu:'
 
         cpu=0
         gpu=0

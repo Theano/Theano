@@ -84,16 +84,16 @@ then go to your fork's github page on the github website, select your feature
 branch and hit the "Pull Request" button in the top right corner.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
-When the your pull request have been merged, you can delete the branch
-from the github list of branch. That is usefull to don't have too many
-that stay there!
+When your pull request has been merged, you can delete the branch
+from the github list of branches. This is useful to avoid having too many
+branches staying there. Deleting this remote branch is achieved with:
 
 .. code-block:: bash
 
    git push origin :my_shiny_feature
 
-
-You can keep you local repo up to date with central/master with those commands:
+You can keep your local repository up to date with central/master with those
+commands:
 
 .. code-block:: bash
 
@@ -101,14 +101,14 @@ You can keep you local repo up to date with central/master with those commands:
    git fetch central
    git merge central/master
 
-If you want to fix a commit done in a pull request(i.e. fix small
-typo) to keep the history clean, you can do it like this:
+If you want to fix a commit already submitted within a pull request (e.g. to
+fix a small typo), you can do it like this to keep history clean:
 
 .. code-block:: bash
 
-   git checkout branch
+   git checkout my_shiny_feature
    git commit --amend
-   git push -u origin  my_shiny_feature:my_shiny_feature
+   git push -u origin my_shiny_feature:my_shiny_feature
 
 
 Coding Style Auto Check

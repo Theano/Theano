@@ -27,7 +27,7 @@ default values.
     .. method:: filter(value, strict=False, allow_downcast=None)
 
       This casts a value to match the Type and returns the
-      casted value. If ``value`` is incompatible with the Type,
+      cast value. If ``value`` is incompatible with the Type,
       the method must raise an exception. If ``strict`` is True, ``filter`` must return a
       reference to ``value`` (i.e. casting prohibited).
       If ``strict`` is False, then casting may happen, but downcasting should
