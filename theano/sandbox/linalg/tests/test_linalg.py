@@ -166,6 +166,17 @@ def test_rop_lop():
     assert _allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
 
+def test_det():
+    # If scipy is not available, this test will fail, thus we skip it.
+    if not use_scipy:
+        raise SkipTest('Scipy is not available')
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    r = rng.randn(5,5)
+    x = tensor.matrix()
+    f = theano.function([x],det(x))
+    assert scipy.linalg.det(r) == f(r)
+
 def test_det_grad():
     # If scipy is not available, this test will fail, thus we skip it.
     if not use_scipy:
@@ -174,6 +185,18 @@ def test_det_grad():
 
     r = rng.randn(5,5)
     tensor.verify_grad(det, [r], rng=numpy.random)
+    
+def test_det_shape():
+    # If scipy is not available, this test will fail, thus we skip it.
+    if not use_scipy:
+        raise SkipTest('Scipy is not available')
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5,5)
+    
+    x = tensor.matrix()
+    f = theano.function([x],det(x))
+    f_shape = theano.function([x],det(x).shape)
+    assert  numpy.all(f(r).shape == f_shape(r))
 
 
 def test_extract_diag():

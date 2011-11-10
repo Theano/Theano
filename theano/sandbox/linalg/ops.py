@@ -569,7 +569,7 @@ class Det(Op):
         x, = inputs
         return [gz * self(x) * matrix_inverse(x).T]
     def infer_shape(self, node, shapes):
-        return [(1, )]
+        return [()]
     def __str__(self):
         return "Det"
 det = Det()
