@@ -548,8 +548,10 @@ def diag(x):
         raise TypeError('diag requires vector or matrix argument', x)
 
 class Det(Op):
-    """matrix determinant
-
+    """Matrix determinant
+    Input should be a square matrix
+    
+    :note: Requires scipy
     TODO: move this op to another file that request scipy.
     """
     def make_node(self, x):
@@ -566,6 +568,8 @@ class Det(Op):
         gz, = g_outputs
         x, = inputs
         return [gz * self(x) * matrix_inverse(x).T]
+    def infer_shape(self, node, shapes):
+        return [(1, )]
     def __str__(self):
         return "Det"
 det = Det()
