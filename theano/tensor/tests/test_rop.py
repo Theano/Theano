@@ -3,7 +3,12 @@
 
  Tests for the R operator / L operator
 
- For the list of op with r op defined, with or without missing test see this file: defined see this file
+ For the list of op with r op defined, with or without missing test
+ see this file: doc/library/tensor/basic.txt
+
+ For function to automatically test your Rop implementation, look at
+ the docstring of the functions: check_mat_rop_lop, check_rop_lop,
+ check_nondiff_rop,
 
 """
 
@@ -41,7 +46,9 @@ class BreakRop(Op):
 break_op = BreakRop()
 
 
-class test_RopLop(unittest.TestCase):
+class RopLop_checker(unittest.TestCase):
+    """ Don't peform any test, but provide the function to test the
+    Rop to class that inherit from it."""
 
     def setUp(self):
         # Using vectors make things a lot simpler for generating the same
@@ -56,6 +63,8 @@ class test_RopLop(unittest.TestCase):
                              5+self.rng.randint(30))
 
     def check_nondiff_rop(self, y):
+        """ If you op is not differentiable(so you can't define Rop)
+        test that an error is raised."""
         raised = False
         try:
             tmp = tensor.Rop(y, self.x, self.v)
@@ -67,6 +76,24 @@ class test_RopLop(unittest.TestCase):
                 ' is not differentiable'))
 
     def check_mat_rop_lop(self, y, out_shape):
+        """ Test the Rop/Lop when input is a matrix and the output is a vector
+
+        :param y: the output variable of the op applied to self.mx
+        :param out_shape: Used to generate a random tensor
+                          corresponding to the evaluation point of the Rop
+                          (i.e. the tensor with which you multiply the
+                          Jacobian). It should be a tuple of ints.
+
+        If the Op have more then 1 input, one of them must be mx, the
+        other must be shared variable/constant. We will test only
+        again the input self.mx, so you must call
+        check_mat_rop_lop/check_rop_lop for the others input.
+
+        We expect all inputs/outputs have dtype floatX.
+
+        If you want to test an out with an output matrix, add a sum
+        after the Op you want to test.
+        """
         vx = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
         vv = numpy.asarray(self.rng.uniform(size=self.mat_in_shape), theano.config.floatX)
         yv = tensor.Rop(y, self.mx, self.mv)
@@ -97,9 +124,12 @@ class test_RopLop(unittest.TestCase):
         v2 = scan_f(vx,vv)
         assert numpy.allclose(v1,v2), ('LOP mismatch: %s %s' % (v1, v2))
 
-
-
     def check_rop_lop(self, y, out_shape):
+        """
+        As check_mat_rop_lop, except the input is self.x witch is a
+        vector. The output is still a vector.
+
+        """
         # TEST ROP
         vx = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
         vv = numpy.asarray(self.rng.uniform(size=self.in_shape), theano.config.floatX)
@@ -138,6 +168,7 @@ class test_RopLop(unittest.TestCase):
         assert numpy.allclose(v1,v2), ('LOP mismatch: %s %s' % (v1, v2))
 
 
+class test_RopLop(RopLop_checker):
     def test_shape(self):
         self.check_nondiff_rop( self.x.shape[0])
 

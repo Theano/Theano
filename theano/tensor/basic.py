@@ -1941,32 +1941,36 @@ class MaxAndArgmax(Op):
             return [eval_points[0][arange(eval_points[0].shape[0]),
                                    max_pos], None]
 
-
-
     def grad(self, inp, grads):
-        # @warning: This only works if axis is 0, else the max is
-        # broadcasted wrong in the call to eq.
         # @note: This function should work correctly for L{vector}s.
 #        (x, y), (gz, gw)
 #        gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
-#        gMax * dMax/dx + gArgMax * dArgMax/dx, gMax * dMax/daxis + gArgMax * dArgMax/daxis
-#       g_max has one less dimension than x, so you need to complete g_max to x's shape
-#        when axis=0 the broadcasting mechanism does it automatically
+#        gMax * dMax/dx + gArgMax * dArgMax/dx,
+#                           gMax * dMax/daxis + gArgMax * dArgMax/daxis
+#       g_max has one less dimension than x, so you need to complete
+#        g_max to x's shape when axis=0 the broadcasting mechanism
+#        does it automatically
         x, axis = inp
         g_max, g_max_idx = grads
-        if not ( axis.data == 0 or axis.data == x.ndim-1):
-            raise NotImplementedError('MaxAndArgmax gradient with axis corresponding to internal dimension')
-        if axis.data==0:
-            g_max_pad = shape_padleft(g_max)
-        else:
-            g_max_pad = shape_padright(g_max)
+
         xmax = max(x, axis)
-        if axis.data==0:
-            xmax_pad = shape_padleft(xmax)
-        else:
-            xmax_pad = shape_padright(xmax)
+
+        # Raise the g_max and xmax to the same number of dim as the input.
+        pattern = []
+        out_dim = 0
+        for i in range(inp[0].ndim):
+            if i == axis.data:
+                pattern.append('x')
+            else:
+                pattern.append(out_dim)
+                out_dim += 1
+        g_max_pad = DimShuffle(g_max.broadcastable, pattern)(g_max)
+        xmax_pad = DimShuffle(xmax.broadcastable, pattern)(xmax)
+
+        # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, None
+
     def __str__(self):
         return self.__class__.__name__
 
