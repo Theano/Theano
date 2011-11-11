@@ -1561,13 +1561,16 @@ class T_max_and_argmax(unittest.TestCase):
         n = as_tensor_variable(data)
 
         def check_grad_max(data, max_grad_data, axis=None):
+            """
+            Why this is needed? verify_grad is not enought?
+            """
             #This work only for axis in [0,None]
             assert axis in [0,None]
             z = numpy.zeros_like(data)
             z = z.flatten()
             argmax=numpy.argmax(data,axis=axis)
             if argmax.ndim==0:
-                z[numpy.argmax(data,axis=axis)]+=1
+                z[argmax]+=1
             else:
                 for id,v in enumerate(argmax):
                     z[v*numpy.prod(data.shape[data.ndim-1:axis:-1])+id]+=1
@@ -1591,6 +1594,14 @@ class T_max_and_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: max_and_argmax(v.flatten())[0], [data])
         utt.verify_grad(lambda v: max_and_argmax(v.flatten())[1], [data])
         check_grad_max(data,eval_outputs(grad(max_and_argmax(n.flatten())[0],n)))
+
+        # Test 4d inner dimensions
+        data = numpy.random.rand(2, 3, 4, 5)
+        n = as_tensor_variable(data)
+        for i in [0, 1, 2, 3]:
+            utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
+            utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
+
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
