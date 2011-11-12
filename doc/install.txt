@@ -717,7 +717,9 @@ follows:
 
   a) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
      install it (other Perl interpreters should also work, but were not
-     tested).
+     tested). In a MSYS shell, type ``perl --version`` just to make sure the Perl
+     executable is found automatically. If this is not the case, you may need to
+     restart your MSYS shell, or even restart your computer if that is not enough.
 
   b) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
      a shell with:
@@ -726,7 +728,7 @@ follows:
 
         tar zxvf /path/to/GotoBLAS2-1.13.tar.gz
 
-  c) In a shell, go into the GotoBLAS2 directory that was unpacked.
+  c) In a MSYS shell, go into the GotoBLAS2 directory that was unpacked.
 
   d) Compile GotoBLAS2 with:
 
