@@ -11,6 +11,7 @@ from theano import config
 
 # The one in comment are not tested...
 from theano.sandbox.linalg.ops import (cholesky,
+                                       Cholesky, # op class
                                        matrix_inverse,
                                        #solve,
                                        #diag,
@@ -27,29 +28,36 @@ from theano.sandbox.linalg.ops import (cholesky,
 from nose.plugins.skip import SkipTest
 
 
-if 0:
-    def test_cholesky():
-        #TODO: test upper and lower triangular
-        #todo: unittest randomseed
-        rng = numpy.random.RandomState(utt.fetch_seed())
+def check_lower_triangular(pd, ch_f):
+    ch = ch_f(pd)
+    assert ch[0, pd.shape[1] - 1] == 0
+    assert ch[pd.shape[0] - 1, 0] != 0
+    assert numpy.allclose(numpy.dot(ch, ch.T), pd)
+    assert not numpy.allclose(numpy.dot(ch.T, ch), pd)
 
-        r = rng.randn(5,5)
 
-        pd = numpy.dot(r,r.T)
+def check_upper_triangular(pd, ch_f):
+    ch = ch_f(pd)
+    assert ch[4, 0] == 0
+    assert ch[0, 4] != 0
+    assert numpy.allclose(numpy.dot(ch.T, ch), pd)
+    assert not numpy.allclose(numpy.dot(ch, ch.T), pd)
 
-        x = tensor.matrix()
-        chol = cholesky(x)
-        f = function([x], tensor.dot(chol, chol.T)) # an optimization could remove this
 
-        ch_f = function([x], chol)
-
-        # quick check that chol is upper-triangular
-        ch = ch_f(pd)
-        print ch
-        assert ch[0,4] != 0
-        assert ch[4,0] == 0
-        assert numpy.allclose(numpy.dot(ch.T,ch),pd)
-        assert not numpy.allclose(numpy.dot(ch,ch.T),pd)
+def test_cholesky():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5)
+    pd = numpy.dot(r,r.T)
+    x = tensor.matrix()
+    chol = cholesky(x)
+    ch_f = function([x], chol)
+    yield check_lower_triangular, pd, ch_f
+    chol = Cholesky(lower=True)(x)
+    ch_f = function([x], chol)
+    yield check_lower_triangular, pd, ch_f
+    chol = Cholesky(lower=False)(x)
+    ch_f = function([x], chol)
+    yield check_upper_triangular, pd, ch_f
 
 
 def test_inverse_correctness():
