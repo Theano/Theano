@@ -350,9 +350,6 @@ class Cholesky(Op):
     def grad(self, inputs, gradients):
         return [CholeskyGrad(self.lower)(inputs[0], self(inputs[0]),
                                          gradients[0])]
-        # raise NotImplementedError(
-        #     "See http://github.com/Theano/Theano/issues/207"
-        # )
 
 cholesky = Cholesky()
 
