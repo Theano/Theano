@@ -78,15 +78,35 @@ the most important ones:
         When we are done using the data, clean up whatever we allocated and
         decrease the appropriate reference counts.
 
-    .. method:: c_compile_args()
-                  c_no_compile_args()
-                  c_headers()
-                  c_libraries()
-                  c_support_code()
+    .. method:: c_headers()
+                c_libraries()
+                c_header_dirs()
+                c_lib_dirs()
 
-        Allows you to specify headers, libraries, 
-        special g++ arguments to add/exclude or
-        helper functions/structs that the type needs. See :ref:`type`.
+        Allows you to specify headers, libraries and associated directories.
+
+    .. method:: c_compile_args()
+                c_no_compile_args()
+
+        Allows to specify special compiler arguments to add/exclude.
+
+    .. method:: c_support_code()
+
+        Allows to add helper functions/structs that the :ref:`type` needs.
+
+    .. method:: c_compiler()
+
+        Allows to specify a special compiler. This will force this compiler
+        for the current compilation block (a particular op or the full graph).
+        This is used for the GPU code.
+
+    .. method:: c_code_cache_version()
+
+       Should return a tuple of hashable objects like integers. This
+       specifies the version of the code. It is used to cache the
+       compiled code. You MUST change the returned tuple for each
+       change in the code. If you don't want to cache the compiled code
+       return an empty tuple or don't implement it.
 
 
 Each of these functions take two arguments, ``name`` and ``sub`` which
