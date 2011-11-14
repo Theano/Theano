@@ -50,11 +50,14 @@ def test_cholesky():
     pd = numpy.dot(r,r.T)
     x = tensor.matrix()
     chol = cholesky(x)
+    # Check the default.
     ch_f = function([x], chol)
     yield check_lower_triangular, pd, ch_f
+    # Explicit lower-triangular.
     chol = Cholesky(lower=True)(x)
     ch_f = function([x], chol)
     yield check_lower_triangular, pd, ch_f
+    # Explicit upper-triangular.
     chol = Cholesky(lower=False)(x)
     ch_f = function([x], chol)
     yield check_upper_triangular, pd, ch_f
