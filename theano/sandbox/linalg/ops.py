@@ -327,6 +327,9 @@ class Cholesky(Op):
     def __eq__(self, other):
         return (type(self) == type(other) and self.props() == other.props())
 
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
     def __str__(self):
         if self.lower:
             lu = 'lower'
@@ -430,6 +433,9 @@ class CholeskyGrad(Op):
                     F[k, k] -= L[k, j] * F[k, j]
                 F[k, k] /= (2 * L[k, k])
         dx[0] = F
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
 
 
 class MatrixInverse(Op):
