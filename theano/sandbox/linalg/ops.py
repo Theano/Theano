@@ -404,6 +404,7 @@ class CholeskyGrad(Op):
                         F[j, k] -= F[i, j] * L[i, k]
                 for j in xrange(k + 1, N):
                     F[j, k] /= L[k, k]
+                    F[k, k] -= L[j, k] * F[j, k]
                 F[k, k] /= (2 * L[k, k])
         else:
             raise NotImplementedError("gradient only implemented for "
