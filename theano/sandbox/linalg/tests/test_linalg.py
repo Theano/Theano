@@ -161,22 +161,22 @@ def test_rop_lop():
 def test_det():
     rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(5, 5)
+    r = rng.randn(5, 5).astype(config.floatX)
     x = tensor.matrix()
     f = theano.function([x], det(x))
-    assert numpy.linalg.det(r) == f(r)
+    assert numpy.allclose(numpy.linalg.det(r), f(r))
 
 
 def test_det_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(5, 5)
+    r = rng.randn(5, 5).astype(config.floatX)
     tensor.verify_grad(det, [r], rng=numpy.random)
 
 
 def test_det_shape():
     rng = numpy.random.RandomState(utt.fetch_seed())
-    r = rng.randn(5, 5)
+    r = rng.randn(5, 5).astype(config.floatX)
 
     x = tensor.matrix()
     f = theano.function([x], det(x))
