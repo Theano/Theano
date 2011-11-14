@@ -346,8 +346,11 @@ class Cholesky(Op):
         x = inputs[0]
         z = outputs[0]
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
-    #def grad(self, (x, y), (gz,)):
-        #return dot(gz, y), dot(x, gz) #no transposing necessary
+
+    def grad(self, inputs, gradients):
+        raise NotImplementedError(
+            "See http://github.com/Theano/Theano/issues/207"
+        )
 
 cholesky = Cholesky()
 
