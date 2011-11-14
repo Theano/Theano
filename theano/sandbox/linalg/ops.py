@@ -387,6 +387,9 @@ class CholeskyGrad(Op):
         x = as_tensor_variable(x)
         l = as_tensor_variable(l)
         dz = as_tensor_variable(dz)
+        assert l.owner.op.lower == self.lower, (
+            "lower/upper mismatch between Cholesky op and CholeskyGrad op"
+        )
         return Apply(self, [x, l, dz], [x.type()])
 
     def perform(self, node, inputs, outputs):
