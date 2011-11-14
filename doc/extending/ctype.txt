@@ -97,13 +97,13 @@ the most important ones:
     .. method:: c_compiler()
 
         Allows to specify a special compiler. This will force this compiler
-	to all the compilation bloc(a particular op or the full graph).
-	This is used for the GPU code.
+        for the current compilation block (a particular op or the full graph).
+        This is used for the GPU code.
 
     .. method:: c_code_cache_version()
 
        Should return a tuple of hashable object like interger. This
-       specify the version of the code. It is used to cache the
+       specifies the version of the code. It is used to cache the
        compiled code. You MUST change the returned tuple for each
        change in the code. If you don't want to cache the compiled code
        return an empty tuple or don't implement it.
