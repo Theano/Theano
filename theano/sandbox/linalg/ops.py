@@ -327,7 +327,7 @@ class Cholesky(Op):
     def __eq__(self, other):
         return (type(self) == type(other) and self.props() == other.props())
 
-    def __repr__(self):
+    def __str__(self):
         if self.lower:
             lu = 'lower'
         else:
@@ -369,7 +369,7 @@ class CholeskyGrad(Op):
     def __eq__(self, other):
         return (type(self) == type(other) and self.props() == other.props())
 
-    def __repr__(self):
+    def __str__(self):
         if self.lower:
             lu = 'lower'
         else:
