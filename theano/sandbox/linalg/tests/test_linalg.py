@@ -63,6 +63,18 @@ def test_cholesky():
     yield check_upper_triangular, pd, ch_f
 
 
+def test_cholesky_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5)
+    pd = numpy.dot(r, r.T)
+    # Check the default.
+    utt.verify_grad(cholesky, [pd], rng=rng)
+    # Explicit lower-triangular.
+    utt.verify_grad(Cholesky(lower=True), [pd], rng=rng)
+    # Explicit upper-triangular.
+    utt.verify_grad(Cholesky(lower=False), [pd], rng=rng)
+
+
 def test_inverse_correctness():
     rng = numpy.random.RandomState(utt.fetch_seed())
 
