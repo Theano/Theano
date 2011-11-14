@@ -54,7 +54,16 @@ There are less methods to define for an Op than for a Type:
 
     .. method:: c_support_code()
 
-      Allows you to specify helper functions/structs that the type needs. See :ref:`op`.
+      Allows you to specify helper functions/structs that the
+      :ref:`op` needs.  That code will be reused for each apply of
+      this op. It will be inserted at global scope.
+
+    .. method:: c_support_code_apply(node, name)
+
+      Allows you to specify helper functions/structs specialized for a
+      particular apply of an :ref:`op`. Use `c_support_code` if the
+      code is the same for each apply of an op.
+      It will be inserted at global scope.
 
     .. method:: infer_shape(node, (i0_shapes,i1_shapes,...))
 
@@ -65,6 +74,14 @@ There are less methods to define for an Op than for a Type:
       Example of matrix-matrix product input_shapes will have as input
       (node, ((x0,x1), (y0,y1))) and should return [(x0, y1)]. Both the
       inputs and the return value may be theano variables.
+
+    .. method:: c_code_cache_version()
+
+       Should return a tuple of hashable objects like integers. This
+       specifies the version of the code. It is used to cache the
+       compiled code. You MUST change the returned tuple for each
+       change in the code. If you don't want to cache the compiled code
+       return an empty tuple or don't implement it.
 
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
