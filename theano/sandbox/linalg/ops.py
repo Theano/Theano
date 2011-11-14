@@ -303,24 +303,30 @@ MATRIX_STRUCTURES = (
         'toeplitz',
         )
 
+
 class Cholesky(Op):
     """
     Return a triangular matrix square root of positive semi-definite `x`
 
-    L = cholesky(X, lower=True) implies dot(L.T,L)==X
+    L = cholesky(X, lower=True) implies dot(L.T,L) == X
     """
     #TODO: inplace
     #TODO: for specific dtypes
+    #TODO: LAPACK wrapper with in-place behavior, for solve also
     def __init__(self, lower=True):
         self.lower = lower
         self.destructive = False
+
     def props(self):
         return (self.lower,
                 self.destructive)
+
     def __hash__(self):
         return hash((type(self), self.props()))
+
     def __eq__(self, other):
-        return (type(self)==type(other) and self.props() == other.props())
+        return (type(self) == type(other) and self.props() == other.props())
+
     def __repr__(self):
         if self.lower:
             lu = 'lower'
@@ -331,14 +337,20 @@ class Cholesky(Op):
         else:
             destr = 'non-destructive'
         return 'Cholesky{%s,%s}' % (lu, destr)
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
-    def perform(self, node, (x,), (z,)):
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        z = outputs[0]
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
     #def grad(self, (x, y), (gz,)):
         #return dot(gz, y), dot(x, gz) #no transposing necessary
+
 cholesky = Cholesky()
+
 
 class MatrixInverse(Op):
     """Computes the inverse of a matrix :math:`A`.
