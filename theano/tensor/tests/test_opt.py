@@ -1124,6 +1124,12 @@ class TimesN(theano.scalar.basic.UnaryScalarOp):
     Must be outside of the class, otherwise, the c cache code can't
     pickle this class and this cause stuff printing during test.
     """
+    def __eq__(self, other):
+        return super(TimesN, self).__eq__(other) and self.n == other.n
+
+    def __hash__(self):
+        return super(TimesN, self).__hash__() ^ hash(self.n)
+
     def __init__(self, n, *args, **kwargs):
         self.n = n
         theano.scalar.basic.UnaryScalarOp.__init__(self, *args, **kwargs)
