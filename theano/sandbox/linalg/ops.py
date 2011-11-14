@@ -308,7 +308,7 @@ class Cholesky(Op):
     """
     Return a triangular matrix square root of positive semi-definite `x`
 
-    L = cholesky(X, lower=True) implies dot(L.T,L) == X
+    L = cholesky(X, lower=True) implies dot(L, L.T) == X
     """
     #TODO: inplace
     #TODO: for specific dtypes
