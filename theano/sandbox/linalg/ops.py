@@ -407,8 +407,17 @@ class CholeskyGrad(Op):
                     F[k, k] -= L[j, k] * F[j, k]
                 F[k, k] /= (2 * L[k, k])
         else:
-            raise NotImplementedError("gradient only implemented for "
-                                      "lower-triangular Cholesky op")
+            F = numpy.triu(dz)
+            M = N - 1
+            for k in xrange(N - 1, -1, -1):
+                for j in xrange(k + 1, N):
+                    for i in xrange(j, N):
+                        F[k, i] -= F[j, i] * L[k, j]
+                        F[k, j] -= F[j, i] * L[k, i]
+                for j in xrange(k + 1, N):
+                    F[k, j] /= L[k, k]
+                    F[k, k] -= L[k, j] * F[k, j]
+                F[k, k] /= (2 * L[k, k])
         dx[0] = F
 
 
