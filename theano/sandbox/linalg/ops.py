@@ -348,11 +348,67 @@ class Cholesky(Op):
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
 
     def grad(self, inputs, gradients):
-        raise NotImplementedError(
-            "See http://github.com/Theano/Theano/issues/207"
-        )
+        return [CholeskyGrad(self.lower)(inputs[0], self(inputs[0]),
+                                         gradients[0])]
+        # raise NotImplementedError(
+        #     "See http://github.com/Theano/Theano/issues/207"
+        # )
 
 cholesky = Cholesky()
+
+
+class CholeskyGrad(Op):
+    def __init__(self, lower=True):
+        self.lower = lower
+        self.destructive = False
+
+    def props(self):
+        return (self.lower,
+                self.destructive)
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def __repr__(self):
+        if self.lower:
+            lu = 'lower'
+        else:
+            lu = 'upper'
+        if self.destructive:
+            destr = 'destructive'
+        else:
+            destr = 'non-destructive'
+        return 'CholeskyGrad{%s,%s}' % (lu, destr)
+
+    def make_node(self, x, l, dz):
+        x = as_tensor_variable(x)
+        l = as_tensor_variable(l)
+        dz = as_tensor_variable(dz)
+        return Apply(self, [x, l, dz], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        L = inputs[1]
+        dz = inputs[2]
+        dx = outputs[0]
+        N = x.shape[0]
+        if self.lower:
+            F = numpy.tril(dz)
+            for k in xrange(N - 1, -1, -1):
+                for j in xrange(k + 1, N):
+                    for i in xrange(j, N):
+                        F[i, k] -= F[i, j] * L[j, k]
+                        F[j, k] -= F[i, j] * L[i, k]
+                for j in xrange(k + 1, N):
+                    F[j, k] /= L[k, k]
+                F[k, k] /= (2 * L[k, k])
+        else:
+            raise NotImplementedError("gradient only implemented for "
+                                      "lower-triangular Cholesky op")
+        dx[0] = F
 
 
 class MatrixInverse(Op):
