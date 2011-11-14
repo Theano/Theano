@@ -390,6 +390,17 @@ class CholeskyGrad(Op):
         return Apply(self, [x, l, dz], [x.type()])
 
     def perform(self, node, inputs, outputs):
+        """
+        Implements the "reverse-mode" gradient for the Cholesky factorization
+        of a positive-definite matrix.
+
+        References
+        ----------
+        .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
+               Journal of Computational and Graphical Statistics,
+               Vol. 4, No. 2 (Jun.,1995), pp. 134-147
+               http://www.jstor.org/stable/1390762
+        """
         x = inputs[0]
         L = inputs[1]
         dz = inputs[2]
