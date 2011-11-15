@@ -303,25 +303,34 @@ MATRIX_STRUCTURES = (
         'toeplitz',
         )
 
+
 class Cholesky(Op):
     """
     Return a triangular matrix square root of positive semi-definite `x`
 
-    L = cholesky(X, lower=True) implies dot(L.T,L)==X
+    L = cholesky(X, lower=True) implies dot(L, L.T) == X
     """
     #TODO: inplace
     #TODO: for specific dtypes
+    #TODO: LAPACK wrapper with in-place behavior, for solve also
     def __init__(self, lower=True):
         self.lower = lower
         self.destructive = False
+
     def props(self):
         return (self.lower,
                 self.destructive)
+
     def __hash__(self):
         return hash((type(self), self.props()))
+
     def __eq__(self, other):
-        return (type(self)==type(other) and self.props() == other.props())
-    def __repr__(self):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
+    def __str__(self):
         if self.lower:
             lu = 'lower'
         else:
@@ -331,14 +340,103 @@ class Cholesky(Op):
         else:
             destr = 'non-destructive'
         return 'Cholesky{%s,%s}' % (lu, destr)
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
-    def perform(self, node, (x,), (z,)):
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        z = outputs[0]
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
-    #def grad(self, (x, y), (gz,)):
-        #return dot(gz, y), dot(x, gz) #no transposing necessary
+
+    def grad(self, inputs, gradients):
+        return [CholeskyGrad(self.lower)(inputs[0], self(inputs[0]),
+                                         gradients[0])]
+
 cholesky = Cholesky()
+
+
+class CholeskyGrad(Op):
+    def __init__(self, lower=True):
+        self.lower = lower
+        self.destructive = False
+
+    def props(self):
+        return (self.lower,
+                self.destructive)
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def __str__(self):
+        if self.lower:
+            lu = 'lower'
+        else:
+            lu = 'upper'
+        if self.destructive:
+            destr = 'destructive'
+        else:
+            destr = 'non-destructive'
+        return 'CholeskyGrad{%s,%s}' % (lu, destr)
+
+    def make_node(self, x, l, dz):
+        x = as_tensor_variable(x)
+        l = as_tensor_variable(l)
+        dz = as_tensor_variable(dz)
+        assert l.owner.op.lower == self.lower, (
+            "lower/upper mismatch between Cholesky op and CholeskyGrad op"
+        )
+        return Apply(self, [x, l, dz], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        """
+        Implements the "reverse-mode" gradient for the Cholesky factorization
+        of a positive-definite matrix.
+
+        References
+        ----------
+        .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
+               Journal of Computational and Graphical Statistics,
+               Vol. 4, No. 2 (Jun.,1995), pp. 134-147
+               http://www.jstor.org/stable/1390762
+        """
+        x = inputs[0]
+        L = inputs[1]
+        dz = inputs[2]
+        dx = outputs[0]
+        N = x.shape[0]
+        if self.lower:
+            F = numpy.tril(dz)
+            for k in xrange(N - 1, -1, -1):
+                for j in xrange(k + 1, N):
+                    for i in xrange(j, N):
+                        F[i, k] -= F[i, j] * L[j, k]
+                        F[j, k] -= F[i, j] * L[i, k]
+                for j in xrange(k + 1, N):
+                    F[j, k] /= L[k, k]
+                    F[k, k] -= L[j, k] * F[j, k]
+                F[k, k] /= (2 * L[k, k])
+        else:
+            F = numpy.triu(dz)
+            M = N - 1
+            for k in xrange(N - 1, -1, -1):
+                for j in xrange(k + 1, N):
+                    for i in xrange(j, N):
+                        F[k, i] -= F[j, i] * L[k, j]
+                        F[k, j] -= F[j, i] * L[k, i]
+                for j in xrange(k + 1, N):
+                    F[k, j] /= L[k, k]
+                    F[k, k] -= L[k, j] * F[k, j]
+                F[k, k] /= (2 * L[k, k])
+        dx[0] = F
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
 
 class MatrixInverse(Op):
     """Computes the inverse of a matrix :math:`A`.
