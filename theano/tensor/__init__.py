@@ -22,7 +22,7 @@ random = RandomStreams(seed=0xBAD5EED)
 """Imitate the numpy.random symbol with a tensor.random one"""
 
 from elemwise import \
-    DimShuffle, Elemwise, CAReduce, Any, All
+    DimShuffle, Elemwise, CAReduce
 
 import sharedvar  # adds shared-variable constructors
 
@@ -50,12 +50,5 @@ def shared(*args, **kw):
 
 import nnet  # used for softmax, sigmoid, etc.
 
-
-def any(x, axis=None):
-    return Any(axis)(x)
-
-
-def all(x, axis=None):
-    return All(axis)(x)
 
 from tensor_grad import Rop, Lop, grad, numeric_grad, verify_grad

@@ -5531,8 +5531,17 @@ def tensordot(x, y=None, axes=2):
 
 #TODO: tensordot should be function as described in rst docs.
 
+
 def outer(x, y):
     """Return vector-vector outer product."""
     return dot(
             x.dimshuffle(0, 'x'),
             y.dimshuffle('x', 0))
+
+
+def any(x, axis=None):
+    return elemwise.Any(axis)(x)
+
+
+def all(x, axis=None):
+    return elemwise.All(axis)(x)

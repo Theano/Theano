@@ -1259,13 +1259,14 @@ for(int i=0;i<%(iname)s->nd;i++){
 
 
 class All(CAReduce):
-    """
-    Equivalent to numpy any
+    """ Applies `bitwise and` to all the values of a tensor along the
+    specified axis(es).
 
-    TODO: elaborate
+    Equivalent to CAReduce(scalar.and_, axis=axis)
     """
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.and_, axis)
+
     def _output_dtype(self, idtype):
         return "int8"
 
@@ -1275,14 +1276,16 @@ class All(CAReduce):
         else:
             return "All{%s}" % ", ".join(map(str, self.axis))
 
-class Any(CAReduce):
-    """
-    Equivalent to numpy any
 
-    TODO: elaborate
+class Any(CAReduce):
+    """ Applies `bitwise or` to all the values of a tensor along the
+    specified axis(es).
+
+    Equivalent to CAReduce(scalar.or_, axis=axis)
     """
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.or_, axis)
+
     def _output_dtype(self, idtype):
         return "int8"
 
@@ -1291,7 +1294,6 @@ class Any(CAReduce):
             return "Any"
         else:
             return "Any{%s}" % ", ".join(map(str, self.axis))
-
 
 
 class Sum(CAReduce):
