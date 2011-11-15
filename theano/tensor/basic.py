@@ -32,6 +32,8 @@ _logger=logging.getLogger("theano.tensor.basic")
 
 #This is needed as we will hide it later
 python_complex=complex
+python_any = any
+python_all = all
 
 # Define common subsets of dtypes (as strings).
 int_dtypes = map(str, scal.int_types)
@@ -52,7 +54,7 @@ def check_equal_numpy(x, y):
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
         return x.dtype == y.dtype and x.shape == y.shape and numpy.any(abs(x - y) < 1e-10)
     elif isinstance(x, numpy.random.RandomState) and isinstance(y, numpy.random.RandomState):
-        return all(numpy.all(a==b) for a, b in zip(x.__getstate__(), y.__getstate__()))
+        return python_all(numpy.all(a==b) for a, b in zip(x.__getstate__(), y.__getstate__()))
     else:
         return x == y
 
@@ -140,7 +142,7 @@ def as_tensor_variable(x, name=None, ndim=None):
                 return shape_padleft(x, n_ones=(ndim - x.type.ndim))
             else:
                 return x
-    if isinstance(x, (tuple, list)) and any(isinstance(xi, Variable) for xi in x):
+    if isinstance(x, (tuple, list)) and python_any(isinstance(xi, Variable) for xi in x):
         try:
             return stack(*x)
         except (TypeError, ValueError):
@@ -463,7 +465,7 @@ def get_constant_value(v):
                 # Ensure the Join is joining only scalar variables (so that
                 # the constant value can be found at the same index as the one
                 # used in the sub-tensor).
-                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs) and
+                python_all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1):
 
                 # Note the '+ 1' is because the first argument to Join is the
@@ -477,7 +479,7 @@ def get_constant_value(v):
                            theano.tensor.opt.MakeVector) and
                 # MakeVector normally accept only scalar as input.
                 # We put this check in case there is change in the future
-                all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs) and
+                python_all(var.ndim==0 for var in v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1):
 
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
@@ -818,7 +820,7 @@ class TensorType(Type):
             if b in named_broadcastable:
                 bcast = named_broadcastable[b]
             else:
-                if any(b):
+                if python_any(b):
                     bcast = str(b)
                 else:
                     bcast = '%iD' % len(b)
@@ -1238,6 +1240,12 @@ class _tensor_py_operators:
     size = property(lambda self: prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
+    def any(self, axis = None):
+        return elemwise.Any(axis)(self)
+
+    def all(self, axis = None):
+        return elemwise.All(axis)(self)
+
     # Otherwise TensorVariable[:-1] does not work as Python 2.5.1 calls
     # __len__ before calling __getitem__. It also does not catch the raised
     # Exception!
@@ -3935,7 +3943,7 @@ class Split(Op):
 
         if numpy.sum(splits) != len_along_axis:
             raise ValueError('The splits sum to %s, expected %s' % (numpy.sum(splits), len_along_axis))
-        if not all(splits):
+        if not python_all(splits):
             raise ValueError('Cannot have a split of zero.')
 
         # Checking is done, let's roll the splitting algorithm!
@@ -4108,7 +4116,7 @@ class Join(Op):
     def _make_node_internal(self, axis, tensors,
                 as_tensor_variable_args, output_maker):
         orig = as_tensor_variable_args
-        if not all(targs.type.ndim for targs in as_tensor_variable_args):
+        if not python_all(targs.type.ndim for targs in as_tensor_variable_args):
             raise TypeError('Join cannot handle arguments of dimension 0. For joining scalar values, see @stack');
         # Handle single-tensor joins immediately.
         if len(as_tensor_variable_args) == 1:
@@ -4166,7 +4174,7 @@ class Join(Op):
         outputs = [output_maker(bcastable)]
 
         node = Apply(self, inputs, outputs)
-        if any(not x.type.broadcastable[0] for x in orig):
+        if python_any(not x.type.broadcastable[0] for x in orig):
             node.tag.shape_zero = None
         else:
             node.tag.shape_zero = len(orig)
@@ -4759,7 +4767,7 @@ def arange(start, stop=None, step=1, dtype=None):
                     config.floatX == 'float32' and
                     numpy_dtype == 'float64' and
                     # No explicit float64 in the three arguments?
-                    all(dt != 'float64'
+                    python_all(dt != 'float64'
                         for dt in [s.dtype for s in (start, stop, step)])):
                     # We use float32 instead.
                     assert dtype != 'float64'
@@ -5531,8 +5539,17 @@ def tensordot(x, y=None, axes=2):
 
 #TODO: tensordot should be function as described in rst docs.
 
+
 def outer(x, y):
     """Return vector-vector outer product."""
     return dot(
             x.dimshuffle(0, 'x'),
             y.dimshuffle('x', 0))
+
+
+def any(x, axis=None):
+    return elemwise.Any(axis)(x)
+
+
+def all(x, axis=None):
+    return elemwise.All(axis)(x)

@@ -312,6 +312,10 @@ class test_CAReduce(unittest.TestCase):
                              test_nan=True)
             self.with_linker(gof.PerformLinker(), minimum, dtype=dtype,
                              test_nan=True)
+            self.with_linker(gof.PerformLinker(), or_, dtype=dtype,
+                             test_nan=True)
+            self.with_linker(gof.PerformLinker(), and_, dtype=dtype,
+                             test_nan=True)
 
     def test_c(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
