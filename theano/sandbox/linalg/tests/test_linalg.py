@@ -12,6 +12,7 @@ from theano import config
 # The one in comment are not tested...
 from theano.sandbox.linalg.ops import (cholesky,
                                        Cholesky, # op class
+                                       CholeskyGrad,
                                        matrix_inverse,
                                        #solve,
                                        #diag,
@@ -73,6 +74,33 @@ def test_cholesky_grad():
     utt.verify_grad(Cholesky(lower=True), [pd], rng=rng)
     # Explicit upper-triangular.
     utt.verify_grad(Cholesky(lower=False), [pd], rng=rng)
+
+
+def test_cholesky_shape():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = tensor.matrix()
+    l = cholesky(x)
+    f = theano.function([x], l.shape)
+    topo = f.maker.env.toposort()
+    if config.mode != 'FAST_COMPILE':
+        assert sum([node.op.__class__ == Cholesky for node in topo]) == 0
+    for shp in [2, 3, 5]:
+        m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
+        assert numpy.all(f(m) == (shp, shp))
+
+
+def test_cholesky_grad_shape():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = tensor.matrix()
+    l = cholesky(x)
+    g = tensor.grad(l.sum(), x)
+    f = theano.function([x], g.shape)
+    topo = f.maker.env.toposort()
+    if config.mode != 'FAST_COMPILE':
+        assert sum([node.op.__class__ == CholeskyGrad for node in topo]) == 0
+    for shp in [2, 3, 5]:
+        m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
+        assert numpy.all(f(m) == (shp, shp))
 
 
 def test_inverse_correctness():
