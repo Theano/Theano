@@ -1258,6 +1258,42 @@ for(int i=0;i<%(iname)s->nd;i++){
             return ()
 
 
+class All(CAReduce):
+    """
+    Equivalent to numpy any
+
+    TODO: elaborate
+    """
+    def __init__(self, axis=None):
+        CAReduce.__init__(self, scalar.and_, axis)
+    def _output_dtype(self, idtype):
+        return "int8"
+
+    def __str__(self):
+        if self.axis is None:
+            return "All"
+        else:
+            return "All{%s}" % ", ".join(map(str, self.axis))
+
+class Any(CAReduce):
+    """
+    Equivalent to numpy any
+
+    TODO: elaborate
+    """
+    def __init__(self, axis=None):
+        CAReduce.__init__(self, scalar.or_, axis)
+    def _output_dtype(self, idtype):
+        return "int8"
+
+    def __str__(self):
+        if self.axis is None:
+            return "Any"
+        else:
+            return "Any{%s}" % ", ".join(map(str, self.axis))
+
+
+
 class Sum(CAReduce):
     """
     Sums all the values of a tensor along the specified axis(es).
