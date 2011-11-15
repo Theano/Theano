@@ -76,31 +76,24 @@ def test_cholesky_grad():
     yield utt.verify_grad, Cholesky(lower=False), [pd], 3, rng
 
 
-def test_cholesky_shape():
+def test_cholesky_and_cholesky_grad_shape():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = tensor.matrix()
-    l = cholesky(x)
-    f = theano.function([x], l.shape)
-    topo = f.maker.env.toposort()
-    if config.mode != 'FAST_COMPILE':
-        assert sum([node.op.__class__ == Cholesky for node in topo]) == 0
-    for shp in [2, 3, 5]:
-        m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
-        assert numpy.all(f(m) == (shp, shp))
-
-
-def test_cholesky_grad_shape():
-    rng = numpy.random.RandomState(utt.fetch_seed())
-    x = tensor.matrix()
-    l = cholesky(x)
-    g = tensor.grad(l.sum(), x)
-    f = theano.function([x], g.shape)
-    topo = f.maker.env.toposort()
-    if config.mode != 'FAST_COMPILE':
-        assert sum([node.op.__class__ == CholeskyGrad for node in topo]) == 0
-    for shp in [2, 3, 5]:
-        m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
-        assert numpy.all(f(m) == (shp, shp))
+    for l in (cholesky(x), Cholesky(lower=True)(x), Cholesky(lower=False)(x)):
+        f_chol = theano.function([x], l.shape)
+        g = tensor.grad(l.sum(), x)
+        f_cholgrad = theano.function([x], g.shape)
+        topo_chol = f_chol.maker.env.toposort()
+        topo_cholgrad = f_cholgrad.maker.env.toposort()
+        if config.mode != 'FAST_COMPILE':
+            assert sum([node.op.__class__ == Cholesky
+                        for node in topo_chol]) == 0
+            assert sum([node.op.__class__ == CholeskyGrad
+                        for node in topo_cholgrad]) == 0
+        for shp in [2, 3, 5]:
+            m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
+            yield numpy.testing.assert_equal, f_chol(m), (shp, shp)
+            yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
 
 
 def test_inverse_correctness():
