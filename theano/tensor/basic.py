@@ -1232,6 +1232,12 @@ class _tensor_py_operators:
     size = property(lambda self: prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
+    def any(self, axis = None):
+        return elemwise.Any(axis)(self)
+
+    def all(self, axis = None):
+        return elemwise.All(axis)(self)
+
     # Otherwise TensorVariable[:-1] does not work as Python 2.5.1 calls
     # __len__ before calling __getitem__. It also does not catch the raised
     # Exception!
