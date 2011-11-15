@@ -8,6 +8,7 @@ import numpy
 
 import theano
 
+
 def _asarray(a, dtype, order=None):
     """Convert the input to a Numpy array.
 
