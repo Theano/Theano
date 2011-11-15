@@ -547,7 +547,9 @@ class TensorType(Type):
 
         if ((type(data) is numpy.ndarray)
                 and dtype_eq(data.dtype, self.numpy_dtype)):
-            pass # fall through to ndim check
+            if data.dtype.num != self.numpy_dtype.num:
+                data = theano._asarray(data, dtype=self.dtype)
+            # -- now fall through to ndim check
         elif strict:
             # If any of the two conditions above was not met,
             # we raise a meaningful TypeError.
