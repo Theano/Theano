@@ -11,6 +11,8 @@ from theano import config
 
 # The one in comment are not tested...
 from theano.sandbox.linalg.ops import (cholesky,
+                                       Cholesky, # op class
+                                       CholeskyGrad,
                                        matrix_inverse,
                                        #solve,
                                        #diag,
@@ -27,29 +29,71 @@ from theano.sandbox.linalg.ops import (cholesky,
 from nose.plugins.skip import SkipTest
 
 
-if 0:
-    def test_cholesky():
-        #TODO: test upper and lower triangular
-        #todo: unittest randomseed
-        rng = numpy.random.RandomState(utt.fetch_seed())
+def check_lower_triangular(pd, ch_f):
+    ch = ch_f(pd)
+    assert ch[0, pd.shape[1] - 1] == 0
+    assert ch[pd.shape[0] - 1, 0] != 0
+    assert numpy.allclose(numpy.dot(ch, ch.T), pd)
+    assert not numpy.allclose(numpy.dot(ch.T, ch), pd)
 
-        r = rng.randn(5,5)
 
-        pd = numpy.dot(r,r.T)
+def check_upper_triangular(pd, ch_f):
+    ch = ch_f(pd)
+    assert ch[4, 0] == 0
+    assert ch[0, 4] != 0
+    assert numpy.allclose(numpy.dot(ch.T, ch), pd)
+    assert not numpy.allclose(numpy.dot(ch, ch.T), pd)
 
-        x = tensor.matrix()
-        chol = cholesky(x)
-        f = function([x], tensor.dot(chol, chol.T)) # an optimization could remove this
 
-        ch_f = function([x], chol)
+def test_cholesky():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5)
+    pd = numpy.dot(r, r.T)
+    x = tensor.matrix()
+    chol = cholesky(x)
+    # Check the default.
+    ch_f = function([x], chol)
+    yield check_lower_triangular, pd, ch_f
+    # Explicit lower-triangular.
+    chol = Cholesky(lower=True)(x)
+    ch_f = function([x], chol)
+    yield check_lower_triangular, pd, ch_f
+    # Explicit upper-triangular.
+    chol = Cholesky(lower=False)(x)
+    ch_f = function([x], chol)
+    yield check_upper_triangular, pd, ch_f
 
-        # quick check that chol is upper-triangular
-        ch = ch_f(pd)
-        print ch
-        assert ch[0,4] != 0
-        assert ch[4,0] == 0
-        assert numpy.allclose(numpy.dot(ch.T,ch),pd)
-        assert not numpy.allclose(numpy.dot(ch,ch.T),pd)
+
+def test_cholesky_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5)
+    pd = numpy.dot(r, r.T)
+    # Check the default.
+    yield utt.verify_grad, cholesky, [pd], 3, rng
+    # Explicit lower-triangular.
+    yield utt.verify_grad, Cholesky(lower=True), [pd], 3, rng
+    # Explicit upper-triangular.
+    yield utt.verify_grad, Cholesky(lower=False), [pd], 3, rng
+
+
+def test_cholesky_and_cholesky_grad_shape():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = tensor.matrix()
+    for l in (cholesky(x), Cholesky(lower=True)(x), Cholesky(lower=False)(x)):
+        f_chol = theano.function([x], l.shape)
+        g = tensor.grad(l.sum(), x)
+        f_cholgrad = theano.function([x], g.shape)
+        topo_chol = f_chol.maker.env.toposort()
+        topo_cholgrad = f_cholgrad.maker.env.toposort()
+        if config.mode != 'FAST_COMPILE':
+            assert sum([node.op.__class__ == Cholesky
+                        for node in topo_chol]) == 0
+            assert sum([node.op.__class__ == CholeskyGrad
+                        for node in topo_cholgrad]) == 0
+        for shp in [2, 3, 5]:
+            m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
+            yield numpy.testing.assert_equal, f_chol(m), (shp, shp)
+            yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
 
 
 def test_inverse_correctness():
