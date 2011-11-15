@@ -12,7 +12,8 @@ import blas
 import blas_scipy
 import xlogx
 
-import raw_random, randomstreams
+import raw_random
+import randomstreams
 import shared_randomstreams
 from randomstreams import \
     RandomStreams
@@ -23,7 +24,7 @@ random = RandomStreams(seed=0xBAD5EED)
 from elemwise import \
     DimShuffle, Elemwise, CAReduce
 
-import sharedvar # adds shared-variable constructors
+import sharedvar  # adds shared-variable constructors
 
 # We import as `_shared` instead of `shared` to avoid confusion between
 # `theano.shared` and `tensor._shared`.
@@ -47,8 +48,7 @@ def shared(*args, **kw):
     return _shared(*args, **kw)
 
 
-import nnet # used for softmax, sigmoid, etc.
+import nnet  # used for softmax, sigmoid, etc.
+
 
 from tensor_grad import Rop, Lop, grad, numeric_grad, verify_grad
-
-
