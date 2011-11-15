@@ -543,10 +543,8 @@ class TensorType(Type):
                     'maybe you are trying to call a function on a (possibly '
                     'shared) variable instead of a numeric array?')
 
-        dtype_eq = theano.misc.safe_asarray.dtype_eq
-
         if ((type(data) is numpy.ndarray)
-                and dtype_eq(data.dtype, self.numpy_dtype)):
+                and (data.dtype == self.numpy_dtype)):
             if data.dtype.num != self.numpy_dtype.num:
                 data = theano._asarray(data, dtype=self.dtype)
             # -- now fall through to ndim check
@@ -556,7 +554,7 @@ class TensorType(Type):
             if not (type(data) is numpy.ndarray):
                 raise TypeError("%s expected a ndarray object." % self,
                         data, type(data))
-            if not dtype_eq(data.dtype, self.numpy_dtype):
+            if data.dtype != self.numpy_dtype:
                 raise TypeError(("%s expected a ndarray object with "
                         "dtype = %s (got %s).") % (
                             self, self.numpy_dtype, data.dtype))
