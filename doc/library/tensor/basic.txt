@@ -710,6 +710,28 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
+.. function:: all(x, axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to apply bitwise and
+    :Returns: bitwise and of *x* along *axis*
+
+    axis can be:
+     * *None* - variance computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: any(x, axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to apply bitwise or
+    :Returns: bitwise or of *x* along *axis*
+
+    axis can be:
+     * *None* - variance computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
 
 Indexing
 ========
