@@ -93,13 +93,14 @@ class IfElse(PureOp):
         return rval
 
     def __str__(self):
-        name = 'if{%s' % str(self.name)
+        args = []
+        if self.name is not None:
+            args.append(self.name)
         if self.as_view:
-            name += ',inplace'
+            args.append('inplace')
         if self.gpu:
-            name += ',gpu'
-        name += '}'
-        return name
+            args.append('gpu')
+        return 'if{%s}' % ','.join(args)
 
     def infer_shape(self, node, inputs_shapes):
         # By construction, corresponding then/else pairs have the same number
