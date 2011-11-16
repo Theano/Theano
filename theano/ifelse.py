@@ -108,6 +108,9 @@ class IfElse(PureOp):
 
         ts_shapes = inputs_shapes[1:][:self.n_outs]
         fs_shapes = inputs_shapes[1:][self.n_outs:]
+        # All elements of all shape tuples for the true and false outputs are
+        # unpacked into the inputs of a separate ifelse, and then the outputs
+        # of that ifelse are packed back into shape tuples.
         new_ts_inputs = []
         for ts_shape in ts_shapes:
             if isinstance(ts_shape, (list, tuple)):
