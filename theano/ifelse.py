@@ -129,12 +129,15 @@ class IfElse(PureOp):
 
         assert len(new_ts_inputs) == len(new_fs_inputs)
         if len(new_ts_inputs + new_fs_inputs) > 0:
+            name_tokens = ['shape']
+            if self.name is not None:
+                name_tokens.append(self.name)
 
             new_ifelse = IfElse(
                 n_outs=len(new_ts_inputs),
                 as_view=False,
                 gpu=False,
-                name='shape_' + str(self.name))
+                name='_'.join(name_tokens))
             new_outs = new_ifelse.make_node(node.inputs[0],
                             *(new_ts_inputs + new_fs_inputs)).outputs
         else:
