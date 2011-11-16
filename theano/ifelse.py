@@ -145,14 +145,13 @@ class IfElse(PureOp):
 
         # generate pairs of shapes
         out_shapes = []
-
-        idx = 0
         for out in node.outputs:
-            current_shape = []
-            for k in xrange(out.ndim):
-                current_shape += [new_outs[idx]]
-                idx += 1
-            out_shapes += [tuple(current_shape)]
+            out_shapes.append(tuple(new_outs[:out.ndim]))
+            new_outs = new_outs[out.ndim:]
+
+        # new_outs should be an empty list after last iteration
+        assert len(new_outs) == 0
+
         return out_shapes
 
     def make_node(self, c, *args):
