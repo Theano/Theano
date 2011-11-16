@@ -349,13 +349,16 @@ def cond_make_inplace(node):
                       name=op.name).make_node(*node.inputs).outputs
     return False
 
-optdb.register('cond_make_inplace', opt.in2out(cond_make_inplace,
-    ignore_newtrees=True), 95, 'fast_run', 'inplace')
 
-ifelse_equilibrium = gof.EquilibriumDB()
-ifelse_seqopt = gof.SequenceDB()
-ifelse_equilibrium.register('seq_ifelse', ifelse_seqopt, 'fast_run',
-                            'ifelse')
+# XXX: Optimizations commented pending further debugging (certain optimizations
+# make computation less lazy than it should be currently).
+# optdb.register('cond_make_inplace', opt.in2out(cond_make_inplace,
+#     ignore_newtrees=True), 95, 'fast_run', 'inplace')
+#
+# ifelse_equilibrium = gof.EquilibriumDB()
+# ifelse_seqopt = gof.SequenceDB()
+# ifelse_equilibrium.register('seq_ifelse', ifelse_seqopt, 'fast_run',
+#                             'ifelse')
 ''' Comments:
 I've wrote this comments to explain how the optimization of ifelse function
 (for future developers that need to parse this part of code. Please try to
@@ -650,60 +653,64 @@ def cond_merge_random_op(main_node):
             return main_outs
 
 
-pushout_equilibrium = gof.EquilibriumDB()
-
-#pushout_equilibrium.register("cond_lift_single_if",
-#                             opt.in2out(cond_lift_single_if,
-#                                        ignore_newtrees=True),
-#                             'fast_run', 'ifelse')
-
-pushout_equilibrium.register("cond_merge_random_op",
-                             opt.in2out(cond_merge_random_op,
-                                        ignore_newtrees=True),
-                             'fast_run', 'ifelse')
-
-
-pushout_equilibrium.register("ifelse_merge",
-                             gof.MergeOptimizer(skip_const_merge=False),
-                             'fast_run', 'ifelse')
-
-pushout_equilibrium.register("ifelse_remove_identical_inside",
-                             opt.in2out(cond_remove_identical,
-                                        ignore_newtrees=True),
-                             'fast_run', 'ifelse')
-
-pushout_equilibrium.register('ifelse_sameCondTrue_inside',
-                             opt.in2out(cond_merge_ifs_true,
-                                        ignore_newtrees=True),
-                             'fast_run', 'ifelse')
-
-pushout_equilibrium.register('ifelse_sameCondFalse_inside',
-                             opt.in2out(cond_merge_ifs_false,
-                                        ignore_newtrees=True),
-                             'fast_run', 'ifelse')
-
-ifelse_seqopt.register('ifelse_condPushOut_equilibrium',
-                       pushout_equilibrium,
-                       1, 'fast_run', 'ifelse')
-
-ifelse_seqopt.register('merge_nodes_1',
-                       gof.MergeOptimizer(skip_const_merge=False),
-                       2, 'fast_run', 'ifelse')
-
-
-ifelse_seqopt.register('ifelse_sameCondTrue',
-                       opt.in2out(cond_merge_ifs_true,
-                                  ignore_newtrees=True),
-                       3, 'fast_run', 'ifelse')
-
-
-ifelse_seqopt.register('ifelse_sameCondFalse',
-                       opt.in2out(cond_merge_ifs_false,
-                                  ignore_newtrees=True),
-                       4, 'fast_run', 'ifelse')
-
-
-ifelse_seqopt.register('ifelse_removeIdenetical',
-                       opt.in2out(cond_remove_identical,
-                                  ignore_newtrees=True),
-                       7, 'fast_run', 'ifelse')
+# XXX: Optimizations commented pending further debugging (certain optimizations
+# make computation less lazy than it should be currently).
+#
+# pushout_equilibrium = gof.EquilibriumDB()
+#
+# XXX: This optimization doesn't seem to exist anymore?
+# pushout_equilibrium.register("cond_lift_single_if",
+#                              opt.in2out(cond_lift_single_if,
+#                                         ignore_newtrees=True),
+#                              'fast_run', 'ifelse')
+#
+# pushout_equilibrium.register("cond_merge_random_op",
+#                              opt.in2out(cond_merge_random_op,
+#                                         ignore_newtrees=True),
+#                              'fast_run', 'ifelse')
+#
+#
+# pushout_equilibrium.register("ifelse_merge",
+#                              gof.MergeOptimizer(skip_const_merge=False),
+#                              'fast_run', 'ifelse')
+#
+# pushout_equilibrium.register("ifelse_remove_identical_inside",
+#                              opt.in2out(cond_remove_identical,
+#                                         ignore_newtrees=True),
+#                              'fast_run', 'ifelse')
+#
+# pushout_equilibrium.register('ifelse_sameCondTrue_inside',
+#                              opt.in2out(cond_merge_ifs_true,
+#                                         ignore_newtrees=True),
+#                              'fast_run', 'ifelse')
+#
+# pushout_equilibrium.register('ifelse_sameCondFalse_inside',
+#                              opt.in2out(cond_merge_ifs_false,
+#                                         ignore_newtrees=True),
+#                              'fast_run', 'ifelse')
+#
+# ifelse_seqopt.register('ifelse_condPushOut_equilibrium',
+#                        pushout_equilibrium,
+#                        1, 'fast_run', 'ifelse')
+#
+# ifelse_seqopt.register('merge_nodes_1',
+#                        gof.MergeOptimizer(skip_const_merge=False),
+#                        2, 'fast_run', 'ifelse')
+#
+#
+# ifelse_seqopt.register('ifelse_sameCondTrue',
+#                        opt.in2out(cond_merge_ifs_true,
+#                                   ignore_newtrees=True),
+#                        3, 'fast_run', 'ifelse')
+#
+#
+# ifelse_seqopt.register('ifelse_sameCondFalse',
+#                        opt.in2out(cond_merge_ifs_false,
+#                                   ignore_newtrees=True),
+#                        4, 'fast_run', 'ifelse')
+#
+#
+# ifelse_seqopt.register('ifelse_removeIdenetical',
+#                        opt.in2out(cond_remove_identical,
+#                                   ignore_newtrees=True),
+#                        7, 'fast_run', 'ifelse')
