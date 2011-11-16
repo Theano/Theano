@@ -329,7 +329,7 @@ def ifelse(condition, then_branch, else_branch, name=None):
                         gpu=False,
                         name=name)
 
-    ins = [cond] + list(then_branch) + list(else_branch)
+    ins = [condition] + list(then_branch) + list(else_branch)
     rval = new_ifelse.make_node(*ins).outputs
 
     if rval_type is None:
