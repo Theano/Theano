@@ -14,7 +14,8 @@ is a global operation with a scalar condition.
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "James Bergstra "
-               "Dumitru Erhan ")
+               "Dumitru Erhan "
+               "David Warde-Farley")
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
