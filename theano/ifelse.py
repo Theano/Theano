@@ -19,6 +19,7 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 from copy import deepcopy
+from itertools import izip
 import logging
 
 from theano.gof import PureOp, Apply, generic, Container
@@ -173,7 +174,7 @@ class IfElse(PureOp):
         ts = args[:self.n_outs]
         fs = args[self.n_outs:]
 
-        for t, f in zip(ts, fs):
+        for t, f in izip(ts, fs):
             if t.type != f.type:
                 raise TypeError(('IfElse requires same types for true and '
                                 'false return values'), t, f, t.type, f.type)
@@ -232,9 +233,7 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, t in zip(outputs,
-                                                   outtypes,
-                                                   ts):
+                        for out, outtype, t in izip(outputs, outtypes, ts):
                             compute_map[out][0] = 1
                             if self.as_view:
                                 oval = outtype.filter(storage_map[t][0])
@@ -249,9 +248,7 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, f in zip(outputs,
-                                                   outtypes,
-                                                   fs):
+                        for out, outtype, f in izip(outputs, outtypes, fs):
                             compute_map[out][0] = 1
                             # can't view both outputs unless destroyhandler
                             # improves
