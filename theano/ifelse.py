@@ -384,8 +384,8 @@ where, each of the optimization do the following things:
     `ifelse_lift` (def cond_lift_single_if):
 
 '''
-optdb.register('ifelse_equilibriumOpt', ifelse_equilibrium, .5, 'fast_run',
-               'ifelse')
+# optdb.register('ifelse_equilibriumOpt', ifelse_equilibrium, .5, 'fast_run',
+#                'ifelse')
 
 acceptable_ops = (theano.tensor.basic.Dot,
                   theano.tensor.basic.Reshape,
