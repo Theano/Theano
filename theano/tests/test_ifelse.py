@@ -9,6 +9,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import unittest
 import numpy
+from nose.plugins.skip import SkipTest
 
 import theano
 from theano import tensor
@@ -76,6 +77,7 @@ class test_ifelse(unittest.TestCase):
         assert numpy.all(gy0 == 1.)
 
     def test_merge(self):
+        raise SkipTest("Optimization temporarily disabled")
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -87,6 +89,7 @@ class test_ifelse(unittest.TestCase):
                     if isinstance(x.op, IfElse)]) == 1
 
     def test_remove_useless_inputs1(self):
+        raise SkipTest("Optimization temporarily disabled")
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -98,6 +101,7 @@ class test_ifelse(unittest.TestCase):
         assert len(ifnode.inputs) == 3
 
     def test_remove_useless_inputs2(self):
+        raise SkipTest("Optimization temporarily disabled")
         x1 = tensor.vector('x1')
         x2 = tensor.vector('x2')
         y1 = tensor.vector('y1')
@@ -111,6 +115,7 @@ class test_ifelse(unittest.TestCase):
         assert len(ifnode.outputs) == 3
 
     def test_pushout1(self):
+        raise SkipTest("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')
@@ -139,6 +144,7 @@ class test_ifelse(unittest.TestCase):
                               vx2 * vy2 * vw2)
 
     def test_pushout3(self):
+        raise SkipTest("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         y1 = tensor.scalar('x2')
         y2 = tensor.scalar('y2')
@@ -162,6 +168,7 @@ class test_ifelse(unittest.TestCase):
         assert numpy.allclose(f(vx1, vy1, vy2, 0), 2 * vy2 * 0.2)
 
     def test_pushout2(self):
+        raise SkipTest("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')
@@ -198,6 +205,7 @@ class test_ifelse(unittest.TestCase):
                               vx2 * vy2 * vw)
 
     def test_merge_ifs_true_false(self):
+        raise SkipTest("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')
