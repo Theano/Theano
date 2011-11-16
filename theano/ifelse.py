@@ -1,12 +1,12 @@
 """
 IfElse introduces lazy evaluation in Theano (coupled with the CVM/VM
-linkers). It resembles the if clause of any programming languages, that
+linkers). It resembles the if clause of any programming language, that
 has a `then` and `else` branch, and executes either one or the other
 according to the condition provided.
 
-This op contrast the already existent `swtich` op, that will evaluate both
+This op contrast the already existent `switch` op, that will evaluate both
 branches of the clause and afterwards pick (according to the condition)
-which value to report. Note also that `switch` is an elemwise operations (so
+which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
@@ -43,9 +43,9 @@ class IfElse(PureOp):
     According to a scalar condition `condition` the op evaluates and then
     returns all the tensors provided on the `then` branch, otherwise it
     evaluates and returns the tensors provided on the `else` branch. The op
-    supports multiple tensors on each branch, conditioned that the same
+    supports multiple tensors on each branch, with the condition that the same
     number of tensors are on the `then` as on the `else` and there is a one
-    to one correspondance between them (shape and dtype wise).
+    to one correspondence between them (shape and dtype wise).
 
     The `then` branch is defined as the first N tensors (after the
     condition), while the `else` branch is defined as the last N tensors.
