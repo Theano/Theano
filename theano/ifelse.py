@@ -207,7 +207,7 @@ class IfElse(PureOp):
                              name=nw_name_f)
 
         if_true = ([ins[0]] + grads + [theano.tensor.zeros_like(t)
-                                     for t in ts])
+                                       for t in ts])
         if_false = ([ins[0]] + [theano.tensor.zeros_like(f)
                                 for f in fs] + grads)
         return ([None] +
@@ -215,7 +215,6 @@ class IfElse(PureOp):
                 if_false_op.make_node(*if_false).outputs)
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-
         outtypes = [out.type for out in node.outputs]
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
@@ -396,6 +395,7 @@ acceptable_ops = (theano.tensor.basic.Dot,
                   theano.tensor.elemwise.Elemwise,
                   theano.tensor.elemwise.DimShuffle)
 
+
 @gof.local_optimizer([None])
 def ifelse_lift_single_if_through_acceptable_ops(main_node):
     """This optimization lifts up certain ifelse instances.
@@ -444,6 +444,7 @@ def ifelse_lift_single_if_through_acceptable_ops(main_node):
     if type(nw_outs) not in (tuple, list):
         nw_outs = [nw_outs]
     return nw_outs
+
 
 @gof.local_optimizer([None])
 def cond_merge_ifs_true(node):
@@ -595,7 +596,6 @@ def cond_remove_identical(node):
     return rval
 
 
-
 @gof.local_optimizer([None])
 def cond_merge_random_op(main_node):
     if isinstance(main_node.op, IfElse):
@@ -668,20 +668,19 @@ pushout_equilibrium.register("ifelse_merge",
                              'fast_run', 'ifelse')
 
 pushout_equilibrium.register("ifelse_remove_identical_inside",
-                       opt.in2out(cond_remove_identical,
-                                  ignore_newtrees=True),
+                             opt.in2out(cond_remove_identical,
+                                        ignore_newtrees=True),
                              'fast_run', 'ifelse')
 
 pushout_equilibrium.register('ifelse_sameCondTrue_inside',
-                       opt.in2out(cond_merge_ifs_true,
-                                  ignore_newtrees=True),
-                       'fast_run', 'ifelse')
+                             opt.in2out(cond_merge_ifs_true,
+                                        ignore_newtrees=True),
+                             'fast_run', 'ifelse')
 
 pushout_equilibrium.register('ifelse_sameCondFalse_inside',
-                       opt.in2out(cond_merge_ifs_false,
-                                  ignore_newtrees=True),
-                       'fast_run', 'ifelse')
-
+                             opt.in2out(cond_merge_ifs_false,
+                                        ignore_newtrees=True),
+                             'fast_run', 'ifelse')
 
 ifelse_seqopt.register('ifelse_condPushOut_equilibrium',
                        pushout_equilibrium,
