@@ -22,7 +22,7 @@ from copy import deepcopy
 from itertools import izip
 import logging
 
-from theano.gof import PureOp, Apply, generic, Container
+from theano.gof import PureOp, Apply
 
 import theano.tensor
 import gof
