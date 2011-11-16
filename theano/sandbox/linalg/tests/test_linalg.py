@@ -47,7 +47,7 @@ def check_upper_triangular(pd, ch_f):
 
 def test_cholesky():
     rng = numpy.random.RandomState(utt.fetch_seed())
-    r = rng.randn(5, 5)
+    r = rng.randn(5, 5).astype(config.floatX)
     pd = numpy.dot(r, r.T)
     x = tensor.matrix()
     chol = cholesky(x)
