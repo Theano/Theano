@@ -12,9 +12,8 @@ import numpy
 
 import theano
 from theano import tensor
-from theano.lazycond import IfElse
+from theano.ifelse import IfElse, ifelse
 from theano.tests  import unittest_tools as utt
-from theano.lazycond import ifelse
 
 
 class test_ifelse(unittest.TestCase):
