@@ -990,7 +990,7 @@ def min_informative_str(obj, indent_level=0,
     if _prev_obs is None:
         _prev_obs = {}
 
-    indent = '\t' * indent_level
+    indent = ' ' * indent_level
 
     if obj in _prev_obs:
         tag = _prev_obs[obj]
