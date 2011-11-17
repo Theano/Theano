@@ -3015,7 +3015,8 @@ def get_canonical_form_slice(theslice, length):
 
 def transpose(x, **kwargs):
     dims = range(x.ndim-1, -1, -1)
-    return DimShuffle(x.broadcastable, dims, inplace=True)(tensor_copy(x))
+
+    return DimShuffle(x.broadcastable, dims, inplace=False)(x)
 
 
 class AdvancedIndexingError(TypeError):
