@@ -269,6 +269,21 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     """
     if consider_constant is None:
         consider_constant = []
+    else:
+        #error checking on consider_constant: verify that it is a collection
+        # of theano variables
+        # this is important, if someone accidentally passes a nested data
+        # structure with theano variables at the leaves, only the root will
+        # be properly considered constant
+        if not hasattr(consider_constant, '__iter__'):
+            raise TypeError('consider_constant must be an iterable collection,'
+                    ' got '+str(type(consider_constant)))
+        for elem in consider_constant:
+            if not isinstance(elem, gof.Variable):
+                raise TypeError('Elements of consider_constant must be variables,'
+                        'but got '+str(type(elem)))
+
+
 
     if not isinstance(cost, TensorVariable):
         raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
