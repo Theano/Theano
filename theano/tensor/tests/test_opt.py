@@ -1500,7 +1500,7 @@ class test_local_subtensor_lift(unittest.TestCase):
     def test7(self):
         # test that Subtensor(Rebroadcast(x)) gets optimized into
         # Rebroadcast(Subtensor(x)).
-        
+
         # test basic case
         x = tensor.matrix('x')
         xval = numpy.random.rand(1,10).astype(config.floatX)
@@ -1526,7 +1526,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
         assert (f2(yval) == yval[:,3,0,:]).all()
-        
+
         # corner case 2: subtensor idx_list is shorter than resulting broadcast pattern
         f3 = function([y], newy[:,3,0], mode=mode_opt)
         prog=f3.maker.env.toposort()
@@ -3244,7 +3244,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
     def test_matrix_matrix(self):
         a, b = matrices('ab')
         g = self.simple_optimize(Env([a, b], [tensor.dot(a, b).T]))
-        sg = '[dot(InplaceDimShuffle{1,0}(b), InplaceDimShuffle{1,0}(a))]'
+        sg = '[dot(DimShuffle{1,0}(b), DimShuffle{1,0}(a))]'
         assert str(g) == sg
 
     def test_row_matrix(self):
