@@ -276,6 +276,22 @@ class PushOutNonSeqScan(gof.Optimizer):
             env.replace_all_validate(zip(node.outputs, nw_node.outputs),
                                      reason = 'scan_push_computation_out')
             return True
+        elif to_keep == []:
+            # Nothing in the inner graph should be kept
+            replace_with = {}
+            for idx, out in enumerate(to_replace):
+                if out in local_env.outputs:
+                    x = node.outputs[local_env.outputs.index(out)]
+                    y = replace_with_out[idx]
+                    shape = [y.shape[idx] for idx in xrange(y.ndim)]
+                    replace_with[x] = tensor.alloc(y,
+                                                   node.inputs[0],
+                                                   *shape)
+
+            # We need to add one extra dimension to the outputs
+            env.replace_all_validate(replace_with.items(),
+                                     reason = 'scan_push_computation_out')
+
         else:
             return False
 
