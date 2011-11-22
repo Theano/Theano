@@ -2288,6 +2288,9 @@ class T_Scan(unittest.TestCase):
 
         v_out = numpy.dot(v_h, v_W1+ v_W2)
         sol = numpy.zeros((5,2))
+        # This line is here to make sol have the same shape as the output of
+        # theano. Note that what we ask theano to do is to repeat the 2
+        # elements vector v_out 5 times
         sol[:,:] = v_out
         assert numpy.allclose(sol, f(v_h, v_W1, v_W2))
 
