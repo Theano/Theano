@@ -664,6 +664,7 @@ class GpuSum(Op):
 
     def _k_reduce_buf(self, z_pos):
         return """
+        __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = mysum;
         __syncthreads();
 
@@ -713,6 +714,7 @@ class GpuSum(Op):
     #nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, nb_reduce):
         return """
+        __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = mysum;
         __syncthreads();
 
@@ -1214,7 +1216,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (21,)
+        return (22,)
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
