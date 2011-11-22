@@ -2260,6 +2260,40 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(vnh0, tnh0, atol = 1e-6)
         assert numpy.allclose(vnW , tnW , atol = 1e-6)
 
+    def test_pushout_all(self):
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        h0 = tensor.vector('h0')
+
+        def lambda_fn(h, W1, W2):
+            return tensor.dot(h, W1 + W2)
+
+        o, _ = theano.scan(lambda_fn,
+                           non_sequences =[h0,W1,W2],
+                           n_steps = 5)
+
+        f = theano.function([h0,W1,W2], o, mode= mode_with_opt)
+
+        scan_nodes = [x for x in f.maker.env.toposort()
+                     if isinstance(x.op,
+                                   theano.scan_module.scan_op.Scan)]
+        assert len(scan_nodes) == 0
+
+        seed = utt.fetch_seed()
+        rng  = numpy.random.RandomState(seed)
+        floatX = theano.config.floatX
+        v_h = numpy.array(rng.uniform(size=(2,)), dtype= floatX)
+        v_W1 = numpy.array(rng.uniform(size=(2,2)), dtype=floatX)
+        v_W2 = numpy.array(rng.uniform(size=(2,2)), dtype = floatX)
+
+        v_out = numpy.dot(v_h, v_W1+ v_W2)
+        sol = numpy.zeros((5,2))
+        # This line is here to make sol have the same shape as the output of
+        # theano. Note that what we ask theano to do is to repeat the 2
+        # elements vector v_out 5 times
+        sol[:,:] = v_out
+        assert numpy.allclose(sol, f(v_h, v_W1, v_W2))
+
 
     def test_pushout(self):
         W1 = tensor.matrix('W1')
