@@ -2813,6 +2813,26 @@ class T_Join_and_Split(unittest.TestCase):
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
 
+    def test_roll(self):
+
+        # Test simple 1D example
+        a = self.shared(numpy.array([1, 2, 3, 4, 5, 6]))
+        b = roll(a, 2)
+        want = numpy.array([5, 6, 1, 2, 3, 4])
+        out = theano.function([], b)()
+
+        assert (out == want).all()
+
+        # Test 2D example - ensure that behavior matches numpy.roll behavior
+        a = self.shared(numpy.arange(21).reshape((3,7)))
+        b = roll(a, -2, 1)
+
+        want = numpy.arange(21).reshape((3,7))
+        want = numpy.roll(want, -2, 1)
+        out = theano.function([], b)()
+
+        assert (out == want).all()
+
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
