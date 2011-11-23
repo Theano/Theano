@@ -4298,13 +4298,19 @@ def roll(x, shift, axis=None):
 
     Parameters
     ----------
-     - x : a Tensor
-     - shift : int (symbolic or literal)
-        The number of places by which elements are shifted
-     - axis : int (symbolic or literal) (optional)
-        The axis along which elements are shifted.
-        Defaults to zero (deviation from numpy behavior)
-        Defaults to flattening first, rolling, and then reshaping.
+    x : tensor_like
+        Input tensor.
+    shift : int (symbolic or literal)
+        The number of places by which elements are shifted.
+    axis : int (symbolic or literal) (optional)
+        The axis along which elements are shifted. By default, the array
+        is flattened before shifting, after which the original
+        shape is restored.
+
+    Returns
+    -------
+    res : tensor
+        Output tensor, with the same shape as `x`.
     """
     if axis is None:
         y = x.flatten()
