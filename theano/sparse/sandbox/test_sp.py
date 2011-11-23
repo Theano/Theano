@@ -17,7 +17,6 @@ import theano
 from theano.sparse.sandbox import sp
 from theano.tests import unittest_tools as utt
 
-
 class TestSP(unittest.TestCase):
     def test_convolution(self):
         print '\n\n*************************************************'
@@ -360,43 +359,76 @@ class TestSP(unittest.TestCase):
                     utt.verify_grad(d, [kvals])
 
     def test_sp_sum(self):
+
+        print '\n\n*************************************************'
+        print '           TEST SUM'
+        print '*************************************************'
+
+        from theano.sparse.sandbox.sp import SpSum
+
         # TODO: test both grad.
-        for format,cast in [("csc",scipy.sparse.csc_matrix), ("csr",scipy.sparse.csr_matrix)]:
+        rng = numpy.random.RandomState(42)
+        from theano.sparse.basic import SparseFromDense,DenseFromSparse
+        cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
+        
+        for format, cast in cases:
+			
+            print 'format: %(format)s'%locals()
             x = theano.sparse.SparseType(format=format,
                                          dtype=theano.config.floatX)()
             x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
 
-
             # Sum on all axis
+            print 'sum on all axis...'
             z = theano.sparse.sandbox.sp.sp_sum(x)
-            assert z.type.broadcastable==()
+            assert z.type.broadcastable == ()
             f = theano.function([x], z)
             x_val = cast(x_data)
             out = f(x_val)
-            assert out == x_val.sum()
+            expected = x_val.sum()
+            assert out == expected
 
             # Sum on axis 0
-            try:
-                z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
-                assert z.type.broadcastable==(False,)
-                f = theano.function([x], z)
-                x_val = cast(x_data)
-                out = f(x_val)
-                assert (out == x_val.sum(axis=0)).all()
-            except NotImplementedError:
-                pass
+            print 'sum on axis 0...'
+            z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
+            assert z.type.broadcastable == (False,)
+            f = theano.function([x], z)
+            x_val = cast(x_data)
+            out = f(x_val)
+            expected = x_val.sum(axis=0)
+            assert (out == expected).all()
 
             # Sum on axis 1
-            try:
-                z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
-                assert z.type.broadcastable==(False,)
-                f = theano.function([x], z)
-                x_val = cast(x_data)
-                out = f(x_val)
-                expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
-                assert (out == expected).all()
-            except NotImplementedError:
-                pass
+            print 'sum on axis 1...'
+            z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
+            assert z.type.broadcastable == (False,)
+            f = theano.function([x], z)
+            x_val = cast(x_data)
+            out = f(x_val)
+            expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
+            assert (out == expected).all()
+
+            # Sparse gradient on Sum on all axis
+            # unfinished, and suspended until verify_grad get fixed
+            if False:
+                print 'grad on sum on all axis...'
+                def fun(x):
+                    ## verify_grad does not handle sparse data, so here's some casting as a workaround.
+                    # x is a dense matrix: make it sparse
+                    sparse_var = SparseFromDense(format)(x)
+                    # apply op
+                    dense_sum = theano.sparse.sandbox.sp.SpSum(axis=None, sparse_grad=False)(sparse_var)
+                    return dense_sum
+                    # cast back to dense so that verify_grad can work
+                    dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)
+                    return dense_sum
+                x_val = x_data.copy()
+                print type(x_val)
+                import pdb;pdb.set_trace()
+                tensor.verify_grad(fun, [x_val], rng=rng)
+                #utt.verify_grad(SpSum(axis=None), [x_val])
+                print 'ok'
+
 
 def test_diagonal():
     for K in 1, 5:
@@ -482,7 +514,7 @@ def test_col_scale():
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         testcase =  TestSP
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
