@@ -4290,7 +4290,33 @@ def join(axis, *tensors):
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
               printing.FunctionPrinter('join'))
 
+def roll(x, shift, axis=0):
+    """
+    Convenience function to roll `TensorType`s along the given axis.
+    Syntax copies numpy.roll function
 
+    Parameters
+    ----------
+     - x : a Tensor
+     - shift : int (symbolic or literal)
+        The number of places by which elements are shifted
+     - axis : int (symbolic or literal) (optional)
+        The axis along which elements are shifted.
+        Defaults to zero (deviation from numpy behavior)
+    """
+
+    # A slice of all elements in a dimension ':'
+    allslice = slice(None)
+    # List of slices describing the front half [:, :, shift:, :]
+    front_slice = slice(-shift, None)
+    front_list = ([allslice] * axis + [front_slice] +
+                  [allslice] * (x.ndim - axis - 1))
+    # List of slices describing the back half [:, :, :shift, :]
+    end_slice = slice(0, -shift)
+    end_list = [allslice]*axis + [end_slice] + [allslice]*(x.ndim-axis-1)
+    return join(axis,
+                Subtensor(front_list)(x),
+                Subtensor(end_list)(x))
 
 @constructor
 def shape_padleft(t, n_ones=1):
