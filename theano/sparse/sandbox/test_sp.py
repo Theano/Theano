@@ -19,7 +19,6 @@ from theano.tests import unittest_tools as utt
 from theano.sparse.tests.test_basic import random_lil
 
 
-
 class TestSP(unittest.TestCase):
     def test_convolution(self):
         print '\n\n*************************************************'
