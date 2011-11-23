@@ -372,21 +372,19 @@ class TestSP(unittest.TestCase):
         # TODO: test both grad.
         rng = numpy.random.RandomState(42)
         from theano.sparse.basic import SparseFromDense,DenseFromSparse
-        for format,cast in [("csc",scipy.sparse.csc_matrix), ("csr",scipy.sparse.csr_matrix)]:
-
+        cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
+        
+        for format, cast in cases:
+			
             print 'format: %(format)s'%locals()
-
             x = theano.sparse.SparseType(format=format,
                                          dtype=theano.config.floatX)()
             x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
 
-            #print 'x_data:',x_data
-            #print 'x_data.sum():',x_data.sum()
-
             # Sum on all axis
             print 'sum on all axis...'
             z = theano.sparse.sandbox.sp.sp_sum(x)
-            assert z.type.broadcastable==()
+            assert z.type.broadcastable == ()
             f = theano.function([x], z)
             x_val = cast(x_data)
             out = f(x_val)
@@ -396,17 +394,17 @@ class TestSP(unittest.TestCase):
             # Sum on axis 0
             print 'sum on axis 0...'
             z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
-            assert z.type.broadcastable==(False,)
+            assert z.type.broadcastable == (False,)
             f = theano.function([x], z)
             x_val = cast(x_data)
             out = f(x_val)
-            expected=x_val.sum(axis=0)
+            expected = x_val.sum(axis=0)
             assert (out == expected).all()
 
             # Sum on axis 1
             print 'sum on axis 1...'
             z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
-            assert z.type.broadcastable==(False,)
+            assert z.type.broadcastable == (False,)
             f = theano.function([x], z)
             x_val = cast(x_data)
             out = f(x_val)
@@ -414,7 +412,7 @@ class TestSP(unittest.TestCase):
             assert (out == expected).all()
 
             # Sparse gradient on Sum on all axis
-            # suspended until som estuff get fixed =/
+            # unfinished, and suspended until verify_grad get fixed
             if False:
                 print 'grad on sum on all axis...'
                 def fun(x):
@@ -422,7 +420,7 @@ class TestSP(unittest.TestCase):
                     # x is a dense matrix: make it sparse
                     sparse_var = SparseFromDense(format)(x)
                     # apply op
-                    dense_sum = theano.sparse.sandbox.sp.SpSum(axis=None,sparse_grad=False)(sparse_var)
+                    dense_sum = theano.sparse.sandbox.sp.SpSum(axis=None, sparse_grad=False)(sparse_var)
                     return dense_sum
                     # cast back to dense so that verify_grad can work
                     dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)

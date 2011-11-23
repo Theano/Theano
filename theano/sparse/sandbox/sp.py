@@ -31,7 +31,7 @@ class SpSum(Op):
         :param sparse_grad: if True, this instance ignores the gradient on matrix elements which are implicitly 0.
         """
         super(SpSum, self).__init__()
-        self.axis=axis
+        self.axis = axis
         self.sparse_grad = sparse_grad
         if self.axis not in (None, 0, 1):
             raise ValueError('illegal value for self.axis')
@@ -54,9 +54,8 @@ class SpSum(Op):
         # At least for small matrices (5x5), the .sum() method of a csc matrix returns a dense matrix
         # as the result whether axis is 0 or 1... weird!
         ###
-        #make sure a sparse type has been given in input
         assert isinstance(x.type, theano.sparse.SparseType)
-        b=()
+        b = ()
         if self.axis is not None:
             b=(False,)
         z = tensor.tensor(broadcastable=b, dtype=x.dtype)
@@ -75,8 +74,8 @@ class SpSum(Op):
     def perform(self,node, (x,), (z,)):
         if self.axis is None:
             z[0] = numpy.asarray(x.sum())
-        else:
-            s = set(xrange(len(x.shape)))-set([self.axis])
+        else: 
+            s = set(xrange(len(x.shape))) - set([self.axis])
             myreshape = map((lambda i: x.shape[i]), s)
             if x.format not in ('csc', 'csr'):
                 x = x.asformat(x.format)
@@ -95,30 +94,19 @@ class SpSum(Op):
             #        z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[0],))
 
     def grad(self,(x,), (gz,)):
-        print 'grad (sparse:%s):'%self.sparse_grad,x,gz
-        if self.sparse_grad:
-            if self.axis is None:
-                return [gz * theano.sparse.sp_ones_like(x)]
-            elif self.axis == 0:
-                return col_scale(theano.sparse.sp_ones_like(x), gz)
-            elif self.axis == 1:
-                return row_scale(theano.sparse.sp_ones_like(x), gz)
-            else:
-                assert False
+        if self.axis is None:
+            r = gz * theano.sparse.sp_ones_like(x)
+        elif self.axis == 0:
+            r = col_scale(theano.sparse.sp_ones_like(x), gz)
+        elif self.axis == 1:
+            r = row_scale(theano.sparse.sp_ones_like(x), gz)
         else:
-            # if sparse_grad is False, this instance does not ignore the
-            # gradient on matrix elements which are implicitly 0,
-            # and return a dense version of the data.
-            if self.axis is None:
-                return [gz * tensor.ones_like(theano.sparse.dense_from_sparse(x))]
-            elif self.axis == 0:
-                raise NotImplementedError('non sparse grad, axis=0')
-                pass
-            elif self.axis == 1:
-                raise NotImplementedError('non sparse grad, axis=1')
-                pass
-            else:
-                assert False
+            assert False
+
+        if not self.sparse_grad:
+            r = theano.sparse.dense_from_sparse(r)
+
+        return [r]
 
 def sp_sum(x, axis=None, sparse_grad=False):
     return SpSum(axis, sparse_grad)(x)
