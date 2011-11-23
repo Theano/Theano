@@ -4313,8 +4313,11 @@ def roll(x, shift, axis=None):
         Output tensor, with the same shape as `x`.
     """
     if axis is None:
-        y = x.flatten()
-        return roll(y, shift, axis=0).reshape(x.shape)
+        if x.ndim > 1:
+            y = x.flatten()
+            return roll(y, shift, axis=0).reshape(x.shape)
+        else:
+            axis = 0
 
     # A slice of all elements in a dimension ':'
     allslice = slice(None)
