@@ -30,7 +30,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         var, value, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, TensorDot, lvector, true_div, max, min, Split)
+        opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll)
 from theano.tests import unittest_tools as utt
 
 
@@ -2824,14 +2824,23 @@ class T_Join_and_Split(unittest.TestCase):
         assert (out == want).all()
 
         # Test 2D example - ensure that behavior matches numpy.roll behavior
-        a = self.shared(numpy.arange(21).reshape((3,7)))
+        a = self.shared(numpy.arange(21).reshape((3, 7)))
         b = roll(a, -2, 1)
 
-        want = numpy.arange(21).reshape((3,7))
+        want = numpy.arange(21).reshape((3, 7))
         want = numpy.roll(want, -2, 1)
         out = theano.function([], b)()
 
         assert (out == want).all()
+
+        # Test rolling on axis 0
+        want = numpy.arange(21).reshape((3, 7))
+        want = numpy.roll(want, -2, 0)
+        b = roll(a, -2, 0)
+        out = theano.function([], b)()
+
+        assert (out == want).all()
+
 
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
