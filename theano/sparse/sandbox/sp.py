@@ -254,7 +254,6 @@ class EnsureSortedIndices(Op):
     """
     Remove explicit zeros from a sparse matrix, and resort indices
     """
-    inplace=False
 
     def __init__(self, inplace):
         self.inplace=inplace
@@ -273,6 +272,13 @@ class EnsureSortedIndices(Op):
 
     def grad(self, (x,), (gz,)):
         return [gz]
+
+
+    def __str__(self):
+        if self.inplace:
+            return self.__class__.__name__ + "{inplace}"
+        else:
+            return self.__class__.__name__ + "{no_inplace}"
 
 ensure_sorted_indices = EnsureSortedIndices(inplace=False)
 

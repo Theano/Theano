@@ -413,6 +413,34 @@ def test_diagonal():
 
         assert numpy.all(n == f(range(K)).toarray())
 
+def test_EnsureSortedIndices():
+    
+    input_tensor = theano.sparse.csc_dmatrix()
+    sort_op = sp.ensure_sorted_indices(input_tensor)
+    f = theano.function([input_tensor], sort_op)
+    
+    # test_sample = scipy.sparse.rand(1000, 1000, density=0.01)
+    # the function above is not working since scipy has lower version
+    # specify the number of rows and columns in the test case
+    r = 2000
+    c = 2000
+    # construct a test sample
+    test_sample = numpy.random.rand(r,c)
+    indices_zero_x = numpy.random.permutation(range(r))
+    indices_zero_y = numpy.random.permutation(range(c))
+    # take 70% of the test_sample and make them 0
+    sparse_ratio_x = int(r*0.9)
+    sparse_ratio_y = int(c*0.9)
+    for i in indices_zero_x[:sparse_ratio_x]:
+        for j in indices_zero_y[:sparse_ratio_y]:
+            test_sample[i,j] = 0
+    # sort test sample by scipy
+    test_sample = scipy.sparse.csc_matrix(test_sample)
+    sorted_for_real = test_sample.sorted_indices()
+    
+    sorted_theano = f(test_sample)
+    assert numpy.all(sorted_theano.todense() == sorted_for_real.todense())
+    
 def test_diagonal_grad():
     def d(x):
         return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
