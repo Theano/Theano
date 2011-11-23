@@ -413,7 +413,7 @@ def test_diagonal():
 
         assert numpy.all(n == f(range(K)).toarray())
 
-def test_EnsureSortedIndices():
+def test_ensure_sorted_indices():
     x = 2000
     y = 2000
     sparsity = 1000
