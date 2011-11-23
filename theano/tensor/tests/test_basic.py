@@ -2841,6 +2841,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         assert (out == want).all()
 
+        # Test rolling on default axis with ndim > 1
+        want = numpy.roll(numpy.arange(21).reshape((3, 7)), 2)
+        b = roll(a, 2)
+        out = theano.function([], b)()
+
+        assert (out == want).all()
 
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))

@@ -4291,7 +4291,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
               printing.FunctionPrinter('join'))
 
 
-def roll(x, shift, axis=0):
+def roll(x, shift, axis=None):
     """
     Convenience function to roll `TensorType`s along the given axis.
     Syntax copies numpy.roll function
@@ -4304,7 +4304,11 @@ def roll(x, shift, axis=0):
      - axis : int (symbolic or literal) (optional)
         The axis along which elements are shifted.
         Defaults to zero (deviation from numpy behavior)
+        Defaults to flattening first, rolling, and then reshaping.
     """
+    if axis is None:
+        y = x.flatten()
+        return roll(y, shift, axis=0).reshape(x.shape)
 
     # A slice of all elements in a dimension ':'
     allslice = slice(None)
