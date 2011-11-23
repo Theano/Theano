@@ -4290,20 +4290,34 @@ def join(axis, *tensors):
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
               printing.FunctionPrinter('join'))
 
-def roll(x, shift, axis=0):
+
+def roll(x, shift, axis=None):
     """
     Convenience function to roll `TensorType`s along the given axis.
     Syntax copies numpy.roll function
 
     Parameters
     ----------
-     - x : a Tensor
-     - shift : int (symbolic or literal)
-        The number of places by which elements are shifted
-     - axis : int (symbolic or literal) (optional)
-        The axis along which elements are shifted.
-        Defaults to zero (deviation from numpy behavior)
+    x : tensor_like
+        Input tensor.
+    shift : int (symbolic or literal)
+        The number of places by which elements are shifted.
+    axis : int (symbolic or literal) (optional)
+        The axis along which elements are shifted. By default, the array
+        is flattened before shifting, after which the original
+        shape is restored.
+
+    Returns
+    -------
+    res : tensor
+        Output tensor, with the same shape as `x`.
     """
+    if axis is None:
+        if x.ndim > 1:
+            y = x.flatten()
+            return roll(y, shift, axis=0).reshape(x.shape)
+        else:
+            axis = 0
 
     # A slice of all elements in a dimension ':'
     allslice = slice(None)
@@ -4313,10 +4327,12 @@ def roll(x, shift, axis=0):
                   [allslice] * (x.ndim - axis - 1))
     # List of slices describing the back half [:, :, :shift, :]
     end_slice = slice(0, -shift)
-    end_list = [allslice]*axis + [end_slice] + [allslice]*(x.ndim-axis-1)
+    end_list = ([allslice] * axis + [end_slice] +
+                [allslice] * (x.ndim - axis - 1))
     return join(axis,
                 Subtensor(front_list)(x),
                 Subtensor(end_list)(x))
+
 
 @constructor
 def shape_padleft(t, n_ones=1):
