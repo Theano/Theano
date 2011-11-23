@@ -273,7 +273,9 @@ class EnsureSortedIndices(Op):
     def grad(self, (x,), (gz,)):
         return [gz]
 
-
+    def infer_shape(self, node, i0_shapes):
+        return i0_shapes
+            
     def __str__(self):
         if self.inplace:
             return self.__class__.__name__ + "{inplace}"
