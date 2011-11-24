@@ -1,4 +1,4 @@
-import atexit, logging, os, stat, sys
+import atexit, logging, os, stat, sys, shutil
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
 from theano.configparser import config, AddConfigVar, StrParam
@@ -122,7 +122,11 @@ if cuda_available:
     try:
         open(libcuda_ndarray_so).close()
     except IOError:
-        os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
+        if sys.platform=="win32":
+		    # The Python os module does not support symlinks on win32.
+			shutil.copyfile(cuda_ndarray_so, libcuda_ndarray_so)
+        else:	
+            os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
 
     try:
         gpu_init()

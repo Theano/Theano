@@ -164,6 +164,11 @@ def nvcc_module_compile_str(
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
 
+    if sys.platform=='win32':
+        # add flags for Microsoft compiler to create .pdb files
+        preargs2.append('/Zi')
+        cmd.extend(['-Xlinker', '/DEBUG'])
+
     if sys.platform!='win32':
         if local_bitwidth() == 64:
             cmd.append('-m64')
@@ -180,8 +185,10 @@ def nvcc_module_compile_str(
         if sys.platform != 'darwin':
             # the 64bit CUDA libs are in the same files as are named by the function above
             rpaths.append(os.path.join(config.cuda.root,'lib64'))
-    for rpath in rpaths:
-        cmd.extend(['-Xlinker',','.join(['-rpath',rpath])])
+    if sys.platform!="win32":
+        # the -rpath option is not understood by the Microsoft linker
+        for rpath in rpaths:
+            cmd.extend(['-Xlinker',','.join(['-rpath',rpath])])
     cmd.extend([flag for flag in config.nvcc.flags.split(' ') if flag])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename])

@@ -14,7 +14,7 @@ def default_compiledirname():
         platform.platform(),
         platform.processor(),
         platform.python_version()])
-    platform_id = re.sub("[\(\)\s]+", "_", platform_id)
+    platform_id = re.sub("[\(\)\s,]+", "_", platform_id)
     return 'compiledir_' + platform_id
 
 
