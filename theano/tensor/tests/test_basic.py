@@ -2823,20 +2823,32 @@ class T_Join_and_Split(unittest.TestCase):
 
         assert (out == want).all()
 
+        # Test simple 1D example with explicit 0 axis
+        b = roll(a, -1, 0)
+        want = numpy.array([2, 3, 4, 5, 6, 1])
+        out = theano.function([], b)()
+
+        assert (out == want).all()
+
         # Test 2D example - ensure that behavior matches numpy.roll behavior
         a = self.shared(numpy.arange(21).reshape((3, 7)))
         b = roll(a, -2, 1)
 
-        want = numpy.arange(21).reshape((3, 7))
-        want = numpy.roll(want, -2, 1)
+        want = numpy.roll(a.get_value(borrow=True), -2, 1)
         out = theano.function([], b)()
 
         assert (out == want).all()
 
         # Test rolling on axis 0
-        want = numpy.arange(21).reshape((3, 7))
-        want = numpy.roll(want, -2, 0)
+        want = numpy.roll(a.get_value(borrow=True), -2, 0)
         b = roll(a, -2, 0)
+        out = theano.function([], b)()
+
+        assert (out == want).all()
+
+        # Test rolling on default axis with ndim > 1
+        want = numpy.roll(a.get_value(borrow=True), 2)
+        b = roll(a, 2)
         out = theano.function([], b)()
 
         assert (out == want).all()
