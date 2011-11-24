@@ -259,9 +259,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     :return: symbolic expression of gradient of `cost` with respect to `wrt`.
              If an element of `wrt` is not differentiable with respect
              to the output, then a zero variable is returned.
-             If `wrt` is a list/tuple, longer then 1, a list will be returned.
-             DEPRECATION: In Theano 0.5, grad will return an object of the same
-             type as `wrt`: a list/tuple or TensorVariable in all case.
+             It return an object of same type as `wrt`: a list/tuple
+             or TensorVariable in all case.
 
     This function is a wrapper around the more general function
     `theano.gradient.grad_sources_inputs``.
