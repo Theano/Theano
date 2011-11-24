@@ -254,25 +254,35 @@ class EnsureSortedIndices(Op):
     """
     Remove explicit zeros from a sparse matrix, and resort indices
     """
-    inplace=False
 
     def __init__(self, inplace):
-        self.inplace=inplace
+        self.inplace = inplace
         if self.inplace:
             self.view_map = {0:[0]}
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self,node, (x,), (z,)):
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage[0]
         if self.inplace:
             x.sort_indices()
             z[0] = x
         else:
             z[0] = x.sorted_indices()
 
-    def grad(self, (x,), (gz,)):
-        return [gz]
+    def grad(self, inputs, output_grad):
+        return [output_grad[0]]
+
+    def infer_shape(self, node, i0_shapes):
+        return i0_shapes
+            
+    def __str__(self):
+        if self.inplace:
+            return self.__class__.__name__ + "{inplace}"
+        else:
+            return self.__class__.__name__ + "{no_inplace}"
 
 ensure_sorted_indices = EnsureSortedIndices(inplace=False)
 
