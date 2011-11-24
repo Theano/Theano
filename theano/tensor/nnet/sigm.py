@@ -235,7 +235,8 @@ def local_exp_over_1_plus_exp(node):
 @gof.local_optimizer([tensor.mul])
 def local_sigm_times_exp(node):
     """
-    exp(x)*sigm(-x) -> -sigm(x)
+    exp(x) * sigm(-x) -> sigm(x)
+    exp(-x) * sigm(x) -> sigm(-x)
     """
     # this is a numerical stability thing, so we dont check clients
     if node.op == tensor.mul:
@@ -283,9 +284,10 @@ def local_sigm_times_exp(node):
             else:
                 other.append(i)
         if did_something:
-            terms = other + [sigmoid(x) for x in sigm_x] \
-                    + [sigmoid(-x) for x in sigm_minus_x]
-            if len(terms)>1:
+            terms = (other +
+                     [sigmoid(x) for x in sigm_x] +
+                     [sigmoid(-x) for x in sigm_minus_x])
+            if len(terms) > 1:
                 rval = tensor.mul(*terms)
             else:
                 rval = terms[0]
