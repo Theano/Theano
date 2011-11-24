@@ -359,27 +359,22 @@ class TestSP(unittest.TestCase):
                     utt.verify_grad(d, [kvals])
 
     def test_sp_sum(self):
-
-        print '\n\n*************************************************'
-        print '           TEST SUM'
-        print '*************************************************'
-
         from theano.sparse.sandbox.sp import SpSum
 
         # TODO: test both grad.
         rng = numpy.random.RandomState(42)
         from theano.sparse.basic import SparseFromDense,DenseFromSparse
         cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
-        
+
         for format, cast in cases:
-			
-            print 'format: %(format)s'%locals()
+
+            #print 'format: %(format)s' % locals()
             x = theano.sparse.SparseType(format=format,
                                          dtype=theano.config.floatX)()
             x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
 
             # Sum on all axis
-            print 'sum on all axis...'
+            #print 'sum on all axis...'
             z = theano.sparse.sandbox.sp.sp_sum(x)
             assert z.type.broadcastable == ()
             f = theano.function([x], z)
@@ -389,7 +384,7 @@ class TestSP(unittest.TestCase):
             assert out == expected
 
             # Sum on axis 0
-            print 'sum on axis 0...'
+            #print 'sum on axis 0...'
             z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
             assert z.type.broadcastable == (False,)
             f = theano.function([x], z)
@@ -399,7 +394,7 @@ class TestSP(unittest.TestCase):
             assert (out == expected).all()
 
             # Sum on axis 1
-            print 'sum on axis 1...'
+            #print 'sum on axis 1...'
             z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
             assert z.type.broadcastable == (False,)
             f = theano.function([x], z)
