@@ -1,3 +1,5 @@
+#define _CUDA_NDARRAY_C
+
 #include <Python.h>
 #include <structmember.h>
 
@@ -3418,6 +3420,292 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
 
     Py_XDECREF(rval);
     return NULL;
+}
+
+
+int
+cnda_structure_size(int nd)
+{
+    // dim0, dim1, ...
+    // str0, str1, ...
+    // log2(dim0), log2(dim1), ...
+    return nd + nd + nd;
+}
+
+const int *
+CudaNdarray_HOST_DIMS(const CudaNdarray * self)
+{
+    return self->host_structure;
+}
+
+const int *
+CudaNdarray_HOST_STRIDES(const CudaNdarray * self)
+{
+    return self->host_structure + self->nd;
+}
+const int *
+CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self)
+{
+    return self->host_structure + 2*self->nd;
+}
+
+void
+cnda_mark_dev_structure_dirty(CudaNdarray * self)
+{
+    self->dev_structure_fresh = 0;
+}
+
+int
+CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase)
+{
+    int verbose = 1;
+
+    if (!ignoreSync && cnda1->dev_structure_fresh != cnda2->dev_structure_fresh)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 1\n");
+        return 0;
+    }
+
+    if (cnda1->nd != cnda2->nd)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 2\n");
+        return 0;
+    }
+
+    for (int i=0; i < 2*cnda1->nd; i++)
+    {
+        if (cnda1->host_structure[i] != cnda2->host_structure[i])
+        {
+            if(verbose)
+                fprintf(stdout, "CUDANDARRAY_EQUAL : host_structure : %d, %d, %d\n", i, cnda1->host_structure[i], cnda2->host_structure[i]);
+            return 0;
+        }
+    }
+
+    if (!ignoreBase && cnda1->base != cnda2->base)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 4");
+        return 0;
+    }
+    else if (cnda1->data_allocated != cnda2->data_allocated)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 5");
+        return 0;
+    }
+    else if (cnda1->data_allocated && cnda1->devdata != cnda2->devdata)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 6");
+        // no need to check devdata if data is not allocated
+        return 0;
+    }
+
+    return 1;
+}
+
+
+int
+CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
+{
+    return CudaNdarray_EqualAndIgnore(cnda1, cnda2, 0, 0);
+}
+
+void
+CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
+{
+    if ((idx >= self->nd) || (idx < 0) || (d < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: %i %i\n", idx, d);
+    }
+
+    if (d != self->host_structure[idx])
+    {
+        self->host_structure[idx] = d;
+        int log2d = (int)log2((double)d);
+        self->host_structure[idx + 2*self->nd] = (d == (1 << log2d)) ? log2d : -1;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
+
+void
+CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
+{
+    if ((idx >= self->nd) || (idx < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_stride arguments: %i %i\n", idx, s);
+    }
+
+    if (s != CudaNdarray_HOST_STRIDES(self)[idx])
+    {
+        self->host_structure[idx+self->nd] = s;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
+
+
+int
+cnda_copy_structure_to_device(CudaNdarray * self)
+{
+    cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
+    CNDA_THREAD_SYNC;
+    if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+    {
+        PyErr_SetString(PyExc_RuntimeError, "error copying structure to device memory");
+        return -1;
+    }
+    self->dev_structure_fresh = 1;
+    return 0;
+}
+
+const int *
+CudaNdarray_DEV_DIMS(CudaNdarray * self)
+{
+    if (!self->dev_structure_fresh)
+    {
+        if (cnda_copy_structure_to_device(self))
+            return NULL;
+    }
+    return self->dev_structure;
+}
+const int *
+CudaNdarray_DEV_STRIDES(CudaNdarray * self)
+{
+    if (!self->dev_structure_fresh)
+    {
+        if (cnda_copy_structure_to_device(self))
+            return NULL;
+    }
+    return self->dev_structure + self->nd;
+}
+const int *
+CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self)
+{
+    if (!self->dev_structure_fresh)
+    {
+        if (cnda_copy_structure_to_device(self))
+            return NULL;
+    }
+    return self->dev_structure + 2*self->nd;
+}
+float *
+CudaNdarray_DEV_DATA(const CudaNdarray * self)
+{
+    return self->devdata;
+}
+
+/**
+ * Return the number of elements in the ndarray (product of the dimensions)
+ */
+int
+CudaNdarray_SIZE(const CudaNdarray *self)
+{
+    if (self->nd == -1) return 0;
+    int size = 1;
+    for (int i = 0; i < self->nd; ++i)
+    {
+        size *= CudaNdarray_HOST_DIMS(self)[i];
+    }
+    return size;
+}
+
+PyObject *
+CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
+{
+    return PyInt_FromLong(CudaNdarray_SIZE(self));
+}
+
+int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
+{
+    if (nd != self->nd)
+    {
+        if (self->dev_structure)
+        {
+            if (device_free(self->dev_structure))
+            {
+                return -1;
+            }
+            self->dev_structure = NULL;
+        }
+        if (self->host_structure)
+        {
+            free(self->host_structure);
+            self->host_structure = NULL;
+            self->nd = -1;
+        }
+        if (nd == -1) return 0;
+
+        self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
+        if (NULL == self->host_structure)
+        {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
+            return -1;
+        }
+        //initialize all dimensions and strides to 0
+        for (int i = 0; i < cnda_structure_size(nd); ++i)
+        {
+            self->host_structure[i] = 0;
+        }
+
+        int struct_size = cnda_structure_size(nd);
+        if (struct_size)
+        {
+            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
+            if (NULL == self->dev_structure)
+            {
+                free(self->host_structure);
+                self->host_structure = NULL;
+                self->dev_structure = NULL;
+                return -1;
+            }
+        }
+        self->nd = nd;
+        self->dev_structure_fresh = 0;
+    }
+    return 0;
+}
+
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
+{
+    return CudaNdarray_set_device_data(self, data, (PyObject *) base);
+}
+
+PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self)
+{
+    return PyBool_FromLong(CudaNdarray_is_c_contiguous(self));
+}
+
+void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
+{
+    fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d data_allocated=%d\n",
+            self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
+    fprintf(fd, "\tHOST_DIMS:      ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        fprintf(fd, "%i\t", CudaNdarray_HOST_DIMS(self)[i]);
+    }
+    fprintf(fd, "\n\tHOST_STRIDES: ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        fprintf(fd, "%i\t", CudaNdarray_HOST_STRIDES(self)[i]);
+    }
+
+    int data=0;
+    fprintf(fd, "\n\tDEV_DIMS:      ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        cublasGetVector(1, sizeof(int),
+                        self->dev_structure+i, 1,
+                        &data, 1);
+        fprintf(fd, "%i\t", data);
+    }
+    fprintf(fd, "\n\tDEV_STRIDES: ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        cublasGetVector(1, sizeof(int),
+                        self->dev_structure + self->nd+i, 1,
+                        &data, 1);
+        fprintf(fd, "%i \t", data);
+    }
+    fprintf(fd, "\n");
 }
 
 /*
