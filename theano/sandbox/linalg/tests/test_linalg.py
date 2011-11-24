@@ -23,7 +23,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        #PSD_hint,
                                        trace,
                                        matrix_dot,
-                                       #spectral_radius_bound
+                                       spectral_radius_bound
                                        )
 
 from nose.plugins.skip import SkipTest
@@ -281,4 +281,48 @@ def test_trace():
         ok = True
     assert ok
 
-
+def test_spectral_radius_bound():
+    tol = 10**(-6)
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.tensor.matrix()
+    radius_bound = spectral_radius_bound(x, 5)
+    f = theano.function([x], radius_bound)
+    
+    shp = (3, 3)
+    m = rng.rand(*shp).astype(config.floatX)
+    m = numpy.cov(m)
+    radius_bound_theano = f(m)
+    
+    # test the approximation
+    mm = m
+    for i in range(5):
+        mm = numpy.dot(mm, mm)
+    radius_bound_numpy = numpy.trace(mm)**(2**(-5))
+    assert abs(radius_bound_numpy - radius_bound_theano) < tol
+    
+    # test the bound 
+    eigen_val = numpy.linalg.eig(m)
+    assert (eigen_val[0].max() - radius_bound_theano) < tol
+    
+    # test type errors
+    xx = theano.tensor.vector()
+    ok = False
+    try:
+        spectral_radius_bound(xx, 5)
+    except TypeError:
+        ok = True
+    assert ok
+    ok = False
+    try:
+        spectral_radius_bound(x, 5.)
+    except TypeError:
+        ok = True
+    assert ok
+    
+    # test value error
+    ok = False
+    try:
+        spectral_radius_bound(x, -5)
+    except ValueError:
+        ok = True
+    assert ok
