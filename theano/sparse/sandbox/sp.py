@@ -57,41 +57,34 @@ class SpSum(Op):
         assert isinstance(x.type, theano.sparse.SparseType)
         b = ()
         if self.axis is not None:
-            b=(False,)
+            b = (False,)
         z = tensor.tensor(broadcastable=b, dtype=x.dtype)
         return gof.Apply(self, [x], [z])
 
     def infer_shape(self, node, shapes):
-        r=None
+        r = None
         if self.axis is None:
-            r=[()]
+            r = [()]
         elif self.axis == 0:
-            r=[(shapes[0][1],)]
+            r = [(shapes[0][1],)]
         else:
-            r=[(shapes[0][0],)]
+            r = [(shapes[0][0],)]
         return r
 
     def perform(self,node, (x,), (z,)):
         if self.axis is None:
             z[0] = numpy.asarray(x.sum())
-        else: 
-            s = set(xrange(len(x.shape))) - set([self.axis])
-            myreshape = map((lambda i: x.shape[i]), s)
-            if x.format not in ('csc', 'csr'):
-                x = x.asformat(x.format)
-            z[0] = numpy.asarray(x.sum(axis = self.axis)).reshape(myreshape)
-
-            #case by case code for reference
-            #if self.axis == 0:
-            #    if x.format == 'csc':
-            #        z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape((x.shape[1],))
-            #    else:
-            #        z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[1],))
-            #if self.axis == 1:
-            #    if x.format == 'csr':
-            #        z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape((x.shape[0],))
-            #    else:
-            #        z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[0],))
+        else:
+            if self.axis == 0:
+                if x.format == 'csc':
+                   z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape((x.shape[1],))
+               else:
+                   z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[1],))
+            elif self.axis == 1:
+               if x.format == 'csr':
+                   z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape((x.shape[0],))
+               else:
+                   z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[0],))
 
     def grad(self,(x,), (gz,)):
         if self.axis is None:
