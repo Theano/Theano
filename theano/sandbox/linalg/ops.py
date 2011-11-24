@@ -691,7 +691,10 @@ def spectral_radius_bound(X, log2_exponent):
 
     From V.Pan, 1990. "Estimating the Extremal Eigenvalues of a Symmetric
     Matrix", Computers Math Applic. Vol 20 n. 2 pp 17-22.
+    Rq: an efficient algorithm, not used here, is defined in this paper.
     """
+    if X.type.ndim != 2:
+        raise TypeError('spectral_radius_bound requires a matrix argument', X)
     XX = X
     for i in xrange(log2_exponent):
         XX = tensor.dot(XX, XX)
