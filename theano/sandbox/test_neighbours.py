@@ -361,7 +361,7 @@ def speed_neibs_wrap_centered():
     for i in range(1000):
         f()
 
-# Disable the test as the grad is wronly implemented
+# Disable the test as the grad is wrongly implemented
 def tes_neibs_grad_verify_grad():
     shape = (2, 3, 4, 4)
     images = T.dtensor4()
@@ -410,7 +410,7 @@ def test_neibs_ignore_border():
         return T.sum(T.sqr(images2neibs(images, (2, 2),
                                         mode='ignore_borders')), axis=[0, 1])
 
-    # Disable the test as the grad is wronly implemented
+    # Disable the test as the grad is wrongly implemented
     #unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
 
 #    not implemented for gpu
@@ -438,7 +438,7 @@ def test_neibs_valid_with_inconsistent_borders():
         pass
 
 
-# Disable the test as the grad is wronly implemented
+# Disable the test as the grad is wrongly implemented
 def tes_neibs2images_crash_on_grad():
     # say we had images of size (2, 3, 20, 20)
     # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
