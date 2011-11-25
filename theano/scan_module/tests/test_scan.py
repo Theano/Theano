@@ -2560,18 +2560,21 @@ class T_Scan(unittest.TestCase):
                     theano.dot(x_tm1, W),
                     y_tm1 + theano.dot(x_tm1, W_out)]
 
-        outputs, updates = theano.scan( f_rnn_cmpl
+        rval, updates = theano.scan( f_rnn_cmpl
                                        , [ u1
                                           , u2]
-                                       , [ dict(store_steps = 3)
-                                          , dict(initial = x0, return_steps = 2)
-                                          , dict(initial=y0, taps=[-1,-3],
-                                                 return_steps = 4)]
+                                       , [ None
+                                          , dict(initial = x0)
+                                          , dict(initial=y0, taps=[-1,-3])]
                                        , W_in1
                                        , n_steps           = None
                                        , truncate_gradient = -1
                                        , go_backwards      = False)
 
+        outputs = []
+        outputs += [rval[0][-3:]]
+        outputs += [rval[1][-2:]]
+        outputs += [rval[2][-4:]]
         f4     = theano.function([u1,u2,x0,y0,W_in1], outputs
                                  , updates = updates
                                  , allow_input_downcast = True
