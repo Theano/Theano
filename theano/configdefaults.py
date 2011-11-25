@@ -28,8 +28,8 @@ AddConfigVar('cast_policy',
 
 # python 2.* define int / int to return int and int // int to return int.
 # python 3* define int / int to return float and int // int to return int.
-# numpy 1.6.1 do as the python 2.*. I think we should not change it faster
-# then numpy. When we will do the transition, we should create an int_warn
+# numpy 1.6.1 behaves as python 2.*. I think we should not change it faster
+# than numpy. When we will do the transition, we should create an int_warn
 # and floatX_warn option.
 AddConfigVar('int_division',
         "What to do when one computes x / y, where both x and y are of "
