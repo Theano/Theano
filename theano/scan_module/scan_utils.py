@@ -208,8 +208,7 @@ def get_updates_and_outputs(ls):
                 raise ValueError(error_msg)
         elif is_updates(ls[0]):
             if is_outputs(ls[1]):
-                _logger.warning(deprication_msg)
-                return (None, _list(ls[1]), dict(ls[0]))
+                raise ValueError(deprication_msg)
             elif is_condition(ls[1]):
                 return (ls[1].condition, [], dict(ls[0]))
             else:
@@ -221,15 +220,6 @@ def get_updates_and_outputs(ls):
             if is_updates(ls[1]):
                 if is_condition(ls[2]):
                     return (ls[2].condition, _list(ls[0]), dict(ls[1]))
-                else:
-                    raise ValueError(error_msg)
-            else:
-                raise ValueError(error_msg)
-        elif is_updates(ls[0]):
-            if is_outputs(ls[1]):
-                if is_condition(ls[2]):
-                    _logger.warning(deprication_msg)
-                    return (ls[2].condition, _list(ls[1]), dict(ls[0]))
                 else:
                     raise ValueError(error_msg)
             else:
