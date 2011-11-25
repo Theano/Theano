@@ -26,7 +26,8 @@ class SoftmaxWithBias(gof.Op):
     An L{Op} for the output of neural-net multiclass classifiers.
 
     @type x: is a matrix of floats (32 or 64)
-    @type b: is a [row] vector of floats (32 or 64), length is number of cols in x
+    @type b: is a [row] vector of floats (32 or 64), length is number of
+            cols in x
 
     This L{Op}'s output is softmax(x+b).
     softmax(x[i]) is the i'th distribution over len(x[i]) options.
@@ -34,13 +35,16 @@ class SoftmaxWithBias(gof.Op):
 
     nin = 2
     nout = 1
+
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
 
     def __eq__(self, other):
         return type(self) == type(other)
+
     def __hash__(self):
         return tensor.hashtype(self)
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -74,14 +78,14 @@ class SoftmaxWithBias(gof.Op):
         g_sm, = grads
         sm = softmax_with_bias(x, b)
         dx = softmax_grad(g_sm, sm)
-        db = tensor.sum(dx, axis = 0)
+        db = tensor.sum(dx, axis=0)
         return dx, db
 
     def infer_shape(self, node, shape):
         return [shape[0]]
 
     def c_headers(self):
-        return ['<iostream>','<cmath>']
+        return ['<iostream>', '<cmath>']
 
     @staticmethod
     def c_code_template():
@@ -93,8 +97,11 @@ class SoftmaxWithBias(gof.Op):
 
         #TODO: set error messages for failures in this code
 
-        #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        #TODO: use this to accept float32 and int32:
+        #    node.inputs[0].type.dtype_specs()[1]
         init_decl = """
+        %(exp_define)s
+
         npy_intp* Nx = %(x)s->dimensions;
 
         if (%(x)s->nd != 2)
@@ -107,20 +114,23 @@ class SoftmaxWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if ((%(x)s->descr->type_num != PyArray_DOUBLE)&&(%(x)s->descr->type_num != PyArray_FLOAT))
+        if ((%(x)s->descr->type_num != PyArray_DOUBLE)&&
+            (%(x)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if ((%(b)s->descr->type_num != PyArray_DOUBLE) && (%(b)s->descr->type_num != PyArray_FLOAT))
+        if ((%(b)s->descr->type_num != PyArray_DOUBLE) &&
+            (%(b)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
         }
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
         {
-            PyErr_Format(PyExc_ValueError, "number of columns in x (%%ld) does not match length of b (%%ld)",
-                (long int)%(x)s->dimensions[1], (long int)%(b)s->dimensions[0]);
+            PyErr_Format(PyExc_ValueError,
+            "number of columns in x (%%ld) does not match length of b (%%ld)",
+            (long int)%(x)s->dimensions[1], (long int)%(b)s->dimensions[0]);
             %(fail)s;
         }
 
@@ -129,9 +139,11 @@ class SoftmaxWithBias(gof.Op):
             || (%(sm)s->dimensions[1] != %(x)s->dimensions[1]))
         {
             if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
-            %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s), type_num_%(x)s);
+            %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2,
+                            PyArray_DIMS(%(x)s), type_num_%(x)s);
             if(!%(sm)s) {
-                PyErr_SetString(PyExc_MemoryError, "failed to alloc sm output");
+                PyErr_SetString(PyExc_MemoryError,
+                            "failed to alloc sm output");
                 %(fail)s
             }
         }
@@ -144,9 +156,11 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
+            const dtype_%(x)s* __restrict__ x_i =
+                        (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
             const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(%(b)s->data);
-            dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            dtype_%(sm)s* __restrict__ sm_i =
+                        (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
         """
 
         inside_row_loop = """
@@ -169,8 +183,9 @@ class SoftmaxWithBias(gof.Op):
             for (j = 0; j < Nx[1]; ++j)
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
-                //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
-                dtype_%(sm)s sm_ij = exp(row_ij - row_max);
+                //std::cout << "2 " << j << " " << row_ij <<
+                // " " << row_max << "\\n";
+                dtype_%(sm)s sm_ij = %(exp_function)s(row_ij - row_max);
                 //std::cout << "3 " << j << " " << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
@@ -191,11 +206,26 @@ class SoftmaxWithBias(gof.Op):
 
         return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
-
     def c_code(self, node, name, inp, out, sub):
         x, b = inp
         sm, = out
         code_template = ''.join(self.c_code_template())
+        if theano.config.tensor.fast_exp:
+            sub['exp_define'] = """
+        static union{
+            double d;
+            struct{
+                int j,i;
+                } n;
+        } d2i;
+        #define EXP_A (1048576/M_LN2)
+        #define EXP_C 60801
+        #define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+            """
+            sub['exp_function'] = "FAST_EXP"
+        else:
+            sub['exp_define'] = ""
+            sub['exp_function'] = "exp"
         return code_template % dict(locals(), **sub)
 
     @staticmethod
@@ -203,7 +233,6 @@ class SoftmaxWithBias(gof.Op):
         return (6,)
 
 softmax_with_bias = SoftmaxWithBias()
-
 
 
 class SoftmaxGrad(gof.Op):
@@ -245,18 +274,23 @@ class SoftmaxGrad(gof.Op):
 
     def c_code_cache_version(self):
         return (3,)
+
     def c_code(self, node, name, inp, out, sub):
         dy, sm = inp
         dx, = out
         return '''
-        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && (%(dy)s->descr->type_num != PyArray_FLOAT))
+        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) &&
+                (%(dy)s->descr->type_num != PyArray_FLOAT))
         {
-            PyErr_SetString(PyExc_TypeError, "types should be float or float64");
+            PyErr_SetString(PyExc_TypeError,
+                        "types should be float or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) && (%(sm)s->descr->type_num != PyArray_FLOAT))
+        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) &&
+                (%(sm)s->descr->type_num != PyArray_FLOAT))
         {
-            PyErr_SetString(PyExc_TypeError, "types should be float or float64");
+            PyErr_SetString(PyExc_TypeError,
+                        "types should be float or float64");
             %(fail)s;
         }
         if ((%(dy)s->nd != 2)
@@ -275,22 +309,26 @@ class SoftmaxGrad(gof.Op):
             || (%(dx)s->dimensions[1] != %(sm)s->dimensions[1]))
         {
             Py_XDECREF(%(dx)s);
-            %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2, PyArray_DIMS(%(sm)s),
-                                                        type_num_%(sm)s);
+            %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
+                                PyArray_DIMS(%(sm)s), type_num_%(sm)s);
             if (!%(dx)s)
             {
-                PyErr_SetString(PyExc_MemoryError, "failed to alloc dx output");
+                PyErr_SetString(PyExc_MemoryError,
+                                    "failed to alloc dx output");
                 %(fail)s;
             }
         }
 
         for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
         {
-            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
+            const dtype_%(dy)s* __restrict__ dy_i =
+                    (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
             npy_intp Sdy = %(dy)s->strides[1]/sizeof(dtype_%(dy)s);
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
+            const dtype_%(sm)s* __restrict__ sm_i =
+                    (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
             npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
-            dtype_%(dx)s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
+            dtype_%(dx)s* __restrict__ dx_i =
+                    (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
             npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
 
             double sum_dy_times_sm = 0.;
@@ -307,6 +345,7 @@ class SoftmaxGrad(gof.Op):
         ''' % dict(locals(), **sub)
 softmax_grad = SoftmaxGrad()
 
+
 class Softmax(gof.Op):
     """
     WRITEME
@@ -314,12 +353,16 @@ class Softmax(gof.Op):
 
     nin = 1
     nout = 1
+
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
+
     def __eq__(self, other):
         return type(self) == type(other)
+
     def __hash__(self):
         return hash(type(self))
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -359,6 +402,7 @@ class Softmax(gof.Op):
 
 softmax = Softmax()
 
+
 @opt.register_specialize
 @gof.local_optimizer([softmax])
 def local_softmax_with_bias(node):
@@ -372,34 +416,38 @@ def local_softmax_with_bias(node):
             for x_in in x.owner.inputs:
                 if list(x_in.type.broadcastable) == [True, False]:
                     # print isinstance(x_in.owner.op, tensor.DimShuffle)
-                    #since specialization comes relatively late in optimization,
-                    # we don't want to put in extra DimShuffles un-necessarily.
-                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle)\
-                            and list(x_in.owner.inputs[0].type.broadcastable)==[False]:
+                    #since specialization comes relatively late in
+                    #optimization, we don't want to put in extra
+                    #DimShuffles un-necessarily.
+                    if x_in.owner \
+                            and isinstance(x_in.owner.op, tensor.DimShuffle)\
+                            and list(x_in.owner.inputs[0].type.broadcastable)\
+                                                                    == [False]:
                         # cut out the DimShuffle that was broadcasting a vector
                         vectors.append(x_in.owner.inputs[0])
                     else:
                         # insert an extra DimShuffle to correct the old one
-                        vectors.append(tensor.DimShuffle((True, False), (1,))(x_in))
+                        vectors.append(tensor.DimShuffle((True, False),
+                                                         (1,))(x_in))
                 else:
                     non_vectors.append(x_in)
 
             # If all the inputs were vectors or broadcasted vectors,
             # we broadcast one of them to be used as a matrix
             if len(non_vectors) == 0:
-                assert len(vectors) > 0 # we should have at least 1 input...
+                assert len(vectors) > 0  # we should have at least 1 input...
                 promoted_vector = vectors.pop()
                 non_vectors.append(tensor.shape_padleft(promoted_vector))
-            assert non_vectors #not empty
+            assert non_vectors  # not empty
 
             if vectors:
                 #we're in business...
-                if len(vectors)>1:
+                if len(vectors) > 1:
                     vector_sum = tensor.add(*vectors)
                 else:
                     vector_sum = vectors[0]
 
-                if len(non_vectors)>1:
+                if len(non_vectors) > 1:
                     non_vector_sum = tensor.add(*non_vectors)
                 else:
                     non_vector_sum = non_vectors[0]
@@ -407,13 +455,15 @@ def local_softmax_with_bias(node):
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except Exception:
-                    #if our arguments have the wrong types, then forget about it
+                    #if our arguments have the wrong types, then forget
+                    #about it
                     return
 
                 if sm_bias.type == node.outputs[0].type:
                     #This condition is not always true. See the test
                     #nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
                     return [sm_bias]
+
 
 def softmax_simplifier(numerators, denominators):
     for numerator in list(numerators):
@@ -431,14 +481,17 @@ def softmax_simplifier(numerators, denominators):
         matching_denom = None
 
         for denominator in denominators:
-            if denominator.owner and isinstance(denominator.owner.op, tensor.DimShuffle):
-                if denominator.owner.op.new_order == (0,'x'):
-                    z = denominator.owner.inputs[0] # thing getting dimshuffled
+            if denominator.owner and isinstance(denominator.owner.op,
+                                                tensor.DimShuffle):
+                if denominator.owner.op.new_order == (0, 'x'):
+                    # thing getting dimshuffled
+                    z = denominator.owner.inputs[0]
                     if z.owner and isinstance(z.owner.op, tensor.Sum):
                         #print 'ASDF', denominator.owner.op.new_order
                         #print z.owner.op.axis
                         if z.owner.op.axis == (1,):
-                            #print "almost there.. softmax", x, z.owner.inputs[0]
+                            #print "almost there.. softmax", \
+                            #           x, z.owner.inputs[0]
                             if z.owner.inputs[0] is numerator:
                                 matching_denom = denominator
                                 break
@@ -447,7 +500,8 @@ def softmax_simplifier(numerators, denominators):
             denominators.remove(matching_denom)
             numerators.append(softmax(x))
     return numerators, denominators
-opt.local_mul_canonizer.add_simplifier(softmax_simplifier, 'softmax_simplifier')
+opt.local_mul_canonizer.add_simplifier(softmax_simplifier,
+                                       'softmax_simplifier')
 
 if 0:
     @opt.register_specialize
@@ -769,6 +823,22 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
         code_template = ''.join(self.c_code_template())
+        if theano.config.tensor.fast_exp:
+            sub['exp_define'] = """
+        static union{
+            double d;
+            struct{
+                int j,i;
+                } n;
+        } d2i;
+        #define EXP_A (1048576/M_LN2)
+        #define EXP_C 60801
+        #define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+            """
+            sub['exp_function'] = "FAST_EXP"
+        else:
+            sub['exp_define'] = ""
+            sub['exp_function'] = "exp"
         return code_template % dict(locals(), **sub)
 
 class CrossentropySoftmax1HotWithBiasDx (gof.Op):

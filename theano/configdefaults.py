@@ -2,7 +2,8 @@ import os
 import subprocess
 import logging
 
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, \
+        StrParam, IntParam, FloatParam, BoolParam
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -32,10 +33,13 @@ AddConfigVar('int_division',
         EnumStr('int', 'raise', 'floatX'),
         in_c_key=False)
 
-#gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
+#gpu mean let the driver select the gpu. Needed in case of gpu in exclusive
+#mode.
 #gpuX mean use the gpu number X.
 AddConfigVar('device',
-        "Default device for computations. If gpu*, change the default to try to move computation to it and to put shared variable of float32 on it.",
+        ("Default device for computations. If gpu*, change the default to "
+         "try to move computation to it and to put shared variable of "
+         "float32 on it."),
         EnumStr('cpu', 'gpu',
             'gpu0', 'gpu1', 'gpu2', 'gpu3',
             'gpu4', 'gpu5', 'gpu6', 'gpu7',
@@ -84,14 +88,16 @@ try:
                      stdin=dummy_stdin.fileno())
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
-                 "Default linker used if the theano flags mode is Mode or ProfileMode",
+                 ("Default linker used if the theano flags mode is Mode "
+                 "or ProfileMode"),
                  EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 except OSError:
     # gcc is not present, linker should default to python only
     AddConfigVar('linker',
-                 "Default linker used if the theano flags mode is Mode or ProfileMode",
+                 ("Default linker used if the theano flags mode is Mode "
+                 "or ProfileMode"),
                  EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -104,14 +110,17 @@ del dummy_stdin
 
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
-        "Default optimizer. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
+        ("Default optimizer. If not None, will use this linker with the "
+         "Mode object(not ProfileMode or DebugMode)"),
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
         in_c_key=False)
 
 AddConfigVar('on_opt_error',
-        "What to do when an optimization crashes: warn and skip it, or raise the exception",
+        ("What to do when an optimization crashes: warn and skip it, "
+         "or raise the exception"),
         EnumStr('warn', 'raise'),
         in_c_key=False)
+
 
 def get_home_dir():
     home = os.getenv('HOME')
@@ -142,16 +151,24 @@ AddConfigVar('nocleanup',
 # changed at runtime.
 AddConfigVar('tensor.cmp_sloppy',
         "Relax tensor._allclose (0) not at all, (1) a bit, (2) more",
-        IntParam(0, lambda i: i in (0,1,2), allow_override=False),
+        IntParam(0, lambda i: i in (0, 1, 2), allow_override=False),
         in_c_key=False)
 
 AddConfigVar('tensor.local_elemwise_fusion',
-        "Enable or not in fast_run mode(fast_run optimization) the elemwise fusion optimization",
+        ("Enable or not in fast_run mode(fast_run optimization) the "
+         "elemwise fusion optimization"),
         BoolParam(True),
         in_c_key=False)
 
+AddConfigVar('tensor.fast_exp',
+        ("Enable or not in fast_exp that will use an approximation of "
+         "exp which is much faster"),
+        BoolParam(False),
+        in_c_key=True)
+
 AddConfigVar('gpu.local_elemwise_fusion',
-        "Enable or not in fast_run mode(fast_run optimization) the gpu elemwise fusion optimization",
+        ("Enable or not in fast_run mode(fast_run optimization) the gpu "
+         "elemwise fusion optimization"),
         BoolParam(True),
         in_c_key=False)
 
@@ -161,7 +178,8 @@ AddConfigVar('lib.amdlibm',
         BoolParam(False))
 
 AddConfigVar('op.set_flops',
-        "currently used only in ConvOp. The profile mode will print the flops/s for the op.",
+        ("currently used only in ConvOp. The profile mode will print the "
+         "flops/s for the op."),
         BoolParam(False),
         in_c_key=False)
 
@@ -226,8 +244,13 @@ AddConfigVar('numpy.seterr_invalid',
 ### To disable some warning about old bug that are fixed now.
 ###
 AddConfigVar('warn.ignore_bug_before',
-             "If 'None', we warn about all Theano bugs found by default. If 'all', we don't warn about Theano bugs found by default. If a version, we print only the warnings relative to Theano bugs found after that version. Warning for specific bugs can be configured with specific [warn] flags.",
-             EnumStr('None', 'all', '0.3','0.4', '0.4.1',allow_override=False),
+             ("If 'None', we warn about all Theano bugs found by default. "
+              "If 'all', we don't warn about Theano bugs found by default. "
+              "If a version, we print only the warnings relative to Theano "
+              "bugs found after that version. Warning for specific bugs can"
+              " be configured with specific [warn] flags."),
+             EnumStr('None', 'all', '0.3', '0.4', '0.4.1',
+                     allow_override=False),
              in_c_key=False)
 
 default_0_3 = True
@@ -240,27 +263,41 @@ elif config.warn.ignore_bug_before >= '0.3':
     default_0_3 = False
 
 AddConfigVar('warn.argmax_pushdown_bug',
-             "Warn if in past version of Theano we generated a bug with the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
+             ("Warn if in past version of Theano we generated a bug with "
+              "the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown"
+              " optimization. Was fixed 27 may 2010"),
              BoolParam(default_0_3),
              in_c_key=False)
 
 AddConfigVar('warn.gpusum_01_011_0111_bug',
-             "Warn if we are in a case where old version of Theano had a silent bug with GpuSum pattern 01,011 and 0111 when the first dimensions was bigger then 4096. Was fixed 31 may 2010",
+             ("Warn if we are in a case where old version of Theano had a "
+              "silent bug with GpuSum pattern 01,011 and 0111 when the first"
+              " dimensions was bigger then 4096. Was fixed 31 may 2010"),
              BoolParam(default_0_3),
              in_c_key=False)
 
 AddConfigVar('warn.sum_sum_bug',
-             "Warn if we are in a case where Theano version between version 9923a40c7b7a and the 2 august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. Was fixed 2 August 2010",
+             ("Warn if we are in a case where Theano version between "
+              "version 9923a40c7b7a and the 2 august 2010(fixed date), "
+              "generated an error in that case. This happen when their "
+              "is 2 consecutive sum in the graph, bad code was generated. "
+              "Was fixed 2 August 2010"),
              BoolParam(default_0_3),
              in_c_key=False)
 
 AddConfigVar('warn.sum_div_dimshuffle_bug',
-             "Warn if previous versions of Theano (between rev. 3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03) would have given incorrect result. This bug was triggered by sum of division of dimshuffled tensors.",
+             ("Warn if previous versions of Theano (between rev. "
+              "3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03)"
+              " would have given incorrect result. This bug was triggered"
+              " by sum of division of dimshuffled tensors."),
              BoolParam(default_0_3),
              in_c_key=False)
 
 AddConfigVar('compute_test_value',
-        "If 'True', Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
+        ("If 'True', Theano will run each op at graph build time, using "
+         "Constants, SharedVariables and the tag 'test_value' as inputs "
+         "to the function. This helps the user track down problems in "
+         "the graph before it gets optimized."),
         EnumStr('off', 'ignore', 'warn', 'raise'),
         in_c_key=False)
 
@@ -280,5 +317,5 @@ AddConfigVar('exception_verbosity',
         A. Elemwise{add_no_inplace}
                 B. log_likelihood_v_given_h
                 C. log_likelihood_h""",
-        EnumStr('low','high'),
+        EnumStr('low', 'high'),
         in_c_key=False)

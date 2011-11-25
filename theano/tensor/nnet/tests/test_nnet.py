@@ -115,6 +115,25 @@ class T_SoftmaxWithBias(unittest.TestCase):
         print f([0,1,0])
         print f.maker.env.toposort()
 
+    def test_approximation(self):
+        hid = tensor.vector('hid')
+        theano.config.tensor.fast_exp = True
+        f_true = theano.function([hid],
+                            tensor.nnet.softmax(hid))
+        theano.config.tensor.fast_exp = False
+        f_false = theano.function([hid],
+                            tensor.nnet.softmax(hid))
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vhid = numpy.asarray(rng.uniform(size=(20,)),
+                             dtype = theano.config.floatX)
+
+        v_false = f_false(vhid)
+        v_true = f_true(vhid)
+        if numpy.any(abs(v_false - v_true) > .1):
+            raise ValueError(
+                'Approximation is not close enough to expected value',
+                 v_false, v_true)
+
     def test_infer_shape(self):
         fff=theano.function([],outputs=softmax_with_bias(numpy.random.rand(3,4),numpy.random.rand(4)).shape)
         assert all(fff()==[3,4])
