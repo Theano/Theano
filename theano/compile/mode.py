@@ -312,15 +312,9 @@ class Mode(object):
 # string as the key
 FAST_COMPILE = Mode('py', 'fast_compile')
 FAST_RUN = Mode('c|py', 'fast_run')
-FAST_RUN_NOGC = Mode("c|py_nogc", 'fast_run')
-STABILIZE = Mode("c|py", OPT_STABILIZE)
 
-# The strings 'FAST_RUN_NOGC' and 'STABILIZE' are deprecated,
-# the modes in question should be built when needed.
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
-                    'FAST_RUN_NOGC':FAST_RUN_NOGC,
-                    'STABILIZE': STABILIZE,
                     }
 
 instanciated_default_mode=None
@@ -355,17 +349,6 @@ def get_mode(orig_string):
             from profilemode import ProfileMode,prof_mode_instance_to_print
             ret = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
     elif predefined_modes.has_key(string):
-        # 'FAST_RUN_NOGC' and 'STABILIZE' are deprecated
-        if string == 'FAST_RUN_NOGC':
-            warnings.warn("Using the string 'FAST_RUN_NOGC' as a mode is "
-                    "deprecated, you should use the object "
-                    "Mode(linker='c|py_nogc') instead.",
-                    stacklevel=5)
-        elif string == 'STABILIZE':
-            warnings.warn("Using the string 'STABILIZE' as a mode is "
-                    "deprecated, you should use the object "
-                    "Mode(optimizer='stabilize') instead.",
-                    stacklevel=5)
         ret = predefined_modes[string]
     else:
         raise Exception("No predefined mode exist for string: %s"%string)

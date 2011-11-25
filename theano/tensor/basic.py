@@ -4175,10 +4175,6 @@ class Join(Op):
         outputs = [output_maker(bcastable)]
 
         node = Apply(self, inputs, outputs)
-        if python_any(not x.type.broadcastable[0] for x in orig):
-            node.tag.shape_zero = None
-        else:
-            node.tag.shape_zero = len(orig)
         return node
 
     def perform(self, node, axis_and_tensors, out_):
@@ -4224,17 +4220,6 @@ class Join(Op):
         return [gz[[slice(None)] * axis + [slice(idx[k], idx[k + 1])] + \
                 [slice(None)] * (n_dims - axis - 1)] \
                 for k in xrange(len(sizes_along_axis))]
-
-    def vec_length(self, node):
-        """Guess the length of a Join Variable"""
-        assert isinstance(node.owner.op, Join)
-        if node.ndim != 1:
-            raise TypeError('argument must be symbolic vector')
-        if node.owner.tag.shape_zero is None:
-            raise ValueError("could not determine vector length")
-        else:
-            return node.owner.tag.shape_zero
-
 
     def infer_shape(self, node, ishapes):
         # ishapes[0] contains the size of the axis on which we join
@@ -4427,11 +4412,6 @@ def get_vector_length(v):
         return 1
     if isinstance(v, gof.Constant) and v.type.ndim == 1:
         return len(v.data)
-    if v.owner and isinstance(v.owner.op, Join):
-        try:
-            return join.vec_length(v)
-        except ValueError:
-            pass
     if v.owner and isinstance(v.owner.op, theano.tensor.opt.MakeVector):
         return len(v.owner.inputs)
     if v.owner and isinstance(v.owner.op, Shape):
