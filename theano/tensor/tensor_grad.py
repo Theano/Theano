@@ -337,7 +337,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
 
     if len(ret) == 1 and not (using_list or using_tuple):
         # `wrt` was a single Variable, so we return a single Variable too.
-            return ret[0]
+        return ret[0]
     else:
         # Ensure we preserve the original type of `wrt`.
         if using_tuple:
