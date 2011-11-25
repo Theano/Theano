@@ -286,8 +286,7 @@ class Scan(PureOp):
             if not scan_utils.equal_computations(self.outputs,
                                                  other.outputs,
                                                  self.inputs,
-                                                 other.inputs,
-                                                 strict=True):
+                                                 other.inputs):
                 return False
 
             # If they do, then they need to match in other small details
