@@ -1,7 +1,6 @@
 import theano
 from theano import Op, Apply
 import theano.tensor as T
-from theano.tensor.opt import register_specialize
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available
 
@@ -9,6 +8,13 @@ if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
+
+
+class BadOldCode(Exception):
+    """ We create a specific Exception to be sure it don't get caught
+    by mistake"""
+    pass
+
 
 class Images2Neibs(Op):
     def __init__(self, mode='valid'):
@@ -20,26 +26,32 @@ class Images2Neibs(Op):
                 is not a multiple of the pooling factor(s)
             wrap_centered : ?? TODO comment
         """
-        if mode not in ['valid','wrap_centered','ignore_borders']:
-            raise NotImplementedError("Only the mode valid, ignore_borders and wrap_centered have been implemented for the op Images2Neibs")
+        if mode not in ['valid', 'wrap_centered', 'ignore_borders']:
+            raise NotImplementedError("Only the mode valid, ignore_borders"
+                                      " and wrap_centered have been"
+                                      " implemented for the op Images2Neibs")
         self.mode = mode
+
     def __eq__(self, other):
-        return type(self) == type(other) and self.mode==other.mode
+        return type(self) == type(other) and self.mode == other.mode
+
     def __hash__(self):
-        return hash(type(self))^hash(self.mode)
+        return hash(type(self)) ^ hash(self.mode)
+
     def __str__(self):
-        return self.__class__.__name__+"{%s}"%self.mode
+        return self.__class__.__name__ + "{%s}" % self.mode
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if not hasattr(self,"mode"):
+        if not hasattr(self, "mode"):
             self.mode = 'valid'
 
     def make_node(self, ten4, neib_shape, neib_step=None):
         """
-        :param neib_step: (dx,dy) where dx is the number of rows to skip between patch
-                          and dy is the number of columns. When None, this is the same
-                          as neib_shape(patch are disjoint)
+        :param neib_step: (dx,dy) where dx is the number of rows to
+                          skip between patch and dy is the number of
+                          columns. When None, this is the same as
+                          neib_shape(patch are disjoint)
         """
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
@@ -48,17 +60,23 @@ class Images2Neibs(Op):
         else:
             neib_step = T.as_tensor_variable(neib_step)
 
-        assert ten4.ndim==4
-        assert neib_shape.ndim==1
-        assert neib_step.ndim==1
+        assert ten4.ndim == 4
+        assert neib_shape.ndim == 1
+        assert neib_step.ndim == 1
 
-        return Apply(self, [ten4, neib_shape,neib_step], [T.matrix(dtype=ten4.type.dtype)])
+        return Apply(self, [ten4, neib_shape, neib_step],
+                     [T.matrix(dtype=ten4.type.dtype)])
 
     def grad(self, inp, grads):
         x, neib_shape, neib_step = inp
         gz, = grads
-        if self.mode in ['valid','ignore_borders']:
-            return [neibs2images(gz, neib_shape, x.shape, mode=self.mode), None, None]
+        if self.mode in ['valid', 'ignore_borders']:
+            raise BadOldCode("The Images2Neibs grad is not implemented."
+                            " It was in the past, but returned the wrong"
+                            " answer!")
+            # This is the reverse of the op, not the grad!
+            return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
+                    None, None]
         else:
             raise NotImplementedError()
 
@@ -70,7 +88,7 @@ class Images2Neibs(Op):
         z, = out
 
         fail = sub['fail']
-        mode=self.mode
+        mode = self.mode
         return """
         int grid_c = -1; //number of patch in height
         int grid_d = -1; //number of patch in width
@@ -87,7 +105,8 @@ class Images2Neibs(Op):
         }
         if ( (%(neib_shape)s->dimensions)[0] != 2)
         {
-            PyErr_Format(PyExc_TypeError, "neib_shape wrong shape ; has to contain 2 elements");
+            PyErr_Format(PyExc_TypeError, "neib_shape wrong shape ; has to"
+                                          " contain 2 elements");
             %(fail)s;
         }
         if (%(neib_step)s->nd != 1)
@@ -97,7 +116,8 @@ class Images2Neibs(Op):
         }
         if ( (%(neib_step)s->dimensions)[0] != 2)
         {
-            PyErr_Format(PyExc_TypeError, "neib_step wrong step ; has to contain 2 elements");
+            PyErr_Format(PyExc_TypeError,
+                         "neib_step wrong step ; has to contain 2 elements");
             %(fail)s;
         }
 
@@ -229,8 +249,10 @@ class Images2Neibs(Op):
         } // END NESTED SCOPE
         """ % locals()
 
+
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
+
 
 def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     """
@@ -246,19 +268,21 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
 
-    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1], neib_shape[1])
-    output_2d = images2neibs(neibs.dimshuffle('x','x',0,1), new_neib_shape, mode=mode)
+    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1],
+                             neib_shape[1])
+    output_2d = images2neibs(neibs.dimshuffle('x', 'x', 0, 1),
+                             new_neib_shape, mode=mode)
 
     if mode == 'ignore_borders':
         valid_shape = list(original_shape)
-        valid_shape[2]  = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
-        valid_shape[3]  = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
+        valid_shape[2] = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
+        valid_shape[3] = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
         output_4d = output_2d.reshape(valid_shape)
         #padding the borders with zeros
-        for d in [2,3]:
+        for d in [2, 3]:
             pad_shape = list(output_4d.shape)
             pad_shape[d] = original_shape[d] - valid_shape[d]
-            output_4d = T.concatenate([output_4d,T.zeros(pad_shape)],axis=d)
+            output_4d = T.concatenate([output_4d, T.zeros(pad_shape)], axis=d)
     else:
         output_4d = output_2d.reshape(original_shape)
 
@@ -269,7 +293,9 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
 class GpuImages2Neibs(Images2Neibs):
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'wrap_centered']:
-            raise NotImplementedError("Only the mode valid and wrap_centered have been implemented for the op GpuImages2Neibs")
+            raise NotImplementedError("Only the mode valid and wrap_centered"
+                                      " have been implemented for the op"
+                                      " GpuImages2Neibs")
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
@@ -277,12 +303,13 @@ class GpuImages2Neibs(Images2Neibs):
         if not isinstance(ten4.type, CudaNdarrayType):
             raise TypeError('ten4 must be cudandarray', ten4)
 
-        assert ten4.ndim==4
-        assert neib_shape.ndim==1
-        assert neib_step.ndim==1
+        assert ten4.ndim == 4
+        assert neib_shape.ndim == 1
+        assert neib_step.ndim == 1
 
-        return Apply(self, [ten4, neib_shape, neib_step], [CudaNdarrayType(broadcastable=(False,False),
-                                                                dtype=ten4.type.dtype)()])
+        return Apply(self, [ten4, neib_shape, neib_step],
+                     [CudaNdarrayType(broadcastable=(False, False),
+                                      dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
         return (7,)
@@ -502,7 +529,8 @@ class GpuImages2Neibs(Images2Neibs):
                 %(z)s = (CudaNdarray*)CudaNdarray_NewDims(2, dims);
                 if (!%(z)s)
                 {
-                    PyErr_SetString(PyExc_MemoryError, "failed to alloc z output");
+                    PyErr_SetString(PyExc_MemoryError,
+                                    "failed to alloc z output");
                     %(fail)s;
                 }
             }
@@ -567,7 +595,9 @@ class GpuImages2Neibs(Images2Neibs):
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i; shared: %%i)\\n",
+                PyErr_Format(PyExc_RuntimeError,
+                             "Cuda error: %%s: %%s. (grid: %%i x %%i;"
+                             " block: %%i x %%i x %%i; shared: %%i)\\n",
                     "k_multi_warp_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
@@ -581,13 +611,18 @@ class GpuImages2Neibs(Images2Neibs):
 
         } // END NESTED SCOPE
         """ % locals()
+
+
 def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     return GpuImages2Neibs(mode)(ten4, neib_shape, neib_step)
+
 
 @local_optimizer()
 def use_gpu_images2neibs(node):
     if type(node.op) is Images2Neibs:
-        return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),node.inputs[1],node.inputs[2],mode=node.op.mode))]
+        return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),
+                                               node.inputs[1], node.inputs[2],
+                                               mode=node.op.mode))]
 
 if cuda_available:
     register_gpu_opt()(use_gpu_images2neibs)
