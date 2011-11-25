@@ -10,6 +10,12 @@ if cuda_available:
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 
+class BadOldCode(Exception):
+    """ We create a specific Exception to be sure it don't get caught
+    by mistake"""
+    pass
+
+
 class Images2Neibs(Op):
     def __init__(self, mode='valid'):
         """
@@ -65,7 +71,7 @@ class Images2Neibs(Op):
         x, neib_shape, neib_step = inp
         gz, = grads
         if self.mode in ['valid', 'ignore_borders']:
-            raise Exception("The Images2Neibs grad is not implemented."
+            raise BadOldCode("The Images2Neibs grad is not implemented."
                             " It was in the past, but returned the wrong"
                             " answer!")
             # This is the reverse of the op, not the grad!
