@@ -129,7 +129,9 @@ def remove_constants_and_unused_inputs_scan(node):
         return False
 
 scan_seqopt = theano.gof.SequenceDB()
-optdb.register('scan_seqopt', scan_seqopt, 1.9, 'fast_run', 'scan')
+# We run before blas opt at 1.7 and specialize 2.0
+# but after stabilize at 1.5. Should we put it before stabilize?
+optdb.register('scan_seqopt', scan_seqopt, 1.6, 'fast_run', 'scan')
 scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
                      opt.in2out(remove_constants_and_unused_inputs_scan,
                                 ignore_newtrees=True),
