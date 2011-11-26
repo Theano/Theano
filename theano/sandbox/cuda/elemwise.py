@@ -5,12 +5,14 @@ The elemwise fct are also used with scalar operation! So it can happen that ndim
 """
 
 
-import StringIO, sys
-import numpy
-from theano import Op, Type, Apply, Variable, Constant
-from theano import tensor, scalar, gof
+import copy, logging, StringIO, sys
 
-import logging, copy
+import numpy
+
+from theano import Apply, Constant, Op, Type, Variable
+from theano import gof, scalar, tensor
+
+
 _logger_name = 'theano.sandbox.cuda.elemwise'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
@@ -47,7 +49,7 @@ class NaiveAlgo(object):
             if code:
                 raise SupportCodeError(scalar_op)
         except gof.utils.MethodNotDefined:
-                pass
+            pass
         self.scalar_op = scalar_op
         self.sync = sync
         self.inplace_pattern = inplace_pattern
