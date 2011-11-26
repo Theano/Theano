@@ -695,9 +695,9 @@ def spectral_radius_bound(X, log2_exponent):
     """
     if X.type.ndim != 2:
         raise TypeError('spectral_radius_bound requires a matrix argument', X)
-    if not(isintance(log2_exponent,int)):
+    if not isinstance(log2_exponent, int):
         raise TypeError('spectral_radius_bound requires a integer exponent', log2_exponent)
-    if log2_exponent<=0:
+    if log2_exponent <= 0:
         raise ValueError('spectral_radius_bound requires a strictly positive exponent', log2_exponent)
     XX = X
     for i in xrange(log2_exponent):
