@@ -2600,10 +2600,11 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_y , v_y[-4:])
 
     def test_opt_order(self):
-        """  Verify that scan optimizations are applied before blas
-           optimizations.
-           This is needed as otherwise, the dot won't become a dot22
-           so it will be slower and won't get transferred to the gpu.
+        """
+        Verify that scan optimizations are applied before blas
+        optimizations.
+        This is needed as otherwise, the dot won't become a dot22
+        so it will be slower and won't get transferred to the gpu.
         """
         x = theano.tensor.matrix('x')
         A = theano.tensor.matrix('A')

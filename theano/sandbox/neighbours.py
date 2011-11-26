@@ -11,8 +11,10 @@ if cuda_available:
 
 
 class BadOldCode(Exception):
-    """ We create a specific Exception to be sure it don't get caught
-    by mistake"""
+    """
+    We create a specific Exception to be sure it does not get caught by
+    mistake.
+    """
     pass
 
 
