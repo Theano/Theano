@@ -318,7 +318,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None, strict=True):
                     if dx.type != dy.type:
                         return False
                 else:
-                    if (dx, dy) not in common:
+                    if (dx, dy) not in common and dx != dy:
                         return False
 
     while cont and idx < n_nodes:
