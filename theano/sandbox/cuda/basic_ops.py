@@ -471,7 +471,10 @@ class GpuSum(Op):
            )
         {
             """ %locals()
-        print >> sio, "int new_dims[%(nd_out)s]; " % locals()
+        if nd_out > 0:
+            print >> sio, "int new_dims[%(nd_out)s]; " % locals()
+        else:
+            print >> sio, "int *new_dims=NULL; "
 
         j = 0
         for i in xrange(nd_in):
