@@ -561,7 +561,7 @@ solve = Solve() # general solve
 #TODO: Optimizations to replace multiplication by matrix inverse with solve() Op (still unwritten)
 
 class ExtractDiag(Op):
-    """ Return the diagonal of matrix """
+    """ Return the diagonal of a matrix """
     def __init__(self, view=False):
         self.view = view
         if self.view:
@@ -580,10 +580,14 @@ class ExtractDiag(Op):
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
 
     def perform(self, node, ins, outs):
+        """ For some reason numpy.diag(x) is really slow, so we implemented our own """
         x, = ins
         z, = outs
-        #for some reason numpy.diag(x) is really slow
-        N,M = x.shape
+
+        # zero-dimensional matrices ...
+        if x.shape[0] == 0 or x.shape[1] == 0:
+            z[0] = x
+            return
 
         if x.shape[0] < x.shape [1]:
             rval = x[:,0]
@@ -600,7 +604,9 @@ class ExtractDiag(Op):
         return 'ExtractDiag{view=%s}'%self.view
 
     def grad(self, inputs, g_outputs):
-        return [alloc_diag(g_outputs[0])]
+        x = tensor.zeros_like(inputs[0])
+        xdiag = alloc_diag(g_outputs[0])
+        return [tensor.set_subtensor(x[:xdiag.shape[0], :xdiag.shape[1]], xdiag, inplace=True)]
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
@@ -610,23 +616,34 @@ class ExtractDiag(Op):
 extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
 
-
 class AllocDiag(Op):
+    """
+    Allocates a square matrix with the given vector as its diagonal.
+    """
     def __eq__(self, other):
         return type(self) == type(other)
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, _x):
         x = as_tensor_variable(_x)
         if x.type.ndim != 1:
             raise TypeError('AllocDiag only works on vectors', _x)
         return Apply(self, [x], [tensor.matrix(dtype=x.type.dtype)])
+
     def grad(self, inputs, g_outputs):
         return [extract_diag(g_outputs[0])]
+
     def perform(self, node, (x,), (z,)):
         if x.ndim != 1:
             raise TypeError(x)
         z[0] = numpy.diag(x)
+
+    def infer_shape(self, node, shapes):
+        x_s, = shapes
+        return [(x_s[0],x_s[0])]
+
 alloc_diag = AllocDiag()
 
 def diag(x):
