@@ -274,13 +274,13 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     The two lists `xs`, `ys` should have the same number of entries. The
     function checks if for any corresponding pair `(x,y)` from `zip(xs,ys)`
     `x` and `y` represent the same computations on the same variables
-    (unless equivalences are provided unsing `in_xs`, `in_ys`).
+    (unless equivalences are provided using `in_xs`, `in_ys`).
 
     If `in_xs` and `in_ys` are provided, then when comparing a node `x` with
     a node `y` they are automatically considered as equal if there is some
     index `i` such that `x == in_xs[i]` and `y == in_ys[i]`(and they both
     have the same type). Note that `x` and `y` can be in the list `xs` and
-    `ys`, but also represent sub subgraph of a computational graph in `xs`
+    `ys`, but also represent sub subgraphs of a computational graph in `xs`
     or `ys`.
 
     '''
