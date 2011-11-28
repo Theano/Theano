@@ -4,6 +4,7 @@ import errno
 import os
 import platform
 import re
+import sys
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
@@ -50,9 +51,16 @@ def filter_compiledir(path):
     return path
 
 
+if sys.platform == 'win32':
+    # On Windows we should not write temporary files to a directory 
+    # that is part of the roaming part of the user profile. Instead
+    # we use the local part of the user profile.
+    basecompiledir = os.path.join(os.environ['LOCALAPPDATA'], 'theano')
+else:
+    basecompiledir = os.path.join(config.home, '.theano')
 AddConfigVar('base_compiledir',
         "arch-independent cache directory for compiled modules",
-        StrParam(os.path.join(config.home, '.theano'), allow_override=False))
+        StrParam(basecompiledir, allow_override=False))
 
 AddConfigVar('compiledir',
         "arch-dependent cache directory for compiled modules",
