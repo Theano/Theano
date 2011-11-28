@@ -2816,7 +2816,7 @@ class T_Join_and_Split(unittest.TestCase):
     def test_roll(self):
 
         # Test simple 1D example
-        a = self.shared(numpy.array([1, 2, 3, 4, 5, 6]))
+        a = self.shared(numpy.array([1, 2, 3, 4, 5, 6], dtype=self.floatX))
         b = roll(a, 2)
         want = numpy.array([5, 6, 1, 2, 3, 4])
         out = theano.function([], b)()
@@ -2831,7 +2831,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert (out == want).all()
 
         # Test 2D example - ensure that behavior matches numpy.roll behavior
-        a = self.shared(numpy.arange(21).reshape((3, 7)))
+        a = self.shared(numpy.arange(21).reshape((3, 7)).astype(self.floatX))
         b = roll(a, -2, 1)
 
         want = numpy.roll(a.get_value(borrow=True), -2, 1)
