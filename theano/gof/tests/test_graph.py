@@ -1,10 +1,12 @@
-
+import unittest
 from collections import deque
-from theano.gof.graph import *
 
+from theano import tensor
+from theano.gof.graph import (
+        Apply, as_string, clone, general_toposort, inputs, io_toposort,
+        is_same_graph, Variable)
 from theano.gof.op import Op
 from theano.gof.type import Type
-from theano.gof.graph import Variable
 
 
 def as_variable(x):
@@ -216,4 +218,76 @@ class TestToposort:
         assert all == [o0]
 
 
+#################
+# is_same_graph #
+#################
 
+class TestIsSameGraph(unittest.TestCase):
+
+    def check(self, expected, debug=True):
+        """
+        Core function to perform comparison.
+
+        :param expected: A list of tuples (v1, v2, ((g1, o1), ..., (gN, oN)))
+        with:
+            - `v1` and `v2` two Variables (the graphs to be compared)
+            - `gj` a `givens` dictionary to give as input to `is_same_graph`
+            - `oj` the expected output of `is_same_graph(v1, v2, givens=gj)`
+
+        :param debug: If True, then we make sure we are testing both
+        implementations of `is_same_graph`.
+
+        This function also tries to call `is_same_graph` by inverting `v1` and
+        `v2`, and ensures the output remains the same.
+        """
+        for v1, v2, go in expected:
+            for gj, oj in go:
+                r1 = is_same_graph(v1, v2, givens=gj, debug=debug)
+                assert r1 == oj
+                r2 = is_same_graph(v2, v1, givens=gj, debug=debug)
+                assert r2 == oj
+
+    def test_single_var(self):
+        """
+        Test `is_same_graph` with some trivial graphs (one Variable).
+        """
+        x, y, z = tensor.vectors('x', 'y', 'z')
+        self.check([
+            (x, x, (({}, True), )),
+            (x, y, (({}, False), ({y: x}, True), )),
+            (x, tensor.neg(x), (({}, False), )),
+            (x, tensor.neg(y), (({}, False), )),
+            ])
+
+    def test_full_graph(self):
+        """
+        Test `is_same_graph` with more complex graphs.
+        """
+        x, y, z = tensor.vectors('x', 'y', 'z')
+        t = x * y
+        self.check([
+            (x * 2, x * 2, (({}, True), )),
+            (x * 2, y * 2, (({}, False), ({y: x}, True), )),
+            (x * 2, y * 2, (({}, False), ({x: y}, True), )),
+            (x * 2, y * 3, (({}, False), ({y: x}, False), )),
+            (t * 2, z * 2, (({}, False), ({t: z}, True), )),
+            (t * 2, z * 2, (({}, False), ({z: t}, True), )),
+            (x * (y * z), (x * y) * z, (({}, False), )),
+            ])
+
+    def test_merge_only(self):
+        """
+        Test `is_same_graph` when `equal_computations` cannot be used.
+        """
+        x, y, z = tensor.vectors('x', 'y', 'z')
+        t = x * y
+        self.check([
+            (x, t, (({}, False), ({t: x}, True))),
+            (t * 2, x * 2, (({}, False), ({t: x}, True), )),
+            (x * x, x * y, (({}, False), ({y: x}, True), )),
+            (x * x, x * y, (({}, False), ({y: x}, True), )),
+            (x * x + z, x * y + t, (({}, False),
+                                    ({y: x}, False),
+                                    ({y: x, t: z}, True))),
+            ],
+            debug=False)

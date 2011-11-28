@@ -249,13 +249,13 @@ class MergeOptimizer(Optimizer):
     """
     Merges parts of the graph that are identical and redundant.
 
-    The basic principle is that if two Applies have ops that compare equal, and identical
-    inputs, then they do not both need to be computed.  The clients of one are transfered to
-    the other and one of them is removed from the graph.  This procedure is carried out in
-    input->output order through the graph.
+    The basic principle is that if two Applies have ops that compare equal, and
+    identical inputs, then they do not both need to be computed. The clients of
+    one are transferred to the other and one of them is removed from the graph.
+    This procedure is carried out in input->output order through the graph.
 
-    The first step of merging is constant-merging, so that all clients of an int(1) for example,
-    are transfered to a particular instance of int(1).
+    The first step of merging is constant-merging, so that all clients of an
+    int(1) for example, are transferred to a particular instance of int(1).
     """
     def __init__(self, skip_const_merge=False):
         self.skip_const_merge = skip_const_merge
@@ -347,6 +347,41 @@ class MergeOptimizer(Optimizer):
         self.apply_node_merge(env)
 
 merge_optimizer = MergeOptimizer()
+
+
+def is_same_graph_with_merge(var1, var2, givens={}):
+    """
+    Merge-based implementation of `theano.gof.graph.is_same_graph`.
+
+    See help on `theano.gof.graph.is_same_graph` for additional documentation.
+    """
+    # Copy variables since the MergeOptimizer will modify them.
+    copied = copy.deepcopy([var1, var2, givens])
+    vars = copied[0:2]
+    givens = copied[2]
+    # Create Env.
+    inputs = theano.gof.graph.inputs(vars)
+    env = theano.gof.env.Env(inputs, vars)
+    # Perform Variable substitution.
+    for to_replace, replace_by in givens.iteritems():
+        env.replace(to_replace, replace_by)
+    # Perform merge optimization.
+    merge_optimizer.optimize(env)
+    # When two variables perform the same computations, they will have the same
+    # owner in the optimized graph.
+    # We need to be careful with the special case where the owner is None,
+    # which happens when the graph is made of a single Variable.
+    # We also need to make sure we replace a Variable if it is present in
+    # `givens`.
+    vars_replaced = [givens.get(v, v) for v in vars]
+    o1, o2 = [v.owner for v in vars_replaced]
+    if o1 is None and o2 is None:
+        # Comparing two single-Variable graphs: they are equal if they are
+        # the same Variable.
+        return vars_replaced[0] == vars_replaced[1]
+    else:
+        return o1 is o2
+
 
 def MergeOptMerge(opt):
     """WRITEME
