@@ -5,7 +5,7 @@ from copy import copy
 import graph
 import utils
 import toolbox
-#from theano import config
+from theano import config
 
 
 class InconsistencyError(Exception):
@@ -233,7 +233,6 @@ class Env(utils.object2):
                     if hasattr(r, 'env') and r.env is not self:
                         raise Exception("%s is already owned by another env" % r)
                     if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
-                        from theano import config
 
                         #Verbose error message
                         #Show a complete chain of variables from the missing input to an output
