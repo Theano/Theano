@@ -345,9 +345,43 @@ If we do not pass the ``updates`` dictionary to the function, then
 ``a.value`` will always remain 1, ``b`` will always be 2 and ``c``
 will always be ``12``.
 
+Conditional ending of Scan
+--------------------------
+
+Scan can also be used as a ``repeat-until`` block. In such a case scan 
+will stop when either the maximal number of iteration is reached, or the
+provided condition evaluates to True.
+
+For an example, we will compute all powers of two smaller then some provided 
+value ``max_value``.
+
+.. code-block:: python
+
+    def power_of_2(previous_power, max_value):
+        return previous_power*2, theano.scan_module.until(previous_power*2 > max_value)
+
+    max_value = T.scalar()
+    values, _ = theano.scan(power_of_2,
+                            outputs_info = T.constant(1.),
+                            non_sequences = max_value,
+                            n_steps = 1024)
+
+    f = theano.function([max_value], values)
+
+    print f(45)
+
+As you can see, in order to terminate on condition, the only thing required
+is that the inner function ``power_of_2`` to return also the condition
+wrapped in the class ``theano.scan_module.until``. The condition has to be
+expressed in terms of the arguments of the inner function (in this case
+``previous_power`` and ``max_value``).
+
+As a rule, scan always expects the condition to be the last thing returned
+by the inner function, otherwise an error will be raised.
 
 
-Reference
+
+reference
 =========
 
 .. automodule:: theano.scan_module
