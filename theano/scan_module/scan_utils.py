@@ -280,7 +280,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     a node `y` they are automatically considered as equal if there is some
     index `i` such that `x == in_xs[i]` and `y == in_ys[i]`(and they both
     have the same type). Note that `x` and `y` can be in the list `xs` and
-    `ys`, but also represent sub subgraphs of a computational graph in `xs`
+    `ys`, but also represent subgraphs of a computational graph in `xs`
     or `ys`.
 
     '''
