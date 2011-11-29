@@ -553,25 +553,25 @@ class NaiveAlgo(object):
         for(int i=0;i<%(nd)s;i++){//init new dim
           local_dims[i]=dims[i];
         }
-        """%locals()
+        """ % locals()
         for ipos in xrange(len(node.inputs)):
             print >> sio, """
             for(int i=0;i<%(nd)s;i++){//init new strides
               local_str[%(ipos)s][i]=i%(ipos)s_str[i];
             }
-            """%locals()
+            """ % locals()
         for ipos in xrange(len(node.outputs)):
             print >> sio, """
             for(int i=0;i<%(nd)s;i++){//init new strides
               local_ostr[%(ipos)s][i]=o%(ipos)s_str[i];
             }
-            """%locals()
+            """ % locals()
         if self.verbose>2:
             print >>sio, 'std::cerr <<"before broadcast collapse\\n";'
             print >>sio, 'std::cerr<< "nd_collapse "<< nd_collapse << "\\n"; '
             print >> sio, 'std::cerr << "local_dims";'
             for d in xrange(nd):
-                print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
+                print >> sio, 'std::cerr << " " << local_dims[%(d)s]; ' % locals()
             print >> sio, 'std::cerr << "\\n";'
 
             for ipos in xrange(len(node.inputs)):
@@ -858,9 +858,13 @@ nd_collapse_[i]=0;
         //standard elemwise size checks
             """ %locals()
         if nd > 0:
-            print >> sio, """int dims[%(nd)s] = {%(initial_dims)s};""" %locals()
+            print >> sio, """
+            int dims[%(nd)s] = {%(initial_dims)s};
+            """ % locals()
         else:
-            print >> sio, """int *dims = NULL;""" 
+            print >> sio, """
+            int *dims = NULL;
+            """
 
         #check that all inputs have valid dimensions
         emitted_inames = {}
@@ -871,9 +875,13 @@ nd_collapse_[i]=0;
             broadcasts = ', '.join(map(str,map(int,node.inputs[id].broadcastable)))
             nd = node.inputs[id].ndim
             if nd > 0:
-                print >> sio, """int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};""" %locals()
+                print >> sio, """
+                int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};
+                """ % locals()
             else:
-                print >> sio, """int *broadcasts_%(iname)s = NULL;""" %locals()
+                print >> sio, """
+                int *broadcasts_%(iname)s = NULL;
+                """ % locals()
             emitted_inames[iname] = node.inputs[id]
         #check that all inputs have valid dimensions
         emitted_inames = {}
