@@ -15,10 +15,11 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        CholeskyGrad,
                                        matrix_inverse,
                                        #solve,
-                                       #diag,
+                                       diag,
                                        ExtractDiag,
                                        extract_diag,
-                                       #alloc_diag,
+                                       AllocDiag,
+                                       alloc_diag,
                                        det,
                                        #PSD_hint,
                                        trace,
@@ -227,6 +228,62 @@ def test_det_shape():
     f_shape = theano.function([x], det(x).shape)
     assert numpy.all(f(r).shape == f_shape(r))
 
+def test_alloc_diag():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.tensor.vector()
+    g = alloc_diag(x)
+    f = theano.function([x], g)
+
+    # test "normal" scenario (5x5 matrix) and special cases of 0x0 and 1x1
+    for shp in [5, 0, 1]:
+        m = rng.rand(shp).astype(config.floatX)
+        v = numpy.diag(m)
+        r = f(m)
+        # The right diagonal is extracted
+        assert (r == v).all()
+
+    # Test we accept only vectors
+    xx = theano.tensor.matrix()
+    ok = False
+    try:
+        alloc_diag(xx)
+    except TypeError:
+        ok = True
+    assert ok
+
+    # Test infer_shape
+    f = theano.function([x], g.shape)
+    topo = f.maker.env.toposort()
+    if config.mode != 'FAST_COMPILE':
+        assert sum([node.op.__class__ == AllocDiag for node in topo]) == 0
+    for shp in [5, 0, 1]:
+        m = rng.rand(shp).astype(config.floatX)
+        assert (f(m) == m.shape).all()
+
+def test_alloc_diag_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = rng.rand(5)
+    tensor.verify_grad(alloc_diag, [x], rng=rng)
+
+def test_diag():
+    # test that it builds a matrix with given diagonal when using vector inputs
+    x = theano.tensor.vector()
+    y = diag(x)
+    assert y.owner.op.__class__ == AllocDiag
+
+    # test that it extracts the diagonal when using matrix input
+    x = theano.tensor.matrix()
+    y = extract_diag(x)
+    assert y.owner.op.__class__ == ExtractDiag
+    
+    # other types should raise error
+    x = theano.tensor.tensor3()
+    ok = False
+    try:
+        y = extract_diag(x)
+    except TypeError:
+        ok = True
+    assert ok
 
 def test_extract_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -234,7 +291,7 @@ def test_extract_diag():
     g = extract_diag(x)
     f = theano.function([x], g)
 
-    for shp in [(2, 3), (3, 2), (3, 3)]:
+    for shp in [(2, 3), (3, 2), (3, 3), (1,1), (0,0)]:
         m = rng.rand(*shp).astype(config.floatX)
         v = numpy.diag(m)
         r = f(m)
@@ -259,8 +316,12 @@ def test_extract_diag():
         m = rng.rand(*shp).astype(config.floatX)
         assert f(m) == min(shp)
 
-# not testing the view=True case since it is not used anywhere.
+def test_extract_diag_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = rng.rand(5,4)
+    tensor.verify_grad(extract_diag, [x], rng=rng)
 
+# not testing the view=True case since it is not used anywhere.
 
 def test_trace():
     rng = numpy.random.RandomState(utt.fetch_seed())
