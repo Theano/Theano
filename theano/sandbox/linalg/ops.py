@@ -561,7 +561,7 @@ solve = Solve() # general solve
 #TODO: Optimizations to replace multiplication by matrix inverse with solve() Op (still unwritten)
 
 class ExtractDiag(Op):
-    """ Return the diagonal of a matrix """
+    """ Return the diagonal of a matrix. """
     def __init__(self, view=False):
         self.view = view
         if self.view:
@@ -580,13 +580,13 @@ class ExtractDiag(Op):
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
 
     def perform(self, node, ins, outs):
-        """ For some reason numpy.diag(x) is really slow, so we implemented our own """
+        """ For some reason numpy.diag(x) is really slow, so we implemented our own. """
         x, = ins
         z, = outs
 
         # zero-dimensional matrices ...
         if x.shape[0] == 0 or x.shape[1] == 0:
-            z[0] = x
+            z[0] = numpy.zeros(0)
             return
 
         if x.shape[0] < x.shape [1]:
@@ -606,7 +606,7 @@ class ExtractDiag(Op):
     def grad(self, inputs, g_outputs):
         x = tensor.zeros_like(inputs[0])
         xdiag = alloc_diag(g_outputs[0])
-        return [tensor.set_subtensor(x[:xdiag.shape[0], :xdiag.shape[1]], xdiag, inplace=True)]
+        return [tensor.set_subtensor(x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
@@ -615,6 +615,7 @@ class ExtractDiag(Op):
 
 extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
+
 
 class AllocDiag(Op):
     """
@@ -646,9 +647,10 @@ class AllocDiag(Op):
 
 alloc_diag = AllocDiag()
 
-def diag(x):
-    """Numpy-compatibility method
 
+def diag(x):
+    """
+    Numpy-compatibility method
     If `x` is a matrix, return its diagonal.
     If `x` is a vector return a matrix with it as its diagonal.
 
@@ -661,6 +663,7 @@ def diag(x):
         return extract_diag(xx)
     else:
         raise TypeError('diag requires vector or matrix argument', x)
+
 
 class Det(Op):
     """Matrix determinant
