@@ -1,0 +1,251 @@
+.. _dev_start_guide:
+
+=====================
+Developer Start Guide
+=====================
+
+To get up to speed, you'll need to
+
+- Learn some non-basic Python to understand what's going on in some of the
+  trickier files (like tensor.py).
+- Go through the `NumPy documentation`_.
+- Learn to write reStructuredText_ for epydoc_ and Sphinx_.
+- Learn about how unittest_ and nose_ work
+
+.. _Sphinx: http://sphinx.pocoo.org/
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _epydoc: http://epydoc.sourceforge.net/
+.. _NumPy documentation: http://docs.scipy.org/numpy/
+.. _unittest: http://docs.python.org/library/unittest.html
+.. _nose: http://somethingaboutorange.com/mrl/projects/nose/
+
+Accounts
+--------
+
+To obtain developer access: register with `GitHub
+<http://www.github.com/>`_ and create a fork of `Theano
+<http://www.github.com/Theano/Theano>`_.
+
+Coding style
+------------
+
+We didn't had any coding style when we started Theano. We now use
+`this one
+<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
+except that we don't use the numpy docstring standard.
+
+We do not plan to change all existing code to follow this coding
+style, but as we modify the code, we update it accordingly.
+
+Mailing list
+------------
+
+See the Theano main page for the theano-dev, theano-buildbot and
+theano-github mailing list. They are useful to Theano contributors.
+
+Git config
+----------
+
+.. code-block:: bash
+
+   git config --global user.email you@yourdomain.example.com
+   git config --global user.name "Your Name Comes Here"
+
+Typical development workflow
+----------------------------
+
+Clone your fork locally with
+
+.. code-block:: bash
+
+    git clone git@github.com:your_github_login/Theano.git
+
+and add a reference to the 'central' Theano repository with
+
+.. code-block:: bash
+
+    git remote add central git://github.com/Theano/Theano.git
+
+When working on a new feature in your own fork, start from an up-to-date copy
+of the trunk:
+
+.. code-block:: bash
+
+    git fetch central
+    git checkout -b my_shiny_feature central/master
+
+Once your code is ready for others to review, push your branch to your github fork:
+
+.. code-block:: bash
+
+    git push -u origin my_shiny_feature
+
+then go to your fork's github page on the github website, select your feature
+branch and hit the "Pull Request" button in the top right corner.
+If you don't get any feedback, bug us on the theano-dev mailing list.
+
+When your pull request has been merged, you can delete the branch
+from the github list of branches. This is useful to avoid having too many
+branches staying there. Deleting this remote branch is achieved with:
+
+.. code-block:: bash
+
+   git push origin :my_shiny_feature
+
+You can keep your local repository up to date with central/master with those
+commands:
+
+.. code-block:: bash
+
+   git checkout master
+   git fetch central
+   git merge central/master
+
+If you want to fix a commit already submitted within a pull request (e.g. to
+fix a small typo), you can do it like this to keep history clean:
+
+.. code-block:: bash
+
+   git checkout my_shiny_feature
+   git commit --amend
+   git push -u origin my_shiny_feature:my_shiny_feature
+
+
+Coding Style Auto Check
+-----------------------
+
+In Theano, we use the same coding style as the `Pylearn
+<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
+project. The principal thing to know is that we follow the
+`pep8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
+
+We use git hooks provided in the project `pygithooks
+<https://github.com/lumberlabs/pygithooks>`_ to validate that commits
+respect pep8. This happens when each user commits, not when we
+push/merge to the Theano repository. Github doesn't allow us to have
+code executed when we push to the repository. So we ask all
+contributors to use those hooks.
+
+For historic reason, we currently don't have all files respecting pep8.
+We decided to fix everything incrementally. So not all files respect it
+now. So we strongly suggest that you use the "increment" pygithooks
+config option to have a good workflow. See the pygithooks main page
+for how to set it up for Theano and how to enable this option.
+
+Cleaning up history
+-------------------
+
+Sometimes you may have commits in your feature branch that
+are not needed in the final pull request. There is a `page
+<http://sandofsky.com/blog/git-workflow.html>`_ that talks about
+this. In summary:
+
+* Commits to the trunk should be a lot cleaner than commits to your
+  feature branch; not just for ease of reviewing but also
+  because intermediate commits can break blame (the bisecting tool).
+* `git merge --squash` will put all of the commits from your feature branch into one commit.
+* There are other tools that are useful if your branch is too big for one squash.
+
+
+To checkout another user branch in his repo:
+
+.. code-block:: bash
+
+   git remote add REPO_NAME HIS_REPO_PATH
+   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOVE_BRANCH_NAME
+
+You can find move information and tips in the `numpy development
+<http://docs.scipy.org/doc/numpy/dev/gitwash/development_workflow.html>`_
+page.
+
+
+Details about ``PYTHONPATH``
+----------------------------
+
+``$PYTHONPATH`` should contain a ":"-separated list of paths, each of which
+contains one or several Python packages, in the order in which you would like
+Python to search for them. If a package has sub-packages of interest to you,
+do **not** add them to ``$PYTHONPATH``: it is not portable, might shadow other
+packages or short-circuit important things in its ``__init__``.
+
+It is advisable to never import Theano's files from outside Theano itself
+(this is good advice for Python packages in general). Use ``from theano import
+tensor`` instead of ``import tensor``. ``$PYTHONPATH`` should only contain
+paths to complete packages.
+
+When you install a package, only the package name can be imported directly. If
+you want a sub-package, you must import it from the main package. That's how
+it will work in 99.9% of installs because it is the default. Therefore, if you
+stray from this practice, your code will not be portable. Also, some ways to
+circumvent circular dependencies might make it so you have to import files in
+a certain order, which is best handled by the package's own ``__init__.py``.
+
+More instructions
+-----------------
+
+Once you have completed these steps, you should run the tests like this:
+
+.. code-block:: python
+
+   import theano
+   theano.test()
+
+Or by running ``nosetests`` from your checkout directory.
+
+All tests should pass. If some test fails on your machine, you are
+encouraged to tell us what went wrong on the `theano-users`_
+mailing list.
+
+.. _theano-users: https://groups.google.com/group/theano-users
+
+To update your library to the latest revision, you should have a branch
+that tracks the main trunk. You can add one with:
+
+.. code-block:: bash
+
+    git fetch central
+    git branch trunk central/master
+
+Once you have such a branch, in order to update it, do:
+
+.. code-block:: bash
+
+    git checkout trunk
+    git pull
+
+Keep in mind that this branch should be "read-only": if you want to patch
+Theano, do it in another branch like described above.
+
+Optional
+--------
+
+You can instruct git to do color diff. For this, you need to add those lines in the file ~/.gitconfig
+
+.. code-block:: bash
+
+
+    [color]
+       branch = auto
+       diff = auto
+       interactive = auto
+       status = auto
+
+Nightly test
+------------
+
+Each night we execute all the unit tests automatically.  The result is sent by
+email to the `theano-buildbot`_ mailing list.
+
+.. _theano-buildbot: https://groups.google.com/group/theano-buildbot
+
+For more detail, see :ref:`see <metadocumentation_nightly_build>`.
+
+To run all the tests with the same configuration as the buildbot, run this script:
+
+.. code-block:: bash
+
+   theano/misc/do_nightly_build
+
+This function accepts arguments that it forward to nosetests. You can
+run only some tests or enable pdb by giving the equivalent nosetests
+parameters.
