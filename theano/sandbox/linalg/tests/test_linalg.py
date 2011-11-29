@@ -228,6 +228,7 @@ def test_det_shape():
     f_shape = theano.function([x], det(x).shape)
     assert numpy.all(f(r).shape == f_shape(r))
 
+
 def test_alloc_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = theano.tensor.vector()
@@ -260,12 +261,25 @@ def test_alloc_diag():
         m = rng.rand(shp).astype(config.floatX)
         assert (f(m) == m.shape).all()
 
+
 def test_alloc_diag_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = rng.rand(5)
     tensor.verify_grad(alloc_diag, [x], rng=rng)
 
+
 def test_diag():
+    """
+    Test that linalg.diag has the same behavior as numpy.diag.
+    numpy.diag has two behaviors: 
+    (1) when given a vector, it returns a matrix with that vector as the diagonal.
+    (2) when given a matrix, returns a vector which is the diagonal of the matrix.
+
+    (1) and (2) are tested by test_alloc_diag and test_extract_diag respectively.
+    This test makes sure that linalg.diag instantiates the right op based on the dimension of
+    the input.
+    """
+
     # test that it builds a matrix with given diagonal when using vector inputs
     x = theano.tensor.vector()
     y = diag(x)
@@ -284,6 +298,7 @@ def test_diag():
     except TypeError:
         ok = True
     assert ok
+
 
 def test_extract_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -316,10 +331,12 @@ def test_extract_diag():
         m = rng.rand(*shp).astype(config.floatX)
         assert f(m) == min(shp)
 
+
 def test_extract_diag_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = rng.rand(5,4)
     tensor.verify_grad(extract_diag, [x], rng=rng)
+
 
 # not testing the view=True case since it is not used anywhere.
 
