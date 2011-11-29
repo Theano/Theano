@@ -33,3 +33,4 @@ theano/version.py
 theano/version.py.out
 distribute-*.egg
 distribute-*.tar.gz
+Theano.suo

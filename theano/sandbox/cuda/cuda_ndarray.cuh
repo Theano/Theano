@@ -6,6 +6,16 @@
 
 #include <cublas.h>
 
+#ifdef _WIN32
+#ifdef _CUDA_NDARRAY_C
+#define DllExport   __declspec( dllexport )
+#else
+#define DllExport   __declspec( dllimport )
+#endif
+#else
+#define DllExport
+#endif
+
 typedef float real;
 #define REAL_TYPENUM 11
 
@@ -36,8 +46,8 @@ typedef float real;
  * device_malloc will set the Python error message before returning None.
  * device_free will return nonzero on failure (after setting the python error message)
  */
-void * device_malloc(size_t size);
-int device_free(void * ptr);
+DllExport void * device_malloc(size_t size);
+DllExport int device_free(void * ptr);
 
 template <typename T>
 static T ceil_intdiv(T a, T b)
@@ -81,114 +91,50 @@ struct CudaNdarray
  * Return a CudaNdarray whose 'nd' dimensions are all 0.
  * if nd==-1, it is not initialized.
  */
-PyObject *
+DllExport PyObject *
 CudaNdarray_New(int nd=-1);
 
 /**
  * Return 1 for a CudaNdarray otw 0
  */
-int
+DllExport int
 CudaNdarray_Check(const PyObject * ob);
 
 /**
  * Return 1 for a CudaNdarray otw 0
  */
-int
+DllExport int
 CudaNdarray_CheckExact(const PyObject * ob);
 
 /**
  * Return true for a C-contiguous CudaNdarray, else false
  */
-bool
+DllExport bool
 CudaNdarray_is_c_contiguous(const CudaNdarray * self);
 
 /****
  * Returns the number of elements necessary in host_structure and dev_structure for a given number of dimensions.
  */
-int
-cnda_structure_size(int nd)
-{
-    // dim0, dim1, ...
-    // str0, str1, ...
-    // log2(dim0), log2(dim1), ...
-    return nd + nd + nd;
-}
+DllExport int cnda_structure_size(int nd);
 
-const int *
-CudaNdarray_HOST_DIMS(const CudaNdarray * self)
-{
-    return self->host_structure;
-}
-const int *
-CudaNdarray_HOST_STRIDES(const CudaNdarray * self)
-{
-    return self->host_structure + self->nd;
-}
-const int *
-CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self)
-{
-    return self->host_structure + 2*self->nd;
-}
+DllExport const int *
+CudaNdarray_HOST_DIMS(const CudaNdarray * self);
 
-void
-cnda_mark_dev_structure_dirty(CudaNdarray * self)
-{
-    self->dev_structure_fresh = 0;
-}
+DllExport const int *
+CudaNdarray_HOST_STRIDES(const CudaNdarray * self);
 
-int
-CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase)
-{
-    int verbose = 1;
+DllExport const int *
+CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self);
 
-    if (!ignoreSync && cnda1->dev_structure_fresh != cnda2->dev_structure_fresh)
-    {
-        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 1\n");
-        return 0;
-    }
+DllExport void
+cnda_mark_dev_structure_dirty(CudaNdarray * self);
 
-    if (cnda1->nd != cnda2->nd)
-    {
-        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 2\n");
-        return 0;
-    }
-
-    for (int i=0; i < 2*cnda1->nd; i++)
-    {
-        if (cnda1->host_structure[i] != cnda2->host_structure[i])
-        {
-            if(verbose)
-                fprintf(stdout, "CUDANDARRAY_EQUAL : host_structure : %d, %d, %d\n", i, cnda1->host_structure[i], cnda2->host_structure[i]);
-            return 0;
-        }
-    }
-
-    if (!ignoreBase && cnda1->base != cnda2->base)
-    {
-        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 4");
-        return 0;
-    }
-    else if (cnda1->data_allocated != cnda2->data_allocated)
-    {
-        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 5");
-        return 0;
-    }
-    else if (cnda1->data_allocated && cnda1->devdata != cnda2->devdata)
-    {
-        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 6");
-        // no need to check devdata if data is not allocated
-        return 0;
-    }
-
-    return 1;
-}
+DllExport int
+CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase);
 
 // Default: do not ignore sync of dev and host structures in comparing, and do not ignore difference in base pointers
-int
-CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
-{
-    return CudaNdarray_EqualAndIgnore(cnda1, cnda2, 0, 0);
-}
+DllExport int
+CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 
 /****
  *  Set the idx'th dimension to value d.
@@ -197,173 +143,44 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
  *
  *  Does not sync structure to host.
  */
-void
-CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
-{
-    if ((idx >= self->nd) || (idx < 0) || (d < 0))
-    {
-        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: %i %i\n", idx, d);
-    }
+DllExport void
+CudaNdarray_set_dim(CudaNdarray * self, int idx, int d);
 
-    if (d != self->host_structure[idx])
-    {
-        self->host_structure[idx] = d;
-        int log2d = (int)log2((double)d);
-        self->host_structure[idx + 2*self->nd] = (d == (1 << log2d)) ? log2d : -1;
-        cnda_mark_dev_structure_dirty(self);
-    }
-}
-void
-CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
-{
-    if ((idx >= self->nd) || (idx < 0))
-    {
-        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_stride arguments: %i %i\n", idx, s);
-    }
+DllExport void
+CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
 
-    if (s != CudaNdarray_HOST_STRIDES(self)[idx])
-    {
-        self->host_structure[idx+self->nd] = s;
-        cnda_mark_dev_structure_dirty(self);
-    }
-}
 /***
  *  Update dependent variables from the contents of CudaNdarray_HOST_DIMS(self) and CudaNdarray_HOST_STRIDES(self)
  *
  *  This means: recalculate the log2dims and transfer structure to the card
  */
-int
-cnda_copy_structure_to_device(CudaNdarray * self)
-{
-    cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
-    CNDA_THREAD_SYNC;
-    if (CUBLAS_STATUS_SUCCESS != cublasGetError())
-    {
-        PyErr_SetString(PyExc_RuntimeError, "error copying structure to device memory");
-        return -1;
-    }
-    self->dev_structure_fresh = 1;
-    return 0;
-}
+DllExport int cnda_copy_structure_to_device(CudaNdarray * self);
 
-const int *
-CudaNdarray_DEV_DIMS(CudaNdarray * self)
-{
-    if (!self->dev_structure_fresh)
-    {
-        if (cnda_copy_structure_to_device(self))
-            return NULL;
-    }
-    return self->dev_structure;
-}
-const int *
-CudaNdarray_DEV_STRIDES(CudaNdarray * self)
-{
-    if (!self->dev_structure_fresh)
-    {
-        if (cnda_copy_structure_to_device(self))
-            return NULL;
-    }
-    return self->dev_structure + self->nd;
-}
-const int *
-CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self)
-{
-    if (!self->dev_structure_fresh)
-    {
-        if (cnda_copy_structure_to_device(self))
-            return NULL;
-    }
-    return self->dev_structure + 2*self->nd;
-}
-float *
-CudaNdarray_DEV_DATA(const CudaNdarray * self)
-{
-    return self->devdata;
-}
+DllExport const int *CudaNdarray_DEV_DIMS(CudaNdarray * self);
+DllExport const int *CudaNdarray_DEV_STRIDES(CudaNdarray * self);
+DllExport const int *CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self);
+DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
 
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
-int
-CudaNdarray_SIZE(const CudaNdarray *self)
-{
-    if (self->nd == -1) return 0;
-    int size = 1;
-    for (int i = 0; i < self->nd; ++i)
-    {
-        size *= CudaNdarray_HOST_DIMS(self)[i];
-    }
-    return size;
-}
-static PyObject *
-CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
-{
-    return PyInt_FromLong(CudaNdarray_SIZE(self));
-}
+DllExport int CudaNdarray_SIZE(const CudaNdarray *self);
 
+static PyObject *CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure);
 
 /**
  * Allocate a new CudaNdarray with room for given number of dimensions
  *
  * No Storage space is allocated (and all dimensions are 0)
  */
-PyObject * CudaNdarray_new_nd(const int nd);
+DllExport PyObject * CudaNdarray_new_nd(const int nd);
 
 /**
  * [Re]allocate a CudaNdarray with access to 'nd' dimensions.
  *
  * Note: This does not allocate storage for data.
  */
-int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
-{
-    if (nd != self->nd)
-    {
-        if (self->dev_structure)
-        {
-            if (device_free(self->dev_structure))
-            {
-                return -1;
-            }
-            self->dev_structure = NULL;
-        }
-        if (self->host_structure)
-        {
-            free(self->host_structure);
-            self->host_structure = NULL;
-            self->nd = -1;
-        }
-        if (nd == -1) return 0;
-
-        self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
-        if (NULL == self->host_structure)
-        {
-            PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
-            return -1;
-        }
-        //initialize all dimensions and strides to 0
-        for (int i = 0; i < cnda_structure_size(nd); ++i)
-        {
-            self->host_structure[i] = 0;
-        }
-
-        int struct_size = cnda_structure_size(nd);
-        if (struct_size)
-        {
-            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
-            if (NULL == self->dev_structure)
-            {
-                free(self->host_structure);
-                self->host_structure = NULL;
-                self->dev_structure = NULL;
-                return -1;
-            }
-        }
-        self->nd = nd;
-        self->dev_structure_fresh = 0;
-    }
-    return 0;
-}
+DllExport int CudaNdarray_set_nd(CudaNdarray * self, const int nd);
 
 /**
  * CudaNdarray_alloc_contiguous
@@ -373,7 +190,7 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
  * Note: CudaNdarray_alloc_contiguous is templated to work for both int dimensions and npy_intp dimensions
  */
 template<typename inttype>
-int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype * dim)
+static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype * dim)
 {
     // allocate an empty ndarray with c_contiguous access
     // return 0 on success
@@ -434,9 +251,8 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
 /*
  * Return a CudaNdarray whose 'nd' dimensions are set to dims, and allocated.
  */
-template<typename inttype>
-PyObject *
-CudaNdarray_NewDims(int nd, const inttype * dims)
+template<typename inttype> 
+static PyObject *CudaNdarray_NewDims(int nd, const inttype * dims)
 {
     CudaNdarray * rval = (CudaNdarray*)CudaNdarray_New();
     if (rval)
@@ -456,103 +272,64 @@ CudaNdarray_NewDims(int nd, const inttype * dims)
  *
  * Set self to be a view of given `data`, owned by existing CudaNdarray `base`.
  */
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base);
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
-{
-    return CudaNdarray_set_device_data(self, data, (PyObject *) base);
-}
+DllExport int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base);
+DllExport int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base);
 
 /**
  * Return an independent copy of self
  */
-PyObject * CudaNdarray_DeepCopy(CudaNdarray * self, PyObject * memo);
+DllExport PyObject * CudaNdarray_DeepCopy(CudaNdarray * self, PyObject * memo);
 
 /**
  * Return an independent copy of self
  */
-PyObject * CudaNdarray_Copy(CudaNdarray * self);
+DllExport PyObject * CudaNdarray_Copy(CudaNdarray * self);
 
 /**
  * Return a new object obtained by summing over the dimensions for which there is a 1 in the mask.
  */
-PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask);
+DllExport PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask);
 
 /**
  * Transfer the contents of numpy array `obj` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
  */
-int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
+DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
 
 /**
  * Transfer the contents of CudaNdarray `other` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
  */
-int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast = false);
+DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
  */
-PyObject *
+DllExport PyObject *
 CudaNdarray_CreateArrayObj(CudaNdarray * self);
 
-PyObject *
+DllExport PyObject *
 CudaNdarray_ZEROS(int n, int * dims);
 
 /**
  * True iff the strides look like [dim[nd-2], dim[nd-3], ... , dim[0], 1]
  */
-bool CudaNdarray_is_c_contiguous(const CudaNdarray * self);
-PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self)
-{
-    return PyBool_FromLong(CudaNdarray_is_c_contiguous(self));
-}
+DllExport bool CudaNdarray_is_c_contiguous(const CudaNdarray * self);
+DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
 
-int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
-int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray* A);
+DllExport int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
+DllExport int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray* A);
 
-int CudaNdarray_reduce_sum(CudaNdarray * self, CudaNdarray * A);
-int CudaNdarray_reduce_prod(CudaNdarray * self, CudaNdarray * A);
-int CudaNdarray_reduce_min(CudaNdarray * self, CudaNdarray * A);
-int CudaNdarray_reduce_max(CudaNdarray * self, CudaNdarray * A);
+DllExport int CudaNdarray_reduce_sum(CudaNdarray * self, CudaNdarray * A);
+DllExport int CudaNdarray_reduce_prod(CudaNdarray * self, CudaNdarray * A);
+DllExport int CudaNdarray_reduce_min(CudaNdarray * self, CudaNdarray * A);
+DllExport int CudaNdarray_reduce_max(CudaNdarray * self, CudaNdarray * A);
 
-int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern);
+DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern);
 
-void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
-{
-    fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d data_allocated=%d\n",
-            self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
-    fprintf(fd, "\tHOST_DIMS:      ");
-    for (int i = 0; i < self->nd; ++i)
-    {
-        fprintf(fd, "%i\t", CudaNdarray_HOST_DIMS(self)[i]);
-    }
-    fprintf(fd, "\n\tHOST_STRIDES: ");
-    for (int i = 0; i < self->nd; ++i)
-    {
-        fprintf(fd, "%i\t", CudaNdarray_HOST_STRIDES(self)[i]);
-    }
-
-    int data=0;
-    fprintf(fd, "\n\tDEV_DIMS:      ");
-    for (int i = 0; i < self->nd; ++i)
-    {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure+i, 1,
-                        &data, 1);
-        fprintf(fd, "%i\t", data);
-    }
-    fprintf(fd, "\n\tDEV_STRIDES: ");
-    for (int i = 0; i < self->nd; ++i)
-    {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure + self->nd+i, 1,
-                        &data, 1);
-        fprintf(fd, "%i \t", data);
-    }
-    fprintf(fd, "\n");
-}
+static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 #endif
 /*
