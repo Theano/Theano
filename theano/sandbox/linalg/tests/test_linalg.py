@@ -367,8 +367,8 @@ def test_spectral_radius_bound():
     f = theano.function([x], radius_bound)
     
     shp = (3, 3)
-    m = rng.rand(*shp).astype(config.floatX)
-    m = numpy.cov(m)
+    m = rng.rand(*shp)
+    m = numpy.cov(m).astype(config.floatX)
     radius_bound_theano = f(m)
     
     # test the approximation
