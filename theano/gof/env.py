@@ -285,7 +285,7 @@ class Env(utils.object2):
                             #handler code in the first place
                             assert path is not None
 
-                            raise TypeError('An variable that is an input to the graph was neither provided as an '
+                            raise TypeError('A variable that is an input to the graph was neither provided as an '
                                     'input to the function nor given a value. A chain of variables leading from '
                                     'this input to an output is '+str(path)+'. This chain may not be unique')
 
