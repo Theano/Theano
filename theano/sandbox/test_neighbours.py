@@ -429,7 +429,8 @@ def test_neibs_valid_with_inconsistent_borders():
                      axis=[0, 1])
 
     f = theano.function([images],
-                        T.sqr(images2neibs(images, (2, 2), mode='valid')))
+                        T.sqr(images2neibs(images, (2, 2), mode='valid')),
+                        mode=mode_without_gpu)
     try:
         f(images_val)
         assert False, "An error was expected"
