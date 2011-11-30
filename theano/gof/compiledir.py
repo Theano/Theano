@@ -51,7 +51,10 @@ def filter_compiledir(path):
     return path
 
 
-if sys.platform == 'win32':
+# TODO Using the local user profile on Windows is currently disabled as it
+# is not documented yet, and may break some existing code. It will be enabled
+# in a future code update.
+if False and sys.platform == 'win32':
     # On Windows we should not write temporary files to a directory 
     # that is part of the roaming part of the user profile. Instead
     # we use the local part of the user profile.
