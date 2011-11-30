@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{b67d762d-0020-4e02-9ddf-7db4f89b1dd3}</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>
+    </StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>Theano</Name>
+    <RootNamespace>Theano</RootNamespace>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <InterpreterId>2af0f10d-7135-4994-9156-5d01c9c11b7e</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="theano\compile\builders.py" />
+    <Compile Include="theano\compile\debugmode.py" />
+    <Compile Include="theano\compile\function.py" />
+    <Compile Include="theano\compile\function_module.py" />
+    <Compile Include="theano\compile\io.py" />
+    <Compile Include="theano\compile\mode.py" />
+    <Compile Include="theano\compile\module.py" />
+    <Compile Include="theano\compile\pfunc.py" />
+    <Compile Include="theano\compile\profilemode.py" />
+    <Compile Include="theano\compile\profiling.py" />
+    <Compile Include="theano\compile\sandbox\__init__.py" />
+    <Compile Include="theano\compile\sharedvalue.py" />
+    <Compile Include="theano\compile\tests\test_builders.py" />
+    <Compile Include="theano\compile\tests\test_debugmode.py" />
+    <Compile Include="theano\compile\tests\test_function_module.py" />
+    <Compile Include="theano\compile\tests\test_inplace_opt_for_value.py" />
+    <Compile Include="theano\compile\tests\test_misc.py" />
+    <Compile Include="theano\compile\tests\test_modes.py" />
+    <Compile Include="theano\compile\tests\test_module.py" />
+    <Compile Include="theano\compile\tests\test_pfunc.py" />
+    <Compile Include="theano\compile\tests\test_shared.py" />
+    <Compile Include="theano\compile\tests\__init__.py" />
+    <Compile Include="theano\compile\__init__.py" />
+    <Compile Include="theano\configdefaults.py" />
+    <Compile Include="theano\configparser.py" />
+    <Compile Include="theano\gof\callcache.py" />
+    <Compile Include="theano\gof\cc.py" />
+    <Compile Include="theano\gof\cmodule.py" />
+    <Compile Include="theano\gof\compiledir.py" />
+    <Compile Include="theano\gof\compilelock.py" />
+    <Compile Include="theano\gof\cutils.py" />
+    <Compile Include="theano\gof\destroyhandler.py" />
+    <Compile Include="theano\gof\env.py" />
+    <Compile Include="theano\gof\graph.py" />
+    <Compile Include="theano\gof\lazylinker_c.py" />
+    <Compile Include="theano\gof\link.py" />
+    <Compile Include="theano\gof\op.py" />
+    <Compile Include="theano\gof\opt.py" />
+    <Compile Include="theano\gof\optdb.py" />
+    <Compile Include="theano\gof\python25.py" />
+    <Compile Include="theano\gof\sandbox\equilibrium.py" />
+    <Compile Include="theano\gof\tests\test_cc.py" />
+    <Compile Include="theano\gof\tests\test_compute_test_value.py" />
+    <Compile Include="theano\gof\tests\test_destroyhandler.py" />
+    <Compile Include="theano\gof\tests\test_graph.py" />
+    <Compile Include="theano\gof\tests\test_lazy.py" />
+    <Compile Include="theano\gof\tests\test_link.py" />
+    <Compile Include="theano\gof\tests\test_op.py" />
+    <Compile Include="theano\gof\tests\test_opt.py" />
+    <Compile Include="theano\gof\tests\test_optdb.py" />
+    <Compile Include="theano\gof\tests\test_toolbox.py" />
+    <Compile Include="theano\gof\tests\test_types.py" />
+    <Compile Include="theano\gof\tests\test_vm.py" />
+    <Compile Include="theano\gof\tests\__init__.py" />
+    <Compile Include="theano\gof\toolbox.py" />
+    <Compile Include="theano\gof\type.py" />
+    <Compile Include="theano\gof\unify.py" />
+    <Compile Include="theano\gof\utils.py" />
+    <Compile Include="theano\gof\vm.py" />
+    <Compile Include="theano\gof\__init__.py" />
+    <Compile Include="theano\gradient.py" />
+    <Compile Include="theano\ifelse.py" />
+    <Compile Include="theano\misc\buildbot_filter.py" />
+    <Compile Include="theano\misc\check_blas.py" />
+    <Compile Include="theano\misc\check_duplicate_key.py" />
+    <Compile Include="theano\misc\cudamat_utils.py" />
+    <Compile Include="theano\misc\gnumpy_utils.py" />
+    <Compile Include="theano\misc\hooks\argparse.py" />
+    <Compile Include="theano\misc\hooks\check_whitespace.py" />
+    <Compile Include="theano\misc\hooks\reindent.py" />
+    <Compile Include="theano\misc\latence_gpu_transfert.py" />
+    <Compile Include="theano\misc\may_share_memory.py" />
+    <Compile Include="theano\misc\pycuda_example.py" />
+    <Compile Include="theano\misc\pycuda_init.py" />
+    <Compile Include="theano\misc\pycuda_utils.py" />
+    <Compile Include="theano\misc\safe_asarray.py" />
+    <Compile Include="theano\misc\strutil.py" />
+    <Compile Include="theano\misc\tests\test_cudamat_utils.py" />
+    <Compile Include="theano\misc\tests\test_gnumpy_utils.py" />
+    <Compile Include="theano\misc\tests\test_may_share_memory.py" />
+    <Compile Include="theano\misc\tests\test_pycuda_example.py" />
+    <Compile Include="theano\misc\tests\test_pycuda_theano_simple.py" />
+    <Compile Include="theano\misc\tests\test_pycuda_utils.py" />
+    <Compile Include="theano\misc\__init__.py" />
+    <Compile Include="theano\printing.py" />
+    <Compile Include="theano\raise_op.py" />
+    <Compile Include="theano\sandbox\conv.py" />
+    <Compile Include="theano\sandbox\cuda\basic_ops.py" />
+    <Compile Include="theano\sandbox\cuda\blas.py" />
+    <Compile Include="theano\sandbox\cuda\elemwise.py" />
+    <Compile Include="theano\sandbox\cuda\GpuConv3D.py" />
+    <Compile Include="theano\sandbox\cuda\GpuConvGrad3D.py" />
+    <Compile Include="theano\sandbox\cuda\GpuConvTransp3D.py" />
+    <Compile Include="theano\sandbox\cuda\kernel_codegen.py" />
+    <Compile Include="theano\sandbox\cuda\nnet.py" />
+    <Compile Include="theano\sandbox\cuda\nvcc_compiler.py" />
+    <Compile Include="theano\sandbox\cuda\opt.py" />
+    <Compile Include="theano\sandbox\cuda\rng_curand.py" />
+    <Compile Include="theano\sandbox\cuda\type.py" />
+    <Compile Include="theano\sandbox\cuda\var.py" />
+    <Compile Include="theano\sandbox\cuda\__init__.py" />
+    <Compile Include="theano\sandbox\debug.py" />
+    <Compile Include="theano\sandbox\downsample.py" />
+    <Compile Include="theano\sandbox\fourier.py" />
+    <Compile Include="theano\sandbox\linalg\ops.py" />
+    <Compile Include="theano\sandbox\linalg\__init__.py" />
+    <Compile Include="theano\sandbox\minimal.py" />
+    <Compile Include="theano\sandbox\multinomial.py" />
+    <Compile Include="theano\sandbox\neighbourhoods.py" />
+    <Compile Include="theano\sandbox\neighbours.py" />
+    <Compile Include="theano\sandbox\rng_mrg.py" />
+    <Compile Include="theano\sandbox\softsign.py" />
+    <Compile Include="theano\sandbox\solve.py" />
+    <Compile Include="theano\sandbox\symbolic_module.py" />
+    <Compile Include="theano\sandbox\test_multinomial.py" />
+    <Compile Include="theano\sandbox\test_neighbourhoods.py" />
+    <Compile Include="theano\sandbox\test_neighbours.py" />
+    <Compile Include="theano\sandbox\test_rng_mrg.py" />
+    <Compile Include="theano\sandbox\test_theano_object.py" />
+    <Compile Include="theano\sandbox\theano_object.py" />
+    <Compile Include="theano\sandbox\__init__.py" />
+    <Compile Include="theano\scalar\basic.py" />
+    <Compile Include="theano\scalar\basic_scipy.py" />
+    <Compile Include="theano\scalar\sharedvar.py" />
+    <Compile Include="theano\scalar\__init__.py" />
+    <Compile Include="theano\scan_module\scan.py" />
+    <Compile Include="theano\scan_module\scan_op.py" />
+    <Compile Include="theano\scan_module\scan_opt.py" />
+    <Compile Include="theano\scan_module\scan_perform_ext.py" />
+    <Compile Include="theano\scan_module\scan_utils.py" />
+    <Compile Include="theano\scan_module\scan_views.py" />
+    <Compile Include="theano\scan_module\__init__.py" />
+    <Compile Include="theano\sparse\basic.py" />
+    <Compile Include="theano\sparse\sandbox\sp.py" />
+    <Compile Include="theano\sparse\sandbox\test_sp.py" />
+    <Compile Include="theano\sparse\sandbox\truedot.py" />
+    <Compile Include="theano\sparse\sandbox\__init__.py" />
+    <Compile Include="theano\sparse\sharedvar.py" />
+    <Compile Include="theano\sparse\__init__.py" />
+    <Compile Include="theano\tensor\basic.py" />
+    <Compile Include="theano\tensor\blas.py" />
+    <Compile Include="theano\tensor\blas_headers.py" />
+    <Compile Include="theano\tensor\blas_scipy.py" />
+    <Compile Include="theano\tensor\deprecated\rmodule.py" />
+    <Compile Include="theano\tensor\deprecated\test_rmodule.py" />
+    <Compile Include="theano\tensor\deprecated\__init__.py" />
+    <Compile Include="theano\tensor\elemwise.py" />
+    <Compile Include="theano\tensor\elemwise_cgen.py" />
+    <Compile Include="theano\tensor\inplace.py" />
+    <Compile Include="theano\tensor\nnet\conv.py" />
+    <Compile Include="theano\tensor\nnet\Conv3D.py" />
+    <Compile Include="theano\tensor\nnet\ConvGrad3D.py" />
+    <Compile Include="theano\tensor\nnet\ConvTransp3D.py" />
+    <Compile Include="theano\tensor\nnet\nnet.py" />
+    <Compile Include="theano\tensor\nnet\sigm.py" />
+    <Compile Include="theano\tensor\nnet\__init__.py" />
+    <Compile Include="theano\tensor\opt.py" />
+    <Compile Include="theano\tensor\opt_uncanonicalize.py" />
+    <Compile Include="theano\tensor\randomstreams.py" />
+    <Compile Include="theano\tensor\raw_random.py" />
+    <Compile Include="theano\tensor\sharedvar.py" />
+    <Compile Include="theano\tensor\shared_randomstreams.py" />
+    <Compile Include="theano\tensor\signal\conv.py" />
+    <Compile Include="theano\tensor\signal\downsample.py" />
+    <Compile Include="theano\tensor\signal\__init__.py" />
+    <Compile Include="theano\tensor\tensor_grad.py" />
+    <Compile Include="theano\tensor\xlogx.py" />
+    <Compile Include="theano\tensor\__init__.py" />
+    <Compile Include="theano\updates.py" />
+    <Compile Include="theano\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="theano\" />
+    <Folder Include="theano\compile\" />
+    <Folder Include="theano\compile\sandbox\" />
+    <Folder Include="theano\compile\tests\" />
+    <Folder Include="theano\gof\" />
+    <Folder Include="theano\gof\sandbox\" />
+    <Folder Include="theano\gof\tests\" />
+    <Folder Include="theano\misc\" />
+    <Folder Include="theano\misc\hooks\" />
+    <Folder Include="theano\misc\tests\" />
+    <Folder Include="theano\sandbox\" />
+    <Folder Include="theano\sandbox\cuda\" />
+    <Folder Include="theano\sandbox\linalg\" />
+    <Folder Include="theano\scalar\" />
+    <Folder Include="theano\scan_module\" />
+    <Folder Include="theano\sparse\" />
+    <Folder Include="theano\sparse\sandbox\" />
+    <Folder Include="theano\tensor\" />
+    <Folder Include="theano\tensor\deprecated\" />
+    <Folder Include="theano\tensor\nnet\" />
+    <Folder Include="theano\tensor\signal\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="theano\sandbox\cuda\conv.cu" />
+    <Content Include="theano\sandbox\cuda\conv_full_kernel.cu" />
+    <Content Include="theano\sandbox\cuda\conv_kernel.cu" />
+    <Content Include="theano\sandbox\cuda\cuda_ndarray.cu" />
+    <Content Include="theano\sandbox\cuda\cuda_ndarray.cuh" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+</Project>
