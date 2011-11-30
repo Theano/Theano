@@ -42,7 +42,7 @@ class test_ifelse(unittest.TestCase):
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
-        f = theano.function([c, x, y], 2*ifelse(c, x, y))
+        f = theano.function([c, x, y], 2 * ifelse(c, x, y))
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         xlen = rng.randint(200)
@@ -52,8 +52,8 @@ class test_ifelse(unittest.TestCase):
         vy = numpy.asarray(rng.uniform(size=(ylen,)), theano.config.floatX)
         assert numpy.all(x.op.inplace for x in f.maker.env.toposort() if
                          x.op == IfElse)
-        assert numpy.allclose(vx*2, f(1, vx, vy))
-        assert numpy.allclose(vy*2, f(0, vx, vy))
+        assert numpy.allclose(vx * 2, f(1, vx, vy))
+        assert numpy.allclose(vy * 2, f(0, vx, vy))
 
     def test_lazy_if_on_generics(self):
         x = theano.generic()
