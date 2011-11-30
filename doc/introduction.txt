@@ -184,7 +184,7 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
 * Efforts have begun towards a generic GPU ndarray (GPU tensor) (started in the
   `compyte <https://github.com/inducer/compyte/wiki>`_ project)
     * Move GPU backend outside of Theano (on top of PyCUDA/PyOpenCL)
-    * Will allow GPU to work on Windows and use an OpenCL backend on CPU.
+    * Will provide better support for GPU on Windows and use an OpenCL backend on CPU.
 * Loops work, but not all related optimizations are currently done.
 * The cvm linker allows lazy evaluation. It works, but some work is still
   needed before enabling it by default.
