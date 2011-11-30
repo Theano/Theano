@@ -139,11 +139,9 @@ class T_sigmoid_opts(unittest.TestCase):
             trees = [parse_mul_tree(e) for e in (expr1, expr2)]
             perform_sigm_times_exp(trees[0])
             trees[0] = simplify_mul(trees[0])
-            # TODO Ideally we would do a full comparison without `str`. However
-            # the implementation of `__eq__` in Variables is not currently
-            # appropriate for this. So for now we use this limited technique,
-            # but it could be improved on.
-            good = str(trees[0]) == str(trees[1])
+            good = theano.gof.graph.is_same_graph(
+                    compute_mul(trees[0]),
+                    compute_mul(trees[1]))
             if not good:
                 print trees[0]
                 print trees[1]
@@ -225,10 +223,9 @@ class T_sigmoid_utils(unittest.TestCase):
         x, y, z = tensor.vectors('x', 'y', 'z')
         tree = (x * y) * -z
         mul_tree = parse_mul_tree(tree)
-        # Note that we do not test the reverse identity, i.e.
-        #   compute_mul(parse_mul_tree(tree)) == tree
-        # because Theano currently lacks an easy way to compare variables.
         assert parse_mul_tree(compute_mul(mul_tree)) == mul_tree
+        assert theano.gof.graph.is_same_graph(
+                                    compute_mul(parse_mul_tree(tree)), tree)
 
     def test_parse_mul_tree(self):
         x, y, z = tensor.vectors('x', 'y', 'z')
