@@ -351,10 +351,11 @@ def cond_make_inplace(node):
     return False
 
 
+optdb.register('cond_make_inplace', opt.in2out(cond_make_inplace,
+    ignore_newtrees=True), 95, 'fast_run', 'inplace')
+
 # XXX: Optimizations commented pending further debugging (certain optimizations
 # make computation less lazy than it should be currently).
-# optdb.register('cond_make_inplace', opt.in2out(cond_make_inplace,
-#     ignore_newtrees=True), 95, 'fast_run', 'inplace')
 #
 # ifelse_equilibrium = gof.EquilibriumDB()
 # ifelse_seqopt = gof.SequenceDB()

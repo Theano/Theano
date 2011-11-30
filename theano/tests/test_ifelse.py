@@ -21,7 +21,7 @@ class test_ifelse(unittest.TestCase):
     def test_lazy_if(self):
         # Tests that lazy if works .. even if the two results have different
         # shapes but the same type (i.e. both vectors, or matrices or
-        # whatnot of same dtype
+        # whatnot of same dtype)
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -34,6 +34,26 @@ class test_ifelse(unittest.TestCase):
         vx = numpy.asarray(rng.uniform(size=(xlen,)), theano.config.floatX)
         vy = numpy.asarray(rng.uniform(size=(ylen,)), theano.config.floatX)
 
+        assert numpy.allclose(vx, f(1, vx, vy))
+        assert numpy.allclose(vy, f(0, vx, vy))
+
+    def test_lazy_if_inplace(self):
+        # Tests that lazy if works inplace
+        x = tensor.vector('x')
+        y = tensor.vector('y')
+        c = tensor.iscalar('c')
+        f = theano.function([c, x, y], ifelse(c, x, y))
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        xlen = rng.randint(200)
+        ylen = rng.randint(200)
+
+        vx = numpy.asarray(rng.uniform(size=(xlen,)), theano.config.floatX)
+        vy = numpy.asarray(rng.uniform(size=(ylen,)), theano.config.floatX)
+        assert numpy.all([x.op.as_view for x in f.maker.env.toposort() if
+                         isinstance(x.op, IfElse)])
+        assert len([x.op for x in f.maker.env.toposort()
+                   if isinstance(x.op, IfElse)]) > 0
         assert numpy.allclose(vx, f(1, vx, vy))
         assert numpy.allclose(vy, f(0, vx, vy))
 
