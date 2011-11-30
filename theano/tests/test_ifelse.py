@@ -21,7 +21,7 @@ class test_ifelse(unittest.TestCase):
     def test_lazy_if(self):
         # Tests that lazy if works .. even if the two results have different
         # shapes but the same type (i.e. both vectors, or matrices or
-        # whatnot of same dtype
+        # whatnot of same dtype)
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -38,9 +38,7 @@ class test_ifelse(unittest.TestCase):
         assert numpy.allclose(vy, f(0, vx, vy))
 
     def test_lazy_if_inplace(self):
-        # Tests that lazy if works .. even if the two results have different
-        # shapes but the same type (i.e. both vectors, or matrices or
-        # whatnot of same dtype
+        # Tests that lazy if works inplace
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
