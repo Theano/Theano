@@ -275,13 +275,21 @@ import theano and print the config variable, as in:
 
 .. attribute:: home
 
-    Default: env-variable $HOME
+    Default: On Linux: $HOME/.theano. On Windows: $LOCALAPPDATA\\Theano
 
-    This is used to compute the compiledir and base_compiledir attributes
+    This is the base directory where all Theano files are stored. Currently,
+    the only files being stored are compiled C modules, and thus changing ``home``
+    is similar to changing ``base_compiledir`` (described below).
+    Note however that ``home`` used to have a different meaning in previous
+    versions of Theano (up to 0.4.1), and to make sure its new meaning is
+    understood, it is currently forbidden to change ``home`` without also
+    changing either ``base_compiledir`` or ``compiledir``.
+
+    This flag's value cannot be modified during the program execution.
 
 .. attribute:: base_compiledir
 
-    Default: $HOME/.theano
+    Default: ``config.home``
 
     This directory stores the architecture-dependent compilation directories.
 
@@ -289,7 +297,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: compiledir
 
-    Default: $HOME/.theano/<arch-identifier>
+    Default: ``config.base_compiledir``/<arch-identifier>
 
     This directory stores dynamically-compiled modules for a particular
     architecture.

@@ -1,10 +1,10 @@
-
 import cPickle
 import errno
 import os
 import platform
 import re
 import sys
+import warnings
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
@@ -51,28 +51,45 @@ def filter_compiledir(path):
     return path
 
 
-# TODO Using the local user profile on Windows is currently disabled as it
-# is not documented yet, and may break some existing code. It will be enabled
-# in a future code update.
-if False and sys.platform == 'win32':
-    # On Windows we should not write temporary files to a directory 
-    # that is part of the roaming part of the user profile. Instead
-    # we use the local part of the user profile.
-    basecompiledir = os.path.join(os.environ['LOCALAPPDATA'], 'theano')
-else:
-    basecompiledir = os.path.join(config.home, '.theano')
 AddConfigVar('base_compiledir',
         "arch-independent cache directory for compiled modules",
-        StrParam(basecompiledir, allow_override=False))
+        StrParam(config.home, allow_override=False))
+
+default_compiledir = os.path.join(
+        os.path.expanduser(config.base_compiledir),
+        default_compiledirname())
 
 AddConfigVar('compiledir',
         "arch-dependent cache directory for compiled modules",
-        ConfigParam(
-            os.path.join(
-                os.path.expanduser(config.base_compiledir),
-                default_compiledirname()),
-            filter=filter_compiledir,
-            allow_override=False))
+        ConfigParam(default_compiledir,
+                    filter=filter_compiledir,
+                    allow_override=False))
+
+
+# The role of `config.home` was changed compared to Theano 0.4.1. It used to
+# be the location of the user home directory. Now, it directly points to the
+# directory where Theano should save its own data files. Typically, the
+# difference is that it now includes the '.theano' folder, while it used to be
+# the parent of that folder. In order for this change to be safe, we currently
+# prevent people from changing `config.home` unless they also change
+# the compilation directory.
+if (config.home != theano.configdefaults.default_home and
+    config.base_compiledir == config.home and
+    # We need to compare to the `real` path because this is what is used in
+    # `filter_compiledir`.
+    config.compiledir == os.path.realpath(default_compiledir)):
+    # The user changed `config.home` but is still using the default values for
+    # `config.base_compiledir` and `config.compiledir`.
+    raise RuntimeError(
+            'You manually set your Theano home directory (to %s), but kept '
+            'the default compilation directory. Please note that the meaning '
+            'of the `home` directory was changed: it is now the base '
+            'directory for all Theano files, instead of being its parent '
+            'directory. To get rid of this error, please set the '
+            '`base_compiledir` config option to the directory you want '
+            'compiled files to be stored into (for instance: %s).' % (
+                config.home,
+                os.path.join(config.home, '.theano')))
 
 
 def print_compiledir_content():

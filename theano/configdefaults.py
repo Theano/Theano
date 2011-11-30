@@ -1,6 +1,7 @@
 import os
-import subprocess
 import logging
+import subprocess
+import sys
 
 from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
 
@@ -131,9 +132,17 @@ def get_home_dir():
     assert home is not None
     return home
 
+# On Windows we should avoid writing temporary files to a directory that is
+# part of the roaming part of the user profile. Instead we use the local part
+# of the user profile, when available.
+if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
+    default_home = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
+else:
+    default_home = os.path.join(get_home_dir(), '.theano')
+
 AddConfigVar('home',
-        "User home directory",
-        StrParam(get_home_dir()),
+        "Home directory for Theano files",
+        StrParam(default_home, allow_override=False),
         in_c_key=False)
 
 AddConfigVar('nocleanup',
