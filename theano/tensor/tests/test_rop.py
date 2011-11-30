@@ -216,6 +216,10 @@ class test_RopLop(RopLop_checker):
         out = tensor.set_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
+    def test_print(self):
+        out = theano.printing.Print('x',attrs=('shape',))(self.x)
+        self.check_rop_lop(out, self.in_shape)
+
 
     def test_setsubtensor2(self):
         tv = numpy.asarray( self.rng.uniform(size=(10,)),
