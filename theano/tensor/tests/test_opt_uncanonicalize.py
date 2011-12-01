@@ -16,18 +16,19 @@ class T_max_and_argmax(unittest.TestCase):
         #If we use only the max output, we should replace this op with a faster one.
         mode = theano.compile.mode.get_default_mode().including('canonicalize','fast_run')
 
-        data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
-        n = tensor.matrix()
+        for axis in [0, 1, -1]:
+            data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
+            n = tensor.matrix()
 
-        f = function([n], tensor.max_and_argmax(n,0)[0], mode=mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op, CAReduce)
+            f = function([n], tensor.max_and_argmax(n, axis)[0], mode=mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op, CAReduce)
 
-        f = function([n], tensor.max_and_argmax(n,0), mode=mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op, tensor.MaxAndArgmax)
+            f = function([n], tensor.max_and_argmax(n, axis), mode=mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op, tensor.MaxAndArgmax)
 
 
 class T_min_max(unittest.TestCase):
@@ -39,65 +40,66 @@ class T_min_max(unittest.TestCase):
         data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
         n = tensor.matrix()
 
-        f = function([n],tensor.max(n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op,CAReduce)
-        f(data)
+        for axis in [0, 1, -1]:
+            f = function([n],tensor.max(n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op,CAReduce)
+            f(data)
 
 
-        f = function([n],tensor.max(-n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==2
-        assert isinstance(topo[0].op, Elemwise)
-        assert isinstance(topo[0].op.scalar_op, scalar.Neg)
-        assert isinstance(topo[1].op,CAReduce)
-        f(data)
+            f = function([n],tensor.max(-n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==2
+            assert isinstance(topo[0].op, Elemwise)
+            assert isinstance(topo[0].op.scalar_op, scalar.Neg)
+            assert isinstance(topo[1].op,CAReduce)
+            f(data)
 
-        f = function([n],-tensor.max(n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==2
-        assert isinstance(topo[0].op,CAReduce)
-        assert isinstance(topo[1].op, Elemwise)
-        assert isinstance(topo[1].op.scalar_op, scalar.Neg)
-        f(data)
+            f = function([n],-tensor.max(n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==2
+            assert isinstance(topo[0].op,CAReduce)
+            assert isinstance(topo[1].op, Elemwise)
+            assert isinstance(topo[1].op.scalar_op, scalar.Neg)
+            f(data)
 
-        f = function([n],-tensor.max(-n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op,CAReduce)#min
-        f(data)
+            f = function([n],-tensor.max(-n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op,CAReduce)#min
+            f(data)
 
     def test_optimization_min(self):
         data = numpy.asarray(numpy.random.rand(2,3),dtype=config.floatX)
         n = tensor.matrix()
 
-        f = function([n],tensor.min(n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op,CAReduce)
-        f(data)
+        for axis in [0, 1, -1]:
+            f = function([n],tensor.min(n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op,CAReduce)
+            f(data)
 
-        #test variant with neg to make sure we optimize correctly
-        f = function([n],tensor.min(-n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==2
-        assert isinstance(topo[0].op,CAReduce)#max
-        assert isinstance(topo[1].op, Elemwise)
-        assert isinstance(topo[1].op.scalar_op, scalar.Neg)
-        f(data)
+            #test variant with neg to make sure we optimize correctly
+            f = function([n],tensor.min(-n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==2
+            assert isinstance(topo[0].op,CAReduce)#max
+            assert isinstance(topo[1].op, Elemwise)
+            assert isinstance(topo[1].op.scalar_op, scalar.Neg)
+            f(data)
 
-        f = function([n],-tensor.min(n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==2
-        assert isinstance(topo[0].op, Elemwise)
-        assert isinstance(topo[0].op.scalar_op, scalar.Neg)
-        assert isinstance(topo[1].op,CAReduce)#max
-        f(data)
+            f = function([n],-tensor.min(n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==2
+            assert isinstance(topo[0].op, Elemwise)
+            assert isinstance(topo[0].op.scalar_op, scalar.Neg)
+            assert isinstance(topo[1].op,CAReduce)#max
+            f(data)
 
-        f = function([n],-tensor.min(-n,0), mode=self.mode)
-        topo = f.maker.env.toposort()
-        assert len(topo)==1
-        assert isinstance(topo[0].op,CAReduce)#max
-        f(data)
-
+            f = function([n],-tensor.min(-n, axis), mode=self.mode)
+            topo = f.maker.env.toposort()
+            assert len(topo)==1
+            assert isinstance(topo[0].op,CAReduce)#max
+            f(data)

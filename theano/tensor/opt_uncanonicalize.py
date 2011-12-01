@@ -57,7 +57,7 @@ class MaxAndArgmaxOptimizer(Optimizer):
                     if len(node.outputs[1].clients)==0:
                         try:
                             axis=get_constant_value(node.inputs[1])
-                        except ValueError:
+                        except (ValueError, TypeError), e:
                             return False
 
                         new = CAReduce(scal.maximum,axis)(node.inputs[0])
