@@ -1449,6 +1449,7 @@ class T_Shape(unittest.TestCase):
         s = shape(numpy.ones((5, 3, 10)))
         self.assertTrue((eval_outputs([s]) == [5, 3, 10]).all())
 
+
 class T_max_and_argmax(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -1456,108 +1457,110 @@ class T_max_and_argmax(unittest.TestCase):
 
     def test0(self):
         n = as_tensor_variable(5.0)
-        v,i = eval_outputs(max_and_argmax(n))
+        v, i = eval_outputs(max_and_argmax(n))
         self.assertTrue(v == 5.0)
         self.assertTrue(i == 0)
         v = eval_outputs(max_and_argmax(n)[0].shape)
-        assert len(v)==0
+        assert len(v) == 0
         v = eval_outputs(max_and_argmax(n)[1].shape)
-        assert len(v)==0
+        assert len(v) == 0
 
     def test1(self):
-        n = as_tensor_variable([1,2,3,2,-6])
-        v,i = eval_outputs(max_and_argmax(n))
+        n = as_tensor_variable([1, 2, 3, 2, -6])
+        v, i = eval_outputs(max_and_argmax(n))
         self.assertTrue(v == 3)
         self.assertTrue(i == 2)
         v = eval_outputs(max_and_argmax(n)[0].shape)
-        assert len(v)==0
+        assert len(v) == 0
 
     def test2(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
-        v,i = eval_outputs(max_and_argmax(n,-1))
-        self.assertTrue(numpy.all(v == numpy.max(data,-1)))
-        self.assertTrue(numpy.all(i == numpy.argmax(data,-1)))
-        v = eval_outputs(max_and_argmax(n,-1)[0].shape)
-        assert v==(2)
+        v, i = eval_outputs(max_and_argmax(n, -1))
+        self.assertTrue(numpy.all(v == numpy.max(data, -1)))
+        self.assertTrue(numpy.all(i == numpy.argmax(data, -1)))
+        v = eval_outputs(max_and_argmax(n, -1)[0].shape)
+        assert v == (2)
 
     def test2b(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
-        v,i = eval_outputs(max_and_argmax(n,0))
-        self.assertTrue(numpy.all(v == numpy.max(data,0)))
-        self.assertTrue(numpy.all(i == numpy.argmax(data,0)))
-        v = eval_outputs(max_and_argmax(n,0)[0].shape)
-        assert v==(3)
-        v = eval_outputs(max_and_argmax(n,1)[0].shape)
-        assert v==(2)
+        v, i = eval_outputs(max_and_argmax(n, 0))
+        self.assertTrue(numpy.all(v == numpy.max(data, 0)))
+        self.assertTrue(numpy.all(i == numpy.argmax(data, 0)))
+        v = eval_outputs(max_and_argmax(n, 0)[0].shape)
+        assert v == (3)
+        v = eval_outputs(max_and_argmax(n, 1)[0].shape)
+        assert v == (2)
         #currently not supported
         #v = eval_outputs(max_and_argmax(n,[0,1])[0].shape)
         #assert v.size==0
 
     def test2_invalid(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
+        n = as_tensor_variable(numpy.random.rand(2, 3))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
         try:
             try:
-                eval_outputs(max_and_argmax(n,3))
+                eval_outputs(max_and_argmax(n, 3))
                 assert False
             except ValueError, e:
                 pass
         finally:
             _logger.setLevel(oldlevel)
+
     def test2_invalid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
+        n = as_tensor_variable(numpy.random.rand(2, 3))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
             try:
-                eval_outputs(max_and_argmax(n,-3))
+                eval_outputs(max_and_argmax(n, -3))
                 assert False
             except ValueError, e:
                 pass
         finally:
             sys.stderr = old_stderr
+
     def test2_valid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2,3))
-        v,i = eval_outputs(max_and_argmax(n,-1))
+        n = as_tensor_variable(numpy.random.rand(2, 3))
+        v, i = eval_outputs(max_and_argmax(n, -1))
         self.assertTrue(v.shape == (2,))
         self.assertTrue(i.shape == (2,))
-        self.assertTrue(numpy.all(v == numpy.max(n.value,-1)))
-        self.assertTrue(numpy.all(i == numpy.argmax(n.value,-1)))
-        v,i = eval_outputs(max_and_argmax(n,-2))
+        self.assertTrue(numpy.all(v == numpy.max(n.value, -1)))
+        self.assertTrue(numpy.all(i == numpy.argmax(n.value, -1)))
+        v, i = eval_outputs(max_and_argmax(n, -2))
         self.assertTrue(v.shape == (3,))
         self.assertTrue(i.shape == (3,))
-        self.assertTrue(numpy.all(v == numpy.max(n.value,-2)))
-        self.assertTrue(numpy.all(i == numpy.argmax(n.value,-2)))
-        v = eval_outputs(max_and_argmax(n,-1)[0].shape)
-        assert v==(2)
-        v = eval_outputs(max_and_argmax(n,-2)[0].shape)
-        assert v==(3)
+        self.assertTrue(numpy.all(v == numpy.max(n.value, -2)))
+        self.assertTrue(numpy.all(i == numpy.argmax(n.value, -2)))
+        v = eval_outputs(max_and_argmax(n, -1)[0].shape)
+        assert v == (2)
+        v = eval_outputs(max_and_argmax(n, -2)[0].shape)
+        assert v == (3)
 
     def test3(self):
-        n = as_tensor_variable(numpy.random.rand(2,3,4))
-        v,i = eval_outputs(max_and_argmax(n,0))
-        self.assertTrue(v.shape == (3,4))
-        self.assertTrue(i.shape == (3,4))
-        v,i = eval_outputs(max_and_argmax(n,1))
-        self.assertTrue(v.shape == (2,4))
-        self.assertTrue(i.shape == (2,4))
-        v,i = eval_outputs(max_and_argmax(n,2))
-        self.assertTrue(v.shape == (2,3))
-        self.assertTrue(i.shape == (2,3))
-        v = eval_outputs(max_and_argmax(n,0)[0].shape)
-        assert tuple(v)==(3,4)
-        v = eval_outputs(max_and_argmax(n,1)[0].shape)
-        assert tuple(v)==(2,4)
-        v = eval_outputs(max_and_argmax(n,2)[0].shape)
-        assert tuple(v)==(2,3)
+        n = as_tensor_variable(numpy.random.rand(2, 3, 4))
+        v, i = eval_outputs(max_and_argmax(n, 0))
+        self.assertTrue(v.shape == (3, 4))
+        self.assertTrue(i.shape == (3, 4))
+        v, i = eval_outputs(max_and_argmax(n, 1))
+        self.assertTrue(v.shape == (2, 4))
+        self.assertTrue(i.shape == (2, 4))
+        v, i = eval_outputs(max_and_argmax(n, 2))
+        self.assertTrue(v.shape == (2, 3))
+        self.assertTrue(i.shape == (2, 3))
+        v = eval_outputs(max_and_argmax(n, 0)[0].shape)
+        assert tuple(v) == (3, 4)
+        v = eval_outputs(max_and_argmax(n, 1)[0].shape)
+        assert tuple(v) == (2, 4)
+        v = eval_outputs(max_and_argmax(n, 2)[0].shape)
+        assert tuple(v) == (2, 3)
 
     def test_grad(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_max(data, max_grad_data, axis=None):
@@ -1565,35 +1568,39 @@ class T_max_and_argmax(unittest.TestCase):
             Why this is needed? verify_grad is not enought?
             """
             #This work only for axis in [0,None]
-            assert axis in [0,None]
+            assert axis in [0, None]
             z = numpy.zeros_like(data)
             z = z.flatten()
-            argmax=numpy.argmax(data,axis=axis)
-            if argmax.ndim==0:
-                z[argmax]+=1
+            argmax = numpy.argmax(data, axis=axis)
+            if argmax.ndim == 0:
+                z[argmax] += 1
             else:
-                for id,v in enumerate(argmax):
-                    z[v*numpy.prod(data.shape[data.ndim-1:axis:-1])+id]+=1
+                for id, v in enumerate(argmax):
+                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1])
+                      + id] += 1
 
             z = z.reshape(data.shape)
             assert numpy.all(max_grad_data == z)
 
         #test grad of max
         #axis is the last one
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=-1)[0], [data])
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=-1)[1], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=-1)[0], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=-1)[1], [data])
 
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[0], [data])
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=[0])[1], [data])
-        check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=0)[0].sum(),n)),axis=0)
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=[0])[0], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=[0])[1], [data])
+        check_grad_max(data, eval_outputs(grad(
+                    max_and_argmax(n, axis=0)[0].sum(), n)), axis=0)
 
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=[1])[0], [data])
-        utt.verify_grad(lambda v: max_and_argmax(v,axis=[1])[1], [data])
-        #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=[1])[0], [data])
+        utt.verify_grad(lambda v: max_and_argmax(v, axis=[1])[1], [data])
+        #check_grad_max(data,eval_outputs(grad(
+        #            max_and_argmax(n,axis=1)[0],n)),axis=1)
 
         utt.verify_grad(lambda v: max_and_argmax(v.flatten())[0], [data])
         utt.verify_grad(lambda v: max_and_argmax(v.flatten())[1], [data])
-        check_grad_max(data,eval_outputs(grad(max_and_argmax(n.flatten())[0],n)))
+        check_grad_max(data, eval_outputs(grad(
+                    max_and_argmax(n.flatten())[0], n)))
 
         # Test 4d inner dimensions
         data = numpy.random.rand(2, 3, 4, 5)
@@ -1608,60 +1615,60 @@ class T_argmin_argmax(unittest.TestCase):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
-    def test0(self):
-        for fct in [argmin,argmax]:
+    def test_scalar(self):
+        for fct in [argmin, argmax]:
             n = as_tensor_variable(5.0)
             i = eval_outputs(fct(n))
             self.assertTrue(i == 0)
             v = eval_outputs(fct(n).shape)
-            assert len(v)==0
+            assert len(v) == 0
 
-    def test1(self):
-        n = as_tensor_variable([1,2,3,2,-6])
+    def test_list(self):
+        n = as_tensor_variable([1, 2, 3, 2, -6])
         i = eval_outputs(argmin(n))
         self.assertTrue(i == 4)
         v = eval_outputs(argmin(n).shape)
-        assert len(v)==0
+        assert len(v) == 0
 
-        n = as_tensor_variable([1,2,3,2,-6])
+        n = as_tensor_variable([1, 2, 3, 2, -6])
         i = eval_outputs(argmax(n))
         self.assertTrue(i == 2)
         v = eval_outputs(argmax(n).shape)
-        assert len(v)==0
+        assert len(v) == 0
 
     def test2(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            data = numpy.random.rand(2,3)
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            data = numpy.random.rand(2, 3)
             n = as_tensor_variable(data)
-            i = eval_outputs(fct(n,-1))
-            self.assertTrue(numpy.all(i == nfct(data,-1)))
-            v = eval_outputs(fct(n,-1).shape)
-            assert v==(2)
+            i = eval_outputs(fct(n, -1))
+            self.assertTrue(numpy.all(i == nfct(data, -1)))
+            v = eval_outputs(fct(n, -1).shape)
+            assert v == (2)
 
     def test2b(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            data = numpy.random.rand(2,3)
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            data = numpy.random.rand(2, 3)
             n = as_tensor_variable(data)
-            i = eval_outputs(fct(n,0))
-            self.assertTrue(numpy.all(i == nfct(data,0)))
-            v = eval_outputs(fct(n,0).shape)
-            assert v==(3)
-            v = eval_outputs(fct(n,1).shape)
-            assert v==(2)
+            i = eval_outputs(fct(n, 0))
+            self.assertTrue(numpy.all(i == nfct(data, 0)))
+            v = eval_outputs(fct(n, 0).shape)
+            assert v == (3)
+            v = eval_outputs(fct(n, 1).shape)
+            assert v == (2)
             #currently not supported
             #v = eval_outputs(fct(n,[0,1]).shape)
             #assert v.size==0
 
     def test2_invalid(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
             oldlevel = _logger.level
             _logger.setLevel(logging.CRITICAL)
             try:
                 try:
-                    eval_outputs(fct(n,3))
+                    eval_outputs(fct(n, 3))
                     assert False
                 except ValueError, e:
                     pass
@@ -1669,13 +1676,13 @@ class T_argmin_argmax(unittest.TestCase):
                 _logger.setLevel(oldlevel)
 
     def test2_invalid_neg(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
             old_stderr = sys.stderr
             sys.stderr = StringIO.StringIO()
             try:
                 try:
-                    eval_outputs(fct(n,-3))
+                    eval_outputs(fct(n, -3))
                     assert False
                 except ValueError, e:
                     pass
@@ -1683,286 +1690,297 @@ class T_argmin_argmax(unittest.TestCase):
                 sys.stderr = old_stderr
 
     def test2_valid_neg(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
-            i = eval_outputs(fct(n,-1))
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
+            i = eval_outputs(fct(n, -1))
             self.assertTrue(i.shape == (2,))
-            self.assertTrue(numpy.all(i == nfct(n.value,-1)))
-            i = eval_outputs(fct(n,-2))
+            self.assertTrue(numpy.all(i == nfct(n.value, -1)))
+            i = eval_outputs(fct(n, -2))
             self.assertTrue(i.shape == (3,))
-            self.assertTrue(numpy.all(i == nfct(n.value,-2)))
+            self.assertTrue(numpy.all(i == nfct(n.value, -2)))
 
-            v = eval_outputs(fct(n,-1).shape)
-            assert v==(2)
-            v = eval_outputs(fct(n,-2).shape)
-            assert v==(3)
+            v = eval_outputs(fct(n, -1).shape)
+            assert v == (2)
+            v = eval_outputs(fct(n, -2).shape)
+            assert v == (3)
 
     def test3(self):
-        for fct,nfct in [(argmax,numpy.argmax),(argmin,numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2,3,4))
-            i = eval_outputs(fct(n,0))
-            self.assertTrue(i.shape == (3,4))
-            self.assertTrue(numpy.all(i == nfct(n.value,0)))
-            i = eval_outputs(fct(n,1))
-            self.assertTrue(i.shape == (2,4))
-            self.assertTrue(numpy.all(i == nfct(n.value,1)))
-            i = eval_outputs(fct(n,2))
-            self.assertTrue(i.shape == (2,3))
-            self.assertTrue(numpy.all(i == nfct(n.value,2)))
+        for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3, 4))
+            i = eval_outputs(fct(n, 0))
+            self.assertTrue(i.shape == (3, 4))
+            self.assertTrue(numpy.all(i == nfct(n.value, 0)))
+            i = eval_outputs(fct(n, 1))
+            self.assertTrue(i.shape == (2, 4))
+            self.assertTrue(numpy.all(i == nfct(n.value, 1)))
+            i = eval_outputs(fct(n, 2))
+            self.assertTrue(i.shape == (2, 3))
+            self.assertTrue(numpy.all(i == nfct(n.value, 2)))
 
-            v = eval_outputs(fct(n,0).shape)
-            assert tuple(v)==(3,4)
-            v = eval_outputs(fct(n,1).shape)
-            assert tuple(v)==(2,4)
-            v = eval_outputs(fct(n,2).shape)
-            assert tuple(v)==(2,3)
+            v = eval_outputs(fct(n, 0).shape)
+            assert tuple(v) == (3, 4)
+            v = eval_outputs(fct(n, 1).shape)
+            assert tuple(v) == (2, 4)
+            v = eval_outputs(fct(n, 2).shape)
+            assert tuple(v) == (2, 3)
 
     def test_grad_argmin(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
 
         #test grad of argmin
-        utt.verify_grad(lambda v: argmin(v,axis=-1), [data])
+        utt.verify_grad(lambda v: argmin(v, axis=-1), [data])
 
-        utt.verify_grad(lambda v: argmin(v,axis=[0]), [data])
+        utt.verify_grad(lambda v: argmin(v, axis=[0]), [data])
 
-        utt.verify_grad(lambda v: argmin(v,axis=[1]), [data])
+        utt.verify_grad(lambda v: argmin(v, axis=[1]), [data])
 
         utt.verify_grad(lambda v: argmin(v.flatten()), [data])
 
         try:
-            grad(argmin(n,axis=-1),n)
+            grad(argmin(n, axis=-1), n)
             raise Exception('Expected an error')
         except TypeError:
             pass
 
     def test_grad_argmax(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
 
         #test grad of argmax
         utt.verify_grad(lambda v: argmax(v, axis=-1), [data])
 
-        utt.verify_grad(lambda v: argmax(v,axis=[0]), [data])
+        utt.verify_grad(lambda v: argmax(v, axis=[0]), [data])
 
-        utt.verify_grad(lambda v: argmax(v,axis=[1]), [data])
+        utt.verify_grad(lambda v: argmax(v, axis=[1]), [data])
 
         utt.verify_grad(lambda v: argmax(v.flatten()), [data])
 
         try:
-            grad(argmax(n, axis=-1),n)
+            grad(argmax(n, axis=-1), n)
             raise Exception('Expected an error')
         except TypeError:
             pass
+
 
 class T_min_max(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
-    def test0(self):
-        for fct in [max,min]:
+    def test_scalar(self):
+        for fct in [max, min]:
             n = as_tensor_variable(5.0)
             v = eval_outputs(fct(n))
             self.assertTrue(v == 5.0)
 
             v = eval_outputs(fct(n).shape)
-            assert len(v)==0
+            assert len(v) == 0
 
-    def test1(self):
-        for fct,nfct in [(max,numpy.max),(min,numpy.min)]:
-            n = as_tensor_variable([1,2,3,2,-6])
+    def test_list(self):
+        for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
+            n = as_tensor_variable([1, 2, 3, 2, -6])
             v = eval_outputs([fct(n)])
             self.assertTrue(v == nfct(n.value))
 
             v = eval_outputs(fct(n).shape)
-            assert len(v)==0
+            assert len(v) == 0
 
     def test2(self):
-        for fct,nfct in [(max,numpy.max),(min,numpy.min)]:
-            data = numpy.random.rand(2,3)
+        for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
+            data = numpy.random.rand(2, 3)
             n = as_tensor_variable(data)
-            v = eval_outputs(fct(n,-1))
-            self.assertTrue(numpy.all(v == nfct(data,-1)))
+            v = eval_outputs(fct(n, -1))
+            self.assertTrue(numpy.all(v == nfct(data, -1)))
 
-            v = eval_outputs(fct(n,-1).shape)
-            assert v==(2)
+            v = eval_outputs(fct(n, -1).shape)
+            assert v == (2)
 
     def test2b(self):
-        for fct,nfct in [(max,numpy.max),(min,numpy.min)]:
-            data = numpy.random.rand(2,3)
+        for fct, nfct in [(max, numpy.max),(min, numpy.min)]:
+            data = numpy.random.rand(2, 3)
             n = as_tensor_variable(data)
-            v = eval_outputs(fct(n,0))
-            self.assertTrue(numpy.all(v == nfct(data,0)))
+            v = eval_outputs(fct(n, 0))
+            self.assertTrue(numpy.all(v == nfct(data, 0)))
 
-            v = eval_outputs(fct(n,0).shape)
-            assert v==(3)
-            v = eval_outputs(fct(n,1).shape)
-            assert v==(2)
-            v = eval_outputs(fct(n,[0,1]).shape)
-            assert v.size==0
+            v = eval_outputs(fct(n, 0).shape)
+            assert v == (3)
+            v = eval_outputs(fct(n, 1).shape)
+            assert v == (2)
+            v = eval_outputs(fct(n, [0, 1]).shape)
+            assert v.size == 0
 
     def test2_invalid(self):
-        for fct in [max,min]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
+        for fct in [max, min]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
             oldlevel = _logger.level
             _logger.setLevel(logging.CRITICAL)
             try:
                 try:
-                    eval_outputs(fct(n,3))
+                    eval_outputs(fct(n, 3))
                     assert False
                 except ValueError, e:
                     pass
             finally:
                 _logger.setLevel(oldlevel)
+
     def test2_invalid_neg(self):
-        for fct in [max,min]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
+        for fct in [max, min]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
             old_stderr = sys.stderr
             sys.stderr = StringIO.StringIO()
             try:
                 try:
-                    eval_outputs(fct(n,-3))
+                    eval_outputs(fct(n, -3))
                     assert False
                 except ValueError, e:
                     pass
             finally:
                 sys.stderr = old_stderr
-    def test2_valid_neg(self):
-        for fct,nfct in [(max,numpy.max),(min,numpy.min)]:
-            n = as_tensor_variable(numpy.random.rand(2,3))
-            v = eval_outputs(fct(n,-1))
-            self.assertTrue(v.shape == (2,))
-            self.assertTrue(numpy.all(v == nfct(n.value,-1)))
-            v = eval_outputs(fct(n,-2))
-            self.assertTrue(v.shape == (3,))
-            self.assertTrue(numpy.all(v == nfct(n.value,-2)))
 
-            v = eval_outputs(fct(n,-1).shape)
-            assert v==(2)
-            v = eval_outputs(fct(n,-2).shape)
-            assert v==(3)
+    def test2_valid_neg(self):
+        for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3))
+            v = eval_outputs(fct(n, -1))
+            self.assertTrue(v.shape == (2,))
+            self.assertTrue(numpy.all(v == nfct(n.value, -1)))
+            v = eval_outputs(fct(n, -2))
+            self.assertTrue(v.shape == (3,))
+            self.assertTrue(numpy.all(v == nfct(n.value, -2)))
+
+            v = eval_outputs(fct(n, -1).shape)
+            assert v == (2)
+            v = eval_outputs(fct(n, -2).shape)
+            assert v == (3)
 
     def test3(self):
-        for fct,nfct in [(max,numpy.max),(min,numpy.min)]:
-            n = as_tensor_variable(numpy.random.rand(2,3,4))
-            v = eval_outputs(fct(n,0))
-            self.assertTrue(v.shape == (3,4))
-            self.assertTrue(numpy.all(v == nfct(n.value,0)))
-            v = eval_outputs(fct(n,1))
-            self.assertTrue(v.shape == (2,4))
-            self.assertTrue(numpy.all(v == nfct(n.value,1)))
-            v = eval_outputs(fct(n,2))
-            self.assertTrue(v.shape == (2,3))
-            self.assertTrue(numpy.all(v == nfct(n.value,2)))
-            v = eval_outputs(fct(n,[0,1]))
+        for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
+            n = as_tensor_variable(numpy.random.rand(2, 3, 4))
+            v = eval_outputs(fct(n, 0))
+            self.assertTrue(v.shape == (3, 4))
+            self.assertTrue(numpy.all(v == nfct(n.value, 0)))
+            v = eval_outputs(fct(n, 1))
+            self.assertTrue(v.shape == (2, 4))
+            self.assertTrue(numpy.all(v == nfct(n.value, 1)))
+            v = eval_outputs(fct(n, 2))
+            self.assertTrue(v.shape == (2, 3))
+            self.assertTrue(numpy.all(v == nfct(n.value, 2)))
+            v = eval_outputs(fct(n, [0, 1]))
             self.assertTrue(v.shape == (4,))
-            self.assertTrue(numpy.all(v == nfct(nfct(n.value,1),0)))
-            v = eval_outputs(fct(n,[0,2]))
+            self.assertTrue(numpy.all(v == nfct(nfct(n.value, 1), 0)))
+            v = eval_outputs(fct(n, [0, 2]))
             self.assertTrue(v.shape == (3,))
-            self.assertTrue(numpy.all(v == nfct(nfct(n.value,2),0)))
-            v = eval_outputs(fct(n,[1,2]))
+            self.assertTrue(numpy.all(v == nfct(nfct(n.value, 2), 0)))
+            v = eval_outputs(fct(n, [1, 2]))
             self.assertTrue(v.shape == (2,))
-            self.assertTrue(numpy.all(v == nfct(nfct(n.value,2),1)))
-            v = eval_outputs(fct(n,[0,1,2]))
+            self.assertTrue(numpy.all(v == nfct(nfct(n.value, 2), 1)))
+            v = eval_outputs(fct(n, [0, 1, 2]))
             self.assertTrue(v.shape == ())
 
-            v = eval_outputs(fct(n,0).shape)
-            assert tuple(v)==(3,4)
-            v = eval_outputs(fct(n,1).shape)
-            assert tuple(v)==(2,4)
-            v = eval_outputs(fct(n,2).shape)
-            assert tuple(v)==(2,3)
-            v = eval_outputs(fct(n,[0,1]).shape)
+            v = eval_outputs(fct(n, 0).shape)
+            assert tuple(v) == (3, 4)
+            v = eval_outputs(fct(n, 1).shape)
+            assert tuple(v) == (2, 4)
+            v = eval_outputs(fct(n, 2).shape)
+            assert tuple(v) == (2, 3)
+            v = eval_outputs(fct(n, [0, 1]).shape)
             self.assertTrue(v == (4,))
-            v = eval_outputs(fct(n,[0,2]).shape)
+            v = eval_outputs(fct(n, [0, 2]).shape)
             self.assertTrue(v == (3,))
-            v = eval_outputs(fct(n,[1,2]).shape)
+            v = eval_outputs(fct(n, [1, 2]).shape)
             self.assertTrue(v == (2,))
-            v = eval_outputs(fct(n,[0,1,2]).shape)
+            v = eval_outputs(fct(n, [0, 1, 2]).shape)
             self.assertTrue(v.size == 0)
 
     def test_grad_max(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_max(data, max_grad_data, axis=None):
             #This work only for axis in [0,None]
-            assert axis in [0,None]
+            assert axis in [0, None]
             z = numpy.zeros_like(data)
             z = z.flatten()
-            argmax=numpy.argmax(data,axis=axis)
-            if argmax.ndim==0:
-                z[numpy.argmax(data,axis=axis)]+=1
+            argmax = numpy.argmax(data, axis=axis)
+            if argmax.ndim == 0:
+                z[numpy.argmax(data, axis=axis)] += 1
             else:
-                for id,v in enumerate(argmax):
-                    z[v*numpy.prod(data.shape[data.ndim-1:axis:-1])+id]+=1
+                for id, v in enumerate(argmax):
+                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1])
+                      + id] += 1
 
             z = z.reshape(data.shape)
             assert numpy.all(max_grad_data == z)
 
         #test grad of max
         #axis is the last one
-        utt.verify_grad(lambda v: max(v,axis=-1), [data])
+        utt.verify_grad(lambda v: max(v, axis=-1), [data])
 
-        utt.verify_grad(lambda v: max(v,axis=[0]), [data])
-        check_grad_max(data,eval_outputs(grad(max(n,axis=0).sum(),n)),axis=0)
+        utt.verify_grad(lambda v: max(v, axis=[0]), [data])
+        check_grad_max(data, eval_outputs(grad(max(n, axis=0).sum(), n)),
+                       axis=0)
 
-        utt.verify_grad(lambda v: max(v,axis=[1]), [data])
+        utt.verify_grad(lambda v: max(v, axis=[1]), [data])
         #check_grad_max(data,eval_outputs(grad(max(n,axis=1),n)),axis=1)
 
         utt.verify_grad(lambda v: max(v.flatten()), [data])
-        check_grad_max(data,eval_outputs(grad(max(n.flatten()),n)))
+        check_grad_max(data, eval_outputs(grad(max(n.flatten()), n)))
 
     def test_grad_min(self):
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_min(data, min_grad_data, axis=None):
-            #This work only for axis in [0,None]
-            assert axis in [0,None]
+            #This work only for axis in [0, None]
+            assert axis in [0, None]
             z = numpy.zeros_like(data)
             z = z.flatten()
-            argmin=numpy.argmin(data,axis=axis)
-            if argmin.ndim==0:
-                z[numpy.argmin(data,axis=axis)]+=1
+            argmin = numpy.argmin(data, axis=axis)
+            if argmin.ndim == 0:
+                z[numpy.argmin(data, axis=axis)] += 1
             else:
-                for id,v in enumerate(argmin):
-                    z[v*numpy.prod(data.shape[data.ndim-1:axis:-1])+id]+=1
+                for id, v in enumerate(argmin):
+                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1])
+                      + id] += 1
 
             z = z.reshape(data.shape)
             assert numpy.all(min_grad_data == z)
 
         #test grad of min
         #axis is the last one
-        utt.verify_grad(lambda v: min(v,axis=-1), [data])
+        utt.verify_grad(lambda v: min(v, axis=-1), [data])
 
-        utt.verify_grad(lambda v: min(v,axis=[0]), [data])
-        check_grad_min(data,eval_outputs(grad(min(n,axis=0).sum(),n)),axis=0)
+        utt.verify_grad(lambda v: min(v, axis=[0]), [data])
+        check_grad_min(data, eval_outputs(grad(min(n, axis=0).sum(), n)),
+                       axis=0)
 
-        utt.verify_grad(lambda v: min(v,axis=[1]), [data])
+        utt.verify_grad(lambda v: min(v, axis=[1]), [data])
         #check_grad_min(data,eval_outputs(grad(min(n,axis=1),n)),axis=1)
 
         utt.verify_grad(lambda v: min(v.flatten()), [data])
-        check_grad_min(data,eval_outputs(grad(min(n.flatten()),n)))
+        check_grad_min(data, eval_outputs(grad(min(n.flatten()), n)))
 
     def _grad_list(self):
         """
         Test the gradient when we have multiple axis at the same time.
 
-        This not implemented, so we disable the test. See ticket: http://trac-hg.assembla.com/theano/ticket/511
+        This not implemented, so we disable the test. See ticket:
+        http://trac-hg.assembla.com/theano/ticket/511
         """
-        data = numpy.random.rand(2,3)
+        data = numpy.random.rand(2, 3)
         n = as_tensor_variable(data)
-        for fct in [max_and_argmax,max,min]:
-            utt.verify_grad(lambda v: fct(v,axis=[0,1]), [data])
-        #check_grad_max(data,eval_outputs(grad(max_and_argmax(n,axis=1)[0],n)),axis=1)
+        for fct in [max_and_argmax, max, min]:
+            utt.verify_grad(lambda v: fct(v, axis=[0, 1]), [data])
+        #check_grad_max(data, eval_outputs(grad(max_and_argmax(n,
+        #axis=1)[0], n)),axis=1)
+
 
 class T_subtensor(unittest.TestCase):
     """
-    This is build in a way that allow to reuse it to test the equivalent gpu op.
+    This is build in a way that allow to reuse it to test the
+    equivalent gpu op.
     """
     def __init__(self, name, shared=_shared,
                  sub=tensor.Subtensor,
