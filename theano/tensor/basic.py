@@ -1885,8 +1885,12 @@ class MaxAndArgmax(Op):
         if isinstance(axis, int):
             axis = [axis]
         elif isinstance(axis, (tuple, list)):
-            assert len(axis) == 1, ("MaxAndArgmax don't support multiple"
-                                    " axis. the max fct support it.")
+            if len(axis) != 1:
+                list(axis)
+                axis.sort()
+                assert axis == range(x.type.ndim), (
+                    "MaxAndArgmax don't support multiple"
+                    " axis. the max fct support it.")
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
@@ -1901,8 +1905,7 @@ class MaxAndArgmax(Op):
             axis = _as_tensor_variable(axis)
 
         inputs = [x, axis]
-        #TODO: figure things out if axis is a constant
-        broadcastable = [False] * (x.type.ndim - 1)
+        broadcastable = [False] * (x.type.ndim - len(axis.data))
         outputs = [tensor(x.type.dtype, broadcastable, name='max'),
                    tensor('int32', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
@@ -1919,6 +1922,10 @@ class MaxAndArgmax(Op):
         ishape, axis_shape = shapes
         axis = node.inputs[1]
         if axis is None:
+            return [(), ()]
+        elif len(axis.data) == 0 and node.inputs[0].ndim:
+            return [(1,), (1,)]
+        elif python_all(axis.data == range(node.inputs[0].ndim)):
             return [(), ()]
         rval = tuple([ishape[i] for (i, b) in enumerate(
                     node.inputs[0].type.broadcastable) if i != axis.data])
