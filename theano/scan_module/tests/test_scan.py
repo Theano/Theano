@@ -2519,6 +2519,22 @@ class T_Scan(unittest.TestCase):
         out = f(vx)
         assert out == 24
 
+    def test_infershape_nsteps_smaller_seq_length(self):
+        x = tensor.vector('x')
+        o, _ = theano.scan(lambda x: x+1,
+                         sequences = x,
+                         outputs_info = [None],
+                         n_steps = 20)
+
+        f = theano.function([x], o.shape[0], mode = mode_with_opt)
+
+        vx = numpy.ones((30,), dtype = theano.config.floatX)
+        out = f(vx)
+        assert out == 20
+        lssc = [x for x in f.maker.env.toposort()
+                if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert len(lssc) == 0
+
     def test_grad_multiple_seqs_different_nsteps(self):
         # Example provided Michael Forbes
         # This test assures that we clip the sequences to n_steps before
