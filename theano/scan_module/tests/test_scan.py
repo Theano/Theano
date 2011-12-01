@@ -2495,8 +2495,6 @@ class T_Scan(unittest.TestCase):
         # so if it compiles it means the test pass
         f = theano.function([V, W], O)
 
-
-
     def test_while2(self):
         x = tensor.vector('x')
         def lambda_fn(x_t):
