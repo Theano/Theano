@@ -2018,12 +2018,6 @@ class T_Scan(unittest.TestCase):
         if theano.config.mode != 'FAST_COMPILE':
             self.assertTrue(nb_shape_i == 1)
 
-    def test_bug_josh_reported(self):
-        import theano.tensor.signal.conv
-        m1 = theano.tensor.matrix()
-        m2 = theano.tensor.matrix()
-        conv = theano.tensor.signal.conv.conv2d(m1, m2)
-
     def test_merge(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()
