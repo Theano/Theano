@@ -2018,12 +2018,6 @@ class T_Scan(unittest.TestCase):
         if theano.config.mode != 'FAST_COMPILE':
             self.assertTrue(nb_shape_i == 1)
 
-    def test_bug_josh_reported(self):
-        import theano.tensor.signal.conv
-        m1 = theano.tensor.matrix()
-        m2 = theano.tensor.matrix()
-        conv = theano.tensor.signal.conv.conv2d(m1, m2)
-
     def test_merge(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()
@@ -2524,6 +2518,44 @@ class T_Scan(unittest.TestCase):
         vx[23] = 4
         out = f(vx)
         assert out == 24
+
+    def test_infershape_seq_shorter_nsteps(self):
+        raise KnownFailureTest('This is a generic problem with infershape'
+                               ' that has to be discussed and figured out')
+        x = tensor.vector('x')
+        [o1, o2], _ = theano.scan(lambda x,y: (x+1, y+x),
+                         sequences = x,
+                         outputs_info = [None, x[0]],
+                         n_steps = 20)
+
+        f = theano.function([x], [o1.shape[0], o2.shape[0]], mode = mode_with_opt)
+
+        vx = numpy.ones((10,), dtype = theano.config.floatX)
+        out1, out2 = f(vx)
+        assert out1 == 10
+        assert out2 == 10
+        lssc = [x for x in f.maker.env.toposort()
+                if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert len(lssc) == 0
+
+
+    def test_infershape_nsteps_smaller_seq_length(self):
+        x = tensor.vector('x')
+        [o1, o2], _ = theano.scan(lambda x, y: (x+1, y+x),
+                         sequences = x,
+                         outputs_info = [None, x[0]],
+                         n_steps = 20)
+
+        f = theano.function([x], [o1.shape[0], o2.shape[0]],
+                            mode = mode_with_opt)
+
+        vx = numpy.ones((30,), dtype = theano.config.floatX)
+        o1, o2 = f(vx)
+        assert o1 == 20
+        assert o2 == 20
+        lssc = [x for x in f.maker.env.toposort()
+                if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert len(lssc) == 0
 
     def test_grad_multiple_seqs_different_nsteps(self):
         # Example provided Michael Forbes
