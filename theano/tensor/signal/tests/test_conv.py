@@ -97,3 +97,14 @@ class TestSignalConv2D(unittest.TestCase):
             self.fail()
         except:
             pass
+
+    def test_bug_josh_reported(self):
+        """
+        Test refers to a bug reported by Josh, when due to a bad merge these
+        few lines of code failed. See
+        http://groups.google.com/group/theano-dev/browse_thread/thread/8856e7ca5035eecb
+        """
+        m1 = theano.tensor.matrix()
+        m2 = theano.tensor.matrix()
+        rval = conv.conv2d(m1, m2)
+
