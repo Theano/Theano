@@ -374,7 +374,6 @@ class Scan(PureOp):
                            profile=profile)
 
         try:
-            raise ImportError
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
                 numpy.asarray([len(x) for x in self.tap_array],
