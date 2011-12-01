@@ -141,7 +141,7 @@ class Print(Op):
         return output_gradients
 
     def R_op(self, inputs, eval_points):
-        return eval_points
+        return [x for x in eval_points]
 
     def __eq__(self, other):
         return (type(self) == type(other) and self.message == other.message
