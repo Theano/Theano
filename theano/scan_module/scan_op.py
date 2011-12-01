@@ -979,6 +979,11 @@ class Scan(PureOp):
 
         scan_outs += [x for x in
                      input_shapes[offset:offset + self.n_shared_outs]]
+        # if we are dealing with a repeat-until, then we do not know the
+        # leading dimension so we replace it for every entry with Shape_i
+        if self.as_while:
+            scan_outs = [(Shape_i(0)(o),)+x[1:]
+                         for o, x in zip(node.outputs,scan_outs)]
         return scan_outs
 
     ### GRAD FUNCTION
