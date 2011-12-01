@@ -1969,7 +1969,7 @@ def max(x, axis=None):
     """
     Return maximum elements obtained by iterating over given axis
 
-    Default axis is None: sum over all dimensions.
+    Default axis is None: max over all dimensions.
 
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     """
@@ -1986,7 +1986,8 @@ def argmax(x, axis=None):
     """
     Return indexes of maximum elements obtained by iterating over given axis
 
-    Default axis is None: sum over all dimensions.
+    When axis is None (the default value), the argmax is performed
+    over the flattened tensor.
     """
     # In python (using MaxAndArgmax.perform()) this leads to an wasteful
     # implementation that goes through the data twice instead of once
