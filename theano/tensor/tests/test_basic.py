@@ -1804,6 +1804,7 @@ class T_min_max(unittest.TestCase):
             assert v == (3)
 
     def test3(self):
+        # Test with 1 axis or all axis out of 3 dims
         data = numpy.random.rand(2, 3, 4)
         n = as_tensor_variable(data)
         for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
@@ -1814,6 +1815,18 @@ class T_min_max(unittest.TestCase):
                 self.assertTrue(numpy.all(v == nfct(data, np_axis)))
                 v_shape = eval_outputs(fct(n, axis).shape)
                 assert tuple(v_shape) == nfct(data, np_axis).shape
+
+    def test3b(self):
+        # Test with 2 axis out of 3 dims
+        data = numpy.random.rand(2, 3, 4)
+        n = as_tensor_variable(data)
+        for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
+            for axis in [[0, 1], [1, 2], [0, 2]]:
+                v = eval_outputs(fct(n, axis))
+                np_v = nfct(nfct(data, axis[1]), axis[0])
+                self.assertTrue(numpy.all(v == np_v))
+                v_shape = eval_outputs(fct(n, axis).shape)
+                assert tuple(v_shape) == np_v.shape
 
     def test_grad_max(self):
         data = numpy.random.rand(2, 3)
