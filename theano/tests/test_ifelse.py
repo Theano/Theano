@@ -50,8 +50,9 @@ class test_ifelse(unittest.TestCase):
 
         vx = numpy.asarray(rng.uniform(size=(xlen,)), theano.config.floatX)
         vy = numpy.asarray(rng.uniform(size=(ylen,)), theano.config.floatX)
-        assert numpy.all([x.op.as_view for x in f.maker.env.toposort() if
-                         isinstance(x.op, IfElse)])
+        if theano.config.mode != "FAST_COMPILE":
+            assert numpy.all([x.op.as_view for x in f.maker.env.toposort() if
+                              isinstance(x.op, IfElse)])
         assert len([x.op for x in f.maker.env.toposort()
                    if isinstance(x.op, IfElse)]) > 0
         assert numpy.allclose(vx, f(1, vx, vy))
