@@ -152,7 +152,7 @@ The output from this program is
 .. code-block:: text
 
     Using gpu device 0: GeForce GTX 285
-    Looping 100 times took 0.185714006424 seconds
+    Looping 1000 times took 0.185714006424 seconds
     Result is <CudaNdarray object at 0x3e9e970>
     Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
 
@@ -208,7 +208,7 @@ the CPU implementation!
 .. code-block:: text
 
     Using gpu device 0: GeForce GTX 285
-    Looping 100 times took 0.0497219562531 seconds
+    Looping 1000 times took 0.0497219562531 seconds
     Result is <CudaNdarray object at 0x31eeaf0>
     Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
 
