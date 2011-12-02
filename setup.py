@@ -111,12 +111,13 @@ if not release:
 
     a = open(filename, 'w')
     try:
-        a.write(cnt % {'version': VERSION,
-                       'full_version': FULL_VERSION,
-                       'git_revision': GIT_REVISION,
-                       'isrelease': str(ISRELEASED)})
-    except Exception, e:
-        print e
+        try:
+            a.write(cnt % {'version': VERSION,
+                           'full_version': FULL_VERSION,
+                           'git_revision': GIT_REVISION,
+                           'isrelease': str(ISRELEASED)})
+        except Exception, e:
+            print e
     finally:
         a.close()
 
