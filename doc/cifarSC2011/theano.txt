@@ -32,7 +32,7 @@ Description
 * Transparent use of a GPU
 
   * float32 only for now (working on other data types)
-  * Doesn't work on Windows for now
+  * Still in experimental state on Windows
   * On GPU data-intensive calculations are typically between 6.5x and 44x faster. We've seen speedups up to 140x
 
 * Extensive unit-testing and self-verification
