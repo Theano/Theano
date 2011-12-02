@@ -1907,7 +1907,7 @@ class MaxAndArgmax(Op):
         inputs = [x, axis]
         broadcastable = [False] * (x.type.ndim - len(axis.data))
         outputs = [tensor(x.type.dtype, broadcastable, name='max'),
-                   tensor('int32', broadcastable, name='argmax')]
+                   tensor('int64', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
 
     def perform(self, node, inp, outs):
@@ -1916,7 +1916,7 @@ class MaxAndArgmax(Op):
         if len(axis) == 0 or python_all(axis == range(x.ndim)):
             axis = None
         max[0] = numpy.asarray(numpy.max(x, axis))
-        max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int32')
+        max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int64')
 
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
