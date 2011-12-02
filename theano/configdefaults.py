@@ -1,8 +1,12 @@
 import os
-import subprocess
 import logging
+import subprocess
+import sys
 
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+from theano.configparser import (
+        AddConfigVar, BoolParam, ConfigParam, EnumStr, IntParam, FloatParam,
+        StrParam, TheanoConfigParser)
+
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -118,28 +122,37 @@ AddConfigVar('on_opt_error',
         EnumStr('warn', 'raise'),
         in_c_key=False)
 
-def get_home_dir():
-    home = os.getenv('HOME')
-    if home is None:
-        # This expanduser usually works on Windows (see discussion on
-        # theano-users, July 13 2010).
-        home = os.path.expanduser('~')
-        if home == '~':
-            # This might happen when expanduser fails. Although the cause of
-            # failure is a mystery, it has been seen on some Windows system.
-            home = os.getenv('USERPROFILE')
-    assert home is not None
-    return home
+
+def safe_no_home(home):
+    """
+    Make sure the user is not attempting to use `config.home`.
+
+    This config option was removed in Thenao 0.5 since it was redundant with
+    `config.base_compiledir`. This filter function ensures people who were
+    setting the location of their compilation directory through `config.home`
+    switch to `config.basecompiledir` instead, by raising an error when
+    `config.home` is used.
+    """
+    if home:
+        raise RuntimeError(
+                'The `config.home` option has been removed and should not be '
+                'used anymore. Please set the `config.base_compiledir` option '
+                'instead (for instance to: %s)' %
+                os.path.join(home, '.theano'))
+    return True
+
 
 AddConfigVar('home',
-        "User home directory",
-        StrParam(get_home_dir()),
+        "This config option was removed in 0.5: do not use it!",
+        ConfigParam('', allow_override=False, filter=safe_no_home),
         in_c_key=False)
+
 
 AddConfigVar('nocleanup',
         "Suppress the deletion of code files that did not compile cleanly",
         BoolParam(False),
         in_c_key=False)
+
 
 # This flag is used when we import Theano to initialize global variables.
 # So changing it after import will not modify these global variables.

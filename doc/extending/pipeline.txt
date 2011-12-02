@@ -100,8 +100,9 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
 .. note::
     Compiled libraries are stored within a specific compilation directory,
     which by default is set to ``$HOME/.theano/compiledir_xxx``, where
-    ``xxx`` identifies the platform. It may be manually set to a different
-    location either by setting :attr:`config.compiledir` or
+    ``xxx`` identifies the platform (under Windows the default location
+    is instead ``$LOCALAPPDATA\Theano\compiledir_xxx``). It may be manually set
+    to a different location either by setting :attr:`config.compiledir` or
     :attr:`config.base_compiledir`, either within your Python script or by
     using one of the configuration mechanisms described in :mod:`config`.
 
