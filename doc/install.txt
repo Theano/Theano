@@ -656,6 +656,17 @@ This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
 within a MinGW shell if you installed Nose manually as described above.
 
+Editing code in Visual Studio
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You will find a Visual Studio solution file (``Theano.sln``) in the root of
+the Theano repository. Note that this project file may not be kept up-to-date
+and is not officiallly supported by the core Theano developers: it is provided
+for convenience only.
+Also, be aware that it will not make Theano use Visual Studio to compile C
+files: it is only meant to provide an easy way to edit Theano code within
+the Visual Studio editor.
+
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
