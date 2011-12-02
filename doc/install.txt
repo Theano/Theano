@@ -19,8 +19,7 @@ instructions below for detailed installation steps):
 
     Linux, Mac OS X or Windows operating system
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
-        not well-tested. Note that GPU computing does not work yet under
-        Windows.
+        not well-tested.
 
     Python_ >= 2.4
         The development package (``python-dev`` or ``python-devel``
@@ -773,22 +772,16 @@ follows:
 Using the GPU
 ~~~~~~~~~~~~~
 
-At this point, GPU computing does not work under Windows. The current main
-issue is that the compilation commands used under Linux / MacOS to create
-and use a CUDA-based shared library with the nvcc compiler do not work with
-Windows DLLs. If anyone can figure out the proper compilation steps for
-Windows, please let us know on the `theano-dev`_ mailing list.
-
-Instructions below should at least get you started so you can reproduce the
-above-mentioned issue.
+Currently, GPU support under Windows is still in an experimental state.
+The following instructions should allow you to run GPU-enabled Theano code
+only within a Visual Studio command prompt.
 Those are instructions for the 32-bit version of Python (the one that comes
 with Python(x,y) is 32-bit).
 
 Blanks or non ASCII characters are not always supported in paths. Python supports
-them, but nvcc (at least version 3.1) does not.
-If your ``USERPROFILE`` directory (the one you get into when you run ``cmd``)
-contains such characters, you must edit your Theano configuration file to
-use a compilation directory located somewhere else:
+them, but nvcc may not (for instance version 3.1 does not).
+It is thus suggested to manually define a compilation directory without such
+characters, by adding to your Theano configuration file:
 
     .. code-block:: cfg
 
@@ -797,43 +790,50 @@ use a compilation directory located somewhere else:
 
 Then
 
-  1) Install CUDA driver (32-bit on 32-bit Windows, idem for 64-bit).
+  1) From the CUDA downloads page, download and install:
 
-  2) Install CUDA toolkit 32-bit (even if you computer is 64-bit,
-     must match the Python installation version).
+    a. The Developer Drivers (32-bit on 32-bit Windows, 64-bit on 64-bit
+       Windows).
 
-  3) Install CUDA SDK 32-bit.
+    b. The CUDA Toolkit (32-bit even if your Windows is 64-bit, as it must
+       match your Python installation).
 
-  4) Test some pre-compiled example of the sdk.
+    c. The GPU Computing SDK (32-bit as well).
 
-  5) Download Visual Studio 2008 Express (free, VS2010 not supported by nvcc 3.1,
-     VS2005 is not available for download but supported by nvcc, the non
-     free version should work too).
+  2) Test some pre-compiled examples of the SDK.
 
-  6) Follow the instruction in the GettingStartedWindows.pdf file from the CUDA web
-     site to compile CUDA code with VS2008. If that does not work, you will
-     not be able to compile GPU code with Theano.
+  3) Install Visual C++ (you can find free versions by looking for "Visual
+     Studio Express").
 
-  7) Edit your Theano configuration file to add lines like the following
-     (make sure these paths match your own specific installation):
+  4) Follow instructions from the "CUDA Getting Started Guide" available on
+     the NVidia website to compile CUDA code with Visual C++. If that does not
+     work, you will probably not be able to compile GPU code with Theano.
+
+  5) Edit your Theano configuration file to add lines like the following
+     (make sure these paths match your own specific versions of Python and
+     Visual Studio):
 
      .. code-block:: cfg
 
         [nvcc]
         flags=-LC:\Python26\libs
-        compiler_bindir=C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin
+        compiler_bindir=C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin
 
-  8) In Python do: ``import theano.sandbox.cuda``. This will compile the
+  6) Start a Visual Studio command prompt (found under the "Visual Studio
+     Tools" programs folder).
+     In Python do: ``import theano.sandbox.cuda``. This will compile the
      first CUDA file, and no error should occur.
 
-  9) Then run the Theano CUDA test files with nosetests from the
-     ``theano/sandbox/cuda/tests`` subdirectory. In the current version of
-     Theano, this should fail with an error like:
+  7) To test a simple GPU computation, first set up Theano to use the GPU
+     by editing your configuration file:
 
-     .. code-block:: bash
+     .. code-block:: cfg
 
-        NVCC: nvcc fatal: Don't know what to do with
-            'C:/CUDA/compile/tmpmkgqx6/../cuda_ndarray/cuda_ndarray.pyd'
+        [global]
+        device = gpu
+        floatX = float32
+
+    Then run the ``theano/misc/check_blas.py`` test file.
 
 
 Generating the documentation
