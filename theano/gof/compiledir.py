@@ -1,4 +1,3 @@
-
 import cPickle
 import errno
 import os
@@ -51,19 +50,36 @@ def filter_compiledir(path):
     return path
 
 
-# TODO Using the local user profile on Windows is currently disabled as it
-# is not documented yet, and may break some existing code. It will be enabled
-# in a future code update.
-if False and sys.platform == 'win32':
-    # On Windows we should not write temporary files to a directory 
-    # that is part of the roaming part of the user profile. Instead
-    # we use the local part of the user profile.
-    basecompiledir = os.path.join(os.environ['LOCALAPPDATA'], 'theano')
+def get_home_dir():
+    """
+    Return location of the user's home directory.
+    """
+    home = os.getenv('HOME')
+    if home is None:
+        # This expanduser usually works on Windows (see discussion on
+        # theano-users, July 13 2010).
+        home = os.path.expanduser('~')
+        if home == '~':
+            # This might happen when expanduser fails. Although the cause of
+            # failure is a mystery, it has been seen on some Windows system.
+            home = os.getenv('USERPROFILE')
+    assert home is not None
+    return home
+
+
+# On Windows we should avoid writing temporary files to a directory that is
+# part of the roaming part of the user profile. Instead we use the local part
+# of the user profile, when available.
+if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
+    default_base_compiledir = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
 else:
-    basecompiledir = os.path.join(config.home, '.theano')
+    default_base_compiledir = os.path.join(get_home_dir(), '.theano')
+
+
 AddConfigVar('base_compiledir',
         "arch-independent cache directory for compiled modules",
-        StrParam(basecompiledir, allow_override=False))
+        StrParam(default_base_compiledir, allow_override=False))
+
 
 AddConfigVar('compiledir',
         "arch-dependent cache directory for compiled modules",
