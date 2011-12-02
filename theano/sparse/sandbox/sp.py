@@ -78,7 +78,7 @@ class SpSum(Op):
             if self.axis == 0:
                 if x.format == 'csc':
                    z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape((x.shape[1],))
-               else:
+                else:
                    z[0] = numpy.asarray(x.asformat(x.format).sum(axis=self.axis)).reshape((x.shape[1],))
             elif self.axis == 1:
                if x.format == 'csr':
