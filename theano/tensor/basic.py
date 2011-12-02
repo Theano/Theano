@@ -1921,11 +1921,7 @@ class MaxAndArgmax(Op):
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
         axis = node.inputs[1]
-        if axis is None:
-            return [(), ()]
-        elif len(axis.data) == 0 and node.inputs[0].ndim:
-            return [(1,), (1,)]
-        elif python_all(axis.data == range(node.inputs[0].ndim)):
+        if python_all(axis.data == range(node.inputs[0].ndim)):
             return [(), ()]
         rval = tuple([ishape[i] for (i, b) in enumerate(
                     node.inputs[0].type.broadcastable) if i != axis.data])
