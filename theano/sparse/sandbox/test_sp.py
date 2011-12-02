@@ -16,7 +16,6 @@ from theano import function, tensor
 import theano
 from theano.sparse.sandbox import sp
 from theano.tests import unittest_tools as utt
-from theano.sparse.tests.test_basic import random_lil
 
 
 class TestSP(unittest.TestCase):
@@ -456,13 +455,13 @@ def test_ensure_sorted_indices():
             # csr
             input_tensor = theano.sparse.csr_dmatrix()
             sample = scipy.sparse.csr_matrix(random_lil((x,y),'float64',sparsity))
-            
+
         sort_op = sp.ensure_sorted_indices(input_tensor)
         f = theano.function([input_tensor], sort_op)
         sorted_scipy = sample.sorted_indices()
         sorted_theano = f(sample)
         assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
-    
+
 def test_diagonal_grad():
     def d(x):
         return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
