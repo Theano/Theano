@@ -76,12 +76,12 @@ The following libraries and software are optional:
 Linux
 -----
 
-.. _linux_basic:
-
 Alternative installation on Ubuntu with PPA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Benjamin J. McCann provides `installation documentation <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for Ubuntu 11.04 with CUDA 4.0 PPA.
+
+.. _linux_basic:
 
 Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -357,6 +357,56 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     This might be just a problem with the way Theano passes compilation
     arguments to gcc, but the problem is not fixed yet.
 
+.. _gpu_linux:
+
+Using the GPU
+~~~~~~~~~~~~~
+
+The first thing you'll need for Theano to use your GPU is Nvidia's
+GPU-programming toolchain. You should install at least the CUDA driver and the CUDA Toolkit, as
+`described here <http://www.nvidia.com/object/cuda_get.html>`_.  The CUDA
+Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
+*include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
+program which is the compiler for GPU code.)  This folder is called the *cuda
+root* directory.
+You must also add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit Linux
+computer) to your ``$LD_LIBRARY_PATH`` environment variable.
+
+You must then tell Theano where the CUDA root folder is, and there are three ways
+to do it.
+Any one of them is enough.
+
+* Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
+* add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
+* add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
+
+Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
+computer.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu'``.
+You can also set the device option in the .theanorc file's ``[global]`` section.
+
+* If your computer has multiple gpu and use 'device=gpu', the driver select the one to use (normally gpu0)
+    * You can use the program nvida-smi to change that policy.
+* You can choose one specific gpu by giving device the one of those values: gpu0, gpu1, gpu2, or gpu3.
+    * If you have more than 4 devices you are very lucky but you will have to modify theano's *configdefaults.py* file and define more gpu devices to choose from.
+* Using the 'device=gpu*' theano flag make theano fall back to the cpu if there is a problem with the gpu.
+  You can use the flag 'force_device=True' to have theano raise an error when we cannot use the gpu.
+
+Once your setup is complete, head to :ref:`using_gpu` to find how to verify
+everything is working properly.
+
+.. note::
+    There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
+    CUDA 2.3 with gcc-4.4.  Symptom: errors about "__sync_fetch_and_add" being undefined.
+    **Solution 1:** make gcc-4.3 the default gcc
+    (http://pascalg.wordpress.com/2010/01/14/cuda-on-ubuntu-9-10linux-mint-helena/)
+    **Solution 2:** make another gcc (e.g. gcc-4.3) the default just for nvcc.
+    Do this by making a directory (e.g. ``$HOME/.theano/nvcc-bindir``) and
+    installing two symlinks in it: one called gcc pointing to gcc-4.3 (or lower) and one called
+    g++ pointing to g++-4.3 (or lower).  Then add
+    ``compiler_bindir = /path/to/nvcc-bindir`` to the ``[nvcc]`` section of your ``.theanorc``
+    (`libdoc_config`).
+
 
 MacOS
 -----
@@ -457,6 +507,25 @@ Theano dependencies is easy, but be aware that it will take a long time
     .. code-block:: bash
 
         $ python -c "import theano; theano.test()"
+
+.. _gpu_macos:
+
+Using the GPU
+~~~~~~~~~~~~~
+
+You should be able to follow the :ref:`Linux <gpu_linux>` instructions to
+setup CUDA, but be aware of the following caveats:
+
+   * If you want to compile the CUDA SDK code, you may need to temporarily
+     revert back to Apple's gcc (``sudo port select gcc``) as their Makefiles
+     are not compatible with MacPort's gcc.
+
+   * If CUDA seems unable to find a CUDA-capable GPU, you may need to manually
+     toggle your GPU on, which can be done with
+     `gfxCardStatus <http://codykrieger.com/gfxCardStatus>`__.
+
+Once your setup is complete, head to :ref:`using_gpu` to find how to verify
+everything is working properly.
 
 
 Troubleshooting MacOS issues
@@ -780,6 +849,8 @@ follows:
         * The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
         * GotoBLAS2 is even faster, in particular if you can use multiple cores.
 
+.. _gpu_windows:
+
 Using the GPU
 ~~~~~~~~~~~~~
 
@@ -845,6 +916,9 @@ Then
         floatX = float32
 
     Then run the ``theano/misc/check_blas.py`` test file.
+
+You can also find additional test code and useful GPU tips on the
+:ref:`using_gpu` page.
 
 
 Generating the documentation
