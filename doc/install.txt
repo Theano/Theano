@@ -426,7 +426,7 @@ Theano dependencies is easy, but be aware that it will take a long time
 
 - Afterwards, please check that the ``scipy`` module that is imported in
   Python is the right one (and is a recent one). For instance, ``import
-  scipy`` followed by ``print scipy.version`` and ``print scipy.__path__``
+  scipy`` followed by ``print scipy.__version__`` and ``print scipy.__path__``
   should result in a version number of at least 0.7.0 and a path that starts
   with ``/opt/local`` (the path where MacPorts installs its packages). If this
   is not the case, then you might have some old installation of ``scipy`` in your
