@@ -53,9 +53,15 @@ ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
 
-# Return the hg revision as a string -- borrowed from hg_version in NumPy's
-# setup.py file
-def hg_version():
+def git_version():
+    """
+    Return the sha1 of local git HEAD as a string.
+    """
+    # josharian: I doubt that the minimal environment stuff here is
+    # still needed; it is inherited. This was originally
+    # an hg_version function borrowed from NumPy's setup.py.
+    # I'm leaving it in for now because I don't have enough other
+    # environments to test in to be confident that it is safe to remove.
     def _minimal_ext_cmd(cmd):
         # construct minimal environment
         env = {}
@@ -69,49 +75,48 @@ def hg_version():
         env['LC_ALL'] = 'C'
         out = subprocess.Popen(
             cmd,
-            stdout = subprocess.PIPE,
+            stdout=subprocess.PIPE,
             env=env
         ).communicate()[0]
         return out
     try:
-        out = _minimal_ext_cmd(['hg', '-q', 'id'])
-        HG_REVISION = out.strip().decode('ascii')
+        out = _minimal_ext_cmd(['git', 'rev-parse', 'HEAD'])
+        git_revision = out.strip().decode('ascii')
     except OSError:
-        HG_REVISION = "unknown-hg"
-    return HG_REVISION
+        git_revision = "unknown-git"
+    return git_revision
 
 def write_version_py(filename='theano/version.py'):
     cnt = """
 # THIS FILE IS GENERATED FROM THEANO SETUP.PY
 short_version = '%(version)s'
 version = '%(version)s'
-hg_revision = '%(hg_revision)s'
-full_version = '%(version)s.dev-%%(hg_revision)s' %% {'hg_revision': hg_revision}
+git_revision = '%(git_revision)s'
+full_version = '%(version)s.dev-%%(git_revision)s' %% {'git_revision': git_revision}
 release = %(isrelease)s
 
 if not release:
     version = full_version
 """
     FULL_VERSION = VERSION
-    if os.path.exists('.hg'):
-        HG_REVISION = hg_version()
+    if os.path.isdir('.git'):
+        GIT_REVISION = git_version()
     elif os.path.exists(filename):
         # must be a source distribution, use existing version file
-        HG_REVISION = "RELEASE"
+        GIT_REVISION = "RELEASE"
     else:
-        HG_REVISION = "unknown-hg"
+        GIT_REVISION = "unknown-git"
 
-    FULL_VERSION += '.dev-' + HG_REVISION
+    FULL_VERSION += '.dev-' + GIT_REVISION
 
     a = open(filename, 'w')
     try:
-        try:
-            a.write(cnt % {'version': VERSION,
-                       'full_version' : FULL_VERSION,
-                       'hg_revision' : HG_REVISION,
+        a.write(cnt % {'version': VERSION,
+                       'full_version': FULL_VERSION,
+                       'git_revision': GIT_REVISION,
                        'isrelease': str(ISRELEASED)})
-        except Exception, e:
-            print e
+    except Exception, e:
+        print e
     finally:
         a.close()
 
