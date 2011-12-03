@@ -6,7 +6,7 @@ from theano.gof.op import PureOp
 from theano.gof import Apply, generic, Container
 from theano.gof.link import LocalLinker, map_storage, add_clear_storage
 from theano import function, Mode
-from theano.lazycond import ifelse
+from theano.ifelse import ifelse
 import theano.tensor as T
 
 
