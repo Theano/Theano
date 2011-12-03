@@ -133,7 +133,7 @@ def test_speed_lazy():
     def build_graph(x, depth=5):
         z = x
         for d in range(depth):
-            z = ifelse(z> 0, -z, z)
+            z = ifelse(z[0] > 0, -z, z)
         return z
 
     def time_linker(name, linker):
