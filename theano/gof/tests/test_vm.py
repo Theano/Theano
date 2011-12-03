@@ -26,8 +26,9 @@ class TestCallbacks(unittest.TestCase):
         self.n_callbacks = {}
 
     def callback(self, node, thunk, storage_map, compute_map):
-        self.n_callbacks.setdefault(node.op, 0)
-        self.n_callbacks[node.op] += 1
+        key = node.op.__class__.__name__
+        self.n_callbacks.setdefault(key, 0)
+        self.n_callbacks[key] += 1
 
     def test_callback(self):
         a, b, c = tensor.scalars('abc')
@@ -50,7 +51,7 @@ class TestCallbacks(unittest.TestCase):
                     linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
-        assert self.n_callbacks[ifelse] == 2
+        assert self.n_callbacks['IfElse'] == 2
 
 
 def test_speed():
