@@ -421,16 +421,36 @@ class PureOp(object):
                 thunk = node.op.make_thunk(node, storage_map, compute_map,
                         no_recycling=[])
 
-                required = thunk()
-                assert not required  # We provided all inputs
+                try:
+                    required = thunk()
+                    success = True
+                except utils.MethodNotDefined, e:
+                    # May happen if the op has neither a C nor a Python
+                    # implementation.
+                    success = False
+                    if e.args and e.args[0] == 'perform':
+                        if config.compute_test_value == 'warn':
+                            warnings.warn(
+                                "Cannot compute test value: Op %s does not "
+                                "have a 'perform' method" %
+                                e.args[2], stacklevel=2)
+                        elif config.compute_test_value == 'ignore':
+                            pass
+                        else:
+                            raise
+                    else:
+                        raise
 
-                for output in node.outputs:
-                    # Check that the output has been computed
-                    assert compute_map[output][0], (output, storage_map[output][0])
-
-                    # add 'test_value' to output tag, so that downstream ops can use these
-                    # numerical values as inputs to their perform method.
-                    output.tag.test_value = storage_map[output][0]
+                if success:
+                    assert not required  # We provided all inputs
+                    for output in node.outputs:
+                        # Check that the output has been computed.
+                        assert compute_map[output][0], (output,
+                                                        storage_map[output][0])
+                        # Add 'test_value' to output tag, so that downstream
+                        # ops can use these numerical values as inputs to their
+                        # perform method.
+                        output.tag.test_value = storage_map[output][0]
 
         if self.default_output is not None:
             return node.outputs[self.default_output]
