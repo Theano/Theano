@@ -15,7 +15,7 @@ from theano.gof import OpWiseCLinker
 from theano.compile import Mode
 
 from theano import tensor
-from theano.lazycond import ifelse
+from theano.ifelse import ifelse
 import theano
 
 class TestCallbacks(unittest.TestCase):
@@ -26,8 +26,9 @@ class TestCallbacks(unittest.TestCase):
         self.n_callbacks = {}
 
     def callback(self, node, thunk, storage_map, compute_map):
-        self.n_callbacks.setdefault(node.op, 0)
-        self.n_callbacks[node.op] += 1
+        key = node.op.__class__.__name__
+        self.n_callbacks.setdefault(key, 0)
+        self.n_callbacks[key] += 1
 
     def test_callback(self):
         a, b, c = tensor.scalars('abc')
@@ -50,7 +51,7 @@ class TestCallbacks(unittest.TestCase):
                     linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
-        assert self.n_callbacks[ifelse] == 2
+        assert self.n_callbacks['IfElse'] == 2
 
 
 def test_speed():
@@ -132,7 +133,7 @@ def test_speed_lazy():
     def build_graph(x, depth=5):
         z = x
         for d in range(depth):
-            z = ifelse(z> 0, -z, z)
+            z = ifelse(z[0] > 0, -z, z)
         return z
 
     def time_linker(name, linker):
