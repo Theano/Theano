@@ -15,7 +15,7 @@ from theano.gof import OpWiseCLinker
 from theano.compile import Mode
 
 from theano import tensor
-from theano.lazycond import ifelse
+from theano.ifelse import ifelse
 import theano
 
 class TestCallbacks(unittest.TestCase):
