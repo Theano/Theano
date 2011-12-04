@@ -1913,7 +1913,7 @@ class MaxAndArgmax(Op):
     def perform(self, node, inp, outs):
         x, axis = inp
         max, max_idx = outs
-        if len(axis) == 0 or python_all(axis == range(x.ndim)):
+        if python_all(axis == range(x.ndim)):
             axis = None
         max[0] = numpy.asarray(numpy.max(x, axis))
         max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int32')
