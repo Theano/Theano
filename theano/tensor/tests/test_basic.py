@@ -1965,7 +1965,12 @@ class T_subtensor(unittest.TestCase):
 
     def test1_err_bounds(self):
         n = self.shared(numpy.ones(3, dtype=self.dtype))
-        t = n[7]
+        ctv_backup = config.compute_test_value
+        config.compute_test_value = 'off'
+        try:
+            t = n[7]
+        finally:
+            config.compute_test_value = ctv_backup
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
@@ -2081,21 +2086,26 @@ class T_subtensor(unittest.TestCase):
 
     def test2_err_bounds0(self):
         n = self.shared(numpy.ones((2,3), dtype=self.dtype)*5)
-        for idx in [(0,4),(0,-4)]:
-            t = n[idx]
-            self.assertTrue(isinstance(t.owner.op, Subtensor))
-            # Silence expected warnings
-            _logger = logging.getLogger('theano.gof.opt')
-            oldlevel = _logger.level
-            _logger.setLevel(logging.CRITICAL)
-            try:
+        ctv_backup = config.compute_test_value
+        config.compute_test_value = 'off'
+        try:
+            for idx in [(0,4),(0,-4)]:
+                t = n[idx]
+                self.assertTrue(isinstance(t.owner.op, Subtensor))
+                # Silence expected warnings
+                _logger = logging.getLogger('theano.gof.opt')
+                oldlevel = _logger.level
+                _logger.setLevel(logging.CRITICAL)
                 try:
-                    tval = self.eval_output_and_check([t])
-                    assert 0
-                except IndexError, e:
-                    pass
-            finally:
-                _logger.setLevel(oldlevel)
+                    try:
+                        tval = self.eval_output_and_check([t])
+                        assert 0
+                    except IndexError, e:
+                        pass
+                finally:
+                    _logger.setLevel(oldlevel)
+        finally:
+            config.compute_test_value = ctv_backup
 
     def test2_err_bounds1(self):
         n = self.shared((numpy.ones((2,3), dtype=self.dtype)*5))
@@ -3434,7 +3444,12 @@ class t_dot(unittest.TestCase):
     #def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
 
     def not_aligned(self, x, y):
-        z = dot(x,y)
+        ctv_backup = config.compute_test_value
+        config.compute_test_value = 'off'
+        try:
+            z = dot(x,y)
+        finally:
+            config.compute_test_value = ctv_backup
         # constant folding will complain to _logger that things are not aligned
         # this is normal, testers are not interested in seeing that output.
         _logger = logging.getLogger('theano.gof.opt')

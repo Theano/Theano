@@ -405,11 +405,12 @@ class PureOp(object):
             if run_perform:
                 # Original values should not be destroyed:
                 # copy the values of the inputs in destroy_map
-                destroyed_inputs = []
+                destroyed_inputs_idx = set()
                 if getattr(node.op, 'destroy_map', None):
                     for i_pos_list in node.op.destroy_map.itervalues():
-                        destroyed_inputs_idx.extend(node.inputs[i_pos_list])
-                for inp in destroyed_inputs:
+                        destroyed_inputs_idx.update(i_pos_list)
+                for inp_idx in destroyed_inputs_idx:
+                    inp = node.inputs[inp_idx]
                     storage_map[inp] = [storage_map[inp][0].copy()]
 
                 # Prepare storage_map and compute_map for the outputs
