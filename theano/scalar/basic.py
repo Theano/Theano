@@ -514,7 +514,7 @@ complexs128 = _multi(complex128)
 
 # Using a class instead of a function makes it possible to deep-copy it in
 # Python 2.4.
-# Note that currently only upcast_out uses this mechanism, because it is
+# Note that currently only a few functions use this mechanism, because it is
 # enough to make the test-suite pass with Python 2.4. However, it may prove
 # necessary to use this same mechanism in other places as well in the future.
 class upcast_out(object):
@@ -522,14 +522,28 @@ class upcast_out(object):
         return Scalar(dtype=Scalar.upcast(*types)),
 
 
+class upgrade_to_float(object):
+    def __new__(self, *types):
+        """
+        Upgrade any int types to float32 or float64 to avoid losing precision.
+        """
+        conv = {int8: float32,
+                int16: float32,
+                int32: float64,
+                int64: float64}
+        return Scalar(Scalar.upcast(*[conv.get(type, type)
+                                      for type in types])),
+
+
+class same_out(object):
+    def __new__(self, type):
+        return type,
+
+
 def upcast_out_no_complex(*types):
     if any([type in complex_types for type in types]):
         raise TypeError('complex type are not supported')
     return Scalar(dtype=Scalar.upcast(*types)),
-
-
-def same_out(type):
-    return type,
 
 
 def same_out_float_only(type):
@@ -584,17 +598,6 @@ def int_out(*types):
 
 def float_out(*types):
     return float64,
-
-
-def upgrade_to_float(*types):
-    """
-    Upgrade any int types to float32 or float64 to avoid losing any precision.
-    """
-    conv = {int8: float32,
-            int16: float32,
-            int32: float64,
-            int64: float64}
-    return Scalar(Scalar.upcast(*[conv.get(type, type) for type in types])),
 
 
 def upgrade_to_float_no_complex(*types):
