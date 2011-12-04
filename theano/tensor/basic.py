@@ -1798,14 +1798,14 @@ pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 class SpecifyShape(Op):
     """
-    L{Op} put into the graph the user provided shape
+    L{Op} that puts into the graph the user-provided shape.
 
-    In the case where this op stay in the final graph, we assert the shape.
+    In the case where this op stays in the final graph, we assert the shape.
     For this the output of this op must be used in the graph. This is not
     the case most of the time if we only take the shape of the output.
-    Maybe there is other optimization that will mess with this.
+    Maybe there are other optimizations that will mess with this.
 
-    @note:     Maybe in the futur we will never do the assert!
+    @note:     Maybe in the future we will never do the assert!
     @note:     We currently don't support specifying partial shape information.
     """
     view_map = {0: [0]}
@@ -2939,18 +2939,19 @@ class Subtensor(Op):
 
     This class uses a relatively complex internal representation of the inputs
     to remember how the input tensor x should be sliced.  The instance variable
-    idxlist is a list whose elements are either integers, or slices.  The
+    idx_list is a list whose elements are either integers, or slices.  The
     integers are indexes into the inputs array, and the start/stop/step members
     of each slice are also integer indexes into the inputs array (or None).  The
     inputs array is the tensor x, followed by scalar integer variables.
 
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
-    The idx_list is a tuple similar in structure to the sort of key you might expect in numpy's
-    basic indexing mode.  It has one element for each explicitly named dimension.  In numpy, the elements
-    can be either  integers or slices containing integers and None.  In Subtensor, each element
-    can additionally be a Scalar instance, and slice components can also be Scalar instances
-    too.
+    The idx_list is a tuple similar in structure to the sort of key you might
+    expect in numpy's basic indexing mode. It has one element for each
+    explicitly named dimension. In numpy, the elements can be either integers
+    or slices containing integers and None. In Subtensor, each element can
+    additionally be a Scalar instance, and slice components can also be Scalar
+    instances too.
     """
     e_invalid = ( 'The index list is longer (size %d) than the number of '
                  'dimensions of the tensor(namely %d). You are asking for '
