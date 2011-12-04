@@ -2929,10 +2929,13 @@ def transpose(x, **kwargs):
 
 
 class AdvancedIndexingError(TypeError):
-    """A class raised as an exception when Subtensor
-       is asked to perform advanced indexing  """
+    """
+    Raised when Subtensor is asked to perform advanced indexing.
+    """
+
     def __init__(self, *args):
-        super(AdvancedIndexingError, self).__init__(*args)
+        TypeError.__init__( self, *args)
+
 
 class Subtensor(Op):
     """Return a subtensor view
