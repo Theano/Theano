@@ -67,13 +67,15 @@ There are less methods to define for an Op than for a Type:
 
     .. method:: infer_shape(node, (i0_shapes,i1_shapes,...))
 
-      Allow optimization to lift the Shape op over this op.
-      Example of why this is good is that we compute an op only to take its shape,
-      we will be able to have the shape without its computation.
-      must return a tuple with one tuple with the shape of each output.
-      Example of matrix-matrix product input_shapes will have as input
-      (node, ((x0,x1), (y0,y1))) and should return [(x0, y1)]. Both the
-      inputs and the return value may be theano variables.
+      Allow optimizations to lift the Shape op over this op.
+      An example of why this is good is when we only need the shape of a
+      variable: we will be able to obtain it without computing the variable
+      itself.
+      Must return a list where each element is a tuple representing the shape
+      of one output.
+      For example, for the matrix-matrix product ``infer_shape`` will have as
+      inputs (node, ((x0,x1), (y0,y1))) and should return [(x0, y1)]. Both the
+      inputs and the return value may be Theano variables.
 
     .. method:: c_code_cache_version()
 
