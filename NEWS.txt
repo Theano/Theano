@@ -1,4 +1,6 @@
-TODO for final release:
+Theano 0.5rc1
+
+TODO for final 0.5 release:
 - test python 2.4
 - test theano-cache with "pip install Theano": issue 101
 - Re-write this NEWS.txt file!
