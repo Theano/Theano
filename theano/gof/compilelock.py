@@ -21,9 +21,27 @@ timeout_before_override = 120
 # 'refresh_every' seconds.
 refresh_every = 60
 
-def get_lock():
+
+def force_unlock():
+    """
+    Delete the compilation lock if someone else has it.
+    """
+    global timeout_before_override
+    timeout_backup = timeout_before_override
+    timeout_before_override = 0
+    try:
+        get_lock(min_wait=0, max_wait=0.001)
+        release_lock()
+    finally:
+        timeout_before_override = timeout_backup
+
+
+def get_lock(**kw):
     """
     Obtain lock on compilation directory.
+
+    :param kw: Additional arguments to be forwarded to the `lock` function when
+    acquiring the lock.
     """
     if not hasattr(get_lock, 'n_lock'):
         # Initialization.
@@ -47,7 +65,7 @@ def get_lock():
     if get_lock.lock_is_enabled:
         # Only really try to acquire the lock if we do not have it already.
         if get_lock.n_lock == 0:
-            lock(get_lock.lock_dir, timeout = timeout_before_override)
+            lock(get_lock.lock_dir, timeout=timeout_before_override, **kw)
             atexit.register(Unlocker.unlock, get_lock.unlocker)
             # Store time at which the lock was set.
             get_lock.start_time = time.time()
