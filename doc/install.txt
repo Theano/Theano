@@ -381,16 +381,27 @@ Any one of them is enough.
 * add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
 
 Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
-computer.
-For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu'``.
-You can also set the device option in the .theanorc file's ``[global]`` section.
+computer, and set the default floating point computations to float32.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu,floatX=float32'``.
+You can also set these options in the .theanorc file's ``[global]`` section:
 
-* If your computer has multiple gpu and use 'device=gpu', the driver select the one to use (normally gpu0)
-    * You can use the program nvida-smi to change that policy.
-* You can choose one specific gpu by giving device the one of those values: gpu0, gpu1, gpu2, or gpu3.
-    * If you have more than 4 devices you are very lucky but you will have to modify theano's *configdefaults.py* file and define more gpu devices to choose from.
-* Using the 'device=gpu*' theano flag make theano fall back to the cpu if there is a problem with the gpu.
-  You can use the flag 'force_device=True' to have theano raise an error when we cannot use the gpu.
+     .. code-block:: cfg
+
+        [global]
+        device = gpu
+        floatX = float32
+
+Note that:
+
+    * If your computer has multiple GPUs and you use 'device=gpu', the driver
+      selects the one to use (usually gpu0).
+    * You can use the program nvida-smi to change this policy.
+    * You can choose one specific GPU by specifying 'device=gpuX', with X the
+      the corresponding GPU index (0, 1, 2, ...)
+    * By default, when ``device`` indicates preference for GPU computations,
+      Theano will fall back to the CPU if there is a problem with the GPU.
+      You can use the flag 'force_device=True' to instead raise an error when
+      Theano cannot use the GPU.
 
 Once your setup is complete, head to :ref:`using_gpu` to find how to verify
 everything is working properly.
