@@ -11,6 +11,8 @@ import operator
 import itertools
 import sys
 import traceback
+from itertools import izip
+
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
 
@@ -676,7 +678,7 @@ class ShapeFeature(object):
         add an optional Param() argument to promise that inputs will
         have a certain shape (or even to have certain shapes in
         certain dimensions). We can't automatically infer the shape of
-        shared variable as they can change of shape during the
+        shared variables as they can change of shape during the
         execution by default.  (NOT IMPLEMENTED YET, BUT IS IN TRAC)
 
 
@@ -918,7 +920,7 @@ class ShapeFeature(object):
                     + ' != len(node.outputs) = '
                     + str(len(node.outputs)))
 
-        for r, s in zip(node.outputs, o_shapes):
+        for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
 
     def on_change_input(self, env, node, i, r, new_r):
@@ -1431,7 +1433,7 @@ def local_upcast_elemwise_constant_inputs(node):
 @gof.local_optimizer([T.Subtensor])
 def local_useless_subtensor(node):
     """
-    Remove Subtensor if it take the full input
+    Remove Subtensor if it takes the full input
     """
     if isinstance(node.op, T.Subtensor):
         # This optimization needs ShapeOpt and env.shape_feature
