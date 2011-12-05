@@ -8,13 +8,13 @@ if time check issue: 98.
 Modifications in the trunk since the 0.4.1 release (12 August 2011) up to 2 Dec 2011
 
 
-Every body is recommented to update Theano to 0.5 when released after
-they checked there code don't return deprecation warning. Otherwise,
-in one case the result can change. In other case, the warning are
-transformed to error. See bellow.
+Every body is recommended to update Theano to 0.5 when released after
+checking that their code doesn't return deprecation warnings. Otherwise,
+in one case the result can change. In other cases, the warnings are
+transformed to errors. See below.
 
 
-Important change:
+Important changes:
  * Moved to github: https://github.com/Theano/Theano/
  * Old trac ticket moved to assembla ticket: https://www.assembla.com/spaces/theano/tickets
  * Theano vision: https://deeplearning.net/software/theano/introduction.html#theano-vision (Many people)
@@ -35,10 +35,8 @@ Interface Feature Removed (was deprecated):
 
  * scan interface change: RP
    * The use of `return_steps` for specifying how many entries of the output
-     scan has been deprecated
-
-     * The same thing can be done by applying a subtensor on the output
-       return by scan to select a certain slice
+     to return has been deprecated. Instead, apply a subtensor to the output
+       returned by scan to select a certain slice
    * The inner function (that scan receives) should return its outputs and
      updates following this order:
 
@@ -47,44 +45,43 @@ Interface Feature Removed (was deprecated):
  * shared.value is moved, use shared.set_value() or shared.get_value() instead.
 
 
-New Deprecation (will be removed in Theano 0.6, warning generated if you use them):
- * tensor.shared() renamed to tensor._shared (Olivier D.)
-   * You probably want to call theano.shared()!
+New deprecation (will be removed in Theano 0.6, warning generated if you use them):
+ * tensor.shared() renamed to tensor._shared (Olivier D.) You probably want to call theano.shared()!
 
 
-Interface Bug Fix:
- * Rop in some case should have returned a list of 1 theano varible, but returned directly that variable.
+Interface bug fixes:
+ * Rop in some case should have returned a list of one theano variable, but returned the variable itself.
  * Theano flags "home" is not used anymore as it was a duplicate. If you use it, theano should raise an error.
 
 New features:
- * adding 1d advanced indexing support to inc_subtensor and set_subtensor (James
+ * adding 1d advanced indexing support to inc_subtensor and set_subtensor (James)
  * tensor.{zeros,ones}_like now support the dtype param as numpy (Fred)
- * config flags "exception_verbosity" to control the verbosity of exception (Ian 
- * theano-cache list: list the content of the theano cache(Fred)
+ * config flags "exception_verbosity" to control the verbosity of exceptions (Ian)
+ * theano-cache list: list the content of the theano cache (Fred)
  * tensor.ceil_int_div FB
  * MaxAndArgMax.grad now work with any axis(The op support only 1 axis) FB
    * used by tensor.{max,min,max_and_argmax}
  * tensor.{all,any} RP
  * tensor.roll as numpy: (Matthew Rocklin, DWF)
- * on Windows work. Still experimental. (Sebastian Urban)
+ * Theano works in some cases on Windows now. Still experimental. (Sebastian Urban)
  * IfElse now allow to have a list/tuple as the result of the if/else branches.
    * They must have the same length and correspondig type) RP
  * argmax dtype as int64. OD
+ * added arccos IG
+ * sparse dot with full output. (Yann Dauphin)
+   * Optimized to Usmm and UsmmCscDense in some case (YD)
+   * Note: theano.dot, sparse.dot return a structured_dot grad(
 
 
 
-New Optimizations:
+New optimizations:
  * AdvancedSubtensor1 reuse preallocated memory if available(scan, c|py_nogc linker)(Fred)
  * tensor_variable.size (as numpy) product of the shape elements OD
  * sparse_variable.size (as scipy) the number of stored value.OD
  * dot22, dot22scalar work with complex(Fred)
  * Doc how to wrap in Theano an existing python function(in numpy, scipy, ...) Fred
- * added arccos IG
- * sparse dot with full output. (Yann Dauphin)
-   * Optimized to Usmm and UsmmCscDense in some case (YD)
-   * Note: theano.dot, sparse.dot return a structured_dot grad(
  * Generate Gemv/Gemm more often JB
- * scan move computation outside the inner loop when the remove everything from the inner loop RP
+ * remove scan when all computations can be moved outside the loop RP
  * scan optimization done earlier. This allow other optimization to be applied FB, RP, GD
  * exp(x) * sigmoid(-x) is now correctly optimized to a more stable form.
 
@@ -93,40 +90,39 @@ GPU:
  * GpuAdvancedSubtensor1 support broadcasted dimensions
 
 
-Bugs fixed:
- * On cpu, if the convolution had received explicit shape information, they where not checked at run time. This caused wrong result if the input shape was not the one expected. (Fred, reported by Sander Dieleman)
+Bug fixes that change results:
+ * On cpu, if the convolution had received explicit shape information, they where not checked at runtime. This caused wrong result if the input shape was not the one expected. (Fred, reported by Sander Dieleman)
  * Scan grad when the input of scan has sequence of different length. (RP reported by Michael Forbes)
- * Scan.infer_shape now work correctly when working with a condition for the number of loop. In the past, it returned n_stepts as the shape, witch is not always true. RP
- * Theoritic bug: in some case we could have GPUSum return bad value. Was not able to produce the error.. 
+ * Scan.infer_shape now work correctly when working with a condition for the number of loop. In the past, it returned n_steps as the shape, which is not always true. RP
+ * Theoretical bug: in some case we could have GPUSum return bad value. Was not able to produce the error.. 
    * pattern affected({0,1}*nb dim, 0 no reduction on this dim, 1 reduction on this dim )
      01, 011, 0111, 010, 10, 001, 0011, 0101: FB
- * div by zeros in verify_grad. This hidded a bug in the grad of Images2Neibs. (JB)
+ * div by zeros in verify_grad. This hid a bug in the grad of Images2Neibs. (JB)
  * theano.sandbox.neighbors.Images2Neibs grad was returning wrong value. The grad is now disabled and return an error. FB
 
 
 
 Crash fixed:
- * T.mean crash at graph building timeby Ian G.
+ * T.mean crash at graph building time by Ian G.
  * "Interactive debugger" crash fix (Ian, Fred)
- * "Interactive Debugger" renamed to "Using Test Values"
  * Do not call gemm with strides 0, some blas refuse it. (PL)
- * optimization crash with gemm and complex.(Fred
+ * optimization crash with gemm and complex. (Fred)
  * Gpu crash with elemwise Fred
- * compilation crash with amdlibm and the gpu. Fred
- * IfElse crash Fred
- * Execution crash fix in AdvancedSubtensor1 on 32 bits computer(PL)
- * gpu compilation crash on MacOS X OD
- * gpu compilation crash on MacOS X Fred
+ * compilation crash with amdlibm and the gpu. (Fred)
+ * IfElse crash (Fred)
+ * Execution crash fix in AdvancedSubtensor1 on 32 bit computers (PL)
+ * gpu compilation crash on MacOS X (OD)
+ * gpu compilation crash on MacOS X (Fred)
  * Support for OSX Enthought Python Distribution 7.x (Graham Taylor, OD)
  * When the subtensor inputs had 0 dimensions and the outputs 0 dimensions
- * Crash when the step to subtensor was not 1 in conjonction with some optimization
+ * Crash when the step to subtensor was not 1 in conjunction with some optimization
 
 
 Optimization:
  * Added Subtensor(Rebroadcast(x)) => Rebroadcast(Subtensor(x)) optimization (GD)
  * Scan optimization are executed earlier. This make other optimization being applied(like blas optimization, gpu optimization...)(GD, Fred, RP)
- * Make the optimization process faster JB
- * Allow fusion of elemwise when the scalar op need support code. JB
+ * Make the optimization process faster (JB)
+ * Allow fusion of elemwise when the scalar op need support code. (JB)
 
 
 Know bug:
