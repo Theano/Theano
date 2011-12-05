@@ -340,7 +340,12 @@ class TestMergeOptimizer:
         x = MyVariable('x')
         y = Constant(MyType(), 2, name = 'y')
         z = Constant(MyType(), 2, name = 'z')
-        e1 = op1(y, z)
+        ctv_backup = config.compute_test_value
+        config.compute_test_value = 'off'
+        try:
+            e1 = op1(y, z)
+        finally:
+            config.compute_test_value = ctv_backup
         g = Env([x, y, z], [e1])
         MergeOptimizer().optimize(g)
         strg = str(g)
