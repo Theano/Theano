@@ -901,7 +901,7 @@ def _as_scalar(res):
             rval = res
 
         if rval.type.dtype[:3] in ('int', 'uin'):
-            rval = cast(rval, theano.config.floatX) #may lose precision !?
+            rval = T.cast(rval, theano.config.floatX) #may lose precision !?
 
         #if isinstance(rval, T.Constant):
             #rval = rval.data.flatten()[0]
