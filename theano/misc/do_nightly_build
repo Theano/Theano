@@ -5,6 +5,12 @@ START=`date +%s`
 NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
+RELEASE=""
+if [ "$1" == "--release" ]; then
+    RELEASE="True"
+    shift
+    ARGS=$@
+fi
 if [ "$1" == "--buildbot" ]; then
     ROOT_CWD=/Tmp/nightly_build
     FLAGS=compiledir=/Tmp/lisa_theano_compile_dir_theano
@@ -17,7 +23,10 @@ fi
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+# We don't want warning for fixed error in the buildbot
 FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,$FLAGS
+# We want to see correctly optimization error, so make make them raise an error
+FLAGS=on_opt_error=raise,$FLAGS
 # Ignore user device and floatX config, because:
 #   1. Tests are intended to be run with device=cpu.
 #   2. We explicitly add 'floatX=float32' in one run of the test suite below,
@@ -25,14 +34,23 @@ FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug
 FLAGS=${FLAGS},device=cpu,floatX=float64
 export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 
+if [ "$RELEASE" ]; then
+    echo "Executing nosetests with default mode and compute_test_value"
+    THEANO_FLAGS=${FLAGS},compute_test_value=ignore ${NOSETESTS} ${ARGS}
+    echo "Number of elements in the compiledir:"
+    ls ${COMPILEDIR}|wc -l
+fi
+
 echo "Executing nosetests with mode=FAST_COMPILE"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
 echo "Executing nosetests with mode=FAST_RUN"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
 echo "Executing nosetests with mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
