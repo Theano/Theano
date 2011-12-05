@@ -14,55 +14,13 @@ there is a CUDA-enabled device in your computer.
 Setting up CUDA
 ----------------
 
-The first thing you'll need for Theano to use your GPU is Nvidia's
-GPU-programming toolchain.  You should install at least the CUDA driver and the CUDA Toolkit, as 
-`described here <http://www.nvidia.com/object/cuda_get.html>`_.  The CUDA
-Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
-*include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
-program which is the compiler for GPU code.)  This folder is called the *cuda
-root* directory.
-On Linux or OS X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit Linux
-computer) to your ``$LD_LIBRARY_PATH`` environment variable.
+If you have not done so already, you will need to install Nvidia's
+GPU-programming toolchain (CUDA) and configure Theano to use it.
+We provide installation instructions for :ref:`Linux <gpu_linux>`,
+:ref:`MacOS <gpu_macos>` and :ref:`Windows <gpu_windows>`.
 
-
-Making Theano use CUDA
-----------------------
-
-You must tell Theano where the cuda root folder is, and there are three ways
-to do it.
-Any one of them is enough.
-
-* Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
-* add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
-* add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
-
-Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
-computer.
-For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu'``.
-You can also set the device option in the .theanorc file's ``[global]`` section.
-
-* If your computer has multiple gpu and use 'device=gpu', the driver select the one to use (normally gpu0)
-    * You can use the program nvida-smi to change that policy.
-* You can choose one specific gpu by giving device the one of those values: gpu0, gpu1, gpu2, or gpu3.  
-    * If you have more than 4 devices you are very lucky but you'll have to modify theano's *configdefaults.py* file and define more gpu devices to choose from.
-* Using the 'device=gpu*' theano flag make theano fall back to the cpu if their is a problem with the gpu. 
-  You can use the flag 'force_device=True' to have theano raise an error when we can't use the gpu.
-
-.. note::
-    There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
-    CUDA 2.3 with gcc-4.4.  Symptom: errors about "__sync_fetch_and_add" being undefined.
-    **Solution 1:** make gcc-4.3 the default gcc
-    (http://pascalg.wordpress.com/2010/01/14/cuda-on-ubuntu-9-10linux-mint-helena/)
-    **Solution 2:** make another gcc (e.g. gcc-4.3) the default just for nvcc. 
-    Do this by making a directory (e.g. ``$HOME/.theano/nvcc-bindir``) and
-    installing two symlinks in it: one called gcc pointing to gcc-4.3 (or lower) and one called
-    g++ pointing to g++-4.3 (or lower).  Then add
-    ``compiler_bindir = /path/to/nvcc-bindir`` to the ``[nvcc]`` section of your ``.theanorc``
-    (`libdoc_config`).
-    
-
-Putting it all Together
--------------------------
+Testing Theano with GPU
+-----------------------
 
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.
