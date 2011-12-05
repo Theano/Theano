@@ -821,6 +821,19 @@ def test_dot22scalar():
                     cmp((0,4),(4,0),(0,0))
                     cmp((0,0),(0,0),(0,0))
 
+
+def test_dot22scalar_cast():
+    """
+    Test that in `dot22_to_dot22scalar` we properly cast integers to floats.
+    """
+    # Note that this test was failing before d5ff6904.
+    A = T.matrix()
+    for scalar_int_type in T.int_dtypes:
+        y = T.scalar(dtype=scalar_int_type)
+        f = theano.function([A, y], T.dot(A, A) * y, mode=mode_blas_opt)
+        assert _dot22scalar in [x.op for x in f.maker.env.toposort()]
+
+
 def test_dot_w_self():
     # This can trigger problems in the optimization because what would normally be a gemm must
     # not be because the output is aliased to one of the inputs.
