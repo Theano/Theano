@@ -12,17 +12,19 @@ __authors__ = ("Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
+
 import copy
 import logging
+
 import numpy
 
+import theano
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
+from theano.gof.python25 import all
 from theano.tensor.basic import get_constant_value
 
-
-import theano
 
 ################ Utility Functions and Classes #######################
 
