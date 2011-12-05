@@ -17,7 +17,10 @@ fi
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+# We don't want warning for fixed error in the buildbot
 FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,$FLAGS
+# We want to see correctly optimization error, so make make them raise an error
+FLAGS=on_opt_error=raise,$FLAGS
 # Ignore user device and floatX config, because:
 #   1. Tests are intended to be run with device=cpu.
 #   2. We explicitly add 'floatX=float32' in one run of the test suite below,
