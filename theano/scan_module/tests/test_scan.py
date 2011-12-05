@@ -10,8 +10,9 @@ from numpy.testing import dec
 import theano
 import theano.sandbox.rng_mrg
 from theano import tensor
-from theano.tests  import unittest_tools as utt
 from theano.compile.pfunc import rebuild_collect_shared
+from theano.gof.python25 import any
+from theano.tests  import unittest_tools as utt
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -215,8 +216,16 @@ class T_Scan(unittest.TestCase):
             tmpdir = mkdtemp()
             os.chdir(tmpdir)
 
-            cPickle.dump(_my_f, open('tmp_scan_test_pickle.pkl','wb'),-1)
-            my_f = cPickle.load(open('tmp_scan_test_pickle.pkl'))
+            f_out = open('tmp_scan_test_pickle.pkl', 'wb')
+            try:
+                cPickle.dump(_my_f, f_out, protocol=-1)
+            finally:
+                f_out.close()
+            f_in = open('tmp_scan_test_pickle.pkl', 'rb')
+            try:
+                my_f = cPickle.load(f_in)
+            finally:
+                f_in.close()
         finally:
             # Get back to the orinal dir, and delete temporary one.
             os.chdir(origdir)
