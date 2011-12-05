@@ -5,6 +5,12 @@ START=`date +%s`
 NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
+RELEASE=""
+if [ "$1" == "--release" ]; then
+    RELEASE="True"
+    shift
+    ARGS=$@
+fi
 if [ "$1" == "--buildbot" ]; then
     ROOT_CWD=/Tmp/nightly_build
     FLAGS=compiledir=/Tmp/lisa_theano_compile_dir_theano
@@ -28,14 +34,23 @@ FLAGS=on_opt_error=raise,$FLAGS
 FLAGS=${FLAGS},device=cpu,floatX=float64
 export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 
+if [ "$RELEASE" ]; then
+    echo "Executing nosetests with default mode and compute_test_value"
+    THEANO_FLAGS=${FLAGS},compute_test_value=ignore ${NOSETESTS} ${ARGS}
+    echo "Number of elements in the compiledir:"
+    ls ${COMPILEDIR}|wc -l
+fi
+
 echo "Executing nosetests with mode=FAST_COMPILE"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
 echo "Executing nosetests with mode=FAST_RUN"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
 echo "Executing nosetests with mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
