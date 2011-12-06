@@ -245,7 +245,7 @@ AddConfigVar('numpy.seterr_invalid',
 ###
 AddConfigVar('warn.ignore_bug_before',
              "If 'None', we warn about all Theano bugs found by default. If 'all', we don't warn about Theano bugs found by default. If a version, we print only the warnings relative to Theano bugs found after that version. Warning for specific bugs can be configured with specific [warn] flags.",
-             EnumStr('None', 'all', '0.3','0.4', '0.4.1',allow_override=False),
+             EnumStr('None', 'all', '0.3','0.4', '0.4.1', '0.5', allow_override=False),
              in_c_key=False)
 
 default_0_3 = True
