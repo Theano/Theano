@@ -148,11 +148,22 @@ class Scan(PureOp):
             self._hash_inner_graph = self.info['gpu_hash']
 
     def make_node(self, *inputs):
+        """
+        Conventions:
+            inner_? - the variable corresponding to ? in the inner function
+                      of scan (the lambda function executed at every time
+                      step)
+            outer_? - the variable corresponding to ? in the outer graph,
+                      i.e. the main graph (where the scan op lives)
+            inner_?_out - the variable representing the new value of ? after
+                          executing one step of scan (i.e. outputs given by
+                          the inner function)
+        """
         assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
-                    '%s %s( the entry number %d) has dtype '
+                    '%s %s (argument number %d) has dtype '
                     '%s. The corresponding slice %s however has'
                     ' dtype %s. This should never happen, please '
                     'report to theano-dev mailing list'
