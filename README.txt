@@ -7,6 +7,10 @@ For the documentation, see the project website:
 
    http://deeplearning.net/software/theano/
 
+Related Projects:
+
+   https://github.com/Theano/Theano/wiki/Related-projects
+
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.
 If you really wish to build the documentation yourself, you will need
