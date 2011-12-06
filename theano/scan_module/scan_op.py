@@ -171,7 +171,7 @@ class Scan(PureOp):
         err_msg2 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
                     'initial state (outputs_info in scan nomenclature)'
-                    'of variable %s (the entry number %d)'
+                    'of variable %s (argument number %d)'
                     ' has dtype %s, while the result of the'
                     ' inner function for this output has dtype %s. This '
                     'could happen if the inner graph of scan results in '
