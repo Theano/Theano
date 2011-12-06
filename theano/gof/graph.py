@@ -443,7 +443,7 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     return rval_list
 
 
-def ancestors(variable_list, blockers = None):
+def ancestors(variable_list, blockers=None):
     """Return the variables that contribute to those in variable_list (inclusive).
 
     :type variable_list: list of `Variable` instances
@@ -464,7 +464,7 @@ def ancestors(variable_list, blockers = None):
     return dfs_variables
 
 
-def inputs(variable_list, blockers = None):
+def inputs(variable_list, blockers=None):
     """Return the inputs required to compute the given Variables.
 
     :type variable_list: list of `Variable` instances
