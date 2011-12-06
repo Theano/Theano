@@ -890,21 +890,28 @@ def res_is_a(node, op, maxclients=None):
               and retval
 
 
-def _as_scalar(res):
+def _as_scalar(res, dtype=None):
     """Return None or a TensorVariable whose type is in T.float_scalar_types"""
+    if dtype is None:
+        dtype = config.floatX
     if numpy.all(res.type.broadcastable):
         while res.owner and isinstance(res.owner.op, T.DimShuffle):
             res = res.owner.inputs[0]
-        if res.type.broadcastable: # may still have some number of True's
+        # may still have some number of True's
+        if res.type.broadcastable:
             rval = res.dimshuffle()
         else:
             rval = res
-
         if rval.type.dtype[:3] in ('int', 'uin'):
-            rval = cast(rval, theano.config.floatX) #may lose precision !?
-
-        #if isinstance(rval, T.Constant):
-            #rval = rval.data.flatten()[0]
+            # We check that the upcast of res and dtype won't change dtype.
+            # If dtype is float64, we will cast int64 to float64.
+            # This is valid when res is a scalar used as input to a dot22
+            # as the cast of the scalar can be done before or after the dot22
+            #  and this will give the same result.
+            if theano.scalar.upcast(res.dtype, dtype) == dtype:
+                return T.cast(rval, dtype)
+            else:
+                return None
 
         return rval
 
@@ -1567,7 +1574,7 @@ def local_dot22_to_dot22scalar(node):
         #return False #TODO fix
     dot22_idx = i_dot22.index(True)
     d = node.inputs[dot22_idx]
-    i_scalar = [_as_scalar(x) for x in node.inputs]
+    i_scalar = [_as_scalar(x, dtype=d.dtype) for x in node.inputs]
     if not any(i_scalar):
         i_mul = [x.owner and x.owner.op ==T.mul for x in node.inputs]
         if not any(i_mul):
@@ -1581,10 +1588,10 @@ def local_dot22_to_dot22scalar(node):
         mul_idx = i_mul.index(True)#we take the first mul!
         m = node.inputs[mul_idx]
 
-        if len(m.owner.inputs)==2 and any([_as_scalar(x) for x in m.owner.inputs]):
+        if len(m.owner.inputs)==2 and any([_as_scalar(x, dtype=d.dtype) for x in m.owner.inputs]):
             scalar_idx = -1
             for i,x in enumerate(m.owner.inputs):
-                if _as_scalar(x) and (theano.scalar.upcast(x.type.dtype,d.type.dtype)
+                if _as_scalar(x, dtype=d.dtype) and (theano.scalar.upcast(x.type.dtype,d.type.dtype)
                                       == d.type.dtype):
                     scalar_idx = i
                     break
@@ -1594,7 +1601,7 @@ def local_dot22_to_dot22scalar(node):
                              'of the scalar cannot be upcasted to the matrix type',
                              node.inputs, [x.type for x in node.inputs])
                 return False
-            a = T.cast(_as_scalar(m.owner.inputs[scalar_idx]), d.type.dtype)
+            a = T.cast(_as_scalar(m.owner.inputs[scalar_idx], dtype=d.dtype), d.type.dtype)
             assert not a.type.ndim
             dot=_dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
 

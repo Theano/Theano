@@ -372,7 +372,8 @@ def rand_of_dtype(shape, dtype):
 
 
 def makeBroadcastTester(op, expected, checks={}, name=None, **kwargs):
-    name = str(op)
+    if name is None:
+        name = str(op)
     # Here we ensure the test name matches the name of the variable defined in
     # this script. This is needed to properly identify the test e.g. with the
     # --with-id option of nosetests, or simply to rerun a specific test that
@@ -628,6 +629,7 @@ CeilIntDivTester = makeBroadcastTester(
                  uinteger=(randint(2, 3).astype("uint8"),
                            randint_nonzero(2, 3).astype("uint8")),
                  ),
+    name='CeilIntDiv',
     # As we implement this function with neq, the gradient returned is always 0.
 #    grad=_grad_broadcast_div_mod_normal,
 #    grad_rtol=div_grad_rtol,
@@ -674,10 +676,13 @@ _grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand
 _good_broadcast_pow_normal_float_pow = copy(_good_broadcast_pow_normal_float)
 del _good_broadcast_pow_normal_float_pow["empty2"]
 
-PowTester = makeBroadcastTester(op = pow,
-                                  expected = lambda x, y: check_floatX((x, y), x ** y),
-                                  good = _good_broadcast_pow_normal_float,
-                                  grad = _grad_broadcast_pow_normal)
+PowTester = makeBroadcastTester(
+        op=pow,
+        expected=lambda x, y: check_floatX((x, y), x ** y),
+        good=_good_broadcast_pow_normal_float,
+        grad= _grad_broadcast_pow_normal,
+        name='Pow')
+
 PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
                                        expected = lambda x, y: x ** y,
                                        good = _good_broadcast_pow_normal_float_pow,
@@ -1090,15 +1095,19 @@ ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         inplace = True,
                                         skip = skip_scipy)
 
-ZerosLikeTester =  makeBroadcastTester(op = tensor.zeros_like,
-                                        expected = numpy.zeros_like,
-                                        good = _good_broadcast_unary_normal,
-                                        grad = _grad_broadcast_unary_normal)
+ZerosLikeTester = makeBroadcastTester(
+        op=tensor.zeros_like,
+        expected=numpy.zeros_like,
+        good=_good_broadcast_unary_normal,
+        grad=_grad_broadcast_unary_normal,
+        name='ZerosLike')
 
-OnesLikeTester =  makeBroadcastTester(op = tensor.ones_like,
-                                        expected = numpy.ones_like,
-                                        good = _good_broadcast_unary_normal,
-                                        grad = _grad_broadcast_unary_normal)
+OnesLikeTester = makeBroadcastTester(
+        op=tensor.ones_like,
+        expected=numpy.ones_like,
+        good=_good_broadcast_unary_normal,
+        grad=_grad_broadcast_unary_normal,
+        name='OnesLike')
 
 DotTester = makeTester(name = 'DotTester',
                         op = dot,

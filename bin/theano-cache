@@ -28,10 +28,14 @@ elif sys.argv[1] in ('clear'):
                       (len(items), ', '.join(items)))
 elif sys.argv[1] in ('list'):
     theano.gof.compiledir.print_compiledir_content()
+elif sys.argv[1] == 'unlock':
+    theano.gof.compilelock.force_unlock()
+    print 'Lock successfully removed!'
 else:
     print 'command "%s" not recognized' % sys.argv[1]
     print 'Type "theano-cache" to print the cache location'
     print 'Type "theano-cache clear" to erase the cache'
     print 'Type "theano-cache list" to print the cache content'
+    print 'Type "theano-cache unlock" to unlock the cache directory'
     sys.exit(1)
 
