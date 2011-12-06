@@ -9,7 +9,7 @@ import numpy
 import theano
 from numpy import (arange, array, common_type, complex64, complex128, float32,
                   float64, newaxis, shape, transpose, zeros)
-from numpy.testing import assert_, assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal
 #from numpy.testing import dec
 #from numpy.testing.noseclasses import KnownFailureTest
 
@@ -1003,7 +1003,7 @@ def matrixmultiply(a, b):
         b = b[:,newaxis]
     else:
         b_is_vector = False
-    assert_(a.shape[1] == b.shape[0])
+    assert a.shape[1] == b.shape[0]
     c = zeros((a.shape[0], b.shape[1]), common_type(a, b))
     for i in xrange(a.shape[0]):
         for j in xrange(b.shape[1]):
