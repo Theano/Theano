@@ -15,8 +15,10 @@ from theano.gof.opt import Optimizer
 
 try:
     import scipy.linalg
+    imported_scipy = True
 except ImportError:
-    pass # some ops (e.g. Cholesky) won't work
+    # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
+    imported_scipy = False
 
 class Hint(Op):
     """
@@ -195,6 +197,8 @@ def is_positive(v):
 @register_stabilize
 @local_optimizer([])
 def inv_as_solve(node):
+    if not imported_scipy:
+        return False
     if node.op == dot:
         l,r = node.inputs
         if l.owner and l.owner.op == matrix_inverse:
@@ -342,6 +346,8 @@ class Cholesky(Op):
         return 'Cholesky{%s,%s}' % (lu, destr)
 
     def make_node(self, x):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Cholesky op")
         x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
 
@@ -544,6 +550,8 @@ class Solve(Op):
     def __repr__(self):
         return 'Solve{%s}'%str(self.props())
     def make_node(self, A, b):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Solve op")
         A = as_tensor_variable(A)
         b = as_tensor_variable(b)
         otype = tensor.tensor(
@@ -731,6 +739,8 @@ def spectral_radius_bound(X, log2_exponent):
 class A_Xinv_b(Op):
     """Product of form a inv(X) b"""
     def make_node(self, a, X, b):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the A_Xinv_b op")
         a = as_tensor_variable(a)
         b = as_tensor_variable(b)
         X = as_tensor_variable(X)

@@ -24,7 +24,8 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        #PSD_hint,
                                        trace,
                                        matrix_dot,
-                                       spectral_radius_bound
+                                       spectral_radius_bound,
+                                       imported_scipy,
                                        )
 
 from nose.plugins.skip import SkipTest
@@ -47,6 +48,9 @@ def check_upper_triangular(pd, ch_f):
 
 
 def test_cholesky():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
+
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
     pd = numpy.dot(r, r.T)
@@ -66,6 +70,8 @@ def test_cholesky():
 
 
 def test_cholesky_grad():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
     pd = numpy.dot(r, r.T)
@@ -78,6 +84,9 @@ def test_cholesky_grad():
 
 
 def test_cholesky_and_cholesky_grad_shape():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
+
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = tensor.matrix()
     for l in (cholesky(x), Cholesky(lower=True)(x), Cholesky(lower=False)(x)):
