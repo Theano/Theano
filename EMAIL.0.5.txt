@@ -1,0 +1,250 @@
+===========================
+ Announcing Theano 0.5
+===========================
+
+Upgrading to Theano 0.5 is recommended for everyone, but you should first make
+sure that your code does not raise deprecation warnings with Theano 0.4.1.
+Otherwise, in one case the results can change. In other cases, the warnings are
+turned into errors (see below for details).
+
+For those using the bleeding edge version in the
+git repository, we encourage you to update to the `0.5` tag.
+
+
+What's New
+----------
+
+Important changes:
+ * Moved to github: http://github.com/Theano/Theano/
+ * Old trac ticket moved to assembla ticket: http://www.assembla.com/spaces/theano/tickets
+ * Theano vision: http://deeplearning.net/software/theano/introduction.html#theano-vision (Many people)
+ * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
+ * See the Interface changes.
+
+
+Interface Behavior Change (was deprecated and generated a warning since Theano 0.3 released Nov. 23rd, 2010):
+    * The current default value of the parameter axis of
+      theano.{max,min,argmax,argmin,max_and_argmax} is now the same as
+      numpy: None. i.e. operate on all dimensions of the tensor. (Frédéric Bastien, Olivier Delalleau)
+
+
+Interface Features Removed (most were deprecated):
+ * The string modes FAST_RUN_NOGC and STABILIZE are not accepted. They were accepted only by theano.function().
+   Use Mode(linker='c|py_nogc') or Mode(optimizer='stabilize') instead.
+ * tensor.grad(cost, wrt) now always returns an object of the "same type" as wrt
+   (list/tuple/TensorVariable). (Ian Goodfellow, Olivier)
+ * A few tag.shape and Join.vec_length left have been removed. (Frederic)
+ * The .value attribute of shared variables is removed, use shared.set_value()
+   or shared.get_value() instead. (Frederic)
+ * Theano config option "home" is not used anymore as it was redundant with "base_compiledir".
+   If you use it, Theano will now raise an error. (Olivier D.)
+ * scan interface changes: (Razvan Pascanu)
+    - The use of `return_steps` for specifying how many entries of the output
+      to return has been removed. Instead, apply a subtensor to the output
+      returned by scan to select a certain slice.
+    - The inner function (that scan receives) should return its outputs and
+      updates following this order:
+        [outputs], [updates], [condition].
+      One can skip any of the three if not used, but the order has to stay unchanged.
+
+Interface bug fixes:
+ * Rop in some case should have returned a list of one Theano variable, but returned the variable itself. (Razvan)
+
+New deprecation (will be removed in Theano 0.6, warning generated if you use them):
+ * tensor.shared() renamed to tensor._shared(). You probably want to call theano.shared() instead! (Olivier D.)
+
+
+New features:
+ * Adding 1D advanced indexing support to inc_subtensor and set_subtensor (James Bergstra)
+ * tensor.{zeros,ones}_like now support the dtype param as numpy (Frederic)
+ * Added configuration flag "exception_verbosity" to control the verbosity of exceptions (Ian)
+ * theano-cache list: list the content of the theano cache (Frederic)
+ * theano-cache unlock: remove the Theano lock (Olivier)
+ * tensor.ceil_int_div to compute ceil(a / float(b)) (Frederic)
+ * MaxAndArgMax.grad now works with any axis (The op supports only 1 axis) (Frederic)
+     * used by tensor.{max,min,max_and_argmax}
+ * tensor.{all,any} (Razvan)
+ * tensor.roll as numpy: (Matthew Rocklin, David Warde-Farley)
+ * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
+ * IfElse now allows to have a list/tuple as the result of the if/else branches.
+     * They must have the same length and corresponding type (Razvan)
+ * Argmax output dtype is now int64 instead of int32. (Olivier)
+ * Added the element-wise operation arccos. (Ian)
+ * Added sparse dot with dense grad output. (Yann Dauphin)
+     * Optimized to Usmm and UsmmCscDense in some case (Yann)
+     * Note: theano.dot and theano.sparse.structured_dot() always had a gradient with the same sparsity pattern as the inputs.
+       The new theano.sparse.dot() has a dense gradient for all inputs.
+ * GpuAdvancedSubtensor1 supports broadcasted dimensions. (Frederic)
+
+
+New optimizations:
+ * AdvancedSubtensor1 reuses preallocated memory if available (scan, c|py_nogc linker) (Frederic)
+ * tensor_variable.size (as numpy) computes the product of the shape elements. (Olivier)
+ * sparse_variable.size (as scipy) computes the number of stored values. (Olivier)
+ * dot22, dot22scalar work with complex. (Frederic)
+ * Generate Gemv/Gemm more often. (James)
+ * Remove scan when all computations can be moved outside the loop. (Razvan)
+ * scan optimization done earlier. This allows other optimizations to be applied. (Frederic, Guillaume, Razvan)
+ * exp(x) * sigmoid(-x) is now correctly optimized to the more stable form sigmoid(x). (Olivier)
+ * Added Subtensor(Rebroadcast(x)) => Rebroadcast(Subtensor(x)) optimization. (Guillaume)
+ * Made the optimization process faster. (James)
+ * Allow fusion of elemwise when the scalar op needs support code. (James)
+ * Better opt that lifts transpose around dot. (James)
+
+
+Bug fixes (the result changed):
+ * On CPU, if the convolution had received explicit shape information, they where not checked at runtime.
+   This caused wrong result if the input shape was not the one expected. (Frederic, reported by Sander Dieleman)
+ * Scan grad when the input of scan has sequences of different lengths. (Razvan, reported by Michael Forbes)
+ * Scan.infer_shape now works correctly when working with a condition for the number of loops.
+   In the past, it returned n_steps as the length, which is not always true. (Razvan)
+ * Theoretical bug: in some case we could have GPUSum return bad value.
+   We were not able to reproduce this problem
+     * patterns affected ({0,1}*nb dim, 0 no reduction on this dim, 1 reduction on this dim):
+       01, 011, 0111, 010, 10, 001, 0011, 0101 (Frederic)
+ * div by zero in verify_grad. This hid a bug in the grad of Images2Neibs. (James)
+ * theano.sandbox.neighbors.Images2Neibs grad was returning a wrong value.
+   The grad is now disabled and returns an error. (Frederic)
+
+
+Crashes fixed:
+ * T.mean crash at graph building time. (Ian)
+ * "Interactive debugger" crash fix. (Ian, Frederic)
+ * Do not call gemm with strides 0, some blas refuse it. (Pascal Lamblin)
+ * Optimization crash with gemm and complex. (Frederic)
+ * GPU crash with elemwise. (Frederic)
+ * Compilation crash with amdlibm and the GPU. (Frederic)
+ * IfElse crash. (Frederic)
+ * Execution crash fix in AdvancedSubtensor1 on 32 bit computers. (Pascal)
+ * GPU compilation crash on MacOS X. (Olivier)
+ * Support for OSX Enthought Python Distribution 7.x. (Graham Taylor, Olivier)
+ * When the subtensor inputs had 0 dimensions and the outputs 0 dimensions. (Frederic)
+ * Crash when the step to subtensor was not 1 in conjunction with some optimization. (Frederic, reported by Olivier Chapelle)
+ * fix dot22scalar cast of integer scalars (Justin Bayer, Frédéric, Olivier)
+
+
+Known bugs:
+ * CAReduce with nan in inputs don't return the good output (`Ticket <https://www.assembla.com/spaces/theano/tickets/763>`_).
+     * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
+ * If you do grad of grad of scan you can have wrong results in some cases.
+
+
+Sandbox:
+ * cvm interface more consistent with current linker. (James)
+ * vm linker has a callback parameter. (James)
+ * review/finish/doc: diag/extract_diag. (Arnaud Bergeron, Frederic, Olivier)
+ * review/finish/doc: AllocDiag/diag. (Arnaud, Frederic, Guillaume)
+ * review/finish/doc: MatrixInverse, matrix_inverse. (Razvan)
+ * review/finish/doc: matrix_dot. (Razvan)
+ * review/finish/doc: det (determinent) op. (Philippe Hamel)
+ * review/finish/doc: Cholesky determinent op. (David)
+ * review/finish/doc: ensure_sorted_indices. (Li Yao)
+ * review/finish/doc: spectral_radius_boud. (Xavier Glorot)
+ * review/finish/doc: sparse sum. (Valentin Bisson)
+
+
+Sandbox New features (not enabled by default):
+ * CURAND_RandomStreams for uniform and normal (not picklable, GPU only) (James)
+
+
+Documentation:
+ * Many updates. (Many people)
+ * Updates to install doc on MacOS. (Olivier)
+ * Updates to install doc on Windows. (David, Olivier)
+ * Added how to use scan to loop with a condition as the number of iteration. (Razvan)
+ * Added how to wrap in Theano an existing python function (in numpy, scipy, ...). (Frederic)
+ * Refactored GPU installation of Theano. (Olivier)
+
+
+Others:
+ * Better error messages in many places. (David, Ian, Frederic, Olivier)
+ * PEP8 fixes. (Many people)
+ * New min_informative_str() function to print graph. (Ian)
+ * Fix catching of exception. (Sometimes we catched interupt) (Frederic, David, Ian, Olivier)
+ * Better support for uft string. (David)
+ * Fix pydotprint with a function compiled with a ProfileMode (Frederic)
+     * Was broken with change to the profiler.
+ * Warning when people have old cache entries. (Olivier)
+ * More tests for join on the GPU and CPU. (Frederic)
+ * Don't request to load the GPU module by default in scan module. (Razvan)
+ * Fixed some import problems.
+ * Filtering update. (James)
+ * The buidbot now raises optimization errors instead of just printing a warning. (Frederic)
+ * On Windows, the default compiledir changed to be local to the computer/user and not transferred with roaming profile. (Sebastian Urban)
+
+Reviewers (alphabetical order):
+ * David, Frederic, Ian, James, Olivier, Razvan
+
+
+
+
+This is a major release, with lots of new features, bug fixes, and some
+interface changes (deprecated or potentially misleading features were
+removed).  The upgrade is recommended for everybody, unless you rely on
+deprecated features that have been removed.
+
+Download
+--------
+
+You can download Theano from http://pypi.python.org/pypi/Theano.
+
+Description
+-----------
+
+Theano is a Python library that allows you to define, optimize, and
+efficiently evaluate mathematical expressions involving
+multi-dimensional arrays. It is built on top of NumPy. Theano
+features:
+
+ * tight integration with NumPy: a similar interface to NumPy's.
+   numpy.ndarrays are also used internally in Theano-compiled functions.
+ * transparent use of a GPU: perform data-intensive computations up to
+   140x faster than on a CPU (support for float32 only).
+ * efficient symbolic differentiation: Theano can compute derivatives
+   for functions of one or many inputs.
+ * speed and stability optimizations: avoid nasty bugs when computing
+   expressions such as log(1+ exp(x)) for large values of x.
+ * dynamic C code generation: evaluate expressions faster.
+ * extensive unit-testing and self-verification: includes tools for
+   detecting and diagnosing bugs and/or potential problems.
+
+Theano has been powering large-scale computationally intensive
+scientific research since 2007, but it is also approachable
+enough to be used in the classroom (IFT6266 at the University of Montreal).
+
+Resources
+---------
+
+About Theano:
+
+http://deeplearning.net/software/theano/
+
+Theano-related projects:
+
+http://github.com/Theano/Theano/wiki/Related-projects
+
+About NumPy:
+
+http://numpy.scipy.org/
+
+About SciPy:
+
+http://www.scipy.org/
+
+Machine Learning Tutorial with Theano on Deep Architectures:
+
+http://deeplearning.net/tutorial/
+
+Acknowledgments
+---------------
+
+I would like to thank all contributors of Theano. For this particular
+release, people names have been added next to what they did.
+
+Also, thank you to all NumPy and Scipy developers as Theano builds on
+their strengths.
+
+All questions/comments are always welcome on the Theano
+mailing-lists ( http://deeplearning.net/software/theano/#community )
+
+

@@ -8,7 +8,7 @@ removed).  The upgrade is recommended for everybody, unless you rely on
 deprecated features that have been removed.
 
 For those using the bleeding edge version in the
-mercurial repository, we encourage you to update to the `0.4.0` tag.
+git repository, we encourage you to update to the `0.4.0` tag.
 
 
 Deleting old cache
@@ -67,6 +67,10 @@ About Theano:
 
 http://deeplearning.net/software/theano/
 
+Theano-related projects:
+
+http://github.com/Theano/Theano/wiki/Related-projects
+
 About NumPy:
 
 http://numpy.scipy.org/
@@ -90,9 +94,9 @@ Delalleau, Guillaume Desjardins, Philippe Hamel, Pascal Lamblin,
 Razvan Pascanu and David Warde-Farley.
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
-its strength.
+their strengths.
 
 All questions/comments are always welcome on the Theano
-mailing-lists ( http://deeplearning.net/software/theano/ )
+mailing-lists ( http://deeplearning.net/software/theano/#community )
 
 
