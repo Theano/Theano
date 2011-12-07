@@ -8,7 +8,7 @@ Otherwise, in one case the results can change. In other cases, the warnings are
 turned into errors (see below for details).
 
 For those using the bleeding edge version in the
-mercurial repository, we encourage you to update to the `0.5` tag.
+git repository, we encourage you to update to the `0.5` tag.
 
 
 What's New
@@ -219,7 +219,7 @@ About Theano:
 
 http://deeplearning.net/software/theano/
 
-Theano related projects:
+Theano-related projects:
 
 http://github.com/Theano/Theano/wiki/Related-projects
 
@@ -242,9 +242,9 @@ I would like to thank all contributors of Theano. For this particular
 release, people names have been added next to what they did.
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
-its strength.
+their strengths.
 
 All questions/comments are always welcome on the Theano
-mailing-lists ( http://deeplearning.net/software/theano/ )
+mailing-lists ( http://deeplearning.net/software/theano/#community )
 
 
