@@ -907,7 +907,7 @@ def _as_scalar(res, dtype=None):
             # If dtype is float64, we will cast int64 to float64.
             # This is valid when res is a scalar used as input to a dot22
             # as the cast of the scalar can be done before or after the dot22
-            #  and this will give the same result.
+            # and this will give the same result.
             if theano.scalar.upcast(res.dtype, dtype) == dtype:
                 return T.cast(rval, dtype)
             else:
