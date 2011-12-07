@@ -736,13 +736,6 @@ This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
 within a MinGW shell if you installed Nose manually as described above.
 
-.. note::
-
-    The above workaround to run tests with the ``run_tests_in_batch.py`` script
-    is currently imperfect: some tests are not properly collected by nosetests
-    in this mode. This may result in some weird test failures starting with
-    ``ERROR: Failure: OSError``. We do not yet have a fix for this problem.
-
 Editing code in Visual Studio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
