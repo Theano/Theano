@@ -67,10 +67,10 @@ New features:
      * They must have the same length and corresponding type (Razvan)
  * Argmax output dtype is now int64 instead of int32. (Olivier)
  * Added the element-wise operation arccos. (Ian)
- * sparse dot with full grad output. (Yann Dauphin)
+ * Added sparse dot with dense grad output. (Yann Dauphin)
      * Optimized to Usmm and UsmmCscDense in some case (Yann)
-     * Note: theano.dot and sparse.dot return a structured_dot grad.
-       This means that the old grad returned a grad value with the same sparsity pattern than the inputs.
+     * Note: theano.dot and theano.sparse.structured_dot() always had a gradient with the same sparsity pattern as the inputs.
+       The new theano.sparse.dot() has a dense gradient for all inputs.
  * GpuAdvancedSubtensor1 supports broadcasted dimensions. (Frederic)
 
 
