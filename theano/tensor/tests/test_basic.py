@@ -388,7 +388,10 @@ def makeBroadcastTester(op, expected, checks={}, name=None, **kwargs):
         capitalize = True
     if capitalize:
         name = ''.join([x.capitalize() for x in name.split('_')])
-    name += "Tester"
+    # Some tests specify a name that already ends with 'Tester', while in other
+    # cases we need to add it manually.
+    if not name.endswith('Tester'):
+        name += "Tester"
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
             _expected = expected
