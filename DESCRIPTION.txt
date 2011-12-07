@@ -3,7 +3,7 @@ Theano is a Python library that allows you to define, optimize, and efficiently 
  * **tight integration with NumPy:** a similar interface to NumPy's. numpy.ndarrays are also used internally in Theano-compiled functions.
  * **transparent use of a GPU:** perform data-intensive computations up to 140x faster than on a CPU (support for float32 only).
  * **efficient symbolic differentiation:** Theano can compute derivatives for functions of one or many inputs.
- * **speed and stability optimizations:** avoid nasty bugs when computing expressions such as log(1+ exp(x) ) for large values of x.
+ * **speed and stability optimizations:** avoid nasty bugs when computing expressions such as log(1 + exp(x)) for large values of x.
  * **dynamic C code generation:** evaluate expressions faster.
  * **extensive unit-testing and self-verification:** includes tools for detecting and diagnosing bugs and/or potential problems.
 

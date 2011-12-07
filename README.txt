@@ -33,8 +33,10 @@ Theano (current directory) is the distribution directory.
         * sparse depends upon tensor
         * sandbox can depend on everything else
     * Theano/examples are copies of the example on the wiki
-    * Theano/benchmark, Theano/bin and Theano/examples are in the distribution,
-      but not in the python package
+    * Theano/benchmark and Theano/examples are in the distribution, but not in
+      the Python package
+    * Theano/bin contains executable scripts that are copied to the bin folder
+      when the Python package is installed
     * Tests are distributed and are part of the package, i.e. fall in
       the appropriate submodules
     * Theano/doc contains files and scripts used to generate the documentation
