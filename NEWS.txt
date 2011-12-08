@@ -1,7 +1,3 @@
-TODO for final release:
-
-    - Re-write this NEWS.txt file!
-
 Modifications in the trunk since the 0.4.1 release (August 12th, 2011) up to December 5th, 2011
 
 
