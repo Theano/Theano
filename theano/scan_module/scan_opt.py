@@ -377,6 +377,9 @@ class ScanSaveMem(gof.Optimizer):
         if hasattr(env, 'shape_feature'):
             shape_of = node.env.shape_feature.shape_of
         else:
+            # Each call site of shape_of is in a try..except
+            # That use a default version when the variable is not
+            # in the dictionary
             shape_of = {}
         # 1. Initialization of variables
         # Note 1) We do not actually care about outputs representing shared
@@ -475,12 +478,12 @@ class ScanSaveMem(gof.Optimizer):
                     if i > op.n_mit_mot:
                         try:
                             length = shape_of[out][0]
-                        except Exception:
+                        except KeyError:
                             length = node.inputs[0] + init_l[i]
                     else:
                         try:
                             length = shape_of[out][0]
-                        except Exception:
+                        except KeyError:
                             length = out.shape[0]
                     cf_slice = tensor.basic.get_canonical_form_slice(
                                                     this_slice[0], length)
@@ -578,7 +581,7 @@ class ScanSaveMem(gof.Optimizer):
                     else:
                         try:
                             length = shape_of[out][0]
-                        except Exception:
+                        except KeyError:
                             length = out.shape[0]
                     cf_slice = tensor.basic.get_canonical_form_slice(
                                                     this_slice[0], length)
