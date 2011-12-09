@@ -374,7 +374,10 @@ class ScanSaveMem(gof.Optimizer):
             else:
                 return tensor.as_tensor_variable(x)
 
-        shape_of = node.env.shape_feature.shape_of
+        if hasattr(env, 'shape_feature'):
+            shape_of = node.env.shape_feature.shape_of
+        else:
+            shape_of = {}
         # 1. Initialization of variables
         # Note 1) We do not actually care about outputs representing shared
         # variables (those have no intermediate values) so it is safer to
