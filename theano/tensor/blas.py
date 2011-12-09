@@ -442,7 +442,7 @@ class GemmRelated(Op):
 
         if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
             ||(%(_x)s->descr->type_num != %(_zout)s->descr->type_num))
-        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
+        { PyErr_SetString(PyExc_NotImplementedError, "type(x), type(y), type(z) are not all the same"); %(fail)s; }
         """
 
     #it is not necessary that a or b have the same type as x,y,z
