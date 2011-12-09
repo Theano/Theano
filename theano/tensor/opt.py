@@ -101,13 +101,16 @@ def broadcast_like(value, template, env, dtype=None):
     value = T.as_tensor_variable(value)
     if value.type == template.type:
         return value
-    shape_of = env.shape_feature.shape_of
-    if template not in shape_of:
+    if template not in env.variables:
         raise NotImplementedError('broadcast_like currently requires the '
                                   'template Variable to be in the env already')
+    if hasattr(env, 'shape_feature'):
+        new_shape = env.shape_feature.shape_of[template]
+    else:
+        new_shape = template.shape
     if dtype is None:
         dtype = template.dtype
-    rval = T.alloc(T.cast(value, dtype), *shape_of[template])
+    rval = T.alloc(T.cast(value, dtype), *new_shape)
     # the template may have 1s in its shape without being broadcastable
     if rval.broadcastable != template.broadcastable:
         rval = T.unbroadcast(rval, *[i for i in xrange(rval.ndim)
