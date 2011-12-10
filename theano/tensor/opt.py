@@ -785,6 +785,11 @@ class ShapeFeature(object):
         if s is None:
             self.shape_of[r] = s
         else:
+            if  r.ndim != len(s):
+                raise ShapeError("Something infered a shape with %d dimensions"
+                                 " for a variable with %d dimensions." % (
+                                 len(s), r.ndim))
+
             shape_vars = [self.unpack(s_i) for s_i in s]
             self.shape_of[r] = tuple(shape_vars)
             for sv in shape_vars:
@@ -902,6 +907,8 @@ class ShapeFeature(object):
             o_shapes = shape_infer(node,
                                    [self.shape_of[r] for r in node.inputs])
         except ShapeError:
+            if config.on_shape_error == "raise":
+                raise
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for
                                                        r in node.inputs])
         except NotImplementedError, e:
