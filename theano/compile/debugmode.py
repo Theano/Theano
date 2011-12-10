@@ -1333,7 +1333,8 @@ class _Linker(gof.link.LocalLinker):
                         if (storage_map[r][0] is None):
                             raise Exception('Missing input', r)
                         if not r.type.is_valid_value(storage_map[r][0]):
-                            raise InvalidValueError(r, storage_map[r][0])
+                            raise InvalidValueError(r, storage_map[r][0],
+                                   hint="Graph Input '%s' is missing" % str(r))
                         r_vals[r] = storage_map[r][0]
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
