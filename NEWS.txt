@@ -164,6 +164,7 @@ Others:
  * Filtering update. (James)
  * The buidbot now raises optimization errors instead of just printing a warning. (Frederic)
  * On Windows, the default compiledir changed to be local to the computer/user and not transferred with roaming profile. (Sebastian Urban)
+ * New theano flag "on_shape_error". Default to "warn" (same as previous behavior): it print a warning when an error occur when infering the shape of some apply node. The other accepted value is "raise" to raise an error when this happen.
 
 Reviewers (alphabetical order):
  * David, Frederic, Ian, James, Olivier, Razvan

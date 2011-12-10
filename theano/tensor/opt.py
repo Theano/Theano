@@ -34,6 +34,12 @@ from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
 
+theano.configparser.AddConfigVar('on_shape_error',
+                                 "warn: print a warning and use the default"
+                                 " value. raise: raise an error",
+                                 theano.configparser.EnumStr("warn", "raise"),
+        in_c_key=False)
+
 # Utilities
 
 
@@ -906,11 +912,15 @@ class ShapeFeature(object):
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
         except Exception, e:
-            _logger.error(('Failed to infer_shape from Op %s.\nInput shapes:'
-                           '%s\nException encountered during infer_shape: '
-                           '%s\nException message: %s\nTraceback: %s') %
-                          (node.op, [self.shape_of[r] for r in node.inputs],
-                           type(e), str(e), traceback.format_exc()))
+            msg = ('Failed to infer_shape from Op %s.\nInput shapes:'
+                   '%s\nException encountered during infer_shape: '
+                   '%s\nException message: %s\nTraceback: %s') % (
+                node.op, [self.shape_of[r] for r in node.inputs],
+                type(e), str(e), traceback.format_exc())
+            if config.on_shape_error == "raise":
+                raise Exception(msg)
+            else:
+                _logger.error(msg)
             o_shapes = self.default_infer_shape(
                 node, [self.shape_of[r] for r in node.inputs])
 
