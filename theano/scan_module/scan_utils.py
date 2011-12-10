@@ -372,6 +372,10 @@ def infer_shape(outs, inputs, input_shapes):
     # inside.  We don't use the full ShapeFeature interface, but we
     # let it initialize itself with an empty env, otherwise we will
     # need to do it manually
+    for inp, inp_shp in zip(inputs, input_shapes):
+        if inp_shp is not None and len(inp_shp) != inp.ndim:
+            assert len(inp_shp) == inp.ndim
+
     shape_feature = tensor.opt.ShapeFeature()
     shape_feature.on_attach(theano.gof.Env([], []))
 
