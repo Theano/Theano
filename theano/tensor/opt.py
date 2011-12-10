@@ -38,7 +38,7 @@ theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
                                  " value. raise: raise an error",
                                  theano.configparser.EnumStr("warn", "raise"),
-        in_c_key=False)
+                                 in_c_key=False)
 
 # Utilities
 
