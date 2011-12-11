@@ -502,6 +502,26 @@ Final version
    double = Double()
 
 
+DeepCopyOp
+==========
+
+We have an internal Op called DeepCopyOp. It is used to make sure we
+respect the user vs Theano memory region as described in the :ref:`tutorial
+<aliasing>`. Theano have a python implementation that call the object
+``copy()`` or``deepcopy()`` method for Theano Type that it don't know
+how to generate c code.
+
+You can implement c_code for this op. You register it like this:
+
+.. code-block:: python
+
+   theano.compile.function_module.register_DeepCopyOp_c_code(YOUR_TYPE_CLASS, THE_C_CODE)
+
+In your c code, you should use %(iname)s and %(oname)s to represent
+the c variable name of the DeepCopyOp input and output
+respectively. See an example for the gpu object in the file
+`theano/sandbox/cuda/type.py`.
+
 Output Guard
 ============
 
