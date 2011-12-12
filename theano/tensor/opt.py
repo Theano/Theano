@@ -786,9 +786,10 @@ class ShapeFeature(object):
             self.shape_of[r] = s
         else:
             if  r.ndim != len(s):
-                raise ShapeError("Something infered a shape with %d dimensions"
-                                 " for a variable with %d dimensions." % (
-                                 len(s), r.ndim))
+                raise ShapeError(
+                        "Something inferred a shape with %d dimensions "
+                        "for a variable with %d dimensions." % (
+                        len(s), r.ndim))
 
             shape_vars = [self.unpack(s_i) for s_i in s]
             self.shape_of[r] = tuple(shape_vars)
@@ -919,7 +920,7 @@ class ShapeFeature(object):
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
         except Exception, e:
-            msg = ('Failed to infer_shape from Op %s.\nInput shapes:'
+            msg = ('Failed to infer_shape from Op %s.\nInput shapes: '
                    '%s\nException encountered during infer_shape: '
                    '%s\nException message: %s\nTraceback: %s') % (
                 node.op, [self.shape_of[r] for r in node.inputs],
@@ -927,7 +928,7 @@ class ShapeFeature(object):
             if config.on_shape_error == "raise":
                 raise Exception(msg)
             else:
-                _logger.error(msg)
+                _logger.warning(msg)
             o_shapes = self.default_infer_shape(
                 node, [self.shape_of[r] for r in node.inputs])
 
