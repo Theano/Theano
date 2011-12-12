@@ -15,6 +15,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import time
+from itertools import izip
 
 import numpy
 
@@ -285,7 +286,7 @@ class Scan(PureOp):
             # If everything went OK up to here, there is still one thing to
             # check. Namely, do the internal graph represent same
             # computations
-            for self_in, other_in in zip(self.inputs, other.inputs):
+            for self_in, other_in in izip(self.inputs, other.inputs):
                 if self_in.type != other_in.type:
                     return False
 
@@ -909,12 +910,12 @@ class Scan(PureOp):
         # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
         # is the shape of self.inputs[i]
 
-        for inp, inp_shp in zip(node.inputs, input_shapes):
+        for inp, inp_shp in izip(node.inputs, input_shapes):
             assert inp_shp is None or len(inp_shp) == inp.ndim
 
         # sequences
         # We skip iputs_shapes[0] as it is the total or current number
-        # of iteration
+        # of iterations.
         seqs_shape = [x[1:] for x in input_shapes[1:1 + self.n_seqs]]
 
         # mit_mot, mit_sot, sit_sot
@@ -938,7 +939,7 @@ class Scan(PureOp):
         # node.inputs
         inner_non_sequences = self.inputs[len(seqs_shape) + len(outs_shape):]
         out_equivalent = {}
-        for in_ns, out_ns in zip(inner_non_sequences, node.inputs[offset:]):
+        for in_ns, out_ns in izip(inner_non_sequences, node.inputs[offset:]):
             out_equivalent[in_ns] = out_ns
         if self.as_while:
             self_outs = self.outputs[:-1]
@@ -971,7 +972,7 @@ class Scan(PureOp):
                 r = node.outputs[n_outs + x]
                 assert r.ndim == 1 + len(out_shape_x)
                 shp = [node.inputs[offset + self.n_shared_outs + x]]
-                for i, shp_i in zip(xrange(1, r.ndim), out_shape_x):
+                for i, shp_i in izip(xrange(1, r.ndim), out_shape_x):
                     # Validate shp_i. v_shape_i is either None (if invalid),
                     # or a (variable, Boolean) tuple. The Boolean indicates
                     # whether variable is shp_i (if True), or an valid
@@ -993,7 +994,7 @@ class Scan(PureOp):
         # leading dimension so we replace it for every entry with Shape_i
         if self.as_while:
             scan_outs = [(Shape_i(0)(o),)+x[1:]
-                         for o, x in zip(node.outputs,scan_outs)]
+                         for o, x in izip(node.outputs, scan_outs)]
         return scan_outs
 
     ### GRAD FUNCTION
