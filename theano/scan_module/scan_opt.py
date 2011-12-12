@@ -377,9 +377,9 @@ class ScanSaveMem(gof.Optimizer):
         if hasattr(env, 'shape_feature'):
             shape_of = node.env.shape_feature.shape_of
         else:
-            # Each call site of shape_of is in a try..except
-            # That use a default version when the variable is not
-            # in the dictionary
+            # Each access to shape_of is in a try..except block in order to
+            # use a default version when the variable is not in the shape_of
+            # dictionary.
             shape_of = {}
         # 1. Initialization of variables
         # Note 1) We do not actually care about outputs representing shared

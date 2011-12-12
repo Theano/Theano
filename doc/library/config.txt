@@ -249,7 +249,7 @@ import theano and print the config variable, as in:
 
     Default: 'warn'
 
-    When an exception is raised when infering the shape of some apply
+    When an exception is raised when inferring the shape of some apply
     node, either warn the user and use a default value ('warn'), or
     raise the exception ('raise').
 
