@@ -507,9 +507,9 @@ DeepCopyOp
 
 We have an internal Op called DeepCopyOp. It is used to make sure we
 respect the user vs Theano memory region as described in the :ref:`tutorial
-<aliasing>`. Theano have a python implementation that call the object
-``copy()`` or``deepcopy()`` method for Theano Type that it don't know
-how to generate c code.
+<aliasing>`. Theano has a Python implementation that calls the object's
+``copy()`` or ``deepcopy()`` method for Theano types for which it does not
+know how to generate C code.
 
 You can implement c_code for this op. You register it like this:
 
@@ -517,10 +517,10 @@ You can implement c_code for this op. You register it like this:
 
    theano.compile.function_module.register_DeepCopyOp_c_code(YOUR_TYPE_CLASS, THE_C_CODE)
 
-In your c code, you should use %(iname)s and %(oname)s to represent
-the c variable name of the DeepCopyOp input and output
-respectively. See an example for the gpu object in the file
-`theano/sandbox/cuda/type.py`.
+In your C code, you should use %(iname)s and %(oname)s to represent
+the C variable names of the DeepCopyOp input and output
+respectively. See an example for the type ``CudaNdarrayType`` (GPU array)
+in the file `theano/sandbox/cuda/type.py`.
 
 Output Guard
 ============

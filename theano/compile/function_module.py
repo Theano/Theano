@@ -130,13 +130,13 @@ class AliasedMemoryError(Exception):
 ###
 
 def register_DeepCopyOp_c_code(typ, code):
-    """ Tell DeepCopyOp how to generate c code for a Theano Type
+    """ Tell DeepCopyOp how to generate C code for a Theano Type
 
-    :param typ: A Theano type. It must be theano class itself and not an
-                object of the class.
-    :param code: C code that deep copy the Theano type 'typ'.
-                 use %(iname)s and %(oname)s for the input and output c
-                 variable name respectively.
+    :param typ: A Theano type. It must be the Theano class itself and not an
+                instance of the class.
+    :param code: C code that deep copies the Theano type 'typ'.
+                 Use %(iname)s and %(oname)s for the input and output C
+                 variable names respectively.
     """
     DeepCopyOp.c_codes[typ] = code
 
