@@ -1,15 +1,16 @@
 """
 This file test tensor op that should also operate on CudaNdaray.
 """
+import copy
+from nose.plugins.skip import SkipTest
+
 import numpy
 
-from theano import tensor
-
 import theano
+from theano import tensor
 import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -105,3 +106,24 @@ def test_may_share_memory_cuda():
             raise Exception("An error was expected")
         except TypeError:
             pass
+
+
+def test_deepcopy():
+    a = cuda.fmatrix()
+    a_v = cuda.CudaNdarray(numpy.zeros((3, 4), dtype='float32'))
+
+    # We force the c code to check that we generate c code
+    mode = theano.Mode("c", mode_with_gpu.optimizer)
+    f = theano.function([a], a, mode=mode)
+    theano.printing.debugprint(f)
+    out = f(a_v)
+    assert out is not a_v
+    assert numpy.allclose(numpy.asarray(a_v), numpy.asarray(out))
+
+    # We force the python linker as the default code should work for this op
+    mode = theano.Mode("py", mode_with_gpu.optimizer)
+    f = theano.function([a], a, mode=mode)
+    theano.printing.debugprint(f)
+    out = f(a_v)
+    assert out is not a_v
+    assert numpy.allclose(numpy.asarray(a_v), numpy.asarray(out))

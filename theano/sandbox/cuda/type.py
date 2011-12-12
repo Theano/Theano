@@ -356,6 +356,19 @@ class CudaNdarrayType(Type):
 # to have OutputGuard generate C code for this type.
 theano.compile.mode.register_OutputGuard_c_code(CudaNdarrayType)
 
+# Register CudaNdarrayType to the DeepCopyOp list of types with c code.
+theano.compile.function_module.register_DeepCopyOp_c_code(CudaNdarrayType, """
+        Py_XDECREF(%(oname)s);
+
+        %(oname)s = (CudaNdarray*)CudaNdarray_Copy(%(iname)s);
+
+        if (!%(oname)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
+            %(fail)s;
+        }
+        """)
+
 
 # THIS WORKS
 # But CudaNdarray instances don't compare equal to one another, and what about __hash__ ?

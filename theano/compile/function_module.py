@@ -129,7 +129,21 @@ class AliasedMemoryError(Exception):
 ### Function
 ###
 
+def register_DeepCopyOp_c_code(typ, code):
+    """ Tell DeepCopyOp how to generate C code for a Theano Type
+
+    :param typ: A Theano type. It must be the Theano class itself and not an
+                instance of the class.
+    :param code: C code that deep copies the Theano type 'typ'.
+                 Use %(iname)s and %(oname)s for the input and output C
+                 variable names respectively.
+    """
+    DeepCopyOp.c_codes[typ] = code
+
+
 class DeepCopyOp(theano.gof.Op):
+    c_codes = {}  # Theano Type, code
+
     def __init__(self):
         pass
 
@@ -175,19 +189,8 @@ class DeepCopyOp(theano.gof.Op):
         }
 
         """%locals()
-        elif isinstance(node.inputs[0].type, theano.sandbox.cuda.CudaNdarrayType):
-            return """
-        Py_XDECREF(%(oname)s);
-
-        %(oname)s = (CudaNdarray*)CudaNdarray_Copy(%(iname)s);
-
-        if (!%(oname)s)
-        {
-            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
-            %(fail)s;
-        }
-
-        """%locals()
+        elif node.inputs[0].type.__class__ in self.c_codes:
+            return self.c_codes[node.inputs[0].type.__class__] % locals()
         else:
             super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
