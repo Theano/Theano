@@ -65,9 +65,9 @@ def test_dot_mv():
 
 def test_gemv1():
     ''' test vector1+dot(matrix,vector2) '''
-    v1 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
-    v2 = theano.shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
-    m  = theano.shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
+    v1 = theano.tensor._shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+    v2 = theano.tensor._shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
+    m  = theano.tensor._shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
 
     no_gpu_f = theano.function([], v2+theano.dot(m,v1), mode = mode_without_gpu)
     gpu_f    = theano.function([], v2+theano.dot(m,v1), mode = mode_with_gpu)
