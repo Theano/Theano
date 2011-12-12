@@ -1488,7 +1488,7 @@ class T_max_and_argmax(unittest.TestCase):
         assert len(v) == 0
 
     def test2(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
         for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
                                  ([0, 1], None), ([1, 0], None)]:
@@ -1500,7 +1500,7 @@ class T_max_and_argmax(unittest.TestCase):
             assert tuple(v_shape) == numpy.max(data, np_axis).shape
 
     def test2_invalid(self):
-        n = as_tensor_variable(numpy.random.rand(2, 3))
+        n = as_tensor_variable(rand(2, 3))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.level
@@ -1515,7 +1515,7 @@ class T_max_and_argmax(unittest.TestCase):
             _logger.setLevel(oldlevel)
 
     def test2_invalid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2, 3))
+        n = as_tensor_variable(rand(2, 3))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
@@ -1528,7 +1528,7 @@ class T_max_and_argmax(unittest.TestCase):
             sys.stderr = old_stderr
 
     def test2_valid_neg(self):
-        n = as_tensor_variable(numpy.random.rand(2, 3))
+        n = as_tensor_variable(rand(2, 3))
         v, i = eval_outputs(max_and_argmax(n, -1))
         assert i.dtype == 'int64'
         self.assertTrue(v.shape == (2,))
@@ -1547,7 +1547,7 @@ class T_max_and_argmax(unittest.TestCase):
         assert v == (3)
 
     def test3(self):
-        data = numpy.random.rand(2, 3, 4)
+        data = rand(2, 3, 4)
         n = as_tensor_variable(data)
         for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
                                  ([0, 1, 2], None), ([1, 2, 0], None)]:
@@ -1559,7 +1559,7 @@ class T_max_and_argmax(unittest.TestCase):
             assert tuple(v) == numpy.max(data, np_axis).shape
 
     def test_grad(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_max(data, max_grad_data, axis=None):
@@ -1595,8 +1595,17 @@ class T_max_and_argmax(unittest.TestCase):
             check_grad_max(data, eval_outputs(grad(
                 max_and_argmax(n.flatten())[0], n)))
 
+        # Test 3d inner dimensions
+        data = rand(3, 4, 5)
+
+        for i in [0, 1, 2]:
+            utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
+            utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
+
         # Test 4d inner dimensions
-        data = numpy.random.rand(2, 3, 4, 5)
+        # Use float64 as otherwise the test don't pass.
+        data = rand(2, 3, 4, 5).astype("float64")
+
         for i in [0, 1, 2, 3]:
             utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
             utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
@@ -1629,7 +1638,7 @@ class T_argmin_argmax(unittest.TestCase):
         assert len(v) == 0
 
     def test2(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
             for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
@@ -1641,7 +1650,7 @@ class T_argmin_argmax(unittest.TestCase):
 
     def test2_invalid(self):
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
             oldlevel = _logger.level
@@ -1657,7 +1666,7 @@ class T_argmin_argmax(unittest.TestCase):
 
     def test2_invalid_neg(self):
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             old_stderr = sys.stderr
             sys.stderr = StringIO.StringIO()
             try:
@@ -1671,7 +1680,7 @@ class T_argmin_argmax(unittest.TestCase):
 
     def test2_valid_neg(self):
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             i = eval_outputs(fct(n, -1))
             self.assertTrue(i.shape == (2,))
             self.assertTrue(numpy.all(i == nfct(n.value, -1)))
@@ -1685,7 +1694,7 @@ class T_argmin_argmax(unittest.TestCase):
             assert v == (3)
 
     def test3(self):
-        data = numpy.random.rand(2, 3, 4)
+        data = rand(2, 3, 4)
         n = as_tensor_variable(data)
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
             for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (2, 2),
@@ -1697,7 +1706,7 @@ class T_argmin_argmax(unittest.TestCase):
                 assert tuple(v_shape) == nfct(data, np_axis).shape
 
     def test_grad_argmin(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
 
         #test grad of argmin
@@ -1716,7 +1725,7 @@ class T_argmin_argmax(unittest.TestCase):
             pass
 
     def test_grad_argmax(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
 
         #test grad of argmax
@@ -1759,7 +1768,7 @@ class T_min_max(unittest.TestCase):
             assert len(v) == 0
 
     def test2(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
         for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
             for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
@@ -1771,7 +1780,7 @@ class T_min_max(unittest.TestCase):
 
     def test2_invalid(self):
         for fct in [max, min]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             # Silence expected error messages
             _logger = logging.getLogger('theano.gof.opt')
             oldlevel = _logger.level
@@ -1787,7 +1796,7 @@ class T_min_max(unittest.TestCase):
 
     def test2_invalid_neg(self):
         for fct in [max, min]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             old_stderr = sys.stderr
             sys.stderr = StringIO.StringIO()
             try:
@@ -1801,7 +1810,7 @@ class T_min_max(unittest.TestCase):
 
     def test2_valid_neg(self):
         for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
-            n = as_tensor_variable(numpy.random.rand(2, 3))
+            n = as_tensor_variable(rand(2, 3))
             v = eval_outputs(fct(n, -1))
             self.assertTrue(v.shape == (2,))
             self.assertTrue(numpy.all(v == nfct(n.value, -1)))
@@ -1816,7 +1825,7 @@ class T_min_max(unittest.TestCase):
 
     def test3(self):
         # Test with 1 axis or all axis out of 3 dims
-        data = numpy.random.rand(2, 3, 4)
+        data = rand(2, 3, 4)
         n = as_tensor_variable(data)
         for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
             for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (2, 2),
@@ -1829,7 +1838,7 @@ class T_min_max(unittest.TestCase):
 
     def test3b(self):
         # Test with 2 axis out of 3 dims
-        data = numpy.random.rand(2, 3, 4)
+        data = rand(2, 3, 4)
         n = as_tensor_variable(data)
         for fct, nfct in [(max, numpy.max), (min, numpy.min)]:
             for axis in [[0, 1], [1, 2], [0, 2]]:
@@ -1840,7 +1849,7 @@ class T_min_max(unittest.TestCase):
                 assert tuple(v_shape) == np_v.shape
 
     def test_grad_max(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_max(data, max_grad_data, axis=None):
@@ -1874,7 +1883,7 @@ class T_min_max(unittest.TestCase):
         check_grad_max(data, eval_outputs(grad(max(n.flatten()), n)))
 
     def test_grad_min(self):
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
 
         def check_grad_min(data, min_grad_data, axis=None):
@@ -1914,7 +1923,7 @@ class T_min_max(unittest.TestCase):
         This not implemented, so we disable the test. See ticket:
         http://trac-hg.assembla.com/theano/ticket/511
         """
-        data = numpy.random.rand(2, 3)
+        data = rand(2, 3)
         n = as_tensor_variable(data)
         for fct in [max_and_argmax, max, min]:
             utt.verify_grad(lambda v: fct(v, axis=[0, 1]), [data])
@@ -2191,7 +2200,7 @@ class T_subtensor(unittest.TestCase):
 
     def test_grad_1d(self):
         subi = 0
-        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        data = numpy.asarray(rand(2,3), dtype=self.dtype)
         n = self.shared(data)
         z = scal.constant(subi)
         t = n[z:,z]
@@ -2211,7 +2220,7 @@ class T_subtensor(unittest.TestCase):
         self.assertTrue(numpy.allclose(gval, good), (gval, good))
 
     def test_grad_0d(self):
-        data = numpy.asarray(numpy.random.rand(2,3), dtype=self.dtype)
+        data = numpy.asarray(rand(2,3), dtype=self.dtype)
         n = self.shared(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
@@ -2229,16 +2238,16 @@ class T_subtensor(unittest.TestCase):
         self.assertTrue(numpy.allclose(gval, good), (gval, good))
 
     def test_ok_list(self):
-        for data, idx in [(numpy.random.rand(4), [1,0]),
-                          (numpy.random.rand(4,5), [2,3]),
-                          (numpy.random.rand(4,2,3), [0,3]),
-                          (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0]),
-                          (numpy.random.rand(4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
+        for data, idx in [(rand(4), [1,0]),
+                          (rand(4,5), [2,3]),
+                          (rand(4,2,3), [0,3]),
+                          (rand(4,2,3), [3,3,1,1,2,2,0,0]),
+                          (rand(4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
                           # Test 4 dims as gpu code use another algo in that case
                           # This new algo is not as much optimized for that case.
-                          (numpy.random.rand(4,4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
+                          (rand(4,4,2,3), [3,3,1,1,2,2,0,0,-1,-2,-3,-4]),
                           # Test with TensorConstant index.
-                          (numpy.random.rand(4,2,3), constant([3,3,1,1,2,2,0,0])),
+                          (rand(4,2,3), constant([3,3,1,1,2,2,0,0])),
                           ]:
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data)
@@ -2566,7 +2575,7 @@ class T_subtensor(unittest.TestCase):
             pass
 
     def test_grad_list(self):
-        data = numpy.random.rand(4)
+        data = rand(4)
         data = numpy.asarray(data, dtype=self.dtype)
         idxs = [[i] for i in range(data.shape[0])]
         for i in range(data.shape[0]):
@@ -2574,20 +2583,20 @@ class T_subtensor(unittest.TestCase):
                 idxs.append([i,j,(i+1)%data.shape[0]])
         self.grad_list_(idxs, data)
 
-        data = numpy.random.rand(4,3)
+        data = rand(4,3)
         data = numpy.asarray(data, dtype=self.dtype)
         self.grad_list_(idxs, data)
 
-        data = numpy.random.rand(4,3,2)
+        data = rand(4,3,2)
         data = numpy.asarray(data, dtype=self.dtype)
         self.grad_list_(idxs, data)
 
     def test_shape_list(self):
         #TODO for all type of subtensor shape
-        for data, idx in [(numpy.random.rand(4), [1,0]),
-                          (numpy.random.rand(4,2), [2,3]),
-                          (numpy.random.rand(4,2,3), [0,3]),
-                          (numpy.random.rand(4,2,3), [3,3,1,2,2,]),
+        for data, idx in [(rand(4), [1,0]),
+                          (rand(4,2), [2,3]),
+                          (rand(4,2,3), [0,3]),
+                          (rand(4,2,3), [3,3,1,2,2,]),
                           ]:
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data)
@@ -3264,13 +3273,13 @@ class T_add(unittest.TestCase):
                 self.assertTrue(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
-        utt.verify_grad(add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+        utt.verify_grad(add, [numpy.asarray([3.0]), rand(3)])
     def test_grad_scalar_r(self):
-        utt.verify_grad(add, [numpy.random.rand(3), numpy.asarray([3.0])])
+        utt.verify_grad(add, [rand(3), numpy.asarray([3.0])])
     def test_grad_row(self):
-        utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+        utt.verify_grad(add, [rand(3, 5), rand(1, 5)])
     def test_grad_col(self):
-        utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+        utt.verify_grad(add, [rand(3, 5), rand(3, 1)])
 
 class T_ceil(unittest.TestCase):
     def test_complex(self):
@@ -3336,7 +3345,7 @@ class T_mean(unittest.TestCase):
         #Simple test...
         x = tensor.vector()
         f = theano.function([x],tensor.mean(x))
-        data = numpy.asarray(numpy.random.rand(50), dtype=config.floatX)
+        data = numpy.asarray(rand(50), dtype=config.floatX)
         assert numpy.allclose(f(data), numpy.mean(data))
 
 
@@ -3368,8 +3377,8 @@ class test_matinv(unittest.TestCase):
         fn = inplace_func([a,b], [ssdiff,g_b])
 
         # use the function
-        x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
-        w = numpy.random.rand(dim,dim)
+        x = rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
+        w = rand(dim,dim)
         x = numpy.asarray(x, dtype=config.floatX)
         w = numpy.asarray(w, dtype=config.floatX)
 
@@ -3388,8 +3397,8 @@ class test_matinv(unittest.TestCase):
 
         utt.seed_rng()
         # hand-coded numpy implementation for verification
-        x = numpy.random.rand(3,3)+0.1
-        w = numpy.random.rand(3,3)
+        x = rand(3,3)+0.1
+        w = rand(3,3)
         x = numpy.asarray(x, dtype=config.floatX)
         w = numpy.asarray(w, dtype=config.floatX)
         ones = numpy.ones((3,3), dtype=config.floatX)
@@ -3408,7 +3417,7 @@ class t_dot(unittest.TestCase):
         utt.seed_rng()
     @staticmethod
     def rand(*args):
-        return numpy.random.rand(*args)
+        return rand(*args)
 
     def cmp_dot(self,x,y):
         #x, y are matrices or numbers
@@ -3712,7 +3721,7 @@ class T_op_cache(unittest.TestCase):
         fn_py = inplace_func([v], gv)
         fn_c_or_py = inplace_func([v], gv)
 
-        a = numpy.random.rand(5,2).astype(config.floatX)
+        a = rand(5,2).astype(config.floatX)
         self.assertTrue(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 class T_reshape(unittest.TestCase):
@@ -3801,7 +3810,7 @@ class T_reshape(unittest.TestCase):
         f = function([a, shapes], z.shape)
 
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.uniform(size=(3,4)).astype(config.floatX)
+        a_val = rng.uniform(size=(3, 4)).astype(config.floatX)
 
         self.assertTrue((f(a_val, [4, 3]) == [4, 3]).all())
         self.assertTrue((f(a_val, [-1, 3]) == [4, 3]).all())
@@ -4281,13 +4290,13 @@ class TestPermuteRowElements(unittest.TestCase):
 
     def test_2_1(self):
         """Test broadcasting in PermuteRowElements(matrix, vector)"""
-        input = dmatrix()
+        input = matrix()
         p = ivector()
         out = permute_row_elements(input, p)
         permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        input_val = rng.uniform(size=(3,5))
+        input_val = rng.uniform(size=(3, 5)).astype(config.floatX)
         p_val = rng.permutation(5).astype('int32')
         out_val = permute(input_val, p_val)
 
@@ -4303,13 +4312,13 @@ class TestPermuteRowElements(unittest.TestCase):
 
     def test_2_2(self):
         """Test PermuteRowElements(matrix, matrix)"""
-        input = dmatrix()
+        input = matrix()
         p = imatrix()
         out = permute_row_elements(input, p)
         permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        input_val = rng.uniform(size=(3,5))
+        input_val = rng.uniform(size=(3, 5)).astype(config.floatX)
         p_val = numpy.asarray([rng.permutation(5) for i in range(3)],
                               dtype='int32')
         out_val = permute(input_val, p_val)
@@ -4328,13 +4337,13 @@ class TestPermuteRowElements(unittest.TestCase):
     def test_1_2(self):
         """Test PermuteRowElements(vector, matrix)
         Different permutations will be applied to the same input vector"""
-        input = dvector()
+        input = vector()
         p = imatrix()
         out = permute_row_elements(input, p)
         permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        input_val = rng.uniform(size=(5,))
+        input_val = rng.uniform(size=(5,)).astype(config.floatX)
         p_val = numpy.asarray([rng.permutation(5) for i in range(3)], dtype='int32')
         out_val = permute(input_val, p_val)
 
@@ -4353,13 +4362,13 @@ class TestPermuteRowElements(unittest.TestCase):
         input.type.broadcastable = (False, True, False),
         p.type.broadcastable = (False, False)."""
 
-        input = TensorType('float64', (False, True, False))()
+        input = TensorType('floatX', (False, True, False))()
         p = imatrix()
         out = permute_row_elements(input, p)
         permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        input_val = rng.uniform(size=(4,1,5))
+        input_val = rng.uniform(size=(4, 1, 5)).astype(config.floatX)
         p_val = numpy.asarray([rng.permutation(5) for i in range(3)],
                               dtype='int32')
         out_val = permute(input_val, p_val)
@@ -4381,7 +4390,7 @@ class test_tensordot(unittest.TestCase):
         utt.seed_rng()
 
     def rand(self, *shape):
-        return numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
+        return numpy.asarray(rand(*shape), dtype=config.floatX)
 
     def test0(self):
 
@@ -4509,7 +4518,7 @@ class test_tensordot(unittest.TestCase):
         bmat = dmatrix()# We let at float64 to test mix of float32 and float64.
         axes = 1
         aval = self.rand(4,5).astype('float32')
-        bval = numpy.random.rand(5,3)
+        bval = rand(5,3)
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
@@ -5087,8 +5096,8 @@ def test_unalign():
     b = numpy.empty(1e4, dtype=dtype)['f1']
     assert not a.flags.aligned
     assert not b.flags.aligned
-    a[:] = numpy.random.rand(len(a))
-    b[:] = numpy.random.rand(len(b))
+    a[:] = rand(len(a))
+    b[:] = rand(len(b))
     out_numpy = 2*a + 3*b
 
     av,bv = tensor.vectors('ab')
@@ -5149,10 +5158,10 @@ class T_get_constant_value(unittest.TestCase):
         assert get_constant_value(v.shape[0])==1
 
     def test_subtensor_of_constant(self):
-        c = constant(numpy.random.rand(5))
+        c = constant(rand(5))
         for i in range(c.value.shape[0]):
             assert get_constant_value(c[i]) == c.value[i]
-        c = constant(numpy.random.rand(5,5))
+        c = constant(rand(5,5))
         for i in range(c.value.shape[0]):
             for j in range(c.value.shape[1]):
                 assert get_constant_value(c[i,j]) == c.value[i,j]
