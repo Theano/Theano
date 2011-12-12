@@ -34,6 +34,12 @@ from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
 
+theano.configparser.AddConfigVar('on_shape_error',
+                                 "warn: print a warning and use the default"
+                                 " value. raise: raise an error",
+                                 theano.configparser.EnumStr("warn", "raise"),
+                                 in_c_key=False)
+
 # Utilities
 
 
@@ -101,13 +107,16 @@ def broadcast_like(value, template, env, dtype=None):
     value = T.as_tensor_variable(value)
     if value.type == template.type:
         return value
-    shape_of = env.shape_feature.shape_of
-    if template not in shape_of:
+    if template not in env.variables:
         raise NotImplementedError('broadcast_like currently requires the '
                                   'template Variable to be in the env already')
+    if hasattr(env, 'shape_feature'):
+        new_shape = env.shape_feature.shape_of[template]
+    else:
+        new_shape = template.shape
     if dtype is None:
         dtype = template.dtype
-    rval = T.alloc(T.cast(value, dtype), *shape_of[template])
+    rval = T.alloc(T.cast(value, dtype), *new_shape)
     # the template may have 1s in its shape without being broadcastable
     if rval.broadcastable != template.broadcastable:
         rval = T.unbroadcast(rval, *[i for i in xrange(rval.ndim)
@@ -776,6 +785,11 @@ class ShapeFeature(object):
         if s is None:
             self.shape_of[r] = s
         else:
+            if  r.ndim != len(s):
+                raise ShapeError("Something infered a shape with %d dimensions"
+                                 " for a variable with %d dimensions." % (
+                                 len(s), r.ndim))
+
             shape_vars = [self.unpack(s_i) for s_i in s]
             self.shape_of[r] = tuple(shape_vars)
             for sv in shape_vars:
@@ -893,6 +907,8 @@ class ShapeFeature(object):
             o_shapes = shape_infer(node,
                                    [self.shape_of[r] for r in node.inputs])
         except ShapeError:
+            if config.on_shape_error == "raise":
+                raise
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for
                                                        r in node.inputs])
         except NotImplementedError, e:
@@ -903,11 +919,15 @@ class ShapeFeature(object):
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
         except Exception, e:
-            _logger.error(('Failed to infer_shape from Op %s.\nInput shapes:'
-                           '%s\nException encountered during infer_shape: '
-                           '%s\nException message: %s\nTraceback: %s') %
-                          (node.op, [self.shape_of[r] for r in node.inputs],
-                           type(e), str(e), traceback.format_exc()))
+            msg = ('Failed to infer_shape from Op %s.\nInput shapes:'
+                   '%s\nException encountered during infer_shape: '
+                   '%s\nException message: %s\nTraceback: %s') % (
+                node.op, [self.shape_of[r] for r in node.inputs],
+                type(e), str(e), traceback.format_exc())
+            if config.on_shape_error == "raise":
+                raise Exception(msg)
+            else:
+                _logger.error(msg)
             o_shapes = self.default_infer_shape(
                 node, [self.shape_of[r] for r in node.inputs])
 

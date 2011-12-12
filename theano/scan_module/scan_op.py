@@ -166,7 +166,13 @@ class Scan(PureOp):
                     'could happen if the inner graph of scan results in '
                     'an upcast or downcast. Please make sure that you use'
                     'dtypes consistently')
-
+        # TODO make the assert exact
+        # TODO assert the type(dtype, nbdim of self.inputs and inputs correspond)
+        #assert len(inputs) >= len(self.inputs)
+#        if self.info['as_while']:
+#            assert len(inputs) == len(self.inputs) + 2 + self.info["n_nit_sot"]
+#        else:
+#            assert len(inputs) == len(self.inputs) + 1 + self.info["n_nit_sot"]
         # Flags that indicate which inputs are vectors
 
         self.vector_seqs = [seq.ndim == 1 for seq in
@@ -903,7 +909,12 @@ class Scan(PureOp):
         # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
         # is the shape of self.inputs[i]
 
+        for inp, inp_shp in zip(node.inputs, input_shapes):
+            assert inp_shp is None or len(inp_shp) == inp.ndim
+
         # sequences
+        # We skip iputs_shapes[0] as it is the total or current number
+        # of iteration
         seqs_shape = [x[1:] for x in input_shapes[1:1 + self.n_seqs]]
 
         # mit_mot, mit_sot, sit_sot
