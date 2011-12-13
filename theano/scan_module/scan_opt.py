@@ -200,8 +200,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                         not isinstance(nd.op, theano.compile.ViewOp) and
                         not isinstance(nd.op, theano.compile.DeepCopyOp) and
                         # and we didn't already looked at this node
-                        not nd in to_remove
-                   ):
+                        not nd in to_remove):
 
                     # We have a candidate node to removable
                     # Step 1. Reconstruct it on outside
@@ -711,8 +710,7 @@ class ScanSaveMem(gof.Optimizer):
                             fslice = slice(
                                 sanitize(cnf_slice[0].start),
                                 sanitize(cnf_slice[0].stop),
-                                sanitize(cnf_slice[0].step)
-                                )
+                                sanitize(cnf_slice[0].step))
                         else:
                             fslice = sanitize(cnf_slice[0])
 
