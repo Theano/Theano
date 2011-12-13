@@ -27,9 +27,31 @@ import pycuda.driver as drv
 import pycuda.gpuarray
 
 
-def test_pycuda_simple():
-    x = cuda_ndarray.CudaNdarray.zeros((5, 5))
+def test_pycuda_only():
+    """Run pycuda only example to test that pycuda work."""
+    from pycuda.compiler import SourceModule
+    mod = SourceModule("""
+__global__ void multiply_them(float *dest, float *a, float *b)
+{
+  const int i = threadIdx.x;
+  dest[i] = a[i] * b[i];
+}
+""")
 
+    multiply_them = mod.get_function("multiply_them")
+
+    # Test with pycuda in/out of numpy.ndarray
+    a = numpy.random.randn(100).astype(numpy.float32)
+    b = numpy.random.randn(100).astype(numpy.float32)
+    dest = numpy.zeros_like(a)
+    multiply_them(
+        drv.Out(dest), drv.In(a), drv.In(b),
+        block=(400, 1, 1), grid=(1, 1))
+    assert (dest == a * b).all()
+
+
+def test_pycuda_theano():
+    """Simple example with pycuda function and Theano CudaNdarray object."""
     from pycuda.compiler import SourceModule
     mod = SourceModule("""
 __global__ void multiply_them(float *dest, float *a, float *b)
@@ -44,11 +66,13 @@ __global__ void multiply_them(float *dest, float *a, float *b)
     a = numpy.random.randn(100).astype(numpy.float32)
     b = numpy.random.randn(100).astype(numpy.float32)
 
-    dest = numpy.zeros_like(a)
-    multiply_them(
-        drv.Out(dest), drv.In(a), drv.In(b),
-        block=(400, 1, 1), grid=(1, 1))
-    assert (dest == a * b).all()
+    # Test with Theano object
+    ga = cuda_ndarray.CudaNdarray(a)
+    gb = cuda_ndarray.CudaNdarray(b)
+    dest = cuda_ndarray.CudaNdarray.zeros(a.shape)
+    multiply_them(dest, ga, gb,
+                  block=(400, 1, 1), grid=(1, 1))
+    assert (numpy.asarray(dest) == a * b).all()
 
 
 def test_pycuda_memory_to_theano():
