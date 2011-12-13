@@ -1904,6 +1904,13 @@ class MaxAndArgmax(Op):
         else:
             axis = _as_tensor_variable(axis)
 
+        # Verify that the axis is valid.
+        for ax in axis.data:
+            if ax < 0 or ax >= x.type.ndim:
+                raise ValueError(
+                        'Invalid axis: %s (the number of dimensions of the '
+                        'input is: %s)' % (axis, x.type.ndim))
+
         inputs = [x, axis]
         broadcastable = [False] * (x.type.ndim - len(axis.data))
         outputs = [tensor(x.type.dtype, broadcastable, name='max'),
