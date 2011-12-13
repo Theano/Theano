@@ -2713,7 +2713,7 @@ class T_Join_and_Split(unittest.TestCase):
         # tested only on cpu as gpu support only float32
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
-        c = shared(numpy.asarray(3.0, dtype=self.floatX))
+        c = tensor._shared(numpy.asarray(3.0, dtype=self.floatX))
         s = stack(a, b, c)
         want = numpy.array([1, 2, 3])
         out = self.eval_outputs_and_check_vector([s], opt.MakeVector)
