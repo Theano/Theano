@@ -1603,7 +1603,7 @@ class T_max_and_argmax(unittest.TestCase):
             utt.verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
 
         # Test 4d inner dimensions
-        # Use float64 as otherwise the test don't pass.
+        # Use float64 as otherwise the test does not pass.
         data = rand(2, 3, 4, 5).astype("float64")
 
         for i in [0, 1, 2, 3]:
@@ -3345,7 +3345,7 @@ class T_mean(unittest.TestCase):
         #Simple test...
         x = tensor.vector()
         f = theano.function([x],tensor.mean(x))
-        data = numpy.asarray(rand(50), dtype=config.floatX)
+        data = rand(50)
         assert numpy.allclose(f(data), numpy.mean(data))
 
 
@@ -3415,9 +3415,6 @@ class test_matinv(unittest.TestCase):
 class t_dot(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
-    @staticmethod
-    def rand(*args):
-        return rand(*args)
 
     def cmp_dot(self,x,y):
         #x, y are matrices or numbers
@@ -3431,37 +3428,37 @@ class t_dot(unittest.TestCase):
         self.assertTrue(_approx_eq(nz, tz))
 
     #def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-    #def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
-    #def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
-    #def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
-    #def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
-    def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
-    def test_dot_1d0_1d0(self): self.cmp_dot(self.rand(0), self.rand(0))
+    #def test_dot_0d_1d(self): self.cmp_dot(1.1, rand(5))
+    #def test_dot_0d_2d(self): self.cmp_dot(3.0, rand(6,7))
+    #def test_dot_0d_3d(self): self.cmp_dot(3.0, rand(8,6,7))
+    #def test_dot_1d_0d(self): self.cmp_dot(rand(5), 1.1 )
+    def test_dot_1d_1d(self): self.cmp_dot(rand(5), rand(5))
+    def test_dot_1d0_1d0(self): self.cmp_dot(rand(0), rand(0))
     #numpy return matrix not aligned...
-    #def test_dot_1d_1d0(self): self.cmp_dot(self.rand(5), self.rand(0))
+    #def test_dot_1d_1d0(self): self.cmp_dot(rand(5), rand(0))
     #numpy return matrix not aligned...
-    #def test_dot_1d0_1d(self): self.cmp_dot(self.rand(0), self.rand(5))
-    def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
-    def test_dot_1d0_2d(self): self.cmp_dot(self.rand(0), self.rand(0,7))
-    def test_dot_1d_2d0(self): self.cmp_dot(self.rand(6), self.rand(6,0))
-    def test_dot_1d0_2d0(self): self.cmp_dot(self.rand(0), self.rand(0,0))
-    #def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
-    #def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
-    def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
-    def test_dot_2d0_1d(self): self.cmp_dot(self.rand(0,6), self.rand(6))
-    def test_dot_2d_1d0(self): self.cmp_dot(self.rand(5,0), self.rand(0))
-    def test_dot_2d0_1d0(self): self.cmp_dot(self.rand(0,0), self.rand(0))
-    def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
-    def test_dot_2d0_2d(self): self.cmp_dot(self.rand(0,6), self.rand(6,7))
-    def test_dot_2d_2d0(self): self.cmp_dot(self.rand(5,6), self.rand(6,0))
-    def test_dot_2d0_2d0(self): self.cmp_dot(self.rand(0,6), self.rand(6,0))
-    def test_dot_2d_0_2d(self): self.cmp_dot(self.rand(5,0), self.rand(0,7))
-    def test_dot_2d0_0_2d0(self): self.cmp_dot(self.rand(0,6), self.rand(6,0))
-    #def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
-    #def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
-    #def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
-    #def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
-    #def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+    #def test_dot_1d0_1d(self): self.cmp_dot(rand(0), rand(5))
+    def test_dot_1d_2d(self): self.cmp_dot(rand(6), rand(6,7))
+    def test_dot_1d0_2d(self): self.cmp_dot(rand(0), rand(0,7))
+    def test_dot_1d_2d0(self): self.cmp_dot(rand(6), rand(6,0))
+    def test_dot_1d0_2d0(self): self.cmp_dot(rand(0), rand(0,0))
+    #def test_dot_1d_3d(self): self.cmp_dot(rand(6), rand(8,6,7))
+    #def test_dot_2d_0d(self): self.cmp_dot(rand(5,6), 1.0)
+    def test_dot_2d_1d(self): self.cmp_dot(rand(5,6), rand(6))
+    def test_dot_2d0_1d(self): self.cmp_dot(rand(0,6), rand(6))
+    def test_dot_2d_1d0(self): self.cmp_dot(rand(5,0), rand(0))
+    def test_dot_2d0_1d0(self): self.cmp_dot(rand(0,0), rand(0))
+    def test_dot_2d_2d(self): self.cmp_dot(rand(5,6), rand(6,7))
+    def test_dot_2d0_2d(self): self.cmp_dot(rand(0,6), rand(6,7))
+    def test_dot_2d_2d0(self): self.cmp_dot(rand(5,6), rand(6,0))
+    def test_dot_2d0_2d0(self): self.cmp_dot(rand(0,6), rand(6,0))
+    def test_dot_2d_0_2d(self): self.cmp_dot(rand(5,0), rand(0,7))
+    def test_dot_2d0_0_2d0(self): self.cmp_dot(rand(0,6), rand(6,0))
+    #def test_dot_2d_3d(self): self.cmp_dot(rand(5,6), rand(8,6,7))
+    #def test_dot_3d_0d(self): self.cmp_dot(rand(4,5,6), 1.0)
+    #def test_dot_3d_1d(self): self.cmp_dot(rand(4,5,6), rand(6))
+    #def test_dot_3d_2d(self): self.cmp_dot(rand(4,5,6), rand(6,7))
+    #def test_dot_3d_3d(self): self.cmp_dot(rand(4,5,6), rand(8,6,7))
 
     def not_aligned(self, x, y):
         ctv_backup = config.compute_test_value
@@ -3486,24 +3483,24 @@ class t_dot(unittest.TestCase):
         finally:
             _logger.setLevel(oldlevel)
 
-    def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
-    def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
-    #def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
-    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6))
-    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6,7))
-    #def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
-    #def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
-    #def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
-    #def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
+    def test_align_1_1(self): self.not_aligned(rand(5), rand(6))
+    def test_align_1_2(self): self.not_aligned(rand(5), rand(6,4))
+    #def test_align_1_3(self): self.not_aligned(rand(5), rand(6,4,7))
+    def test_align_2_1(self): self.not_aligned(rand(5,4), rand(6))
+    def test_align_2_1(self): self.not_aligned(rand(5,4), rand(6,7))
+    #def test_align_2_3(self): self.not_aligned(rand(5,4), rand(6,7,8))
+    #def test_align_3_1(self): self.not_aligned(rand(5,4,3), rand(6))
+    #def test_align_3_2(self): self.not_aligned(rand(5,4,3), rand(6,7))
+    #def test_align_3_3(self): self.not_aligned(rand(5,4,3), rand(6,7,8))
 
     def test_grad(self):
-        #utt.verify_grad(dot, [self.rand(2,3,4), self.rand(4)])
-        utt.verify_grad(dot, [self.rand(2,3), self.rand(3,2)])
-        utt.verify_grad(dot, [self.rand(2), self.rand(2,3)])
-        utt.verify_grad(dot, [self.rand(3,2), self.rand(2)])
-        utt.verify_grad(dot, [self.rand(2), self.rand(2)])
-        #utt.verify_grad(dot, [self.rand(), self.rand(2)])
-        #utt.verify_grad(dot, [self.rand(), self.rand(2,5)])
+        #utt.verify_grad(dot, [rand(2,3,4), rand(4)])
+        utt.verify_grad(dot, [rand(2,3), rand(3,2)])
+        utt.verify_grad(dot, [rand(2), rand(2,3)])
+        utt.verify_grad(dot, [rand(3,2), rand(2)])
+        utt.verify_grad(dot, [rand(2), rand(2)])
+        #utt.verify_grad(dot, [rand(), rand(2)])
+        #utt.verify_grad(dot, [rand(), rand(2,5)])
 
     def test_broadcastable_patterns(self):
 
@@ -4389,9 +4386,6 @@ class test_tensordot(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
-    def rand(self, *shape):
-        return numpy.asarray(rand(*shape), dtype=config.floatX)
-
     def test0(self):
 
         # Test vector-vector
@@ -4400,8 +4394,8 @@ class test_tensordot(unittest.TestCase):
         axes = ((0,),(0,))
         c = tensordot(avec, bvec, axes)
         f1 = inplace_func([avec,bvec],c)
-        aval = self.rand(5);
-        bval = self.rand(5);
+        aval = rand(5)
+        bval = rand(5)
         self.assertTrue(numpy.tensordot(aval,bval,axes) == \
                         f1(aval,bval))
         utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4411,8 +4405,8 @@ class test_tensordot(unittest.TestCase):
         axes = ((0,),(1,))
         c = tensordot(avec, bmat, axes)
         f2 = inplace_func([avec,bmat],c)
-        aval = self.rand(5);
-        bval = self.rand(8,5);
+        aval = rand(5)
+        bval = rand(8,5)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f2(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4422,8 +4416,8 @@ class test_tensordot(unittest.TestCase):
         axes = ((1,),(0,))
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
-        aval = self.rand(4,7);
-        bval = self.rand(7,9);
+        aval = rand(4,7)
+        bval = rand(7,9)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f3(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4433,8 +4427,8 @@ class test_tensordot(unittest.TestCase):
         axes = ((2,),(1,))
         c = tensordot(atens, bmat, axes)
         f4 = inplace_func([atens,bmat],c)
-        aval = self.rand(1,2,3,4);
-        bval = self.rand(2,3);
+        aval = rand(1,2,3,4)
+        bval = rand(2,3)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f4(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4445,8 +4439,8 @@ class test_tensordot(unittest.TestCase):
         axes = ((1,3),(0,2))
         c = tensordot(atens, btens, axes)
         f5 = inplace_func([atens,btens],c)
-        aval = self.rand(4,3,5,2);
-        bval = self.rand(3,4,2);
+        aval = rand(4,3,5,2)
+        bval = rand(3,4,2)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                        f5(aval,bval)))
         utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4506,8 +4500,8 @@ class test_tensordot(unittest.TestCase):
         for axes in 0, (1,0), [1,0], (1,(0,)), ((1,),0), ([1],[0]):
             c = tensordot(amat, bmat, axes)
             f3 = inplace_func([amat,bmat],c)
-            aval = self.rand(4,7);
-            bval = self.rand(7,9);
+            aval = rand(4,7)
+            bval = rand(7,9)
             self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
                                            f3(aval,bval)))
             utt.verify_grad(TensorDot(axes), [aval,bval])
@@ -4517,7 +4511,7 @@ class test_tensordot(unittest.TestCase):
         amat = fmatrix()
         bmat = dmatrix()# We let at float64 to test mix of float32 and float64.
         axes = 1
-        aval = self.rand(4,5).astype('float32')
+        aval = rand(4,5).astype('float32')
         bval = rand(5,3)
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
@@ -4529,8 +4523,8 @@ class test_tensordot(unittest.TestCase):
         amat = tensor3()
         bmat = tensor3()
         axes = 2
-        aval = self.rand(3,4,5)
-        bval = self.rand(4,5,3)
+        aval = rand(3,4,5)
+        bval = rand(4,5,3)
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
@@ -4542,8 +4536,8 @@ class test_tensordot(unittest.TestCase):
         amat = matrix()
         bmat = matrix()
         axes = 0
-        aval = self.rand(4,5)
-        bval = self.rand(5,4)
+        aval = rand(4,5)
+        bval = rand(5,4)
         c = tensordot(amat, bmat, axes)
         f3 = inplace_func([amat,bmat],c)
         self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
@@ -4557,9 +4551,9 @@ class test_tensordot(unittest.TestCase):
         bmat = matrix()
         gzmat = matrix()
         axes = 1
-        aval = self.rand(4,5)
-        bval = self.rand(5,3)
-        gzval = self.rand(4,3)
+        aval = rand(4,5)
+        bval = rand(5,3)
+        gzval = rand(4,3)
         f1 = inplace_func([amat,bmat,gzmat],tensordot_grad(axes)(amat, bmat, gzmat))
         f2 = inplace_func([amat,bmat,gzmat],tensordot_grad(((1,),(0,)))(amat, bmat, gzmat))
         o1=f1(aval,bval,gzval)
