@@ -160,6 +160,20 @@ class Scan(PureOp):
                           the inner function)
         """
         assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
+        # Check that the number of inputs to the Scan node corresponds to
+        # the number of inputs of the inner function of scan
+
+        n_outer_ins = len(inputs) - len(self.outer_nitsot(inputs)) - 1
+        n_inner_ins = (len(self.inner_seqs(self.inputs)) +
+                       len(self.mitmot_taps()) +
+                       len(self.mitsot_taps()) +
+                       len(self.inner_sitsot(self.inputs)) +
+                       len(self.inner_shared(self.inputs)) +
+                       len(self.inner_non_seqs(self.inputs)))
+        assert n_outer_ins == n_inner_ins, \
+                ("The number of inputs given to the lambda function does "
+                 "not match the number of inputs given to the scan op node")
+
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
