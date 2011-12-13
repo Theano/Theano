@@ -204,7 +204,7 @@ class Scan(PureOp):
         # Check if input sequences and variables representing a slice of
         # them have the same dtype
         argoffset = 0
-        for idx, inner_seq, outer_seq in enumerate(
+        for idx, (inner_seq, outer_seq) in enumerate(
                                     zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs))):
             if inner_seq.dtype != outer_seq[idx].dtype:
@@ -223,7 +223,7 @@ class Scan(PureOp):
         opos = 0
         inner_mitmot = self.inner_mitmot(self.inputs)
         inner_mitmot_outs = self.inner_mitmot_outs(self.outputs)
-        for idx, itaps, otaps, outer_mitmot in enumerate(
+        for idx, (itaps, otaps, outer_mitmot) in enumerate(
                                      zip(self.mitmot_taps(),
                                          self.mitmot_out_taps(),
                                          self.outer_mitmot(inputs))):
@@ -250,7 +250,7 @@ class Scan(PureOp):
         # Same checks as above but for outputs of type mit_sot
         ipos = 0
         inner_mitsots = self.inner_mitsot(self.inputs)
-        for idx, itaps, outer_mitsot, inner_mitsot_out in enumerate(
+        for idx, (itaps, outer_mitsot, inner_mitsot_out) in enumerate(
             zip(self.mitsot_taps(),
                 self.outer_mitsot(inputs),
                 self.inner_mitsot_outs(self.outputs))):
@@ -273,7 +273,7 @@ class Scan(PureOp):
 
         argoffset += len(self.outer_mitsot(inputs))
         # Same checks as above but for outputs of type sit_sot
-        for idx, inner_sitsot, outer_sitsot, inner_sitsot_out in enumerate(
+        for idx, (inner_sitsot, outer_sitsot, inner_sitsot_out) in enumerate(
             zip(self.inner_sitsot(self.inputs),
                 self.outer_sitsot(inputs),
                 self.inner_sitsot_outs(self.outputs))):
@@ -295,9 +295,7 @@ class Scan(PureOp):
         argoffset += len(self.outer_sitsot(inputs))
         # Check that the shared variable and their update rule have the same
         # dtype. Maybe even same type ?!
-        end += self.n_shared_outs
-        index_o += self.n_nit_sot
-        for idx, inner_shared, inner_shared_out, outer_shared in enumerate(
+        for idx, (inner_shared, inner_shared_out, outer_shared) in enumerate(
             zip(self.inner_shared(self.inputs),
                 self.inner_shared_outs(self.outputs),
                 self.outer_shared(inputs))):
