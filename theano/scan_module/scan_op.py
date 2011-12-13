@@ -655,7 +655,7 @@ class Scan(PureOp):
                   self.n_shared_outs)
         return list_inputs[offset:]
 
-    def outer_non_seqs(self, list_inputs:
+    def outer_non_seqs(self, list_inputs):
         offset = (1 + self.n_seqs + self.n_mit_mot + self.n_mit_sot +
                   self.n_sit_sot + self.n_nit_sot + self.n_shared_outs)
         return list_inputs[offset:]
