@@ -786,7 +786,7 @@ class ShapeFeature(object):
             self.shape_of[r] = s
         else:
             if  r.ndim != len(s):
-                raise ShapeError(
+                raise TypeError(
                         "Something inferred a shape with %d dimensions "
                         "for a variable with %d dimensions." % (
                         len(s), r.ndim))
