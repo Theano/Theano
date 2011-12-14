@@ -119,6 +119,7 @@ class Scalar(Type):
 
         TODO: refactor to be named ScalarType for consistency with TensorType
     """
+    ndim = 0
 
     def __init__(self, dtype):
         if dtype == 'floatX':
@@ -441,6 +442,9 @@ all_types = discrete_types + continuous_types
 
 
 class _scalar_py_operators:
+    # So that we can simplify checking code when we have a mixture of Scalar
+    # variables and Tensor variables
+    ndim = 0
 
     #UNARY
     def __abs__(self): return abs_(self)
