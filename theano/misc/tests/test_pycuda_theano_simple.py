@@ -16,7 +16,7 @@ import theano.misc.pycuda_init
 if not theano.misc.pycuda_init.pycuda_available:
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed."
-                   " We skip test of theano op with pycuda code.")
+                   " We skip tests of Theano Ops with pycuda code.")
 
 if cuda_ndarray.cuda_available == False:
     from nose.plugins.skip import SkipTest
@@ -28,7 +28,7 @@ import pycuda.gpuarray
 
 
 def test_pycuda_only():
-    """Run pycuda only example to test that pycuda work."""
+    """Run pycuda only example to test that pycuda works."""
     from pycuda.compiler import SourceModule
     mod = SourceModule("""
 __global__ void multiply_them(float *dest, float *a, float *b)
