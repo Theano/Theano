@@ -171,8 +171,8 @@ class Scan(PureOp):
                        len(self.inner_shared(self.inputs)) +
                        len(self.inner_non_seqs(self.inputs)))
         assert n_outer_ins == n_inner_ins, \
-                ("The number of inputs given to the lambda function does "
-                 "not match the number of inputs given to the scan op node")
+                ("The number of inputs given to the inner function of scan"
+                 " does not match the number of inputs given to scan.")
 
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan the '
