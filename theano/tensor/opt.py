@@ -908,8 +908,6 @@ class ShapeFeature(object):
             o_shapes = shape_infer(node,
                                    [self.shape_of[r] for r in node.inputs])
         except ShapeError:
-            if config.on_shape_error == "raise":
-                raise
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for
                                                        r in node.inputs])
         except NotImplementedError, e:
