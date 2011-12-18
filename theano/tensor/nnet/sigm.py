@@ -148,8 +148,10 @@ opt.register_stabilize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
 opt.register_stabilize(log1pexp_to_softplus, name = 'log1pexp_to_softplus')
 
 def is_1pexp(t):
-    # if t is of form (1+exp(x)), return x
-    # else return None
+    """
+    If 't' is of the form (1+exp(x)), return (False, x).
+    Else return None.
+    """
     if t.owner and t.owner.op == tensor.add:
         scalars, scalar_inputs, nonconsts = \
                 opt.scalarconsts_rest(t.owner.inputs)
@@ -157,7 +159,13 @@ def is_1pexp(t):
         if len(nonconsts) == 1:
             maybe_exp = nonconsts[0]
             if maybe_exp.owner and maybe_exp.owner.op == tensor.exp:
-                return False, maybe_exp.owner.inputs[0]
+                # Verify that the constant terms sum to 1.
+                if scalars:
+                    scal_sum = scalars[0]
+                    for s in scalars[1:]:
+                        scal_sum = scal_sum + s
+                    if numpy.allclose(scal_sum, 1):
+                        return False, maybe_exp.owner.inputs[0]
     return None
 
 
