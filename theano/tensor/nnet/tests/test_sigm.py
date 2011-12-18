@@ -137,12 +137,10 @@ class T_sigmoid_opts(unittest.TestCase):
 
         # tests exp_over_1_plus_exp
         f = theano.function([x], 1 - T.exp(x)/(1+T.exp(x)), mode=m)
-        theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [tensor.neg, sigmoid_inplace]
 
         # tests inv_1_plus_exp
         f = theano.function([x], 1 - T.fill(x,1.0) / (1+T.exp(-x)), mode=m)
-        theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [tensor.neg,
                 sigmoid_inplace]
 
@@ -159,15 +157,12 @@ class T_sigmoid_opts(unittest.TestCase):
         x, y = tensor.vectors('x', 'y')
 
         f = theano.function([x], sigmoid(-x) * tensor.exp(x), mode=m)
-        theano.printing.debugprint(f)
         match(f, [sigmoid])
 
         f = theano.function([x], sigmoid(x) * tensor.exp(-x), mode=m)
-        theano.printing.debugprint(f)
         match(f, [tensor.neg, sigmoid])
 
         f = theano.function([x], -(-(-(sigmoid(x)))) * tensor.exp(-x), mode=m)
-        theano.printing.debugprint(f)
         match(f, [tensor.neg, sigmoid, tensor.neg])
 
         f = theano.function(
@@ -175,7 +170,6 @@ class T_sigmoid_opts(unittest.TestCase):
                 (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) * tensor.exp(x * y) *
                  tensor.exp(y)),
                 mode=m)
-        theano.printing.debugprint(f)
         match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
                   tensor.mul, tensor.neg])
 
@@ -233,7 +227,6 @@ class T_softplus_opts(unittest.TestCase):
         out = T.log(sigmoid(x))
         f = theano.function([x],out,mode=self.m)
         topo = f.maker.env.toposort()
-        print topo
         assert len(topo)==3
         assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
         assert isinstance(topo[1].op.scalar_op, theano.tensor.nnet.sigm.ScalarSoftplus)
