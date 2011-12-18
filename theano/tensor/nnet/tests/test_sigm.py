@@ -1,4 +1,5 @@
 import unittest
+from itertools import imap
 
 import numpy
 
@@ -8,7 +9,7 @@ from theano import config
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import sigmoid, sigmoid_inplace, softplus, tensor
 from theano.tensor.nnet.sigm import (
-        compute_mul, parse_mul_tree, perform_sigm_times_exp,
+        compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
         register_local_1msigmoid, simplify_mul)
 
 
@@ -235,3 +236,17 @@ class T_sigmoid_utils(unittest.TestCase):
         assert parse_mul_tree(-x) == [True, x]
         assert parse_mul_tree((x * y) * -z) == [
                         False, [[False, [[False, x], [False, y]]], [True, z]]]
+
+    def test_is_1pexp(self):
+        x = tensor.vector('x')
+        exp = tensor.exp
+        assert is_1pexp(1 + exp(x)) == (False, x)
+        assert is_1pexp(exp(x) + 1) == (False, x)
+        for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
+            assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
+        assert is_1pexp(1 - exp(x)) is None
+        assert is_1pexp(2 + exp(x)) is None
+        assert is_1pexp(exp(x) + 2) is None
+        assert is_1pexp(exp(x) - 1) is None
+        assert is_1pexp(-1 + exp(x)) is None
+        assert is_1pexp(1 + 2 * exp(x)) is None
