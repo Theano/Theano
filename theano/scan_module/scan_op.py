@@ -1024,7 +1024,7 @@ class Scan(PureOp):
         # is the shape of self.inputs[i]
 
         for inp, inp_shp in izip(node.inputs, input_shapes):
-            assert inp_shp is None or len(inp_shp) == inp.ndim
+            assert inp_shp is None or len(inp_shp) == inp.type.ndim
 
         # sequences
         # We skip iputs_shapes[0] as it is the total or current number
