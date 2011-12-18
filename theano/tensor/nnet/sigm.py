@@ -3,18 +3,18 @@
 These functions implement special cases of exp and log to improve numerical stability.
 """
 
+import warnings
 from itertools import imap
 
 import numpy
 
-from theano import gof
-from theano import scalar
-from theano import printing
-from theano.tensor import basic as tensor
-from theano.printing import pprint, debugprint
-from theano.tensor import elemwise
-from theano.tensor import opt
+import theano
+from theano import config, gof, printing, scalar
 from theano.compile import optdb
+from theano.configparser import AddConfigVar, BoolParam
+from theano.printing import pprint, debugprint
+from theano.tensor import basic as tensor
+from theano.tensor import elemwise, opt
 
 
 ############
@@ -166,7 +166,26 @@ def is_1pexp(t):
                         scal_sum = scal_sum + s
                     if numpy.allclose(scal_sum, 1):
                         return False, maybe_exp.owner.inputs[0]
+                # Before 7987b51 there used to be a bug where *any* constant
+                # was considered as if it was equal to 1, and thus this
+                # function would incorrectly identify it as (1 + exp(x)).
+                if config.warn.identify_1pexp_bug:
+                    warnings.warn(
+                        'Although your current code is fine, please note that '
+                        'Theano versions prior to 0.5 (more specifically, '
+                        'prior to commit 7987b51 on 2011-12-18) may have '
+                        'yielded an incorrect result. To remove this warning, '
+                        'either set the `warn.identify_1pexp_bug` config '
+                        'option to False, or `warn.ignore_bug_before` to at '
+                        'least \'0.4.1\'.')
     return None
+
+
+AddConfigVar('warn.identify_1pexp_bug',
+        'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
+        'yielded a wrong result due to a bug in the is_1pexp function',
+        BoolParam(theano.configdefaults.warn_default('0.4.1')),
+        in_c_key=False)
 
 
 def is_exp(var):

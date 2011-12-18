@@ -301,15 +301,20 @@ class T_sigmoid_utils(unittest.TestCase):
                         False, [[False, [[False, x], [False, y]]], [True, z]]]
 
     def test_is_1pexp(self):
-        x = tensor.vector('x')
-        exp = tensor.exp
-        assert is_1pexp(1 + exp(x)) == (False, x)
-        assert is_1pexp(exp(x) + 1) == (False, x)
-        for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
-            assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
-        assert is_1pexp(1 - exp(x)) is None
-        assert is_1pexp(2 + exp(x)) is None
-        assert is_1pexp(exp(x) + 2) is None
-        assert is_1pexp(exp(x) - 1) is None
-        assert is_1pexp(-1 + exp(x)) is None
-        assert is_1pexp(1 + 2 * exp(x)) is None
+        backup = config.warn.identify_1pexp_bug
+        config.warn.identify_1pexp_bug = False
+        try:
+            x = tensor.vector('x')
+            exp = tensor.exp
+            assert is_1pexp(1 + exp(x)) == (False, x)
+            assert is_1pexp(exp(x) + 1) == (False, x)
+            for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
+                assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
+            assert is_1pexp(1 - exp(x)) is None
+            assert is_1pexp(2 + exp(x)) is None
+            assert is_1pexp(exp(x) + 2) is None
+            assert is_1pexp(exp(x) - 1) is None
+            assert is_1pexp(-1 + exp(x)) is None
+            assert is_1pexp(1 + 2 * exp(x)) is None
+        finally:
+            config.warn.identify_1pexp_bug = backup
