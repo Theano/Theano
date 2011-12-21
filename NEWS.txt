@@ -98,6 +98,9 @@ Bug fixes (the result changed):
  * div by zero in verify_grad. This hid a bug in the grad of Images2Neibs. (James)
  * theano.sandbox.neighbors.Images2Neibs grad was returning a wrong value.
    The grad is now disabled and returns an error. (Frederic)
+ * An expression of the form "1 / (exp(x) +- constant)" was systematically matched to "1 / (exp(x) + 1)"
+   and turned into a sigmoid regardless of the value of the constant. A warning will be issued if your
+   code was affected by this bug. (Olivier, reported by Sander Dieleman)
 
 
 Crashes fixed:

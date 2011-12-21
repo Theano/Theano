@@ -248,33 +248,38 @@ AddConfigVar('warn.ignore_bug_before',
              EnumStr('None', 'all', '0.3','0.4', '0.4.1', '0.5', allow_override=False),
              in_c_key=False)
 
-default_0_3 = True
-if config.warn.ignore_bug_before == 'None':
-    default_0_3 = True
-elif config.warn.ignore_bug_before == 'all':
-    default_0_3 = False
-elif config.warn.ignore_bug_before >= '0.3':
-    # Disable 0.3 warnings for 0.3 and all subsequent versions
-    default_0_3 = False
+
+def warn_default(version):
+    """
+    Return True iff we should warn about bugs fixed after a given version.
+    """
+    if config.warn.ignore_bug_before == 'None':
+        return True
+    if config.warn.ignore_bug_before == 'all':
+        return False
+    if config.warn.ignore_bug_before >= version:
+        return False
+    return True
+
 
 AddConfigVar('warn.argmax_pushdown_bug',
-             "Warn if in past version of Theano we generated a bug with the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
-             BoolParam(default_0_3),
+             "Warn if in past version of Theano we generated a bug with the theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
+             BoolParam(warn_default('0.3')),
              in_c_key=False)
 
 AddConfigVar('warn.gpusum_01_011_0111_bug',
              "Warn if we are in a case where old version of Theano had a silent bug with GpuSum pattern 01,011 and 0111 when the first dimensions was bigger then 4096. Was fixed 31 may 2010",
-             BoolParam(default_0_3),
+             BoolParam(warn_default('0.3')),
              in_c_key=False)
 
 AddConfigVar('warn.sum_sum_bug',
              "Warn if we are in a case where Theano version between version 9923a40c7b7a and the 2 august 2010(fixed date), generated an error in that case. This happen when their is 2 consecutive sum in the graph, bad code was generated. Was fixed 2 August 2010",
-             BoolParam(default_0_3),
+             BoolParam(warn_default('0.3')),
              in_c_key=False)
 
 AddConfigVar('warn.sum_div_dimshuffle_bug',
              "Warn if previous versions of Theano (between rev. 3bd9b789f5e8, 2010-06-16, and cfc6322e5ad4, 2010-08-03) would have given incorrect result. This bug was triggered by sum of division of dimshuffled tensors.",
-             BoolParam(default_0_3),
+             BoolParam(warn_default('0.3')),
              in_c_key=False)
 
 AddConfigVar('compute_test_value',

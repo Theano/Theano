@@ -57,86 +57,93 @@ class T_sigmoid_opts(unittest.TestCase):
         x = T.vector()
         data = numpy.random.rand(54).astype(config.floatX)
 
-        # tests exp_over_1_plus_exp
-        f = theano.function([x], T.exp(x) / (1 + T.exp(x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
-        f(data)
-        f = theano.function([x], T.exp(x) / (2 + T.exp(x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
-        f = theano.function([x], T.exp(x) / (1 - T.exp(x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
-        f = theano.function([x], T.exp(x + 1) / (1 + T.exp(x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
+        backup = config.warn.identify_1pexp_bug
+        config.warn.identify_1pexp_bug = False
+        try:
+            # tests exp_over_1_plus_exp
+            f = theano.function([x], T.exp(x) / (1 + T.exp(x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
+            f(data)
+            f = theano.function([x], T.exp(x) / (2 + T.exp(x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
+            f = theano.function([x], T.exp(x) / (1 - T.exp(x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
+            f = theano.function([x], T.exp(x + 1) / (1 + T.exp(x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
 
-        # tests inv_1_plus_exp
-        f = theano.function([x], T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
-        f(data)
-        f = theano.function([x], T.fill(x, 1.0) / (2 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
-        f = theano.function([x], T.fill(x, 1.0) / (1 - T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
-        f = theano.function([x], T.fill(x, 1.1) / (1 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
-        f(data)
+            # tests inv_1_plus_exp
+            f = theano.function([x], T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
+            f(data)
+            f = theano.function([x], T.fill(x, 1.0) / (2 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
+            f = theano.function([x], T.fill(x, 1.0) / (1 - T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
+            f = theano.function([x], T.fill(x, 1.1) / (1 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            f(data)
 
-        # tests inv_1_plus_exp with neg
-        f = theano.function([x], T.fill(x, -1.0) / (1 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
-                theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], T.fill(x, -1.0) / (1 - T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], T.fill(x, -1.0) / (2 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], T.fill(x, -1.1) / (1 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                theano.tensor.inplace.neg_inplace]
-        f(data)
+            # tests inv_1_plus_exp with neg
+            f = theano.function([x], T.fill(x, -1.0) / (1 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
+                    theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], T.fill(x, -1.0) / (1 - T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], T.fill(x, -1.0) / (2 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], T.fill(x, -1.1) / (1 + T.exp(-x)), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    theano.tensor.inplace.neg_inplace]
+            f(data)
 
-        # tests double inv_1_plus_exp with neg
-        # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
-        # = (-1)/(1+exp(-x)) * exp(x)/(1+exp(x))
-        # = - (sigm(x) * sigm(x))
-        f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
-                            ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
-                            ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
-                            ((2 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
-                            ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
-                            ((1 + T.exp(x)) * (1 + T.exp(x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
-        f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
-                            ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
-                T.mul, theano.tensor.inplace.neg_inplace]
-        f(data)
+            # tests double inv_1_plus_exp with neg
+            # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
+            # = (-1)/(1+exp(-x)) * exp(x)/(1+exp(x))
+            # = - (sigm(x) * sigm(x))
+            f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
+                                ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
+                                ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
+                                ((2 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
+                                ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
+                                ((1 + T.exp(x)) * (1 + T.exp(x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+            f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
+                                ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
+            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+                    T.mul, theano.tensor.inplace.neg_inplace]
+            f(data)
+
+        finally:
+            # Restore config option.
+            config.warn.identify_1pexp_bug = backup
 
     def test_1msigmoid(self):
         if not register_local_1msigmoid:
@@ -301,15 +308,20 @@ class T_sigmoid_utils(unittest.TestCase):
                         False, [[False, [[False, x], [False, y]]], [True, z]]]
 
     def test_is_1pexp(self):
-        x = tensor.vector('x')
-        exp = tensor.exp
-        assert is_1pexp(1 + exp(x)) == (False, x)
-        assert is_1pexp(exp(x) + 1) == (False, x)
-        for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
-            assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
-        assert is_1pexp(1 - exp(x)) is None
-        assert is_1pexp(2 + exp(x)) is None
-        assert is_1pexp(exp(x) + 2) is None
-        assert is_1pexp(exp(x) - 1) is None
-        assert is_1pexp(-1 + exp(x)) is None
-        assert is_1pexp(1 + 2 * exp(x)) is None
+        backup = config.warn.identify_1pexp_bug
+        config.warn.identify_1pexp_bug = False
+        try:
+            x = tensor.vector('x')
+            exp = tensor.exp
+            assert is_1pexp(1 + exp(x)) == (False, x)
+            assert is_1pexp(exp(x) + 1) == (False, x)
+            for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
+                assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
+            assert is_1pexp(1 - exp(x)) is None
+            assert is_1pexp(2 + exp(x)) is None
+            assert is_1pexp(exp(x) + 2) is None
+            assert is_1pexp(exp(x) - 1) is None
+            assert is_1pexp(-1 + exp(x)) is None
+            assert is_1pexp(1 + 2 * exp(x)) is None
+        finally:
+            config.warn.identify_1pexp_bug = backup
