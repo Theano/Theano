@@ -122,7 +122,9 @@ Crashes fixed:
 Known bugs:
  * CAReduce with nan in inputs don't return the good output (`Ticket <https://www.assembla.com/spaces/theano/tickets/763>`_).
      * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
- * If you do grad of grad of scan you can have wrong results in some cases.
+ * If you take the grad of a grad of scan, now we raise an error during the construction of the graph. In the past, you could have wrong results in some cases or an error at run time.
+ * Scan can raise an IncSubtensor error at run time (no wrong result possible). The current work around is to disable an optimization with this Theano flags: "optimizer_excluding=scanOp_save_mem".
+   * If you have more then 1 optimization to disable, you must separate them with ":".
 
 
 Sandbox:
