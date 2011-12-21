@@ -1088,6 +1088,12 @@ class Scan(PureOp):
 
     ### GRAD FUNCTION
     def grad(self, args, g_outs):
+        if 'computed_grad' in self.info:
+            raise ValueError(('Computing gradients through the gradients '
+                              'of a scan node can be wrong. For now Theano '
+                              'will not allow you to do so, until the '
+                              'possible bug is fixed'))
+
         # 1. forward pass - get the outputs after applying scan
         scan_outputs = self(*args)
         # 2. make sure they are given as a list
@@ -1390,6 +1396,7 @@ class Scan(PureOp):
             info['name'] = None
         info['mode']                     = self.mode
         info['inplace']                  = False
+        info['computed_grad'] = True
         n_mit_sot           = 0
         n_sit_sot           = 0
         if self.truncate_gradient != -1 :
