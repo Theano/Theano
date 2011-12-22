@@ -35,8 +35,8 @@ Compiling with PyCUDA
 You can use PyCUDA to compile some CUDA function that work directly on
 CudaNdarray. There is an example in the function `test_pycuda_theano`
 in the file `theano/misc/tests/test_pycuda_theano_simple.py`. Also,
-there is an example that show how to make an op that call a pycuda
-function :ref:`here <pyCUDA_theano>`
+there is an example that shows how to make an op that calls a pycuda
+function :ref:`here <pyCUDA_theano>`.
 
 Theano op using PyCUDA function
 -------------------------------
