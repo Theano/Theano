@@ -10,6 +10,7 @@ import opt
 import opt_uncanonicalize
 import blas
 import blas_scipy
+import blas_c
 import xlogx
 
 import raw_random
