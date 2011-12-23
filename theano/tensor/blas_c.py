@@ -189,23 +189,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     """ % locals()
 
 class CGer(BaseBLAS, Ger):
-    def c_libraries(self):
-        return ldflags()
-
-    def c_compile_args(self):
-        return ldflags(libs=False, flags=True)
-
-    def c_lib_dirs(self):
-        return ldflags(libs=False, libs_dir=True)
-
-    def c_header_dirs(self):
-        return ldflags(libs=False, include_dir=True)
-
-    def c_support_code(self):
-        return blas_header_text()
-
     def c_code(self, node, name, inp, out, sub):
-        print 'C_CODE'
         A, a, x, y = inp
         Z, = out
         code = ger_c_code(A, a, x, y, Z,
