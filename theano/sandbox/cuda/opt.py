@@ -16,6 +16,10 @@ from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, gpu_outer, GpuConv)
+from theano.sandbox.cuda.blas import gpu_gemv_inplace
+from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
+from theano.sandbox.cuda.blas import gpu_ger_inplace
+from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
         GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import (
@@ -375,46 +379,81 @@ def local_gpu_dot22scalar(node):
 
 @register_opt()
 @local_optimizer([])
-def local_gpu_gemv_as_gemm(node):
+def local_gpu_gemv(node):
     """
     gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
-    gemm(host_from_gpu) -> host_from_gpu(gpu_gemv)
+    gemv(host_from_gpu) -> host_from_gpu(gpu_gemv)
 
-    This optimization solves the vector-matrix multiplication issue by
-    transforming the vector into a matrix, apply gpudot22 and reshaping
-    the output.
-
-    A more suitable solution would be to use the right cublas call
     """
-    gemvs = {tensor.blas.gemv_inplace: gpu_gemm_inplace,
-            tensor.blas.gemv_no_inplace: gpu_gemm_no_inplace}
+    gemvs = {tensor.blas.gemv_inplace: gpu_gemv_inplace,
+            tensor.blas.gemv_no_inplace: gpu_gemv_no_inplace,
+            tensor.blas_c.CGemv(inplace=True): gpu_gemv_inplace,
+            tensor.blas_c.CGemv(inplace=False): gpu_gemv_no_inplace,
+            }
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op in gemvs:
             op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
-            return [
-                GpuDimShuffle((False,True),[0])(gemvs[op](
-                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+            return [gemvs[op](
+                    gpu_from_host(z)
                     , a
                     , gpu_from_host(x)
-                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
-                    , b))]
+                    , gpu_from_host(y)
+                    , b)]
     if node.op in gemvs:
         z, a, x, y, b = node.inputs
         x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
         y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(GpuDimShuffle((False,True),[0])(
+            return [host_from_gpu(
                 gemvs[node.op](
-                    GpuDimShuffle((False,),[0,'x'])(gpu_from_host(z))
+                    gpu_from_host(z)
                     , a
                     , gpu_from_host(x)
-                    , GpuDimShuffle((False,),[0,'x'])(gpu_from_host(y))
-                    , b)))]
+                    , gpu_from_host(y)
+                    , b))]
     return False
 
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_ger(node):
+    """
+    gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
+    gemv(host_from_gpu) -> host_from_gpu(gpu_gemv)
+
+    """
+    gers = {
+            tensor.blas_c.CGer(destructive=True): gpu_ger_inplace,
+            tensor.blas_c.CGer(destructive=False): gpu_ger_no_inplace,
+            }
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op in gers:
+            op = host_input.owner.op
+            z, a, x, y = host_input.owner.inputs
+            return [gers[op](
+                    gpu_from_host(z)
+                    , a
+                    , gpu_from_host(x)
+                    , gpu_from_host(y)
+                    )]
+    if node.op in gers:
+        z, a, x, y = node.inputs
+        x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
+        y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
+        z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
+        if x_on_gpu or y_on_gpu or z_on_gpu:
+            return [host_from_gpu(
+                gers[node.op](
+                    gpu_from_host(z)
+                    , a
+                    , gpu_from_host(x)
+                    , gpu_from_host(y)
+                    ))]
+    return False
 
 @register_opt()
 @local_optimizer([])

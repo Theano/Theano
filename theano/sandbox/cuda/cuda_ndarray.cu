@@ -2892,6 +2892,86 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     return 0;
 }
 
+int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C)
+{
+    if (A->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg to gemv"); return -1; }
+    if (B->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg to gemv"); return -1; }
+    if (C->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg to gemv"); return -1; }
+
+    // We must allow dimensions to be zeros.
+    if ((CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(B)[0])
+            || (CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(C)[0]))
+    {
+        PyErr_Format(PyExc_ValueError, "dimension mismatch in args to gemv (%i,%i)x(%i)->(%i)",
+                CudaNdarray_HOST_DIMS(A)[0],
+                CudaNdarray_HOST_DIMS(A)[1],
+                CudaNdarray_HOST_DIMS(B)[0],
+                CudaNdarray_HOST_DIMS(C)[0]);
+        return -1;
+    }
+
+    // a matrix has non-unit size and non-unit stride in both directions, we can't operate in-place
+    // TODO: make a copy instead of returning in error
+    if (((CudaNdarray_HOST_DIMS(A)[0] > 1) && (CudaNdarray_HOST_STRIDES(A)[0] != 1)) && ((CudaNdarray_HOST_DIMS(A)[1] > 1) && (CudaNdarray_HOST_STRIDES(A)[1] != 1)))
+    { PyErr_SetString(PyExc_NotImplementedError, "non-unit stride in gemv arg"); return -1; }
+
+    // I don't know if cudablas handles negative strides
+    if (   (CudaNdarray_HOST_STRIDES(A)[0] < 0)
+        || (CudaNdarray_HOST_STRIDES(A)[1] < 0)
+        || (CudaNdarray_HOST_STRIDES(B)[0] < 0)
+        || (CudaNdarray_HOST_STRIDES(C)[0] < 0))
+    {
+        PyErr_Format(PyExc_ValueError, "illegal strides in args to gemv (%i,%i)x(%i)->(%i)",
+                CudaNdarray_HOST_STRIDES(A)[0],
+                CudaNdarray_HOST_STRIDES(A)[1],
+                CudaNdarray_HOST_STRIDES(B)[0],
+                CudaNdarray_HOST_STRIDES(C)[0]);
+        return -1;
+    }
+
+    /* create appropriate strides for malformed matrices that are row or column
+     * vectors
+     */
+    int sa_0 = (CudaNdarray_HOST_DIMS(A)[0] > 1) ? CudaNdarray_HOST_STRIDES(A)[0] : CudaNdarray_HOST_DIMS(A)[1];
+    int sa_1 = (CudaNdarray_HOST_DIMS(A)[1] > 1) ? CudaNdarray_HOST_STRIDES(A)[1] : CudaNdarray_HOST_DIMS(A)[0];
+    int sb_0 = (CudaNdarray_HOST_DIMS(B)[0] > 1) ? CudaNdarray_HOST_STRIDES(B)[0] : CudaNdarray_HOST_DIMS(B)[1];
+    int sc_0 = (CudaNdarray_HOST_DIMS(C)[0] > 1) ? CudaNdarray_HOST_STRIDES(C)[0] : CudaNdarray_HOST_DIMS(C)[1];
+
+    if (sa_0 == 1)
+    {
+        cublasSgemv('N',
+                CudaNdarray_HOST_DIMS(A)[0], CudaNdarray_HOST_DIMS(A)[1],
+                alpha,
+                CudaNdarray_DEV_DATA(A), sa_1,
+                CudaNdarray_DEV_DATA(B), sb_0,
+                beta,
+                CudaNdarray_DEV_DATA(C), sc_0);
+    }
+    else if (sa_1 == 1)
+    {
+        cublasSgemv('T',
+                CudaNdarray_HOST_DIMS(A)[1], CudaNdarray_HOST_DIMS(A)[0],
+                alpha,
+                CudaNdarray_DEV_DATA(A), sa_0,
+                CudaNdarray_DEV_DATA(B), sb_0,
+                beta,
+                CudaNdarray_DEV_DATA(C), sc_0);
+    }
+    else
+    {
+        PyErr_SetString(PyExc_NotImplementedError, "too many strides strides in sgemv");
+        return -1;
+    }
+    CNDA_THREAD_SYNC;
+    cudaError_t err = cudaGetLastError();
+    if (CUBLAS_STATUS_SUCCESS != err)
+    {
+        PyErr_Format(PyExc_RuntimeError, "cublassGemv failed (%s)",cudaGetErrorString(err));
+        return -1;
+    }
+    return 0;
+}
+
 int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray * A) {
     if (x->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg x to sger"); return -1; }
     if (y->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg y to sger"); return -1; }
