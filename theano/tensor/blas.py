@@ -6,17 +6,25 @@ Learn more about BLAS here:
 The standard BLAS libraries implement what is called "legacy BLAS" in that
 document.
 
-This documentation section describes Theano's BLAS optimization
-pipeline.
+This documentation describes Theano's BLAS optimization pipeline.
 
 Where there is a discrepancy between how things do work and how they *should*
-work, both aspects should be documented.  It helps keep a broader agenda in view
-even while fixing little bugs etc. from day to day.
+work, both aspects should be documented.
+
+There are four kinds of BLAS Ops in Theano:
+    - Python implementations (this file)
+    - SciPy-based (blas_scipy)
+    - C-based (blas_c)
+    - CUDA-based (theano.sandbox.cuda.blas)
+
+:note: Unfortunately (because it's confusing) this file currently contains Ops
+    that contain both Python and C versions.  I think it would be better to
+    move the C implementations to blas_c so that this file is pure Python.
+    -JB
+
 
 Ops
 ===
-
-There are two BLAS calls wrapped in this module: GEMM and GEMV.
 
 GEMM: Dot22, Dot22Scalar, GemmRelated, Gemm
 -------------------------------------------
@@ -45,15 +53,16 @@ GEMV: Gemv
 The BLAS GEMV operation implements Z <- a X Y + b Z,
 where X is a matrix, Y, and Z are vectors, and a and b are scalars.
 
-Gemv implements the GEMV call in all its generality.
+
+GER: Ger
+--------
+
+The BLAS GER operation implements Z <- a X' Y + Z,
+where X and Y are vectors, and matrix Z gets a rank-1 update.
 
 
 Other Notable BLAS-related Ops
 ------------------------------
-
-GpuOuter is currently a wrapper around GER.  GER is a useful special case of
-GEMM, and in the future it would be good to have a GER Op.  With a GER Op here,
-the GpuOuter could be turned into a GpuGER.
 
 SYRK is another useful special case of GEMM. Particularly SYRK preserves
 symmetry in the matrix that it updates.  See how the linear-algebra module uses
@@ -64,14 +73,19 @@ that system.
 Optimizations
 =============
 
-The current optimization pipeline is not exactly clear to me. Instead I will
-describe how it should work.
+The optimization pipeline works something like this:
 
-The high level pipeline is:
     1. identify dot22 from dot
     2. identify gemm from dot22
     3. identify dot22scalar from dot22 that are not gemm
     4. specialize gemm to gemv where applicable
+    5. specialize gemm to ger where applicable
+    6. specialize dot22 -> gemv or ger where applicable
+
+:note: GEMM is the most canonical BLAS signature that we deal with so far, it
+    would be good to turn most things into GEMM (dot, inner, outer, dot22,
+    dot22scalar), and then to specialize from gemm to the various other L2 and
+    L3 operations.
 
 Identify Dot22
 --------------
