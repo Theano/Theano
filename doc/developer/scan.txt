@@ -100,6 +100,21 @@ Naming conventions
 * ``z`` will stand for states that are not numeric in nature. More
   specifically *random states*. ``zs`` is the list of all such states.
 * ``t`` is the time index (the current step in the evolution of the system).
-  ``T`` is the total number of steps in the evolution of the system.
-*
-
+* ``T`` is the total number of steps in the evolution of the system.
+* ``N`` will be the number of states, ``n`` will be the index that loops
+  over the number of states
+* ``M`` will be the number of inputs and ``m`` the dedicated index for
+  inputs
+* ``Q`` the number of weights
+* the suffix ``_slices`` added to either ``x`` or ``u`` will mean the list of
+  variables representing slices of states or inputs. These are the arguments
+  given to the constructive function of scan (see above). 
+* the suffix ``_inner`` added to ``x``, ``y``, ``xy``, ``u``, ``w`` or ``z``
+  will mean the variables representing the state/output/input/weights in the
+  inner function
+* the suffix ``_outer`` added to ``x``, ``y``, ``xy``, ``u``, ``w`` or ``z``
+  will mean the variables representing the state/output/input/weights in the
+  main computational graph (the one containing the scan op).
+* the suffx ``_results`` added to ``x``, ``y`` or ``xy`` are the list of
+  expressions representing the next value of the state/output (i.e. the
+  results after executing the inner function of scan)
