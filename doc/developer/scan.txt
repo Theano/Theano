@@ -77,6 +77,13 @@ between outputs and states is that outputs do not feed back into the system.
 The weights :math:`\mathbf{w}` are fixed quantities that are re-used at
 every time step of the evolution of the system. 
 
+Each of the equations above are implemented by the **inner function** of scan. You 
+can think of the **inner function** as a theano function that gets executed
+at each step to get the new values. This **inner function** should not be
+confused with the **constructive function**, which is what the user gives to
+the scan function. The **constructive function** is used to construct the
+computational graph that is afterwards compiled into the **inner function**.
+
 
 Naming conventions
 ------------------
