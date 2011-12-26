@@ -1,0 +1,94 @@
+.. _scan_internals:
+
+Internal documentation of the scan op
+=====================================
+
+The `scan` operation is meant to be able to describe symbolically loops,
+recurrent relations or dynamical systems. In general, we will say that the
+scan op implements system of equations of the following form:
+
+.. math::
+
+    \mathbf{x}_1(t) = f_{\mathbf{x}_1}
+        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
+         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
+         \ldots,
+         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
+         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
+         \ldots,
+         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
+         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
+
+    \vdots
+
+    \mathbf{x}_N(t) = f_{\mathbf{x}_N}
+        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
+         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
+         \ldots,
+         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
+         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
+         \ldots,
+         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
+         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
+    
+    \mathbf{y}_1(t) = f_{\mathbf{y}_1}
+        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
+         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
+         \ldots,
+         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
+         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
+         \ldots,
+         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
+         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
+
+      \vdots
+
+    \mathbf{y}_M(t) = f_{\mathbf{y}_M}
+        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
+         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
+         \ldots,
+         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
+         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
+         \ldots,
+         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
+         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
+
+The equations describe a system evolving in time, where :math:`t` represents the
+current step. The system is described by inputs, states, outputs and
+weights. 
+
+The inputs, denoted by :math:`\mathbf{u}` are time-varying quantities, 
+hence indexed by :math:`t`. They however only influence the system, but are
+not influenced by the system. 
+
+The states :math:`\mathbf{x}` are time-varying quantities, whose value at
+time :math:`t` depends on its (or other state) previous values as well as
+the inputs and weights. Note that the first few values of the states are
+always provided, otherwise we could not imploy the recurrent equation to
+generate these sequence of values without a starting point. 
+
+The outputs, :math:`\mathbf{y}` are outputs of the system, i.e. values that
+depend on the previous values of the states and inputs. The difference
+between outputs and states is that outputs do not feed back into the system. 
+
+The weights :math:`\mathbf{w}` are fixed quantities that are re-used at
+every time step of the evolution of the system. 
+
+To simplify understanding of the code we will use the same names of
+variables as in the mathematical notation:
+
+* ``x`` will stand for a state :math:`\mathbf{x}`, while ``xs`` will represent
+  the list of all states
+* ``y`` will stand for an output :math:`\mathbf{y}`, while ``ys`` will
+  represent the list of all outputs
+* ``xy`` will stand for either a state or an output, while ``xys`` will be
+  the list of all states and outputs
+* ``u`` will be an input, wile ``us`` will be the list of all inputs
+* ``w`` will stand for a weight tensor, while ``ws`` for the list of all
+  weight tensors
+* ``z`` will stand for states that are not numeric in nature. More
+  specifically *random states*. ``zs`` is the list of all such states.
+* ``t`` is the time index (the current step in the evolution of the system).
+  ``T`` is the total number of steps in the evolution of the system.
+*
+
