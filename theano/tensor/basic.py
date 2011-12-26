@@ -3142,7 +3142,14 @@ class Subtensor(Op):
 
         out[0] = numpy.asarray(x.__getitem__(cdata))
 
-    def infer_shape(self, node, shapes):
+    # This method was disabled because it significantly reduced the
+    # performance of the deep learning benchmark logistic regression code.
+    # It inserts a lot of nodes into the graph, which actually are quite
+    # useless because it would be fine to just use the shape of this
+    # expression.
+    # The issue is discussed on theano-dev ("over-zealous shape optimization",
+    # Starting around Dec 22, 2011.
+    def disabled_infer_shape(self, node, shapes):
         xshp = shapes[0]
         assert len(xshp) == node.inputs[0].ndim
         outshp = []
