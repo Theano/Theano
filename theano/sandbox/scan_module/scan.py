@@ -318,4 +318,6 @@ def scan(fn,
              dictionary is that we validate that keys are SharedVariable
              and addition of those dictionary are validated to be consistent.
     """
+    # Note : see the internal documentation of the scan op for naming
+    # conventions and all other details
 
