@@ -3,6 +3,9 @@
 Internal documentation of the scan op
 =====================================
 
+Top-level description of scan
+-----------------------------
+
 The `scan` operation is meant to be able to describe symbolically loops,
 recurrent relations or dynamical systems. In general, we will say that the
 scan op implements system of equations of the following form:
@@ -74,8 +77,9 @@ between outputs and states is that outputs do not feed back into the system.
 The weights :math:`\mathbf{w}` are fixed quantities that are re-used at
 every time step of the evolution of the system. 
 
-To simplify understanding of the code we will use the same names of
-variables as in the mathematical notation:
+
+Naming conventions
+------------------
 
 * ``x`` will stand for a state :math:`\mathbf{x}`, while ``xs`` will represent
   the list of all states
