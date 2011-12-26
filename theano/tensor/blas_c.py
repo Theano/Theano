@@ -444,13 +444,13 @@ def make_c_gemv_destructive(node):
 # Optimizers
 ####### ####### #######
 
-blas_optdb.register('c_blas',
+blas_optdb.register('use_c_blas',
     EquilibriumOptimizer([
         use_c_ger,
         use_c_gemv,
         ],
         max_use_ratio=5),
-    20, 'fast_run')
+    20, 'fast_run', 'c_blas')
 print 'BLAS_OPTDB'
 print blas_optdb
 
@@ -461,4 +461,4 @@ optdb.register('c_blas_destructive',
                 make_c_gemv_destructive,
             ],
             max_use_ratio=5),
-        70.0, 'fast_run', 'inplace')
+        70.0, 'fast_run', 'inplace', 'c_blas')
