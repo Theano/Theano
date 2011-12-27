@@ -36,6 +36,7 @@ else:
     mode_not_fast_compile = config.mode
 
 mode_blas_opt = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
+mode_blas_opt = mode_blas_opt.excluding('c_blas')
 
 def test_dot_eq():
     assert T.Dot() == T.Dot()
@@ -561,10 +562,18 @@ def test_upcasting_scalar_nogemv():
 
     rval = T.dot(w, v) * alpha + t
 
-    f = theano.function([w, v, t, alpha], rval)
-    t = f.maker.env.toposort()
-    assert numpy.sum([isinstance(n.op, Gemv) for n in t]) == 0
-    theano.printing.debugprint(f, print_type=True)
+    f = theano.function([w, v, t, alpha], rval, mode=mode_blas_opt)
+    # this function is currently optimized so that the gemv is done
+    # inplace on a temporarily allocated-buffer, which is then scaled by alpha
+    # and to t with a fused elemwise.
+    n_gemvs = 0
+    #theano.printing.debugprint(f, print_type=True)
+    gemv_inplace = Gemv(inplace=True)
+    for node in f.maker.env.toposort():
+        if node.op == gemv_inplace:
+            n_gemvs += 1
+            assert node.outputs[0].dtype == 'float32'
+    assert n_gemvs == 1, n_gemvs
 
 def test_upcasting_scalar_nogemm():
     # Test that the optimization does not crash when the scale has an incorrect
@@ -1365,6 +1374,7 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
 
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
+        self.mode = self.mode.excluding('c_blas')
         dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent
         self.A = T.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = T.tensor(dtype=dtype, broadcastable=())
