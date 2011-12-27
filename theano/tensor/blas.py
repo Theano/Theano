@@ -173,11 +173,14 @@ class Gemv(Op):
     def __eq__(self, other):
         return type(self)==type(other) and self.inplace == other.inplace
 
+    def __repr__(self):
+        return self.__str__()
+
     def __str__(self):
         if self.inplace:
-            return 'Gemv{inplace}'
+            return '%s{inplace}' % self.__class__.__name__
         else:
-            return 'Gemv{no_inplace}'
+            return '%s{no_inplace}' % self.__class__.__name__
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.inplace)
