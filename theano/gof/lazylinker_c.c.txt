@@ -778,30 +778,31 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
           err = lazy_rec_eval(self, self->output_vars[i], one, zero);
         }
 
-      // save references to outputs prior to updating storage containers
-      if ((call_i + 1) == n_calls)
+      if (!err)
         {
-          assert (self->n_output_vars > self->n_updates);
-          Py_DECREF(rval);
-          rval = PyList_New(self->n_output_vars);
-          for (int i = 0; i < (self->n_output_vars); ++i)
+          // save references to outputs prior to updating storage containers
+          if ((call_i + 1) == n_calls)
             {
-              Py_ssize_t src = self->output_vars[i];
-              PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
-              Py_INCREF(item);
-              PyList_SetItem(rval, i, item);
+              assert (self->n_output_vars > self->n_updates);
+              Py_DECREF(rval);
+              rval = PyList_New(self->n_output_vars);
+              for (int i = 0; i < (self->n_output_vars); ++i)
+                {
+                  Py_ssize_t src = self->output_vars[i];
+                  PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
+                  Py_INCREF(item);
+                  PyList_SetItem(rval, i, item);
+                }
             }
-        }
 
-      for (int i = 0; i < self->n_updates; ++i)
-        {
-          Py_ssize_t dst = self->update_storage[2*i];
-          Py_ssize_t src = self->update_storage[2*i+1];
-          PyObject* tmp = PyList_GetItem(self->var_value_cells[src], 0);
-          Py_INCREF(Py_None);
-          Py_INCREF(tmp);
-          PyList_SetItem(self->var_value_cells[dst], 0, tmp);
-          PyList_SetItem(self->var_value_cells[src], 0, Py_None);
+          for (int i = 0; i < self->n_updates; ++i)
+            {
+              Py_ssize_t dst = self->update_storage[2*i];
+              Py_ssize_t src = self->update_storage[2*i+1];
+              PyObject* tmp = PyList_GetItem(self->var_value_cells[src], 0);
+              Py_INCREF(tmp);
+              PyList_SetItem(self->var_value_cells[dst], 0, tmp);
+            }
         }
     }
   Py_DECREF(one);
@@ -885,7 +886,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.11);
+  PyObject *result = PyFloat_FromDouble(0.12);
   return result;
 }
 
