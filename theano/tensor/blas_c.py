@@ -436,17 +436,14 @@ class CGemv(BaseBLAS, Gemv):
 @local_optimizer([gemv_inplace, gemv_no_inplace])
 def use_c_gemv(node):
     if node.op == gemv_no_inplace:
-        print "inserting C_GEMV"
         return [CGemv(inplace=False)(*node.inputs)]
     if node.op == gemv_inplace:
-        print "inserting dstruc C_GEMV"
         return [CGemv(inplace=True)(*node.inputs)]
 
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
     if node.op == CGemv(inplace=False):
-        print "inserting destructive C_GER"
         return [CGemv(inplace=True)(*node.inputs)]
 
 
@@ -462,8 +459,8 @@ blas_optdb.register('use_c_blas',
         ],
         max_use_ratio=5),
     20, 'fast_run', 'c_blas')
-print 'BLAS_OPTDB'
-print blas_optdb
+#print 'BLAS_OPTDB'
+#print blas_optdb
 
 # this matches the InplaceBlasOpt defined in blas.py
 optdb.register('c_blas_destructive',
