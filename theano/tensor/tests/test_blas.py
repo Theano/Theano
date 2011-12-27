@@ -29,6 +29,7 @@ from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
         #, constant, eval_outputs)
 import theano.tensor.blas_scipy
 
+
 if config.mode == 'FAST_COMPILE':
     mode_not_fast_compile = 'FAST_RUN'
 else:
