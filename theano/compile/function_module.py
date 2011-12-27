@@ -68,6 +68,23 @@ def infer_reuse_pattern(env, outputs_to_disown):
     return rval
 
 
+def env_updated_vars(env, expanded_inputs):
+    """
+    Reconstruct the full "updates" dictionary, mapping from Env input
+    variables to the env outputs that will replace their values.
+
+    :rtype: dict variable -> variable
+    """
+    updated_vars = {}
+    potential_values = list(env.outputs)  # copy the list
+    if len(expanded_inputs) != len(env.inputs):
+        raise ValueError('expanded_inputs must match len(env.inputs)')
+    for e_input, ivar in reversed(zip(expanded_inputs, env.inputs)):
+        if e_input.update is not None:
+            updated_vars[ivar] = potential_values.pop()
+    return updated_vars
+
+
 class Supervisor:
     """
     Listener for Env events which makes sure that no operation overwrites the
@@ -1030,8 +1047,10 @@ class FunctionMaker(object):
         else:
             self.linker = linker.accept(env)
 
-        #hacky thing so VMLinker
-        self.linker.expanded_inputs = expanded_inputs
+        if hasattr(linker, 'accept_var_updates'):
+            # hacky thing so VMLinker knows about updates
+            self.linker.accept_var_updates(
+                    env_updated_vars(env, expanded_inputs))
 
         self.indices = indices
         self.inputs = inputs

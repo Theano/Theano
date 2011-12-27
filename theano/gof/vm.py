@@ -61,6 +61,10 @@ class VM(object):
         self.call_counts = [0]*len(nodes)
         self.call_times = [0]*len(nodes)
         self.time_thunks = False
+
+        # This variable (self.need_update_inputs) is overshadowed by
+        # CLazyLinker in CVM which has an attribute of the same name that
+        # defaults to 0 (aka False).
         self.need_update_inputs = True
 
     def __call__(self):
@@ -405,6 +409,7 @@ class VM_Linker(link.LocalLinker):
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
         self.callback = callback
+        self.updated_vars = {}
 
     def accept(self, env, no_recycling = []):
         """
@@ -419,6 +424,14 @@ class VM_Linker(link.LocalLinker):
         self.env = env
         self.no_recycling = no_recycling
         return self
+
+    def accept_var_updates(self, updated_vars):
+        self.updated_vars = updated_vars
+        # This method simply records in the linker which variables have update
+        # expressions.  It does not imply that the linker will actually
+        # implement these updates (see need_update_inputs).  This mechanism is
+        # admittedly confusing, and it could use some cleaning up. The base
+        # Linker object should probably go away completely.
 
     def make_vm(self, nodes, thunks,
             input_storage, output_storage, storage_map,
@@ -559,7 +572,6 @@ class VM_Linker(link.LocalLinker):
     def make_all(self, profiler = None, input_storage = None,
             output_storage = None,
             ):
-        expanded_inputs=self.expanded_inputs # hacky argumentpassing workaround
         env = self.env
         order = list(env.toposort())
         no_recycling = self.no_recycling
@@ -590,24 +602,12 @@ class VM_Linker(link.LocalLinker):
         else:
             post_thunk_clear = None
 
-        # calculate the update_storage map whose keys are shared var inputs
-        # and whose values are the outputs that hold their updates
-
-        updated_vars = {}
-        if expanded_inputs:
-            # Update the inputs that have an update function
-            potential_values = list(env.outputs)
-            assert len(expanded_inputs)==len(env.inputs)
-            for e_input, ivar in reversed(zip(expanded_inputs, env.inputs)):
-                if e_input.update is not None:
-                    updated_vars[ivar] = potential_values.pop()
-
         vm = self.make_vm(order, thunks,
                 input_storage, output_storage, storage_map,
                 post_thunk_clear,
                 computed,
                 compute_map,
-                updated_vars
+                self.updated_vars
                 )
 
         return (vm,
