@@ -57,7 +57,6 @@ from theano.scalar.sharedvar import shared as scalar_shared
 
 import scan_op
 import scan_utils
-from scan_utils import safe_new, traverse
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
