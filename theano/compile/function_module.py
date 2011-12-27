@@ -21,6 +21,7 @@ from theano.configdefaults import config
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
+
 def alias_root(v):
     """Return the variable to which v is aliased by view_maps and destroy_maps"""
     if v.owner is None: return v
@@ -35,6 +36,7 @@ def alias_root(v):
     else:
         return v
 
+
 def view_tree_set(v, treeset):
     """Add to `treeset` all variables that are views of v, given that v is not a view"""
     treeset.add(v)
@@ -47,6 +49,7 @@ def view_tree_set(v, treeset):
             if v_input_pos_to_cl in iposlist:
                 if cl.outputs[opos] not in treeset:
                     view_tree_set(cl.outputs[opos], treeset)
+
 
 def infer_reuse_pattern(env, outputs_to_disown):
     """
