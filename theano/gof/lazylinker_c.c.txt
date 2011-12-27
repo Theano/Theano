@@ -470,16 +470,25 @@ static PyObject * pycall(CLazyLinker * self, Py_ssize_t node_idx, int verbose)
       double t0 = pytime(NULL);
       if (verbose) fprintf(stderr, "calling via Python (node %i)\n", (int)node_idx);
       rval = PyObject_CallObject(thunk, NULL);
-      double t1 = pytime(NULL);
-      double ti = PyFloat_AsDouble(PyList_GetItem(self->call_times, node_idx));
-      PyList_SetItem(self->call_times, node_idx, PyFloat_FromDouble(t1 - t0 + ti));
-      PyObject * count = PyList_GetItem(self->call_counts, node_idx);
-      long icount = PyInt_AsLong(count);
-      PyList_SetItem(self->call_counts, node_idx, PyInt_FromLong(icount+1));
+      if (rval)
+        {
+          double t1 = pytime(NULL);
+          double ti = PyFloat_AsDouble(
+                         PyList_GetItem(self->call_times, node_idx));
+          PyList_SetItem(self->call_times, node_idx,
+                         PyFloat_FromDouble(t1 - t0 + ti));
+          PyObject * count = PyList_GetItem(self->call_counts, node_idx);
+          long icount = PyInt_AsLong(count);
+          PyList_SetItem(self->call_counts, node_idx,
+                         PyInt_FromLong(icount + 1));
+      }
     }
   else
     {
-      if (verbose) fprintf(stderr, "calling via Python (node %i)\n", (int)node_idx);
+      if (verbose)
+        {
+          fprintf(stderr, "calling via Python (node %i)\n", (int)node_idx);
+        }
       rval = PyObject_CallObject(thunk, NULL);
     }
   return rval;
@@ -730,8 +739,11 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
     return NULL;
   int err = 0;
   self->position_of_error = -1;
+  // create constants used to fill the var_compute_cells
   PyObject * one = PyInt_FromLong(1);
   PyObject * zero = PyInt_FromLong(0);
+
+  // pre-allocate our return value
   Py_INCREF(Py_None);
   PyObject * rval = Py_None;
   //clear storage of pre_call_clear elements
