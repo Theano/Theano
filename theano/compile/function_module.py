@@ -631,7 +631,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            self.fn()
+            outputs = self.fn()
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function
@@ -648,7 +648,9 @@ class Function(object):
             profile.vm_call_time += dt_fn
 
         # Retrieve the values that were computed
-        outputs = [x.data for x in self.output_storage]
+        if outputs is None:
+            outputs = [x.data for x in self.output_storage]
+        assert len(outputs) == len(self.output_storage)
 
         # Remove internal references to required inputs.
         # These cannot be re-used anyway.

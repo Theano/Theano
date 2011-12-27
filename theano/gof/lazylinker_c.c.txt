@@ -732,6 +732,8 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
   self->position_of_error = -1;
   PyObject * one = PyInt_FromLong(1);
   PyObject * zero = PyInt_FromLong(0);
+  Py_INCREF(Py_None);
+  PyObject * rval = Py_None;
   //clear storage of pre_call_clear elements
   for (int call_i = 0; call_i < n_calls && (!err); ++call_i)
     {
@@ -764,6 +766,21 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
           err = lazy_rec_eval(self, self->output_vars[i], one, zero);
         }
 
+      // save references to outputs prior to updating storage containers
+      if ((call_i + 1) == n_calls)
+        {
+          assert (self->n_output_vars > self->n_updates);
+          Py_DECREF(rval);
+          rval = PyList_New(self->n_output_vars);
+          for (int i = 0; i < (self->n_output_vars); ++i)
+            {
+              Py_ssize_t src = self->output_vars[i];
+              PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
+              Py_INCREF(item);
+              PyList_SetItem(rval, i, item);
+            }
+        }
+
       for (int i = 0; i < self->n_updates; ++i)
         {
           Py_ssize_t dst = self->update_storage[2*i];
@@ -777,9 +794,12 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
     }
   Py_DECREF(one);
   Py_DECREF(zero);
-  if (err) return NULL;
-  Py_INCREF(Py_None);
-  return Py_None;
+  if (err)
+    {
+      Py_DECREF(rval);
+      return NULL;
+    }
+  return rval;
 }
 
 #if 0
@@ -853,7 +873,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.1);
+  PyObject *result = PyFloat_FromDouble(0.11);
   return result;
 }
 
