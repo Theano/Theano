@@ -118,3 +118,30 @@ Naming conventions
 * the suffx ``_results`` added to ``x``, ``y`` or ``xy`` are the list of
   expressions representing the next value of the state/output (i.e. the
   results after executing the inner function of scan)
+
+Files 
+-----
+
+The implementation of scan is spread over several files. The different
+files, and section of the code they deal with, are :
+
+* ``scan.py`` implements the ``scan`` function. The ``scan`` function
+  arranges the arguments of scan correctly, constructs the scan op and
+  afterwards calls the constructed scan op on the arguments. This function
+  takes care of figuring out missing inputs and shared variables. 
+
+* ``scan_op.py`` implements the ``scanOp`` class. The ``scanOp`` respects
+  the ``Op`` interface, and contains most of the logic of the scan operator.
+
+* ``scan_utils.py`` contains several helpful functions used through out the
+  other files that are specific of the scan operator.
+
+* ``scan_views.py`` contains different views of the scan op that have
+  simpler and easier signatures to be used in specific cases.
+
+* ``scan_opt.py`` contains the list of all optimizations for the scan
+  operator.
+
+* ``cscan.pyx`` contains a cython implementation for the scan operator.
+
+
