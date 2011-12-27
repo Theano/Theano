@@ -471,5 +471,6 @@ optdb.register('c_blas_destructive',
                 make_c_ger_destructive,
                 make_c_gemv_destructive,
             ],
+            failure_callback=EquilibriumOptimizer.warn_inplace,
             max_use_ratio=5),
         70.0, 'fast_run', 'inplace', 'c_blas')
