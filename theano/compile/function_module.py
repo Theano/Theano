@@ -570,8 +570,9 @@ class Function(object):
 
 
         # Set keyword arguments
-        for k, arg in kwargs.iteritems():
-            self[k] = arg
+        if kwargs:  # for speed, skip the iteritems for empty kwargs
+            for k, arg in kwargs.iteritems():
+                self[k] = arg
 
         if (not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
