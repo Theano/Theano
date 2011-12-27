@@ -783,7 +783,7 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
           // save references to outputs prior to updating storage containers
           if ((call_i + 1) == n_calls)
             {
-              assert (self->n_output_vars > self->n_updates);
+              assert (self->n_output_vars >= self->n_updates);
               Py_DECREF(rval);
               rval = PyList_New(self->n_output_vars);
               for (int i = 0; i < (self->n_output_vars); ++i)
@@ -886,7 +886,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.12);
+  PyObject *result = PyFloat_FromDouble(0.13);
   return result;
 }
 
