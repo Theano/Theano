@@ -872,22 +872,21 @@ def test_dot_w_self():
 ## Tests for Gemv
 ###############################################################################
 
-class TestGemv(TestCase):
+class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
         m = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
-        f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
+        f = theano.function([], theano.dot(v,m), mode=mode_blas_opt)
+
+        # Assert that the dot was optimized somehow
+        self.assertFunctionContains0(f, T.dot)
+        self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
 
-        # Assert that the dot was optimized somehow
-        assert sum([isinstance(node.op, T.Dot) for node in
-                    f.maker.env.toposort() ]) == 0
-        assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                    f.maker.env.toposort() ]) == 1
 
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
@@ -895,16 +894,14 @@ class TestGemv(TestCase):
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
         m = theano.shared(numpy.array(rng.uniform(size=(3,2)),
                                        dtype='float32'))
-        f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
+        f = theano.function([], theano.dot(m,v), mode=mode_blas_opt)
+
+        # Assert that the dot was optimized somehow
+        self.assertFunctionContains0(f, T.dot)
+        self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
-
-        # Assert that the dot was optimized somehow
-        assert sum([isinstance(node.op, T.Dot) for node in
-                    f.maker.env.toposort() ]) == 0
-        assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                    f.maker.env.toposort() ]) == 1
 
     @staticmethod
     def t_gemv1(m_shp):
