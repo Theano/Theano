@@ -5,10 +5,12 @@ import numpy
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
 
+
 AddConfigVar('unittests.rseed',
         "Seed to use for randomized unit tests. Special value 'random' means using a seed of None.",
         StrParam(666),
         in_c_key=False)
+
 
 def fetch_seed(pseed=None):
     """
@@ -38,6 +40,7 @@ def fetch_seed(pseed=None):
 
     return seed
 
+
 def seed_rng(pseed=None):
     """
     Seeds numpy's random number generator with the value returned by fetch_seed.
@@ -50,6 +53,7 @@ def seed_rng(pseed=None):
                 'instead of seed %i given as parameter' % (seed, pseed)
     numpy.random.seed(seed)
     return seed
+
 
 def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
     """
@@ -72,3 +76,24 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
 #     raise
 #
 verify_grad.E_grad = T.verify_grad.E_grad
+
+
+class TestOptimizationMixin(object):
+    def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
+        toposort = f.maker.env.toposort()
+        matches = [node for node in toposort if node.op == op]
+        assert (min <= len(matches) <= max), toposort
+
+    def assertFunctionContains0(self, f, op):
+        return self.assertFunctionContains(f, op, min=0, max=0)
+
+    def assertFunctionContains1(self, f, op):
+        return self.assertFunctionContains(f, op, min=1, max=1)
+
+    def assertFunctionContainsN(self, f, op, N):
+        return self.assertFunctionContains(f, op, min=N, max=N)
+
+    def SkipTest(self):
+        raise Exception('how do I skip this test properly?')
+
+
