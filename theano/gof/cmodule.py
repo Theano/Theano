@@ -1407,8 +1407,13 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
             print >> sys.stderr, '%05i\t%s'%(i+1, l)
         print '==============================='
         print_command_line_error()
-        raise Exception('Compilation failed (return status=%s):\n%s' %
-                        (status, compile_stderr))
+        # Print errors just below the command line.
+        print compile_stderr
+        # We replace '\n' by '. ' in the error message because when Python
+        # prints the exception, having '\n' in the text makes it more difficult
+        # to read.
+        raise Exception('Compilation failed (return status=%s): %s' %
+                        (status, compile_stderr.replace('\n', '. ')))
 
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()
