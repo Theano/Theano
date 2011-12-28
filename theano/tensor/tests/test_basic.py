@@ -2605,6 +2605,34 @@ class T_subtensor(unittest.TestCase):
             val = f()
             self.assertTrue(numpy.allclose(val, data[idx].shape))
 
+    def test_gradgrad_advanced_inc_subtensor(self):
+        def inc_slice(*s):
+            def just_numeric_args(a,b):
+                cost = (a[s] + b).sum()
+                cost_wrt_a = grad(cost, a)
+                cost_wrt_b = grad(cost, b)
+                grads = cost_wrt_a.sum() + cost_wrt_b.sum()
+                return grads
+            return just_numeric_args
+        
+        # vector
+        utt.verify_grad(
+                inc_slice(slice(2,4,None)),
+                (numpy.asarray([0,1,2,3,4,5.]),
+                    numpy.asarray([9,9.]),))
+
+        # matrix
+        utt.verify_grad(
+                inc_slice(slice(1,2,None), slice(None, None, None)),
+                (numpy.asarray([[0,1],[2,3],[4,5.]]),
+                    numpy.asarray([[9,9.]]),))
+
+        #single element
+        utt.verify_grad(
+                inc_slice(2, 1),
+                (numpy.asarray([[0,1],[2,3],[4,5.]]),
+                    numpy.asarray(9.),))
+
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
