@@ -183,20 +183,19 @@ def canonical_arguments(sequences,
     and that the different fields of of a dictionary are set to default
     value if the user has not provided any.
     """
-    us = to_list(sequences)
-    xys_info = to_list(outputs_info)
-    ws = [tensor.as_tensor_variable(x) for x in to_list(non_sequences)]
+    states_info = to_list(outputs_info)
+    parameters = [tensor.as_tensor_variable(x) for x in to_list(non_sequences)]
 
-    us = []
-    for u in to_list(sequences):
+    inputs = []
+    for input in to_list(sequences):
         if not isinstance(u, dict):
-            us.append(u)
-        elif u.get('taps', True) is None:
-            us.append(u)
-        elif u.get('taps', None):
-            mintap = numpy.min(u['taps'])
-            maxtap = numpy.max(u['taps'])
-            for k in u['taps']:
+            inputs.append(input)
+        elif input.get('taps', True) is None:
+            inputs.append(input)
+        elif input.get('taps', None):
+            mintap = numpy.min(input['taps'])
+            maxtap = numpy.max(input['taps'])
+            for k in input['taps']:
                 # We cut the sequence such that seq[i] to correspond to
                 # seq[i-k]
                 if maxtap < 0:
@@ -204,57 +203,57 @@ def canonical_arguments(sequences,
                 else:
                     offset = 0
                 if maxtap == mintap and maxtap != 0:
-                    nw_u = u['input'][:abs(maxtap)]
+                    nw_input = input['input'][:abs(maxtap)]
                 elif maxtap - k != 0:
-                    nw_u = u['input'][offset + k - mintap: -(maxtap - k)]
+                    nw_input = input['input'][offset + k - mintap: -(maxtap - k)]
                 else:
-                    nw_u = u['input'][offset + k - mintap:]
+                    nw_input = input['input'][offset + k - mintap:]
                 if go_backwards:
-                    nw_u = nw_u[::-1]
-                us.append(nw_u)
+                    nw_input = nw_input[::-1]
+                inputs.append(nw_input)
         else:
-            raise ValueError('Provided sequence makes no sense', str(u))
+            raise ValueError('Provided sequence makes no sense', str(input))
 
     # Since we've added all sequences now we need to level them up based on
     # n_steps or their different shapes
     if n_steps is None:
-        if len(us) == 0:
+        if len(inputs) == 0:
             # No information about the number of steps
             raise ValueError('You need to provide either at least '
                              'one sequence over which scan should loop '
                              'or a number of steps for scan to loop. '
                              'Neither of the two had been provided !')
-        T = us[0].shape[0]
-        for u in us[1:]:
-            T = tensor.minimum(T, u.shape[0])
+        T = inputs[0].shape[0]
+        for input in inputs[1:]:
+            T = tensor.minimum(T, input.shape[0])
     else:
         T = tensor.as_tensor(n_steps)
     # Level up sequences
-    us = [u[:T] for u in us]
+    inputs = [input[:T] for input in inputs]
 
     # wrap outputs info in a dictionary if they are not already in one
-    for i, xy in enumerate(xys_info):
-        if xy is not None and not isinstance(xy, dict):
-            xys_info[i] = dict(initial=xy, taps=[-1])
-        elif isinstance(xy, dict):
-            if not xy.get('initial', None) and xy.get('taps', None):
+    for i, state in enumerate(states_info):
+        if state is not None and not isinstance(state, dict):
+            states_info[i] = dict(initial=state, taps=[-1])
+        elif isinstance(state, dict):
+            if not state.get('initial', None) and state.get('taps', None):
                 raise ValueError(('If you are using slices of an output '
                                   'you need to provide a initial state '
-                                  'for it'), xy)
-            elif xy.get('initial', None) and not xy.get('taps', None):
+                                  'for it'), state)
+            elif state.get('initial', None) and not state.get('taps', None):
                 # ^ initial state but taps not provided
-                if 'taps' in xy:
+                if 'taps' in state:
                     # ^ explicitly provided a None for taps
                     _logger.warning('Output %s ( index %d) has a initial '
                             'state but taps is explicitly set to None ',
-                             getattr(outs_info[i]['initial'], 'name', 'None'),
+                             getattr(states_info[i]['initial'], 'name', 'None'),
                              i)
-                xys_info[i]['taps'] = [-1]
+                states_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
             # with an empty dict() to simplify handling
-            xys_info[i] = dict()
-    return seqs, outs_info, non_seqs, actual_n_steps
+            states_info[i] = dict()
+    return inputs, staess_info, parameters, T
 
 
 def infer_shape(outs, inputs, input_shapes):

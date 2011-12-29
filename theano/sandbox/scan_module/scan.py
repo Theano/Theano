@@ -319,12 +319,12 @@ def scan(fn,
     """
     # Note : see the internal documentation of the scan op for naming
     # conventions and all other details
-    us, xys_info, ws, T = scan_utils.canonical_arguments(sequences,
-                                                         outputs_info,
-                                                         non_sequences,
-                                                         go_backwards,
-                                                         n_steps)
-
+    rvals = scan_utils.canonical_arguments(sequences,
+                                           outputs_info,
+                                           non_sequences,
+                                           go_backwards,
+                                           n_steps)
+    inputs, states_and_outputs_info, parameters, T = rvals
     # If we provided a known number of steps ( before compilation)
     # and if that number is 1 or -1, then we can skip the Scan Op,
     # and just apply the inner function once
@@ -340,9 +340,9 @@ def scan(fn,
 
     if T_value in (1, -1):
         return one_step_scan(fn,
-                             us,
-                             xys_info,
-                             ws,
+                             inputs,
+                             states_and_outputs_info,
+                             parameters,
                              T_value,
                              truncate_gradient)
 
@@ -352,22 +352,23 @@ def scan(fn,
     # 2. Allocate memory for the states of scan.
     mintaps = []
     lengths = []
-    for xy in xys_info:
-        if xy.get('taps', None) == [-1]:
+    for arg_info in states_and_outputs_info:
+        if arg_info.get('taps', None) == [-1]:
             mintaps.append(1)
             lengths.append(scalar_shared(numpy.int64(0)))
-            xy['initial'] = scan_utils.expand(tensor.unbroadcast(
-                    tensor.shape_padfelt(xy['initial'], 0), T))
-        elif xy.get('taps', None):
-            if numpy.any(numpy.array(xy.get('taps', [])) > 0):
+            arg_info['initial'] = scan_utils.expand(tensor.unbroadcast(
+                    tensor.shape_padfelt(state['initial'], 0), T))
+        elif arg_info.get('taps', None):
+            if numpy.any(numpy.array(arg_info.get('taps', [])) > 0):
                 # Make sure we do not have requests for future values of a
                 # sequence we can not provide such values
                 raise ValueError('Can not use future taps of outputs',
-                                    init_out)
-            mintap = abs(numpy.min(xy['taps']))
+                                 arg_info)
+            mintap = abs(numpy.min(arg_info['taps']))
             lengths.append(scalar_shared(numpy.int64(0)))
             mintaps.append(mintap)
-            xy['initial'] = scan_utils.expand(xy['initial'][:mintap], T)
+            arg_info['initial'] = scan_utils.expand(
+                arg_info['initial'][:mintap], T)
         else:
             mintaps.append(0)
             lengths.append(scalar_shared(numpy.int64(0)))
@@ -375,34 +376,37 @@ def scan(fn,
     # 3. Generate arguments for the function passed to scan. This will
     # function will return the outputs that need to be computed at every
     # timesteps
-    us_slices = [u[t] for u in us]
-    xs_slices = []
-    for n, xy in enumerate(xys_info):
+    inputs_slices = [input[t] for input in inputs]
+    states_slices = []
+    for n, state in enumerate(states_and_outputs_info):
+        # Check if it is actually a state and not an output
         if mintaps[n] != 0:
-            for k in init_out['taps']:
-                xs_slices.append(
-                    xy['initial'][(t + mintaps[n] - k) % lengths[n]])
+            for k in state['taps']:
+                states_slices.append(
+                    state['initial'][(t + mintaps[n] - k) % lengths[n]])
 
     # 4. Construct outputs that are to be computed by the inner
     # function of scan
-    args = us_slices + xs_slices + ws
-    cond, xys_results, updates = scan_utils.get_updates_and_outputs(fn(*args))
+    args = inputs_slices + states_slices + parameters
+    cond, states_and_outputs, updates = \
+            scan_utils.get_updates_and_outputs(fn(*args))
     if cond is not None:
-        as_while = True
+        as_repeatUntil = True
     else:
-        as_while = False
+        as_repeatUntil = False
 
     # User is allowed to provide no information if it only behaves like a
     # map
-    if len(xys_outputs) != len(xys_info) and len(xys_info) == 0:
-        xys_info = [None] * len(xys_outputs)
+    if (len(states_and_outputs) != len(states_and_outputs_info) and
+        len(states_and_outputs_info) == 0):
+        states_and_outputs_info = [None] * len(states_and_outputs)
 
     # 5. Construct the scan op
     # 5.1 Construct list of shared variables with updates (those that
     # can be treated as states (i.e. of TensorType) and those that can not
     # (like Random States)
     rvals = rebuild_collect_shared(
-        xys_results + [cond],
+        states_and_outputs + [cond],
         updates=updates,
         rebuild_strict=True,
         copy_inputs_over=True,
@@ -411,80 +415,87 @@ def scan(fn,
     # extracting the arguments
     input_variables, cloned_outputs, other_rval = rvals
     clone_d, update_d, update_expr, shared_inputs = other_rval
-    additional_xs_outer = []
-    additional_xs_inner = []
-    additional_xs_results = []
+    additional_input_states_outer = []
+    additional_input_states_inner = []
+    additional_output_states = []
     additional_lengths = []
-    zs_outer = []
-    zs_inner = []
-    zs_results = []
+    non_numeric_input_states_outer = []
+    non_numeric_input_states_inner = []
+    non_numeric_output_states = []
 
     for sv in shared_inputs:
         if sv in update_d:
             if isinstance(sv, TensorType):
                 # We can treat it as a sit sot
-                nw_x = scan_utils.expand(
-                    tensor.unbroadcast(
-                        tensor.shape_padleft(sv, 0), actual_n_steps))
+                nw_state = scan_utils.expand(
+                    tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
                 additional_lengths.append(scalar_shared(numpy.int64(0)))
-                additional_xs_outer.append(nw_x)
-                additional_xs_inner.append(nw_x.type())
-                additional_xs_results.append(
+                additional_input_states_outer.append(nw_state)
+                additional_input_states_inner.append(nw_state.type())
+                additional_output_states.append(
                     scan_utils.clone(tensor.set_subtensor(
-                        nw_x[(t + 1) % additional_lengths[-1]],
+                        nw_state[(t + 1) % additional_lengths[-1]],
                         update_d[sv])))
             else:
-                zs_outer.append(sv)
-                zs_inner.append(sv.type())
-                zs_results.append(update_d[sv])
+                non_numeric_input_states_outer.append(sv)
+                non_numeric_input_states_inner.append(sv.type())
+                non_numeric_output_states.append(update_d[sv])
 
     # 5.2 Collect and order inputs of the inner function
-    xs_outer = []
-    xs_results = []
+    input_states_outer = []
+    output_states = []
 
-    ys_outer = []
-    ys_results = []
+    memory_buffers_for_outputs = []
+    outputs = []
 
     for n, mintap in enumerate(mintaps):
         if mintap != 0:
-            x = xys_info[n]['initial']
-            xs_outer.append(x)
-            xs_results.append(
-                tensor.set_subtensor(x[(t + 1) % lengths[n]],
-                                     xys_results[n]))
+            input_state = states_and_outputs_info[n]['initial']
+            input_states_outer.append(input_state)
+            output_states.append(
+                tensor.set_subtensor(input_state[(t + 1) % lengths[n]],
+                                     states_and_outputs[n]))
         else:
-            y = scan_utils.allocate_memory(T, xys_info[n], xys_results[n])
-            ys_outer.append(y)
-            ys_results.append(
-                tensor.set_subtensor(y[t % lengths[n]], xys_results[n])
+            output = scan_utils.allocate_memory(
+                T, states_and_outputs_info[n], states_and_outputs[n])
+            memory_buffers_for_outputs.append(output)
+            outputs.append(
+                tensor.set_subtensor(output[t % lengths[n]],
+                                     states_and_outputs[n])
     # 5.3 Construct the  scan op
 
 
-def one_step_scan(fn, us, xys_info, ws, T, truncate_gradient):
+def one_step_scan(fn,
+                  inputs,
+                  states_and_outputs_info,
+                  parameters,
+                  T,
+                  truncate_gradient):
     """
     This function is evaluated if `n_steps` evaluates to either 1 or -1.
     """
     # 1. Grab slices of sequences
-    us_slices = [u[0] for u in us]
+    inputs_slices = [input[0] for input in inputs]
 
     # 2. Grab slices of states
-    xs_slices = []
-    for n, x in enumerate(xys_info):
-        if x.get('taps', None) == [-1]:
-            xs_slices.append(x['initial'])
-        elif init_out.get('taps', None):
-            if numpy.any(numpy.array(init_out.get('taps', [])) > 0):
+    states_slices = []
+    for n, arg_info in enumerate(states_and_outputs_info):
+        if arg_info.get('taps', None) == [-1]:
+            states_slices.append(arg_info['initial'])
+        elif arg_info.get('taps', None):
+            if numpy.any(numpy.array(arg_info.get('taps', [])) > 0):
                 # Make sure we do not have requests for future values of a
                 # sequence we can not provide such values
                 raise ValueError('Can not use future taps of outputs',
-                                    init_out)
+                                    arg_info)
             # go through the taps
-            mintap = abs(numpy.min(init_out['taps']))
-            xs_slices.append(x['initial'][k+mintap])
+            mintap = abs(numpy.min(arg_info['taps']))
+            states_slices.append(arg_info['initial'][k+mintap])
 
     # Re-order args
-    args = (us_slices + xs_slices + non_seqs)
-    cond, xys_results, updates = scan_utils.get_updates_and_outputs(fn(*args))
+    args = (inputs_slices + states_slices + parameters)
+    cond, states_and_outputs, updates = \
+                scan_utils.get_updates_and_outputs(fn(*args))
 
     # We do not need to use the scan op anymore, so we can just return
     # the outputs and updates we have
@@ -492,9 +503,9 @@ def one_step_scan(fn, us, xys_info, ws, T, truncate_gradient):
         _logger.warning(('When the number of steps is fixed and equal '
                 'to 1, the provided stopping condition, ',
                 str(cond), ' is ignored'))
-    xys_results = [tensor.unbroadcast(
-        tensor.shape_padleft(xy_results), 0) for xy in xys]
-    if len(xys) == 1:
-        xys_results = xys_results[0]
+    states_and_outputs = [tensor.unbroadcast(
+        tensor.shape_padleft(arg), 0) for arg in states_and_outputs]
+    if len(states_and_outputs) == 1:
+        states_and_outputs = states_and_outputs[0]
 
-    return (xys_results, updates)
+    return (states_and_outputs, updates)
