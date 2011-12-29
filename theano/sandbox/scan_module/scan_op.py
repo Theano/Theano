@@ -40,12 +40,12 @@ _logger = logging.getLogger('theano.scan_module.scan_op')
 
 class ScanOp(PureOp):
     def __init__(self,
-                 us,
-                 xs,
-                 ws,
-                 zs,
-                 xs_results,
-                 ys_results,
+                 inputs,
+                 input_states,
+                 parameters,
+                 non_numeric_states,
+                 output_states,
+                 outputs,
                  lengths,
                  mintaps,
                  name,
