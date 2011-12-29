@@ -97,7 +97,7 @@ Naming conventions
 * ``input`` will be an input :math:`\mathbf{u}`
 * ``parameter`` will stand for a parameter tensor :math:`\mathbf{w}` that stays 
   constant at each step of the inner function 
-* ``shared_parameter`` will stand for states that are not numeric in nature. More
+* ``non_numeric_state`` will stand for states that are not numeric in nature. More
   specifically *random states*.
 * ``t`` is the time index (the current step in the evolution of the system).
 * ``T`` is the total number of steps in the evolution of the system.
