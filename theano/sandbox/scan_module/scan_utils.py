@@ -205,7 +205,8 @@ def canonical_arguments(sequences,
                 if maxtap == mintap and maxtap != 0:
                     nw_input = input['input'][:abs(maxtap)]
                 elif maxtap - k != 0:
-                    nw_input = input['input'][offset + k - mintap: -(maxtap - k)]
+                    nw_input = input['input'][offset + k - mintap:\
+                                              -(maxtap - k)]
                 else:
                     nw_input = input['input'][offset + k - mintap:]
                 if go_backwards:
@@ -246,8 +247,8 @@ def canonical_arguments(sequences,
                     # ^ explicitly provided a None for taps
                     _logger.warning('Output %s ( index %d) has a initial '
                             'state but taps is explicitly set to None ',
-                             getattr(states_info[i]['initial'], 'name', 'None'),
-                             i)
+                             getattr(states_info[i]['initial'], 'name',
+                                     'None'), i)
                 states_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
