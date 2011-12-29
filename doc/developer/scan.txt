@@ -97,8 +97,9 @@ Naming conventions
 * ``input`` will be an input :math:`\mathbf{u}`
 * ``parameter`` will stand for a parameter tensor :math:`\mathbf{w}` that stays 
   constant at each step of the inner function 
-* ``non_numeric_state`` will stand for states that are not numeric in nature. More
-  specifically *random states*.
+* ``non_numeric_input_state`` will stand for states that are not numeric in nature, 
+  more specifically *random states*, when they are provided as an input. The
+  same holds for ``non_numeric_output_state``.
 * ``t`` is the time index (the current step in the evolution of the system).
 * ``T`` is the total number of steps in the evolution of the system.
 * the suffix ``_slices`` added to either ``x`` or ``u`` will mean the list of
