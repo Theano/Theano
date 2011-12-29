@@ -134,6 +134,19 @@ files, and section of the code they deal with, are :
 * ``scan_opt.py`` contains the list of all optimizations for the scan
   operator.
 
-* ``cscan.pyx`` contains a cython implementation for the scan operator.
+The logical flow
+----------------
 
+First the scan arguments are parsed by the function ``canonical_arguments``, 
+that wraps them into lists and adds default values for the arguments. One
+important step that happens in this function is that the inputs arguments
+are converted such that they all have a single tap, namely 0. For example 
+if you have ``[{'input':u, 'taps':[0, 4]}]`` as the list of inputs arguments
+to scan, it gets converted into ``[{'input':u, 'taps':[0]}, {'input':u[4:],
+'taps':[0]}]``.
+
+The second step is to check if ``n_steps`` is a constant and has the value 1
+or -1. If that is true then the function ``one_step_scan`` is called which 
+unwraps the computation of the inner function into the outer graph without 
+adding any scan op in the graph.
 
