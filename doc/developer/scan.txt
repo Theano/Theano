@@ -58,7 +58,7 @@ scan op implements system of equations of the following form:
 
 The equations describe a system evolving in time, where :math:`t` represents the
 current step. The system is described by inputs, states, outputs and
-weights. 
+parameteres. 
 
 The inputs, denoted by :math:`\mathbf{u}` are time-varying quantities, 
 hence indexed by :math:`t`. They however only influence the system, but are
@@ -66,7 +66,7 @@ not influenced by the system.
 
 The states :math:`\mathbf{x}` are time-varying quantities, whose value at
 time :math:`t` depends on its (or other state) previous values as well as
-the inputs and weights. Note that the first few values of the states are
+the inputs and parameters. Note that the first few values of the states are
 always provided, otherwise we could not imploy the recurrent equation to
 generate these sequence of values without a starting point. 
 
@@ -74,7 +74,7 @@ The outputs, :math:`\mathbf{y}` are outputs of the system, i.e. values that
 depend on the previous values of the states and inputs. The difference
 between outputs and states is that outputs do not feed back into the system. 
 
-The weights :math:`\mathbf{w}` are fixed quantities that are re-used at
+The parameters :math:`\mathbf{w}` are fixed quantities that are re-used at
 every time step of the evolution of the system. 
 
 Each of the equations above are implemented by the **inner function** of scan. You 
@@ -88,24 +88,19 @@ computational graph that is afterwards compiled into the **inner function**.
 Naming conventions
 ------------------
 
-* ``x`` will stand for a state :math:`\mathbf{x}`, while ``xs`` will represent
-  the list of all states
-* ``y`` will stand for an output :math:`\mathbf{y}`, while ``ys`` will
-  represent the list of all outputs
-* ``xy`` will stand for either a state or an output, while ``xys`` will be
-  the list of all states and outputs
-* ``u`` will be an input, wile ``us`` will be the list of all inputs
-* ``w`` will stand for a weight tensor, while ``ws`` for the list of all
-  weight tensors
-* ``z`` will stand for states that are not numeric in nature. More
-  specifically *random states*. ``zs`` is the list of all such states.
+* ``input_state`` will stand for a state :math:`\mathbf{x}`, when it is
+  provided as an input to the recurrent formula (the inner function) that 
+  will generate the new value of the state
+* ``output_state`` will stand for a state :math:`\math{x}` when it refers 
+  to the result of the recurrent formula (the output of the inner function)
+* ``output`` will stand for an output :math:`\mathbf{y}`
+* ``input`` will be an input :math:`\mathbf{u}`
+* ``parameter`` will stand for a parameter tensor :math:`\mathbf{w}` that stays 
+  constant at each step of the inner function 
+* ``shared_parameter`` will stand for states that are not numeric in nature. More
+  specifically *random states*.
 * ``t`` is the time index (the current step in the evolution of the system).
 * ``T`` is the total number of steps in the evolution of the system.
-* ``N`` will be the number of states, ``n`` will be the index that loops
-  over the number of states
-* ``M`` will be the number of inputs and ``m`` the dedicated index for
-  inputs
-* ``Q`` the number of weights
 * the suffix ``_slices`` added to either ``x`` or ``u`` will mean the list of
   variables representing slices of states or inputs. These are the arguments
   given to the constructive function of scan (see above). 
@@ -115,9 +110,6 @@ Naming conventions
 * the suffix ``_outer`` added to ``x``, ``y``, ``xy``, ``u``, ``w`` or ``z``
   will mean the variables representing the state/output/input/weights in the
   main computational graph (the one containing the scan op).
-* the suffx ``_results`` added to ``x``, ``y`` or ``xy`` are the list of
-  expressions representing the next value of the state/output (i.e. the
-  results after executing the inner function of scan)
 
 Files 
 -----
