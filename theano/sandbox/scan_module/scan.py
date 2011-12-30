@@ -530,7 +530,7 @@ def one_step_scan(fn,
                                     arg_info)
             # go through the taps
             mintap = abs(numpy.min(arg_info['taps']))
-            states_slices.append(arg_info['initial'][k+mintap])
+            states_slices.append(arg_info['initial'][k + mintap])
 
     # Re-order args
     args = (inputs_slices + states_slices + parameters)
