@@ -188,14 +188,8 @@ class ScanOp(PureOp):
         node_output_storage = [storage_map[r] for r in node.outputs]
         node_input_compute = [compute_map[r] for r in node.inputs]
         node_output_compute = [compute_map[r] for r in node.outputs]
-        # 2. If the op is not inplace we need to copy over the initial values
-        if not self.inplace:
-            for membuf1, membuf2 in izip(
-                    node_output_storage,
-                    node_input_storage[1: 1 + len(node_output_storage)]):
-                membuf1[0][:] = membuf2[0]
 
-        # 3. Construct fake shared variables around every argument of scan
+        # 2. Construct fake shared variables around every argument of scan
         givens = {}
         base_inputs = self.inputs[:len(self.outputs)]
         aux_inputs = self.inputs[len(self.outputs):]
