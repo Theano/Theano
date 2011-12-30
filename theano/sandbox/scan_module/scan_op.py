@@ -84,7 +84,7 @@ class ScanOp(PureOp):
                 self.mode_instance.message = "Scan sub profile"
         else:
             self.mode_instance = mode_instance
-
+        # --Adding default name--
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
 
