@@ -427,7 +427,7 @@ def scan(fn,
     additional_input_states = []
     additional_output_states = []
     additional_lengths = []
-    additional_mintals = []
+    additional_mintaps = []
     original_numeric_shared_variables = []
 
     non_numeric_input_states = []
