@@ -393,10 +393,6 @@ def scan(fn,
     args = inputs_slices + states_slices + parameters
     cond, states_and_outputs, updates = \
             scan_utils.get_updates_and_outputs(fn(*args))
-    if cond is not None:
-        as_repeatUntil = True
-    else:
-        as_repeatUntil = False
 
     # User is allowed to provide no information if it only behaves like a
     # map
