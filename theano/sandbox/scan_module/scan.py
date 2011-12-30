@@ -506,8 +506,11 @@ def scan(fn,
     scan_inputs = [T] + inputs
     scan_outputs_update_rules = scan_utils.to_list(local_op(*scan_inputs))
     # 5.5 Collect outputs and add permutation object
-    scan_outputs = scan_outputs_update_rules[:len(states_and_outputs)]
-    scan_outputs = [scan_utils.scan_permute(x, t) for x in scan_outputs]
+    scan_outputs = []
+    for pos in xrange(len(states_and_outputs)):
+        out = scan_utils.ScanPermutation(mintaps[pos])(
+            scan_outputs_update_rules[pos],t)
+        scan_outputs.append(out[mintap:])
     # 5.6 Construct updates dictionary
     update_rules = scan_outputs_update_rules[len(states_and_outputs):]
     updates = {}
