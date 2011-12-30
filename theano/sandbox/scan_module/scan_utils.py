@@ -363,7 +363,7 @@ class ScanPermutation(gof.Op):
 
     def make_node(self, membuffer, index):
         # index has to be a scalar
-        assert index.ndim = 0
+        assert index.ndim == 0
         # we neeed at least one dimension
         assert membuffer.ndim > 0
         return gof.Apply(self, [membuffer, index], [membuffer.type()])
