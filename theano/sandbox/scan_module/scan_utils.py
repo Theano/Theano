@@ -57,10 +57,10 @@ def to_list(ls):
     Converts ``ls`` to list if it is a tuple, or wraps ``ls`` into a list if
     it is not a list already
     """
-    if isinstance(x, (list, tuple)):
-        return list(x)
+    if isinstance(ls, (list, tuple)):
+        return list(ls)
     else:
-        return [x]
+        return [ls]
 
 
 class until(object):
