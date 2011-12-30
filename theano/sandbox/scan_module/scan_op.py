@@ -254,9 +254,9 @@ class ScanOp(PureOp):
                                   name=self.name,
                                   profile=self.profile)
 
-        # Construct the perform
+        # 3.2 Construct the perform
         if self.as_repeatUntil is not None:
-
+            # 3.2.1 as a repeat until
             def p(node, args, outs):
                 pos = 0
                 cont = 1
