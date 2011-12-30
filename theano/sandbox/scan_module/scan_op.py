@@ -197,6 +197,7 @@ class ScanOp(PureOp):
         aux_buffers = node_input_storage[1 + len(base_inputs):]
         # 2.1 First the auxiliary arguments, those that are parameters or
         # input
+
         def fake_shared(var):
             val = 0
             for dim in xrange(var.ndim):
@@ -214,7 +215,7 @@ class ScanOp(PureOp):
                                         borrow=True)
             elif isinstance(var, TensorType):
                 givens[var] = fake_shared(var)
-                aux_buffers.append((givens[var],mem_buf))
+                aux_buffers.append((givens[var], mem_buf))
             else:
                 givens[var] = var.type()
                 non_tensor_args.append(givens[var])
@@ -231,7 +232,6 @@ class ScanOp(PureOp):
             givens[var] = fake_shared(var)
             state_buffers.append((givens[var], self.lengths[pos], mem_buf))
             updates[givens[var]] = expr
-
 
         #2.3 Non-numeric states
         n_non_numeric = len(self.outputs) - n_numeric_values
@@ -256,6 +256,7 @@ class ScanOp(PureOp):
 
         # 3.2 Construct the perform
         if self.as_repeatUntil is not None:
+
             # 3.2.1 as a repeat until
             def p(node, args, outs):
                 pos = 0
@@ -300,6 +301,7 @@ class ScanOp(PureOp):
                     out_buf[0] = in_buf[0]
 
         else:
+
             # 3.2.2 as a for
             def p(node, args, outs):
                 # copy inputs if not inplace
