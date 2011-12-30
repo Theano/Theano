@@ -518,7 +518,7 @@ def scan(fn,
                      update_rules[:len(additional_input_states)]):
         updates[v] = u[-1]
     for v, u in izip(original_non_numeric_shared_variables,
-                     update_rules[len(additional_input_shates):]):
+                     update_rules[len(additional_input_states):]):
         updates[v] = u
     # Step 5.7 We are done and can return everything back to the user
     return scan_outputs, updates
