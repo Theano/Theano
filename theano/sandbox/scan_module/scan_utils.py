@@ -103,7 +103,7 @@ def get_updates_and_outputs(ls):
         return isinstance(elem, until)
 
     if is_list_outputs(ls):
-        return None, _list(ls), {}
+        return None, to_list(ls), {}
     if is_updates(ls):
         return None, [], dict(ls)
     if not isinstance(ls, (list, tuple)):
@@ -119,9 +119,9 @@ def get_updates_and_outputs(ls):
     if len(ls) == 2:
         if is_list_outputs(ls[0]):
             if is_updates(ls[1]):
-                return (None, _list(ls[0]), dict(ls[1]))
+                return (None, to_list(ls[0]), dict(ls[1]))
             elif is_condition(ls[1]):
-                return (ls[1].condition, _list(ls[0]), {})
+                return (ls[1].condition, to_list(ls[0]), {})
             else:
                 raise ValueError(error_msg)
         elif is_updates(ls[0]):
@@ -137,7 +137,7 @@ def get_updates_and_outputs(ls):
         if is_outputs(ls[0]):
             if is_updates(ls[1]):
                 if is_condition(ls[2]):
-                    return (ls[2].condition, _list(ls[0]), dict(ls[1]))
+                    return (ls[2].condition, to_list(ls[0]), dict(ls[1]))
                 else:
                     raise ValueError(error_msg)
             else:
@@ -261,7 +261,7 @@ def canonical_arguments(sequences,
             # if a None is provided as the output info we replace it
             # with an empty dict() to simplify handling
             states_info[i] = dict()
-    return inputs, staess_info, parameters, T
+    return inputs, states_info, parameters, T
 
 
 def infer_shape(outs, inputs, input_shapes):
