@@ -42,7 +42,7 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-import itertools
+from itertools import izip
 import logging
 import numpy
 
@@ -54,6 +54,8 @@ from theano import tensor
 from theano import config
 from theano.updates import Updates
 from theano.scalar.sharedvar import shared as scalar_shared
+from theano.compile.pfunc import rebuild_collect_shared
+import theano
 
 import scan_op
 import scan_utils
