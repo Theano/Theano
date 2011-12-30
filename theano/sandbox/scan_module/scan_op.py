@@ -33,7 +33,6 @@ from theano.tensor.opt import Shape_i
 from theano.compile.profiling import ScanProfileStats
 
 import scan_utils
-from scan_utils import safe_new
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
