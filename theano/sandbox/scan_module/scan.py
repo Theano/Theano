@@ -459,8 +459,50 @@ def scan(fn,
             inputs.append(output)
             outputs.append(
                 tensor.set_subtensor(output[t % lengths[n]],
-                                     states_and_outputs[n])
-    # 5.3 Construct the  scan op
+                                     states_and_outputs[n]))
+    inputs.extend(additional_input_states)
+    outputs.extend(additional_output_states)
+    lengths.extend(additional_lengths)
+    mintaps.extend(additional_mintaps)
+    inputs.extend(non_numeric_input_states)
+    outputs.extend(non_numeric_output_states)
+    # 5.3 Construct the the options dictionary
+    options['name'] = name
+    options['profile'] = profile
+    options['mode'] = mode
+    options['inplace'] = False
+    options['gpu'] = False
+    options['truncate_gradient'] = truncate_gradient
+    options['hash_inner_graph'] = 0
+    # 5.4 Construct the ScanOp instance
+    local_op = scan_op.ScanOp(inputs=inputs,
+                              outputs=outputs,
+                              lengths=lengths,
+                              switches=[],
+                              options=options,
+                              as_repeatUntil=cond)
+    # Note that we get here all the outputs followed by the update rules to
+    # the shared variables we had in our scan
+    # we know that we have (in this given order):
+    #   * len(states_and_outputs) real outputs
+    #   * len(additional_input_states) updates for numeric shared variable
+    #   * len(non_numeric_input_states) updates for non numeric shared
+    #   variables
+    scan_outputs_update_rules = local_op(*inputs)
+    # 5.5 Collect outputs and add permutation object
+    scan_outputs = scan_outputs_update_rules[:len(states_and_outputs)]
+    scan_outputs = [scan_utils.scan_permute(x, t) for x in scan_outputs]
+    # 5.6 Construct updates dictionary
+    update_rules = scan_outputs_update_rules[len(states_and_outputs):]
+    updates = {}
+    for v, u in izip(original_numeric_shared_variables,
+                     update_rules[:len(additional_input_states)]):
+        updates[v] = u[-1]
+    for v, u in izip(original_non_numeric_shared_variables,
+                     update_rules[len(additional_input_shates):]):
+        updates[v] = u
+    # Step 5.7 We are done and can return everything back to the user
+    return scan_outputs, updates
 
 
 def one_step_scan(fn,
