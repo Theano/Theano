@@ -398,7 +398,7 @@ def scan(fn,
     # map
     if (len(states_and_outputs) != len(states_and_outputs_info) and
         len(states_and_outputs_info) == 0):
-        states_and_outputs_info = [None] * len(states_and_outputs)
+        mintaps = [0] * len(states_and_outputs)
 
     # 5. Construct the scan op
     # 5.1 Construct list of shared variables with updates (those that
