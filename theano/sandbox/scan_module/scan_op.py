@@ -247,7 +247,7 @@ class ScanOp(PureOp):
         # 3.1 Construct the inner function of scan
         if self.as_repeatUntil is not None:
             fn_outs = self.as_repeatUntil
-        self.fn = theano.function([], fn_outs,
+        self.fn = theano.function(non_tensor_args, fn_outs,
                                   givens=givens,
                                   updates=updates,
                                   mode=self.mode_instance,
