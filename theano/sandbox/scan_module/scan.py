@@ -71,6 +71,7 @@ def scan(fn,
          go_backwards=False,
          mode=None,
          name=None,
+         options=None,
          profile=False):
     """
     This function constructs and applies a Scan op to the provided
@@ -319,6 +320,8 @@ def scan(fn,
     """
     # Note : see the internal documentation of the scan op for naming
     # conventions and all other details
+    if options is None:
+        options = {}
     rvals = scan_utils.canonical_arguments(sequences,
                                            outputs_info,
                                            non_sequences,
