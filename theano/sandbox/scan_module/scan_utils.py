@@ -189,9 +189,9 @@ def canonical_arguments(sequences,
     inputs = []
     for input in to_list(sequences):
         if not isinstance(u, dict):
-            inputs.append(input)
+            inputs.append(tensor.as_tensor_variable(input))
         elif input.get('taps', True) is None:
-            inputs.append(input)
+            inputs.append(tensor.as_tensor_variable(input['input']))
         elif input.get('taps', None):
             mintap = numpy.min(input['taps'])
             maxtap = numpy.max(input['taps'])
@@ -202,13 +202,14 @@ def canonical_arguments(sequences,
                     offset = abs(maxtap)
                 else:
                     offset = 0
+                nw_input = tensor.as_tensor_variable(input['input'])
                 if maxtap == mintap and maxtap != 0:
-                    nw_input = input['input'][:abs(maxtap)]
+                    nw_input = nw_input[:abs(maxtap)]
                 elif maxtap - k != 0:
-                    nw_input = input['input'][offset + k - mintap:\
+                    nw_input = nw_input[offset + k - mintap:\
                                               -(maxtap - k)]
                 else:
-                    nw_input = input['input'][offset + k - mintap:]
+                    nw_input = nw_input[offset + k - mintap:]
                 if go_backwards:
                     nw_input = nw_input[::-1]
                 inputs.append(nw_input)
@@ -235,21 +236,27 @@ def canonical_arguments(sequences,
     # wrap outputs info in a dictionary if they are not already in one
     for i, state in enumerate(states_info):
         if state is not None and not isinstance(state, dict):
-            states_info[i] = dict(initial=state, taps=[-1])
+            states_info[i] = dict(initial=tensor.as_tensor_variable(state),
+                                  taps=[-1])
         elif isinstance(state, dict):
             if not state.get('initial', None) and state.get('taps', None):
                 raise ValueError(('If you are using slices of an output '
                                   'you need to provide a initial state '
                                   'for it'), state)
             elif state.get('initial', None) and not state.get('taps', None):
-                # ^ initial state but taps not provided
+                # initial state but taps not provided
                 if 'taps' in state:
-                    # ^ explicitly provided a None for taps
-                    _logger.warning('Output %s ( index %d) has a initial '
-                            'state but taps is explicitly set to None ',
-                             getattr(states_info[i]['initial'], 'name',
-                                     'None'), i)
+                    # explicitly provided a None for taps
+                    _logger.warning(
+                        ('Output %s ( index %d) has a initial '
+                         'state but taps is explicitly set to None '),
+                        getattr(states_info[i]['initial'], 'name', 'None'), i)
                 states_info[i]['taps'] = [-1]
+                states_info[i]['initial'] = \
+                        tensor.as_tensor_variable(state['initial'])
+            elif state.get('initial', None):
+                states_info[i]['initial'] = \
+                        tensor.as_tensor_variable(state['initial'])
         else:
             # if a None is provided as the output info we replace it
             # with an empty dict() to simplify handling
