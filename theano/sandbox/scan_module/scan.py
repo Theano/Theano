@@ -363,7 +363,7 @@ def scan(fn,
             lengths.append(scalar_shared(numpy.int64(0),
                                          name = 'l%d' % pos))
             arg_info['initial'] = scan_utils.expand(tensor.unbroadcast(
-                    tensor.shape_padfelt(state['initial'], 0), T))
+                    tensor.shape_padleft(arg_info['initial']),0), T)
         elif arg_info.get('taps', None):
             if numpy.any(numpy.array(arg_info.get('taps', [])) > 0):
                 # Make sure we do not have requests for future values of a
