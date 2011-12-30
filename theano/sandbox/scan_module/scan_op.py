@@ -116,9 +116,9 @@ class ScanOp(PureOp):
             if x.type != y.type:
                 return False
 
-        s_inputs = [self.t] + self.inputs + self.lengths + self.switches
-        o_inputs = [other.t] + other.inputs + other.lengths + other.switches
-        givens = dict(izip(s_inputs, o_inputs))
+        s_ins = [self.index] + self.inputs + self.lengths + self.switches
+        o_ins = [other.index] + other.inputs + other.lengths + other.switches
+        givens = dict(izip(s_ins, o_ins))
         # This part might be slow
         for x, y in izip(self.outputs, other.outputs):
             if not gof.graph.is_same_graph(x, y, givens=givens):
