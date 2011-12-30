@@ -343,8 +343,9 @@ def allocate_memory(T, y_info, y):
 
 
 class ScanPermutation(gof.Op):
-    def __init__(self, inplace=False):
+    def __init__(self, mintap=0, inplace=False):
         self.inplace = inplace
+        self.mintap = mintap
         if inplace:
             self.destroy_map = {0: [0]}
 
@@ -369,8 +370,9 @@ class ScanPermutation(gof.Op):
 
     def perform(self, node, inputs, outputs):
         membuffer = inputs[0]
-        index = inputs[0]
-        if index <= membuffer.shape[0] or index % membuffer.shape[0] == 0:
+        index = inputs[1] + self.mintap
+        out = outputs[0]
+        if index % membuffer.shape[0] == 0:
             if self.inplace:
                 outputs[0] = membuffer
             else:
