@@ -352,15 +352,16 @@ def scan(fn,
                              truncate_gradient)
 
     # 1. Variable representing the current time step
-    t = scalar_shared(numpy.int64(0))
+    t = scalar_shared(numpy.int64(0), name='t')
 
     # 2. Allocate memory for the states of scan.
     mintaps = []
     lengths = []
-    for arg_info in states_and_outputs_info:
+    for pos, arg_info in enumerate(states_and_outputs_info):
         if arg_info.get('taps', None) == [-1]:
             mintaps.append(1)
-            lengths.append(scalar_shared(numpy.int64(0)))
+            lengths.append(scalar_shared(numpy.int64(0),
+                                         name = 'l%d' % pos))
             arg_info['initial'] = scan_utils.expand(tensor.unbroadcast(
                     tensor.shape_padfelt(state['initial'], 0), T))
         elif arg_info.get('taps', None):
@@ -370,13 +371,15 @@ def scan(fn,
                 raise ValueError('Can not use future taps of outputs',
                                  arg_info)
             mintap = abs(numpy.min(arg_info['taps']))
-            lengths.append(scalar_shared(numpy.int64(0)))
+            lengths.append(scalar_shared(numpy.int64(0),
+                                         name = 'l%d' % pos))
             mintaps.append(mintap)
             arg_info['initial'] = scan_utils.expand(
                 arg_info['initial'][:mintap], T)
         else:
             mintaps.append(0)
-            lengths.append(scalar_shared(numpy.int64(0)))
+            lengths.append(scalar_shared(numpy.int64(0),
+                                         name = 'l%d' % pos))
 
     # 3. Generate arguments for the function passed to scan. This will
     # function will return the outputs that need to be computed at every
@@ -425,14 +428,16 @@ def scan(fn,
     non_numeric_input_states = []
     non_numeric_output_states = []
     original_non_numeric_shared_variables = []
-
+    pos = len(lengths)
     for sv in shared_inputs:
         if sv in update_d:
             if isinstance(sv, TensorType):
                 # We can treat it as a sit sot
                 nw_state = scan_utils.expand(
                     tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
-                additional_lengths.append(scalar_shared(numpy.int64(0)))
+                additional_lengths.append(scalar_shared(numpy.int64(0),
+                                                       name='l%d' % pos))
+                pos = pos + 1
                 additional_mintaps.append(1)
                 additional_input_states.append(nw_state)
                 additional_output_states.append(
