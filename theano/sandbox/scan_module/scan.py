@@ -391,7 +391,7 @@ def scan(fn,
         if mintaps[n] != 0:
             for k in state['taps']:
                 states_slices.append(
-                    state['initial'][(t + mintaps[n] - k) % lengths[n]])
+                    state['initial'][(t + mintaps[n] + k) % lengths[n]])
 
     # 4. Construct outputs that are to be computed by the inner
     # function of scan
