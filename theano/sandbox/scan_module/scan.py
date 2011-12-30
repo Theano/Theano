@@ -492,6 +492,8 @@ def scan(fn,
                               outputs=outputs,
                               lengths=lengths,
                               switches=[],
+                              mintaps=mintaps,
+                              index=t,
                               options=options,
                               as_repeatUntil=cond)
     # Note that we get here all the outputs followed by the update rules to

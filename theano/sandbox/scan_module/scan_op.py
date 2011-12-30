@@ -45,11 +45,14 @@ class ScanOp(PureOp):
                  outputs,
                  lengths,
                  switches,
+                 mintaps,
+                 index,
                  options,
                  as_repeatUntil):
         self.inputs = inputs
         self.outputs = outputs
 
+        self.index = index
         self.switches = switches
         self.lengths = lengths
         self.mintaps = mintaps
