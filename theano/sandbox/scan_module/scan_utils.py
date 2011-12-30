@@ -374,15 +374,16 @@ class ScanPermutation(gof.Op):
         out = outputs[0]
         if index % membuffer.shape[0] == 0:
             if self.inplace:
-                outputs[0] = membuffer
+                out[0] = membuffer
             else:
-                outputs[0][:] = membuffer
+                out[0] = membuffer.copy()
         else:
             pos = index % membuffer.shape[0]
             if outputs[0] is membuffer:
                 membuffer = membuffer.copy()
-            outputs[0][:membuffer.shape[0] - p] = membuffer[p:]
-            outputs[0][membuffer.shape[0] - p:] = membuffer[:p]
+            print pos
+            out[0][:membuffer.shape[0] - pos] = membuffer[pos:]
+            out[0][membuffer.shape[0] - pos:] = membuffer[:pos]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
