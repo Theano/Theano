@@ -197,11 +197,30 @@ class ScanOp(PureOp):
         aux_buffers = node_input_storage[1 + len(base_inputs):]
         # 2.1 First the auxiliary arguments, those that are parameters or
         # input
-        for mem_buf, var in izip(ndoe_input_storage[1 + len(base_inputs):],
-                                 aux_inputs):
-            givens[var] = theano.shared(mem_buf[0], name=var.name,
+        def fake_shared(var):
+            val = 0
+            for dim in xrange(var.ndim):
+                val = [val]
+            val = numpy.asarray(val, dtype=var.dtype)
+            return theano.shared(val, name=var.name)
+
+        non_tensor_args = []
+        non_tensor_buffers = []
+        aux_buffers = []
+        for mem_buf, var in izip(aux_buffers, aux_inputs):
+
+            if mem_buf[0] is not None:
+                givens[var] = theano.shared(mem_buf[0], name=var.name,
                                         borrow=True)
-        # 3.2. Next the states (numeric or not) and the outputs
+            elif isinstance(var, TensorType):
+                givens[var] = fake_shared(var)
+                aux_buffers.append((givens[var],mem_buf))
+            else:
+                givens[var] = var.type()
+                non_tensor_args.append(givens[var])
+                non_tensor_buffers.append(mem_buf)
+
+        # 2.2. Next the states (numeric) and the outputs
         updates = {}
         n_numeric_values = len(self.lengths)
         for pos, (mem_buf, var, expr) in enumerate(
