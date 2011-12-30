@@ -260,8 +260,15 @@ class ScanOp(PureOp):
             def p(node, args, outs):
                 pos = 0
                 cont = 1
+                # copy inputs if not inplace
+                if not self.inplace:
+                    for _, _, val in state_buffers:
+                        val[0] = val[0].copy()
+                    for buf in non_numeric_states_bufs:
+                        buf[0] = buf[0].copy()
+
                 # reset all switches if any
-                for sw in self.swithces:
+                for sw in self.switches:
                     sw.set_value(numpy.int8(0), borrow=True)
                 while cont and pos < node_input_storage[0][0]:
                     cont = self.fn()
