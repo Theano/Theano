@@ -337,9 +337,9 @@ class ScanOp(PureOp):
 
         # 3.3 construct the rval function
         def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
-            r = perform(n, [x[0] for x in i], o)
-            for o in node.outputs:
-                compute_map[o][0] = True
+            r = p(n, [x[0] for x in i], o)
+            for out in node.outputs:
+                compute_map[out][0] = True
             return r
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
