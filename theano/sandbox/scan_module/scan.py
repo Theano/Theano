@@ -414,13 +414,15 @@ def scan(fn,
     # extracting the arguments
     input_variables, cloned_outputs, other_rval = rvals
     clone_d, update_d, update_expr, shared_inputs = other_rval
-    additional_input_states_outer = []
-    additional_input_states_inner = []
+    additional_input_states = []
     additional_output_states = []
     additional_lengths = []
-    non_numeric_input_states_outer = []
-    non_numeric_input_states_inner = []
+    additional_mintals = []
+    original_numeric_shared_variables = []
+
+    non_numeric_input_states = []
     non_numeric_output_states = []
+    original_non_numeric_shared_variables = []
 
     for sv in shared_inputs:
         if sv in update_d:
@@ -429,16 +431,17 @@ def scan(fn,
                 nw_state = scan_utils.expand(
                     tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
                 additional_lengths.append(scalar_shared(numpy.int64(0)))
-                additional_input_states_outer.append(nw_state)
-                additional_input_states_inner.append(nw_state.type())
+                additional_mintaps.append(1)
+                additional_input_states.append(nw_state)
                 additional_output_states.append(
                     scan_utils.clone(tensor.set_subtensor(
                         nw_state[(t + 1) % additional_lengths[-1]],
                         update_d[sv])))
+                original_numeric_shared_variables.append(sv)
             else:
-                non_numeric_input_states_outer.append(sv)
-                non_numeric_input_states_inner.append(sv.type())
+                non_numeric_input_states.append(sv)
                 non_numeric_output_states.append(update_d[sv])
+                original_non_numeric_shared_variables.append(sv)
 
     # 5.2 Collect and order inputs of the inner function
     input_states_outer = []
