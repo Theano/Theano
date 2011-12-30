@@ -503,7 +503,8 @@ def scan(fn,
     #   * len(additional_input_states) updates for numeric shared variable
     #   * len(non_numeric_input_states) updates for non numeric shared
     #   variables
-    scan_outputs_update_rules = local_op(*inputs)
+    scan_inputs = [T] + inputs
+    scan_outputs_update_rules = scan_utils.to_list(local_op(*scan_inputs))
     # 5.5 Collect outputs and add permutation object
     scan_outputs = scan_outputs_update_rules[:len(states_and_outputs)]
     scan_outputs = [scan_utils.scan_permute(x, t) for x in scan_outputs]
