@@ -98,11 +98,7 @@ class ScanOp(PureOp):
         # Check if we are dealing with same type of objects
         if not type(self) == type(other):
             return False
-        # This are some safety checks ( namely that the inner graph has the
-        # same number of inputs and same number of outputs )
-        elif not len(self.inputs) == len(other.inputs):
-            return False
-        elif not len(self.outputs) == len(other.outputs):
+        if self.options != other.options:
             return False
         if self.mintals != other.mintaps:
             return False
