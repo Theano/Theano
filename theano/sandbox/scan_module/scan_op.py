@@ -140,11 +140,14 @@ class ScanOp(PureOp):
         return aux_txt
 
     def __hash__(self):
-        return (hash(type(self)) ^
-                # and a hash representing the inner graph using the
-                # CLinker.cmodule_key_
-                self._hash_inner_graph ^
-                scan_utils.hash_listsDictsTuples(self.info))
+        rval = hash(type(self)) ^ self.hash_inner_graph
+        for val in self.options.values():
+            if isinstance(val, (list, tuple)):
+                for el in val:
+                    rval = rval ^ el
+            else:
+                rval = rval ^ val
+        return rval
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         pass
