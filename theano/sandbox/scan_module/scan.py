@@ -463,8 +463,9 @@ def scan(fn,
             input_state = states_and_outputs_info[n]['initial']
             inputs.append(input_state)
             outputs.append(
-                tensor.set_subtensor(input_state[(t + mintap) % lengths[n]],
-                                     states_and_outputs[n]))
+                tensor.set_subtensor(
+                    input_state[(t + mintap) % lengths[n]],
+                    states_and_outputs[n]))
         else:
             mem_buffer = scan_utils.allocate_memory(
                 T, states_and_outputs_info[n], states_and_outputs[n])
