@@ -409,8 +409,13 @@ def scan(fn,
     # 5.1 Construct list of shared variables with updates (those that
     # can be treated as states (i.e. of TensorType) and those that can not
     # (like Random States)
+
+    if cond is not None:
+        _cond = [cond]
+    else:
+        _cond = []
     rvals = rebuild_collect_shared(
-        states_and_outputs + [cond],
+        states_and_outputs + _cond,
         updates=updates,
         rebuild_strict=True,
         copy_inputs_over=True,
