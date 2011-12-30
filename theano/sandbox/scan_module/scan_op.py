@@ -192,8 +192,10 @@ class ScanOp(PureOp):
         # 2. Construct fake shared variables around every argument of scan
         givens = {}
         base_inputs = self.inputs[:len(self.outputs)]
+        base_buffers = node_input_storage[1: 1 + len(base_inputs)]
         aux_inputs = self.inputs[len(self.outputs):]
         # 3.1 First the auxiliary arguments, those that are parameters or
+        aux_buffers = node_input_storage[1 + len(base_inputs):]
         # input
         for mem_buf, var in izip(ndoe_input_storage[1 + len(base_inputs):],
                                  aux_inputs):
