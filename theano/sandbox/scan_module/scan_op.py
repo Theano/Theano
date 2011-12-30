@@ -154,9 +154,8 @@ class ScanOp(PureOp):
     def infer_shape(self, node, input_shapes):
         for inp, inp_shp in izip(node.inputs, input_shapes):
             assert inp_shp is None or len(inp_shp) == inp.type.ndim
-
         n_outs = len(self.outputs)
-        if self.gpu:
+        if self.as_repeatUntil is not None:
             return [(Shape_i(0)(o),) + x[1:] for o, x
                     in izip(node.outputs, input_shapes[1: n_outs + 1])]
         else:
