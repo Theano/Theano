@@ -128,11 +128,10 @@ class ScanOp(PureOp):
             gpu_str = 'gpu'
         else:
             gpu_str = 'cpu'
-        if self.as_repeatUntil:
-            name = 'do_while'
+        if self.as_repeatUntil is not None:
+            name = 'repeat/until'
         else:
-            name = 'for'
-
+            name = 'loop'
         if self.inplace:
             aux_txt = '%s{inplace,%s,%s}' % (name, gpu_str, str(self.name))
         else:
