@@ -479,6 +479,12 @@ def scan(fn,
     mintaps.extend(additional_mintaps)
     inputs.extend(non_numeric_input_states)
     outputs.extend(non_numeric_output_states)
+    all_other_inputs = gof.graph.inputs(outputs)
+    parameters = [x for x in all_other_inputs
+                  if (x not in inputs and x not in lengths and x is not t
+                      and isinstance(x, gof.Variable) and
+                      not isinstance(x, gof.Constant))]
+    inputs.extend(parameters)
     # 5.3 Construct the the options dictionary
     options['name'] = name
     options['profile'] = profile
