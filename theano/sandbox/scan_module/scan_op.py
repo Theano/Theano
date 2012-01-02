@@ -194,7 +194,7 @@ class ScanOp(PureOp):
         base_inputs = self.inputs[:len(self.outputs)]
         base_buffers = node_input_storage[1: 1 + len(base_inputs)]
         aux_inputs = self.inputs[len(self.outputs):]
-        aux_buffers = node_input_storage[1 + len(base_inputs):]
+        aux_membuffers = node_input_storage[1 + len(base_inputs):]
         # 2.1 First the auxiliary arguments, those that are parameters or
         # input
 
@@ -208,8 +208,7 @@ class ScanOp(PureOp):
         non_tensor_args = []
         non_tensor_buffers = []
         aux_buffers = []
-        for mem_buf, var in izip(aux_buffers, aux_inputs):
-
+        for mem_buf, var in izip(aux_membuffers, aux_inputs):
             if mem_buf[0] is not None:
                 givens[var] = theano.shared(mem_buf[0], name=var.name,
                                         borrow=True)
