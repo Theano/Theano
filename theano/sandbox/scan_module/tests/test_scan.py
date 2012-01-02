@@ -29,7 +29,7 @@ class TestScan(unittest.TestCase):
         def f_pow2(x_tm1):
             return 2 * x_tm1
 
-        for n_steps in [-1,1, 5, -5]:
+        for n_steps in [-1, 1, 5, -5]:
             state = theano.tensor.scalar('state')
             output, updates = scan_module.scan(f_pow2,
                                                [],
