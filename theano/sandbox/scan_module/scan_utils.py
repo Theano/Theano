@@ -215,7 +215,7 @@ def canonical_arguments(sequences,
                 orig_input = orig_input[::-1]
             if n_steps is not None:
                 orig_input = tensor.switch(negative_n_steps, orig_input[::-1],
-                                         org_input)
+                                         orig_input)
             for k in input['taps']:
                 # We cut the sequence such that seq[i] to correspond to
                 # seq[i-k]
