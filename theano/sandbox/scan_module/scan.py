@@ -348,7 +348,6 @@ def scan(fn,
                              inputs,
                              states_and_outputs_info,
                              parameters,
-                             T_value,
                              truncate_gradient)
 
     # 1. Variable representing the current time step
@@ -534,7 +533,6 @@ def one_step_scan(fn,
                   inputs,
                   states_and_outputs_info,
                   parameters,
-                  T,
                   truncate_gradient):
     """
     This function is evaluated if `n_steps` evaluates to either 1 or -1.
