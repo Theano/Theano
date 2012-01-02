@@ -2866,7 +2866,8 @@ def extract_constant(x):
         x = get_constant_value(x)
     except Exception:
         pass
-    if isinstance(x, scal.ScalarVariable):
+    if (isinstance(x, scal.ScalarVariable) or
+        isinstance(x, scal.sharedvar.ScalarSharedVariable)):
         if x.owner and isinstance(x.owner.op, ScalarFromTensor):
             x = x.owner.inputs[0]
         else:
