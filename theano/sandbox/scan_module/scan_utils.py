@@ -191,7 +191,7 @@ def canonical_arguments(sequences,
         negative_n_steps = tensor.lt(tensor.as_tensor_variable(n_steps), 0)
 
     for input in to_list(sequences):
-        if not isinstance(u, dict):
+        if not isinstance(input, dict):
             nw_input = tensor.as_tensor_variable(input)
             if go_backwards:
                 nw_input = nw_input[::-1]
