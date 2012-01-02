@@ -245,7 +245,7 @@ def canonical_arguments(sequences,
         for input in inputs[1:]:
             T = tensor.minimum(T, input.shape[0])
     else:
-        T = tensor.as_tensor(n_steps)
+        T = abs(tensor.as_tensor(n_steps))
     # Level up sequences
     inputs = [input[:T] for input in inputs]
 
