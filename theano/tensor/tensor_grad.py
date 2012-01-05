@@ -65,8 +65,10 @@ def Rop(f, wrt, eval_points):
 
     assert len(wrt) == len(eval_points)
 
+    #check that each element of wrt corresponds to an element
+    #of eval_points with the same dimensionality
     for pack in enumerate(zip(wrt, eval_points)):
-        i = pack[0]
+        i =  pack[0]
         wrt_elem, eval_point = pack[1]
 
         wrt_elem = as_tensor_variable(wrt_elem)
@@ -82,15 +84,13 @@ def Rop(f, wrt, eval_points):
     seen_nodes = {}
 
     def _traverse(node):
+        """ TODO: writeme """
         if node is None:
             return None
         else:
             op = node.op
             inputs = node.inputs
-            if not hasattr(op, 'R_op'):
-                raise Exception((' R_op was not implemented for %s'
-                                      ' operation. Email the mailing list'
-                                      ' for help') % op.__class__.__name__)
+
             # Compute the evaluation points corresponding to each of the
             # inputs of the node
             local_eval_points = []

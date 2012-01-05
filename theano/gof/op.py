@@ -313,7 +313,7 @@ class PureOp(object):
 
     add_stack_trace_on_call = True
     """This class variable governs whether __call__ adds a stack trace to the node it creates.
-    
+
     The tag trace is meant to connect a node to the line a user typed. It is nice for
     debugging. It does not make as much sense during optimizations to store this information.
     """
@@ -448,6 +448,38 @@ class PureOp(object):
     #########################
     # Python implementation #
     #########################
+
+
+    def R_op(self, inputs, eval_points):
+        """
+
+        This method is primarily used by tensor.Rop
+
+        Suppose the op outputs
+
+        [ f_1(inputs), ..., f_n(inputs) ]
+
+        inputs: a Variable or list of Variables
+        eval_points: a Variable or list of Variables with
+                    the same length as inputs. Each element
+                    of eval_points specifies the value of
+                    the corresponding input at the point
+                    where the R op is to be evaluated.
+
+
+        returns: a list of n elements
+                    rval[i] should be Rop(f = f_i(inputs),
+                                          wrt = inputs,
+                                          eval_points = eval_points)
+
+        """
+
+        raise NotImplementedError(str(self)+' of type '+str(self.__class__.__name__)
+                +" does not "
+                "implement R_op. If this is a theano op, write to the "
+                "theano-dev mailing list for assistance. If it is your "
+                "own op, implement the R_op method.")
+
 
     def perform(self, node, inputs, output_storage):
         """
