@@ -313,7 +313,7 @@ class PureOp(object):
 
     add_stack_trace_on_call = True
     """This class variable governs whether __call__ adds a stack trace to the node it creates.
-    
+
     The tag trace is meant to connect a node to the line a user typed. It is nice for
     debugging. It does not make as much sense during optimizations to store this information.
     """
@@ -617,7 +617,9 @@ def debug_error_message(msg):
         warnings.warn(msg, stacklevel=2)
 
 
-def debug_assert(condition, msg):
+def debug_assert(condition, msg = None):
+    if msg is None:
+        msg = 'debug_assert failed'
     if not condition:
         action = config.compute_test_value
         if action in ['raise', 'ignore']:
