@@ -1007,6 +1007,7 @@ class CAReduce(Op):
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         self.scalar_op = scalar_op
+
         if axis is None:
             self.axis = axis
         elif isinstance(axis, int):
