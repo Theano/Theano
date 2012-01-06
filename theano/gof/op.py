@@ -664,4 +664,7 @@ def get_debug_values(*args):
                                      " has no test value")
             return []
 
+    if len(rval) == 1:
+        return rval
+
     return [tuple(rval)]
