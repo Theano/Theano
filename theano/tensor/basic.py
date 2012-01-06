@@ -5139,10 +5139,14 @@ class AdvancedIncSubtensor(Op):
         out[0] = inputs[0].copy()
         out[0][inputs[2:]] += inputs[1]
 
-    #def grad?
-        # grad on x is grad  on output
-        # grad on y is grad_output[idx_list]
-        # grad on rest is None
+    def grad(self, inpt, output_gradients):
+        x, y = inpt[:2]
+        idxs = inpt[2:]
+        outgrad, = output_gradients
+        d_x_wrt_C = outgrad
+        d_y_wrt_C = AdvancedSubtensor(self.args)(outgrad, *idxs)
+        return [d_x_wrt_C, d_y_wrt_C] + [None for _ in idxs]
+
     def R_op(self, inputs, eval_points):
         if None in eval_points[:2]:
             return [None]

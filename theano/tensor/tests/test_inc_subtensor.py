@@ -87,6 +87,7 @@ class Test_inc_subtensor(unittest.TestCase):
                 expected_result[:,sl3,:val_sl2_end] += val_inc
 
             self.assertTrue(numpy.array_equal(result, expected_result))
+
     def test_grad_inc_set(self):
         def inc_slice(*s):
             def just_numeric_args(a,b):
@@ -116,3 +117,4 @@ class Test_inc_subtensor(unittest.TestCase):
                     f_slice(2, 1),
                     (numpy.asarray([[0,1],[2,3],[4,5.]]),
                         numpy.asarray(9.),))
+
