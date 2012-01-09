@@ -41,6 +41,15 @@ import configparser, configdefaults
 
 config = configparser.TheanoConfigParser()
 
+# Version information.
+# Note that the version must be defined before imports below as it is used by
+# some of these imports.
+try:
+    import theano.version
+    __version__ = theano.version.version
+except ImportError:
+    __version__ = "unknown"
+
 import gof
 
 from gof import \
@@ -142,11 +151,3 @@ def dot(l, r):
     if rval == NotImplemented:
         raise NotImplementedError("Dot failed for the following reasons:", (e0, e1))
     return rval
-
-
-# Version information
-try:
-    import theano.version
-    __version__ = theano.version.version
-except ImportError:
-    __version__ = "unknown"
