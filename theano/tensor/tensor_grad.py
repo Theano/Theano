@@ -68,7 +68,7 @@ def Rop(f, wrt, eval_points):
     #check that each element of wrt corresponds to an element
     #of eval_points with the same dimensionality
     for pack in enumerate(zip(wrt, eval_points)):
-        i =  pack[0]
+        i = pack[0]
         wrt_elem, eval_point = pack[1]
 
         wrt_elem = as_tensor_variable(wrt_elem)
