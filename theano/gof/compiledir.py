@@ -6,7 +6,6 @@ import re
 import sys
 
 import theano
-import theano.version
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 
 
@@ -15,7 +14,7 @@ def default_compiledirname():
         platform.platform(),
         platform.processor(),
         platform.python_version(),
-        theano.version.version])
+        theano.__version__])
     platform_id = re.sub("[\(\)\s,]+", "_", platform_id)
     return 'compiledir_' + platform_id
 
