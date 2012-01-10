@@ -314,8 +314,10 @@ def ifelse(condition, then_branch, else_branch, name=None):
 
 
     for then_branch_elem, else_branch_elem in zip(then_branch, else_branch):
-        then_branch_elem = theano.tensor.as_tensor_variable(then_branch_elem)
-        else_branch_elem = theano.tensor.as_tensor_variable(else_branch_elem)
+        if not isinstance(then_branch_elem, theano.Variable):
+            then_branch_elem = theano.tensor.as_tensor_variable(then_branch_elem)
+        if not isinstance(else_branch_elem, theano.Variable):
+            else_branch_elem = theano.tensor.as_tensor_variable(else_branch_elem)
 
         if then_branch_elem.type != else_branch_elem.type:
             raise ValueError(('The two branches should have identical types, '
