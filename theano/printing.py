@@ -995,7 +995,7 @@ def min_informative_str(obj, indent_level=0,
 
     indent = ' ' * indent_level
 
-    if obj in _prev_obs:
+    if id(obj) in _prev_obs:
         tag = _prev_obs[obj]
 
         return indent + '<' + tag + '>'
@@ -1005,7 +1005,7 @@ def min_informative_str(obj, indent_level=0,
 
     cur_tag = _tag_generator.get_tag()
 
-    _prev_obs[obj] = cur_tag
+    _prev_obs[id(obj)] = cur_tag
 
     if hasattr(obj, '__array__'):
         name = '<ndarray>'
