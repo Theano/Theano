@@ -1593,7 +1593,7 @@ class Scan(PureOp):
         # Outputs
         n_mit_mot_outs = int(numpy.sum([len(x) for x in
                                         self.mit_mot_out_slices]))
-        info['n_mit_mot_outs'] = n_mit_mot_outs
+        info['n_mit_mot_outs'] = n_mit_mot_outs*2
         b = 0
         e = n_mit_mot_outs
         inner_out_mit_mot = self_outputs[b:e] + rop_outs[b:e]
