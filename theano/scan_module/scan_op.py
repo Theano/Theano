@@ -1289,7 +1289,7 @@ class Scan(PureOp):
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
             maxtap = numpy.max(self.tap_array[idx])
-            seq    = scan_outputs[offset+idx][::-1]
+            seq    = scan_outputs[offset+idx]
             for k in self.tap_array[idx]:
                 # We cut the sequence such that seq[i] to correspond to
                 # seq[i-k]
@@ -1300,9 +1300,9 @@ class Scan(PureOp):
                 if maxtap == mintap and maxtap != 0:
                     nw_seq =seq[:abs(maxtap)]
                 elif maxtap -k != 0 :
-                    nw_seq = seq[dim_offset +k -mintap: -(maxtap -k)]
+                    nw_seq = seq[dim_offset +k -mintap - 1: -(maxtap -k + 1)][::-1]
                 else:
-                    nw_seq = seq[dim_offset +k -mintap: ]
+                    nw_seq = seq[dim_offset +k -mintap - 1: -1 ][::-1]
                 if getattr(seq,'name', None) is not None:
                     nw_seq.name = seq.name + '[%d:]'%k
                 scan_seqs.append(nw_seq)
