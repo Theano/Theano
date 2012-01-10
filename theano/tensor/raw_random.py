@@ -191,7 +191,7 @@ class RandomFunction(gof.Op):
         # Numbers are drawn from r if self.inplace is True, and from a copy of r if
         # self.inplace is False
         r, shape, args = inputs[0], inputs[1], inputs[2:]
-        assert type(r) == numpy.random.RandomState
+        assert type(r) == numpy.random.RandomState, (type(r), r)
         r_orig = r
 
         # If shape == [], that means no shape is enforced, and numpy is

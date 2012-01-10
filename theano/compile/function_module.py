@@ -21,6 +21,7 @@ from theano.configdefaults import config
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
+
 def alias_root(v):
     """Return the variable to which v is aliased by view_maps and destroy_maps"""
     if v.owner is None: return v
@@ -35,6 +36,7 @@ def alias_root(v):
     else:
         return v
 
+
 def view_tree_set(v, treeset):
     """Add to `treeset` all variables that are views of v, given that v is not a view"""
     treeset.add(v)
@@ -47,6 +49,7 @@ def view_tree_set(v, treeset):
             if v_input_pos_to_cl in iposlist:
                 if cl.outputs[opos] not in treeset:
                     view_tree_set(cl.outputs[opos], treeset)
+
 
 def infer_reuse_pattern(env, outputs_to_disown):
     """
@@ -63,6 +66,23 @@ def infer_reuse_pattern(env, outputs_to_disown):
     rval = set(r for r in rval if r.owner is not None)
 
     return rval
+
+
+def env_updated_vars(env, expanded_inputs):
+    """
+    Reconstruct the full "updates" dictionary, mapping from Env input
+    variables to the env outputs that will replace their values.
+
+    :rtype: dict variable -> variable
+    """
+    updated_vars = {}
+    potential_values = list(env.outputs)  # copy the list
+    if len(expanded_inputs) != len(env.inputs):
+        raise ValueError('expanded_inputs must match len(env.inputs)')
+    for e_input, ivar in reversed(zip(expanded_inputs, env.inputs)):
+        if e_input.update is not None:
+            updated_vars[ivar] = potential_values.pop()
+    return updated_vars
 
 
 class Supervisor:
@@ -550,8 +570,9 @@ class Function(object):
 
 
         # Set keyword arguments
-        for k, arg in kwargs.iteritems():
-            self[k] = arg
+        if kwargs:  # for speed, skip the iteritems for empty kwargs
+            for k, arg in kwargs.iteritems():
+                self[k] = arg
 
         if (not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
@@ -610,7 +631,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            self.fn()
+            outputs = self.fn()
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function
@@ -627,7 +648,9 @@ class Function(object):
             profile.vm_call_time += dt_fn
 
         # Retrieve the values that were computed
-        outputs = [x.data for x in self.output_storage]
+        if outputs is None:
+            outputs = [x.data for x in self.output_storage]
+        assert len(outputs) == len(self.output_storage)
 
         # Remove internal references to required inputs.
         # These cannot be re-used anyway.
@@ -1027,8 +1050,10 @@ class FunctionMaker(object):
         else:
             self.linker = linker.accept(env)
 
-        #hacky thing so VMLinker
-        self.linker.expanded_inputs = expanded_inputs
+        if hasattr(linker, 'accept_var_updates'):
+            # hacky thing so VMLinker knows about updates
+            self.linker.accept_var_updates(
+                    env_updated_vars(env, expanded_inputs))
 
         self.indices = indices
         self.inputs = inputs

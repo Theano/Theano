@@ -12,27 +12,34 @@ _logger = logging.getLogger('theano.gof.lazylinker_c')
 if config.compiledir not in sys.path:
     sys.path.append(config.compiledir)
 
-version = 0.1 # must match constant returned in function get_version()
+force_compile = False
+version = 0.13 # must match constant returned in function get_version()
 
-need_reload = False
+
 try:
-    import lazylinker_ext
-    need_reload = True
-    if version != getattr(lazylinker_ext, '_version', None):
+    _need_reload = False
+    if force_compile:
         raise ImportError()
+    else:
+        import lazylinker_ext
+        _need_reload = True
+        if version != getattr(lazylinker_ext, '_version', None):
+            raise ImportError()
 except ImportError:
     get_lock()
     try:
         # Maybe someone else already finished compiling it while we were
         # waiting for the lock?
         try:
-            if need_reload:
+            if force_compile:
+                raise ImportError()
+            if _need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
                 reload(lazylinker_ext)
             else:
                 import lazylinker_ext
-                need_reload = True
+                _need_reload = True
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
         except ImportError:
@@ -67,4 +74,4 @@ except ImportError:
         release_lock()
 
 from lazylinker_ext.lazylinker_ext import *
-assert version == get_version()
+assert force_compile or (version == get_version())
