@@ -2676,6 +2676,13 @@ class T_Scan(unittest.TestCase):
                          dtype=theano.config.floatX)
         assert numpy.allclose(f(vx, vA), vR)
 
+    def test_savemem_opt(self):
+        y0 = theano.shared(numpy.ones((2, 10)))
+        [y1, y2], updates = theano.scan(lambda y: [y, y],
+                                         outputs_info=[dict(initial=y0,
+                                                            taps=[-2]), None],
+                                        n_steps=5)
+        rval = theano.function([], y2.sum())()
 
     def test_grad_multiple_taps_state(self):
         # The test is based on the code provided by Timothy Lillicrap
