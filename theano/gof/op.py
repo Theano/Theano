@@ -662,23 +662,28 @@ def debug_assert(condition, msg = None):
 
 
 def get_debug_values(*args):
-    """ Given a list of variables, does one of three things:
+    """
+    Intended use:
+
+        for val_1, ..., val_n in get_debug_values(var_1, ..., var_n):
+            if some condition on val_1, ..., val_n is not met:
+                debug_error_message("condition was not met")
+
+    Given a list of variables, get_debug_values does one of three things:
 
         1. If the interactive debugger is off, returns an empty list
         2. If the interactive debugger is on, and all variables have
             debug values, returns a list containing a single element.
-            This single element is a tuple containing debug values of
-            all the variables.
+            This single element is either:
+                a) if there is only one variable, the element is its
+                   value
+                b) otherwise, a tuple containing debug values of all
+                   the variables.
         3. If the interactive debugger is on, and some variable does
             not have a debug value, issue a missing_test_message about
             the variable, and, if still in control of execution, return
             an empty list
 
-        Intended use:
-
-        for val_1, ..., val_n in get_debug_values(var_1, ..., var_n):
-            if some condition on val_1, ..., val_n is not met:
-                debug_error_message("condition was not met")
     """
 
     if config.compute_test_value == 'off':
