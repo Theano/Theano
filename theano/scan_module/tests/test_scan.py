@@ -2710,6 +2710,58 @@ class T_Scan(unittest.TestCase):
                     (max_err, 1e-2, max_err_pos))
 
 
+    def test_rop_mitmot(self):
+        # this test is a copy paste from the script given by Justin Bayer to
+        # reproduce this bug
+        # We have 2 parameter groups with the following shapes.
+        W1shape = (1, 3)
+        W2shape = (3, 3)
+
+        n_pars = 1 * 3 + 3 * 3
+
+        # Allocate big parameter array.
+        pars = theano.shared(numpy.empty(n_pars))
+
+        # Assign slices.
+        W1 = pars[:3].reshape(W1shape)
+        W2 = pars[3:].reshape(W2shape)
+
+        # Define recurrent model. We are using a model where each input is a
+        # tensor
+        # of shape (T, B, D) where T is the number of timesteps, B is the
+        # number of
+        # sequences iterated over in parallel and D is the dimensionality of
+        # each
+        # item at a timestep.
+
+        inpt = tensor.tensor3('inpt')
+        target = tensor.tensor3('target')
+
+        # Make these flat in order to be able to use dot products instead of
+        # tensordot,
+        # which is slower.
+        inpt_flat = inpt.reshape((inpt.shape[0] * inpt.shape[1],
+                                  inpt.shape[2]))
+        hidden_flat = tensor.dot(inpt_flat, W1)
+        hidden = hidden_flat.reshape((inpt.shape[0], inpt.shape[1], 3))
+
+        transfer = tensor.nnet.sigmoid
+
+        hidden_rec, _ = theano.scan(
+                lambda x, h_tm1: transfer(tensor.dot(h_tm1, W2) + x),
+                sequences=hidden,
+                outputs_info=[tensor.zeros_like(hidden[0])])
+
+        hidden_rec_flat = hidden_rec.reshape(
+                    (hidden_rec.shape[0] * hidden_rec.shape[1],
+                     hidden_rec.shape[2]))
+
+        cost = ((hidden_rec - target)**2).mean()
+        d_cost_wrt_pars = tensor.grad(cost, pars)
+
+        p = tensor.dvector()
+        Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
+
 def test_speed():
     #
     # This function prints out the speed of very simple recurrent
