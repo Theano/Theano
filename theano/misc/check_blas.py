@@ -21,16 +21,21 @@ import theano.tensor as T
 
 from theano.gof.python25 import any
 
-
-shapes = (2000, 2000)
+default_M, default_N, default_K = (2000, 2000, 2000)
 iters = 10
 
 
-def execute(execute=True, verbose=True):
+def execute(execute=True, verbose=True, M=None, N=None, K=None, iters=10):
+    if M is None:
+        M = default_M
+    if N is None:
+        N = default_N
+    if K is None:
+        K = default_K
 
-    a = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    b = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    c = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
+    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX))
+    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX))
+    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX))
 
     f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
 
@@ -86,19 +91,36 @@ def jobman_job(state, channel):
 def test():
     execute()
 
+from optparse import OptionParser
+parser = OptionParser(usage='%prog <options>')
+
+parser.add_option('-q', '--quiet', action='store_true', dest='quiet',
+                  default=False,
+                  help="If true, don't print the comparison table")
+parser.add_option('--print_only', action='store_true', dest='print_only',
+                  default=False,
+                  help="If true, don't do the gemm call")
+parser.add_option('-M', '--M', action='store', dest='M',
+                  default=2000, type="int",
+                  help="The M size to gemm")
+parser.add_option('-N', '--N', action='store', dest='N',
+                  default=2000, type="int",
+                  help="The N size to gemm")
+parser.add_option('-K', '--K', action='store', dest='K',
+                  default=2000, type="int",
+                  help="The K size to gemm")
 
 if __name__ == "__main__":
-    verbose = True
-    print_only = False
+    options, arguments = parser.parse_args(sys.argv)
 
-    if '--quiet' in sys.argv:
-        verbose = False
-    if '--print_only' in sys.argv:
-        print_only = True
+    if hasattr(options, "help"):
+        print options.help
+        sys.exit(0)
 
-    t = execute(not print_only, verbose)
+    t = execute(not options.print_only, not options.quiet, M=options.M,
+                N=options.N, K=options.K)
 
-    if verbose:
+    if not options.quiet:
         print """
         Some results that you can compare against. They were 10 executions
         of gemm in float64 with matrices of shape 2000x2000.
@@ -163,6 +185,8 @@ if __name__ == "__main__":
 
         print
         print "We timed", iters,
-        print "executions of gemm with matrix of shapes", shapes
+        print "executions of gemm with a and b matrix of shapes",
+        print "(%d,%d) and (%d,%d)." % (options.M, options.N,
+                                        options.N, options.K)
     else:
         print t
