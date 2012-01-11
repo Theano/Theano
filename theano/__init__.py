@@ -42,13 +42,8 @@ import configparser, configdefaults
 config = configparser.TheanoConfigParser()
 
 # Version information.
-# Note that the version must be defined before imports below as it is used by
-# some of these imports.
-try:
-    import theano.version
-    __version__ = theano.version.version
-except ImportError:
-    __version__ = "unknown"
+import theano.version
+__version__ = theano.version.version
 
 import gof
 
