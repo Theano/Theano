@@ -21,17 +21,12 @@ import theano.tensor as T
 
 from theano.gof.python25 import any
 
-default_M, default_N, default_K = (2000, 2000, 2000)
-iters = 10
 
-
-def execute(execute=True, verbose=True, M=None, N=None, K=None, iters=10):
-    if M is None:
-        M = default_M
-    if N is None:
-        N = default_N
-    if K is None:
-        K = default_K
+def execute(execute=True, verbose=True, M=2000, N=2000, K=2000, iters=10):
+    """
+    :param execute: If True, execute a Theano function that should call gemm
+    :param verbose: If True, will print some Theano flags and env variable.
+    """
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX))
     b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX))
@@ -109,6 +104,9 @@ parser.add_option('-N', '--N', action='store', dest='N',
 parser.add_option('-K', '--K', action='store', dest='K',
                   default=2000, type="int",
                   help="The K size to gemm")
+parser.add_option('--iter', action='store', dest='iter',
+                  default=10, type="int",
+                  help="The number of call to gemm")
 
 if __name__ == "__main__":
     options, arguments = parser.parse_args(sys.argv)
@@ -118,12 +116,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     t = execute(not options.print_only, not options.quiet, M=options.M,
-                N=options.N, K=options.K)
+                N=options.N, K=options.K, iters=options.iter)
 
     if not options.quiet:
         print """
         Some results that you can compare against. They were 10 executions
-        of gemm in float64 with matrices of shape 2000x2000.
+        of gemm in float64 with matrices of shape 2000x2000 (M=N=K=2000).
 
         CPU tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB),
                     Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
@@ -184,7 +182,7 @@ if __name__ == "__main__":
         """
 
         print
-        print "We timed", iters,
+        print "We timed", options.iter,
         print "executions of gemm with a and b matrix of shapes",
         print "(%d,%d) and (%d,%d)." % (options.M, options.N,
                                         options.N, options.K)
