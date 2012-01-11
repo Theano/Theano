@@ -26,6 +26,11 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000, iters=10):
     """
     :param execute: If True, execute a Theano function that should call gemm
     :param verbose: If True, will print some Theano flags and env variable.
+    :param M,N,K: the M,N,K size used by gemm
+    :param iters: the number of call to gemm to do
+
+    :return: a tuple (execution time,
+                      str that represent the implementation used)
     """
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX))
@@ -51,31 +56,25 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000, iters=10):
         print 'Numpy file location that was loaded:', numpy.__file__
         print 'Numpy version:', numpy.__version__
         print
-        if any([x.op.__class__.__name__ == 'Gemm' for x in
-                f.maker.env.toposort()]):
-            print 'Used the cpu'
-        elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
-                  f.maker.env.toposort()]):
-            print 'Used the gpu'
-        else:
-            print 'ERROR, not able to tell if theano used the cpu or the gpu'
-            print f.maker.env.toposort()
     t0 = 0
     t1 = -1
+
+    if any([x.op.__class__.__name__ == 'Gemm' for x in
+            f.maker.env.toposort()]):
+        impl = 'Used the cpu'
+    elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
+              f.maker.env.toposort()]):
+        impl = 'Used the gpu'
+    else:
+        impl = 'ERROR, not able to tell if theano used the cpu or the gpu'
+        impl += f.maker.env.toposort()
 
     if execute:
         t0 = time.time()
         for i in range(iters):
             f()
         t1 = time.time()
-    if verbose and execute:
-        print
-        print 'This execution time took %.2fs' % (t1 - t0)
-        print
-        print ('Try to run this script a few times. Experience show that'
-               ' the first time is not as fast as followings call. The'
-               ' difference is not big, but consistent.')
-    return t1 - t0
+    return t1 - t0, impl
 
 
 def jobman_job(state, channel):
@@ -114,9 +113,6 @@ if __name__ == "__main__":
     if hasattr(options, "help"):
         print options.help
         sys.exit(0)
-
-    t = execute(not options.print_only, not options.quiet, M=options.M,
-                N=options.N, K=options.K, iters=options.iter)
 
     if not options.quiet:
         print """
@@ -181,10 +177,24 @@ if __name__ == "__main__":
         8500GT/3.0       10.68s
         """
 
-        print
-        print "We timed", options.iter,
-        print "executions of gemm with a and b matrix of shapes",
-        print "(%d,%d) and (%d,%d)." % (options.M, options.N,
-                                        options.N, options.K)
-    else:
+    t, impl = execute(not options.print_only, not options.quiet,
+                      M=options.M, N=options.N, K=options.K,
+                      iters=options.iter)
+
+    if options.print_only:
+        pass
+    elif options.quiet:
         print t
+    else:
+        print
+        print "We executed", options.iter,
+        print "call to gemm with a and b matrix of shapes",
+        print "(%d, %d) and (%d, %d)." % (options.M, options.N,
+                                        options.N, options.K)
+
+        print
+        print 'Those executions time took %.2fs' % t
+        print
+        print ('Try to run this script a few times. Experience show that'
+               ' the first time is not as fast as followings call. The'
+               ' difference is not big, but consistent.')
