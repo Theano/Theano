@@ -561,8 +561,6 @@ def test_col_scale():
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
 
 if __name__ == '__main__':
-    test_remove0()
-    exit()
     if 1:
         testcase =  TestSP
         suite = unittest.TestLoader()
