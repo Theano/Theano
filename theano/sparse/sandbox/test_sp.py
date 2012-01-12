@@ -26,43 +26,44 @@ class TestSP(unittest.TestCase):
 
         # fixed parameters
         bsize = 10     # batch size
-        imshp = (28,28)
-        kshp = (5,5)
+        imshp = (28, 28)
+        kshp = (5, 5)
         nkern = 5
-        ssizes = ((1,1),(2,2),(3,3),(4,4))
-        convmodes = ('full','valid')
+        ssizes = ((1, 1), (2, 2), (3, 3), (4, 4))
+        convmodes = ('full', 'valid')
 
         # symbolic stuff
         bias = tensor.dvector()
         kerns = tensor.dmatrix()
         input = tensor.dmatrix()
         rng = numpy.random.RandomState(3423489)
-        filters = rng.randn(nkern,numpy.prod(kshp))
+        filters = rng.randn(nkern, numpy.prod(kshp))
         biasvals = rng.randn(nkern)
 
-        for mode in ('FAST_COMPILE','FAST_RUN'): #, profmode):
+        for mode in ('FAST_COMPILE', 'FAST_RUN'):  # , profmode):
             ttot, ntot = 0, 0
             for conv_mode in convmodes:
                 for ss in ssizes:
 
-                    output, outshp  = sp.convolve(kerns, kshp, nkern, input,\
+                    output, outshp = sp.convolve(kerns, kshp, nkern, input,\
                             imshp, ss, bias=bias, mode=conv_mode)
                     f = function([kerns, bias, input], output, mode=mode)
 
                     # now test with real values
-                    img2d = numpy.arange(bsize*numpy.prod(imshp)).reshape((bsize,)+imshp)
-                    img1d = img2d.reshape(bsize,-1)
+                    img2d = numpy.arange(bsize * numpy.prod(imshp)).reshape(( \
+                                                            bsize,) + imshp)
+                    img1d = img2d.reshape(bsize, -1)
 
                     # create filters (need to be flipped to use convolve2d)
-                    filtersflipped = numpy.zeros((nkern,)+kshp)
+                    filtersflipped = numpy.zeros((nkern,) + kshp)
                     for k in range(nkern):
-                        it = reversed(filters[k,:])
+                        it = reversed(filters[k, :])
                         for i in range(kshp[0]):
                             for j in range(kshp[1]):
                                 filtersflipped[k,i,j] = it.next()
 
                     # compute output with convolve2d
-                    if conv_mode=='valid':
+                    if conv_mode == 'valid':
                         fulloutshp = numpy.array(imshp) - numpy.array(kshp) + 1
                     else:
                         fulloutshp = numpy.array(imshp) + numpy.array(kshp) - 1
@@ -70,10 +71,10 @@ class TestSP(unittest.TestCase):
                     refout = numpy.zeros((bsize,)+tuple(fulloutshp)+(nkern,))
                     for b in range(bsize):
                         for n in range(nkern):
-                            refout[b,...,n] = convolve2d(\
-                                    img2d[b,:,:], filtersflipped[n,...],conv_mode)
+                            refout[b,...,n] = convolve2d(img2d[b,:,:],
+                                                         filtersflipped[n,...],
+                                                         conv_mode)
                     ntot += time.time() - ntime1
-
 
                     # need to flatten images
                     bench1 = refout[:,0::ss[0],0::ss[1],:].reshape(bsize,-1,nkern)
@@ -428,32 +429,31 @@ class TestSP(unittest.TestCase):
 def test_remove0():
     print
     print 'test_remove0()'
-    import scipy
-    import numpy as N
     configs=[
-        # structure type, numpy matching class, optimized
+        # structure type, numpy matching class
         ('csc',scipy.sparse.csc_matrix),
         ('csr',scipy.sparse.csr_matrix),
         ]
 
     for format,matrix_class in configs:
-        
         print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
-
         # real
-        origin = N.arange(9).reshape((3,3)).astype(theano.config.floatX)
-        with0= matrix_class(origin).astype(theano.config.floatX)
-        with0[0,1]=with0[1,0]=with0[2,2]=0
+        origin = (numpy.arange(9)+1).reshape((3,3)).astype(theano.config.floatX)
+        with0 = matrix_class(origin).astype(theano.config.floatX)
+        
+        with0[0,1] = with0[1,0] = with0[2,2] = 0
+        assert with0.size == 9
         
         # symbolic
-        x = theano.sparse.SparseType(format=format,dtype=theano.config.floatX)()
-        f=theano.function([x],sp.Remove0()(x))
+        x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
+        f = theano.function([x], sp.Remove0()(x))
         
         # checking
-        with0.eliminate_zeros()
         # makes sense to change its name
-        target=with0
-        assert (f(with0).todense()==target.todense()).all()
+        target = with0
+        result = f(with0)
+        with0.eliminate_zeros()
+        assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
 
 
 def test_diagonal():
