@@ -434,11 +434,10 @@ def test_remove0():
         ('csc',scipy.sparse.csc_matrix),
         ('csr',scipy.sparse.csr_matrix),
         ]
-
     for format,matrix_class in configs:
         print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
         # real
-        origin = (numpy.arange(9)+1).reshape((3,3)).astype(theano.config.floatX)
+        origin = (numpy.arange(9) + 1).reshape((3, 3)).astype(theano.config.floatX)
         with0 = matrix_class(origin).astype(theano.config.floatX)
         
         with0[0,1] = with0[1,0] = with0[2,2] = 0
@@ -446,7 +445,15 @@ def test_remove0():
         
         # symbolic
         x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
-        f = theano.function([x], sp.Remove0()(x))
+        # the In thingy has to be there because theano has as rule to optimize inputs
+        f = theano.function([theano.In(x, borrow=True, mutable=True)], sp.Remove0()(x))
+
+        # assert optimization is applied
+        # list of apply nodes in the optimized graph.
+        nodes = f.maker.env.toposort()
+        v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
+        if v:
+            assert any(v)
         
         # checking
         # makes sense to change its name
@@ -454,7 +461,6 @@ def test_remove0():
         result = f(with0)
         with0.eliminate_zeros()
         assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
-
 
 def test_diagonal():
     for K in 1, 5:

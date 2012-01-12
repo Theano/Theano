@@ -236,10 +236,10 @@ class Remove0(Op):
         return 64153 ^ hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
-        s = self.__class__.__name__
+        l = []
         if self.inplace:
-            s += '{inplace}'
-        return s
+            l.append('inplace')
+        return self.__class__.__name__+'{%s}'%', '.join(l)
     
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
@@ -251,7 +251,6 @@ class Remove0(Op):
             c = x.copy()
         c.eliminate_zeros()
         z[0] = c
-        return
 
     def grad(self, (x,), (gz,)):
         return [gz]
