@@ -288,16 +288,28 @@ import theano and print the config variable, as in:
     Default: On Windows: $LOCALAPPDATA\\Theano if $LOCALAPPDATA is defined,
     otherwise and on other systems: ~/.theano.
 
-    This directory stores the architecture-dependent compilation directories.
+    This directory stores the platform-dependent compilation directories.
+
+    This flag's value cannot be modified during the program execution.
+
+.. attribute:: compiledir_format
+
+    Default: "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+
+    This is a Python format string that specifies the subdirectory
+    of ``config.base_compiledir`` in which to store platform-dependent
+    compiled modules. To see a list of all available substitution keys,
+    run ``python -c "import theano; print theano.config"``, and look
+    for compiledir_format.
 
     This flag's value cannot be modified during the program execution.
 
 .. attribute:: compiledir
 
-    Default: ``config.base_compiledir``/<arch-identifier>
+    Default: ``config.base_compiledir``/``config.compiledir_format``
 
     This directory stores dynamically-compiled modules for a particular
-    architecture.
+    platform.
 
     This flag's value cannot be modified during the program execution.
 
