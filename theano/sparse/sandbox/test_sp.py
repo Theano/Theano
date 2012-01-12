@@ -445,7 +445,7 @@ def test_remove0():
         
         # symbolic
         x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
-        # the In thingy has to be there because theano has as rule to optimize inputs
+        # the In thingy has to be there because theano has as rule not to optimize inputs
         f = theano.function([theano.In(x, borrow=True, mutable=True)], sp.Remove0()(x))
 
         # assert optimization is applied
