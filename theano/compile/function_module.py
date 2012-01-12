@@ -464,8 +464,8 @@ class Function(object):
                 except KeyError:
                     raise TypeError("Unknown input or state: %s" % str(item))
                 if s is DUPLICATE:
-                    raise TypeError("Ambiguous name: %s - please check the names '\
-                        'of the inputs of your function for duplicates." % str(item))
+                    raise TypeError("Ambiguous name: %s - please check the names "\
+                        "of the inputs of your function for duplicates." % str(item))
                 if isinstance(s, gof.Container):
                     return s.value
                 else:
@@ -478,8 +478,8 @@ class Function(object):
                     msg = get_info_on_inputs(named_inputs, n_unnamed_inputs)
                     raise TypeError("Unknown input or state: %s. %s" % (str(item), msg))
                 if s is DUPLICATE:
-                    raise TypeError("Ambiguous name: %s - please check the names '\
-                        'of the inputs of your function for duplicates." % str(item))
+                    raise TypeError("Ambiguous name: %s - please check the names "\
+                        "of the inputs of your function for duplicates." % str(item))
                 if isinstance(s, gof.Container):
                     s.value = value
                     s.provided += 1
