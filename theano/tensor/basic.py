@@ -1454,7 +1454,12 @@ class _tensor_py_operators:
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
-
+    def zeros_like(model, dtype=None):
+        "Used for grad, Lop and Rop"
+        # Tested through the zeros_like method below
+        if dtype is None:
+            dtype = model.type.dtype
+        return fill(model, constant(0.0, dtype=dtype))
 
 TensorType.Variable = TensorVariable
 
@@ -2364,10 +2369,7 @@ def ones_like(model, dtype=None):
 @constructor
 def zeros_like(model, dtype=None):
     """equivalent of numpy.zeros_like"""
-    if dtype is None:
-        dtype = model.type.dtype
-    return fill(model, constant(0.0, dtype=dtype))
-
+    return TensorVariable.zeros_like(model, dtype=None)
 
 def zeros(shape, dtype=config.floatX):
     """

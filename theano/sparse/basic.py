@@ -137,6 +137,11 @@ def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
+def sp_zeros_like(x):
+    _, _, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
+    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype), numpy.array([]), tensor.zeros_like(indptr), shape)
+
+
 class _sparse_py_operators:
     T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
     def __neg__(self): return neg(self)
@@ -183,6 +188,10 @@ class SparseVariable(gof.Variable, _sparse_py_operators):
                 self.dtype)
     def __repr__(self):
         return str(self)
+
+    def zeros_like(model, dtype=None):
+        # TODO: don't ignore dtype
+        return sp_zeros_like(model)
 
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
