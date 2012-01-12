@@ -16,7 +16,6 @@ from theano import function, tensor
 import theano
 from theano.sparse.sandbox import sp
 from theano.tests import unittest_tools as utt
-from theano.sparse.tests.test_basic import random_lil
 
 
 class TestSP(unittest.TestCase):
@@ -426,6 +425,36 @@ class TestSP(unittest.TestCase):
                 #utt.verify_grad(SpSum(axis=None), [x_val])
                 print 'ok'
 
+def test_remove0():
+    print
+    print 'test_remove0()'
+    import scipy
+    import numpy as N
+    configs=[
+        # structure type, numpy matching class, optimized
+        ('csc',scipy.sparse.csc_matrix),
+        ('csr',scipy.sparse.csr_matrix),
+        ]
+
+    for format,matrix_class in configs:
+        
+        print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
+
+        # real
+        origin = N.arange(9).reshape((3,3)).astype(theano.config.floatX)
+        with0= matrix_class(origin).astype(theano.config.floatX)
+        with0[0,1]=with0[1,0]=with0[2,2]=0
+        
+        # symbolic
+        x = theano.sparse.SparseType(format=format,dtype=theano.config.floatX)()
+        f=theano.function([x],sp.Remove0()(x))
+        
+        # checking
+        with0.eliminate_zeros()
+        # makes sense to change its name
+        target=with0
+        assert (f(with0).todense()==target.todense()).all()
+
 
 def test_diagonal():
     for K in 1, 5:
@@ -456,13 +485,13 @@ def test_ensure_sorted_indices():
             # csr
             input_tensor = theano.sparse.csr_dmatrix()
             sample = scipy.sparse.csr_matrix(random_lil((x,y),'float64',sparsity))
-            
+
         sort_op = sp.ensure_sorted_indices(input_tensor)
         f = theano.function([input_tensor], sort_op)
         sorted_scipy = sample.sorted_indices()
         sorted_theano = f(sample)
         assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
-    
+
 def test_diagonal_grad():
     def d(x):
         return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
@@ -532,6 +561,8 @@ def test_col_scale():
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
 
 if __name__ == '__main__':
+    test_remove0()
+    exit()
     if 1:
         testcase =  TestSP
         suite = unittest.TestLoader()
