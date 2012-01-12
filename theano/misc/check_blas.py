@@ -22,7 +22,8 @@ import theano.tensor as T
 from theano.gof.python25 import any
 
 
-def execute(execute=True, verbose=True, M=2000, N=2000, K=2000, iters=10):
+def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
+            iters=10, order='C'):
     """
     :param execute: If True, execute a Theano function that should call gemm
     :param verbose: If True, will print some Theano flags and env variable.
@@ -33,10 +34,12 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000, iters=10):
                       str that represent the implementation used)
     """
 
-    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX))
-    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX))
-    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX))
-
+    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
+                                 order=order))
+    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX,
+                                 order=order))
+    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
+                                 order=order))
     f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
 
     if verbose:
@@ -106,6 +109,12 @@ parser.add_option('-K', '--K', action='store', dest='K',
 parser.add_option('--iter', action='store', dest='iter',
                   default=10, type="int",
                   help="The number of call to gemm")
+parser.add_option('--order', action='store', dest='order',
+                  default="C",
+                  help="The numpy order parameter used when creating the"
+                  " numpy.ndarray object. It accept 'C' for the c memory"
+                  " layout order and 'F' for the fortran order of all"
+                  " matrix.")
 
 if __name__ == "__main__":
     options, arguments = parser.parse_args(sys.argv)
@@ -118,6 +127,7 @@ if __name__ == "__main__":
         print """
         Some results that you can compare against. They were 10 executions
         of gemm in float64 with matrices of shape 2000x2000 (M=N=K=2000).
+        All memory layout was in c order.
 
         CPU tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB),
                     Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
@@ -179,7 +189,7 @@ if __name__ == "__main__":
 
     t, impl = execute(not options.print_only, not options.quiet,
                       M=options.M, N=options.N, K=options.K,
-                      iters=options.iter)
+                      iters=options.iter, order=options.order)
 
     if options.print_only:
         pass
