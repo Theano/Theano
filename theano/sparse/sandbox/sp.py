@@ -231,6 +231,15 @@ class Remove0(Op):
 
     def __eq__(self,other):
         return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return 64153 ^ hash(type(self)) ^ hash(self.inplace)
+
+    def __str__(self):
+        s = self.__class__.__name__
+        if self.inplace:
+            s += '{inplace}'
+        return s
     
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
