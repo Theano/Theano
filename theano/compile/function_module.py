@@ -462,7 +462,6 @@ class Function(object):
                 try:
                     s = finder[item]
                 except KeyError:
-                    print item
                     raise TypeError("Unknown input or state: %s" % str(item))
                 if s is DUPLICATE:
                     raise TypeError("Ambiguous name: %s - please check the names '\
