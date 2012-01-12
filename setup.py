@@ -86,7 +86,7 @@ def git_version():
         git_revision = "unknown-git"
     return git_revision
 
-def write_version_py(filename='theano/generated_version.py'):
+def write_version_py(filename=os.path.join('theano', 'generated_version.py')):
     cnt = """
 # THIS FILE IS GENERATED FROM THEANO SETUP.PY
 short_version = '%(version)s'
