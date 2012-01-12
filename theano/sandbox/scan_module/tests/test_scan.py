@@ -104,7 +104,8 @@ class TestScan(unittest.TestCase):
                     try:
                         arg = args[arg_pos]
                     except:
-                        import ipdb; ipdb.set_trace()
+                        # import ipdb; ipdb.set_trace()
+                        raise
                     arg_pos += 1
                     if info['use']:
                         states_out[dx] = states_out[dx] + arg * 3
