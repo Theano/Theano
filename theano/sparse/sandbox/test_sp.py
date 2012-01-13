@@ -438,11 +438,12 @@ def test_remove0():
         print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
         # real
         origin = (numpy.arange(9) + 1).reshape((3, 3)).astype(theano.config.floatX)
-        with0 = matrix_class(origin).astype(theano.config.floatX)
-        
-        with0[0,1] = with0[1,0] = with0[2,2] = 0
-        assert with0.size == 9
-        
+        mat = matrix_class(origin).astype(theano.config.floatX)
+
+        mat[0,1] = mat[1,0] = mat[2,2] = 0
+
+        assert mat.size == 9
+
         # symbolic
         x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
         # the In thingy has to be there because theano has as rule not to optimize inputs
@@ -453,12 +454,12 @@ def test_remove0():
         nodes = f.maker.env.toposort()
         v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
         assert len(v), 'Inplacing optimization should have been applied.'
-        
+
         # checking
         # makes sense to change its name
-        target = with0
-        result = f(with0)
-        with0.eliminate_zeros()
+        target = mat
+        result = f(mat)
+        mat.eliminate_zeros()
         assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
 
 def test_diagonal():

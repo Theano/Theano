@@ -240,7 +240,7 @@ class Remove0(Op):
         if self.inplace:
             l.append('inplace')
         return self.__class__.__name__+'{%s}'%', '.join(l)
-    
+
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
 
