@@ -66,17 +66,16 @@ class TestScan(unittest.TestCase):
             scan_inputs.append(dict(input=inp, taps=[x['tap'] for x in
                                                      info]))
         n_states = len(states_info)
-        states = [tensor.matrix('x%d' % k) for k in xrange(n_states)]
         scan_states = []
         states = []
-        for state, info in zip(states, states_info):
+        for info in states_info:
             if len(info) == 1 and info[0]['tap'] == -1:
                 state = tensor.vector('x%d' % k)
                 states.append(state)
                 scan_states.append(state)
             else:
                 state = tensor.matrix('x%d' % k)
-                states.append(states)
+                states.append(state)
                 scan_states.append(
                     dict(initial=state, taps=[x['tap'] for x in info]))
         n_parameters = len(parameters_info)
