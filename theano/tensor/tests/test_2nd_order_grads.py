@@ -1,6 +1,4 @@
 """
-WRITE ME
-
 Test for jacobian/hessian functions in Theano
 """
 import unittest
