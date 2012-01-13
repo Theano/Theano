@@ -78,8 +78,13 @@ def Rop(f, wrt, eval_points):
         eval_dim = len(eval_point.type.broadcastable)
 
         if wrt_dim != eval_dim:
-            raise ValueError('Element '+str(i)+' of wrt/eval_point have mismatched '
-                    'dimensionality: '+str(wrt_dim)+' versus '+str(eval_dim))
+            raise ValueError('Element ' +
+                             str(i) +
+                             ' of wrt/eval_point have mismatched ' +
+                             'dimensionality: ' +
+                             str(wrt_dim) +
+                             ' versus ' +
+                             str(eval_dim))
 
     seen_nodes = {}
 
@@ -282,14 +287,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         # be properly considered constant
         if not hasattr(consider_constant, '__iter__'):
             raise TypeError('consider_constant must be an iterable collection,'
-                    ' got '+str(type(consider_constant)))
+                    ' got ' + str(type(consider_constant)))
         for elem in consider_constant:
             if not isinstance(elem, gof.Variable):
-                raise TypeError('Elements of consider_constant must be variables,'
-                        'but got '+str(type(elem)))
-
-
-
+                raise TypeError('Elements of consider_constant must be '
+                                'variables, but got ' + str(type(elem)))
     if not isinstance(cost, TensorVariable):
         raise TypeError(('In tensor.grad(), cost argument should be '
                          'a TensorVariable.'), cost)
@@ -393,8 +395,8 @@ class numeric_grad(object):
         :param f: a differentiable function such that f(*pt) is a scalar
         :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
 
-        This function computes the gradient by a one-sided finite differences of a
-        fixed step size (eps).
+        This function computes the gradient by a one-sided finite
+        differences of a fixed step size (eps).
 
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
@@ -567,8 +569,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
         sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default None is
         type-dependent)
-    :param abs_tol: absolute tolerance used as threshold for gradient comparison
-    :param rel_tol: relative tolerance used as threshold for gradient comparison
+    :param abs_tol: absolute tolerance used as threshold for gradient
+            comparison
+    :param rel_tol: relative tolerance used as threshold for gradient
+            comparison
 
     :note: WARNING to unit-test writers: if `op` is a function that builds a
         graph, try to make it a SMALL graph.  Often verify grad is run in
@@ -616,7 +620,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
 
     tensor_pt = [TensorType(
             as_tensor_variable(p).dtype,
-            as_tensor_variable(p).broadcastable)(name='input %i'%i)
+            as_tensor_variable(p).broadcastable)(name='input %i' % i)
         for i, p in enumerate(pt)]
 
     #fun can be either a function or an actual Op instance
