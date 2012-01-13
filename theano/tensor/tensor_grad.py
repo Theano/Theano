@@ -835,6 +835,9 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
         hessians.append(hess)
-    if not use_list:
-        hessians = hessians[0]
-    return hessians
+    if use_list and not isinstance(hessians, (list, tuple)):
+        return [hessians]
+    elif not use_list and isinstance(hessians, (list, tuple)):
+        return hessianss[0]
+    else:
+        return hessians
