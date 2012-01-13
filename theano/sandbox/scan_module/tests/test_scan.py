@@ -110,8 +110,11 @@ class TestScan(unittest.TestCase):
                     arg = args[arg_pos]
                     arg_pos += 1
                     if info['use']:
-                        states_out[dx] = states_out[dx] + arg * 3
-            for info in paramters_info:
+                        if states_out[dx]:
+                            states_out[dx] = states_out[dx] + arg * 3
+                        else:
+                            states_out[dx] = arg * 3
+            for info in parameters_info:
                 arg = args[arg_pos]
                 arg_pos += 1
                 if info['use']:
