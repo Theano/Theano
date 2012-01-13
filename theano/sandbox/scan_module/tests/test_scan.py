@@ -241,10 +241,10 @@ class TestScan(unittest.TestCase):
                     n_steps=n_steps,
                     go_backwards=go_backwards,
                     truncate_gradient=-1)
-            my_f = theano.function(inputs + states + parameters,
-                                   outputs,
-                                   updates=updates,
-                                   allow_input_downcast=True)
+                my_f = theano.function(inputs + states + parameters,
+                                       outputs,
+                                       updates=updates,
+                                       allow_input_downcast=True)
 
             if n_steps is not None and abs(n_steps) == 1:
                 assert len([x for x in my_f.maker.env.toposort()
