@@ -228,7 +228,9 @@ class TestScan(unittest.TestCase):
                     for out in out_mem_buffers:
                         out[step] = 2
             return nw_states_outs + out_mem_buffers, shared_values
-
+        possible_n_steps = [-1, 1, 5, -5]
+        if n_ins > 0:
+            possible_n_steps.append(None)
         for n_steps in [-1, 1, 5, -5, None]:
             for go_backwards in [True, False]:
                 outputs, updates = scan_module.scan(
