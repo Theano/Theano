@@ -569,9 +569,6 @@ def test_col_scale():
 
 if __name__ == '__main__':
     if 1:
-        test_remove0()
-        exit()
-    if 1:
         testcase =  TestSP
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
