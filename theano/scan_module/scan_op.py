@@ -971,7 +971,7 @@ class Scan(PureOp):
             # expected to return 0 for all entries for which the gradient is
             # not actually computed
             elif store_steps[idx] > i - self.mintaps[idx]:
-                outs[idx][0][i - self.mintaps[idx]:] = numpy.zeros_like(outs[idx][0][i - self.mintaps[idx]:])
+                outs[idx][0][i - self.mintaps[idx]:] = 0
                 # This is a fix for a bug introduced by while. If you say
                 # you want to loop up to a condition, you expect the output
                 # to have that length ( and not the maximal length possible)
