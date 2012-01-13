@@ -159,7 +159,12 @@ class TestScan(unittest.TestCase):
             nw_inputs = []
             for inp, info in zip(new_ins, inputs_info):
                 taps = [x['tap'] for x in info]
-                nw_inputs += [inp[abs(numpy.min(taps)) + k:] for k in taps]
+
+                if numpy.min(taps) < 0:
+                    _offset = abs(numpy.min(taps))
+                else:
+                    _offset = 0
+                nw_inputs += [inp[_offset + k:] for k in taps]
             # Simplify the states by slicing them according to the taps.
             # Note that if the memory buffer for the inputs and outputs is
             # the same, by changing the outputs we also change the outputs
