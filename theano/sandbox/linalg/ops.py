@@ -470,7 +470,7 @@ class MatrixPinv(Op):
             if imported_scipy:
                 z[0] = scipy.linalg.pinv(x).astype(x.dtype)
             else:
-                z[0] = numpy.linalg.pinc(x).astype(x.dtype)
+                z[0] = numpy.linalg.pinv(x).astype(x.dtype)
         except numpy.linalg.LinAlgError:
             logger.debug('Failed to invert %s' % str(node.inputs[0]))
             raise
