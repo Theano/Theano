@@ -1237,7 +1237,31 @@ class _tensor_py_operators:
 
     #TRANSPOSE
     T = property(lambda self: transpose(self))
+
+    def transpose(self, *axes):
+        """
+        Return `tensor.transpose(self, axes)`
+        or `tensor.transpose(self, axes[0])`
+
+        If only one `axes` argument is provided and it is iterable, then it is
+        assumed to be the entire axes tuple, and passed intact to
+        tensor.transpose.
+
+        """
+        if len(axes) == 0:
+            return transpose(self)
+        try:
+            iter(axes[0])
+            iterable = True
+        except TypeError:
+            iterable = False
+        if len(axes) == 1 and iterable:
+            return transpose(self, axes[0])
+        else:
+            return transpose(self, axes)
+
     shape = property(lambda self: shape(self))
+
     size = property(lambda self: prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
@@ -1347,18 +1371,23 @@ class _tensor_py_operators:
     # CONVENIENT ACCESS TO TYPE PROPERTIES
     ndim = property(lambda self: self.type.ndim)
     """The rank of this tensor."""
+
     broadcastable = property(lambda self: self.type.broadcastable)
     """The broadcastable signature of this tensor.
 
     See :doc:`broadcasting` for details.
 
     """
+
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
 
     #extra pseudo-operator symbols
-    def __dot__(left, right): return dot(left, right)
-    def __rdot__(right, left): return dot(left, right)
+    def __dot__(left, right):
+        return dot(left, right)
+
+    def __rdot__(right, left):
+        return dot(left, right)
 
     def sum(self, axis=None):
         return elemwise.Sum(axis)(self)
@@ -1389,7 +1418,6 @@ class _tensor_py_operators:
 
     #TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
-
 
     def get_constant_value(self):
         return get_constant_value(self)
@@ -2934,10 +2962,17 @@ def get_canonical_form_slice(theslice, length):
         return value, 1
 
 
-def transpose(x, **kwargs):
-    dims = range(x.ndim-1, -1, -1)
+def transpose(x, axes=None):
+    """
+    Reorder the dimensions of x. (Default: reverse them)
 
-    return DimShuffle(x.broadcastable, dims, inplace=False)(x)
+    This is a macro around dimshuffle that matches the numpy.transpose
+    function.
+
+    """
+    if axes is None:
+        axes = range(x.ndim-1, -1, -1)
+    return DimShuffle(x.broadcastable, axes, inplace=False)(x)
 
 
 class AdvancedIndexingError(TypeError):
