@@ -173,14 +173,20 @@ class TestScan(unittest.TestCase):
             for st, info in zip(args[2 + n_ins:2 + n_ins + n_states],
                                 states_info):
                 taps = [x['tap'] for x in info]
-                membuf = numpy.zeros((n_steps + numpy.max(abs(taps)), 4))
-                membuf[:numpy.max(abs(taps))] = st[:numpy.max(abs(taps))]
-                nw_states_inputs += [membuf[numpy.max(abs(taps)) + k:]
-                                     for k in taps]
-                nw_states_outs.append(membuf[numpy.max(abs(taps)):])
 
-            paramters = args[2 + n_ins + n_states:]
-            out_mem_buffers = [numpy.zeros((n_steps, 4)) for k in n_outs]
+                membuf = numpy.zeros((nsteps + abs(numpy.min(taps)), 4))
+                if abs(numpy.min(taps)) != 1:
+                    membuf[:abs(numpy.min(taps))] = st[:abs(numpy.min(taps))]
+                else:
+                    membuf[:abs(numpy.min(taps))] = st
+
+                nw_states_inputs += [membuf[abs(numpy.min(taps)) + k:]
+                                     for k in taps]
+                nw_states_outs.append(membuf[abs(numpy.min(taps)):])
+
+            parameters_vals = args[2 + n_ins + n_states:]
+            out_mem_buffers = [numpy.zeros((nsteps, 4)) for k in
+                               xrange(n_outputs)]
             shared_values = [x.copy() for x in original_shared_values]
             for step in xrange(n_steps):
                 arg_pos = 0
