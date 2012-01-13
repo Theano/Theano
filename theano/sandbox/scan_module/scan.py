@@ -49,7 +49,8 @@ import numpy
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
-from theano.tensor import opt
+from theano.tensor import opt, TensorVariable
+from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor
 from theano import config
 from theano.updates import Updates
@@ -435,7 +436,7 @@ def scan(fn,
     pos = len(lengths)
     for sv in shared_inputs:
         if sv in update_d:
-            if isinstance(sv, TensorType):
+            if isinstance(sv, (TensorVariable, TensorSharedVariable)):
                 # We can treat it as a sit sot
                 nw_state = scan_utils.expand(
                     tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
