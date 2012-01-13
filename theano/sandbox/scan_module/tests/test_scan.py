@@ -107,11 +107,7 @@ class TestScan(unittest.TestCase):
             states_out = [to_add] * n_states
             for dx, st_info in enumerate(states_info):
                 for info in st_info:
-                    try:
-                        arg = args[arg_pos]
-                    except:
-                        # import ipdb; ipdb.set_trace()
-                        raise
+                    arg = args[arg_pos]
                     arg_pos += 1
                     if info['use']:
                         states_out[dx] = states_out[dx] + arg * 3
