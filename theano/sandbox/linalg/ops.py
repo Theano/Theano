@@ -555,7 +555,6 @@ class MatrixInverse(Op):
         ev, = eval_points
         if ev is None:
             return [None]
-        #TT.dot(gz.T,xi)
         return [-matrix_dot(xi,ev,xi)]
 
 
@@ -716,22 +715,22 @@ class Det(Op):
         x = as_tensor_variable(x)
         o = theano.tensor.scalar(dtype=x.dtype)
         return Apply(self, [x], [o])
-    
+
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
         except Exception:
             print 'Failed to compute determinant', x
             raise
-        
+
     def grad(self, inputs, g_outputs):
         gz, = g_outputs
         x, = inputs
         return [gz * self(x) * matrix_inverse(x).T]
-    
+
     def infer_shape(self, node, shapes):
         return [()]
-    
+
     def __str__(self):
         return "Det"
 det = Det()
