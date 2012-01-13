@@ -838,6 +838,6 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
     if use_list and not isinstance(hessians, (list, tuple)):
         return [hessians]
     elif not use_list and isinstance(hessians, (list, tuple)):
-        return hessianss[0]
+        return hessians[0]
     else:
         return hessians
