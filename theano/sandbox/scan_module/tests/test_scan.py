@@ -2,6 +2,7 @@ import os
 import shutil
 from tempfile import mkdtemp
 import time
+import sys
 import unittest
 
 import cPickle
@@ -18,6 +19,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 from test_utils import *
 import theano.sandbox.scan_module as scan_module
+from theano.sandbox.scan_module.scan_op import ScanOp
 
 
 class TestScan(unittest.TestCase):
