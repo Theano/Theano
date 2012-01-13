@@ -217,12 +217,16 @@ class TestScan(unittest.TestCase):
                             to_add = arg * 4
                         else:
                             to_add = to_add + arg * 4
-
-                shared_values = [sh * 5 + to_add for sh in shared_values]
-                for state in nw_states_outs:
-                    state[step] += to_add
-                for out in out_mem_buffers:
-                    out[step] = to_add ** 2
+                if to_add is not None:
+                    shared_values = [sh * 5 + to_add for sh in shared_values]
+                    for state in nw_states_outs:
+                            state[step] += to_add
+                    for out in out_mem_buffers:
+                        out[step] = to_add ** 2
+                else:
+                    shared_values = [sh * 5 for sh in shared_values]
+                    for out in out_mem_buffers:
+                        out[step] = 2
             return nw_states_outs + out_mem_buffers, shared_values
 
         for n_steps in [-1, 1, 5, -5, None]:
