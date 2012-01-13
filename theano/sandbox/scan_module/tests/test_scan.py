@@ -122,9 +122,20 @@ class TestScan(unittest.TestCase):
                         to_add = arg * 4
                     else:
                         to_add = to_add + arg * 4
-            shared_outs = [sh * 5 + to_add for sh in shared_vars]
-            states_out = [x + to_add for x in states_out]
-            pure_outs = [to_add ** 2 for x in xrange(n_outs)]
+            if to_add is not None:
+                shared_outs = [sh * 5 + to_add for sh in shared_vars]
+                rval = []
+                for arg in states_out:
+                    if arg is None:
+                        rval.append(to_add)
+                    else:
+                        rval.append(arg + to_add)
+                states_out = rval
+                pure_outs = [to_add ** 2 for x in xrange(n_outputs)]
+            else:
+                shared_outs = [sh * 5 for sh in shared_vars]
+                states_out = [x for x in states_out]
+                pure_outs = [ 2 for x in xrange(n_outputs)]
             return states_out + pure_outs, dict(zip(shared_vars,
                                                     shared_outs))
 
