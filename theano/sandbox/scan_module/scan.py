@@ -49,7 +49,8 @@ import numpy
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
-from theano.tensor import opt
+from theano.tensor import opt, TensorVariable
+from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor
 from theano import config
 from theano.updates import Updates
@@ -435,10 +436,10 @@ def scan(fn,
     pos = len(lengths)
     for sv in shared_inputs:
         if sv in update_d:
-            if isinstance(sv, TensorType):
+            if isinstance(sv, (TensorVariable, TensorSharedVariable)):
                 # We can treat it as a sit sot
                 nw_state = scan_utils.expand(
-                    tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
+                    tensor.unbroadcast(tensor.shape_padleft(sv), 0), T)
                 additional_lengths.append(scalar_shared(numpy.int64(0),
                                                        name='l%d' % pos))
                 pos = pos + 1
@@ -453,6 +454,17 @@ def scan(fn,
                 non_numeric_input_states.append(sv)
                 non_numeric_output_states.append(update_d[sv])
                 original_non_numeric_shared_variables.append(sv)
+
+    # Replace shared variables in the update
+    _additional_output_states = []
+    replace = {}
+    for sv, buf in zip(original_numeric_shared_variables,
+                       additional_input_states):
+        replace[sv] = buf[t]
+    for out in additional_output_states:
+        _additional_output_states.append(
+            scan_utils.clone(out, replace=replace))
+    additional_output_states = _additional_output_states
 
     # 5.2 Collect inputs/outputs of the inner function
     inputs = []
@@ -515,7 +527,7 @@ def scan(fn,
     for pos in xrange(len(states_and_outputs)):
         out = scan_utils.ScanPermutation(mintaps[pos])(
             scan_outputs_update_rules[pos], t)
-        scan_outputs.append(out[mintap:])
+        scan_outputs.append(out[mintaps[pos]:])
     # 5.6 Construct updates dictionary
     update_rules = scan_outputs_update_rules[len(states_and_outputs):]
     updates = {}
@@ -553,7 +565,8 @@ def one_step_scan(fn,
                                     arg_info)
             # go through the taps
             mintap = abs(numpy.min(arg_info['taps']))
-            states_slices.append(arg_info['initial'][k + mintap])
+            states_slices.extend(
+              [arg_info['initial'][k + mintap] for k in arg_info['taps']])
 
     # Re-order args
     args = (inputs_slices + states_slices + parameters)
