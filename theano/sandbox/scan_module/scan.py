@@ -527,7 +527,7 @@ def scan(fn,
     for pos in xrange(len(states_and_outputs)):
         out = scan_utils.ScanPermutation(mintaps[pos])(
             scan_outputs_update_rules[pos], t)
-        scan_outputs.append(out[mintap:])
+        scan_outputs.append(out[mintaps[pos]:])
     # 5.6 Construct updates dictionary
     update_rules = scan_outputs_update_rules[len(states_and_outputs):]
     updates = {}
