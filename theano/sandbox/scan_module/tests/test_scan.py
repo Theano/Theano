@@ -54,6 +54,10 @@ class TestScan(unittest.TestCase):
             Number of shared variable with updates. They are all numeric.
 
         """
+        # Check the scan node has at least one output
+        if n_outputs + n_shared_updates + len(states_info) == 0:
+            return
+
         rng = numpy.random.RandomState(utt.fetch_seed())
         n_ins = len(inputs_info)
         inputs = [tensor.matrix('u%d' % k) for k in xrange(n_ins)]
