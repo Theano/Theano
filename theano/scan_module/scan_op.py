@@ -251,10 +251,10 @@ class Scan(PureOp):
                      outer_mitmot.type.dtype or
                      inner_mitmot_outs[opos+k].ndim != outer_mitmot.ndim - 1):
                      raise ValueError(err_msg2 %
-                                      (str(outer_mitmot,
+                                      (str(outer_mitmot),
                                            argoffset + idx,
                                            outer_mitmot.type.dtype,
-                                           inner_mitmot_outs[opos+k].type.dtype)))
+                                           inner_mitmot_outs[opos+k].type.dtype))
             opos += len(otaps)
         argoffset += len(self.outer_mitmot(inputs))
         # Same checks as above but for outputs of type mit_sot
@@ -279,10 +279,10 @@ class Scan(PureOp):
             if (inner_mitsot_out.type.dtype != outer_mitsot.type.dtype or
                  inner_mitsot_out.ndim != outer_mitsot.ndim - 1):
                      raise ValueError(err_msg2 %
-                                      (str(outer_mitsot,
+                                      (str(outer_mitsot),
                                            argoffset + idx,
                                            outer_mitsot.type.dtype,
-                                           inner_mitsot_out.type.dtype)))
+                                           inner_mitsot_out.type.dtype))
 
         argoffset += len(self.outer_mitsot(inputs))
         # Same checks as above but for outputs of type sit_sot
@@ -302,10 +302,10 @@ class Scan(PureOp):
             if (inner_sitsot_out.type.dtype != outer_sitsot.type.dtype or
                 inner_sitsot_out.ndim != outer_sitsot.ndim - 1):
                      raise ValueError(err_msg2 %
-                                      (str(outer_sitsot,
+                                      (str(outer_sitsot),
                                            argoffset + idx,
                                            outer_sitsot.type.dtype,
-                                           inner_sitsot_out.type.dtype)))
+                                           inner_sitsot_out.type.dtype))
 
         argoffset += len(self.outer_sitsot(inputs))
         # Check that the shared variable and their update rule have the same
