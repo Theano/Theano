@@ -20,6 +20,7 @@ from theano import gradient
 from theano import gof, shared
 from theano import compile
 
+
 _logger = logging.getLogger('theano.tensor.tensor_grad')
 
 ########################
