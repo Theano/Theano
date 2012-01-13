@@ -15,6 +15,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        Cholesky, # op class
                                        CholeskyGrad,
                                        matrix_inverse,
+                                       pinv,
                                        #solve,
                                        diag,
                                        ExtractDiag,
