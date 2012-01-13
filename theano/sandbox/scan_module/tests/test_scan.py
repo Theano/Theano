@@ -246,96 +246,137 @@ class TestScan(unittest.TestCase):
                                        updates=updates,
                                        allow_input_downcast=True)
 
-            if n_steps is not None and abs(n_steps) == 1:
-                assert len([x for x in my_f.maker.env.toposort()
-                        if isinstance(x.op, scan_module.scan_op.ScanOp)]) == 0
-            # Generating data
-            # Scenario 1 : Good fit shapes
-            inputs_values = []
-            for info in inputs_info:
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min([x for x in taps if x < 0]))
-                offset += numpy.max([x for x in taps if x > 0])
-                data = rng.uniform(size=(n_steps + offset, 4))
-                inputs_values.append(data)
-            state_values = []
-            for info in states_info:
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min(taps))
-                data = rng.uniform(size=(offset, 4))
-                state_values.append(data)
-            param_values = [rng.uniform(size=(4,)) for k in
-                            xrange(n_parameters)]
-            for var, val in zip(shared_vars, original_shared_values):
-                var.set_value(val)
-            theano_outs = my_f(*(inputs_values + state_values +
-                                 param_values))
-            args = ([n_steps, go_backwards] +
-                    input_values +
-                    state_values +
-                    param_values)
-            rvals = execute_inner_graph(*args)
-            numpy_outs, numpy_shared = rvals
-            assert len(numpy_outs) == len(theano_outs)
-            assert len(numpy_shared) == len(shared_vars)
-            for th_out, num_out in zip(theano_outs, numpy_outs):
-                assert numpy.allclose(th_out, num_out)
-            for th_out, num_out in zip(shared_outs, numpy_shared):
-                assert numpy.allclose(th_out.get_value(), num_out)
-            # Scenario 2 : Loose fit (sequences longer then required)
-            inputs_values = []
-            for pos, info in enumerate(inputs_info):
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min([x for x in taps if x < 0]))
-                offset += numpy.max([x for x in taps if x > 0])
-                data = rng.uniform(size=(n_steps + offset + pos + 1, 4))
-                inputs_values.append(data)
-            state_values = []
-            for pos, info in enumerate(states_info):
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min(taps))
-                data = rng.uniform(size=(offset + pos + 1, 4))
-                state_values.append(data)
-            param_values = [rng.uniform(size=(4,)) for k in
-                            xrange(n_parameters)]
-            for var, val in zip(shared_vars, original_shared_values):
-                var.set_value(val)
-            theano_outs = my_f(*(inputs_values + state_values +
-                                 param_values))
-            args = ([n_steps, go_backwards] +
-                    input_values +
-                    state_values +
-                    param_values)
-            rvals = execute_inner_graph(*args)
-            numpy_outs, numpy_shared = rvals
-            assert len(numpy_outs) == len(theano_outs)
-            assert len(numpy_shared) == len(shared_vars)
-            for th_out, num_out in zip(theano_outs, numpy_outs):
-                assert numpy.allclose(th_out, num_out)
-            for th_out, num_out in zip(shared_outs, numpy_shared):
-                assert numpy.allclose(th_out.get_value(), num_out)
-            # Scenario 3 : Less data then required
-            inputs_values = []
-            for pos, info in enumerate(inputs_info):
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min([x for x in taps if x < 0]))
-                offset += numpy.max([x for x in taps if x > 0])
-                data = rng.uniform(size=(n_steps + offset - 1, 4))
-                inputs_values.append(data)
-            state_values = []
-            for pos, info in enumerate(states_info):
-                taps = [x['tap'] for x in info]
-                offset = abs(numpy.min(taps))
-                data = rng.uniform(size=(offset - 1, 4))
-                state_values.append(data)
-            param_values = [rng.uniform(size=(4,)) for k in
-                            xrange(n_parameters)]
-            for var, val in zip(shared_vars, original_shared_values):
-                var.set_value(val)
-            self.assertRaises(Exception, my_f,
-                              inputs + state_values + param_values)
+                if n_steps is not None and abs(n_steps) == 1:
+                    all_nodes = my_f.maker.env.toposort()
+                    assert len([x for x in all_nodes
+                                if isinstance(x.op,ScanOp)]) == 0
+                print >>sys.stderr, '   n_steps', n_steps
+                print >>sys.stderr, '   go_backwards', go_backwards
 
-    def test000_generate_tests(self):
+                print >>sys.stderr, '       Scenario 1. Correct shape'
+                if n_steps is not None:
+                    _n_steps = n_steps
+                else:
+                    _n_steps = 8
+                # Generating data
+                # Scenario 1 : Good fit shapes
+                input_values = []
+                for info in inputs_info:
+                    taps = [x['tap'] for x in info]
+                    offset = 0
+                    if len([x for x in taps if x < 0]) > 0:
+                        offset += abs(numpy.min([x for x in taps if x < 0]))
+                    if len([x for x in taps if x > 0]) > 0:
+                        offset += numpy.max([x for x in taps if x > 0])
+                    data = rng.uniform(size=(abs(_n_steps) + offset, 4))
+                    input_values.append(data)
+                state_values = []
+                for info in states_info:
+                    taps = [x['tap'] for x in info]
+                    offset = abs(numpy.min(taps))
+                    if offset > 1:
+                        data = rng.uniform(size=(offset, 4))
+                    else:
+                        data = rng.uniform(size=(4,))
+                        data = numpy.arange(4)
+                    state_values.append(data)
+                param_values = [rng.uniform(size=(4,)) for k in
+                                xrange(n_parameters)]
+                param_values = [numpy.arange(4) for k in
+                                xrange(n_parameters)]
+                for var, val in zip(shared_vars, original_shared_values):
+                    var.set_value(val)
+                theano_outs = my_f(*(input_values + state_values +
+                                     param_values))
+                args = ([_n_steps, go_backwards] +
+                        input_values +
+                        state_values +
+                        param_values)
+                rvals = execute_inner_graph(*args)
+                numpy_outs, numpy_shared = rvals
+                assert len(numpy_outs) == len(theano_outs)
+                assert len(numpy_shared) == len(shared_vars)
+                for th_out, num_out in zip(theano_outs, numpy_outs):
+                    try:
+                        assert numpy.allclose(th_out, num_out)
+                    except:
+                        import ipdb; ipdb.set_trace()
+                for th_out, num_out in zip(shared_vars, numpy_shared):
+                    try:
+                        assert numpy.allclose(th_out.get_value(), num_out)
+                    except:
+                        import ipdb; ipdb.set_trace()
+                # Scenario 2 : Loose fit (sequences longer then required)
+                print >>sys.stderr, '       Scenario 2. Loose shapes'
+                input_values = []
+                for pos, info in enumerate(inputs_info):
+                    taps = [x['tap'] for x in info]
+                    offset = 0
+                    if len([x for x in taps if x < 0]) > 0:
+                        offset += abs(numpy.min([x for x in taps if x < 0]))
+                    if len([x for x in taps if x > 0]) > 0:
+                        offset += numpy.max([x for x in taps if x > 0])
+                    if n_steps is not None:
+                        # loose inputs make sense only when n_steps is
+                        # defined
+                        data = rng.uniform(size=(abs(_n_steps) + offset + pos + 1, 4))
+                    else:
+                        data = rng.uniform(size=(abs(_n_steps) + offset, 4))
+                    input_values.append(data)
+                state_values = []
+                for pos, info in enumerate(states_info):
+                    taps = [x['tap'] for x in info]
+                    offset = abs(numpy.min(taps))
+                    if offset > 1:
+                        data = rng.uniform(size=(offset + pos + 1, 4))
+                    else:
+                        data = rng.uniform(size=(4,))
+                    state_values.append(data)
+                param_values = [rng.uniform(size=(4,)) for k in
+                                xrange(n_parameters)]
+                for var, val in zip(shared_vars, original_shared_values):
+                    var.set_value(val)
+                theano_outs = my_f(*(input_values + state_values +
+                                     param_values))
+                args = ([_n_steps, go_backwards] +
+                        input_values +
+                        state_values +
+                        param_values)
+                rvals = execute_inner_graph(*args)
+                numpy_outs, numpy_shared = rvals
+                assert len(numpy_outs) == len(theano_outs)
+                assert len(numpy_shared) == len(shared_vars)
+
+                for th_out, num_out in zip(theano_outs, numpy_outs):
+                    assert numpy.allclose(th_out, num_out)
+                for th_out, num_out in zip(shared_vars, numpy_shared):
+                    assert numpy.allclose(th_out.get_value(), num_out)
+                # Scenario 3 : Less data then required
+                print >>sys.stderr, '       Scenario 2. Wrong shapes'
+                input_values = []
+                for pos, info in enumerate(inputs_info):
+                    taps = [x['tap'] for x in info]
+                    offset = 0
+                    if len([x for x in taps if x < 0]) > 0:
+                        offset += abs(numpy.min([x for x in taps if x < 0]))
+                    if len([x for x in taps if x > 0]) > 0:
+                        offset += numpy.max([x for x in taps if x > 0])
+                    data = rng.uniform(size=(abs(_n_steps) + offset - 1, 4))
+                    input_values.append(data)
+                state_values = []
+                for pos, info in enumerate(states_info):
+                    taps = [x['tap'] for x in info]
+                    offset = abs(numpy.min(taps))
+                    data = rng.uniform(size=(offset - 1, 4))
+                    state_values.append(data)
+                param_values = [rng.uniform(size=(4,)) for k in
+                                xrange(n_parameters)]
+                for var, val in zip(shared_vars, original_shared_values):
+                    var.set_value(val)
+                self.assertRaises(Exception, my_f,
+                                  inputs + state_values + param_values)
+
+    def test001_generate_tests(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         all_inputs_info = [[]]
         possible_taps_use_pairs = [[dict(tap=0, use=True)],
