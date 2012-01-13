@@ -127,6 +127,24 @@ def test_inverse_correctness():
     assert _allclose(numpy.identity(4), rri), rri
 
 
+def test_pseudoinverse_correctness():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    d1 = rng.randint(4) + 2
+    d2 = rng.randint(4) + 2
+    r = rng.randn(d1, d2).astype(theano.config.floatX)
+
+    x = tensor.matrix()
+    xi = pinv(x)
+
+    ri = function([x], xi)(r)
+    assert ri.shape[0] == r.shape[1]
+    assert ri.shape[1] == r.shape[0]
+    assert ri.dtype == r.dtype
+    # Note that pseudoinverse can be quite unprecise so I prefer to compare
+    # the result with what numpy.linalg returns
+    assert _allclose(ri, numpy.linalg.pinv(r))
+
+
 def test_matrix_dot():
     rng = numpy.random.RandomState(utt.fetch_seed())
     n = rng.randint(4) + 2
