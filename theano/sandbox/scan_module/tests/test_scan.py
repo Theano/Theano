@@ -188,7 +188,8 @@ class TestScan(unittest.TestCase):
             out_mem_buffers = [numpy.zeros((nsteps, 4)) for k in
                                xrange(n_outputs)]
             shared_values = [x.copy() for x in original_shared_values]
-            for step in xrange(n_steps):
+
+            for step in xrange(nsteps):
                 arg_pos = 0
                 to_add = None
                 for in_info in inputs_info:
