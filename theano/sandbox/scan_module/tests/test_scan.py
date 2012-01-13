@@ -146,9 +146,11 @@ class TestScan(unittest.TestCase):
             """
             # Check if you need to go back in time over the sequences (the
             # first argument is n_steps, the second is go_backwards)
-            n_steps = args[0]
+            nsteps = args[0]
             invert = False
-            if n_steps < 0 or args[1]:
+            if args[1]:
+                nsteps = nsteps * -1
+            if nsteps < 0:
                 new_ins = [x[::-1] for x in args[2: 2 + n_ins]]
             n_steps = abs(n_steps)
             # Simplify the inputs by slicing them according to the taps
