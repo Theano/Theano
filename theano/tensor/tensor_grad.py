@@ -768,12 +768,15 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     # generator used n expression (because during computing gradients we are
     # just backtracking over old values. (rp Jan 2012 - if anyone has a
     # counter example please show me)
-    jacobs, _ = scan(inner_function,
-                           sequences=arange(expression.shape[0]),
-                           non_sequences=[expression] + wrt)
-    if not use_list:
-        jacobs = jacobs[0]
-    return jacobs
+    jacobs, _ = theano.scan(inner_function,
+                            sequences=arange(expression.shape[0]),
+                            non_sequences=[expression] + wrt)
+    if use_list and not isinstance(jacobs, (list, tuple)):
+        return [jacobs]
+    elif not use_list and isinstance(jacobs, (list, tuple)):
+        return jacobs[0]
+    else:
+        return jacobs
 
 
 def hessian(cost, wrt, consider_constant=None, warn_type=False,
