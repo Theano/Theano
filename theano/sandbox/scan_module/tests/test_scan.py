@@ -465,7 +465,7 @@ class TestScan(unittest.TestCase):
 
 
 
-    def test001_generator_one_scalar_output(self):
+    def test002_generator_one_scalar_output(self):
         def f_pow2(x_tm1):
             return 2 * x_tm1
 
@@ -495,7 +495,7 @@ class TestScan(unittest.TestCase):
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars
-    def test002_one_sequence_one_output_and_weights(self):
+    def test003_one_sequence_one_output_and_weights(self):
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W
         u = theano.tensor.vector('u')
@@ -542,14 +542,14 @@ class TestScan(unittest.TestCase):
         theano_values = my_f(v_u, v_x0, W_in, W)
         assert numpy.allclose(theano_values, v_out)
 
-    def test003_multiple_inputs_multiple_outputs(self):
+    def test004_multiple_inputs_multiple_outputs(self):
         pass
 
-    def test004_collect_parameters_outer_graph(self):
+    def test005_collect_parameters_outer_graph(self):
         pass
 
-    def test005_multiple_taps(self):
+    def test006_multiple_taps(self):
         pass
 
-    def test006_updates(self):
+    def test007_updates(self):
         pass
