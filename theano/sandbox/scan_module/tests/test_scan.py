@@ -202,10 +202,10 @@ class TestScan(unittest.TestCase):
                                 to_add = arg * 2
                             else:
                                 to_add = to_add + arg * 2
-                states_out = [to_add] * n_states
                 arg_pos = 0
                 for dx, st_info in enumerate(states_info):
-                    nw_states_outs[dx][step] = to_add
+                    if to_add is not None:
+                        nw_states_outs[dx][step] = to_add
                     for info in st_info:
                         arg = nw_states_inputs[arg_pos][step]
                         arg_pos += 1
