@@ -740,12 +740,12 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
             as `wrt`: a list/tuple or TensorVariable in all cases.
     """
     # Check inputs have the right format
-    assert isisntance(expression, TensorVariable), \
+    assert isinstance(expression, TensorVariable), \
             "tensor.jacobian expects a Tensor Variable as `expression`"
     assert expression.ndim == 1, \
             "tensor.jacobian expects a 1 dimensional variable as `expression`"
 
-    if isintance(wrt, (list, tuple)):
+    if isinstance(wrt, (list, tuple)):
         use_list = True
         wrt = list(wrt)
     else:
@@ -800,12 +800,12 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
             as `wrt`: a list/tuple or TensorVariable in all cases.
     """
     # Check inputs have the right format
-    assert isisntance(cost, TensorVariable), \
+    assert isinstance(cost, TensorVariable), \
             "tensor.hessian expects a Tensor Variable as `cost`"
     assert cost.ndim == 0, \
             "tensor.hessian expects a 0 dimensional variable as `cost`"
 
-    if isintance(wrt, (list, tuple)):
+    if isinstance(wrt, (list, tuple)):
         use_list = True
         wrt = list(wrt)
     else:
