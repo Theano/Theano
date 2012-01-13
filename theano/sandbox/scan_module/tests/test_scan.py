@@ -443,11 +443,20 @@ class TestScan(unittest.TestCase):
         # restriction of scan and reduction of the number of corner cases
         return
         for n_outputs in [0,1,2]:
-            for n_shared_updates in [0,1,2]:
-                for n_random_combinations in xrange(14):
+            for n_shared_updates in [0,1, 2]:
+                for n_random_combinations in xrange(1):
                     pos_inp = rng.randint(len(all_inputs_info))
                     pos_st = rng.randint(len(all_states_info))
                     pos_param = rng.randint(len(all_parameters_info))
+                    print >>sys.stderr
+                    print >>sys.stderr, 'Test nb', test_nb
+                    print >>sys.stderr, ' inputs', all_inputs_info[pos_inp]
+                    print >>sys.stderr, ' states', all_states_info[pos_st]
+                    print >>sys.stderr, ' parameters', \
+                            all_parameters_info[pos_param]
+                    print >>sys.stderr, ' n_outputs', n_outputs
+                    print >>sys.stderr, ' n_shared_updates', n_shared_updates
+                    test_nb += 1
                     self.new_run(inputs_info=all_inputs_info[pos_inp],
                              states_info=all_states_info[pos_st],
                              parameters_info=all_parameters_info[pos_param],
