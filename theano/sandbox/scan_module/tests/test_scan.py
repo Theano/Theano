@@ -152,7 +152,9 @@ class TestScan(unittest.TestCase):
                 nsteps = nsteps * -1
             if nsteps < 0:
                 new_ins = [x[::-1] for x in args[2: 2 + n_ins]]
-            n_steps = abs(n_steps)
+            else:
+                new_ins = [x for x in args[2: 2 + n_ins]]
+            nsteps = abs(nsteps)
             # Simplify the inputs by slicing them according to the taps
             nw_inputs = []
             for inp, info in zip(new_ins, inputs_info):
