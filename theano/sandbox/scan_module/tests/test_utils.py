@@ -166,7 +166,7 @@ def grab_scan_node(output):
 
 class TestScanUtils(unittest.TestCase):
 
-    def test_cloning_no_replace_strict_copy_inputs(self):
+    def test001_cloning_no_replace_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
@@ -185,7 +185,7 @@ class TestScanUtils(unittest.TestCase):
         assert x in f2_inp
         assert y in f2_inp
 
-    def test_cloning_no_replace_strict_not_copy_inputs(self):
+    def test002_cloning_no_replace_strict_not_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
@@ -204,7 +204,7 @@ class TestScanUtils(unittest.TestCase):
         assert not x in f2_inp
         assert not y in f2_inp
 
-    def test_cloning_replace_strict_copy_inputs(self):
+    def test003_cloning_replace_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
@@ -223,7 +223,7 @@ class TestScanUtils(unittest.TestCase):
         assert x in f2_inp
         assert y2 in f2_inp
 
-    def test_cloning_replace_not_strict_copy_inputs(self):
+    def test004_cloning_replace_not_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
@@ -242,7 +242,7 @@ class TestScanUtils(unittest.TestCase):
         assert x in f2_inp
         assert y2 in f2_inp
 
-    def test_cloning_replace_strict_not_copy_inputs(self):
+    def test005_cloning_replace_strict_not_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
@@ -261,7 +261,7 @@ class TestScanUtils(unittest.TestCase):
         assert not x in f2_inp
         assert not y2 in f2_inp
 
-    def test_cloning_replace_not_strict_not_copy_inputs(self):
+    def test006_cloning_replace_not_strict_not_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
         # function that scan uses internally and that pfunc uses now and
         # that users might want to use
