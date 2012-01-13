@@ -820,17 +820,18 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
 
     hessians = []
     for input in wrt:
-        assert isisntance(cost, TensorVariable), \
+        assert isinstance(cost, TensorVariable), \
                 "tensor.hessian expects a (list of) Tensor Variable as `wrt`"
         assert cost.ndim == 0, \
                 "tensor.hessian expects a (list of) 1 dimensional variable"\
                 "as `wrt`"
         expr = grad(cost, input)
-        hess, _ = scan(lambda i, y, x: grad(y[i],
-                                            x,
-                                            consider_constant=consider_constant,
-                                            warn_type=warn_type,
-                                            disconnected_inputs=disconnected_inputs),
+        hess, _ = theano.scan(lambda i, y, x: grad(
+                            y[i],
+                            x,
+                            consider_constant=consider_constant,
+                            warn_type=warn_type,
+                            disconnected_inputs=disconnected_inputs),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
         hessians.append(hess)
