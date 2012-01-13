@@ -51,4 +51,5 @@ def shared(*args, **kw):
 import nnet  # used for softmax, sigmoid, etc.
 
 
-from tensor_grad import Rop, Lop, grad, numeric_grad, verify_grad
+from tensor_grad import Rop, Lop, grad, numeric_grad, verify_grad, \
+        jacobian, hessian
