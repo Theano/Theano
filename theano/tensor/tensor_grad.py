@@ -755,12 +755,15 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     def inner_function(*args):
         idx = args[0]
         expr = args[1]
-        return [grad(exp[idx],
+        rvals = []
+        for inp in args[2:]:
+            rval = grad(expr[idx],
                      inp,
                      consider_constant=consider_constant,
                      warn_type=warn_type,
                      disconnected_inputs=disconnected_inputs)
-                for inp in [args[2:]]]
+            rvals.append(rval)
+        return rvals
     # Computing the gradients does not affect the random seeds on any random
     # generator used n expression (because during computing gradients we are
     # just backtracking over old values. (rp Jan 2012 - if anyone has a
