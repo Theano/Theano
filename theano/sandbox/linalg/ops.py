@@ -476,6 +476,13 @@ class CholeskyGrad(Op):
 
 
 class MatrixPinv(Op):
+    """Computes the pseudo-inverse of a matrix :math:`A`.
+
+    Given a matrix :math:`A` of shape ``(d1, d2)``, ``pinv`` returns a
+    matrix :math:`A_{pinv}` of ``(d2, d1)`` such that the dot product
+    :math:`A_{inv} \cdot A` is as close as poosible to the identity
+    matrix :math:`I`.
+    """
     def __init__(self):
         pass
 
