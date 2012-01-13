@@ -211,7 +211,7 @@ class TestScan(unittest.TestCase):
                         arg_pos += 1
                         if info['use']:
                             nw_states_outs[dx][step] += arg * 3
-                for arg, info in zip(parameters, paramters_info):
+                for arg, info in zip(parameters_vals, parameters_info):
                     if info['use']:
                         if to_add is None:
                             to_add = arg * 4
