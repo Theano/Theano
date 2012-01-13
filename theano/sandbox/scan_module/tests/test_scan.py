@@ -82,6 +82,7 @@ class TestScan(unittest.TestCase):
         parameters = [tensor.vector('p%d' % k) for k in xrange(n_parameters)]
         original_shared_values = []
         shared_vars = []
+
         for k in xrange(n_shared_updates):
             data = rng.uniform(size=(4,)).astype(theano.config.floatX)
             original_shared_values.append(data)
