@@ -439,7 +439,7 @@ def scan(fn,
             if isinstance(sv, (TensorVariable, TensorSharedVariable)):
                 # We can treat it as a sit sot
                 nw_state = scan_utils.expand(
-                    tensor.unbroadcast(tensor.shape_padleft(sv, 0), T))
+                    tensor.unbroadcast(tensor.shape_padleft(sv), 0), T)
                 additional_lengths.append(scalar_shared(numpy.int64(0),
                                                        name='l%d' % pos))
                 pos = pos + 1
