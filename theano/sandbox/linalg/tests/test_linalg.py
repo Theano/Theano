@@ -1,6 +1,7 @@
 from pkg_resources import parse_version as V
 
 import numpy
+import numpy.linalg
 
 import theano
 from theano import tensor, function
