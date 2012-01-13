@@ -452,8 +452,7 @@ def test_remove0():
         # list of apply nodes in the optimized graph.
         nodes = f.maker.env.toposort()
         v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
-        if v:
-            assert any(v)
+        assert len(v), 'Inplacing optimization should have been applied.'
         
         # checking
         # makes sense to change its name
@@ -567,6 +566,9 @@ def test_col_scale():
         print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
 
 if __name__ == '__main__':
+    if 0:
+        test_remove0()
+        exit()
     if 1:
         testcase =  TestSP
         suite = unittest.TestLoader()
