@@ -16,7 +16,7 @@ import numpy  # for numeric_grad
 import theano
 from theano.tensor import TensorType, TensorVariable, ones_like, \
                 zeros_like, as_tensor_variable, cast, arange
-from theano import gradient, scan
+from theano import gradient
 from theano import gof, shared
 from theano import compile
 
