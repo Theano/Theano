@@ -174,7 +174,6 @@ def test_inverse_singular():
         return
     assert False
 
-
 def test_inverse_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(4, 4)
@@ -300,7 +299,7 @@ def test_alloc_diag_grad():
 def test_diag():
     """
     Test that linalg.diag has the same behavior as numpy.diag.
-    numpy.diag has two behaviors: 
+    numpy.diag has two behaviors:
     (1) when given a vector, it returns a matrix with that vector as the diagonal.
     (2) when given a matrix, returns a vector which is the diagonal of the matrix.
 
@@ -318,7 +317,7 @@ def test_diag():
     x = theano.tensor.matrix()
     y = extract_diag(x)
     assert y.owner.op.__class__ == ExtractDiag
-    
+
     # other types should raise error
     x = theano.tensor.tensor3()
     ok = False
