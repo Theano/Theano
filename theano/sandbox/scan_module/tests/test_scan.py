@@ -399,11 +399,13 @@ class TestScan(unittest.TestCase):
                                         dict(tap=3, use=True)],
                                    [dict(tap=-2, use=True),
                                         dict(tap=3, use=True)]]
+        test_nb = 0
         for n_ins in [1,2]:
             # Randomly pick up 4*n_ins combinations of arguments
             for k in xrange(4*n_ins):
                 inp = []
                 for inp_nb in xrange(n_ins):
+
                     pos = rng.randint(len(possible_taps_use_pairs))
                     inp.append(possible_taps_use_pairs[pos])
                 all_inputs_info.append(inp)
