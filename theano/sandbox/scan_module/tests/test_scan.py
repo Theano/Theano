@@ -502,6 +502,7 @@ class TestScan(unittest.TestCase):
         x0 = theano.tensor.scalar('x0')
         W_in = theano.tensor.scalar('win')
         W = theano.tensor.scalar('w')
+        n_steps = 5
         output, updates = scan_module.scan(f_rnn,
                                       u,
                                       x0,
