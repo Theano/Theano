@@ -819,7 +819,11 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                 "tensor.hessian expects a (list of) 1 dimensional variable"\
                 "as `wrt`"
         expr = grad(cost, input)
-        hess, _ = scan(lambda i, y, x: grad(y[i], x),
+        hess, _ = scan(lambda i, y, x: grad(y[i],
+                                            x,
+                                            consider_constant=consider_constant,
+                                            warn_type=warn_type,
+                                            disconnected_inputs=disconnected_inputs),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
         hessians.append(hess)
