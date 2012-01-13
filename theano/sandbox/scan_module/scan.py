@@ -455,6 +455,17 @@ def scan(fn,
                 non_numeric_output_states.append(update_d[sv])
                 original_non_numeric_shared_variables.append(sv)
 
+    # Replace shared variables in the update
+    _additional_output_states = []
+    replace = {}
+    for sv, buf in zip(original_numeric_shared_variables,
+                       additional_input_states):
+        replace[sv] = buf[t]
+    for out in additional_output_states:
+        _additional_output_states.append(
+            scan_utils.clone(out, replace=replace))
+    additional_output_states = _additional_output_states
+
     # 5.2 Collect inputs/outputs of the inner function
     inputs = []
     outputs = []
