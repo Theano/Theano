@@ -443,6 +443,41 @@ class CholeskyGrad(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
+class MatrixPinv(Op):
+    def __init__(self):
+        pass
+
+    def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``MatrixPinv`` op, there are no properties to be exposed.
+        """
+        return ()
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self)==type(other) and self.props() == other.props())
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, (x,), (z, )):
+        try:
+            if imported_scipy:
+                z[0] = scipy.linalg.pinv(x).astype(x.dtype)
+            else:
+                z[0] = numpy.linalg.pinc(x).astype(x.dtype)
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to invert %s' % str(node.inputs[0]))
+            raise
+    def __str__(self):
+        return "MatrixPseudoInverse"
+
+pinv = MatrixPinv()
 
 class MatrixInverse(Op):
     """Computes the inverse of a matrix :math:`A`.
