@@ -1676,7 +1676,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             # case it was in reverse we need to realize that we do not want
             # the k-th element from sl.start but the k-th element from
             # sl.stop backwards
-            n_val = sl1.stop - sl1.start - 1 - sl2 * sl1.step
+            n_val = sl1.stop - 1 - sl2 * sl1.step
             # we need to pick either n_val or p_val and then follow same
             # steps as above for covering the index error cases
             val = T.switch(T.lt(reverse1, 0), n_val, p_val)
