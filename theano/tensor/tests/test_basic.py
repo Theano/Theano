@@ -2508,23 +2508,6 @@ class T_subtensor(unittest.TestCase):
             assert numpy.all(t_out == v_out)
             assert numpy.all(t_out.shape == v_out.shape)
 
-    def test_merge_subtensor(self):
-        # Bug reported by Razvan
-        data = numpy.asarray(numpy.arange(8),
-                             dtype = theano.config.floatX)
-        x = theano.tensor.vector()
-        y1 = x[2:][::-1]
-        y2 = x[:-2][::-1]
-        length = theano.tensor.minimum(y1.shape[0], y2.shape[0])
-        y1 = y1[:length]
-        y2 = y2[:length]
-        t = theano.shared(numpy.int64(0))
-        fun = theano.function([x], [y1[t], y2[t]])
-        val0, val1 = fun(data)
-        assert val0 == data[2:][::-1][0]
-        assert val1 == data[:-2][::-1][0]
-
-
     def grad_list_(self, idxs, data):
         n = self.shared(data)
 
