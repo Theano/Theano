@@ -1807,13 +1807,15 @@ class test_local_subtensor_merge(unittest.TestCase):
         #print topo[-1].op
         assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
-        b_r = self.rng.permutation(range(-8,8))[:2]
-        e_r = self.rng.permutation(range(-8,8))[:2]
-        i_r = self.rng.permutation(range(-8,8))[:2]
+        b_r = self.rng.permutation(range(-4,4))[:3]
+        e_r = self.rng.permutation(range(-4,4))[:3]
+        i_r = self.rng.permutation(range(-4,4))[:3]
 
-        s_r = self.rng.permutation([-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7])[:2]
+        s_r = self.rng.permutation([-3,-2,-1,1,2,3])[:3]
 
         for x_s in self.x_shapes:
+            n_index_err = 0
+            n_ok = 0
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
             for b_v in b_r:
                 for e_v in e_r:
@@ -1825,12 +1827,17 @@ class test_local_subtensor_merge(unittest.TestCase):
                             try:
                                 x_val[b_v:e_v:s_v][i_v]
                             except IndexError:
+                                n_index_err += 1
                                 self.assertRaises(IndexError,
                                         f, x_val, b_v, e_v, s_v, i_v)
                             else:
-                                # Executed if the "try" clause did not
-                                # raise an exception
+                                # Executed if the "try" clause did not raise
+                                # any exception
+                                n_ok += 1
                                 f(x_val, b_v, e_v, s_v, i_v)
+
+            print 'shape: %s' % (x_s,)
+            print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
 
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
