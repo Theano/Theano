@@ -89,6 +89,7 @@ import tensor
 import scalar
 #import sparse #we don't import by default as we don't want to force having scipy installed.
 import gradient
+from gradient import Rop, Lop, grad
 import gof
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):

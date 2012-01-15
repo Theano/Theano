@@ -177,6 +177,9 @@ class _sparse_py_operators:
     # that stored zeros *do* count in the size.
     size = property(lambda self: csm_data(self).size)
 
+    def zeros_like(model):
+        return sp_zeros_like(model)
+
 
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
@@ -188,10 +191,6 @@ class SparseVariable(gof.Variable, _sparse_py_operators):
                 self.dtype)
     def __repr__(self):
         return str(self)
-
-    def zeros_like(model, dtype=None):
-        # TODO: don't ignore dtype
-        return sp_zeros_like(model)
 
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
