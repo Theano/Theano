@@ -94,8 +94,8 @@ def Rop(f, wrt, eval_points):
 
     assert len(wrt) == len(eval_points)
 
-    #check that each element of wrt corresponds to an element
-    #of eval_points with the same dimensionality
+    # Check that each element of wrt corresponds to an element
+    # of eval_points with the same dimensionality.
     for pack in enumerate(zip(wrt, eval_points)):
         i = pack[0]
         wrt_elem, eval_point = pack[1]
