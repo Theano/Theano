@@ -654,8 +654,27 @@ Reductions
     :Parameter: *axis* - axis along which to compute the maximum
     :Returns: the maximum value along a given axis
     :note: see maximum for elemwise max
+    
+    if axis=None, Theano 0.5rc1 or later: max over the flattened tensor (like numpy)
+                  older: then axis is assumed to be ndim(x)-1
 
-    If axis=None, then axis is assumed to be ndim(x)-1
+.. function:: argmax(x, axis=None)
+
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the maximum
+    :Returns: the index of the maximum value along a given axis
+
+    if axis=None, Theano 0.5rc1 or later: argmax over the flattened tensor (like numpy)
+                  older: then axis is assumed to be ndim(x)-1
+
+.. function:: max_and_argmax(x, axis=None)
+
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the maximum
+    :Returns: the maxium value along a given axis and its index.
+
+    if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like numpy)
+                  older: then axis is assumed to be ndim(x)-1
 
 .. function:: min(x, axis=None)
 
@@ -664,7 +683,17 @@ Reductions
     :Returns: the minimum value along a given axis
     :note: see miminum for elemwise min
 
-    if axis=None, then axis is assumed to be ndim(x)-1
+    if axis=None, Theano 0.5rc1 or later: min over the flattened tensor (like numpy)
+                  older: then axis is assumed to be ndim(x)-1
+
+.. function:: argmin(x, axis=None)
+
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the minimum
+    :Returns: the index of the minimum value along a given axis
+
+    if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like numpy)
+                  older: then axis is assumed to be ndim(x)-1
 
 .. function:: sum(x, axis=None)
 
