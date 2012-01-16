@@ -341,6 +341,14 @@ def ifelse(condition, then_branch, else_branch, name=None):
             if then_branch_elem.type != else_branch_elem.type:
                 # If the types still don't match, there is a problem.
                 raise ValueError(
+                        'The two branches should have identical types, but '
+                        'they are %s and %s respectively. This error could be '
+                        'raised if for example you provided a one element '
+                        'list on the `then` branch but a tensor on the `else` '
+                        'branch.' %
+                        (then_branch_elem.type, else_branch_elem.type))
+
+                raise ValueError(
                          ('The two branches should have identical types, '
                           ' but they are '+str(then_branch_elem.type)+' and '+
                           str(else_branch_elem.type)+' respectively. '
