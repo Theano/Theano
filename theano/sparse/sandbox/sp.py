@@ -140,10 +140,25 @@ diag = Diag()
 class SquareDiagonal(Op):
     """Return a square sparse (csc) matrix whose diagonal is given by the dense vector argument.
     """
+
+    def __eq__(self,other):
+      return (type(self) == type(other))
+
+    def __hash__(self):
+      return hash(type(self))
+
+    def __str__(self):
+      return "SquareDiagonal"
+
     def make_node(self, diag):
+        assert isinstance(diag.type, theano.tensor.TensorType)
+        if diag.type.ndim != 1:
+            raise TypeError('data argument must be a vector', diag.type)
+
         return gof.Apply(self, [diag],
                 [sparse.SparseType(dtype = diag.dtype,
                                  format = 'csc')()])
+
     def perform(self, node, (diag,), (z,)):
         N, = diag.shape
         indptr = range(N+1)
@@ -152,6 +167,10 @@ class SquareDiagonal(Op):
 
     def grad(self, input, (gz,)):
         return [diag(gz)]
+
+    def infer_shape(self,nodes,shapes):
+        diag_length = shapes[0][0]
+        return [(diag_length,diag_length)]
 
 square_diagonal = SquareDiagonal()
 
