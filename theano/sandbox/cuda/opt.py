@@ -385,9 +385,10 @@ def local_gpu_gemv(node):
     gemv(host_from_gpu) -> host_from_gpu(gpu_gemv)
 
     """
-    gemvs = {tensor.blas.gemv_inplace: gpu_gemv_inplace,
+    gemvs = {
+            #tensor.blas.gemv_inplace: gpu_gemv_inplace,
             tensor.blas.gemv_no_inplace: gpu_gemv_no_inplace,
-            tensor.blas_c.CGemv(inplace=True): gpu_gemv_inplace,
+            #tensor.blas_c.CGemv(inplace=True): gpu_gemv_inplace,
             tensor.blas_c.CGemv(inplace=False): gpu_gemv_no_inplace,
             }
     if node.op == gpu_from_host:
@@ -426,7 +427,7 @@ def local_gpu_ger(node):
 
     """
     gers = {
-            tensor.blas_c.CGer(destructive=True): gpu_ger_inplace,
+            #tensor.blas_c.CGer(destructive=True): gpu_ger_inplace,
             tensor.blas_c.CGer(destructive=False): gpu_ger_no_inplace,
             }
     if node.op == gpu_from_host:
@@ -463,7 +464,8 @@ def local_gpu_gemm(node):
 
     gemm(host_from_gpu) -> host_from_gpu(gpu_gemm)
     """
-    gemms = {tensor.blas.gemm_inplace: gpu_gemm_inplace,
+    gemms = {
+            #tensor.blas.gemm_inplace: gpu_gemm_inplace,
             tensor.blas.gemm_no_inplace: gpu_gemm_no_inplace}
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
