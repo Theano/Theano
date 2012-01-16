@@ -317,7 +317,7 @@ def ifelse(condition, then_branch, else_branch, name=None):
     # we will store them in these new_... lists.
     new_then_branch = []
     new_else_branch = []
-    for then_branch_elem, else_branch_elem in zip(then_branch, else_branch):
+    for then_branch_elem, else_branch_elem in izip(then_branch, else_branch):
         if not isinstance(then_branch_elem, theano.Variable):
             then_branch_elem = theano.tensor.as_tensor_variable(then_branch_elem)
         if not isinstance(else_branch_elem, theano.Variable):
