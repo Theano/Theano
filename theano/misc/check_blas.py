@@ -65,10 +65,10 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
             f.maker.env.toposort()]):
-        impl = 'Used the cpu'
+        impl = 'cpu'
     elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
               f.maker.env.toposort()]):
-        impl = 'Used the gpu'
+        impl = 'gpu'
     else:
         impl = 'ERROR, unable to tell if Theano used the cpu or the gpu:\n'
         impl += str(f.maker.env.toposort())
@@ -207,7 +207,7 @@ if __name__ == "__main__":
                                           options.N, options.K)
 
         print
-        print 'Total execution time: %.2fs' % t
+        print 'Total execution time: %.2fs on %s.' % (t, impl)
         print
         print ('Try to run this script a few times. Experience shows that'
                ' the first time is not as fast as followings calls. The'
