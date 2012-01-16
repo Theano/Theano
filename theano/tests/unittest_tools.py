@@ -4,6 +4,13 @@ import numpy
 
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
+try:
+    from nose.plugins.skip import SkipTest
+except ImportError:
+    class SkipTest(Exception):
+        """
+        Skip this test
+        """
 
 
 AddConfigVar('unittests.rseed',
@@ -93,7 +100,8 @@ class TestOptimizationMixin(object):
     def assertFunctionContainsN(self, f, op, N):
         return self.assertFunctionContains(f, op, min=N, max=N)
 
-    def SkipTest(self):
-        raise Exception('how do I skip this test properly?')
+    def SkipTest(self, msg='Skip this test'):
+        raise SkipTest(msg)
+
 
 
