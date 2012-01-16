@@ -1,9 +1,9 @@
 """Driver for gradient calculations."""
 
-__authors__   = "James Bergstra, Razvan Pascanu, Arnaud Bergeron"
+__authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron"
 __copyright__ = "(c) 2011, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
@@ -12,8 +12,6 @@ import logging
 import warnings
 _logger = logging.getLogger('theano.gradient')
 import sys
-
-import numpy #for numeric_grad
 
 import numpy  # for numeric_grad
 
@@ -28,19 +26,23 @@ import theano.gof.utils
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
+
 def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
     :type sources: list of pairs of Variable: (v, gradient-on-v)
     :param sources: gradients to back-propagate using chain rule
     :type graph_inputs: list of Variable
-    :param graph_inputs: variables considered to be constant (do not backpropagate through
-    them)
+    :param graph_inputs: variables considered to be constant
+        (do not backpropagate through them)
 
     :rtype: dictionary whose keys and values are of type `Variable`
-    :return: mapping from each Variable encountered in the backward traversal to the gradient with respect to that Variable.
+
+    :return: mapping from each Variable encountered in the backward
+        traversal to the gradient with respect to that Variable.
 
     It is assumed that there is some objective J shared between all members of
-    sources, so that for each v, gradient-on-v is the gradient of J with respect to v
+    sources, so that for each v, gradient-on-v is the gradient of J with
+    respect to v
 
 
 
@@ -56,24 +58,25 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
             else:
                 gmap[r] = g_r
 
-    graph_outputs = gof.utils.uniq([r for r,g in sources])
+    graph_outputs = gof.utils.uniq([r for r, g in sources])
 
     if graph_inputs is None:
         graph_inputs = gof.graph.inputs(graph_outputs)
 
     for node in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
-        g_outputs = [gmap.get(o,None) for o in node.outputs]
+        g_outputs = [gmap.get(o, None) for o in node.outputs]
 
         #if all output gradients are None, continue
-        if all(map(lambda x:x is None, g_outputs)): continue
+        if all(map(lambda x: x is None, g_outputs)): continue
 
         output_arg = g_outputs
         input_arg = node.inputs
 
         # Each Op's grad function requires inputs and output_grads
-        # If the Op destroys any input, but the grad expression uses it, then chances are the
-        # resulting graph will have a dependency cycle.  We avoid this cycle by passing
-        # (symbolic) copies of each destroyed input.
+        # If the Op destroys any input, but the grad expression uses it,
+        # then chances are the resulting graph will have a dependency
+        # cycle.  We avoid this cycle by passing (symbolic) copies of
+        # each destroyed input.
         try:
             dinputs = [node.inputs[x[0]] for x in node.op.destroy_map.values()]
         except AttributeError:
@@ -89,14 +92,14 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
 
         #note that this function is not in a try-except block
         # the rationale:
-        #  If the op implements grad, then any exception should be passed to the
-        #  caller
+        #  If the op implements grad, then any exception should be passed to
+        #  the caller
         #  If the op doesn't implement grad, this entire function should fail.
         #  Other possibilities:
         #    * return a partial back-prop
         #
         op_grad = node.op.grad(input_arg, output_arg)
-        if not isinstance(op_grad, (list,tuple)):
+        if not isinstance(op_grad, (list, tuple)):
             raise ValueError(_msg_retType, node.op)
         g_inputs = op_grad
         assert isinstance(g_inputs, (list, tuple))
@@ -107,9 +110,9 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     len(node.inputs))
         for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
             if warn_type:
-                if g_r and (getattr(r,'type',0) != getattr(g_r,'type', 1)):
-                    r_type = getattr(r,'type', None)
-                    g_r_type = getattr(g_r,'type', None)
+                if g_r and (getattr(r, 'type', 0) != getattr(g_r, 'type', 1)):
+                    r_type = getattr(r, 'type', None)
+                    g_r_type = getattr(g_r, 'type', None)
                     _logger.warning('%s.grad returned a different type (%s) '
                             'for input %i of type (%s)',
                             node.op, g_r_type, ii, r_type)
@@ -123,27 +126,19 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     gmap[r] = g_r
     return gmap
 
+
 def unimplemented_grad(op, x_pos, x):
     """
-    DO NOT USE. Remove this function after all usage of it has been removed from theano.
+    DO NOT USE. Remove this function after all usage of it has been
+    removed from theano.
 
     Return an un-computable symbolic variable of type `x.type`.
 
     If any function tries to compute this un-computable variable, an exception
     (NotImplementedError) will be raised indicating that the gradient on the
     `x_pos`'th input of `op` has not been implemented.
-
     """
-
-    #raise Exception("""
-    #                    unimplemented_grad is not a safe function to use.
-    #                    It depends on catching errors at the run-time of a theano function.
-    #                    However, it could be removed by the optimization during the compilation
-    #                    of the theano function, for example, if it is multiplied by 0. This
-    #                    results in theano functions returning 0 for gradients that are actually
-    #                    undefined. """)
-
-    msg = '%s.grad not implemented for input %i'%(op, x_pos)
+    msg = '%s.grad not implemented for input %i' % (op, x_pos)
     return Raise(msg=msg)(x)
 
 ########################
@@ -202,8 +197,9 @@ def Rop(f, wrt, eval_points):
         eval_dim = len(eval_point.type.broadcastable)
 
         if wrt_dim != eval_dim:
-            raise ValueError('Element '+str(i)+' of wrt/eval_point have mismatched '
-                    'dimensionality: '+str(wrt_dim)+' versus '+str(eval_dim))
+            raise ValueError('Element ' + str(i) + ' of wrt/eval_point have '
+                             'mismatched dimensionality: ' + str(wrt_dim) +
+                             ' versus ' + str(eval_dim))
 
     seen_nodes = {}
 
@@ -406,13 +402,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         # be properly considered constant
         if not hasattr(consider_constant, '__iter__'):
             raise TypeError('consider_constant must be an iterable collection,'
-                    ' got '+str(type(consider_constant)))
+                    ' got ' + str(type(consider_constant)))
         for elem in consider_constant:
             if not isinstance(elem, gof.Variable):
-                raise TypeError('Elements of consider_constant must be variables,'
-                        'but got '+str(type(elem)))
-
-
+                raise TypeError('Elements of consider_constant must be '
+                                'variables, but got ' + str(type(elem)))
 
     if not isinstance(cost, Variable):
         raise TypeError(('In grad(), cost argument should be '
@@ -518,8 +512,8 @@ class numeric_grad(object):
         :param f: a differentiable function such that f(*pt) is a scalar
         :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
 
-        This function computes the gradient by a one-sided finite differences of a
-        fixed step size (eps).
+        This function computes the gradient by a one-sided finite differences
+        of a fixed step size (eps).
 
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
@@ -692,8 +686,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
         sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default None is
         type-dependent)
-    :param abs_tol: absolute tolerance used as threshold for gradient comparison
-    :param rel_tol: relative tolerance used as threshold for gradient comparison
+    :param abs_tol: absolute tolerance used as threshold for gradient
+        comparison
+    :param rel_tol: relative tolerance used as threshold for gradient
+        comparison
 
     :note: WARNING to unit-test writers: if `op` is a function that builds a
         graph, try to make it a SMALL graph.  Often verify grad is run in
@@ -744,7 +740,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
 
     tensor_pt = [TensorType(
             as_tensor_variable(p).dtype,
-            as_tensor_variable(p).broadcastable)(name='input %i'%i)
+            as_tensor_variable(p).broadcastable)(name='input %i' % i)
         for i, p in enumerate(pt)]
 
     #fun can be either a function or an actual Op instance
@@ -828,9 +824,9 @@ class GradientError(Exception):
         At position %i of argument %i,
             abs. error = %f,  abs. tolerance = %f
             rel. error = %f,  rel. tolerance = %f\nException args: %s
-        """ %(self.err_pos, self.arg,
-              self.abs_err, self.abs_tol,
-              self.rel_err, self.rel_tol,
-              args_msg)
+        """ % (self.err_pos, self.arg,
+               self.abs_err, self.abs_tol,
+               self.rel_err, self.rel_tol,
+               args_msg)
 
 verify_grad.E_grad = GradientError

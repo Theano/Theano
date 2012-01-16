@@ -1,13 +1,16 @@
 """
-Theano is an optimizing compiler in Python, built to evaluate complicated expressions
-(especially matrix-valued ones) as quickly as possible.
-Theano compiles expression graphs (see :doc:`graph` ) that are built by Python code.
-The expressions in these graphs are called `Apply` nodes and the variables in these graphs are called `Variable` nodes.
+Theano is an optimizing compiler in Python, built to evaluate
+complicated expressions (especially matrix-valued ones) as quickly as
+possible.  Theano compiles expression graphs (see :doc:`graph` ) that
+are built by Python code. The expressions in these graphs are called
+`Apply` nodes and the variables in these graphs are called `Variable`
+nodes.
 
-You compile a graph by calling `function`, which takes a graph, and returns a callable object.
-One of theano's most important features is that `function` can transform your graph before
-compiling it.
-It can replace simple expressions with faster or more numerically stable implementations.
+You compile a graph by calling `function`, which takes a graph, and
+returns a callable object.  One of theano's most important features is
+that `function` can transform your graph before compiling it.  It can
+replace simple expressions with faster or more numerically stable
+implementations.
 
 To learn more, check out:
 
@@ -37,7 +40,8 @@ logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
 
-import configparser, configdefaults
+import configparser
+import configdefaults
 
 config = configparser.TheanoConfigParser()
 
@@ -87,7 +91,8 @@ from updates import Updates
 
 import tensor
 import scalar
-#import sparse #we don't import by default as we don't want to force having scipy installed.
+#we don't import by default as we don't want to force having scipy installed.
+#import sparse
 import gradient
 from gradient import Rop, Lop, grad
 import gof
@@ -127,8 +132,10 @@ del _all, _divide, _over, _under, _invalid
 
 ## import scalar_opt
 
-### This is defined here because it is designed to work across symbolic datatypes
-#   (Sparse and Tensor)
+### This is defined here because it is designed to work across symbolic
+#   datatypes (Sparse and Tensor)
+
+
 def dot(l, r):
     """Return a symbolic matrix/dot product between l and r """
     rval = NotImplemented
@@ -145,5 +152,6 @@ def dot(l, r):
         except Exception, e1:
             rval = NotImplemented
     if rval == NotImplemented:
-        raise NotImplementedError("Dot failed for the following reasons:", (e0, e1))
+        raise NotImplementedError("Dot failed for the following reasons:",
+                                  (e0, e1))
     return rval

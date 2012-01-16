@@ -137,9 +137,13 @@ def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
+
 def sp_zeros_like(x):
-    _, _, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
-    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype), numpy.array([]), tensor.zeros_like(indptr), shape)
+    #TODO: don't restrict to CSM formats
+    _, _, indptr, shape = csm_properties(x)
+    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
+                                numpy.array([]), tensor.zeros_like(indptr),
+                                shape)
 
 
 class _sparse_py_operators:
