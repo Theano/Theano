@@ -287,7 +287,7 @@ class GpuGemv(Op):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -378,7 +378,7 @@ class GpuGer(Op):
         return Apply(self, [z, a, x, y], [z.type()])
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
