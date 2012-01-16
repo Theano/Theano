@@ -137,42 +137,45 @@ class Diag(Op):
 
 diag = Diag()
 
-class SquareDiagonal(Op):
-    """Return a square sparse (csc) matrix whose diagonal is given by the dense vector argument.
-    """
 
-    def __eq__(self,other):
-      return (type(self) == type(other))
+class SquareDiagonal(Op):
+    """
+    Return a square sparse (csc) matrix whose diagonal
+    is given by the dense vector argument.
+    """
+    def __eq__(self, other):
+        return (type(self) == type(other))
 
     def __hash__(self):
-      return hash(type(self))
+        return hash(type(self))
 
     def __str__(self):
-      return "SquareDiagonal"
+        return "SquareDiagonal"
 
     def make_node(self, diag):
-        assert isinstance(diag.type, theano.tensor.TensorType)
+        diag = tensor.as_tensor_variable(diag)
         if diag.type.ndim != 1:
             raise TypeError('data argument must be a vector', diag.type)
 
         return gof.Apply(self, [diag],
-                [sparse.SparseType(dtype = diag.dtype,
-                                 format = 'csc')()])
+                [sparse.SparseType(dtype=diag.dtype, format='csc')()])
 
     def perform(self, node, (diag,), (z,)):
         N, = diag.shape
-        indptr = range(N+1)
+        indptr = range(N + 1)
         indices = indptr[0:N]
-        z[0] = scipy_sparse.csc_matrix((diag, indices, indptr), (N,N), copy=True)
+        z[0] = scipy_sparse.csc_matrix((diag, indices, indptr),
+                                       (N, N), copy=True)
 
     def grad(self, input, (gz,)):
         return [diag(gz)]
 
-    def infer_shape(self,nodes,shapes):
+    def infer_shape(self, nodes, shapes):
         diag_length = shapes[0][0]
-        return [(diag_length,diag_length)]
+        return [(diag_length, diag_length)]
 
 square_diagonal = SquareDiagonal()
+
 
 class ColScaleCSC(Op):
     """
