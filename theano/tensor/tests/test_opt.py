@@ -1839,6 +1839,145 @@ class test_local_subtensor_merge(unittest.TestCase):
             print 'shape: %s' % (x_s,)
             print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
 
+    def test_none_slice(self):
+        # Test case of two slices, var[b1:e1:s1][b2:e2:s2]
+        # where any of the b, e, and s can be None
+        x = tensor.matrix('x')
+        b1 = tensor.iscalar('b1')
+        e1 = tensor.iscalar('e1')
+        s1 = tensor.iscalar('s1')
+        b2 = tensor.iscalar('b2')
+        e2 = tensor.iscalar('e2')
+        s2 = tensor.iscalar('s2')
+
+        # Generate all possible lists of positions for None in those 6 slots
+        # A 1 indicates None is present, 0 that there is a Theano scalar.
+        none_positions = numpy.ndindex(2, 2, 2, 2, 2, 2)
+
+        # Ranges to be used when not None
+        b1r = self.rng.permutation(range(-4,4))[:]
+        e1r = self.rng.permutation(range(-4,4))[:]
+        b2r = self.rng.permutation(range(-4,4))[:]
+        e2r = self.rng.permutation(range(-4,4))[:]
+        s1r = self.rng.permutation([-4,-3,-2,-1,1,2,3,4])[:]
+        s2r = self.rng.permutation([-4,-3,-2,-1,1,2,3,4])[:]
+
+        scalar_vars = [b1, e1, s1, b2, e2, s2]
+        scalar_ranges = [b1r, e1r, s1r, b2r, e2r, s2r]
+
+        # For each case, we will build a graph, function, and list of values
+        # Then, we test it on each input shape.
+        for none_pos in none_positions:
+            slice_inputs = []
+            input_vars = []
+            values = []
+            if sum(none_pos) == 0:
+                # Those case are already tested in test_scalar4
+                continue
+
+            for i, none_i in enumerate(none_pos):
+                if none_i:
+                    slice_inputs.append(None)
+                else:
+                    slice_inputs.append(scalar_vars[i])
+                    input_vars.append(scalar_vars[i])
+                    values.append(scalar_ranges[i])
+
+            slice1 = slice(*slice_inputs[:3])
+            slice2 = slice(*slice_inputs[3:])
+            sub_x = x[slice1][slice2]
+            f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
+
+            topo = f.maker.env.toposort()
+            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) <= 1
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            for x_s in self.x_shapes:
+                x_val = self.rng.uniform(size=x_s).astype(config.floatX)
+                for i_val in zip(*values):
+                    f(x_val, *i_val)
+
+
+    def test_none_index(self):
+        # Test the general case of indexing into a subvector,
+        # like x[b:e:s][i], where any of b, e, and s can be None
+        x = tensor.matrix('x')
+        b = tensor.iscalar('b')
+        e = tensor.iscalar('e')
+        s = tensor.iscalar('s')
+        i = tensor.iscalar('i')
+
+        # Generate all possible lists of positions for None in those 6 slots
+        # A 1 indicates None is present, 0 that there is a Theano scalar.
+        # The last index (i) is never None
+        none_positions = numpy.ndindex(2, 2, 2, 1)
+
+        # Ranges to be used when not None
+        b_r = self.rng.permutation(range(-4,4))[:]
+        e_r = self.rng.permutation(range(-4,4))[:]
+        i_r = self.rng.permutation(range(-4,4))[:]
+        s_r = self.rng.permutation([-4,-3,-2,-1,1,2,3,4])[:]
+
+        scalar_vars = [b, e, s, i]
+        scalar_ranges = [b_r, e_r, s_r, i_r]
+
+        # For each case, we will build a graph, function, and list of values
+        # Then, we test it on each input shape.
+        for none_pos in none_positions:
+            slice_inputs = []
+            input_vars = []
+            values = []
+            if sum(none_pos) == 0:
+                # Those case are already tested in test_scalar6
+                continue
+
+            for j, none_j in enumerate(none_pos):
+                if none_j:
+                    slice_inputs.append(None)
+
+                else:
+                    slice_inputs.append(scalar_vars[j])
+                    input_vars.append(scalar_vars[j])
+                    values.append(scalar_ranges[j])
+
+            symbol_slice = slice(*slice_inputs[:3])
+            sub_x = x[symbol_slice][i]
+            f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
+
+            topo = f.maker.env.toposort()
+            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) <= 1
+            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+
+            for x_s in self.x_shapes:
+                x_val = self.rng.uniform(size=x_s).astype(config.floatX)
+                for i_val in zip(*values):
+                    # The index could be out of bounds
+                    # In that case, an Exception should be raised,
+                    # otherwise, we let DebugMode check f
+                    # For that, we need to create a numerical slice.
+                    i_val_idx = 0
+                    num_slice_inputs = []
+                    for none_j in none_pos:
+                        if none_j:
+                            num_slice_inputs.append(None)
+                        else:
+                            num_slice_inputs.append(i_val[i_val_idx])
+                            i_val_idx += 1
+                    num_slice = slice(*num_slice_inputs[:3])
+                    num_i = num_slice_inputs[3]
+
+                    try:
+                        x_val[num_slice][num_i]
+                    except IndexError:
+                        self.assertRaises(IndexError, f, x_val, *i_val)
+                    else:
+                        # Executed if the "try" clause did not raise
+                        # any exception
+                        f(x_val, *i_val)
+
+
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
         mode = theano.compile.mode.get_default_mode()
