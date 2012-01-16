@@ -2861,6 +2861,12 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
 
 int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C)
 {
+    /**
+    * C <- alpha A B + beta C
+    *    A : matrix
+    *    B, C: vector
+    *    alpha, beta: scalars
+    */
     if (A->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg to gemv"); return -1; }
     if (B->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg to gemv"); return -1; }
     if (C->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg to gemv"); return -1; }
