@@ -14,6 +14,7 @@ GTX 480 5.83s
 import os
 import sys
 import time
+from optparse import OptionParser
 
 import numpy
 import theano
@@ -22,60 +23,62 @@ import theano.tensor as T
 from theano.gof.python25 import any
 
 
-shapes = (2000, 2000)
-iters = 10
+def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
+            iters=10, order='C'):
+    """
+    :param execute: If True, execute a Theano function that should call gemm.
+    :param verbose: If True, will print some Theano flags and env variables.
+    :param M,N,K: The M,N,K size used by gemm.
+    :param iters: The number of calls to gemm to do.
 
+    :return: a tuple (execution time,
+                      str that represents the implementation used)
+    """
 
-def execute(execute=True, verbose=True):
-
-    a = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    b = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-    c = theano.shared(numpy.ones(shapes, dtype=theano.config.floatX))
-
+    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
+                                 order=order))
+    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX,
+                                 order=order))
+    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
+                                 order=order))
     f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
 
     if verbose:
-        print 'Some theano flags:'
+        print 'Some Theano flags:'
         print '    blas.ldflags=', theano.config.blas.ldflags
         print '    compiledir=', theano.config.compiledir
         print '    floatX=', theano.config.floatX
-        print 'Some env flags:'
+        print 'Some environment variables:'
         print '    MKL_NUM_THREADS=', os.getenv('MKL_NUM_THREADS')
         print '    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS')
         print '    GOTO_NUM_THREADS=', os.getenv('GOTO_NUM_THREADS')
         print
-        print ('Numpy config: (used when the theano flags'
+        print ('Numpy config: (used when the Theano flag'
                ' "blas.ldflags" is empty)')
         numpy.show_config()
         print 'Numpy dot module:', numpy.dot.__module__
-        print 'Numpy file location that was loaded:', numpy.__file__
+        print 'Numpy location:', numpy.__file__
         print 'Numpy version:', numpy.__version__
         print
-        if any([x.op.__class__.__name__ == 'Gemm' for x in
-                f.maker.env.toposort()]):
-            print 'Used the cpu'
-        elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
-                  f.maker.env.toposort()]):
-            print 'Used the gpu'
-        else:
-            print 'ERROR, not able to tell if theano used the cpu or the gpu'
-            print f.maker.env.toposort()
     t0 = 0
     t1 = -1
+
+    if any([x.op.__class__.__name__ == 'Gemm' for x in
+            f.maker.env.toposort()]):
+        impl = 'cpu'
+    elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
+              f.maker.env.toposort()]):
+        impl = 'gpu'
+    else:
+        impl = 'ERROR, unable to tell if Theano used the cpu or the gpu:\n'
+        impl += str(f.maker.env.toposort())
 
     if execute:
         t0 = time.time()
         for i in range(iters):
             f()
         t1 = time.time()
-    if verbose and execute:
-        print
-        print 'This execution time took %.2fs' % (t1 - t0)
-        print
-        print ('Try to run this script a few times. Experience show that'
-               ' the first time is not as fast as followings call. The'
-               ' difference is not big, but consistent.')
-    return t1 - t0
+    return t1 - t0, impl
 
 
 def jobman_job(state, channel):
@@ -87,21 +90,48 @@ def test():
     execute()
 
 
+parser = OptionParser(
+        usage='%prog <options>\nCompute time needed to perform BLAS gemm '
+              'computations between matrices of size (M, N) and (N, K).')
+
+parser.add_option('-q', '--quiet', action='store_true', dest='quiet',
+                  default=False,
+                  help="If true, do not print the comparison table and config "
+                       "options")
+parser.add_option('--print_only', action='store_true', dest='print_only',
+                  default=False,
+                  help="If true, do not perform gemm computations")
+parser.add_option('-M', '--M', action='store', dest='M',
+                  default=2000, type="int",
+                  help="The M size to gemm")
+parser.add_option('-N', '--N', action='store', dest='N',
+                  default=2000, type="int",
+                  help="The N size to gemm")
+parser.add_option('-K', '--K', action='store', dest='K',
+                  default=2000, type="int",
+                  help="The K size to gemm")
+parser.add_option('--iter', action='store', dest='iter',
+                  default=10, type="int",
+                  help="The number of calls to gemm")
+parser.add_option('--order', action='store', dest='order',
+                  default="C",
+                  help="The numpy memory layout parameter used when creating"
+                  " the numpy.ndarray objects. It accepts 'C' for C memory"
+                  " order and 'F' for Fortran order (for all matrices).")
+
+
 if __name__ == "__main__":
-    verbose = True
-    print_only = False
+    options, arguments = parser.parse_args(sys.argv)
 
-    if '--quiet' in sys.argv:
-        verbose = False
-    if '--print_only' in sys.argv:
-        print_only = True
+    if hasattr(options, "help"):
+        print options.help
+        sys.exit(0)
 
-    t = execute(not print_only, verbose)
-
-    if verbose:
+    if not options.quiet:
         print """
         Some results that you can compare against. They were 10 executions
-        of gemm in float64 with matrices of shape 2000x2000.
+        of gemm in float64 with matrices of shape 2000x2000 (M=N=K=2000).
+        All memory layout was in C order.
 
         CPU tested: Xeon E5345(2.33Ghz, 8M L2 cache, 1333Mhz FSB),
                     Xeon E5430(2.66Ghz, 12M L2 cache, 1333Mhz FSB),
@@ -112,11 +142,11 @@ if __name__ == "__main__":
                     Xeon X5550(2.67GHz, 8M l2 cache?, hyper-threads enabled)
 
 
-        Lib tested:
-            * numpy with ATLAS from distribution(FC9) package (1 thread)
+        Libraries tested:
+            * numpy with ATLAS from distribution (FC9) package (1 thread)
             * manually compiled numpy and ATLAS with 2 threads
-            * goto 1.26 with 1, 2, 4 and 8 threads.
-            * goto2 1.13 compiled with multiple thread enabled.
+            * goto 1.26 with 1, 2, 4 and 8 threads
+            * goto2 1.13 compiled with multiple threads enabled
 
                           Xeon   Xeon   Xeon  Core2 i7    i7     Xeon   Xeon
         lib/nb threads    E5345  E5430  E5450 E8500 930   950    X5560  X5550
@@ -144,7 +174,7 @@ if __name__ == "__main__":
         goto2 1.13/16                                                     3.16s
 
         Test time in float32 with cuda 3.0.14
-        (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??
+        (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
         gpu/cuda version
         GTX580/3.2        0.20s
@@ -161,8 +191,24 @@ if __name__ == "__main__":
         8500GT/3.0       10.68s
         """
 
-        print
-        print "We timed", iters,
-        print "executions of gemm with matrix of shapes", shapes
-    else:
+    t, impl = execute(not options.print_only, not options.quiet,
+                      M=options.M, N=options.N, K=options.K,
+                      iters=options.iter, order=options.order)
+
+    if options.print_only:
+        pass
+    elif options.quiet:
         print t
+    else:
+        print
+        print "We executed", options.iter,
+        print "calls to gemm with a and b matrices of shapes",
+        print "(%d, %d) and (%d, %d)." % (options.M, options.N,
+                                          options.N, options.K)
+
+        print
+        print 'Total execution time: %.2fs on %s.' % (t, impl)
+        print
+        print ('Try to run this script a few times. Experience shows that'
+               ' the first time is not as fast as followings calls. The'
+               ' difference is not big, but consistent.')
