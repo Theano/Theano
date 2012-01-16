@@ -1298,11 +1298,12 @@ class Scan(PureOp):
                 else:
                     dim_offset = 0
                 if maxtap == mintap and maxtap != 0:
-                    nw_seq =seq[:abs(maxtap)]
+                    nw_seq = seq[:abs(maxtap)]
                 elif maxtap -k != 0 :
-                    nw_seq = seq[dim_offset +k -mintap - 1: -(maxtap -k + 1)][::-1]
+                    tmp = seq[dim_offset + k - mintap - 1:-(maxtap -k + 1)]
+                    nw_seq = tmp[::-1]
                 else:
-                    nw_seq = seq[dim_offset +k -mintap - 1: -1 ][::-1]
+                    nw_seq = seq[dim_offset + k - mintap - 1: -1][::-1]
                 if getattr(seq,'name', None) is not None:
                     nw_seq.name = seq.name + '[%d:]'%k
                 scan_seqs.append(nw_seq)
