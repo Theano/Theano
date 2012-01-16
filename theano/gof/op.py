@@ -649,7 +649,7 @@ def debug_error_message(msg):
         warnings.warn(msg, stacklevel=2)
 
 
-def debug_assert(condition, msg = None):
+def debug_assert(condition, msg=None):
     if msg is None:
         msg = 'debug_assert failed'
     if not condition:
