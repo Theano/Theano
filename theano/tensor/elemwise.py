@@ -687,16 +687,17 @@ class Elemwise(Op):
                             msg2 += [str(d)]
                     msg.append('(%s)' % ", ".join(msg2))
 
-                base_exc_str = 'Dimension mismatch; shapes are %s' % (', '.join(msg))
+                base_exc_str = 'Dimension mismatch; shapes are %s' % (
+                               ', '.join(msg))
                 if config.exception_verbosity == 'high':
-                    msg_chunks = [ base_exc_str ]
+                    msg_chunks = [base_exc_str]
                     for i, ipt in enumerate(node.inputs):
-                        msg_chunks.append('input %d: %s' % (i, min_informative_str(ipt)))
+                        msg_chunks.append('input %d: %s' %
+                                          (i, min_informative_str(ipt)))
                     raise ValueError('\n'.join(msg_chunks))
                 else:
                     raise ValueError(base_exc_str)
 
-                                 #', '.join('(%s)' % ', '.join(msg)))
                 #backport
                 #raise ValueError('Dimension mismatch; shapes are %s' %
                 #                 ', '.join('(%s)' % ', '.join('*' if b else str(d)
