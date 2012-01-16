@@ -476,6 +476,20 @@ class CholeskyGrad(Op):
 
 
 class MatrixPinv(Op):
+    """Computes the pseudo-inverse of a matrix :math:`A`.
+
+    The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
+    defined as: "the matrix that 'solves' [the least-squares problem]
+    :math:`Ax = b`," i.e., if :math:`\bar{x}` is said solution, then
+    :math:`A^+` is that matrix such that :math:`\bar{x} = A^+b`.
+
+    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
+    This method is not faster then `matrix_inverse`. Its strength comes from
+    that it works for non-square matrices.
+    If you have a square matrix though, `matrix_inverse` can be both more
+    exact and faster to compute. Aslo this op does not get optimized into a
+    solve op.
+    """
     def __init__(self):
         pass
 
