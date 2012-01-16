@@ -1417,9 +1417,7 @@ def local_gemm_to_ger(node):
                 rval = ger(z, a, xv, yv)
                 return [rval]
             elif bval == 0:   # GER on zeros_like should be faster than GEMM
-                zeros = T.alloc(
-                        numpy.asarray(0, dtype=x.dtype),
-                        x.shape[0], y.shape[1])
+                zeros = T.zeros([x.shape[0], y.shape[1]], x.dtype)
                 rval = ger(zeros, a, xv, yv)
                 return [rval]
             else:
@@ -1445,20 +1443,20 @@ def local_dot22_to_ger_or_gemv(node):
             xv = x.dimshuffle(0)
             yv = y.dimshuffle(1)
 
-            zeros = T.alloc(numpy.asarray(0, dtype=x.dtype), x.shape[0], y.shape[1])
+            zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
             rval = ger(zeros, one, xv, yv)
             return [rval]
         if xb[0] and not yb[0] and not yb[1]:
             # x is vector, y is matrix so try gemv
             xv = x.dimshuffle(1)
-            zeros = T.alloc(numpy.asarray(0, dtype=x.dtype), y.shape[1])
-            rval = gemv_inplace(zeros, one, y.T, xv, one)
+            zeros = T.zeros([y.shape[1]], x.dtype)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
             return [rval.dimshuffle('x', 0)]
         if not xb[0] and not xb[1] and yb[1]:
             # x is matrix, y is vector, try gemv
             yv = y.dimshuffle(0)
-            zeros = T.alloc(numpy.asarray(0, dtype=x.dtype), x.shape[0])
-            rval = gemv_inplace(zeros, one, x, yv, one)
+            zeros = T.zeros([x.shape[0]], dtype=x.dtype)
+            rval = gemv_no_inplace(zeros, one, x, yv, one)
             return [rval.dimshuffle(0, 'x')]
 
 
