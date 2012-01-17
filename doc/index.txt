@@ -44,7 +44,7 @@ version, available via::
 
 You can then place the checkout directory on your ``$PYTHONPATH`` or use
 ``python setup.py develop`` to install a ``.pth`` into your ``site-packages``
-directory, so that when you pull updates via Mercurial they will be
+directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
