@@ -211,8 +211,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     # such subtle cases can be fixed by a more careful implementation of the
     # gradient, but for now Theano needs to throw an exception, and make the
     # user aware that it does not know how to compute that gradient
-
-    if not (using_list or using_tuple):
+    if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
     ret = []
     for p in wrt:
@@ -319,7 +318,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     # user aware that it does not know how to compute that gradient
     using_list = isinstance(wrt, list)
     using_tuple = isinstance(wrt, tuple)
-    if not (using_list or using_tuple):
+
+    if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
     ret = []
     for p in wrt:
