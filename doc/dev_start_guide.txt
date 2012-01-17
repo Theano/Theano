@@ -159,6 +159,43 @@ changes for inclusion in central/master.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
 
+Address reviewer comments
+-------------------------
+
+Your pull request will be reviewed by members of the core development
+team. If your branch is not directly accepted, the reviewers will use
+GitHub's system to add "notes", either general (on the entire commit),
+or "line notes", relative to a particular line of code.
+In order to have the pull request accepted, you may have to answer
+the reviewer's questions, you can do that on GitHub.
+
+You may also have to edit your code to address their concerns. Some
+of the usual requests include fixing typos in comments, adding or
+correcting comments, adding unit tests in the test suite.  In order to
+do that, you should continue your edits in the same branch you used (in
+this example, "my_shiny_feature").  For instance, if you changed your
+working branch, you should first:
+
+.. code-block:: bash
+
+    git branch my_shiny_feature
+
+Then, edit your code, and test it appropriately (see
+:ref:`quality_contributions` below), and push it again on your GitHub
+fork, like the first time:
+
+.. code-block:: bash
+
+    git push -u origin my_shiny_feature
+
+The pull request to the central repository will then be automatically
+updated by GitHub. However, the reviewers will not be automatically
+notified of your revision, so it is advised to reply to the comments on
+GitHub, to let them know that you have submitted a fix.
+
+
+.. _quality_contributions:
+
 Tips for Quality Contributions
 ==============================
 
@@ -254,6 +291,11 @@ do it like this to keep history clean:
    git checkout my_shiny_feature
    git commit --amend
    git push -u origin my_shiny_feature:my_shiny_feature
+
+Do not abuse that command, and please use it only when there are only
+small issues to be taken care of. Otherwise, it becomes difficult to
+match the comments made by reviewers with the new modifications.
+In the general case, you should stick with the approach described above.
 
 
 Cleaning up history
