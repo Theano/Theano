@@ -734,11 +734,12 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     assert expression.ndim == 1, \
             "tensor.jacobian expects a 1 dimensional variable as `expression`"
 
+    using_list = isinstance(wrt, list)
+    using_tuple = isinstance(wrt, tuple)
+
     if isinstance(wrt, (list, tuple)):
-        use_list = True
         wrt = list(wrt)
     else:
-        use_list = False
         wrt = [wrt]
 
     def inner_function(*args):
@@ -799,10 +800,8 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
     using_tuple = isinstance(wrt, tuple)
 
     if isinstance(wrt, (list, tuple)):
-        use_list = True
         wrt = list(wrt)
     else:
-        use_list = False
         wrt = [wrt]
 
     hessians = []
