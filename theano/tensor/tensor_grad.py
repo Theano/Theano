@@ -815,9 +815,9 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
 
     hessians = []
     for input in wrt:
-        assert isinstance(cost, TensorVariable), \
+        assert isinstance(input, TensorVariable), \
                 "tensor.hessian expects a (list of) Tensor Variable as `wrt`"
-        assert cost.ndim == 0, \
+        assert input.ndim == 0, \
                 "tensor.hessian expects a (list of) 1 dimensional variable"\
                 "as `wrt`"
         expr = grad(cost, input)
