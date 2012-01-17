@@ -196,7 +196,7 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
   if the external BLAS implementation supports it.
 * No multi-node support.
 * Many, but not all NumPy functions/aliases are implemented.
-    * http://trac-hg.assembla.com/theano/ticket/781
+    * http://www.assembla.com/spaces/theano/tickets/781
 * Wrapping an existing Python function in easy, but better documentation of
   it would make it even easier.
 * We need to find a way to separate the shared variable memory

@@ -266,7 +266,7 @@ import theano and print the config variable, as in:
     experiment again with the new version, and you do not have to
     understand the Theano internal that triggered the bug. A better
     way to detect this will be implemented. See this `ticket
-    <http://trac-hg.assembla.com/theano/ticket/514>`__.
+    <http://www.assembla.com/spaces/theano/tickets/514>`__.
 
     This flag allows new users not to get warnings about old bugs, that were
     fixed before their first checkout of Theano.
