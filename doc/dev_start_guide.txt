@@ -178,15 +178,16 @@ working branch, you should first:
 
 .. code-block:: bash
 
-    git branch my_shiny_feature
+    git checkout my_shiny_feature
 
 Then, edit your code, and test it appropriately (see
-:ref:`quality_contributions` below), and push it again on your GitHub
-fork, like the first time:
+:ref:`quality_contributions` below), and push it again to your GitHub
+fork, like the first time (except the ``-u`` option is only needed the
+first time):
 
 .. code-block:: bash
 
-    git push -u origin my_shiny_feature
+    git push origin my_shiny_feature
 
 The pull request to the central repository will then be automatically
 updated by GitHub. However, the reviewers will not be automatically
@@ -294,7 +295,7 @@ do it like this to keep history clean:
 
    git checkout my_shiny_feature
    git commit --amend
-   git push -u origin my_shiny_feature:my_shiny_feature
+   git push origin my_shiny_feature:my_shiny_feature
 
 Do not abuse that command, and please use it only when there are only
 small issues to be taken care of. Otherwise, it becomes difficult to
