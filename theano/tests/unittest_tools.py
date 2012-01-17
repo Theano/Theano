@@ -10,6 +10,7 @@ AddConfigVar('unittests.rseed',
         StrParam(666),
         in_c_key=False)
 
+
 def fetch_seed(pseed=None):
     """
     Returns the seed to use for running the unit tests.
@@ -38,6 +39,7 @@ def fetch_seed(pseed=None):
 
     return seed
 
+
 def seed_rng(pseed=None):
     """
     Seeds numpy's random number generator with the value returned by fetch_seed.
@@ -50,6 +52,7 @@ def seed_rng(pseed=None):
                 'instead of seed %i given as parameter' % (seed, pseed)
     numpy.random.seed(seed)
     return seed
+
 
 def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
     """
