@@ -240,6 +240,8 @@ to your ``Theano`` folder and execute the following command:
 You should update frequently, bugs are fixed on a very regular basis.
 
 
+.. _testing_installation:
+
 Testing your installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
