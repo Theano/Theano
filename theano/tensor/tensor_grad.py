@@ -731,8 +731,9 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     # Check inputs have the right format
     assert isinstance(expression, TensorVariable), \
             "tensor.jacobian expects a Tensor Variable as `expression`"
-    assert expression.ndim == 1, \
-            "tensor.jacobian expects a 1 dimensional variable as `expression`"
+    assert expression.ndim < 2, \
+            ("tensor.jacobian expects a 1 dimensional variable as "
+             "`expression`. If not use flatten to make it a vector")
 
     using_list = isinstance(wrt, list)
     using_tuple = isinstance(wrt, tuple)
@@ -741,6 +742,10 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
         wrt = list(wrt)
     else:
         wrt = [wrt]
+
+    if expression.ndim == 0:
+        # expression is just a scalar, use grad
+        return format_as(using_list, using_tuple, grad(expression, wrt))
 
     def inner_function(*args):
         idx = args[0]
