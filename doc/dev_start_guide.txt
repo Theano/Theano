@@ -218,8 +218,8 @@ You can find information and tips in the `numpy development
 page. Here are a few.
 
 
-Clean up branches
------------------
+Cleaning up branches
+--------------------
 
 When your pull request has been merged, you can delete the branch from
 your GitHub fork's list of branches. This is useful to avoid having too
@@ -242,8 +242,8 @@ If you want to delete it from there, too, you can run:
    git branch -d my_shiny_feature
 
 
-Edit a submitted pull request
------------------------------
+Amending a submitted pull request
+---------------------------------
 
 If you want to fix a commit already submitted within a pull request
 (e.g. to fix a small typo), before the pull request is accepted, you can
@@ -271,9 +271,26 @@ this. In summary:
 * There are other tools that are useful if your branch is too big for one squash.
 
 
-To checkout another user branch in his repo:
+Add another distant repository
+------------------------------
+
+To collaborate with another user on some feature he is developing, and
+that is not ready for inclusion in central, the easiest way is to use a
+branch of their Theano fork (usually on GitHub).
+
+Just like we added Theano/Theano as a remote repository, named
+"central", you can add (on your local machine) a reference to their fork
+as a new remote repository. REPO_NAME is the name you choose to name
+this fork, and GIT_REPO_PATH is the URL of the fork in question.
 
 .. code-block:: bash
 
-   git remote add REPO_NAME HIS_REPO_PATH
-   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOVE_BRANCH_NAME
+    git remote add REPO_NAME GIT_REPO_PATH
+
+Then, you can create a new local branch (LOCAL_BRANCH_NAME) based on
+a specific branch (REMOTE_BRANCH_NAME) from the remote repository
+(REPO_NAME):
+
+.. code-block:: bash
+
+   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOTE_BRANCH_NAME
