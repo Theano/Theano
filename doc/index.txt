@@ -113,7 +113,7 @@ Community
 
 * Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
 
-* We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__
+* We try to stay organized with `Assembla's tickets <http://www.assembla.com/spaces/theano/tickets>`__
 
 * Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 

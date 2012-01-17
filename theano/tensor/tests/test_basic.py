@@ -1921,7 +1921,7 @@ class T_min_max(unittest.TestCase):
         Test the gradient when we have multiple axis at the same time.
 
         This not implemented, so we disable the test. See ticket:
-        http://trac-hg.assembla.com/theano/ticket/511
+        http://www.assembla.com/spaces/theano/tickets/511
         """
         data = rand(2, 3)
         n = as_tensor_variable(data)
