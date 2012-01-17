@@ -173,9 +173,6 @@ class Gemv(Op):
     def __eq__(self, other):
         return type(self)==type(other) and self.inplace == other.inplace
 
-    def __repr__(self):
-        return self.__str__()
-
     def __str__(self):
         if self.inplace:
             return '%s{inplace}' % self.__class__.__name__
