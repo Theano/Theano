@@ -71,7 +71,6 @@ def Rop(f, wrt, eval_points):
 
     using_list = isinstance(f, list)
     using_tuple = isinstance(f, tuple)
-
     if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
 
