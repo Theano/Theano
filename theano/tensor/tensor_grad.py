@@ -763,9 +763,13 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     # generator used n expression (because during computing gradients we are
     # just backtracking over old values. (rp Jan 2012 - if anyone has a
     # counter example please show me)
-    jacobs, _ = theano.scan(inner_function,
+    jacobs, updates = theano.scan(inner_function,
                             sequences=arange(expression.shape[0]),
                             non_sequences=[expression] + wrt)
+    assert len(updates.items()) == 0, \
+            ("Scan has returned a list of updates. This should not "
+             "happen! Report this to theano-users (also include the "
+             "script that generated the error)")
     return format_as(using_list, using_tuple, jacobs)
 
 
@@ -817,7 +821,7 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                 "tensor.hessian expects a (list of) 1 dimensional variable"\
                 "as `wrt`"
         expr = grad(cost, input)
-        hess, _ = theano.scan(lambda i, y, x: grad(
+        hess, updates = theano.scan(lambda i, y, x: grad(
                             y[i],
                             x,
                             consider_constant=consider_constant,
@@ -825,5 +829,9 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                             disconnected_inputs=disconnected_inputs),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
+        assert len(updates.items()) == 0, \
+                ("Scan has returned a list of updates. This should not "
+                 "happen! Report this to theano-users (also include the "
+                 "script that generated the error)")
         hessians.append(hess)
     return format_as(using_list, using_tuple, hessians)
