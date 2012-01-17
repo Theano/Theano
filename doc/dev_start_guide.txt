@@ -230,8 +230,12 @@ and make sure that your changes did not create any new Error or Failure.
 You can consult `theano-buildbot`_ for the result of a recent run
 of the test suite with various options.
 
-Each night we execute all the unit tests automatically.  The result is sent by
-email to the `theano-buildbot`_ mailing list.
+To run the test suite with the default options, you can follow the
+instructions of :ref:`testing_installation`.
+
+Each night we execute all the unit tests automatically, with different
+sets of options.  The result is sent by email to the `theano-buildbot`_
+mailing list.
 
 For more detail, see :ref:`metadocumentation_nightly_build`.
 
