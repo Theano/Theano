@@ -53,6 +53,10 @@ mode_opt = theano.compile.mode.get_mode(mode_opt)
 ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
 dimshuffle_lift = out2in(local_dimshuffle_lift)
 
+_optimizer_canonicalize = gof.Query(include=['fast_run'])
+_optimizer_canonicalize.position_cutoff = 1.01
+_optimizer_canonicalize = compile.optdb.query(_optimizer_canonicalize)
+
 _optimizer_stabilize = gof.Query(include=['fast_run'])
 _optimizer_stabilize.position_cutoff = 1.51
 _optimizer_stabilize = compile.optdb.query(_optimizer_stabilize)
@@ -64,12 +68,14 @@ _optimizer_specialize = compile.optdb.query(_optimizer_specialize)
 _optimizer_fast_run = gof.Query(include=['fast_run'])
 _optimizer_fast_run = compile.optdb.query(_optimizer_fast_run)
 def optimize(g, level='fast_run'):
-    if 'fast_run' is level:
+    if 'fast_run' == level:
         _optimizer_fast_run.optimize(g)
-    elif 'specialize' is level:
+    elif 'specialize' == level:
         _optimizer_specialize.optimize(g)
-    elif 'stabilize' is level:
+    elif 'stabilize' == level:
         _optimizer_stabilize.optimize(g)
+    elif 'canonicalize' == level:
+        _optimizer_canonicalize.optimize(g)
     else:
         raise ValueError(level)
     return g
@@ -3327,6 +3333,17 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
             level='stabilize')
         sg = '[dot(DimShuffle{x,0}(a), DimShuffle{1,0}(b))]'
         assert str(g) == sg
+
+
+def test_local_dot_inner():
+    u = T.fvector('u')
+    v = T.fvector('v')
+    g = optimize(Env(
+        [u, v],
+        [tensor.dot(u, v)]),
+        level='canonicalize')
+    sg = '[Sum(Elemwise{mul,no_inplace}(v, u))]'
+    assert str(g) == sg
 
 
 if __name__ == '__main__':
