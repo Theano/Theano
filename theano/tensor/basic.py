@@ -633,6 +633,35 @@ class TensorType(Type):
             raise ValueError("non-finite elements not allowed")
         return data
 
+    def filter_variable(self, other):
+        """Convert a symbolic Variable into a TensorType, if compatible.
+
+        For the moment, only a TensorType or CudaNdarrayType will be
+        converted, provided they have the same number of dimensions,
+        broadcastable pattern, and dtype.
+        """
+        if hasattr(other, '_as_TensorVariable'):
+            other = other._as_TensorVariable()
+
+        if not isinstance(other, Variable):
+            # The value is not a Variable: we cast it into
+            # a Constant of the appropriate Type.
+            other = self.Constant(type=self, data=other)
+
+        if other.type == self:
+            return other
+
+        raise TypeError(
+                'Cannot convert Type %(othertype)s '
+                '(of Variable %(other)s) into Type %(self)s. '
+                'You can try to manually convert %(other)s into a %(self)s.'
+                % dict(
+                    othertype=other.type,
+                    other=other,
+                    self=self)
+                )
+
+
     def value_validity_msg(self, a):
         try:
             self.filter(a, strict=True)
