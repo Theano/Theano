@@ -330,7 +330,7 @@ class ScanOp(PureOp):
                     for buf, rval in izip(non_numeric_states_bufs, rvals):
                         buf[0] = rval
                 for pos in xrange(n_numeric_values):
-                    buf = state_buffers[pos][2][0]
+                    buf = state_buffers[pos][0].get_value(borrow=True)
                     mintap = self.mintaps[pos]
                     node_output_storage[pos][0] = buf
                 for out_buf, in_buf in izip(
