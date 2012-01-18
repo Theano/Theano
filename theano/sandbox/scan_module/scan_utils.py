@@ -220,17 +220,29 @@ def canonical_arguments(sequences,
                 # We cut the sequence such that seq[i] to correspond to
                 # seq[i-k]
                 if maxtap < 0:
-                    offset = abs(maxtap)
+                    offset_max = abs(maxtap)
                 else:
-                    offset = 0
+                    offset_max = 0
+                if mintap < 0:
+                    offset_min = abs(mintap)
+                else:
+                    offset_min = 0
                 nw_input = orig_input
                 if maxtap == mintap and maxtap != 0:
-                    nw_input = nw_input[:abs(maxtap)]
-                elif maxtap - k != 0:
-                    nw_input = nw_input[offset + k - mintap:\
-                                              -(maxtap - k)]
+                    if maxtap > 0:
+                        nw_input = nw_input[maxtap:]
+                    else:
+                        nw_input = nw_input[:maxtap]
                 else:
-                    nw_input = nw_input[offset + k - mintap:]
+                    st = k + offset_min
+                    if maxtap > 0:
+                        ed = - (maxtap + offset_min - st)
+                    else:
+                        ed = - (offset_min -st)
+                    if ed != 0:
+                        nw_input = nw_input[st:ed]
+                    else:
+                        nw_input = nw_input[st:]
                 inputs.append(nw_input)
         else:
             raise ValueError('Provided sequence makes no sense', str(input))

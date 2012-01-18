@@ -595,6 +595,10 @@ def test_setitem_matrixscalar0():
     a[1,1] = theano._asarray(888, dtype='float32')
     assert numpy.allclose(a,numpy.asarray(_a))
 
+    # broadcast a 0
+    _a[1, 1] = 0
+    _a[0:2] = 0
+    _a[1:] = 0
 
 def test_setitem_matrixvector1():
     a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')

@@ -64,4 +64,6 @@ otherwise IfElse will compute both variables and take the same computation
 time as the Switch Op. The linker is not currently set by default to 'cvm' but
 it will be in a near future.
 
-There is not an optimization to automatically change a switch with a broadcasted scalar to an ifelse, as this is not always the faster. See this `ticket <http://trac-hg.assembla.com/theano/ticket/764>`_
+There is not an optimization to automatically change a switch with a
+broadcasted scalar to an ifelse, as this is not always the faster. See
+this `ticket <http://www.assembla.com/spaces/theano/tickets/764>`_.

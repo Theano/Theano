@@ -23,6 +23,7 @@ from theano.printing import pprint, min_informative_str
 
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
+import theano.scalar.sharedvar
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum

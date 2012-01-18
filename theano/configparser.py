@@ -60,8 +60,16 @@ def config_files_from_theanorc():
         rval.append(os.path.expanduser('~/.theanorc.txt'))
     return rval
 
-theano_cfg = ConfigParser.SafeConfigParser({'USER':os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
-theano_cfg.read(config_files_from_theanorc())
+
+config_files = config_files_from_theanorc()
+theano_cfg = ConfigParser.SafeConfigParser({'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
+theano_cfg.read(config_files)
+# Having a raw version of the config around as well enables us to pass
+# through config values that contain format strings.
+# The time required to parse the config twice is negligible.
+theano_raw_cfg = ConfigParser.RawConfigParser()
+theano_raw_cfg.read(config_files)
+
 
 def fetch_val_for_key(key):
     """Return the overriding config value for a key.
@@ -92,7 +100,10 @@ def fetch_val_for_key(key):
     else:
         section, option = 'global', key
     try:
-        return theano_cfg.get(section, option)
+        try:
+            return theano_cfg.get(section, option)
+        except ConfigParser.InterpolationError:
+            return theano_raw_cfg.get(section, option)
     except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
         raise KeyError(key)
 

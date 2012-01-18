@@ -101,6 +101,9 @@ Bug fixes (the result changed):
  * An expression of the form "1 / (exp(x) +- constant)" was systematically matched to "1 / (exp(x) + 1)"
    and turned into a sigmoid regardless of the value of the constant. A warning will be issued if your
    code was affected by this bug. (Olivier, reported by Sander Dieleman)
+ * When indexing into a subtensor of negative stride (for instance, x[a:b:-1][c]),
+   an optimization replacing it with a direct indexing (x[d]) used an incorrect formula,
+   leading to incorrect results. (Pascal)
 
 
 Crashes fixed:
