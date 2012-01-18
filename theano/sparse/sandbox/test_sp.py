@@ -453,7 +453,8 @@ def test_remove0():
         # list of apply nodes in the optimized graph.
         nodes = f.maker.env.toposort()
         v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
-        assert len(v), 'Inplacing optimization should have been applied.'
+        if theano.config.mode == 'FAST_RUN':
+            assert len(v), 'Inplacing optimization should have been applied.'
 
         # checking
         # makes sense to change its name
