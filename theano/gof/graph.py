@@ -12,7 +12,8 @@ __docformat__ = "restructuredtext en"
 from copy import copy
 
 import theano
-from theano.gof import deque, utils
+from theano.gof import utils
+from theano.gof.python25 import deque
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None

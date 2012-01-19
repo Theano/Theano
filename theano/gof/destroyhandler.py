@@ -8,7 +8,7 @@ if sys.version_info[:2] >= (2,5):
 import theano
 import toolbox
 import graph
-from theano.gof import deque
+from theano.gof.python25 import deque
 
 from env import InconsistencyError
 

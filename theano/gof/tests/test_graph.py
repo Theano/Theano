@@ -1,5 +1,4 @@
 import unittest
-from collections import deque
 
 from theano import tensor
 from theano.gof.graph import (
