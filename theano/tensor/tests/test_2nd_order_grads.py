@@ -94,7 +94,7 @@ def test002_jacobian_matrix():
         evx[dx, dx, :] = vx[dx, :]
         evz[dx, dx, :] = vz[dx, :]
     assert numpy.allclose(vJs[0], evz)
-    assert numpy.allclose(vJs[1], evx)
+    assert numpy.allclose(vJs[1 ], evx)
 
 
 def test003_jacobian_scalar():
