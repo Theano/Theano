@@ -1443,6 +1443,13 @@ def local_dot22_to_ger_or_gemv(node):
             zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
             rval = ger(zeros, one, xv, yv)
             return [rval]
+        if xb[0] and yb[1]:
+            # x and y are both vectors so this qualifies for a sdot / ddot
+            # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
+            xv = x.dimshuffle(1)
+            zeros = T.zeros([1], x.dtype)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
+            return [rval.dimshuffle('x', 0)]
         if xb[0] and not yb[0] and not yb[1]:
             # x is vector, y is matrix so try gemv
             xv = x.dimshuffle(1)
