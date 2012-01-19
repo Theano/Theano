@@ -198,7 +198,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
     def make_thunk(*args, **kwargs):
         # skip over Ger.make_thunk
@@ -417,7 +417,6 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
 
 class CGemv(BaseBLAS, Gemv):
     def c_code(self, node, name, inp, out, sub):
-        print 'GEMV C_CODE'
         aa, alpha, xx, yy, beta = inp
         zz, = out
         code = gemv_c_code(
@@ -427,7 +426,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
     def make_thunk(*args, **kwargs):
         return Op.make_thunk(*args, **kwargs)
