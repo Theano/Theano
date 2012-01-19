@@ -344,6 +344,15 @@ def local_0_dot_x(node):
                             "(%s, %s)",
                             x.type, y.type)
 
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([None])
+def local_dot_inner(node):
+    if isinstance(node.op, T.Dot):
+        x, y = node.inputs
+        if y.ndim == 1 and x.ndim == 1:
+            return [(y * x).sum()]
+
 ######################
 # DimShuffle lifters #
 ######################
