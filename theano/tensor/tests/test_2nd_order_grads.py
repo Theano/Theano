@@ -36,7 +36,7 @@ def test001_jacobian_vector():
     vx = rng.uniform(size=(10,)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
 
-    # test when the jacobian is called wit a list of two elements
+    # test when the jacobian is called with a list of two elements
     z = tensor.vector()
     y = x * z
     Js = tensor.jacobian(y, [x, z])
@@ -81,7 +81,7 @@ def test002_jacobian_matrix():
     vx = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), ev)
 
-    # test when the jacobian is called wit a list of two elements
+    # test when the jacobian is called with a list of two elements
     z = tensor.matrix()
     y = (x * z).sum(axis=1)
     Js = tensor.jacobian(y, [x, z])
@@ -122,7 +122,7 @@ def test003_jacobian_scalar():
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
 
-    # test when the jacobian is called wit a list of two elements
+    # test when the jacobian is called with a list of two elements
     z = tensor.scalar()
     y = x * z
     Jx = tensor.jacobian(y, [x, z])
