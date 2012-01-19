@@ -449,11 +449,11 @@ def test_remove0():
         # the In thingy has to be there because theano has as rule not to optimize inputs
         f = theano.function([theano.In(x, borrow=True, mutable=True)], sp.Remove0()(x))
 
-        # assert optimization is applied
-        # list of apply nodes in the optimized graph.
-        nodes = f.maker.env.toposort()
-        v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
-        if theano.config.mode == 'FAST_RUN':
+        # assert optimization is applied in modes with optimization
+        if theano.config.mode not in ['FAST_COMPILE']:
+            # list of apply nodes in the optimized graph.
+            nodes = f.maker.env.toposort()
+            v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
             assert len(v), 'Inplacing optimization should have been applied.'
 
         # checking
