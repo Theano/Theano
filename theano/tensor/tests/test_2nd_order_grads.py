@@ -18,20 +18,21 @@ def test001_jacobian_vector():
 
     # test when the jacobian is called with a tensor as wrt
     Jx = tensor.jacobian(y, x)
-    f = theano.function([x], Jx, allow_input_downcast=True)
+    f = theano.function([x], Jx)
     vx = rng.uniform(size=(10,)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
 
     # test when the jacobian is called with a tuple as wrt
     Jx = tensor.jacobian(y, (x,))
     assert isinstance(Jx, tuple)
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    f = theano.function([x], Jx[0])
     vx = rng.uniform(size=(10,)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
 
     # test when the jacobian is called with a list as wrt
     Jx = tensor.jacobian(y, [x])
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    assert isinstance(Jx, list)
+    f = theano.function([x], Jx[0])
     vx = rng.uniform(size=(10,)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
 
@@ -39,7 +40,7 @@ def test001_jacobian_vector():
     z = tensor.vector()
     y = x * z
     Js = tensor.jacobian(y, [x, z])
-    f = theano.function([x, z], Js, allow_input_downcast=True)
+    f = theano.function([x, z], Js)
     vx = rng.uniform(size=(10,)).astype(theano.config.floatX)
     vz = rng.uniform(size=(10,)).astype(theano.config.floatX)
     vJs = f(vx, vz)
@@ -62,20 +63,21 @@ def test002_jacobian_matrix():
 
     # test when the jacobian is called with a tensor as wrt
     Jx = tensor.jacobian(y, x)
-    f = theano.function([x], Jx, allow_input_downcast=True)
+    f = theano.function([x], Jx)
     vx = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), ev)
 
     # test when the jacobian is called with a tuple as wrt
     Jx = tensor.jacobian(y, (x,))
     assert isinstance(Jx, tuple)
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    f = theano.function([x], Jx[0])
     vx = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), ev)
 
     # test when the jacobian is called with a list as wrt
     Jx = tensor.jacobian(y, [x])
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    assert isinstance(Jx, list)
+    f = theano.function([x], Jx[0])
     vx = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), ev)
 
@@ -83,7 +85,7 @@ def test002_jacobian_matrix():
     z = tensor.matrix()
     y = (x * z).sum(axis=1)
     Js = tensor.jacobian(y, [x, z])
-    f = theano.function([x, z], Js, allow_input_downcast=True)
+    f = theano.function([x, z], Js)
     vx = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     vz = rng.uniform(size=(10, 10)).astype(theano.config.floatX)
     vJs = f(vx, vz)
@@ -103,20 +105,20 @@ def test003_jacobian_scalar():
 
     # test when the jacobian is called with a tensor as wrt
     Jx = tensor.jacobian(y, x)
-    f = theano.function([x], Jx, allow_input_downcast=True)
+    f = theano.function([x], Jx)
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
 
     # test when the jacobian is called with a tuple as wrt
     Jx = tensor.jacobian(y, (x,))
     assert isinstance(Jx, tuple)
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    f = theano.function([x], Jx[0])
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
 
     # test when the jacobian is called with a list as wrt
     Jx = tensor.jacobian(y, [x])
-    f = theano.function([x], Jx[0], allow_input_downcast=True)
+    f = theano.function([x], Jx[0])
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
 
@@ -124,7 +126,7 @@ def test003_jacobian_scalar():
     z = tensor.scalar()
     y = x * z
     Jx = tensor.jacobian(y, [x, z])
-    f = theano.function([x, z], Jx, allow_input_downcast=True)
+    f = theano.function([x, z], Jx)
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     vz = numpy.cast[theano.config.floatX](rng.uniform())
     vJx = f(vx, vz)
@@ -137,6 +139,6 @@ def test004_hessian():
     x = tensor.vector()
     y = tensor.sum(x ** 2)
     Hx = tensor.hessian(y, x)
-    f = theano.function([x], Hx, allow_input_downcast=True)
+    f = theano.function([x], Hx)
     vx = numpy.arange(10).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
