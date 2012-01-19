@@ -117,6 +117,7 @@ def test003_jacobian_scalar():
 
     # test when the jacobian is called with a list as wrt
     Jx = tensor.jacobian(y, [x])
+    assert isinstance(Jx,list)
     f = theano.function([x], Jx[0])
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
