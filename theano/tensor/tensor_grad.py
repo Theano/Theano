@@ -734,7 +734,8 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
         - 'raise': raise an exception.
 
     :return: either a instance of `Variable` or list/tuple of `Variable`s
-            (depending upon `wrt`). If an element of `wrt` is not
+            (depending upon `wrt`) repesenting the jacobian of `expression`
+            with respect to (elements of) `wrt`. If an element of `wrt` is not
             differentiable with respect to the output, then a zero
             variable is returned. The return value is of same type
             as `wrt`: a list/tuple or TensorVariable in all cases.
@@ -788,7 +789,8 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
              disconnected_inputs='raise'):
     """
     :type cost: Scalar (0-dimensional) `Variable`
-    :type wrt: 'Variable' or list of `Variables`s
+    :type wrt: Vector (1-dimensional tensors) 'Variable' or list of
+            vectors (1-dimensional tensors) `Variables`s
 
     :param consider_constant: a list of expressions not to backpropagate
         through
@@ -805,7 +807,8 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
         - 'raise': raise an exception.
 
     :return: either a instance of `Variable` or list/tuple of `Variable`s
-            (depending upon `wrt`). If an element of `wrt` is not
+            (depending upon `wrt`) repressenting the Hessian of the `cost`
+            with respect to (elements of) `wrt`. If an element of `wrt` is not
             differentiable with respect to the output, then a zero
             variable is returned. The return value is of same type
             as `wrt`: a list/tuple or TensorVariable in all cases.
