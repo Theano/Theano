@@ -244,32 +244,35 @@ class Remove0(Op):
     """
     Remove explicit zeros from a sparse matrix, and resort indices
     """
+
+    def __init__(self, inplace=False, *args, **kwargs):
+        Op.__init__(self, *args, **kwargs)
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self,other):
+        return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return 64153 ^ hash(type(self)) ^ hash(self.inplace)
+
+    def __str__(self):
+        l = []
+        if self.inplace:
+            l.append('inplace')
+        return self.__class__.__name__+'{%s}'%', '.join(l)
+
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self,node, (x,), (z,)):
-        if x.format != 'csc':
-            raise TypeError('Remove0 only works on csc matrices')
-
-        M, N = x.shape
-
-        data = x.data
-        indices = x.indices
-        indptr = x.indptr
-
-        #TODO: try using ndarrays and then prune() on the result
-        new_data = []
-        new_indices = []
-        new_indptr = [0]
-
-        for j in xrange(0, N):
-            for i_idx in xrange(indptr[j], indptr[j+1]):
-                if data[i_idx] != 0:
-                    new_data.append(data[i_idx])
-                    new_indices.append(indices[i_idx])
-            new_indptr.append(len(new_indices))
-
-        z[0] = sparse.csc_matrix((new_data, new_indices, new_indptr), (M,N))
+        if self.inplace:
+            c = x
+        else:
+            c = x.copy()
+        c.eliminate_zeros()
+        z[0] = c
 
     def grad(self, (x,), (gz,)):
         return [gz]
@@ -303,7 +306,7 @@ class EnsureSortedIndices(Op):
 
     def infer_shape(self, node, i0_shapes):
         return i0_shapes
-            
+
     def __str__(self):
         if self.inplace:
             return self.__class__.__name__ + "{inplace}"
