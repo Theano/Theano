@@ -777,7 +777,7 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     jacobs, updates = theano.scan(inner_function,
                             sequences=arange(expression.shape[0]),
                             non_sequences=[expression] + wrt)
-    assert len(updates.items()) == 0, \
+    assert not updates, \
             ("Scan has returned a list of updates. This should not "
              "happen! Report this to theano-users (also include the "
              "script that generated the error)")
@@ -840,7 +840,7 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                             disconnected_inputs=disconnected_inputs),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
-        assert len(updates.items()) == 0, \
+        assert not updates, \
                 ("Scan has returned a list of updates. This should not "
                  "happen! Report this to theano-users (also include the "
                  "script that generated the error)")
