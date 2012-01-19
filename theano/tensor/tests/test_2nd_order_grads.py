@@ -46,9 +46,8 @@ def test001_jacobian_vector():
     vJs = f(vx, vz)
     evx = numpy.zeros((10, 10))
     evz = numpy.zeros((10, 10))
-    for dx in xrange(10):
-        evx[dx, dx] = vx[dx]
-        evz[dx, dx] = vz[dx]
+    numpy.fill_diagonal(evx, vx)
+    numpy.fill_diagonal(evz, vz)
     assert numpy.allclose(vJs[0], evz)
     assert numpy.allclose(vJs[1], evx)
 
