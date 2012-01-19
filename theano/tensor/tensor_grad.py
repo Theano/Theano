@@ -33,6 +33,8 @@ def format_as(use_list, use_tuple, outputs):
     is not a list or a tuple then it is converted into a one element tuple)
     Otherwise (if both flags are false), `outputs` is returned.
     """
+    assert not (use_list and use_tuple), \
+            "Both flags can not be simultaneously True"
     if (use_list or use_tuple) and not isinstance(outputs, (list, tuple)):
         if use_list:
             return [outputs]
