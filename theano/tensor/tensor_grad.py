@@ -41,6 +41,8 @@ def format_as(use_list, use_tuple, outputs):
         else:
             return (outputs,)
     elif not (use_list or use_tuple) and isinstance(outputs, (list, tuple)):
+        assert len(outputs) == 1, \
+                "Wrong arguments. Expected a one element list"
         return outputs[0]
     elif use_list or use_tuple:
         if use_list:
