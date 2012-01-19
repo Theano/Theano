@@ -828,8 +828,8 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
     for input in wrt:
         assert isinstance(input, TensorVariable), \
                 "tensor.hessian expects a (list of) Tensor Variable as `wrt`"
-        assert input.ndim == 0, \
-                "tensor.hessian expects a (list of) 1 dimensional variable"\
+        assert input.ndim == 1, \
+                "tensor.hessian expects a (list of) 1 dimensional variable "\
                 "as `wrt`"
         expr = grad(cost, input)
         hess, updates = theano.scan(lambda i, y, x: grad(
