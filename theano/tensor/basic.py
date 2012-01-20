@@ -1418,8 +1418,8 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
-    def sum(self, axis=None):
-        return elemwise.Sum(axis)(self)
+    def sum(self, *args, **kw):
+        return sum(self, *args, **kw)
 
     def norm(self, L, axis=None):
         if L==0:
@@ -2579,12 +2579,20 @@ def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
 pprint.assign(tensor_copy, printing.IgnorePrinter())
 
+
 @constructor
-def sum(input, axis = None):
-    """WRITEME"""
-    return elemwise.Sum(axis)(input)
+def sum(input, axis=None, dtype=None):
+    """
+    Sum a tensor along the given axis(es).
+
+    For full documentation see ``tensor.elemwise.Sum``.
+    In particular please pay attention to the important warning when using
+    a custom dtype.
+    """
+    return elemwise.Sum(axis=axis, dtype=dtype)(input)
 
 pprint.assign(Sum(), printing.FunctionPrinter('sum'))
+
 
 @constructor
 def prod(input, axis = None):
