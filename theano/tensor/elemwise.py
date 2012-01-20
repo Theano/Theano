@@ -1027,9 +1027,6 @@ class CAReduce(Op):
             self.axis = tuple(self.axis)
 
         # This is probably a speed up of the implementation
-        # And fix test on numpy 1.6
-        # TODO: we should look into thensor/basic.py
-        # elemwise op and take the ufunc from there.
         if isinstance(scalar_op, theano.scalar.basic.Add):
             self.ufunc = numpy.add
         elif isinstance(scalar_op, theano.scalar.basic.Mul):
@@ -1045,7 +1042,6 @@ class CAReduce(Op):
         elif isinstance(scalar_op, theano.scalar.basic.XOR):
             self.ufunc = numpy.bitwise_xor
         else:
-            # This seam to don't work with numpy 1.6 anymore
             self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
     def _output_dtype(self, input_dtype):
@@ -1121,7 +1117,18 @@ class CAReduce(Op):
                     else:
                         raise ValueError("Input (%s) has zero-size on axis %s, but self.scalar_op (%s) has no attribute 'identity'" % (variable, dimension, self.scalar_op))
                 else:
-                    variable = self.ufunc.reduce(variable, dimension)
+                    # Numpy 1.6 has a bug where you sometimes have to specify
+                    # "dtype='object'" in reduce for it to work, if the ufunc
+                    # was built with "frompyfunc". We need to find out if we
+                    # are in one of these cases (only "object" is supported in
+                    # the output).
+                    if ((self.ufunc.ntypes == 1)
+                            and (self.ufunc.types[0][-1] == 'O')):
+                        variable = self.ufunc.reduce(variable, dimension,
+                                dtype='object')
+                    else:
+                        variable = self.ufunc.reduce(variable, dimension)
+
             variable = numpy.asarray(variable)
             if numpy.may_share_memory(variable, input):
                 # perhaps numpy is clever for reductions of size 1?  We don't want this.
