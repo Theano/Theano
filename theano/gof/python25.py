@@ -2,18 +2,24 @@
 Helper functions to make gof backwards compatible (tested on python 2.4 and 2.5)
 """
 
+import collections
 import sys
+
+
 if sys.version_info[:2] < (2,5):
+
     def all(iterable):
         for element in iterable:
             if not element:
                 return False
         return True
+
     def any(iterable):
         for element in iterable:
             if element:
                 return True
         return False
+
     def partial(func, *args, **keywords):
         def newfunc(*fargs, **fkeywords):
             newkeywords = keywords.copy()
@@ -23,6 +29,25 @@ if sys.version_info[:2] < (2,5):
         newfunc.args = args
         newfunc.keywords = keywords
         return newfunc
+
+    class deque(collections.deque):
+        """
+        Custom deque class to implement the `remove` method.
+        """
+        def remove(self, item):
+            found = None
+            for i, x in enumerate(self):
+                if x == item:
+                    found = i
+                    break
+            if found is None:
+                raise ValueError('item not found in deque')
+            # To remove an item, we rotate the queue until it is the first item
+            # in the queue, we pop it, and finally we rotate back the queue.
+            self.rotate(-found)
+            self.popleft()
+            self.rotate(found)
+
     class defaultdict(dict):
         def __init__(self, default_factory=None, *a, **kw):
             if (default_factory is not None and
@@ -60,14 +85,16 @@ if sys.version_info[:2] < (2,5):
                                             dict.__repr__(self))
 
 else:
-     # Only bother with this else clause and the __all__ line if you are putting
-     # this in a separate file.
-     import __builtin__
-     all = __builtin__.all
-     any = __builtin__.any
-     import functools, collections
-     partial = functools.partial
-     defaultdict = collections.defaultdict
+    # Only bother with this else clause and the __all__ line if you are putting
+    # this in a separate file.
+    import __builtin__
+    all = __builtin__.all
+    any = __builtin__.any
+    import functools, collections
+    partial = functools.partial
+    defaultdict = collections.defaultdict
+    deque = collections.deque
+
 __all__ = ['all', 'any']
 
 if sys.version_info[:2] < (2,6):

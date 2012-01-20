@@ -6,14 +6,13 @@ if sys.version_info[:2] >= (2,5):
 else:
   from theano.gof.python25 import partial
 
-from collections import deque
-
 import numpy
 from copy import copy
 
 from theano.compile import (SymbolicInputKit, SymbolicInput, 
         Module, module, Method, Member, In, Component)
 from theano.gof import Container
+from theano.gof.python25 import deque
 
 from theano.tensor import raw_random
 
