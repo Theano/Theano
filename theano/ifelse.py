@@ -317,7 +317,7 @@ def ifelse(condition, then_branch, else_branch, name=None):
     # we will store them in these new_... lists.
     new_then_branch = []
     new_else_branch = []
-    for then_branch_elem, else_branch_elem in zip(then_branch, else_branch):
+    for then_branch_elem, else_branch_elem in izip(then_branch, else_branch):
         if not isinstance(then_branch_elem, theano.Variable):
             then_branch_elem = theano.tensor.as_tensor_variable(then_branch_elem)
         if not isinstance(else_branch_elem, theano.Variable):
@@ -341,12 +341,12 @@ def ifelse(condition, then_branch, else_branch, name=None):
             if then_branch_elem.type != else_branch_elem.type:
                 # If the types still don't match, there is a problem.
                 raise ValueError(
-                         ('The two branches should have identical types, '
-                          ' but they are '+str(then_branch_elem.type)+' and '+
-                          str(else_branch_elem.type)+' respectively. '
-                          'This error could be raised if for example '
-                          ' you provided a one element list on the then '
-                          ' branch but a tensor on the else branch'))
+                        'The two branches should have identical types, but '
+                        'they are %s and %s respectively. This error could be '
+                        'raised if for example you provided a one element '
+                        'list on the `then` branch but a tensor on the `else` '
+                        'branch.' %
+                        (then_branch_elem.type, else_branch_elem.type))
 
         new_then_branch.append(then_branch_elem)
         new_else_branch.append(else_branch_elem)

@@ -468,17 +468,17 @@ class PureOp(object):
 
 
         returns: a list of n elements
-                    rval[i] should be Rop(f = f_i(inputs),
-                                          wrt = inputs,
-                                          eval_points = eval_points)
+                    rval[i] should be Rop(f=f_i(inputs),
+                                          wrt=inputs,
+                                          eval_points=eval_points)
 
         """
-
-        raise NotImplementedError(str(self)+' of type '+str(self.__class__.__name__)
-                +" does not "
+        raise NotImplementedError(
+                "%s of class %s does not "
                 "implement R_op. If this is a theano op, write to the "
                 "theano-dev mailing list for assistance. If it is your "
-                "own op, implement the R_op method.")
+                "own op, implement the R_op method." %
+                (self, self.__class__.__name__))
 
 
     def perform(self, node, inputs, output_storage):
@@ -649,7 +649,7 @@ def debug_error_message(msg):
         warnings.warn(msg, stacklevel=2)
 
 
-def debug_assert(condition, msg = None):
+def debug_assert(condition, msg=None):
     if msg is None:
         msg = 'debug_assert failed'
     if not condition:

@@ -1298,11 +1298,12 @@ class Scan(PureOp):
                 else:
                     dim_offset = 0
                 if maxtap == mintap and maxtap != 0:
-                    nw_seq =seq[:abs(maxtap)]
+                    nw_seq = seq[:abs(maxtap)]
                 elif maxtap -k != 0 :
-                    nw_seq = seq[dim_offset +k -mintap - 1: -(maxtap -k + 1)][::-1]
+                    tmp = seq[dim_offset + k - mintap - 1:-(maxtap -k + 1)]
+                    nw_seq = tmp[::-1]
                 else:
-                    nw_seq = seq[dim_offset +k -mintap - 1: -1 ][::-1]
+                    nw_seq = seq[dim_offset + k - mintap - 1: -1][::-1]
                 if getattr(seq,'name', None) is not None:
                     nw_seq.name = seq.name + '[%d:]'%k
                 scan_seqs.append(nw_seq)
@@ -1593,7 +1594,7 @@ class Scan(PureOp):
         # Outputs
         n_mit_mot_outs = int(numpy.sum([len(x) for x in
                                         self.mit_mot_out_slices]))
-        info['n_mit_mot_outs'] = n_mit_mot_outs*2
+        info['n_mit_mot_outs'] = n_mit_mot_outs * 2
         b = 0
         e = n_mit_mot_outs
         inner_out_mit_mot = self_outputs[b:e] + rop_outs[b:e]
