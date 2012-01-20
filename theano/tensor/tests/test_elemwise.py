@@ -1,4 +1,5 @@
 import cPickle, time, unittest
+from itertools import imap
 
 from numpy.testing import dec
 
@@ -496,6 +497,40 @@ class test_IsInf_IsNan(unittest.TestCase):
 
     def test_isnan(self):
         return self.run_isfunc('isnan')
+
+
+def test_sum_default_dtype():
+    """
+    Test the default dtype of a sum().
+    """
+    # We try multiple axis combinations even though axis should not matter.
+    axes = [None, 0, 1, [0], [1], [0, 1]]
+    for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+        axis = axes[idx % len(axes)]
+        x = tensor.matrix(dtype=dtype).sum(axis=axis)
+        assert x.dtype == dict(
+                int8='int64',
+                int16='int64',
+                int32='int64',
+                uint8='uint64',
+                uint16='uint64',
+                uint32='uint64',
+                ).get(dtype, dtype)
+
+
+def test_sum_custom_dtype():
+    """
+    Test the ability to provide your own output dtype for a sum.
+    """
+    # We try multiple axis combinations even though axis should not matter.
+    axes = [None, 0, 1, [0], [1], [0, 1]]
+    idx = 0
+    for input_dtype in imap(str, theano.scalar.all_types):
+        x = tensor.matrix(dtype=input_dtype)
+        for output_dtype in imap(str, theano.scalar.all_types):
+            axis = axes[idx % len(axes)]
+            assert x.sum(dtype=output_dtype, axis=axis).dtype == output_dtype
+            idx += 1
 
 
 if __name__ == '__main__':
