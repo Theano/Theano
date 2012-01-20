@@ -33,6 +33,9 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
+# Remove0 is lazily imported to avoid circular imports.
+Remove0 = None
+
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -1953,7 +1956,10 @@ def local_inplace_remove0(node):
     """
     Optimization to insert inplace versions of Remove0.
     """
-    if isinstance(node.op, theano.sparse.sandbox.sp.Remove0) and not node.op.inplace:
+    global Remove0
+    if Remove0 is None:
+        from theano.sparse.sandbox.sp import Remove0
+    if isinstance(node.op, Remove0) and not node.op.inplace:
         new_op = node.op.__class__(inplace=True)
         new_node = new_op(*node.inputs)
         return [new_node]
