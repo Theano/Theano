@@ -28,13 +28,13 @@ def format_as(use_list, use_tuple, outputs):
     """
     Formats the outputs according to the flags `use_list` and `use_tuple`.
     If `use_list` is True, `outputs` is returned as a list (if `outputs`
-    is not a list or a tuple then it is converted in a one element list)
+    is not a list or a tuple then it is converted in a one element list).
     If `use_tuple` is True, `outputs` is returned as a tuple (if `outputs`
-    is not a list or a tuple then it is converted into a one element tuple)
+    is not a list or a tuple then it is converted into a one element tuple).
     Otherwise (if both flags are false), `outputs` is returned.
     """
     assert not (use_list and use_tuple), \
-            "Both flags can not be simultaneously True"
+            "Both flags cannot be simultaneously True"
     if (use_list or use_tuple) and not isinstance(outputs, (list, tuple)):
         if use_list:
             return [outputs]
@@ -701,14 +701,15 @@ class GradientError(Exception):
     def __str__(self):
         # args may have been inserted by e.g. makeTester
         args_msg = ", ".join(str(a) for a in self.args)
-        return """GradientError: numeric gradient and analytic gradient exceed tolerance:
+        return """\
+GradientError: numeric gradient and analytic gradient exceed tolerance:
         At position %i of argument %i,
             abs. error = %f,  abs. tolerance = %f
-            rel. error = %f,  rel. tolerance = %f\nException args: %s
-        """ %(self.err_pos, self.arg,
-              self.abs_err, self.abs_tol,
-              self.rel_err, self.rel_tol,
-              args_msg)
+            rel. error = %f,  rel. tolerance = %f
+Exception args: %s""" % (self.err_pos, self.arg,
+                         self.abs_err, self.abs_tol,
+                         self.rel_err, self.rel_tol,
+                         args_msg)
 
 verify_grad.E_grad = GradientError
 
@@ -789,8 +790,8 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
              disconnected_inputs='raise'):
     """
     :type cost: Scalar (0-dimensional) `Variable`
-    :type wrt: Vector (1-dimensional tensors) 'Variable' or list of
-            vectors (1-dimensional tensors) `Variables`s
+    :type wrt: Vector (1-dimensional tensor) 'Variable' or list of
+            vectors (1-dimensional tensors) `Variable`s
 
     :param consider_constant: a list of expressions not to backpropagate
         through
