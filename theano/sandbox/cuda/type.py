@@ -97,6 +97,32 @@ class CudaNdarrayType(Type):
                         % (self, self.dtype, data, converted_data, self.dtype),
                         data)
 
+    def filter_variable(self, other):
+        """Convert a Variable into a CudaNdarrayType, if compatible.
+
+        This Variable should either already be a CudaNdarrayType, or be
+        a TensorType. It has to have the right number of dimensions,
+        broadcastable pattern, and dtype.
+        """
+        if hasattr(other, '_as_CudaNdarrayVariable'):
+            other = other._as_CudaNdarrayVariable()
+
+        if not isinstance(other, Variable):
+            # The value is not a Variable: we cast it into
+            # a Constant of the appropriate Type.
+            other = self.Constant(type=self, data=other)
+
+        if other.type == self:
+            return other
+
+        if not isinstance(other.type, tensor.TensorType):
+            raise TypeError('Incompatible type', (self, other.type))
+        if (other.type.dtype != self.dtype):
+            raise TypeError('Incompatible dtype', (self.dtype, other.type.dtype))
+        if (other.type.broadcastable != self.broadcastable):
+            raise TypeError('Incompatible broadcastable', (self.broadcastable,
+                other.type.broadcastable))
+        return theano.sandbox.cuda.basic_ops.GpuFromHost()(other)
 
     @staticmethod
     def bound(a):
