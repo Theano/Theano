@@ -944,7 +944,7 @@ def min_informative_str(obj, indent_level=0,
     obj: the name to convert to a string
     indent_level: the number of tabs the tree should start printing at
                   (nested levels of the tree will get more tabs)
-    _prev_obs: should only be used to by min_informative_str
+    _prev_obs: should only be used by min_informative_str
                     a dictionary mapping previously converted
                     objects to short tags
 

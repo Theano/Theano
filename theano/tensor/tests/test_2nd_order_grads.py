@@ -94,7 +94,7 @@ def test002_jacobian_matrix():
         evx[dx, dx, :] = vx[dx, :]
         evz[dx, dx, :] = vz[dx, :]
     assert numpy.allclose(vJs[0], evz)
-    assert numpy.allclose(vJs[1 ], evx)
+    assert numpy.allclose(vJs[1], evx)
 
 
 def test003_jacobian_scalar():
@@ -117,7 +117,7 @@ def test003_jacobian_scalar():
 
     # test when the jacobian is called with a list as wrt
     Jx = tensor.jacobian(y, [x])
-    assert isinstance(Jx,list)
+    assert isinstance(Jx, list)
     f = theano.function([x], Jx[0])
     vx = numpy.cast[theano.config.floatX](rng.uniform())
     assert numpy.allclose(f(vx), 2)
