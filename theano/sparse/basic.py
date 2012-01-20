@@ -163,7 +163,7 @@ class _sparse_py_operators:
     #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
     #     Discussion with Fred & James (at least, and maybe others before)
     #     we decided that casting from a sparse to dense should be explicit
-    #     because it's usually something you want to be pretty careful about,
+    #     because it's usually something you just want to be pretty careful about,
     #     and not to do by accident.
     #def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
@@ -184,7 +184,26 @@ class _sparse_py_operators:
     def zeros_like(model):
         return sp_zeros_like(model)
 
+    def __getitem__(self, args):
+        if not isinstance(args, tuple):
+            args = args,
 
+        scalar_var = tensor.scalar(dtype='int32')
+
+        if len(args) is not 1:
+            scalar_arg_1 = (numpy.isscalar(args[0]) or
+                            getattr(args[0], 'type', None) == scalar_var.type)
+            scalar_arg_2 = (numpy.isscalar(args[1]) or
+                            getattr(args[1], 'type', None) == scalar_var.type)
+            if scalar_arg_1 and scalar_arg_2:
+                ret = get_item_scalar(self, args)
+            else:
+                ret = get_item_2d(self, args)
+        else:
+            ret = get_item_2d(self, args)
+        return ret
+            
+                        
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
@@ -625,7 +644,117 @@ class SparseFromDense(gof.op.Op):
 csr_from_dense = SparseFromDense('csr')
 csc_from_dense = SparseFromDense('csc')
 
+# Indexing
+class GetItem2d(gof.op.Op):
+    """
+    Implement a subtensor of sparse variable and that return a sparse matrix.
 
+    If you want to take only one element of a sparse matrix see the class GetItemScalar
+    that return a tensor scalar.
+
+    :note: that subtensor selection always returns a matrix, even when one index is a scalar.
+    """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    
+    def __hash__(self):
+        return hash(type(self))
+
+# Fred:Too complicated for now. If you need it, look at the Subtensor.infer_shape.
+#    def infer_shape(self, node, i0_shapes):
+#        return i0_shapes
+    
+    def make_node(self, x, index):
+        x = as_sparse_variable(x)
+        assert len(index) in [1, 2]
+
+        input_op = [x]
+        
+        for ind in index:
+            if isinstance(ind, slice):
+                
+                # in case of slice is written in theano variable 
+                start = ind.start
+                stop = ind.stop
+
+                # in case of slice is written in python int
+                if isinstance(start,int):
+                    start = theano.tensor.constant(start)
+                if isinstance(stop,int):
+                    stop = theano.tensor.constant(stop)
+                    
+            # in case of indexing using python int
+            elif isinstance(ind,int):
+                start = theano.tensor.constant(ind)
+                stop = start + 1
+            elif ind.ndim == 0:
+                start = ind
+                stop = ind + 1
+            else:
+                raise NotImplemented()
+            input_op += [start, stop]
+        if len(index)==1:
+            i = theano.gof.Constant(theano.gof.generic, None)
+            input_op += [i, i]
+            
+        return gof.Apply(self, input_op, [x.type()])
+    
+    def perform(self, node, (x, start1, stop1, start2, stop2), (out, )):
+        assert _is_sparse(x)
+        out[0] = x[start1:stop1, start2:stop2]
+
+    def __str__(self):
+        return self.__class__.__name__
+    
+get_item_2d = GetItem2d()
+
+class GetItemScalar(gof.op.Op):
+    """
+    Implement a subtensor of a sparse variable that take two scalar as index and return a scalar
+
+    :see: GetItem2d to return more then one element.
+    """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    
+    def __hash__(self):
+        return hash(type(self))
+
+    def infer_shape(self, node, i0_shapes):
+        return [()]
+    
+    def make_node(self, x, index):
+        x = as_sparse_variable(x)
+        assert len(index)==2
+
+        input_op = [x]
+        
+        for ind in index:
+
+            if isinstance(ind, slice):
+                raise Exception("GetItemScalar called with a slice as index!")
+
+            #in case of indexing using int instead of theano variable
+            elif isinstance(ind, int):
+                ind = theano.tensor.constant(ind)
+                input_op += [ind]
+                
+            # in case of indexing using theano variable
+            elif ind.ndim == 0:
+                input_op += [ind]
+            else:
+                raise NotImplemented()
+
+        return gof.Apply(self, input_op, [tensor.scalar(dtype=x.dtype)])
+    
+    def perform(self, node, (x, ind1, ind2), (out, )):
+        assert _is_sparse(x)
+        out[0] = x[ind1, ind2]
+        
+    def __str__(self):
+        return self.__class__.__name__
+    
+get_item_scalar = GetItemScalar()
 
 # Linear Algebra
 

@@ -24,6 +24,7 @@ from theano.sparse import SparseType, StructuredDotCSC
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 from theano.sparse import Dot, Usmm, UsmmCscDense
+from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
@@ -555,14 +556,8 @@ class test_structureddot(unittest.TestCase):
 
 class DotTests(unittest.TestCase):
     def setUp(self):
-        # On 32-bit platforms we use smaller matrices to avoid running out of
-        # memory during tests.
-        if theano.gof.cmodule.local_bitwidth() <= 32:
-            x_size = (10, 100)
-            y_size = (100, 1000)
-        else:
-            x_size = (10, 1000)
-            y_size = (1000, 10000)
+        x_size = (10, 1000)
+        y_size = (1000, 10000)
 
         self.x_csr = scipy.sparse.csr_matrix(
             numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
@@ -933,6 +928,119 @@ def test_size():
         check()
         y[0, 1] = 0
         check()
+
+def test_GetItem2D():
+    sparse_formats = ('csc','csr')
+    for format in sparse_formats:
+        x = theano.sparse.matrix(format)
+        a = theano.tensor.iscalar()
+        b = theano.tensor.iscalar()
+        c = theano.tensor.iscalar()
+        d = theano.tensor.iscalar()
+
+        # index
+        m = 1
+        n = 5
+        p = 10 
+        q = 15
+        
+        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)), format).astype(theano.config.floatX)
+        #mode_no_debug = theano.compile.mode.get_default_mode()
+        
+        #if isinstance(mode_no_debug, theano.compile.DebugMode):
+        #    mode_no_debug = 'FAST_RUN'
+        
+        f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
+        r1 = f1(vx, m, n, p, q)
+        t1 = vx[m:n, p:q]
+        assert r1.shape == t1.shape
+        assert numpy.all(t1.toarray() == r1.toarray())
+                
+        f2 = theano.function([x, a, b, c], x[a:b, c])
+        r2 = f2(vx, m, n, p)
+        t2 = vx[m:n,p]
+        assert r2.shape == t2.shape
+        assert numpy.all(t2.toarray() == r2.toarray())
+
+        f3 = theano.function([x, a, b, c], x[a, b:c])
+        r3 = f3(vx, m, n, p)
+        t3 = vx[m,n:p]
+        assert r3.shape == t3.shape
+        assert numpy.all(t3.toarray() == r3.toarray())
+
+        f4 = theano.function([x, a, b], x[a:b])
+        r4 = f4(vx, m, n)
+        t4 = vx[m:n]
+        assert r4.shape == t4.shape
+        assert numpy.all(t4.toarray() == r4.toarray())
+        #-----------------------------------------------------------
+        # test cases using int indexing instead of theano variable
+        f5 = theano.function([x],x[1:2,3])
+        r5 = f5(vx)
+        t5 = vx[1:2,3]
+        assert r5.shape == t5.shape
+        assert numpy.all(r5.toarray() == t5.toarray())
+
+        f6 = theano.function([x],x[1:10,10:20])
+        r6 = f6(vx)
+        t6 = vx[1:10,10:20]
+        assert r6.shape == t6.shape
+        assert numpy.all(r6.toarray() == t6.toarray())
+
+        f7 = theano.function([x],x[50])
+        r7 = f7(vx)
+        t7 = vx[50]
+        assert r7.shape == t7.shape
+        assert numpy.all(r7.toarray() == t7.toarray())
+        #----------------------------------------------------------
+        # test cases with indexing both with theano variable and int
+        f8 = theano.function([x,a,b],x[a:b,10:20])
+        r8 = f8(vx,m,n)
+        t8 = vx[m:n,10:20]
+        assert r8.shape == t8.shape
+        assert numpy.all(r8.toarray() == t8.toarray())
+
+        f9 = theano.function([x,a,b],x[1:a,1:b])
+        r9 = f9(vx,p,q)
+        t9 = vx[1:p,1:q]
+        assert r9.shape == t9.shape
+        assert numpy.all(r9.toarray() == t9.toarray())
+        
+def test_GetItemScalar():
+    sparse_formats = ('csc','csr')
+    for format in sparse_formats:
+        x = theano.sparse.csc_matrix('x')
+        a = theano.tensor.iscalar()
+        b = theano.tensor.iscalar()
+
+        m = 50
+        n = 50
+        
+        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)), format).astype(theano.config.floatX)
+
+        f1 = theano.function([x, a, b], x[a,b])
+        r1 = f1(vx, 10, 10)
+        t1 = vx[10,10]
+        assert r1.shape == t1.shape
+        assert numpy.all(t1 == r1)
+
+        f2 = theano.function([x, a], x[50,a])
+        r2 = f2(vx, m)
+        t2 = vx[50,m]
+        assert r2.shape == t2.shape
+        assert numpy.all(t2 == r2)
+
+        f3 = theano.function([x, a], x[a,50])
+        r3 = f3(vx, m)
+        t3 = vx[m,50]
+        assert r3.shape == t3.shape
+        assert numpy.all(t3 == r3)
+
+        f4 = theano.function([x], x[50,50])
+        r4 = f4(vx)
+        t4 = vx[m,n]
+        assert r3.shape == t3.shape
+        assert numpy.all(t4 == r4)
 
 
 import theano.tensor.tests.test_sharedvar
