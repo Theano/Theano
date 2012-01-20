@@ -125,7 +125,7 @@ def print_compiledir_content():
         file = None
         try:
             try:
-                file = open(os.path.join(compiledir, dir, "key.pkl"))
+                file = open(os.path.join(compiledir, dir, "key.pkl"), 'rb')
                 keydata = cPickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
