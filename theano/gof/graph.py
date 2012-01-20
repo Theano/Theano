@@ -152,28 +152,33 @@ class Apply(utils.object2):
         :type strict: Bool
 
         :param strict:
-            If True, the type fields of all the inputs must be equal to the current ones, and
-            returned outputs are guaranteed to have the same types as self.outputs.  If False,
-            then there's no guarantee that the clone's outputs will have the same types as
-            self.outputs, and cloning may not even be possible (it depends on the Op).
+            If True, the type fields of all the inputs must be equal
+            to the current ones (or compatible, for instance Tensor /
+            CudaNdarray of the same dtype and broadcastable patterns,
+            in which case they will be converted into current Type), and
+            returned outputs are guaranteed to have the same types as
+            self.outputs.  If False, then there's no guarantee that the
+            clone's outputs will have the same types as self.outputs,
+            and cloning may not even be possible (it depends on the Op).
 
         :returns: an Apply instance with the same op but different outputs.
 
         """
         remake_node = False
-        for curr, new in zip(self.inputs, inputs):
+        new_inputs = inputs[:]
+        for i, (curr, new) in enumerate(zip(self.inputs, new_inputs)):
             if not curr.type == new.type:
                 if strict:
-                    raise TypeError("Cannot change the type of this input.", ((curr, curr.type),
-                            (new, new.type)))
+                    # If compatible, casts new into curr.type
+                    new_inputs[i] = curr.type.filter_variable(new)
                 else:
                     remake_node = True
         if remake_node:
-            new_node = self.op.make_node(*inputs)
+            new_node = self.op.make_node(*new_inputs)
             new_node.tag = copy(self.tag).__update__(new_node.tag)
         else:
             new_node = self.clone()
-            new_node.inputs = inputs
+            new_node.inputs = new_inputs
         return new_node
 
     #convenience properties

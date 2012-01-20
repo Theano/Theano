@@ -127,19 +127,6 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
                 value = copy.deepcopy(value)
         self.container.value = value # this will copy a numpy ndarray
 
-    def filter_update(self, other):
-        if hasattr(other, '_as_CudaNdarrayVariable'):
-            return other._as_CudaNdarrayVariable()
-
-        if not isinstance(other.type, tensor.TensorType):
-            raise TypeError('Incompatible type', (self, (self.type, other.type)))
-        if (other.type.dtype != self.dtype):
-            raise TypeError('Incompatible dtype', (self, (self.dtype, other.type.dtype)))
-        if (other.type.broadcastable != self.broadcastable):
-            raise TypeError('Incompatible broadcastable', (self, (self.broadcastable,
-                other.type.broadcastable)))
-        return GpuFromHost()(other)
-
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since
         # the definition in `SharedVariable` is only meant to raise an error.
