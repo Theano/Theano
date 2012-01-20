@@ -6,14 +6,16 @@ NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
 RELEASE=""
+COMPILEDIR=`python -c "import theano;print theano.config.compiledir"`
 if [ "$1" == "--release" ]; then
     RELEASE="True"
     shift
     ARGS=$@
 fi
 if [ "$1" == "--buildbot" ]; then
+    COMPILEDIR=/Tmp/lisa_theano_compile_dir_theano
     ROOT_CWD=/Tmp/nightly_build
-    FLAGS=compiledir=/Tmp/lisa_theano_compile_dir_theano
+    FLAGS=compiledir=$COMPILEDIR
     cd ${ROOT_CWD}/Theano
     git rev-parse HEAD
     cd ..
