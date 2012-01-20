@@ -15,6 +15,7 @@ import numpy
 from theano import function, tensor
 import theano
 from theano.sparse.sandbox import sp
+from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 
 
