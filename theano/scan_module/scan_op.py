@@ -1086,8 +1086,9 @@ class Scan(PureOp):
         offset = 1 + self.n_seqs
         scan_outs = [x for x in input_shapes[offset:offset + n_outs]]
         offset += n_outs
+        outs_shape_n = self.n_mit_mot_outs + self.n_mit_sot + self.n_sit_sot
         for x in xrange(self.n_nit_sot):
-            out_shape_x = outs_shape[n_outs + x]
+            out_shape_x = outs_shape[outs_shape_n + x]
             if out_shape_x is None:
                 # This output is not a tensor, and has no shape
                 scan_outs.append(None)
