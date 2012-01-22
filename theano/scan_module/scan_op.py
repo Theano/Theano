@@ -179,19 +179,20 @@ class Scan(PureOp):
         err_msg1 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
                     '%s %s (argument number %d) has dtype '
-                    '%s. The corresponding slice %s however has'
-                    ' dtype %s. This should never happen, please '
+                    '%s and %d dimension(s). The corresponding slice %s '
+                    'however has dtype %s and %d dimension(s). This '
+                    'should never happen, please '
                     'report to theano-dev mailing list'
                    )
         err_msg2 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
                     'initial state (outputs_info in scan nomenclature)'
                     'of variable %s (argument number %d)'
-                    ' has dtype %s, while the result of the'
-                    ' inner function for this output has dtype %s. This '
-                    'could happen if the inner graph of scan results in '
-                    'an upcast or downcast. Please make sure that you use'
-                    'dtypes consistently')
+                    ' has dtype %s and %d dimension(s), while the result of the'
+                    ' inner function for this output has dtype %s and %d '
+                    'dimension(s). This could happen if the inner graph of '
+                    ' scan results in an upcast or downcast. Please make '
+                    'sure that you use dtypes consistently')
         # TODO make the assert exact
         # TODO assert the type(dtype, nbdim of self.inputs and inputs correspond)
         #assert len(inputs) >= len(self.inputs)
@@ -273,8 +274,10 @@ class Scan(PureOp):
                                            str(outer_mitsot),
                                            argoffset + idx,
                                            outer_mitsot.type.dtype,
+                                           otuer_mitsot.type.ndim,
                                            str(inner_mitsot[ipos+k]),
-                                           inner_mitsots[ipos+k].type.dtype))
+                                           inner_mitsots[ipos+k].type.dtype,
+                                           inner_mitsots[ipos+k].type.ndim))
             ipos += len(itaps)
             if (inner_mitsot_out.type.dtype != outer_mitsot.type.dtype or
                  inner_mitsot_out.ndim != outer_mitsot.ndim - 1):
@@ -282,7 +285,9 @@ class Scan(PureOp):
                                       (str(outer_mitsot),
                                            argoffset + idx,
                                            outer_mitsot.type.dtype,
-                                           inner_mitsot_out.type.dtype))
+                                           outer_mitsot.type.ndim,
+                                           inner_mitsot_out.type.dtype,
+                                           inner_mitsot_out.type.ndim ))
 
         argoffset += len(self.outer_mitsot(inputs))
         # Same checks as above but for outputs of type sit_sot
@@ -297,15 +302,19 @@ class Scan(PureOp):
                                            str(outer_sitsot),
                                            argoffset + idx,
                                            outer_sitsot.type.dtype,
+                                           outer_sitsot.type.ndim,
                                            str(inner_sitsot),
-                                           inner_sitsot.type.dtype))
+                                           inner_sitsot.type.dtype,
+                                           inner_sitsot.type.ndim))
             if (inner_sitsot_out.type.dtype != outer_sitsot.type.dtype or
                 inner_sitsot_out.ndim != outer_sitsot.ndim - 1):
                      raise ValueError(err_msg2 %
                                       (str(outer_sitsot),
                                            argoffset + idx,
                                            outer_sitsot.type.dtype,
-                                           inner_sitsot_out.type.dtype))
+                                           outer_sitsot.type.ndim,
+                                           inner_sitsot_out.type.dtype,
+                                           inner_sitsot_out.type.ndim ))
 
         argoffset += len(self.outer_sitsot(inputs))
         # Check that the shared variable and their update rule have the same
@@ -320,7 +329,9 @@ class Scan(PureOp):
                 raise ValueError(err_msg2 % (str(outer_shared),
                                              idx + argoffset,
                                              outer_shared.dtype,
-                                             inner_shared_out.dtype))
+                                             outer_shared.ndim,
+                                             inner_shared_out.dtype,
+                                             inner_shared_out.ndim))
 
             if (hasattr(outer_shared, 'dtype') and
                 (outer_shared.dtype != inner_shared.dtype or
@@ -330,8 +341,10 @@ class Scan(PureOp):
                                            str(outer_shared),
                                            argoffset + idx,
                                            outer_shared.dtype,
+                                           outer_shared.ndim,
                                            str(inner_shared),
-                                           inner_shared.dtype))
+                                           inner_shared.dtype,
+                                           inner_shared.ndim))
         for inner_nonseq, outer_nonseq in zip(
                             self.inner_non_seqs(self.inputs),
                             self.outer_non_seqs(inputs)):
