@@ -651,7 +651,8 @@ class ScanSaveMem(gof.Optimizer):
                             tmp = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
                             tmp = tensor.maximum(tmp, initl)
-                            tmp = pre_greedy_local_optimizer(list_opt_slice, tmp)
+                            tmp = pre_greedy_local_optimizer(list_opt_slice,
+                                                             tmp)
                             tmp = pre_constant_merge([tmp])[0]
                             nw_input = nw_inputs[offset + idx][:tmp]
 
