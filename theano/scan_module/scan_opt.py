@@ -475,7 +475,7 @@ class ScanSaveMem(gof.Optimizer):
                         break
 
                     # 2.3.2 extract the begin/end of the first dimension
-                    if i > op.n_mit_mot:
+                    if i >= op.n_mit_mot:
                         try:
                             length = shape_of[out][0]
                         except KeyError:
