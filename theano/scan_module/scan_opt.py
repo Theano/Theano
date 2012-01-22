@@ -417,7 +417,8 @@ class ScanSaveMem(gof.Optimizer):
         # change the number of steps in that case. To do this we set
         # global_nsteps to None which is seen as a flag that nothing needs
         # to be done
-        if len(node.outputs) <= c_outs:
+        assert len(node.outputs) >= c_outs
+        if len(node.outputs) == c_outs:
             global_nsteps = {'real': -1, 'sym': []}
         else:
             global_nsteps = None
