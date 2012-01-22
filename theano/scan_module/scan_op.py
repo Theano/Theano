@@ -1397,6 +1397,10 @@ class Scan(PureOp):
         n_nit_sot = self.n_seqs
         scan_nit_sot_outs = inner_gfn_outs[:self.n_seqs]
 
+        if self.truncate_gradient != -1 :
+            do_steps = tensor.minimum(args[0], self.truncate_gradient)
+        else:
+            do_steps = args[0]
         offset = ( self.n_seqs
                   + n_ins_mit_sot
                   + n_ins_mit_mot
@@ -1431,10 +1435,6 @@ class Scan(PureOp):
         info['inplace']                  = False
         n_mit_sot           = 0
         n_sit_sot           = 0
-        if self.truncate_gradient != -1 :
-            do_steps = tensor.minimum(args[0], self.truncate_gradient)
-        else:
-            do_steps = args[0]
 
         offset = ( 1
                   + self.n_seqs
