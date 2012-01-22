@@ -2725,9 +2725,9 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([xinit, w], [gx,gw],
                                  allow_input_downcast = True)
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=-2., high=2.),
+        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=-3., high=3.),
                            dtype=theano.config.floatX)
-        v_w = numpy.array(rng.uniform(size=(2,2)), dtype= theano.config.floatX)
+        v_w = numpy.array(rng.uniform(size=(2,2), low=-3., high=3.), dtype= theano.config.floatX)
         analytic_grad = grad_fn(v_x, v_w)
         num_grad = multiple_outputs_numeric_grad(cost_fn,
                                                  [v_x, v_w])
