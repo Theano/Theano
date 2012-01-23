@@ -35,7 +35,8 @@ if config.mode == 'FAST_COMPILE':
 else:
     mode_not_fast_compile = config.mode
 
-mode_blas_opt = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
+mode_blas_opt = theano.compile.get_default_mode().including(
+    'BlasOpt', 'specialize', 'InplaceBlasOpt')
 mode_blas_opt = mode_blas_opt.excluding('c_blas')
 
 def test_dot_eq():
