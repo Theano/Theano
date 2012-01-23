@@ -137,9 +137,13 @@ def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
+
 def sp_zeros_like(x):
-    _, _, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
-    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype), numpy.array([]), tensor.zeros_like(indptr), shape)
+    #TODO: don't restrict to CSM formats
+    _, _, indptr, shape = csm_properties(x)
+    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
+                                numpy.array([]), tensor.zeros_like(indptr),
+                                shape)
 
 
 class _sparse_py_operators:
@@ -177,6 +181,9 @@ class _sparse_py_operators:
     # that stored zeros *do* count in the size.
     size = property(lambda self: csm_data(self).size)
 
+    def zeros_like(model):
+        return sp_zeros_like(model)
+
 
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
@@ -188,10 +195,6 @@ class SparseVariable(gof.Variable, _sparse_py_operators):
                 self.dtype)
     def __repr__(self):
         return str(self)
-
-    def zeros_like(model, dtype=None):
-        # TODO: don't ignore dtype
-        return sp_zeros_like(model)
 
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
