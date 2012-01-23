@@ -428,9 +428,6 @@ class CGemv(BaseBLAS, Gemv):
     def c_code_cache_version(self):
         return (1,)
 
-    def make_thunk(*args, **kwargs):
-        return Op.make_thunk(*args, **kwargs)
-
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
 def use_c_gemv(node):
