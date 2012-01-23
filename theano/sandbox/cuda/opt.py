@@ -386,9 +386,9 @@ def local_gpu_gemv(node):
 
     """
     gemvs = {
-            #tensor.blas.gemv_inplace: gpu_gemv_inplace,
+            tensor.blas.gemv_inplace: gpu_gemv_no_inplace,
             tensor.blas.gemv_no_inplace: gpu_gemv_no_inplace,
-            #tensor.blas_c.CGemv(inplace=True): gpu_gemv_inplace,
+            tensor.blas_c.CGemv(inplace=True): gpu_gemv_no_inplace,
             tensor.blas_c.CGemv(inplace=False): gpu_gemv_no_inplace,
             }
     if node.op == gpu_from_host:
@@ -422,13 +422,15 @@ def local_gpu_gemv(node):
 @local_optimizer([])
 def local_gpu_ger(node):
     """
-    gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
-    gemv(host_from_gpu) -> host_from_gpu(gpu_gemv)
+    gpu_from_host(ger) -> gpu_ger(gpu_from_host)
+    ger(host_from_gpu) -> host_from_gpu(gpu_ger)
 
     """
     gers = {
-            #tensor.blas_c.CGer(destructive=True): gpu_ger_inplace,
+            tensor.blas_c.CGer(destructive=True): gpu_ger_no_inplace,
             tensor.blas_c.CGer(destructive=False): gpu_ger_no_inplace,
+            tensor.blas.Ger(destructive=True): gpu_ger_no_inplace,
+            tensor.blas.Ger(destructive=False): gpu_ger_no_inplace,
             }
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -965,14 +967,31 @@ def local_inplace_gemm(node):
     if node.op == gpu_gemm_no_inplace:
         return [gpu_gemm_inplace(*node.inputs)]
 
+
+@local_optimizer([gpu_gemv_no_inplace])
+def local_inplace_gemv(node):
+    if node.op == gpu_gemv_no_inplace:
+        return [gpu_gemv_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_gemm_no_inplace])
+def local_inplace_ger(node):
+    if node.op == gpu_ger_no_inplace:
+        return [gpu_ger_inplace(*node.inputs)]
+
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
 # elemwise(step 71)
 optdb.register('InplaceGpuBlasOpt',
-        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+        EquilibriumOptimizer([local_inplace_gemm,
+                              local_inplace_gemv,
+                              local_inplace_ger,
+                              ],
+                            failure_callback=EquilibriumOptimizer.warn_inplace,
             max_use_ratio=5),
                70.0, 'fast_run', 'inplace', 'gpu')
+
 
 def get_device_type_sizes():
     """
