@@ -1280,74 +1280,7 @@ class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
         return Ger(op.destructive)
 
 
-class TestGer_make_thunk(TestCase):
-    def setUp(self):
-        self.rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-
-    def given_dtype(self, dtype, M, N):
-        sA = T.tensor(dtype=dtype, broadcastable=(False, False))
-        sa = T.tensor(dtype=dtype, broadcastable=())
-        sx = T.tensor(dtype=dtype, broadcastable=(False,))
-        sy = T.tensor(dtype=dtype, broadcastable=(False,))
-
-        sZ = ger(sA, sa, sx, sy)
-        node = sZ.owner
-
-        storage_map = {sA:[None], sa:[None], sx:[None], sy:[None], sZ:[None]}
-
-        thunk = ger.make_thunk(node, storage_map,
-                compute_map={}, no_recycling=[])
-
-        # non-standard for make_thunk to receive node.op != self,
-        # but works for now.
-        thunk_d = ger_destructive.make_thunk(node, storage_map,
-                compute_map={}, no_recycling=[])
-
-        def rand(*shape):
-            return numpy.asarray(1 + self.rng.rand(*shape), dtype=dtype)
-
-        storage_map[sA][0] = rand(M, N)
-        storage_map[sa][0] = rand()
-        storage_map[sx][0] = rand(M)
-        storage_map[sy][0] = rand(N)
-
-        storage_map_copy = dict([(k,[deepcopy(v[0])]) for k,v in storage_map.items()])
-
-        # TODO: do some DebugMode-type verifications here
-        #       if this can be refactored into a Mixin that does the DebugMode
-        #       stuff on just one thunk at a time.  Do it in the style of
-        #       TestOpContractMixin?
-        #       - Compare with Elemwise testers
-        thunk()
-
-        assert numpy.all(storage_map[sZ][0] ==
-                storage_map[sA][0] + storage_map[sa][0] *
-                numpy.outer(storage_map[sx][0], storage_map[sy][0]))
-        assert storage_map[sZ][0].dtype == dtype
-        assert storage_map[sZ][0].shape == (M, N)
-
-        thunk_d()
-        assert numpy.all(storage_map[sZ][0] !=
-                storage_map[sA][0] + storage_map[sa][0] *
-                numpy.outer(storage_map[sx][0], storage_map[sy][0]))
-        assert numpy.all(storage_map[sZ][0] ==
-                storage_map_copy[sA][0] + storage_map[sa][0] *
-                numpy.outer(storage_map[sx][0], storage_map[sy][0]))
-        assert storage_map[sZ][0].dtype == dtype
-        assert storage_map[sZ][0].shape == (M, N)
-
-    def test_f32_0_0(self): return self.given_dtype('float32', 0, 0)
-    def test_f32_1_0(self): return self.given_dtype('float32', 1, 0)
-    def test_f32_0_1(self): return self.given_dtype('float32', 0, 1)
-    def test_f32_1_1(self): return self.given_dtype('float32', 1, 1)
-
-    def test_f32_4_4(self): return self.given_dtype('float32', 4, 4)
-    def test_f64_4_5(self): return self.given_dtype('float64', 4, 5)
-    def test_c64_7_1(self): return self.given_dtype('complex64', 7, 1)
-    def test_c128_1_9(self): return self.given_dtype('complex128', 1, 9)
-
-
-class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
+class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
 
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
@@ -1366,23 +1299,26 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
     def tearDown(self):
         theano.tensor.blas_scipy.optimizations_enabled = self.origval
 
-    def function(self, inputs, outputs):
-        return theano.function(inputs, outputs, self.mode)
+    def function(self, inputs, outputs, updates={}):
+        return theano.function(inputs, outputs, self.mode, updates=updates)
 
     def b(self, bval):
         return T.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
 
     def test_b_0_triggers_ger(self):
+        """ test local_gemm_to_ger opt"""
         assert T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
                     self.A, self.a, self.x.dimshuffle(0,'x'),
                     self.y.dimshuffle('x', 0), self.b(0)).owner)
     def test_b_1_triggers_ger(self):
+        """ test local_gemm_to_ger opt"""
         assert T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
                     self.A, self.a, self.x.dimshuffle(0,'x'),
                     self.y.dimshuffle('x', 0), self.b(1)).owner)
     def test_b_other_does_not_triggers_ger(self):
+        """ test local_gemm_to_ger opt"""
         assert not T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
                     self.A, self.a, self.x.dimshuffle(0,'x'),
@@ -1391,16 +1327,24 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
     def test_outer(self):
         f = self.function([self.x, self.y], T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger_destructive)
+        f(numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
 
     def test_A_plus_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
+        f(numpy.random.rand(5, 4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
+        f(numpy.random.rand(5, 4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
 
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
@@ -1410,3 +1354,49 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
         # Why gemm? This make the graph simpler did we test that it
         # make it faster?
         self.assertFunctionContains(f, self.gemm)
+        f(numpy.random.rand(5, 4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
+
+    def given_dtype(self, dtype, M, N):
+        """ test corner case shape and dtype"""
+
+        f = self.function([self.A, self.x, self.y],
+                self.A + 0.1 * T.outer(self.x, self.y))
+        self.assertFunctionContains(f, self.ger)
+        f(numpy.random.rand(M, N).astype(self.dtype),
+          numpy.random.rand(M).astype(self.dtype),
+          numpy.random.rand(N).astype(self.dtype))
+
+    def test_f32_0_0(self):
+        return self.given_dtype('float32', 0, 0)
+
+    def test_f32_1_0(self):
+        return self.given_dtype('float32', 1, 0)
+
+    def test_f32_0_1(self):
+        return self.given_dtype('float32', 0, 1)
+
+    def test_f32_1_1(self):
+        return self.given_dtype('float32', 1, 1)
+
+    def test_f32_4_4(self):
+        return self.given_dtype('float32', 4, 4)
+
+    def test_f64_4_5(self):
+        return self.given_dtype('float64', 4, 5)
+
+    def test_c64_7_1(self):
+        return self.given_dtype('complex64', 7, 1)
+
+    def test_c128_1_9(self):
+        return self.given_dtype('complex128', 1, 9)
+
+    def test_inplace(self):
+        A = theano.shared(numpy.random.rand(4, 5).astype(self.dtype))
+        f = self.function([self.x, self.y], [],
+                          updates={A: A + T.constant(0.1, dtype=self.dtype) *
+                                   T.outer(self.x, self.y)})
+        self.assertFunctionContains(f, self.ger_destructive)
+        f(numpy.random.rand(4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype))

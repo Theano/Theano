@@ -282,31 +282,19 @@ class Ger(Op):
             raise TypeError('only float and complex types supported', x.dtype)
         return Apply(self, [A, alpha, x, y], [A.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
+    def perform(self, node, inp, out):
+        cA, calpha, cx, cy = inp
+        cZ, = out
+        if self.destructive:
+            A = cA
+        else:
+            A = cA.copy()
+        if calpha != 1:
+            A += calpha * numpy.outer(cx, cy)
+        else:
+            A += numpy.outer(cx, cy)
+        cZ[0] = A
 
-        # get vars for containers
-        cA, calpha, cx, cy = node_input_storage
-        cZ, = node_output_storage
-
-        def rval():
-            if self.destructive:
-                A = cA[0]
-            else:
-                A = cA[0].copy()
-            if calpha[0] != 1:
-                A += calpha[0] * numpy.outer(cx[0], cy[0])
-            else:
-                A += numpy.outer(cx[0], cy[0])
-            cZ[0] = A
-
-        #TODO: If this is currently an unofficial part of the thunk API,
-        #      then maybe it should be documented and made official?
-        rval.inputs = node_input_storage
-        rval.outputs = node_output_storage
-        rval.lazy = False
-        return rval
 
 ger = Ger(destructive=False)
 ger_destructive = Ger(destructive=True)

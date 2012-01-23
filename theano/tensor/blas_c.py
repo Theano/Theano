@@ -200,9 +200,6 @@ class CGer(BaseBLAS, Ger):
     def c_code_cache_version(self):
         return (2,)
 
-    def make_thunk(*args, **kwargs):
-        # skip over Ger.make_thunk
-        return Op.make_thunk(*args, **kwargs)
 
 @local_optimizer([ger, ger_destructive])
 def use_c_ger(node):

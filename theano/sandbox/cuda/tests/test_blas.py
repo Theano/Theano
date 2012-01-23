@@ -17,7 +17,7 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
-from theano.tensor.tests.test_blas import BaseGemv, TestGer_local_gemm_to_ger
+from theano.tensor.tests.test_blas import BaseGemv, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
@@ -261,10 +261,9 @@ class TestGpuGemv(TestCase, BaseGemv,
     gemv_inplace = gpu_gemv_inplace
 
 
-class TestGpuGer(TestGer_local_gemm_to_ger):
+class TestGpuGer(TestGer):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().including(
-            'fast_run', 'gpu')
+        self.mode = mode_with_gpu
         self.mode = self.mode.excluding('c_blas')
         dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
