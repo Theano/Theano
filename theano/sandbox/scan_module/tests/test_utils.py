@@ -13,7 +13,7 @@ else:
 mode_with_gpu = mode_with_opt.including('gpu', 'scan')
 
 
-# TODO: this should replace the verify_grad in tensor/tensor_grad.py
+# TODO: this should replace the verify_grad in gradient.py
 class multiple_outputs_numeric_grad:
     """WRITEME"""
     type_eps = {'float64': 1e-7,
