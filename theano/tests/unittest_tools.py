@@ -89,7 +89,7 @@ class TestOptimizationMixin(object):
     def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
         toposort = f.maker.env.toposort()
         matches = [node for node in toposort if node.op == op]
-        assert (min <= len(matches) <= max), toposort
+        assert (min <= len(matches) <= max), (toposort, matches, str(op), min, max)
 
     def assertFunctionContains0(self, f, op):
         return self.assertFunctionContains(f, op, min=0, max=0)
