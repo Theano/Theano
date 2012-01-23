@@ -1,3 +1,4 @@
+from copy import copy, deepcopy
 import sys
 
 import numpy
@@ -104,4 +105,46 @@ class TestOptimizationMixin(object):
         raise SkipTest(msg)
 
 
+# This object name should not start with Test.
+# Otherwise nosetests will execute it!
+class T_OpContractMixin(object):
+    # self.ops should be a list of instantiations of an Op class to test.
+    # self.other_op should be an op which is different from every op
+    other_op = T.add
 
+    def copy(self, x):
+        return copy(x)
+
+    def deepcopy(self, x):
+        return deepcopy(x)
+
+    def clone(self, op):
+        raise NotImplementedError('return new instance like `op`')
+
+    def test_eq(self):
+        for i, op_i in enumerate(self.ops):
+            assert op_i == op_i
+            assert op_i == self.copy(op_i)
+            assert op_i == self.deepcopy(op_i)
+            assert op_i == self.clone(op_i)
+            assert op_i != self.other_op
+            for j, op_j in enumerate(self.ops):
+                if i == j: continue
+                assert op_i != op_j
+
+    def test_hash(self):
+        for i, op_i in enumerate(self.ops):
+            h_i = hash(op_i)
+            assert h_i == hash(op_i)
+            assert h_i == hash(self.copy(op_i))
+            assert h_i == hash(self.deepcopy(op_i))
+            assert h_i == hash(self.clone(op_i))
+            assert h_i != hash(self.other_op)
+            for j, op_j in enumerate(self.ops):
+                if i == j: continue
+                assert op_i != hash(op_j)
+
+    def test_name(self):
+        for op in self.ops:
+            s = str(op)    # show that str works
+            assert s       # names should not be empty

@@ -280,3 +280,11 @@ class TestGpuGer(TestGer_local_gemm_to_ger):
         # data on the gpu make the op always inplace
         self.ger = gpu_ger_inplace
         self.gemm = tcn.blas.gpu_gemm_inplace
+
+
+class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
+    def setUp(self):
+        self.ops = [gpu_ger_no_inplace, gpu_ger_inplace]
+
+    def clone(self, op):
+        return tcn.blas.GpuGer(op.inplace)

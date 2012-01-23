@@ -1271,58 +1271,14 @@ class TestGer_make_node(TestCase):
         self.assertRaises(TypeError, ger, self.cm, self.fa, self.fv, self.dv_2)
         self.assertRaises(TypeError, ger, self.cm, self.fa, self.fv, self.zv_2)
 
-# TODO: refactor this into some place where all OpTesters could use it.
-# This object name should not start with Test.
-# Otherwise nosetests will execute it!
-class T_OpContractMixin(object):
-    # self.ops should be a list of instantiations of an Op class to test.
-    # self.other_op should be an op which is different from every op
-    other_op = T.add
 
-    def copy(self, x):
-        return copy(x)
-
-    def deepcopy(self, x):
-        return deepcopy(x)
-
-    def clone(self, op):
-        raise NotImplementedError('return new instance like `op`')
-
-    def test_eq(self):
-        for i, op_i in enumerate(self.ops):
-            assert op_i == op_i
-            assert op_i == self.copy(op_i)
-            assert op_i == self.deepcopy(op_i)
-            assert op_i == self.clone(op_i)
-            assert op_i != self.other_op
-            for j, op_j in enumerate(self.ops):
-                if i == j: continue
-                assert op_i != op_j
-
-    def test_hash(self):
-        for i, op_i in enumerate(self.ops):
-            h_i = hash(op_i)
-            assert h_i == hash(op_i)
-            assert h_i == hash(self.copy(op_i))
-            assert h_i == hash(self.deepcopy(op_i))
-            assert h_i == hash(self.clone(op_i))
-            assert h_i != hash(self.other_op)
-            for j, op_j in enumerate(self.ops):
-                if i == j: continue
-                assert op_i != hash(op_j)
-
-    def test_name(self):
-        for op in self.ops:
-            s = str(op)    # show that str works
-            assert s       # names should not be empty
-
-class TestGer_OpContract(TestCase, T_OpContractMixin):
-    #TODO: These tests could be factored into a generic Op-testing base-class
+class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):
         self.ops = [ger, ger_destructive]
 
     def clone(self, op):
         return Ger(op.destructive)
+
 
 class TestGer_make_thunk(TestCase):
     def setUp(self):
