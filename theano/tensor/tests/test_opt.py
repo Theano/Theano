@@ -3134,6 +3134,22 @@ class T_local_sum(unittest.TestCase):
             finally:
                 config.warn.sum_sum_bug = backup
 
+    def test_local_sum_sum_int8(self):
+        """
+        Test that local_sum_sum works when combining two sums on an int8 array.
+
+        This is a regression test for ticket gh-356.
+        """
+        x = tensor.tensor3(dtype='int8')
+        y = x.sum(axis=0).sum(axis=1)
+        backup = config.on_opt_error
+        config.on_opt_error = 'raise'
+        try:
+            # This compilation would fail prior to fix.
+            f = theano.function([x], y)
+        finally:
+            config.on_opt_error = backup
+
 
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
