@@ -2999,29 +2999,38 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
         PyErr_SetString(PyExc_NotImplementedError, "non-c continugous A in sger");
         return -1;
     }
-
-    // Same for this, be safe
-    assert (CudaNdarray_HOST_STRIDES(x)[0] >= 0);
-    assert (CudaNdarray_HOST_STRIDES(y)[0] >= 0);
-
     // Since Sger expects A in col-major, we invert x and y to fake this.
     int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
+    CudaNdarray * x_ = x;
     if(x_strides == 0){
         assert(CudaNdarray_HOST_DIMS(x)[0] == 1);
         x_strides = 4;
+    } else if(x_strides < 0){
+        x_ = (CudaNdarray*)CudaNdarray_Copy(x);
+        x_strides = CudaNdarray_HOST_STRIDES(x_)[0];
     }
+
     int y_strides = CudaNdarray_HOST_STRIDES(y)[0];
+    CudaNdarray * y_ = y;
     if(y_strides == 0){
         assert(CudaNdarray_HOST_DIMS(y)[0] == 1);
         y_strides = 4;
+    } else if(y_strides < 0){
+        y_ = (CudaNdarray*)CudaNdarray_Copy(y);
+        y_strides = CudaNdarray_HOST_STRIDES(y_)[0];
     }
 
-    if(CudaNdarray_SIZE(A))
+    if(CudaNdarray_SIZE(A)){
         cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
-                   CudaNdarray_DEV_DATA(y), y_strides,
-                   CudaNdarray_DEV_DATA(x), x_strides,
+                   CudaNdarray_DEV_DATA(y_), y_strides,
+                   CudaNdarray_DEV_DATA(x_), x_strides,
                    CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
+    }
     CNDA_THREAD_SYNC;
+    if(x_ != x)
+        Py_DECREF(x_);
+    if(y_ != y)
+        Py_DECREF(y_);
 
     cudaError_t err = cudaGetLastError();
     if (CUBLAS_STATUS_SUCCESS != err)
