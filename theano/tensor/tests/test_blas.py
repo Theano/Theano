@@ -553,29 +553,6 @@ def test_gemm_factor():
     assert [(1.0, X), (1.0, Y)] == _factor_canonicalized([(1.0, X), (1.0, Y)])
     assert [(2.0, X)] == _factor_canonicalized([(1.0, X),(1.0, X)])
 
-def test_upcasting_scalar_nogemv():
-    # Test that the optimization does not crash when the scale has an incorrect
-    # dtype, and forces upcasting of the result
-    v = T.fvector('v')
-    w = T.fmatrix('w')
-    t = T.fvector('t')
-    alpha = T.dscalar('a')
-
-    rval = T.dot(w, v) * alpha + t
-
-    f = theano.function([w, v, t, alpha], rval, mode=mode_blas_opt)
-    # this function is currently optimized so that the gemv is done
-    # inplace on a temporarily allocated-buffer, which is then scaled by alpha
-    # and to t with a fused elemwise.
-    n_gemvs = 0
-    #theano.printing.debugprint(f, print_type=True)
-    gemv_inplace = Gemv(inplace=True)
-    for node in f.maker.env.toposort():
-        if node.op == gemv_inplace:
-            n_gemvs += 1
-            assert node.outputs[0].dtype == 'float32'
-    assert n_gemvs == 1, n_gemvs
-
 def test_upcasting_scalar_nogemm():
     # Test that the optimization does not crash when the scale has an incorrect
     # dtype, and forces upcasting of the result
@@ -1166,6 +1143,38 @@ class BaseGemv(object):
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_upcasting_scalar_nogemv(self):
+        # Test that the optimization does not crash when the scale has
+        # an incorrect dtype, and forces upcasting of the result
+        # We put this test in this class to test it on the gpu too.
+        vs = self.get_data()
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha_v = alpha_v.astype("float64")
+        a_v = a_v.astype("float32")
+        x_v = x_v.astype("float32")
+        y_v = y_v.astype("float32")
+
+        alpha = T.dscalar('a')
+        a = T.fmatrix('w')
+        x = T.fvector('v')
+        y = T.fvector('t')
+
+        rval = T.dot(a, x) * alpha + y
+
+        f = theano.function([a, x, y, alpha], rval, mode=self.mode)
+        # this function is currently optimized so that the gemv is
+        # done inplace on a temporarily allocated-buffer, which is
+        # then scaled by alpha and to t with a fused elemwise.
+        n_gemvs = 0
+        #theano.printing.debugprint(f, print_type=True)
+        for node in f.maker.env.toposort():
+            if node.op == self.gemv_inplace:
+                n_gemvs += 1
+                assert node.outputs[0].dtype == 'float32'
+        assert n_gemvs == 1, n_gemvs
+        self.assertFunctionContains1(f, self.gemv_inplace)
+        f(a_v, x_v, y_v, alpha_v)
 
 
 class TestSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
