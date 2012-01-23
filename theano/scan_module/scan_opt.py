@@ -417,7 +417,8 @@ class ScanSaveMem(gof.Optimizer):
         # change the number of steps in that case. To do this we set
         # global_nsteps to None which is seen as a flag that nothing needs
         # to be done
-        if len(node.outputs) <= c_outs:
+        assert len(node.outputs) >= c_outs
+        if len(node.outputs) == c_outs:
             global_nsteps = {'real': -1, 'sym': []}
         else:
             global_nsteps = None
@@ -474,7 +475,7 @@ class ScanSaveMem(gof.Optimizer):
                         break
 
                     # 2.3.2 extract the begin/end of the first dimension
-                    if i > op.n_mit_mot:
+                    if i >= op.n_mit_mot:
                         try:
                             length = shape_of[out][0]
                         except KeyError:
@@ -650,7 +651,8 @@ class ScanSaveMem(gof.Optimizer):
                             tmp = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
                             tmp = tensor.maximum(tmp, initl)
-                            tmp = pre_greedy_local_optimizer(list_opt_slice, tmp)
+                            tmp = pre_greedy_local_optimizer(list_opt_slice,
+                                                             tmp)
                             tmp = pre_constant_merge([tmp])[0]
                             nw_input = nw_inputs[offset + idx][:tmp]
 
