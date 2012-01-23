@@ -33,6 +33,9 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
+# Remove0 is lazily imported to avoid circular imports.
+Remove0 = None
+
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -731,7 +734,7 @@ class ShapeFeature(object):
 
     def default_infer_shape(self, node, i_shapes):
         """Return a list of shape tuple or None for the outputs of node.
-        
+
         This function is used for Ops that don't implement infer_shape.
         Ops that do implement infer_shape should use the i_shapes parameter,
         but this default implementation ignores it.
@@ -746,7 +749,7 @@ class ShapeFeature(object):
 
     def unpack(self, s_i):
         """Return a symbolic integer scalar for the shape element s_i.
-        
+
         The s_i argument was produced by the infer_shape() of an Op subclass.
         """
         # unpack the s_i that the Op returned
@@ -777,7 +780,7 @@ class ShapeFeature(object):
 
     def set_shape(self, r, s):
         """Assign the shape `s` to previously un-shaped variable `r`.
-        
+
         :type r: a variable
         :type s: None or a tuple of symbolic integers
         """
@@ -1676,7 +1679,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             # case it was in reverse we need to realize that we do not want
             # the k-th element from sl.start but the k-th element from
             # sl.stop backwards
-            n_val = sl1.stop - sl1.start - 1 - sl2 * sl1.step
+            n_val = sl1.stop - 1 - sl2 * sl1.step
             # we need to pick either n_val or p_val and then follow same
             # steps as above for covering the index error cases
             val = T.switch(T.lt(reverse1, 0), n_val, p_val)
@@ -1947,6 +1950,24 @@ compile.optdb.register('local_inplace_incsubtensor1',
         local_inplace_incsubtensor1,
         failure_callback=TopoOptimizer.warn_inplace),
                        60, 'fast_run', 'inplace')  # DEBUG
+
+@gof.local_optimizer([None])
+def local_inplace_remove0(node):
+    """
+    Optimization to insert inplace versions of Remove0.
+    """
+    global Remove0
+    if Remove0 is None:
+        from theano.sparse.sandbox.sp import Remove0
+    if isinstance(node.op, Remove0) and not node.op.inplace:
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(*node.inputs)
+        return [new_node]
+    return False
+compile.optdb.register('local_inplace_remove0',
+                       TopoOptimizer(local_inplace_remove0,
+    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       'fast_run', 'inplace')
 
 
 @register_canonicalize

@@ -35,7 +35,7 @@ def tes_use():
 
 def test_sum():
     """
-    test sum pattern 1, 11, 10, 01, 100, 110, 011, 001, 111, 0011, 0101, 0111, 1011, 1111
+    test sum pattern 1, 11, 10, 01, 001, 010, 100, 110, 011, 111, 0011, 0101, 0111, 1011, 1111
 
     test sum pattern implemented with reshape:
     1000, 0100, 0010, 0001, 11111

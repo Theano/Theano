@@ -27,6 +27,35 @@ _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
 
+def format_as(use_list, use_tuple, outputs):
+    """
+    Formats the outputs according to the flags `use_list` and `use_tuple`.
+    If `use_list` is True, `outputs` is returned as a list (if `outputs`
+    is not a list or a tuple then it is converted in a one element list).
+    If `use_tuple` is True, `outputs` is returned as a tuple (if `outputs`
+    is not a list or a tuple then it is converted into a one element tuple).
+    Otherwise (if both flags are false), `outputs` is returned.
+    """
+    assert not (use_list and use_tuple), \
+        "Both flags cannot be simultaneously True"
+    if (use_list or use_tuple) and not isinstance(outputs, (list, tuple)):
+        if use_list:
+            return [outputs]
+        else:
+            return (outputs,)
+    elif not (use_list or use_tuple) and isinstance(outputs, (list, tuple)):
+        assert len(outputs) == 1, \
+            "Wrong arguments. Expected a one element list"
+        return outputs[0]
+    elif use_list or use_tuple:
+        if use_list:
+            return list(outputs)
+        else:
+            return tuple(outputs)
+    else:
+        return outputs
+
+
 def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
     :type sources: list of pairs of Variable: (v, gradient-on-v)
@@ -63,7 +92,8 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     if graph_inputs is None:
         graph_inputs = gof.graph.inputs(graph_outputs)
 
-    for node in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
+    for node in gof.graph.io_toposort(graph_inputs,
+                                      graph_outputs).__reversed__():
         g_outputs = [gmap.get(o, None) for o in node.outputs]
 
         #if all output gradients are None, continue
@@ -172,7 +202,6 @@ def Rop(f, wrt, eval_points):
     from theano.tensor import as_tensor_variable
     using_list = isinstance(f, list)
     using_tuple = isinstance(f, tuple)
-
     if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
 
@@ -184,8 +213,8 @@ def Rop(f, wrt, eval_points):
 
     assert len(wrt) == len(eval_points)
 
-    #check that each element of wrt corresponds to an element
-    #of eval_points with the same dimensionality
+    # Check that each element of wrt corresponds to an element
+    # of eval_points with the same dimensionality.
     for pack in enumerate(zip(wrt, eval_points)):
         i = pack[0]
         wrt_elem, eval_point = pack[1]
@@ -197,9 +226,13 @@ def Rop(f, wrt, eval_points):
         eval_dim = len(eval_point.type.broadcastable)
 
         if wrt_dim != eval_dim:
-            raise ValueError('Element ' + str(i) + ' of wrt/eval_point have '
-                             'mismatched dimensionality: ' + str(wrt_dim) +
-                             ' versus ' + str(eval_dim))
+            raise ValueError('Element ' +
+                             str(i) +
+                             ' of wrt/eval_point have mismatched ' +
+                             'dimensionality: ' +
+                             str(wrt_dim) +
+                             ' versus ' +
+                             str(eval_dim))
 
     seen_nodes = {}
 
@@ -252,16 +285,7 @@ def Rop(f, wrt, eval_points):
         else:
             rval.append(seen_nodes[out.owner][out.owner.outputs.index(out)])
 
-    if len(rval) == 1:
-        if using_list:
-            return rval
-        if using_tuple:
-            return tuple(rval)
-        return rval[0]
-    else:
-        if using_tuple:
-            return tuple(rval)
-        return rval
+    return format_as(using_list, using_tuple, rval)
 
 
 def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
@@ -317,8 +341,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     # such subtle cases can be fixed by a more careful implementation of the
     # gradient, but for now Theano needs to throw an exception, and make the
     # user aware that it does not know how to compute that gradient
-
-    if not (using_list or using_tuple):
+    if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
     ret = []
     for p in wrt:
@@ -341,17 +364,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
                         "'ignore', 'warn' and 'raise'.")
             ret.append(p.zeros_like())
 
-    if len(ret) == 1:
-        if using_list:
-            return ret
-        elif using_tuple:
-            return tuple(ret)
-        else:
-            return ret[0]
-    else:
-        if using_tuple:
-            return tuple(ret)
-        return ret
+    return format_as(using_list, using_tuple, ret)
 
 
 #########################
@@ -437,7 +450,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     # user aware that it does not know how to compute that gradient
     using_list = isinstance(wrt, list)
     using_tuple = isinstance(wrt, tuple)
-    if not (using_list or using_tuple):
+
+    if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
     ret = []
     for p in wrt:
@@ -460,16 +474,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
                         "'ignore', 'warn' and 'raise'.")
             ret.append(p.zeros_like())
 
-    if len(ret) == 1 and not (using_list or using_tuple):
-        # `wrt` was a single Variable, so we return a single Variable too.
-        return ret[0]
-    else:
-        # Ensure we preserve the original type of `wrt`.
-        if using_tuple:
-            return tuple(ret)
-        else:
-            assert using_list
-            return ret
+    return format_as(using_list, using_tuple, ret)
 
 
 class numeric_grad(object):
@@ -512,14 +517,14 @@ class numeric_grad(object):
         :param f: a differentiable function such that f(*pt) is a scalar
         :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
 
-        This function computes the gradient by a one-sided finite differences
-        of a fixed step size (eps).
+        This function computes the gradient by a one-sided finite
+        differences of a fixed step size (eps).
 
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
 
-        :param eps: the stepsize for the finite differencing.  None means input
-        dtype-dependent. See `type_eps`.
+        :param eps: the stepsize for the finite differencing.  None means
+          input dtype-dependent. See `type_eps`.
         """
 
         def prod(inputs):
@@ -682,23 +687,23 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
     :param pt: the list of numpy.ndarrays to use as input values.
         These arrays must be either float32 or float64 arrays.
     :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient of
-        sum(u * fun) at pt
-    :param eps: stepsize used in the Finite Difference Method (Default None is
-        type-dependent)
+    :param rng: random number generator used to sample u, we test gradient
+        of sum(u * fun) at pt
+    :param eps: stepsize used in the Finite Difference Method (Default
+        None is type-dependent)
     :param abs_tol: absolute tolerance used as threshold for gradient
         comparison
     :param rel_tol: relative tolerance used as threshold for gradient
         comparison
 
-    :note: WARNING to unit-test writers: if `op` is a function that builds a
-        graph, try to make it a SMALL graph.  Often verify grad is run in
-        debug mode, which can be very slow if it has to verify a lot of
+    :note: WARNING to unit-test writers: if `op` is a function that builds
+        a graph, try to make it a SMALL graph.  Often verify grad is run
+        in debug mode, which can be very slow if it has to verify a lot of
         intermediate computations.
 
     :note: This op does not support multiple outputs. In tests/test_scan.py
-        there is an experimental verify_grad that covers that case as well by
-        using random projections.
+        there is an experimental verify_grad that covers that case as well
+        by using random projections.
     """
     from theano import compile, shared
     import theano.tensor
@@ -820,13 +825,154 @@ class GradientError(Exception):
     def __str__(self):
         # args may have been inserted by e.g. makeTester
         args_msg = ", ".join(str(a) for a in self.args)
-        return """GradientError: numeric gradient and analytic gradient exceed tolerance:
+        return """\
+GradientError: numeric gradient and analytic gradient exceed tolerance:
         At position %i of argument %i,
             abs. error = %f,  abs. tolerance = %f
-            rel. error = %f,  rel. tolerance = %f\nException args: %s
-        """ % (self.err_pos, self.arg,
-               self.abs_err, self.abs_tol,
-               self.rel_err, self.rel_tol,
-               args_msg)
+            rel. error = %f,  rel. tolerance = %f
+Exception args: %s""" % (self.err_pos, self.arg,
+                         self.abs_err, self.abs_tol,
+                         self.rel_err, self.rel_tol,
+                         args_msg)
 
 verify_grad.E_grad = GradientError
+
+
+def jacobian(expression, wrt, consider_constant=None, warn_type=False,
+             disconnected_inputs='raise'):
+    """
+    :type expression: Vector (1-dimensional) `Variable`
+    :type wrt: 'Variable' or list of `Variables`s
+
+    :param consider_constant: a list of expressions not to backpropagate
+        through
+
+    :param warn_type: a value of True will cause warnings to be logged for any
+        Op that emits a gradient that does not match its input type.
+
+    :type disconnected_inputs: string
+    :param disconnected_inputs: Defines the behaviour if some of the variables
+        in ``wrt`` are not part of the computational graph computing ``cost``
+        (or if all links are non-differentiable). The possible values are:
+        - 'ignore': considers that the gradient on these parameters is zero.
+        - 'warn': consider the gradient zero, and print a warning.
+        - 'raise': raise an exception.
+
+    :return: either a instance of `Variable` or list/tuple of `Variable`s
+            (depending upon `wrt`) repesenting the jacobian of `expression`
+            with respect to (elements of) `wrt`. If an element of `wrt` is not
+            differentiable with respect to the output, then a zero
+            variable is returned. The return value is of same type
+            as `wrt`: a list/tuple or TensorVariable in all cases.
+    """
+    from theano.tensor import arange
+    # Check inputs have the right format
+    assert isinstance(expression, Variable), \
+            "tensor.jacobian expects a Variable as `expression`"
+    assert expression.ndim < 2, \
+            ("tensor.jacobian expects a 1 dimensional variable as "
+             "`expression`. If not use flatten to make it a vector")
+
+    using_list = isinstance(wrt, list)
+    using_tuple = isinstance(wrt, tuple)
+
+    if isinstance(wrt, (list, tuple)):
+        wrt = list(wrt)
+    else:
+        wrt = [wrt]
+
+    if expression.ndim == 0:
+        # expression is just a scalar, use grad
+        return format_as(using_list, using_tuple, grad(expression, wrt))
+
+    def inner_function(*args):
+        idx = args[0]
+        expr = args[1]
+        rvals = []
+        for inp in args[2:]:
+            rval = grad(expr[idx],
+                     inp,
+                     consider_constant=consider_constant,
+                     warn_type=warn_type,
+                     disconnected_inputs=disconnected_inputs)
+            rvals.append(rval)
+        return rvals
+    # Computing the gradients does not affect the random seeds on any random
+    # generator used n expression (because during computing gradients we are
+    # just backtracking over old values. (rp Jan 2012 - if anyone has a
+    # counter example please show me)
+    jacobs, updates = theano.scan(inner_function,
+                            sequences=arange(expression.shape[0]),
+                            non_sequences=[expression] + wrt)
+    assert not updates, \
+            ("Scan has returned a list of updates. This should not "
+             "happen! Report this to theano-users (also include the "
+             "script that generated the error)")
+    return format_as(using_list, using_tuple, jacobs)
+
+
+def hessian(cost, wrt, consider_constant=None, warn_type=False,
+             disconnected_inputs='raise'):
+    """
+    :type cost: Scalar (0-dimensional) `Variable`
+    :type wrt: Vector (1-dimensional tensor) 'Variable' or list of
+            vectors (1-dimensional tensors) `Variable`s
+
+    :param consider_constant: a list of expressions not to backpropagate
+        through
+
+    :param warn_type: a value of True will cause warnings to be logged for any
+        Op that emits a gradient that does not match its input type.
+
+    :type disconnected_inputs: string
+    :param disconnected_inputs: Defines the behaviour if some of the variables
+        in ``wrt`` are not part of the computational graph computing ``cost``
+        (or if all links are non-differentiable). The possible values are:
+        - 'ignore': considers that the gradient on these parameters is zero.
+        - 'warn': consider the gradient zero, and print a warning.
+        - 'raise': raise an exception.
+
+    :return: either a instance of `Variable` or list/tuple of `Variable`s
+            (depending upon `wrt`) repressenting the Hessian of the `cost`
+            with respect to (elements of) `wrt`. If an element of `wrt` is not
+            differentiable with respect to the output, then a zero
+            variable is returned. The return value is of same type
+            as `wrt`: a list/tuple or TensorVariable in all cases.
+    """
+    from theano.tensor import arange
+    # Check inputs have the right format
+    assert isinstance(cost, Variable), \
+            "tensor.hessian expects a Variable as `cost`"
+    assert cost.ndim == 0, \
+            "tensor.hessian expects a 0 dimensional variable as `cost`"
+
+    using_list = isinstance(wrt, list)
+    using_tuple = isinstance(wrt, tuple)
+
+    if isinstance(wrt, (list, tuple)):
+        wrt = list(wrt)
+    else:
+        wrt = [wrt]
+
+    hessians = []
+    for input in wrt:
+        assert isinstance(input, Variable), \
+                "tensor.hessian expects a (list of) Variable as `wrt`"
+        assert input.ndim == 1, \
+                "tensor.hessian expects a (list of) 1 dimensional variable "\
+                "as `wrt`"
+        expr = grad(cost, input)
+        hess, updates = theano.scan(lambda i, y, x: grad(
+                            y[i],
+                            x,
+                            consider_constant=consider_constant,
+                            warn_type=warn_type,
+                            disconnected_inputs=disconnected_inputs),
+                       sequences=arange(expr.shape[0]),
+                       non_sequences=[expr, input])
+        assert not updates, \
+                ("Scan has returned a list of updates. This should not "
+                 "happen! Report this to theano-users (also include the "
+                 "script that generated the error)")
+        hessians.append(hess)
+    return format_as(using_list, using_tuple, hessians)

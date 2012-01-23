@@ -277,6 +277,7 @@ class ScanOp(PureOp):
                 for var, length, val in state_buffers:
                     var.set_value(val[0], borrow=True)
                     length.set_value(val[0].shape[0], borrow=True)
+                self.index.set_value(numpy.int64(0))
                 # grab fixed arguments
                 fix_args = [x[0] for x in non_tensor_buffers]
                 while cont and pos < node_input_storage[0][0]:
@@ -320,6 +321,7 @@ class ScanOp(PureOp):
                 for var, length, val in state_buffers:
                     var.set_value(val[0], borrow=True)
                     length.set_value(val[0].shape[0], borrow=True)
+                self.index.set_value(numpy.int64(0))
                 # grab fixed arguments
                 fix_args = [x[0] for x in non_tensor_buffers]
                 for dx in xrange(node_input_storage[0][0]):
@@ -328,7 +330,7 @@ class ScanOp(PureOp):
                     for buf, rval in izip(non_numeric_states_bufs, rvals):
                         buf[0] = rval
                 for pos in xrange(n_numeric_values):
-                    buf = state_buffers[pos][2][0]
+                    buf = state_buffers[pos][0].get_value(borrow=True)
                     mintap = self.mintaps[pos]
                     node_output_storage[pos][0] = buf
                 for out_buf, in_buf in izip(

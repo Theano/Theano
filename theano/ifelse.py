@@ -26,6 +26,7 @@ import logging
 from theano.gof import PureOp, Apply
 
 import theano.tensor
+from theano.tensor import TensorType
 import gof
 
 from compile import optdb
@@ -312,22 +313,43 @@ def ifelse(condition, then_branch, else_branch, name=None):
     if type(else_branch) not in (list, tuple):
         else_branch = [else_branch]
 
-
-    for then_branch_elem, else_branch_elem in zip(then_branch, else_branch):
+    # Some of the elements might be converted into another type,
+    # we will store them in these new_... lists.
+    new_then_branch = []
+    new_else_branch = []
+    for then_branch_elem, else_branch_elem in izip(then_branch, else_branch):
         if not isinstance(then_branch_elem, theano.Variable):
             then_branch_elem = theano.tensor.as_tensor_variable(then_branch_elem)
         if not isinstance(else_branch_elem, theano.Variable):
             else_branch_elem = theano.tensor.as_tensor_variable(else_branch_elem)
 
         if then_branch_elem.type != else_branch_elem.type:
-            raise ValueError(('The two branches should have identical types, '
-                          ' but they are '+str(then_branch_elem.type)+' and '+
-                          str(else_branch_elem.type)+' respectively. '
-                          'This error could be raised if for example '
-                          ' you provided a one element list on the then '
-                          ' branch but a tensor on the else branch'))
+            # If one of them is a TensorType, and the other one can be
+            # converted into one, then we try to do that.
+            # This case happens when one of the elements has a GPU type,
+            # for instance a shared variable that was silently moved to GPU.
+            if (isinstance(then_branch_elem.type, TensorType)
+                    and not isinstance(else_branch_elem.type, TensorType)):
+                else_branch_elem = then_branch_elem.type.filter_variable(
+                        else_branch_elem)
 
+            elif (isinstance(else_branch_elem.type, TensorType)
+                    and not isinstance(then_branch_elem.type, TensorType)):
+                then_branch_elem = else_branch_elem.type.filter_variable(
+                        then_branch_elem)
 
+            if then_branch_elem.type != else_branch_elem.type:
+                # If the types still don't match, there is a problem.
+                raise ValueError(
+                        'The two branches should have identical types, but '
+                        'they are %s and %s respectively. This error could be '
+                        'raised if for example you provided a one element '
+                        'list on the `then` branch but a tensor on the `else` '
+                        'branch.' %
+                        (then_branch_elem.type, else_branch_elem.type))
+
+        new_then_branch.append(then_branch_elem)
+        new_else_branch.append(else_branch_elem)
 
     if len(then_branch) != len(else_branch):
         raise ValueError(('The number of values on the `then` branch'
@@ -341,7 +363,7 @@ def ifelse(condition, then_branch, else_branch, name=None):
                         gpu=False,
                         name=name)
 
-    ins = [condition] + list(then_branch) + list(else_branch)
+    ins = [condition] + list(new_then_branch) + list(new_else_branch)
     rval = new_ifelse.make_node(*ins).outputs
 
     if rval_type is None:

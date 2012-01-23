@@ -16,7 +16,7 @@ import toolbox
 import op
 import theano
 from theano import config
-from theano.gof.python25 import any, all
+from theano.gof.python25 import any, all, deque
 from theano.configparser import AddConfigVar, BoolParam, config
 
 #if sys.version_info[:2] >= (2,5):
@@ -29,7 +29,6 @@ AddConfigVar('time_seq_optimizer',
         BoolParam(False),
         in_c_key=False)
 
-from theano.gof import deque
 import destroyhandler as dh
 import traceback
 
@@ -989,8 +988,10 @@ class TopoOptimizer(NavigatorOptimizer):
                 q.append(node)
         def pruner(node):
             if node is not current_node:
-                try: q.remove(node)
-                except ValueError: pass
+                try:
+                    q.remove(node)
+                except ValueError:
+                    pass
 
         u = self.attach_updater(env, importer, pruner)
         try:
@@ -1027,8 +1028,10 @@ class OpKeyOptimizer(NavigatorOptimizer):
                 if node.op == op: q.append(node)
         def pruner(node):
             if node is not current_node and node.op == op:
-                try: q.remove(node)
-                except ValueError: pass
+                try:
+                    q.remove(node)
+                except ValueError:
+                    pass
         u = self.attach_updater(env, importer, pruner)
         try:
             while q:
@@ -1133,8 +1136,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     q.append(node)
             def pruner(node):
                 if node is not current_node:
-                    try: q.remove(node)
-                    except ValueError: pass
+                    try:
+                        q.remove(node)
+                    except ValueError:
+                        pass
 
             u = self.attach_updater(env, importer, pruner)
             try:
@@ -1153,7 +1158,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                 process_count[lopt] += 1
                                 changed = True
                                 if node not in env.nodes:
-                                    break# go to next node
+                                    break # go to next node
             finally:
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best

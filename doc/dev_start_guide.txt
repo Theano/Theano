@@ -4,6 +4,18 @@
 Developer Start Guide
 =====================
 
+Resources
+=========
+
+See :ref:`theano_community` for a list of Theano resources. The
+following groups/mailing-lists are especially useful to Theano
+contributors: `theano-dev`_, `theano-buildbot`_, and `theano-github`_.
+
+.. _theano-dev: https://groups.google.com/group/theano-dev
+.. _theano-github: https://groups.google.com/group/theano-github
+.. _theano-buildbot: https://groups.google.com/group/theano-buildbot
+
+
 To get up to speed, you'll need to
 
 - Learn some non-basic Python to understand what's going on in some of the
@@ -19,40 +31,21 @@ To get up to speed, you'll need to
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _nose: http://somethingaboutorange.com/mrl/projects/nose/
 
-Accounts
---------
+
+Installation and configuration
+==============================
 
 To obtain developer access: register with `GitHub
 <http://www.github.com/>`_ and create a fork of `Theano
 <http://www.github.com/Theano/Theano>`_.
 
-Coding style
-------------
+This will create your own Theano project on GitHub, referred later
+as "YourProfile/Theano", or "origin", from which you will be able to
+contribute to the original Theano/Theano, also called "central".
 
-We didn't had any coding style when we started Theano. We now use
-`this one
-<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
-except that we don't use the numpy docstring standard.
 
-We do not plan to change all existing code to follow this coding
-style, but as we modify the code, we update it accordingly.
-
-Mailing list
-------------
-
-See the Theano main page for the theano-dev, theano-buildbot and
-theano-github mailing list. They are useful to Theano contributors.
-
-Git config
-----------
-
-.. code-block:: bash
-
-   git config --global user.email you@yourdomain.example.com
-   git config --global user.name "Your Name Comes Here"
-
-Typical development workflow
-----------------------------
+Create a local copy
+-------------------
 
 Clone your fork locally with
 
@@ -60,63 +53,160 @@ Clone your fork locally with
 
     git clone git@github.com:your_github_login/Theano.git
 
-and add a reference to the 'central' Theano repository with
+From your local repository, your own fork on GitHub will be called "origin".
+
+Then, add a reference to the original ("central") Theano repository with
 
 .. code-block:: bash
 
     git remote add central git://github.com/Theano/Theano.git
 
+You can choose another name than "central" to reference Theano/Theano
+(for instance, NumPy uses "upstream"), but this documentation will stick
+to "central."
+
+You can then test your installation of Theano by following the steps of
+:ref:`testing_installation`.
+
+
+Using your local copy
+---------------------
+
+To update your library to the latest revision, you should have a local branch
+that tracks central/master. You can add one (named "trunk" here) with:
+
+.. code-block:: bash
+
+    git fetch central
+    git branch trunk central/master
+
+Once you have such a branch, in order to update it, do:
+
+.. code-block:: bash
+
+    git checkout trunk
+    git pull
+
+Keep in mind that this branch should be "read-only": if you want to
+patch Theano, you should work in another branch, like described in the
+:ref:`dev_workflow` section below.
+
+
+Configure Git
+-------------
+
+On your local machine, you need to configure git with basic informations:
+
+.. code-block:: bash
+
+   git config --global user.email you@yourdomain.example.com
+   git config --global user.name "Your Name Comes Here"
+
+
+You can also instruct git to use color in diff. For this, you need to
+add those lines in the file ~/.gitconfig
+
+.. code-block:: cfg
+
+    [color]
+       branch = auto
+       diff = auto
+       interactive = auto
+       status = auto
+
+
+.. _dev_workflow:
+
+Development Workflow
+====================
+
+Start a new local branch
+------------------------
+
 When working on a new feature in your own fork, start from an up-to-date copy
-of the trunk:
+of the `master` branch (the principal one) of the central repository
+(Theano/Theano on GitHub):
 
 .. code-block:: bash
 
     git fetch central
     git checkout -b my_shiny_feature central/master
 
-Once your code is ready for others to review, push your branch to your github fork:
+.. note::
+
+    This last line is a shortcut for:
+
+    .. code-block:: bash
+
+        git branch my_shiny_feature central/master
+        git checkout my_shiny_feature
+
+
+Submit your changes to the central repository
+---------------------------------------------
+
+Once your code is ready for others to review, you need to push your
+branch to your github fork first:
 
 .. code-block:: bash
 
     git push -u origin my_shiny_feature
 
-then go to your fork's github page on the github website, select your feature
-branch and hit the "Pull Request" button in the top right corner.
+Then, go to your fork's github page on the github website, select your
+feature branch and hit the "Pull Request" button in the top right
+corner.  This will signal the maintainers that you wish to submit your
+changes for inclusion in central/master.
 If you don't get any feedback, bug us on the theano-dev mailing list.
 
-When your pull request has been merged, you can delete the branch
-from the github list of branches. This is useful to avoid having too many
-branches staying there. Deleting this remote branch is achieved with:
+
+Address reviewer comments
+-------------------------
+
+Your pull request will be reviewed by members of the core development
+team. If your branch is not directly accepted, the reviewers will use
+GitHub's system to add "notes", either general (on the entire commit),
+or "line notes", relative to a particular line of code.
+In order to have the pull request accepted, you may have to answer
+the reviewer's questions, you can do that on GitHub.
+
+You may also have to edit your code to address their concerns. Some
+of the usual requests include fixing typos in comments, adding or
+correcting comments, adding unit tests in the test suite.  In order to
+do that, you should continue your edits in the same branch you used (in
+this example, "my_shiny_feature").  For instance, if you changed your
+working branch, you should first:
 
 .. code-block:: bash
 
-   git push origin :my_shiny_feature
+    git checkout my_shiny_feature
 
-You can keep your local repository up to date with central/master with those
-commands:
-
-.. code-block:: bash
-
-   git checkout master
-   git fetch central
-   git merge central/master
-
-If you want to fix a commit already submitted within a pull request (e.g. to
-fix a small typo), you can do it like this to keep history clean:
+Then, edit your code, and test it appropriately (see
+:ref:`quality_contributions` below), and push it again to your GitHub
+fork, like the first time (except the ``-u`` option is only needed the
+first time):
 
 .. code-block:: bash
 
-   git checkout my_shiny_feature
-   git commit --amend
-   git push -u origin my_shiny_feature:my_shiny_feature
+    git push origin my_shiny_feature
 
+The pull request to the central repository will then be automatically
+updated by GitHub. However, the reviewers will not be automatically
+notified of your revision, so it is advised to reply to the comments on
+GitHub, to let them know that you have submitted a fix.
+
+
+.. _quality_contributions:
+
+Tips for Quality Contributions
+==============================
 
 Coding Style Auto Check
 -----------------------
 
 In Theano, we use the same coding style as the `Pylearn
 <http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
-project. The principal thing to know is that we follow the
+project, except that we don't use the numpy docstring standard.
+The principal thing to know is that we follow the
 `pep8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
 
 We use git hooks provided in the project `pygithooks
@@ -131,6 +221,87 @@ We decided to fix everything incrementally. So not all files respect it
 now. So we strongly suggest that you use the "increment" pygithooks
 config option to have a good workflow. See the pygithooks main page
 for how to set it up for Theano and how to enable this option.
+
+
+Unit tests
+----------
+
+Before submitting a pull request, you should run the unit test suite,
+and make sure that your changes did not create any new Error or Failure.
+You can consult `theano-buildbot`_ for the result of a recent run
+of the test suite with various options.
+
+To run the test suite with the default options, you can follow the
+instructions of :ref:`testing_installation`.
+
+Each night we execute all the unit tests automatically, with different
+sets of options.  The result is sent by email to the `theano-buildbot`_
+mailing list.
+
+For more detail, see :ref:`metadocumentation_nightly_build`.
+
+To run all the tests with the same configuration as the buildbot, run this script:
+
+.. code-block:: bash
+
+   theano/misc/do_nightly_build
+
+This function accepts arguments that it forward to nosetests. You can
+run only some tests or enable pdb by giving the equivalent nosetests
+parameters.
+
+
+
+More Advanced Git Usage
+=======================
+
+You can find information and tips in the `numpy development
+<http://docs.scipy.org/doc/numpy/dev/gitwash/development_workflow.html>`_
+page. Here are a few.
+
+
+Cleaning up branches
+--------------------
+
+When your pull request has been merged, you can delete the branch from
+your GitHub fork's list of branches. This is useful to avoid having too
+many branches staying there. Deleting this remote branch is achieved
+with:
+
+.. code-block:: bash
+
+   git push origin :my_shiny_feature
+
+This lines pushes to the "origin" repository (your fork of Theano on
+GitHub), into the branch "my_shiny_feature", an empty content (that's
+why there is nothing before the colon), effectively removing it.
+
+The branch will still be present in your local clone of the repository.
+If you want to delete it from there, too, you can run:
+
+.. code-block:: bash
+
+   git branch -d my_shiny_feature
+
+
+Amending a submitted pull request
+---------------------------------
+
+If you want to fix a commit already submitted within a pull request
+(e.g. to fix a small typo), before the pull request is accepted, you can
+do it like this to keep history clean:
+
+.. code-block:: bash
+
+   git checkout my_shiny_feature
+   git commit --amend
+   git push origin my_shiny_feature:my_shiny_feature
+
+Do not abuse that command, and please use it only when there are only
+small issues to be taken care of. Otherwise, it becomes difficult to
+match the comments made by reviewers with the new modifications.
+In the general case, you should stick with the approach described above.
+
 
 Cleaning up history
 -------------------
@@ -147,105 +318,26 @@ this. In summary:
 * There are other tools that are useful if your branch is too big for one squash.
 
 
-To checkout another user branch in his repo:
+Add another distant repository
+------------------------------
+
+To collaborate with another user on some feature he is developing, and
+that is not ready for inclusion in central, the easiest way is to use a
+branch of their Theano fork (usually on GitHub).
+
+Just like we added Theano/Theano as a remote repository, named
+"central", you can add (on your local machine) a reference to their fork
+as a new remote repository. REPO_NAME is the name you choose to name
+this fork, and GIT_REPO_PATH is the URL of the fork in question.
 
 .. code-block:: bash
 
-   git remote add REPO_NAME HIS_REPO_PATH
-   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOVE_BRANCH_NAME
+    git remote add REPO_NAME GIT_REPO_PATH
 
-You can find move information and tips in the `numpy development
-<http://docs.scipy.org/doc/numpy/dev/gitwash/development_workflow.html>`_
-page.
-
-
-Details about ``PYTHONPATH``
-----------------------------
-
-``$PYTHONPATH`` should contain a ":"-separated list of paths, each of which
-contains one or several Python packages, in the order in which you would like
-Python to search for them. If a package has sub-packages of interest to you,
-do **not** add them to ``$PYTHONPATH``: it is not portable, might shadow other
-packages or short-circuit important things in its ``__init__``.
-
-It is advisable to never import Theano's files from outside Theano itself
-(this is good advice for Python packages in general). Use ``from theano import
-tensor`` instead of ``import tensor``. ``$PYTHONPATH`` should only contain
-paths to complete packages.
-
-When you install a package, only the package name can be imported directly. If
-you want a sub-package, you must import it from the main package. That's how
-it will work in 99.9% of installs because it is the default. Therefore, if you
-stray from this practice, your code will not be portable. Also, some ways to
-circumvent circular dependencies might make it so you have to import files in
-a certain order, which is best handled by the package's own ``__init__.py``.
-
-More instructions
------------------
-
-Once you have completed these steps, you should run the tests like this:
-
-.. code-block:: python
-
-   import theano
-   theano.test()
-
-Or by running ``nosetests`` from your checkout directory.
-
-All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the `theano-users`_
-mailing list.
-
-.. _theano-users: https://groups.google.com/group/theano-users
-
-To update your library to the latest revision, you should have a branch
-that tracks the main trunk. You can add one with:
+Then, you can create a new local branch (LOCAL_BRANCH_NAME) based on
+a specific branch (REMOTE_BRANCH_NAME) from the remote repository
+(REPO_NAME):
 
 .. code-block:: bash
 
-    git fetch central
-    git branch trunk central/master
-
-Once you have such a branch, in order to update it, do:
-
-.. code-block:: bash
-
-    git checkout trunk
-    git pull
-
-Keep in mind that this branch should be "read-only": if you want to patch
-Theano, do it in another branch like described above.
-
-Optional
---------
-
-You can instruct git to do color diff. For this, you need to add those lines in the file ~/.gitconfig
-
-.. code-block:: bash
-
-
-    [color]
-       branch = auto
-       diff = auto
-       interactive = auto
-       status = auto
-
-Nightly test
-------------
-
-Each night we execute all the unit tests automatically.  The result is sent by
-email to the `theano-buildbot`_ mailing list.
-
-.. _theano-buildbot: https://groups.google.com/group/theano-buildbot
-
-For more detail, see :ref:`see <metadocumentation_nightly_build>`.
-
-To run all the tests with the same configuration as the buildbot, run this script:
-
-.. code-block:: bash
-
-   theano/misc/do_nightly_build
-
-This function accepts arguments that it forward to nosetests. You can
-run only some tests or enable pdb by giving the equivalent nosetests
-parameters.
+   git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOTE_BRANCH_NAME

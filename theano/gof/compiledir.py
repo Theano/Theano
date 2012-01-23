@@ -4,19 +4,32 @@ import os
 import platform
 import re
 import sys
+import textwrap
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 
+compiledir_format_dict = {"platform": platform.platform(),
+                          "processor": platform.processor(),
+                          "python_version": platform.python_version(),
+                          "theano_version": theano.__version__,
+                         }
+compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
+default_compiledir_format = "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+
+AddConfigVar("compiledir_format",
+             textwrap.fill(textwrap.dedent("""\
+                 Format string for platform-dependent compiled
+                 module subdirectory (relative to base_compiledir).
+                 Available keys: %s. Defaults to %r.
+             """ % (compiledir_format_keys, default_compiledir_format))),
+             StrParam(default_compiledir_format, allow_override=False))
+
 
 def default_compiledirname():
-    platform_id = '-'.join([
-        platform.platform(),
-        platform.processor(),
-        platform.python_version(),
-        theano.__version__])
-    platform_id = re.sub("[\(\)\s,]+", "_", platform_id)
-    return 'compiledir_' + platform_id
+    formatted = config.compiledir_format % compiledir_format_dict
+    safe = re.sub("[\(\)\s,]+", "_", formatted)
+    return safe
 
 
 def filter_compiledir(path):
@@ -78,12 +91,11 @@ else:
 
 
 AddConfigVar('base_compiledir',
-        "arch-independent cache directory for compiled modules",
+        "platform-independent root directory for compiled modules",
         StrParam(default_base_compiledir, allow_override=False))
 
-
 AddConfigVar('compiledir',
-        "arch-dependent cache directory for compiled modules",
+        "platform-dependent cache directory for compiled modules",
         ConfigParam(
             os.path.join(
                 os.path.expanduser(config.base_compiledir),
@@ -113,7 +125,7 @@ def print_compiledir_content():
         file = None
         try:
             try:
-                file = open(os.path.join(compiledir, dir, "key.pkl"))
+                file = open(os.path.join(compiledir, dir, "key.pkl"), 'rb')
                 keydata = cPickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))

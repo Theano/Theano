@@ -1,6 +1,7 @@
 from pkg_resources import parse_version as V
 
 import numpy
+import numpy.linalg
 
 import theano
 from theano import tensor, function
@@ -11,9 +12,10 @@ from theano import config
 
 # The one in comment are not tested...
 from theano.sandbox.linalg.ops import (cholesky,
-                                       Cholesky, # op class
+                                       Cholesky,  # op class
                                        CholeskyGrad,
                                        matrix_inverse,
+                                       pinv,
                                        #solve,
                                        diag,
                                        ExtractDiag,
@@ -109,7 +111,7 @@ def test_cholesky_and_cholesky_grad_shape():
 def test_inverse_correctness():
     rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(4,4).astype(theano.config.floatX)
+    r = rng.randn(4, 4).astype(theano.config.floatX)
 
     x = tensor.matrix()
     xi = matrix_inverse(x)
@@ -118,11 +120,29 @@ def test_inverse_correctness():
     assert ri.shape == r.shape
     assert ri.dtype == r.dtype
 
-    rir = numpy.dot(ri,r)
-    rri = numpy.dot(r,ri)
+    rir = numpy.dot(ri, r)
+    rri = numpy.dot(r, ri)
 
     assert _allclose(numpy.identity(4), rir), rir
     assert _allclose(numpy.identity(4), rri), rri
+
+
+def test_pseudoinverse_correctness():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    d1 = rng.randint(4) + 2
+    d2 = rng.randint(4) + 2
+    r = rng.randn(d1, d2).astype(theano.config.floatX)
+
+    x = tensor.matrix()
+    xi = pinv(x)
+
+    ri = function([x], xi)(r)
+    assert ri.shape[0] == r.shape[1]
+    assert ri.shape[1] == r.shape[0]
+    assert ri.dtype == r.dtype
+    # Note that pseudoinverse can be quite unprecise so I prefer to compare
+    # the result with what numpy.linalg returns
+    assert _allclose(ri, numpy.linalg.pinv(r))
 
 
 def test_matrix_dot():
@@ -162,37 +182,39 @@ def test_inverse_grad():
 
     rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(4,4)
+    r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
 
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
     mv = tensor.matrix('mv')
-    v  = tensor.vector('v')
+    v = tensor.vector('v')
     y = matrix_inverse(mx).sum(axis=0)
 
     yv = tensor.Rop(y, mx, mv)
     rop_f = function([mx, mv], yv)
 
-    sy, _ = theano.scan( lambda i,y,x,v: (tensor.grad(y[i],x)*v).sum(),
-                       sequences = tensor.arange(y.shape[0]),
-                       non_sequences = [y,mx,mv])
-    scan_f = function([mx,mv], sy)
+    sy, _ = theano.scan(lambda i, y, x, v: (tensor.grad(y[i], x) * v).sum(),
+                       sequences=tensor.arange(y.shape[0]),
+                       non_sequences=[y, mx, mv])
+    scan_f = function([mx, mv], sy)
 
     rng = numpy.random.RandomState(utt.fetch_seed())
-    vx = numpy.asarray(rng.randn(4,4), theano.config.floatX)
-    vv = numpy.asarray(rng.randn(4,4), theano.config.floatX)
+    vx = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
+    vv = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
 
-    v1 = rop_f(vx,vv)
-    v2 = scan_f(vx,vv)
+    v1 = rop_f(vx, vv)
+    v2 = scan_f(vx, vv)
 
     assert _allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
 
     raised = False
     try:
-        tmp = tensor.Rop(theano.clone(y,
-                                      replace={mx:break_op(mx)}), mx, mv)
+        tmp = tensor.Rop(
+            theano.clone(y, replace={mx: break_op(mx)}),
+            mx,
+            mv)
     except ValueError:
         raised = True
     if not raised:
@@ -204,7 +226,7 @@ def test_rop_lop():
     yv = tensor.Lop(y, mx, v)
     lop_f = function([mx, v], yv)
 
-    sy = tensor.grad((v*y).sum(), mx)
+    sy = tensor.grad((v * y).sum(), mx)
     scan_f = function([mx, v], sy)
 
     v1 = lop_f(vx, vv)
@@ -280,13 +302,15 @@ def test_alloc_diag_grad():
 def test_diag():
     """
     Test that linalg.diag has the same behavior as numpy.diag.
-    numpy.diag has two behaviors: 
-    (1) when given a vector, it returns a matrix with that vector as the diagonal.
-    (2) when given a matrix, returns a vector which is the diagonal of the matrix.
+    numpy.diag has two behaviors:
+    (1) when given a vector, it returns a matrix with that vector as the
+    diagonal.
+    (2) when given a matrix, returns a vector which is the diagonal of the
+    matrix.
 
-    (1) and (2) are tested by test_alloc_diag and test_extract_diag respectively.
-    This test makes sure that linalg.diag instantiates the right op based on the dimension of
-    the input.
+    (1) and (2) are tested by test_alloc_diag and test_extract_diag
+    respectively. This test makes sure that linalg.diag instantiates
+    the right op based on the dimension of the input.
     """
 
     # test that it builds a matrix with given diagonal when using vector inputs
@@ -298,7 +322,7 @@ def test_diag():
     x = theano.tensor.matrix()
     y = extract_diag(x)
     assert y.owner.op.__class__ == ExtractDiag
-    
+
     # other types should raise error
     x = theano.tensor.tensor3()
     ok = False
@@ -315,7 +339,7 @@ def test_extract_diag():
     g = extract_diag(x)
     f = theano.function([x], g)
 
-    for shp in [(2, 3), (3, 2), (3, 3), (1,1), (0,0)]:
+    for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0)]:
         m = rng.rand(*shp).astype(config.floatX)
         v = numpy.diag(m)
         r = f(m)
@@ -343,7 +367,7 @@ def test_extract_diag():
 
 def test_extract_diag_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
-    x = rng.rand(5,4)
+    x = rng.rand(5, 4)
     tensor.verify_grad(extract_diag, [x], rng=rng)
 
 

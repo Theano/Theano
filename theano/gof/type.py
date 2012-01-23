@@ -228,8 +228,34 @@ class PureType(object):
     # filter() This is to allow reusing the old allocated memory. As
     # of this writing this is used only when we transfer new data to a
     # shared variable on the gpu.  
-    
+
     #def filter_inplace(value, storage, strict=False, allow_downcast=None)
+
+    def filter_variable(self, other):
+        """Convert a symbolic variable into this Type, if compatible.
+
+        For the moment, the only Types compatible with one another are
+        TensorType and CudaNdarrayType, provided they have the same
+        number of dimensions, same broadcasting pattern, and same dtype.
+
+        If Types are not compatible, a TypeError should be raised.
+        """
+        if not isinstance(other, graph.Variable):
+            # The value is not a Variable: we cast it into
+            # a Constant of the appropriate Type.
+            other = self.Constant(type=self, data=other)
+
+        if other.type != self:
+            raise TypeError(
+                    'Cannot convert Type %(othertype)s '
+                    '(of Variable %(other)s) into Type %(self)s. '
+                    'You can try to manually convert %(other)s into a %(self)s.'
+                    % dict(
+                        othertype=other.type,
+                        other=other,
+                        self=self)
+                    )
+        return other
 
     def is_valid_value(self, a):
         """Required: Return True for any python object `a` that would be a legal value for a Variable of this Type"""

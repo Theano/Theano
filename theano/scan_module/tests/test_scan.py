@@ -2585,6 +2585,26 @@ class T_Scan(unittest.TestCase):
         tf = theano.function([c, x], dP)
         assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 38
 
+    def test_grad_of_grad_of_state(self):
+        # Example provided Michael Forbes
+        # This tests ensures that we can compute gradients through cost
+        # defines in terms of gradients of scan
+        c = theano.tensor.vector('c')
+        x = theano.tensor.scalar('x')
+        _max_coefficients_supported = 1000
+        full_range = theano.tensor.arange(_max_coefficients_supported)
+        components, updates = theano.scan(
+            fn=lambda coeff, power, free_var: coeff * (free_var ** power),
+            outputs_info=None,
+            sequences=[c, full_range],
+            non_sequences=x)
+        P = components.sum()
+        dP = theano.tensor.grad(P, x).sum()
+        ddP = theano.tensor.grad(dP, x)
+        tf = theano.function([c, x], ddP)
+        assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 42
+
+
     def test_return_steps(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
@@ -2705,9 +2725,9 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([xinit, w], [gx,gw],
                                  allow_input_downcast = True)
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=-.5, high=.5),
+        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=-3., high=3.),
                            dtype=theano.config.floatX)
-        v_w = numpy.array(rng.uniform(size=(2,2)), dtype= theano.config.floatX)
+        v_w = numpy.array(rng.uniform(size=(2,2), low=-3., high=3.), dtype= theano.config.floatX)
         analytic_grad = grad_fn(v_x, v_w)
         num_grad = multiple_outputs_numeric_grad(cost_fn,
                                                  [v_x, v_w])

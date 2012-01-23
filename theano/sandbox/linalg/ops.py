@@ -20,32 +20,42 @@ except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
 
+
 class Hint(Op):
     """
     Provide arbitrary information to the optimizer
 
     These ops are removed from the graph during canonicalization
     in order to not interfere with other optimizations.
-    The idea is that prior to canonicalization, one or more Features of the env should
-    register the information contained in any Hint node, and transfer that information out of
-    the graph.
+    The idea is that prior to canonicalization, one or more Features of the
+    env should register the information contained in any Hint node, and
+    transfer that information out of the graph.
 
     """
     def __init__(self, **kwargs):
         self.hints = tuple(kwargs.items())
-        self.view_map = {0:[0]}
+        self.view_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other) and self.hints == other.hints
+
     def __hash__(self):
         return hash((type(self), self.hints))
+
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
+
     def perform(self, node, inputs, outstor):
         outstor[0][0] = inputs[0]
+
     def grad(self, inputs, g_out):
         return g_out
+
+
 def is_hint_node(node):
     return isinstance(node.op, Hint)
+
+
 def hints(variable):
     if hasattr(variable, 'env'):
         try:
@@ -58,13 +68,14 @@ def hints(variable):
         else:
             return {}
 
+
 @register_canonicalize
 @local_optimizer([])
 def remove_hint_nodes(node):
     if is_hint_node(node):
         # transfer hints from graph to Feature
         try:
-            for k,v in node.op.hints:
+            for k, v in node.op.hints:
                 node.env.hints_feature.add_hint(node.inputs[0], k, v)
         except AttributeError:
             pass
@@ -75,29 +86,34 @@ class HintsFeature(object):
     """
     Env Feature to track matrix properties
 
-    This is a similar feature to variable 'tags'. In fact, tags are one way to provide hints.
+    This is a similar feature to variable 'tags'. In fact, tags are one way
+    to provide hints.
 
-    This class exists because tags were not documented well, and the semantics of how tag
-    information should be moved around during optimizations was never clearly spelled out.
+    This class exists because tags were not documented well, and the
+    semantics of how tag information should be moved around during
+    optimizations was never clearly spelled out.
 
     Hints are assumptions about mathematical properties of variables.
     If one variable is substituted for another by an optimization,
-    then it means that the assumptions should be transferred to the new variable.
+    then it means that the assumptions should be transferred to the
+    new variable.
 
-    Hints are attached to 'positions in a graph' rather than to variables in particular,
-    although Hints are originally attached to a particular positition in a graph *via* a
-    variable in that original graph.
+    Hints are attached to 'positions in a graph' rather than to variables
+    in particular, although Hints are originally attached to a particular
+    positition in a graph *via* a variable in that original graph.
 
     Examples of hints are:
     - shape information
     - matrix properties (e.g. symmetry, psd, banded, diagonal)
 
-    Hint information is propagated through the graph similarly to graph optimizations,
-    except that adding a hint does not change the graph.  Adding a hint is not something that
-    debugmode will check.
+    Hint information is propagated through the graph similarly to graph
+    optimizations, except that adding a hint does not change the graph.
+    Adding a hint is not something that debugmode will check.
 
-    #TODO: should a Hint be an object that can actually evaluate its truthfulness?
-    #      Should the PSD property be an object that can check the PSD-ness of a variable?
+    #TODO: should a Hint be an object that can actually evaluate its
+    #      truthfulness?
+    #      Should the PSD property be an object that can check the
+    #      PSD-ness of a variable?
 
     """
     def add_hint(self, r, k, v):
@@ -107,6 +123,7 @@ class HintsFeature(object):
     def ensure_init_r(self, r):
         if r not in self.hints:
             self.hints[r] = {}
+
     #
     #
     # Feature inteface
@@ -115,7 +132,8 @@ class HintsFeature(object):
     def on_attach(self, env):
         assert not hasattr(env, 'hints_feature')
         env.hints_feature = self
-        self.hints = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        self.hints = {}
         for node in env.toposort():
             self.on_import(env, node)
 
@@ -133,7 +151,7 @@ class HintsFeature(object):
     def update_second_from_first(self, r0, r1):
         old_hints = self.hints[r0]
         new_hints = self.hints[r1]
-        for k,v in old_hints.items():
+        for k, v in old_hints.items():
             if k in new_hints and new_hints[k] is not v:
                 raise NotImplementedError()
             if k not in new_hints:
@@ -151,6 +169,7 @@ class HintsFeature(object):
         # 1) we are trying to get rid of r, or
         # 2) we are putting things back after a failed transaction.
 
+
 class HintsOptimizer(Optimizer):
     """Optimizer that serves to add HintsFeature as an env feature.
     """
@@ -163,7 +182,11 @@ class HintsOptimizer(Optimizer):
     def apply(self, env):
         pass
 # -1 should make it run right before the first merge
-theano.compile.mode.optdb.register('HintsOpt', HintsOptimizer(), -1, 'fast_run', 'fast_compile')
+theano.compile.mode.optdb.register('HintsOpt',
+                                   HintsOptimizer(),
+                                   -1,
+                                   'fast_run',
+                                   'fast_compile')
 
 
 def psd(v):
@@ -176,8 +199,12 @@ def psd(v):
 
 def is_psd(v):
     return hints(v).get('psd', False)
+
+
 def is_symmetric(v):
     return hints(v).get('symmetric', False)
+
+
 def is_positive(v):
     if hints(v).get('positive', False):
         return True
@@ -200,7 +227,7 @@ def inv_as_solve(node):
     if not imported_scipy:
         return False
     if node.op == dot:
-        l,r = node.inputs
+        l, r = node.inputs
         if l.owner and l.owner.op == matrix_inverse:
             return [solve(l.owner.inputs[0], r)]
         if r.owner and r.owner.op == matrix_inverse:
@@ -209,6 +236,7 @@ def inv_as_solve(node):
             else:
                 return [solve(r.owner.inputs[0].T, l.T).T]
 
+
 @register_canonicalize
 @register_stabilize
 @register_specialize
@@ -216,16 +244,17 @@ def inv_as_solve(node):
 def no_transpose_symmetric(node):
     if isinstance(node.op, DimShuffle):
         x = node.inputs[0]
-        if x.type.ndim==2 and is_symmetric(x):
+        if x.type.ndim == 2 and is_symmetric(x):
             #print 'UNDOING TRANSPOSE', is_symmetric(x), x.ndim
-            if node.op.new_order == [1,0]:
+            if node.op.new_order == [1, 0]:
                 return [x]
+
 
 @register_stabilize
 @local_optimizer([])
 def psd_solve_with_chol(node):
     if node.op == solve:
-        A, b = node.inputs #result is solution Ax=b
+        A, b = node.inputs  # result is solution Ax=b
         if is_psd(A):
             L = cholesky(A)
             #N.B. this can be further reduced to a yet-unwritten cho_solve Op
@@ -234,6 +263,7 @@ def psd_solve_with_chol(node):
             Li_b = Solve('lower_triangular')(L, b)
             x = Solve('upper_triangular')(L.T, Li_b)
             return [x]
+
 
 @register_stabilize
 @register_specialize
@@ -246,10 +276,10 @@ def local_det_chol(node):
     """
     if node.op == det:
         x, = node.inputs
-        for (cl,xpos) in x.clients:
+        for (cl, xpos) in x.clients:
             if isinstance(cl.op, Cholesky):
                 L = cl.outputs[0]
-                return [tensor.prod(extract_diag(L)**2)]
+                return [tensor.prod(extract_diag(L) ** 2)]
 
 
 @register_canonicalize
@@ -268,8 +298,9 @@ def local_log_prod_sqr(node):
             if is_positive(p):
                 return [tensor.log(p).sum(axis=x.owner.op.axis)]
 
-            #TODO: have a reduction like prod and sum that simply returns the sign
-            #      of the prod multiplication.
+            #TODO: have a reduction like prod and sum that simply
+            #      returns the sign of the prod multiplication.
+
 
 @register_canonicalize
 @register_stabilize
@@ -444,6 +475,58 @@ class CholeskyGrad(Op):
         return [shapes[0]]
 
 
+class MatrixPinv(Op):
+    """Computes the pseudo-inverse of a matrix :math:`A`.
+
+    The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
+    defined as: "the matrix that 'solves' [the least-squares problem]
+    :math:`Ax = b`," i.e., if :math:`\bar{x}` is said solution, then
+    :math:`A^+` is that matrix such that :math:`\bar{x} = A^+b`.
+
+    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
+    This method is not faster then `matrix_inverse`. Its strength comes from
+    that it works for non-square matrices.
+    If you have a square matrix though, `matrix_inverse` can be both more
+    exact and faster to compute. Aslo this op does not get optimized into a
+    solve op.
+    """
+    def __init__(self):
+        pass
+
+    def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``MatrixPinv`` op, there are no properties to be exposed.
+        """
+        return ()
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, (x,), (z, )):
+        try:
+            if imported_scipy:
+                z[0] = scipy.linalg.pinv(x).astype(x.dtype)
+            else:
+                z[0] = numpy.linalg.pinv(x).astype(x.dtype)
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to invert %s' % str(node.inputs[0]))
+            raise
+
+    def __str__(self):
+        return "MatrixPseudoInverse"
+
+pinv = MatrixPinv()
+
+
 class MatrixInverse(Op):
     """Computes the inverse of a matrix :math:`A`.
 
@@ -470,7 +553,7 @@ class MatrixInverse(Op):
         return hash((type(self), self.props()))
 
     def __eq__(self, other):
-        return (type(self)==type(other) and self.props() == other.props())
+        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -500,7 +583,7 @@ class MatrixInverse(Op):
         xi = self(x)
         gz, = g_outputs
         #TT.dot(gz.T,xi)
-        return [-matrix_dot(xi,gz.T,xi).T]
+        return [-matrix_dot(xi, gz.T, xi).T]
 
     def R_op(self, inputs, eval_points):
         """The gradient function should return:
@@ -520,35 +603,43 @@ class MatrixInverse(Op):
         ev, = eval_points
         if ev is None:
             return [None]
-        #TT.dot(gz.T,xi)
-        return [-matrix_dot(xi,ev,xi)]
-
+        return [-matrix_dot(xi, ev, xi)]
 
     def __str__(self):
         return "MatrixInverse"
 
 matrix_inverse = MatrixInverse()
 
+
 class Solve(Op):
     """Solve a system of linear equations"""
-    def __init__(self, A_structure='general', lower=False, overwrite_A=False, overwrite_b=False):
+    def __init__(self,
+                 A_structure='general',
+                 lower=False,
+                 overwrite_A=False,
+                 overwrite_b=False):
         if A_structure not in MATRIX_STRUCTURES:
             raise ValueError('Invalid matrix structure argument', A_structure)
         self.A_structure = A_structure
-        self.lower=lower
-        self.overwrite_A=overwrite_A
-        self.overwrite_b=overwrite_b
+        self.lower = lower
+        self.overwrite_A = overwrite_A
+        self.overwrite_b = overwrite_b
+
     def props(self):
         return (self.A_structure,
                 self.lower,
                 self.overwrite_A,
                 self.overwrite_b)
+
     def __hash__(self):
-        return hash((type(self),self.props()))
+        return hash((type(self), self.props()))
+
     def __eq__(self, other):
         return type(self) == type(other) and self.props() == other.props()
+
     def __repr__(self):
-        return 'Solve{%s}'%str(self.props())
+        return 'Solve{%s}' % str(self.props())
+
     def make_node(self, A, b):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the Solve op")
@@ -556,30 +647,34 @@ class Solve(Op):
         b = as_tensor_variable(b)
         otype = tensor.tensor(
                 broadcastable=b.broadcastable,
-                dtype = (A*b).dtype)
-        return Apply(self, [A,b], [otype])
+                dtype=(A * b).dtype)
+        return Apply(self, [A, b], [otype])
+
     def perform(self, node, inputs, output_storage):
         A, b = inputs
         #TODO: use the A_structure to go faster
-        output_storage[0][0] = scipy.linalg.solve(A,b)
-solve = Solve() # general solve
+        output_storage[0][0] = scipy.linalg.solve(A, b)
+
+solve = Solve()  # general solve
 
 #TODO : SolveTriangular
 
-#TODO: Optimizations to replace multiplication by matrix inverse with solve() Op (still unwritten)
+#TODO: Optimizations to replace multiplication by matrix inverse
+#      with solve() Op (still unwritten)
+
 
 class ExtractDiag(Op):
     """ Return the diagonal of a matrix. """
     def __init__(self, view=False):
         self.view = view
         if self.view:
-            self.view_map = {0:[0]}
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.view == other.view
 
     def __hash__(self):
-        return hash(type(self))^hash(self.view)
+        return hash(type(self)) ^ hash(self.view)
 
     def make_node(self, _x):
         x = as_tensor_variable(_x)
@@ -588,7 +683,8 @@ class ExtractDiag(Op):
         return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
 
     def perform(self, node, ins, outs):
-        """ For some reason numpy.diag(x) is really slow, so we implemented our own. """
+        """ For some reason numpy.diag(x) is really slow, so we
+        implemented our own. """
         x, = ins
         z, = outs
 
@@ -597,24 +693,26 @@ class ExtractDiag(Op):
             z[0] = numpy.zeros(0)
             return
 
-        if x.shape[0] < x.shape [1]:
-            rval = x[:,0]
+        if x.shape[0] < x.shape[1]:
+            rval = x[:, 0]
         else:
             rval = x[0]
 
-        rval.strides = (x.strides[0]+x.strides[1],)
+        rval.strides = (x.strides[0] + x.strides[1],)
         if self.view:
             z[0] = rval
         else:
             z[0] = rval.copy()
 
     def __str__(self):
-        return 'ExtractDiag{view=%s}'%self.view
+        return 'ExtractDiag{view=%s}' % self.view
 
     def grad(self, inputs, g_outputs):
         x = tensor.zeros_like(inputs[0])
         xdiag = alloc_diag(g_outputs[0])
-        return [tensor.set_subtensor(x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
+        return [tensor.set_subtensor(
+            x[:xdiag.shape[0], :xdiag.shape[1]],
+            xdiag)]
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
@@ -651,7 +749,7 @@ class AllocDiag(Op):
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
-        return [(x_s[0],x_s[0])]
+        return [(x_s[0], x_s[0])]
 
 alloc_diag = AllocDiag()
 
@@ -667,7 +765,7 @@ def diag(x):
     xx = as_tensor_variable(x)
     if xx.type.ndim == 1:
         return alloc_diag(xx)
-    elif xx.type.ndim ==2:
+    elif xx.type.ndim == 2:
         return extract_diag(xx)
     else:
         raise TypeError('diag requires vector or matrix argument', x)
@@ -681,22 +779,22 @@ class Det(Op):
         x = as_tensor_variable(x)
         o = theano.tensor.scalar(dtype=x.dtype)
         return Apply(self, [x], [o])
-    
+
     def perform(self, node, (x,), (z, )):
         try:
             z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
         except Exception:
             print 'Failed to compute determinant', x
             raise
-        
+
     def grad(self, inputs, g_outputs):
         gz, = g_outputs
         x, = inputs
         return [gz * self(x) * matrix_inverse(x).T]
-    
+
     def infer_shape(self, node, shapes):
         return [()]
-    
+
     def __str__(self):
         return "Det"
 det = Det()
@@ -734,7 +832,8 @@ def spectral_radius_bound(X, log2_exponent):
         XX = tensor.dot(XX, XX)
     return tensor.pow(
             trace(XX),
-            2**(-log2_exponent))
+            2 ** (-log2_exponent))
+
 
 class A_Xinv_b(Op):
     """Product of form a inv(X) b"""
@@ -745,9 +844,10 @@ class A_Xinv_b(Op):
         b = as_tensor_variable(b)
         X = as_tensor_variable(X)
         o = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [a,X,b], [o])
+        return Apply(self, [a, X, b], [o])
+
     def perform(self, ndoe, inputs, outstor):
-        a,X,b = inputs
+        a, X, b = inputs
         if 1:
             L_factor = scipy.linalg.cho_factor(X)
             xb = scipy.linalg.cho_solve(L_factor, b)
@@ -755,10 +855,11 @@ class A_Xinv_b(Op):
             z = numpy.dot(xa.T, xb)
         else:
             raise NotImplementedError(self.X_structure)
-        outstor[0][0]=z
+        outstor[0][0] = z
+
     def grad(self, inputs, g_outputs):
         gz, = g_outputs
-        a,X,b = inputs
+        a, X, b = inputs
         iX = matrix_inverse(X)
         ga = matrix_dot(gz, b.T, iX.T)
         gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
