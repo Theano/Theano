@@ -18,7 +18,7 @@ from test_blas import TestCase
 from test_blas import BaseGemv
 
 mode_blas_opt = theano.compile.get_default_mode().including(
-    'BlasOpt', 'specialize', 'InplaceBlasOpt')
+    'BlasOpt', 'specialize', 'InplaceBlasOpt', 'c_blas')
 
 
 class TestCGer(TestCase, TestOptimizationMixin):
