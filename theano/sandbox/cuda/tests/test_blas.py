@@ -1,3 +1,5 @@
+from unittest import TestCase
+
 from theano.compile.pfunc import pfunc
 from theano import tensor
 from theano.tests import unittest_tools
@@ -15,6 +17,8 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
+from theano.tensor.tests.test_blas import BaseGemv
+from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 
 
 if theano.config.mode=='FAST_COMPILE':
@@ -243,3 +247,14 @@ def test_downsample():
 
                 #We already check that the gpu version return the same value as the gpu version
                 #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
+
+
+class TestGpuGemv(TestCase, BaseGemv,
+                  unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+    gemv = gpu_gemv_no_inplace
+    # As all input are transfered to the gpu, this allow to make all
+    # the gemv inplace.
+    gemv = gpu_gemv_inplace
+    gemv_inplace = gpu_gemv_inplace
