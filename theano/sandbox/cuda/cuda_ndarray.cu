@@ -3005,10 +3005,22 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
     assert (CudaNdarray_HOST_STRIDES(y)[0] >= 0);
 
     // Since Sger expects A in col-major, we invert x and y to fake this.
-    cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
-               CudaNdarray_DEV_DATA(y), CudaNdarray_HOST_STRIDES(y)[0],
-               CudaNdarray_DEV_DATA(x), CudaNdarray_HOST_STRIDES(x)[0],
-               CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
+    int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
+    if(x_strides == 0){
+        assert(CudaNdarray_HOST_DIMS(x)[0] == 1);
+        x_strides = 4;
+    }
+    int y_strides = CudaNdarray_HOST_STRIDES(y)[0];
+    if(y_strides == 0){
+        assert(CudaNdarray_HOST_DIMS(y)[0] == 1);
+        y_strides = 4;
+    }
+
+    if(CudaNdarray_SIZE(A))
+        cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
+                   CudaNdarray_DEV_DATA(y), y_strides,
+                   CudaNdarray_DEV_DATA(x), x_strides,
+                   CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
     CNDA_THREAD_SYNC;
 
     cudaError_t err = cudaGetLastError();
