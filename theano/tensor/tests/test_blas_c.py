@@ -17,6 +17,10 @@ from theano.tests.unittest_tools import TestOptimizationMixin
 from test_blas import TestCase
 from test_blas import BaseGemv
 
+mode_blas_opt = theano.compile.get_default_mode().including(
+    'BlasOpt', 'specialize', 'InplaceBlasOpt')
+
+
 class TestCGer(TestCase, TestOptimizationMixin):
 
     def setUp(self, dtype='float64'):
@@ -202,12 +206,14 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
 
 class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
+    mode = mode_blas_opt
     dtype = 'float32'
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
 
 
 class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
+    mode = mode_blas_opt
     dtype = 'float64'
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
