@@ -71,7 +71,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             || (%(Z)s->dimensions[1] != %(A)s->dimensions[1]))
         {
             if (%(Z)s) Py_XDECREF(%(Z)s);
-            %(Z)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(A)s);
+            %(Z)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, PyArray_TYPE(%(A)s));
             if(!%(Z)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc ger output");
                 %(fail)s
@@ -198,7 +198,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def make_thunk(*args, **kwargs):
         # skip over Ger.make_thunk
