@@ -137,6 +137,15 @@ def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
+
+def sp_zeros_like(x):
+    #TODO: don't restrict to CSM formats
+    _, _, indptr, shape = csm_properties(x)
+    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
+                                numpy.array([]), tensor.zeros_like(indptr),
+                                shape)
+
+
 class _sparse_py_operators:
     T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
     def __neg__(self): return neg(self)
@@ -171,6 +180,9 @@ class _sparse_py_operators:
     # rather than the total number of elements that may be stored. Note also
     # that stored zeros *do* count in the size.
     size = property(lambda self: csm_data(self).size)
+
+    def zeros_like(model):
+        return sp_zeros_like(model)
 
 
 class SparseVariable(gof.Variable, _sparse_py_operators):

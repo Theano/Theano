@@ -820,6 +820,20 @@ class UsmmTests(unittest.TestCase):
                         for node in topo]) == nb
 
 
+class test_zeros_like(unittest.TestCase):
+    def test(self):
+        x = theano.sparse.csr_matrix()
+        f = theano.function([x], theano.sparse.sp_zeros_like(x))
+        vx = scipy.sparse.csr_matrix(numpy.asarray(
+                numpy.random.binomial(1, 0.5, (100, 100)),
+                dtype=theano.config.floatX))
+
+        fx = f(vx)
+
+        assert fx.nnz == 0
+        assert fx.shape == vx.shape
+
+
 def test_shape_i():
     sparse_dtype = 'float32'
 

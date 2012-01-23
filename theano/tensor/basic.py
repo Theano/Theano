@@ -1450,11 +1450,12 @@ class _tensor_py_operators:
 
     def get_constant_value(self):
         return get_constant_value(self)
+    def zeros_like(model):
+        return zeros_like(model)
 
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
-
 
 TensorType.Variable = TensorVariable
 
@@ -2367,7 +2368,6 @@ def zeros_like(model, dtype=None):
     if dtype is None:
         dtype = model.type.dtype
     return fill(model, constant(0.0, dtype=dtype))
-
 
 def zeros(shape, dtype=config.floatX):
     """
