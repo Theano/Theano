@@ -17,8 +17,9 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
-from theano.tensor.tests.test_blas import BaseGemv
+from theano.tensor.tests.test_blas import BaseGemv, TestGer_local_gemm_to_ger
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
+from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
 
 if theano.config.mode=='FAST_COMPILE':
@@ -258,3 +259,24 @@ class TestGpuGemv(TestCase, BaseGemv,
     # the gemv inplace.
     gemv = gpu_gemv_inplace
     gemv_inplace = gpu_gemv_inplace
+
+
+class TestGpuGer(TestGer_local_gemm_to_ger):
+    def setUp(self):
+        self.mode = theano.compile.get_default_mode().including(
+            'fast_run', 'gpu')
+        self.mode = self.mode.excluding('c_blas')
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.origval = theano.tensor.blas_scipy.optimizations_enabled
+        theano.tensor.blas_scipy.optimizations_enabled = False
+        self.ger = gpu_ger_no_inplace
+        self.ger_destructive = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_no_inplace
+
+        # data on the gpu make the op always inplace
+        self.ger = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_inplace

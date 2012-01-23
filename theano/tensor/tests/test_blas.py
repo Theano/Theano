@@ -1403,6 +1403,9 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
         self.y = T.tensor(dtype=dtype, broadcastable=(False,))
         self.origval = theano.tensor.blas_scipy.optimizations_enabled
         theano.tensor.blas_scipy.optimizations_enabled = False
+        self.ger = ger
+        self.ger_destructive = ger_destructive
+        self.gemm = gemm_no_inplace
 
     def tearDown(self):
         theano.tensor.blas_scipy.optimizations_enabled = self.origval
@@ -1431,19 +1434,23 @@ class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
 
     def test_outer(self):
         f = self.function([self.x, self.y], T.outer(self.x, self.y))
-        self.assertFunctionContains(f, ger_destructive)
+        self.assertFunctionContains(f, self.ger_destructive)
 
     def test_A_plus_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + T.outer(self.x, self.y))
-        self.assertFunctionContains(f, ger)
+        self.assertFunctionContains(f, self.ger)
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * T.outer(self.x, self.y))
-        self.assertFunctionContains(f, ger)
+        self.assertFunctionContains(f, self.ger)
 
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
-                0.2 * self.A + 0.1 * T.outer(self.x, self.y))
-        self.assertFunctionContains(f, gemm_no_inplace)
+                          numpy.asarray(0.2, self.dtype) * self.A +
+                          numpy.asarray(0.1, self.dtype) * T.outer(
+                self.x, self.y))
+        # Why gemm? This make the graph simpler did we test that it
+        # make it faster?
+        self.assertFunctionContains(f, self.gemm)
