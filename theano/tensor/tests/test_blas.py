@@ -873,6 +873,20 @@ def test_dot_w_self():
 ###############################################################################
 
 class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
+    def test_dot_vv(self):
+        ''' Currently we generate a gemv for that case'''
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        w = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        f = theano.function([], theano.dot(v, w), mode=mode_blas_opt)
+
+        # Assert that the dot was optimized somehow
+        self.assertFunctionContains0(f, T.dot)
+        self.assertFunctionContains1(f, Gemv(False))
+
+        # Assert they produce the same output
+        assert numpy.allclose(f(), numpy.dot(v.get_value(), w.get_value()))
+
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
