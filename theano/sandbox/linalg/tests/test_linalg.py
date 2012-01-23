@@ -6,7 +6,7 @@ import numpy.linalg
 import theano
 from theano import tensor, function
 from theano.tensor.basic import _allclose
-from theano.tensor.tests.test_rop import break_op
+from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
 
