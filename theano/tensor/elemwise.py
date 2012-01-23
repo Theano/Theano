@@ -1004,7 +1004,7 @@ class CAReduce(Op):
     subtract, divide or power).
     """
 
-    def __init__(self, scalar_op, axis = None):
+    def __init__(self, scalar_op, axis=None):
         """
         Usage: CAReduce(scalar_op, axis = None)
 
@@ -1071,9 +1071,10 @@ class CAReduce(Op):
             op = self.__class__(self.scalar_op, axis)
         else:
             op = self
-        output = TensorType(dtype = self._output_dtype(input.type.dtype),
-                             broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
-
+        broadcastable = [x for i, x in enumerate(input.type.broadcastable)
+                         if i not in axis]
+        output = TensorType(dtype=self._output_dtype(input.type.dtype),
+                            broadcastable=broadcastable)()
         return Apply(op, [input], [output])
 
     def __getstate__(self):
@@ -1315,26 +1316,62 @@ class Any(CAReduce):
 
 
 class Sum(CAReduce):
+
     """
     Sums all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduce(scalar.add, axis = axis), with the
+    Equivalent to CAReduce(scalar.add, axis=axis), with the
     difference that this defines the gradient of sum wrt its tensor
     input.
     """
-    def __init__(self, axis = None):
+
+    def __init__(self, axis=None, dtype=None):
+        """
+        Constructor.
+
+        :param axis: Axis(es) along which the tensor should be summed
+        (use None to sum over all axes, and a list or tuple to sum along more
+        than one axis).
+
+        :param dtype: The dtype of the internal accumulator and returned
+        tensor. If None, then we use the default dtype which is the same as the
+        input tensor's dtype except when:
+            - the input dtype is a signed integer of precision < 64 bit, in
+              which case we use int64
+            - the input dtype is an unsigned integer of precision < 64 bit, in
+              which case we use uint64
+        This behavior is similar in spirit to that of numpy (except numpy
+        uses the default machine integer while we always use 64 bit integers to
+        avoid platform-dependent behavior).
+
+        IMPORTANT: If you use a custom dtype (!= None), it is strongly advised
+        to set `config.on_opt_error` to 'raise' and to run your code in
+        DebugMode at least once. This is because some optimizations may not
+        currently be able to properly deal with such custom dtypes. Also please
+        note that using a custom dtype may prevent some optimizations from
+        being applied.
+        """
         CAReduce.__init__(self, scalar.add, axis)
+        self.dtype = dtype
+
+    def __eq__(self, other):
+        return CAReduce.__eq__(self, other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return CAReduce.__hash__(self) ^ hash(self.dtype)
 
     def _output_dtype(self, idtype):
-        # we want to protect against overflow
-        return dict(
-                int8='int32',
-                int16='int32',
-                int32='int64',
-                uint8='uint32',
-                uint16='uint32',
-                uint32='uint64',
-                ).get(idtype, idtype)
+        if self.dtype is None:
+            return dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    ).get(idtype, idtype)
+        else:
+            return self.dtype
 
     def grad(self, inp, grads):
         x, = inp
@@ -1353,7 +1390,8 @@ class Sum(CAReduce):
             else:
                 new_dims.append(i)
                 i += 1
-        return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
+        return Elemwise(scalar.second)(
+                        x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
 
     def R_op(self, inputs, eval_points):
         # There is just one element in inputs and eval_points, the axis are
@@ -1367,6 +1405,7 @@ class Sum(CAReduce):
             return "Sum"
         else:
             return "Sum{%s}" % ", ".join(map(str, self.axis))
+
 
 class Prod(CAReduce):
     """
