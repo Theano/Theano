@@ -599,7 +599,7 @@ __global__ void k_copy_reshape_rowmajor(unsigned int numEls,
 // Reshape self to the new shape gived by the tuple shape.
 //
 // If self is c contiguous, it return a view. Otherwise it always do a copy.
-// TODO: make it return a view when the strides allow it event if it is not 
+// TODO: make it return a view when the strides allow it event if it is not
 //       c contiguous
 PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
 {
@@ -1133,7 +1133,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         CudaNdarray_HOST_STRIDES(self)[0],
                         CudaNdarray_DEV_DATA(other),
                         1, //strides
-                        1, 
+                        1,
                         CudaNdarray_HOST_STRIDES(other)[0]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
