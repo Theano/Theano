@@ -466,7 +466,7 @@ class TestScan(unittest.TestCase):
 
 
     def test002_generator_one_scalar_output(self):
-        # The test fails, because the work in progress ScanOp always works in
+        # The test fails, because the `work-in-progress` ScanOp always runs in
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
@@ -501,7 +501,7 @@ class TestScan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars
     def test003_one_sequence_one_output_and_weights(self):
-        # The test fails, because the work in progress ScanOp always works in
+        # The test fails, because the `work-in-progress` ScanOp always runs in
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
