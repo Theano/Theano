@@ -188,9 +188,9 @@ class _sparse_py_operators:
         if not isinstance(args, tuple):
             args = args,
 
-        scalar_var = tensor.scalar(dtype='int32')
+        scalar_var = tensor.iscalar()
 
-        if len(args) is not 1:
+        if len(args) == 2:
             scalar_arg_1 = (numpy.isscalar(args[0]) or
                             getattr(args[0], 'type', None) == scalar_var.type)
             scalar_arg_2 = (numpy.isscalar(args[1]) or
@@ -652,7 +652,14 @@ class GetItem2d(gof.op.Op):
     If you want to take only one element of a sparse matrix see the class GetItemScalar
     that return a tensor scalar.
 
-    :note: that subtensor selection always returns a matrix, even when one index is a scalar.
+    :note:
+    that subtensor selection always returns a matrix so indexing with [a:b, c:d] is forced.
+    If one index is a scalar, e.g. x[a:b, c] and x[a, b:c], generate an error. Use instead
+    x[a:b, c:c+1] and x[a:a+1, b:c].
+    The above indexing methods are not supported because the rval would be a sparse
+    matrix rather than a sparse vector, which is a deviation from numpy indexing rule.
+    This decision is made largely for keeping the consistency between numpy and theano. 
+    Subjected to modification when sparse vector is supported.
     """
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -683,15 +690,17 @@ class GetItem2d(gof.op.Op):
                 if isinstance(stop,int):
                     stop = theano.tensor.constant(stop)
                     
-            # in case of indexing using python int
-            elif isinstance(ind,int):
-                start = theano.tensor.constant(ind)
-                stop = start + 1
-            elif ind.ndim == 0:
-                start = ind
-                stop = ind + 1
+            #in case of indexing using python int
+            #elif isinstance(ind,int):
+            #    start = theano.tensor.constant(ind)
+            #    stop = start + 1
+            #elif ind.ndim == 0:
+            #    start = ind
+            #    stop = ind + 1
+            
             else:
-                raise NotImplemented()
+                raise NotImplemented('Theano has no sparse vector'+
+                                    'Use X[a:b,c:d], X[a:b,c:c+1] or X[a:b] instead.')
             input_op += [start, stop]
         if len(index)==1:
             i = theano.gof.Constant(theano.gof.generic, None)
