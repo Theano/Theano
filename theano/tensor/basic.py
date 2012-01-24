@@ -5310,7 +5310,16 @@ class Dot(Op):
             # but we need to return a 0d ndarray
             z[0] = numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
-            # The error raised by numpy has no shape information, we mean to add that
+            # The error raised by numpy has no shape information, we mean to
+            # add that
+            if config.exception_verbosity == 'high':
+                raise ValueError('dot product failed.\n'
+                                 'First arg dims: ' + str(x.shape) + '\n'
+                                 'Second arg dims: ' + str(y.shape) + '\n'
+                                 'First arg: \n' +
+                                 min_informative_str(node.inputs[0]) +
+                                 '\nSecond arg: \n' +
+                                 min_informative_str(node.inputs[1]))
             e.args = e.args + (x.shape, y.shape)
             raise
 
