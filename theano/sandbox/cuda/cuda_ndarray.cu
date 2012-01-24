@@ -2015,6 +2015,26 @@ GetDeviceProperties(PyObject* _unused, PyObject* args)
   return dict;
 }
 
+/*
+ * Returns in *free and *total respectively, the free and total amount of memory available for allocation by the device in bytes.
+ */
+PyObject *
+GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
+{
+    size_t free = 0, total = 0;
+    if(g_gpu_context_active == 0){
+        PyErr_Format(PyExc_RuntimeError, "No gpu device selected yet. Please make sure the gpu device was initialized by Theano before.");
+        return NULL;
+    }
+
+    cudaError_t err = cudaMemGetInfo(&free, &total);
+    if (err != cudaSuccess){
+        PyErr_Format(PyExc_RuntimeError, "Error while getting memory info about the gpu %d");
+        return NULL;
+    }
+    return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
+}
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape",
         (getter)CudaNdarray_get_shape,
@@ -2503,6 +2523,7 @@ static PyMethodDef module_methods[] = {
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
     {"device_properties", GetDeviceProperties, METH_VARARGS, "Return a dictionnary with the device properties."},
+    {"mem_info", GetDeviceMemInfo, METH_NOARGS, "Return a tuple with the free and totel memory on the gpu in bytes."},
     {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
