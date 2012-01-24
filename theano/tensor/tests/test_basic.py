@@ -567,11 +567,9 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     column=(rand(2, 3), rand(2, 1)),
     dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
     dtype_mixup_2=(randint_nonzero(2, 3), rand(2, 3)),
-# Fix problem with integers and uintegers and add them.
-# Then remove their specific addition to CeilIntDivTester tests.
-#    integer=(randint(2, 3), randint_nonzero(2, 3)),
-#    uinteger=(randint(2, 3).astype("uint8"),
-#              randint_nonzero(2, 3).astype("uint8")),
+    integer=(randint(2, 3), randint_nonzero(2, 3)),
+    uinteger=(randint(2, 3).astype("uint8"),
+              randint_nonzero(2, 3).astype("uint8")),
     # This empty2 doesn't work for some tests. I don't remember why
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
     )
@@ -630,11 +628,7 @@ TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
 CeilIntDivTester = makeBroadcastTester(
     op=tensor.ceil_intdiv,
     expected=lambda x, y: check_floatX((x, y), (x // y) + ((x % y) != 0)),
-    good=copymod(_good_broadcast_div_mod_normal_float_no_complex,
-                 integer=(randint(2, 3), randint_nonzero(2, 3)),
-                 uinteger=(randint(2, 3).astype("uint8"),
-                           randint_nonzero(2, 3).astype("uint8")),
-                 ),
+    good=_good_broadcast_div_mod_normal_float_no_complex,
     name='CeilIntDiv',
     # As we implement this function with neq, the gradient returned is always 0.
 #    grad=_grad_broadcast_div_mod_normal,
