@@ -1367,7 +1367,7 @@ if (%(x)s < 0) {
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (1,)
 
     def grad(self, inputs, g_output):
         return [None] * len(inputs)
