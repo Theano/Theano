@@ -2725,9 +2725,18 @@ class T_Scan(unittest.TestCase):
         grad_fn = theano.function([xinit, w], [gx,gw],
                                  allow_input_downcast = True)
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=-3., high=3.),
+        # If numbers are small, the gradients with respect to x are samll
+        # and the numeric differentiation becomes unstable.
+        # To fix this issue I unsreu we are sampling numbers larger then in
+        # absolute value then 1
+        v_x  = numpy.array(rng.uniform(size=(5,2,3), low=1., high=3.),
                            dtype=theano.config.floatX)
-        v_w = numpy.array(rng.uniform(size=(2,2), low=-3., high=3.), dtype= theano.config.floatX)
+        # making some entries to be smaller then 1
+        pos = rng.uniform(size=(5, 2, 3), low=0., high=1) < .5
+        v_x[pos] = -1 * v_x[pos]
+        v_w = numpy.array(rng.uniform(size=(2,2), low=1., high=3.), dtype= theano.config.floatX)
+        pos = rng.uniform(size=(2,2), low=0., high=1.) < .5
+        v_w[pos] = -1 * v_w[pos]
         analytic_grad = grad_fn(v_x, v_w)
         num_grad = multiple_outputs_numeric_grad(cost_fn,
                                                  [v_x, v_w])
