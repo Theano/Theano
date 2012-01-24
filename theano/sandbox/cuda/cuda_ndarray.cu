@@ -2035,6 +2035,17 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
     return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
 }
 
+#if COMPUTE_GPU_MEM_USED
+/*
+ * Return the size in bytes that Theano currently have allocated on the gpu.
+ */
+PyObject *
+GetTheanoAllocInfo(PyObject* _unused, PyObject* dummy)
+{
+    return PyLong_FromLong(_allocated_size);
+}
+#endif
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape",
         (getter)CudaNdarray_get_shape,
@@ -2522,8 +2533,11 @@ static PyMethodDef module_methods[] = {
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
-    {"device_properties", GetDeviceProperties, METH_VARARGS, "Return a dictionnary with the device properties."},
-    {"mem_info", GetDeviceMemInfo, METH_NOARGS, "Return a tuple with the free and totel memory on the gpu in bytes."},
+    {"device_properties", GetDeviceProperties, METH_VARARGS, "Return a dictionary with the device properties."},
+    {"mem_info", GetDeviceMemInfo, METH_NOARGS, "Return a tuple with the free and total memory on the gpu in bytes."},
+#if COMPUTE_GPU_MEM_USED
+    {"theano_allocated", GetTheanoAllocInfo, METH_NOARGS, "Return the size in bytes of memory Theano currently have allocated on the gpu."},
+#endif
     {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
