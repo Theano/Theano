@@ -1931,6 +1931,90 @@ CudaNdarray_get_base(CudaNdarray *self, void *closure)
     return base;
 }
 
+void put_in_dict(PyObject * dict, const char * key, int val)
+{
+  PyObject * k = PyString_FromString(key);
+  PyObject * v = PyInt_FromLong(val);
+  PyDict_SetItem(dict, k, v);
+  Py_DECREF(k);
+  Py_DECREF(v);
+}
+
+PyObject *
+GetDeviceProperties(PyObject* _unused, PyObject* args)
+{
+  int dev_id = -1;
+  if (! PyArg_ParseTuple(args, "i", &dev_id))
+    return NULL;
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, dev_id);
+
+  PyObject * dict = PyDict_New();
+  PyObject * str= PyString_FromString("name");
+  PyObject * i = PyString_FromString(deviceProp.name);
+  PyDict_SetItem(dict, str, i);
+  Py_DECREF(str);
+  Py_DECREF(i);
+
+  put_in_dict(dict, "major", deviceProp.major);
+  put_in_dict(dict, "minor", deviceProp.minor);
+#if CUDART_VERSION >= 2020
+  int driverVersion = 0, runtimeVersion = 0;
+  cudaDriverGetVersion(&driverVersion);
+  cudaRuntimeGetVersion(&runtimeVersion);
+  put_in_dict(dict, "driverVersion", driverVersion);
+  put_in_dict(dict, "runtimeVersion", runtimeVersion);
+#endif
+#if CUDART_VERSION >= 2000
+
+  put_in_dict(dict, "multiProcessorCount", deviceProp.multiProcessorCount);
+  //if ConvertSMVer2Cores is not defined in cuda_runtime_api.h, the run time is too old.
+  int sm_cores = -1;
+  if(deviceProp.major==1)
+    sm_cores = 32;
+  else if(deviceProp.major==2 && deviceProp.minor==0)
+    sm_cores = 32;
+  else if(deviceProp.major==2 && deviceProp.minor==1)
+    sm_cores = 48;
+  put_in_dict(dict, "coresCount", sm_cores * deviceProp.multiProcessorCount);
+#endif
+  put_in_dict(dict, "totalConstMem", deviceProp.totalConstMem);
+  put_in_dict(dict, "sharedMemPerBlock", deviceProp.sharedMemPerBlock);
+  put_in_dict(dict, "regsPerBlock", deviceProp.regsPerBlock);
+  put_in_dict(dict, "warpSize", deviceProp.warpSize);
+  put_in_dict(dict, "maxThreadsPerBlock", deviceProp.maxThreadsPerBlock);
+  put_in_dict(dict, "maxThreadsDim0", deviceProp.maxThreadsDim[0]);
+  put_in_dict(dict, "maxThreadsDim1", deviceProp.maxThreadsDim[1]);
+  put_in_dict(dict, "maxThreadsDim2", deviceProp.maxThreadsDim[2]);
+  put_in_dict(dict, "maxGridSize0", deviceProp.maxGridSize[0]);
+  put_in_dict(dict, "maxGridSize1", deviceProp.maxGridSize[1]);
+  put_in_dict(dict, "maxGridSize2", deviceProp.maxGridSize[2]);
+  put_in_dict(dict, "memPitch", deviceProp.memPitch);
+  put_in_dict(dict, "textureAlignment", deviceProp.textureAlignment);
+  put_in_dict(dict, "clockRate", deviceProp.clockRate);
+#if CUDART_VERSION >= 2000
+  put_in_dict(dict, "deviceOverlap", deviceProp.deviceOverlap);
+#endif
+#if CUDART_VERSION >= 2020
+  put_in_dict(dict, "kernelExecTimeoutEnabled", deviceProp.kernelExecTimeoutEnabled);
+  put_in_dict(dict, "integrated", deviceProp.integrated);
+  put_in_dict(dict, "canMapHostMemory", deviceProp.canMapHostMemory);
+  put_in_dict(dict, "computeMode", deviceProp.computeMode);
+  //in the doc of this fct tell that 0 - Normal mode, 1 - only 1 context, 2 - no context
+#endif
+#if CUDART_VERSION >= 3000
+  put_in_dict(dict, "concurrentKernels", deviceProp.concurrentKernels);
+#endif
+#if CUDART_VERSION >= 3010
+  put_in_dict(dict, "ECCEnabled", deviceProp.ECCEnabled);
+#endif
+#if CUDART_VERSION >= 3020
+  put_in_dict(dict, "tccDriver", deviceProp.tccDriver);
+#endif
+
+  return dict;
+}
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape",
         (getter)CudaNdarray_get_shape,
@@ -2418,6 +2502,7 @@ static PyMethodDef module_methods[] = {
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
+    {"device_properties", GetDeviceProperties, METH_VARARGS, "Return a dictionnary with the device properties."},
     {"ptr_int_size", CudaNdarray_ptr_int_size, METH_VARARGS, "Return a tuple with the size of gpu pointer, cpu pointer and int in bytes."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
