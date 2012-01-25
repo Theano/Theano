@@ -2896,11 +2896,11 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         # If numbers are small, the gradients with respect to x are small
         # and the numeric differentiation becomes unstable.
-        # To fix this issue I unsure we are sampling numbers larger in
-        # absolute value than 1
+        # To fix this issue I ensure we are sampling numbers larger in
+        # absolute value than 1.
         v_x = numpy.array(rng.uniform(size=(5, 2, 2), low=1., high=3.),
                            dtype=theano.config.floatX)
-        # making some entries to be negative
+        # Making some entries to be negative.
         pos = rng.uniform(size=(5, 2, 2), low=0., high=1) < .5
         v_x[pos] = -1 * v_x[pos]
         v_w = numpy.array(rng.uniform(size=(2, 2), low=1., high=3.),
