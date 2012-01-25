@@ -2875,7 +2875,7 @@ class T_Scan(unittest.TestCase):
         # The test is based on the code provided by Timothy Lillicrap
 
         def onestep(xdl, xprev, w):
-            xnew = tensor.tanh(tensor.dot(w, xprev))
+            xnew = w + xprev
             return xnew
 
         xinit = tensor.tensor3('xinit')
