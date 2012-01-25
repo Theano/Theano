@@ -3527,19 +3527,34 @@ class t_dot(unittest.TestCase):
         try:
             try:
                 tz = eval_outputs([z])
-                assert False # should have raised exception
+                assert False    # should have raised exception
             except ValueError, e:
                 self.assertTrue(
-                    e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
-                    e[0].split()[0:2] == ['Shape', 'mismatch:'], e) # reported by blas return self.fail()
+                    # Reported by numpy.
+                    e[0].split()[1:4] == ['are', 'not', 'aligned'] or
+                    # Reported by blas.
+                    e[0].split()[0:2] == ['Shape', 'mismatch:'] or
+                    # Reported by Theano when 'exception_verbosity' is set
+                    # to 'high'.
+                    e[0].split()[0:3] == ['dot', 'product', 'failed.'],
+                    e)
         finally:
             _logger.setLevel(oldlevel)
 
-    def test_align_1_1(self): self.not_aligned(rand(5), rand(6))
-    def test_align_1_2(self): self.not_aligned(rand(5), rand(6,4))
+    def test_align_1_1(self):
+        self.not_aligned(rand(5), rand(6))
+
+    def test_align_1_2(self):
+        self.not_aligned(rand(5), rand(6,4))
+
     #def test_align_1_3(self): self.not_aligned(rand(5), rand(6,4,7))
-    def test_align_2_1(self): self.not_aligned(rand(5,4), rand(6))
-    def test_align_2_1(self): self.not_aligned(rand(5,4), rand(6,7))
+
+    def test_align_2_1(self):
+        self.not_aligned(rand(5,4), rand(6))
+
+    def test_align_2_1(self):
+        self.not_aligned(rand(5,4), rand(6,7))
+
     #def test_align_2_3(self): self.not_aligned(rand(5,4), rand(6,7,8))
     #def test_align_3_1(self): self.not_aligned(rand(5,4,3), rand(6))
     #def test_align_3_2(self): self.not_aligned(rand(5,4,3), rand(6,7))
@@ -5179,23 +5194,24 @@ def test_dimshuffle_duplicate():
 
     assert success
 
+
 class T_get_constant_value(unittest.TestCase):
     def test_get_constant_value(self):
-        a = tensor.stack(1,2,3)
-        assert get_constant_value(a[0])==1
-        assert get_constant_value(a[1])==2
-        assert get_constant_value(a[2])==3
+        a = tensor.stack(1, 2, 3)
+        assert get_constant_value(a[0]) == 1
+        assert get_constant_value(a[1]) == 2
+        assert get_constant_value(a[2]) == 3
 
         b = tensor.iscalar()
-        a = tensor.stack(b,2,3)
+        a = tensor.stack(b, 2, 3)
         self.assertRaises(TypeError, get_constant_value, a[0])
-        assert get_constant_value(a[1])==2
-        assert get_constant_value(a[2])==3
+        assert get_constant_value(a[1]) == 2
+        assert get_constant_value(a[2]) == 3
 
         # For now get_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
-        a = tensor.stack(v,2,3)
+        a = tensor.stack(v, 2, 3)
         self.assertRaises(TypeError, get_constant_value, a[0])
         self.assertRaises(TypeError, get_constant_value, a[1])
         self.assertRaises(TypeError, get_constant_value, a[2])
@@ -5203,16 +5219,16 @@ class T_get_constant_value(unittest.TestCase):
         # Test the case SubTensor(Shape(v)) when the dimensions
         # is broadcastable.
         v = tensor.row()
-        assert get_constant_value(v.shape[0])==1
+        assert get_constant_value(v.shape[0]) == 1
 
     def test_subtensor_of_constant(self):
         c = constant(rand(5))
         for i in range(c.value.shape[0]):
             assert get_constant_value(c[i]) == c.value[i]
-        c = constant(rand(5,5))
+        c = constant(rand(5, 5))
         for i in range(c.value.shape[0]):
             for j in range(c.value.shape[1]):
-                assert get_constant_value(c[i,j]) == c.value[i,j]
+                assert get_constant_value(c[i, j]) == c.value[i, j]
 
 
 class T_as_tensor_variable(unittest.TestCase):
@@ -5323,7 +5339,7 @@ def test_transpose():
         tensor.transpose(x3, [0, 2, 1]),
         ])
 
-    t1, t2, t3, t1b, t2b, t3b, t2c, t3c, t2d, t3d  = f(x1v, x2v, x3v)
+    t1, t2, t3, t1b, t2b, t3b, t2c, t3c, t2d, t3d = f(x1v, x2v, x3v)
     assert t1.shape == numpy.transpose(x1v).shape
     assert t2.shape == numpy.transpose(x2v).shape
     assert t3.shape == numpy.transpose(x3v).shape
@@ -5341,7 +5357,6 @@ def test_transpose():
     assert t3d.shape == (2, 4, 3)
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
-
 
 
 if __name__ == '__main__':
