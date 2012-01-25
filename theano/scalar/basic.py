@@ -1362,13 +1362,13 @@ class IntDiv(BinaryScalarOp):
                 if (%(y)s < 0) {
                     %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
                 } else {
-                    %(z)s = %(x_div_y_mm)s;
+                    %(z)s = %(x_div_y_pp)s;
                 }
             }
             """) % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def grad(self, inputs, g_output):
         return [None] * len(inputs)
