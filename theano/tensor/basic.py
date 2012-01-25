@@ -2540,6 +2540,41 @@ class Alloc(gof.Op):
             #reuse the allocated memory.
             out[0][...] = v # broadcast v to fill us up
 
+    def c_code(self, node, name, inp, out, sub):
+        # TODO: use the elemwise code generator here
+        if node.inputs[0].ndim == 0:
+            # filling with a scalar is a common use of alloc
+            # that we can implement relatively easily
+            vv = inp[0]
+            zz, = out
+            fail = sub['fail']
+            if node.outputs[0].ndim == 1:
+                N0 = inp[1]
+                return """
+                npy_intp N0 = ((dtype_%(N0)s*)%(N0)s->data)[0];
+                dtype_%(vv)s vv;
+                dtype_%(zz)s* zz;
+                if ((NULL == %(zz)s) || (%(zz)s->dimensions[0] != N0))
+                {
+                    if (%(zz)s) Py_XDECREF(%(zz)s);
+                    %(zz)s = (PyArrayObject*)PyArray_SimpleNew(1,
+                        &N0, type_num_%(vv)s);
+                    if(!%(zz)s) {
+                        PyErr_SetString(PyExc_MemoryError, "alloc failed");
+                        %(fail)s
+                    }
+                }
+                vv = ((dtype_%(vv)s*)%(vv)s->data)[0];
+                zz = ((dtype_%(zz)s*)%(zz)s->data);
+                assert (%(zz)s->strides[0] == sizeof(dtype_%(zz)s));
+                for (int i = 0; i < N0; ++i)
+                {
+                    zz[i] = vv;
+                }
+                """ % locals()
+        # else pretend this never happened
+        return super(Alloc, self).c_code(node, name, inp, out, sub)
+
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
