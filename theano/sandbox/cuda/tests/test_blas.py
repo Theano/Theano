@@ -254,7 +254,7 @@ class TestGpuGemv(TestCase, BaseGemv,
                   unittest_tools.TestOptimizationMixin):
     mode = mode_with_gpu
     dtype = 'float32'
-    gemv = gpu_gemv_no_inplace
+
     # As all input are transfered to the gpu, this allow to make all
     # the gemv inplace.
     gemv = gpu_gemv_inplace
