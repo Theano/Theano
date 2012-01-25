@@ -609,25 +609,25 @@ if config.floatX=='float32':
     # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
 
-TrueDivTester = makeBroadcastTester(op = tensor.true_div,
-                                  expected = (lambda x, y:
-                                      check_floatX((x, y),
-                                          numpy.true_divide(x, y))),
-                                  good = _good_broadcast_div_mod_normal_float,
-                                  grad = _grad_broadcast_div_mod_normal,
-                                  grad_rtol=div_grad_rtol,
-                                )
+TrueDivTester = makeBroadcastTester(
+        op=tensor.true_div,
+        expected = (lambda x, y:
+            check_floatX((x, y), numpy.true_divide(x, y))),
+        good=_good_broadcast_div_mod_normal_float,
+        grad=_grad_broadcast_div_mod_normal,
+        grad_rtol=div_grad_rtol,
+        )
 
-TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
-                                         expected = (lambda x, y:
-                                             numpy.true_divide(x, y)),
-                                         good = copymod(
-                                             _good_broadcast_div_mod_normal_float_inplace,
-                                             # The output is now in float, we cannot work inplace on an int.
-                                             without=['integer', 'uinteger']),
-                                         grad = _grad_broadcast_div_mod_normal,
-                                         grad_rtol=div_grad_rtol,
-                                         inplace = True)
+TrueDivInplaceTester = makeBroadcastTester(
+        op=inplace.true_div_inplace,
+        expected=(lambda x, y: numpy.true_divide(x, y)),
+        good=copymod(
+            _good_broadcast_div_mod_normal_float_inplace,
+            # The output is now in float, we cannot work inplace on an int.
+            without=['integer', 'uinteger']),
+        grad=_grad_broadcast_div_mod_normal,
+        grad_rtol=div_grad_rtol,
+        inplace=True)
 
 
 CeilIntDivTester = makeBroadcastTester(
