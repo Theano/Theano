@@ -29,12 +29,14 @@ from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
         #, constant, eval_outputs)
 import theano.tensor.blas_scipy
 
+
 if config.mode == 'FAST_COMPILE':
     mode_not_fast_compile = 'FAST_RUN'
 else:
     mode_not_fast_compile = config.mode
 
 mode_blas_opt = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
+mode_blas_opt = mode_blas_opt.excluding('c_blas')
 
 def test_dot_eq():
     assert T.Dot() == T.Dot()
@@ -560,10 +562,18 @@ def test_upcasting_scalar_nogemv():
 
     rval = T.dot(w, v) * alpha + t
 
-    f = theano.function([w, v, t, alpha], rval)
-    t = f.maker.env.toposort()
-    assert numpy.sum([isinstance(n.op, Gemv) for n in t]) == 0
-    theano.printing.debugprint(f, print_type=True)
+    f = theano.function([w, v, t, alpha], rval, mode=mode_blas_opt)
+    # this function is currently optimized so that the gemv is done
+    # inplace on a temporarily allocated-buffer, which is then scaled by alpha
+    # and to t with a fused elemwise.
+    n_gemvs = 0
+    #theano.printing.debugprint(f, print_type=True)
+    gemv_inplace = Gemv(inplace=True)
+    for node in f.maker.env.toposort():
+        if node.op == gemv_inplace:
+            n_gemvs += 1
+            assert node.outputs[0].dtype == 'float32'
+    assert n_gemvs == 1, n_gemvs
 
 def test_upcasting_scalar_nogemm():
     # Test that the optimization does not crash when the scale has an incorrect
@@ -862,22 +872,21 @@ def test_dot_w_self():
 ## Tests for Gemv
 ###############################################################################
 
-class TestGemv(TestCase):
+class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
         m = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
-        f = theano.function([], theano.dot(v,m), mode = mode_blas_opt)
+        f = theano.function([], theano.dot(v,m), mode=mode_blas_opt)
+
+        # Assert that the dot was optimized somehow
+        self.assertFunctionContains0(f, T.dot)
+        self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
 
-        # Assert that the dot was optimized somehow
-        assert sum([isinstance(node.op, T.Dot) for node in
-                    f.maker.env.toposort() ]) == 0
-        assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                    f.maker.env.toposort() ]) == 1
 
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
@@ -885,16 +894,14 @@ class TestGemv(TestCase):
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
         m = theano.shared(numpy.array(rng.uniform(size=(3,2)),
                                        dtype='float32'))
-        f = theano.function([], theano.dot(m,v), mode = mode_blas_opt)
+        f = theano.function([], theano.dot(m,v), mode=mode_blas_opt)
+
+        # Assert that the dot was optimized somehow
+        self.assertFunctionContains0(f, T.dot)
+        self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
-
-        # Assert that the dot was optimized somehow
-        assert sum([isinstance(node.op, T.Dot) for node in
-                    f.maker.env.toposort() ]) == 0
-        assert sum([isinstance(node.op, T.blas.Dot22) for node in
-                    f.maker.env.toposort() ]) == 1
 
     @staticmethod
     def t_gemv1(m_shp):
@@ -1017,6 +1024,8 @@ def matrixmultiply(a, b):
 
 
 class BaseGemv(object):
+    mode = mode_blas_opt  # can be overridden with self.mode
+
     def get_data(self,x_stride=1,y_stride=1):
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         mult = array(1, dtype=self.dtype)
@@ -1035,10 +1044,10 @@ class BaseGemv(object):
 
         oy    = alpha * T.dot(a,x) + beta * y
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
         topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_val = oy_func()
 
@@ -1055,22 +1064,9 @@ class BaseGemv(object):
 
         oy = T.dot(a,x)
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        # The only op in the graph is a dot.
-        # In the gemm case, we create a dot22 for that case
-        # There is no dot21.
-        # Creating one is not useful as this is not faster(in fact it would be slower!
-        # as more code would be in python, numpy.dot will call gemv itself)
-        # See ticket 594
-        """
->>> t0=time.time();x=scipy.linalg.blas.fblas.dgemv(1,a.T,b,1,z.T);t1=time.time();print t1-t0
-0.00192999839783
->>> t0=time.time();x=numpy.dot(a,b);t1=time.time();print t1-t0
-0.00158381462097
-"""
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==0
+        self.assertFunctionContains1(oy_func, self.gemv_inplace)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
@@ -1085,10 +1081,9 @@ class BaseGemv(object):
 
         oy = alpha * T.dot(a.T,x)+beta*y
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
@@ -1102,10 +1097,9 @@ class BaseGemv(object):
 
         oy = alpha * T.dot(a,x[::2])+beta*y
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
@@ -1119,10 +1113,9 @@ class BaseGemv(object):
 
         oy = alpha * T.dot(a.T,x[::2])+beta*y
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
@@ -1136,10 +1129,9 @@ class BaseGemv(object):
 
         oy = alpha * T.dot(a,x)+beta*y[::2]
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
@@ -1153,21 +1145,24 @@ class BaseGemv(object):
 
         oy = alpha * T.dot(a.T,x)+beta*y[::2]
 
-        oy_func = theano.function([], oy, mode = mode_blas_opt)
+        oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
-        assert sum([isinstance(node.op, theano.tensor.blas.Gemv) for node in topo])==1
+        self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
 
 
-
-class TestSgemv(TestCase, BaseGemv):
+class TestSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     dtype = float32
+    gemv = theano.tensor.blas.gemv_no_inplace
+    gemv_inplace = theano.tensor.blas.gemv_inplace
 
-class TestDgemv(TestCase, BaseGemv):
+
+class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     dtype = float64
+    gemv = theano.tensor.blas.gemv_no_inplace
+    gemv_inplace = theano.tensor.blas.gemv_inplace
 
 #The optimization to put Gemv don't work for complex type for now.
 # See ticket 653.
@@ -1372,30 +1367,11 @@ class TestGer_make_thunk(TestCase):
     def test_c128_1_9(self): return self.given_dtype('complex128', 1, 9)
 
 
-# TODO: Refactor and add to this base class as we refactor test code.
-class TestOptimizationMixin(object):
-
-    def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
-        toposort = f.maker.env.toposort()
-        matches = [node for node in toposort if node.op == op]
-        assert (min <= len(matches) <= max), toposort
-
-    def assertFunctionContains0(self, f, op):
-        return self.assertFunctionContains(f, op, min=0, max=0)
-
-    def assertFunctionContains1(self, f, op):
-        return self.assertFunctionContains(f, op, min=1, max=1)
-
-    def assertFunctionContainsN(self, f, op, N):
-        return self.assertFunctionContains(f, op, min=N, max=N)
-
-    def SkipTest(self):
-        raise Exception('how do I skip this test properly?')
-
-class TestGer_local_gemm_to_ger(TestCase, TestOptimizationMixin):
+class TestGer_local_gemm_to_ger(TestCase, unittest_tools.TestOptimizationMixin):
 
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
+        self.mode = self.mode.excluding('c_blas')
         dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent
         self.A = T.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = T.tensor(dtype=dtype, broadcastable=())
