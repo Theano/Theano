@@ -678,9 +678,10 @@ class ModuleCache(object):
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
             for module_hash, key_data in items_copy:
+                entry = key_data.get_entry()
                 try:
                     # Test to see that the file is [present and] readable.
-                    open(key_data.get_entry()).close()
+                    open(entry).close()
                     gone = False
                 except IOError:
                     gone = True
