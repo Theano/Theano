@@ -1,7 +1,17 @@
 """Generate and compile C modules for Python,
 """
-import atexit, cPickle, logging, operator, os, shutil, stat, StringIO
-import subprocess, sys, tempfile, time
+import atexit
+import cPickle
+import logging
+import operator
+import os
+import shutil
+import stat
+import StringIO
+import subprocess
+import sys
+import tempfile
+import time
 
 import distutils.sysconfig
 
@@ -678,9 +688,10 @@ class ModuleCache(object):
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
             for module_hash, key_data in items_copy:
+                entry = key_data.get_entry()
                 try:
                     # Test to see that the file is [present and] readable.
-                    open(key_data.get_entry()).close()
+                    open(entry).close()
                     gone = False
                 except IOError:
                     gone = True
@@ -1267,16 +1278,20 @@ def std_lib_dirs_and_libs():
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-        return [libname],[]
+        return [libname], []
+
 
 def std_libs():
     return std_lib_dirs_and_libs()[0]
 
+
 def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
-# Using the dummy file descriptors below is a workaround for a crash experienced
-# in an unusual Python 2.4.4 Windows environment with the default None values.
+
+# Using the dummy file descriptors below is a workaround for a crash
+# experienced in an unusual Python 2.4.4 Windows environment with the default
+# None values.
 dummy_in = open(os.devnull)
 dummy_err = open(os.devnull, 'w')
 p = None
@@ -1292,18 +1307,29 @@ del p
 del dummy_in
 del dummy_err
 
+
 def gcc_version():
     return gcc_version_str
 
-def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
-        preargs=[]):
+
+def gcc_module_compile_str(module_name, src_code, location=None,
+                           include_dirs=[], lib_dirs=[], libs=[], preargs=[]):
     """
     :param module_name: string (this has been embedded in the src_code
+
     :param src_code: a complete c or c++ source listing for the module
-    :param location: a pre-existing filesystem directory where the cpp file and .so will be written
-    :param include_dirs: a list of include directory names (each gets prefixed with -I)
-    :param lib_dirs: a list of library search path directory names (each gets prefixed with -L)
+
+    :param location: a pre-existing filesystem directory where the cpp file and
+    .so will be written
+
+    :param include_dirs: a list of include directory names (each gets prefixed
+    with -I)
+
+    :param lib_dirs: a list of library search path directory names (each gets
+    prefixed with -L)
+
     :param libs: a list of libraries to link with (each gets prefixed with -l)
+
     :param preargs: a list of extra compiler arguments
 
     :returns: dynamically-imported python module of the compiled code.
@@ -1326,16 +1352,18 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     lib_dirs = std_lib_dirs() + lib_dirs
 
     #DSE Patch 1 for supporting OSX frameworks; add -framework Python
-    if sys.platform=='darwin' :
-        preargs.extend(['-undefined','dynamic_lookup'])
+    if sys.platform == 'darwin':
+        preargs.extend(['-undefined', 'dynamic_lookup'])
         python_inc = distutils.sysconfig.get_python_inc()
         # link with the framework library *if specifically requested*
         # config.mac_framework_link is by default False, since on some mac
         # installs linking with -framework causes a Bus Error
-        if python_inc.count('Python.framework')>0 and config.cmodule.mac_framework_link:
-            preargs.extend(['-framework','Python'])
+        if (python_inc.count('Python.framework') > 0 and
+            config.cmodule.mac_framework_link):
+            preargs.extend(['-framework', 'Python'])
 
-        # Figure out whether the current Python executable is 32 or 64 bit and compile accordingly
+        # Figure out whether the current Python executable is 32 or 64 bit and
+        # compile accordingly.
         n_bits = local_bitwidth()
         preargs.extend(['-m%s' % n_bits])
         _logger.debug("OS X: compiling for %s bit architecture", n_bits)
@@ -1376,11 +1404,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
     #print >> sys.stderr, config.gcc.cxxflags.split(' ')
     cmd.extend(cxxflags)
-    cmd.extend('-I%s'%idir for idir in include_dirs)
-    cmd.extend(['-o',lib_filename])
+    cmd.extend('-I%s' % idir for idir in include_dirs)
+    cmd.extend(['-o', lib_filename])
     cmd.append(cppfilename)
-    cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
-    cmd.extend(['-l%s'%l for l in libs])
+    cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
+    cmd.extend(['-l%s' % l for l in libs])
     #print >> sys.stderr, 'COMPILING W CMD', cmd
     _logger.debug('Running cmd: %s', ' '.join(cmd))
 
@@ -1404,7 +1432,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         print '==============================='
         for i, l in enumerate(src_code.split('\n')):
             #gcc put its messages to stderr, so we add ours now
-            print >> sys.stderr, '%05i\t%s'%(i+1, l)
+            print >> sys.stderr, '%05i\t%s' % (i + 1, l)
         print '==============================='
         print_command_line_error()
         # Print errors just below the command line.
@@ -1416,8 +1444,9 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
                         (status, compile_stderr.replace('\n', '. ')))
 
     #touch the __init__ file
-    file(os.path.join(location, "__init__.py"),'w').close()
+    file(os.path.join(location, "__init__.py"), 'w').close()
     return dlimport(lib_filename)
+
 
 def icc_module_compile_str(*args):
     raise NotImplementedError()
