@@ -1,3 +1,5 @@
+from unittest import TestCase
+
 from theano.compile.pfunc import pfunc
 from theano import tensor
 from theano.tests import unittest_tools
@@ -15,6 +17,9 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
+from theano.tensor.tests.test_blas import BaseGemv, TestGer
+from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
+from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
 
 if theano.config.mode=='FAST_COMPILE':
@@ -243,3 +248,39 @@ def test_downsample():
 
                 #We already check that the gpu version return the same value as the gpu version
                 #for GpuDownsampleFactorMaxGrad. So no need to call verify_grad here.
+
+
+class TestGpuGemv(TestCase, BaseGemv,
+                  unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+
+    # As all input are transfered to the gpu, this allow to make all
+    # the gemv inplace.
+    gemv = gpu_gemv_inplace
+    gemv_inplace = gpu_gemv_inplace
+
+
+class TestGpuGer(TestGer):
+    def setUp(self):
+        self.mode = mode_with_gpu
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.ger = gpu_ger_no_inplace
+        self.ger_destructive = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_no_inplace
+
+        # data on the gpu make the op always inplace
+        self.ger = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_inplace
+
+
+class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
+    def setUp(self):
+        self.ops = [gpu_ger_no_inplace, gpu_ger_inplace]
+
+    def clone(self, op):
+        return tcn.blas.GpuGer(op.inplace)

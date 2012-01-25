@@ -23,10 +23,9 @@ try:
             numpy.dtype('complex64'):scipy.linalg.blas.fblas.cgeru,
             numpy.dtype('complex128'):scipy.linalg.blas.fblas.zgeru,
             }
-    optimizations_enabled = True
 except ImportError, e:
     have_fblas = False
-    optimizations_enabled = False
+
 
 class ScipyGer(Ger):
 
@@ -62,13 +61,11 @@ class ScipyGer(Ger):
 
 @local_optimizer([ger, ger_destructive])
 def use_scipy_ger(node):
-    if not optimizations_enabled: return
     if node.op == ger:
         return [ScipyGer(False)(*node.inputs)]
 
 @local_optimizer([ScipyGer(False)])
 def make_ger_destructive(node):
-    if not optimizations_enabled: return
     if node.op == ScipyGer(False):
         return [ScipyGer(True)(*node.inputs)]
 

@@ -6,17 +6,25 @@ Learn more about BLAS here:
 The standard BLAS libraries implement what is called "legacy BLAS" in that
 document.
 
-This documentation section describes Theano's BLAS optimization
-pipeline.
+This documentation describes Theano's BLAS optimization pipeline.
 
 Where there is a discrepancy between how things do work and how they *should*
-work, both aspects should be documented.  It helps keep a broader agenda in view
-even while fixing little bugs etc. from day to day.
+work, both aspects should be documented.
+
+There are four kinds of BLAS Ops in Theano:
+    - Python implementations (this file)
+    - SciPy-based (blas_scipy)
+    - C-based (blas_c)
+    - CUDA-based (theano.sandbox.cuda.blas)
+
+:note: Unfortunately (because it's confusing) this file currently contains Ops
+    that contain both Python and C versions.  I think it would be better to
+    move the C implementations to blas_c so that this file is pure Python.
+    -JB
+
 
 Ops
 ===
-
-There are two BLAS calls wrapped in this module: GEMM and GEMV.
 
 GEMM: Dot22, Dot22Scalar, GemmRelated, Gemm
 -------------------------------------------
@@ -43,17 +51,18 @@ GEMV: Gemv
 ----------
 
 The BLAS GEMV operation implements Z <- a X Y + b Z,
-where Z is a matrix, Y, and Z are vectors, and a and b are scalars.
+where X is a matrix, Y, and Z are vectors, and a and b are scalars.
 
-Gemv implements the GEMV call in all its generality.
+
+GER: Ger
+--------
+
+The BLAS GER operation implements Z <- a X' Y + Z,
+where X and Y are vectors, and matrix Z gets a rank-1 update.
 
 
 Other Notable BLAS-related Ops
 ------------------------------
-
-GpuOuter is currently a wrapper around GER.  GER is a useful special case of
-GEMM, and in the future it would be good to have a GER Op.  With a GER Op here,
-the GpuOuter could be turned into a GpuGER.
 
 SYRK is another useful special case of GEMM. Particularly SYRK preserves
 symmetry in the matrix that it updates.  See how the linear-algebra module uses
@@ -64,14 +73,19 @@ that system.
 Optimizations
 =============
 
-The current optimization pipeline is not exactly clear to me. Instead I will
-describe how it should work.
+The optimization pipeline works something like this:
 
-The high level pipeline is:
     1. identify dot22 from dot
     2. identify gemm from dot22
     3. identify dot22scalar from dot22 that are not gemm
     4. specialize gemm to gemv where applicable
+    5. specialize gemm to ger where applicable
+    6. specialize dot22 -> gemv or ger where applicable
+
+:note: GEMM is the most canonical BLAS signature that we deal with so far, it
+    would be good to turn most things into GEMM (dot, inner, outer, dot22,
+    dot22scalar), and then to specialize from gemm to the various other L2 and
+    L3 operations.
 
 Identify Dot22
 --------------
@@ -161,9 +175,9 @@ class Gemv(Op):
 
     def __str__(self):
         if self.inplace:
-            return 'Gemv{inplace}'
+            return '%s{inplace}' % self.__class__.__name__
         else:
-            return 'Gemv{no_inplace}'
+            return '%s{no_inplace}' % self.__class__.__name__
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.inplace)
@@ -268,31 +282,19 @@ class Ger(Op):
             raise TypeError('only float and complex types supported', x.dtype)
         return Apply(self, [A, alpha, x, y], [A.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
+    def perform(self, node, inp, out):
+        cA, calpha, cx, cy = inp
+        cZ, = out
+        if self.destructive:
+            A = cA
+        else:
+            A = cA.copy()
+        if calpha != 1:
+            A += calpha * numpy.outer(cx, cy)
+        else:
+            A += numpy.outer(cx, cy)
+        cZ[0] = A
 
-        # get vars for containers
-        cA, calpha, cx, cy = node_input_storage
-        cZ, = node_output_storage
-
-        def rval():
-            if self.destructive:
-                A = cA[0]
-            else:
-                A = cA[0].copy()
-            if calpha[0] != 1:
-                A += calpha[0] * numpy.outer(cx[0], cy[0])
-            else:
-                A += numpy.outer(cx[0], cy[0])
-            cZ[0] = A
-
-        #TODO: If this is currently an unofficial part of the thunk API,
-        #      then maybe it should be documented and made official?
-        rval.inputs = node_input_storage
-        rval.outputs = node_output_storage
-        rval.lazy = False
-        return rval
 
 ger = Ger(destructive=False)
 ger_destructive = Ger(destructive=True)
@@ -1148,7 +1150,7 @@ def _gemm_from_factored_list(lst):
 
     # Try every pair in the sM_list, trying to turn it into a gemm operation
     for i in xrange(len(lst) - 1):
-        s_i,M_i = lst[i]
+        s_i, M_i = lst[i]
 
         for j in xrange(i+1, len(lst)):
             s_j, M_j = lst[j]
@@ -1400,9 +1402,7 @@ def local_gemm_to_ger(node):
                 rval = ger(z, a, xv, yv)
                 return [rval]
             elif bval == 0:   # GER on zeros_like should be faster than GEMM
-                zeros = T.alloc(
-                        numpy.asarray(0, dtype=x.dtype),
-                        x.shape[0], y.shape[1])
+                zeros = T.zeros([x.shape[0], y.shape[1]], x.dtype)
                 rval = ger(zeros, a, xv, yv)
                 return [rval]
             else:
@@ -1414,20 +1414,43 @@ def local_gemm_to_ger(node):
 #TODO: delete this optimization when we have the proper dot->gemm->ger pipeline
 #      working
 @local_optimizer([_dot22])
-def local_dot22_to_ger(node):
-    """GEMM computing an outer-product -> GER
+def local_dot22_to_ger_or_gemv(node):
+    """dot22 computing an outer-product -> GER
     """
     if node.op == _dot22:
         x, y = node.inputs
-        if x.broadcastable[1] and y.broadcastable[0]:
+        xb = x.broadcastable
+        yb = y.broadcastable
+        one = T.as_tensor_variable(numpy.asarray(1, dtype=x.dtype))
+        zero = T.as_tensor_variable(numpy.asarray(0, dtype=x.dtype))
+        if xb[1] and yb[0]:
             # x and y are both vectors so this might qualifies for a GER
             xv = x.dimshuffle(0)
             yv = y.dimshuffle(1)
 
-            one = T.as_tensor_variable(numpy.asarray(1, dtype=x.dtype))
-            zeros = T.alloc(numpy.asarray(0, dtype=x.dtype), x.shape[0], y.shape[1])
+            zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
             rval = ger(zeros, one, xv, yv)
             return [rval]
+        if xb[0] and yb[1]:
+            # x and y are both vectors so this qualifies for a sdot / ddot
+            # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
+            xv = x.dimshuffle(1)
+            zeros = T.zeros([1], x.dtype)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
+            return [rval.dimshuffle('x', 0)]
+        if xb[0] and not yb[0] and not yb[1]:
+            # x is vector, y is matrix so try gemv
+            xv = x.dimshuffle(1)
+            zeros = T.zeros([y.shape[1]], x.dtype)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
+            return [rval.dimshuffle('x', 0)]
+        if not xb[0] and not xb[1] and yb[1]:
+            # x is matrix, y is vector, try gemv
+            yv = y.dimshuffle(0)
+            zeros = T.zeros([x.shape[0]], dtype=x.dtype)
+            rval = gemv_no_inplace(zeros, one, x, yv, one)
+            return [rval.dimshuffle(0, 'x')]
+
 
 #################################
 #
@@ -1445,14 +1468,14 @@ optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run')
 blas_optdb.register('local_dot_to_dot22',
         EquilibriumOptimizer([local_dot_to_dot22], max_use_ratio=5),
         0, 'fast_run')
-blas_optdb.register('local_dot_to_gemm',
+blas_optdb.register('gemm_optimizer',
         GemmOptimizer(),
         10, 'fast_run')
 blas_optdb.register('local_gemm_to_gemv',
         EquilibriumOptimizer([
             local_gemm_to_gemv,
             local_gemm_to_ger,
-            local_dot22_to_ger,
+            local_dot22_to_ger_or_gemv,
             local_dimshuffle_lift],
             max_use_ratio=5),
         15, 'fast_run')

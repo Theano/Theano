@@ -251,6 +251,188 @@ class GpuGemm(Op):
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
+class GpuGemv(Op):
+    """
+    implement gemv on the gpu.
+
+    """
+    def __init__(self, inplace):
+        self.__setstate__({'inplace':inplace})
+
+    def __str__(self):
+        if self.inplace:
+            return 'GpuGemv{inplace}'
+        else:
+            return 'GpuGemv{no_inplace}'
+
+    def __eq__(self, other):
+        return (type(self) == type(other)\
+                and self.inplace == other.inplace)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace)
+
+    def __setstate__(self, dct):
+        inplace = dct.get('inplace', True)
+        if inplace:
+            self.destroy_map = {0: [0]}
+        self.inplace = inplace
+
+    def __getstate__(self):
+        return dict(inplace=self.inplace)
+
+    def make_node(self, z, a, x, y, b):
+        # the more complicated error checking performed by tensor.gemv is assumed to already
+        # have been done
+        return Apply(self, [z, a, x, y, b], [z.type()])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        #z_out = alpha * dot(x,y) + beta * z_in
+        #inplace version, set set z_out = z_in
+        #not inplace version, we copy z_in to z_out.
+        z_in, a, x, y, b = inputs
+        z_out, = outputs
+        fail = sub['fail']
+        sio = StringIO.StringIO()
+
+        print >> sio, """
+        float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
+        float %(name)s_beta = ((dtype_%(b)s*)(%(b)s->data))[0];
+        """
+        if self.inplace:
+            print >> sio, """
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = %(z_in)s;
+            Py_INCREF(%(z_out)s);
+            """
+        else:
+            print >> sio, """
+            if (!%(z_out)s
+                || (%(z_out)s->nd != 1)
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                )
+            {
+                Py_XDECREF(%(z_out)s);
+                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+                if (!%(z_out)s)
+                {
+                    %(fail)s;
+                }
+            }
+            else
+            {
+                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
+                {
+                    %(fail)s;
+                }
+            }
+            """
+
+
+        print >> sio, """
+        if (CudaNdarray_sgemv(%(name)s_alpha, %(x)s, %(y)s, %(name)s_beta, %(z_out)s))
+        {
+            %(fail)s;
+        }
+        """
+        return sio.getvalue() % locals()
+gpu_gemv_no_inplace = GpuGemv(inplace=False)
+gpu_gemv_inplace = GpuGemv(inplace=True)
+
+class GpuGer(Op):
+    """
+    implement ger on the gpu.
+
+    """
+    def __init__(self, inplace):
+        self.__setstate__({'inplace':inplace})
+
+    def __str__(self):
+        if self.inplace:
+            return 'GpuGer{inplace}'
+        else:
+            return 'GpuGer{no_inplace}'
+
+    def __eq__(self, other):
+        return (type(self) == type(other)\
+                and self.inplace == other.inplace)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace)
+
+    def __setstate__(self, dct):
+        inplace = dct.get('inplace', True)
+        if inplace:
+            self.destroy_map = {0: [0]}
+        self.inplace = inplace
+
+    def __getstate__(self):
+        return dict(inplace=self.inplace)
+
+    def make_node(self, z, a, x, y):
+        # the more complicated error checking performed by tensor.ger is
+        # assumed to already have been done
+        return Apply(self, [z, a, x, y], [z.type()])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        #z_out = alpha * dot(x,y) + beta * z_in
+        #inplace version, set set z_out = z_in
+        #not inplace version, we copy z_in to z_out.
+        z_in, a, x, y = inputs
+        z_out, = outputs
+        fail = sub['fail']
+        sio = StringIO.StringIO()
+
+        print >> sio, """
+        float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
+        """
+        if self.inplace:
+            print >> sio, """
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = %(z_in)s;
+            Py_INCREF(%(z_out)s);
+            """
+        else:
+            print >> sio, """
+            if (!%(z_out)s
+                || (%(z_out)s->nd != 2)
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1])
+                )
+            {
+                Py_XDECREF(%(z_out)s);
+                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+                if (!%(z_out)s)
+                {
+                    %(fail)s;
+                }
+            }
+            else
+            {
+                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
+                {
+                    %(fail)s;
+                }
+            }
+            """
+
+
+        print >> sio, """
+        if (CudaNdarray_sger(%(name)s_alpha, %(x)s, %(y)s, %(z_out)s))
+        {
+            %(fail)s;
+        }
+        """
+        return sio.getvalue() % locals()
+gpu_ger_no_inplace = GpuGer(inplace=False)
+gpu_ger_inplace = GpuGer(inplace=True)
+
 class GpuOuter(Op):
     def make_node(self, x, y):
         # we suppose type checking has been done, but make sure.
