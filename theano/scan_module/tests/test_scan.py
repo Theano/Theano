@@ -1571,7 +1571,7 @@ class T_Scan(unittest.TestCase):
         # trng  = theano.tensor.shared_randomstreams.RandomStreams(
         #                                               utt.fetch_seed())
 
-        def f_rnn_cmpl(u_t, x_tm1,  W_in):
+        def f_rnn_cmpl(u_t, x_tm1, W_in):
             trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
             x_t = theano.dot(u_t, W_in) + x_tm1 + \
                     trng1.uniform(low=-.1, high=.1)
@@ -2896,11 +2896,11 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         # If numbers are small, the gradients with respect to x are small
         # and the numeric differentiation becomes unstable.
-        # To fix this issue I unsure we are sampling numbers larger in
-        # absolute value than 1
+        # To fix this issue I ensure we are sampling numbers larger in
+        # absolute value than 1.
         v_x = numpy.array(rng.uniform(size=(5, 2, 2), low=1., high=3.),
                            dtype=theano.config.floatX)
-        # making some entries to be negative
+        # Making some entries to be negative.
         pos = rng.uniform(size=(5, 2, 2), low=0., high=1) < .5
         v_x[pos] = -1 * v_x[pos]
         v_w = numpy.array(rng.uniform(size=(2, 2), low=1., high=3.),

@@ -225,7 +225,7 @@ def get_updates_and_outputs(ls):
     if not isinstance(ls, (list, tuple)):
         raise ValueError(error_msg)
     ls = list(ls)
-    deprication_msg = ('The return value of the lambda function'
+    deprecation_msg = ('The return value of the lambda function'
                     ' has been restricted. you have to always return first the'
                     ' outputs (if any), afterwards the updates (if any) and'
                     ' at the end the conclusion')
@@ -239,7 +239,7 @@ def get_updates_and_outputs(ls):
                 raise ValueError(error_msg)
         elif is_updates(ls[0]):
             if is_outputs(ls[1]):
-                raise ValueError(deprication_msg)
+                raise ValueError(deprecation_msg)
             elif is_condition(ls[1]):
                 return (ls[1].condition, [], dict(ls[0]))
             else:
