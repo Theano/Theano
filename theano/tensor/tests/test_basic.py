@@ -608,18 +608,23 @@ if config.floatX=='float32':
     # float32.
     # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
+
 TrueDivTester = makeBroadcastTester(op = tensor.true_div,
-                                  expected = lambda x, y: check_floatX((x, y), x / y),
+                                  expected = (lambda x, y:
+                                      check_floatX((x, y),
+                                          numpy.true_divide(x, y))),
                                   good = _good_broadcast_div_mod_normal_float,
-#                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
-#                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
-#                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   grad = _grad_broadcast_div_mod_normal,
                                   grad_rtol=div_grad_rtol,
                                 )
+
 TrueDivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
-                                         expected = lambda x, y: x / y,
-                                         good = _good_broadcast_div_mod_normal_float_inplace,
+                                         expected = (lambda x, y:
+                                             numpy.true_divide(x, y)),
+                                         good = copymod(
+                                             _good_broadcast_div_mod_normal_float_inplace,
+                                             # The output is now in float, we cannot work inplace on an int.
+                                             without=['integer', 'uinteger']),
                                          grad = _grad_broadcast_div_mod_normal,
                                          grad_rtol=div_grad_rtol,
                                          inplace = True)
