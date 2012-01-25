@@ -1284,20 +1284,15 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
 
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
-        self.mode = self.mode.excluding('c_blas')
+        self.mode = self.mode.excluding('c_blas', 'scipy_blas')
         dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent
         self.A = T.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = T.tensor(dtype=dtype, broadcastable=())
         self.x = T.tensor(dtype=dtype, broadcastable=(False,))
         self.y = T.tensor(dtype=dtype, broadcastable=(False,))
-        self.origval = theano.tensor.blas_scipy.optimizations_enabled
-        theano.tensor.blas_scipy.optimizations_enabled = False
         self.ger = ger
         self.ger_destructive = ger_destructive
         self.gemm = gemm_no_inplace
-
-    def tearDown(self):
-        theano.tensor.blas_scipy.optimizations_enabled = self.origval
 
     def function(self, inputs, outputs, updates={}):
         return theano.function(inputs, outputs, self.mode, updates=updates)

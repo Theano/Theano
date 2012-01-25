@@ -264,14 +264,11 @@ class TestGpuGemv(TestCase, BaseGemv,
 class TestGpuGer(TestGer):
     def setUp(self):
         self.mode = mode_with_gpu
-        self.mode = self.mode.excluding('c_blas')
         dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.origval = theano.tensor.blas_scipy.optimizations_enabled
-        theano.tensor.blas_scipy.optimizations_enabled = False
         self.ger = gpu_ger_no_inplace
         self.ger_destructive = gpu_ger_inplace
         self.gemm = tcn.blas.gpu_gemm_no_inplace

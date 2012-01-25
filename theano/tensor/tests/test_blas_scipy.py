@@ -21,7 +21,7 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         self.Aval = numpy.ones((2,3), dtype=dtype)
         self.xval = numpy.asarray([1,2], dtype=dtype)
         self.yval = numpy.asarray([1.5,2.7,3.9], dtype=dtype)
-        if not theano.tensor.blas_scipy.optimizations_enabled:
+        if not theano.tensor.blas_scipy.have_fblas:
             self.SkipTest()
 
 
