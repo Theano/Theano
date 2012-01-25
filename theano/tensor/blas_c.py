@@ -204,16 +204,13 @@ class CGer(BaseBLAS, Ger):
 @local_optimizer([ger, ger_destructive])
 def use_c_ger(node):
     if node.op == ger:
-        print "inserting C_GER"
         return [CGer(False)(*node.inputs)]
     if node.op == ger_destructive:
-        print "inserting dstruc C_GER"
         return [CGer(True)(*node.inputs)]
 
 @local_optimizer([CGer(False)])
 def make_c_ger_destructive(node):
     if node.op == CGer(False):
-        print "inserting destructive C_GER"
         return [CGer(True)(*node.inputs)]
 
 
