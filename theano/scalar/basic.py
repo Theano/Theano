@@ -16,6 +16,7 @@ import math
 import warnings
 from copy import copy
 from itertools import imap
+from textwrap import dedent
 
 import numpy
 
@@ -1350,21 +1351,21 @@ class IntDiv(BinaryScalarOp):
         else:
             raise NotImplementedError('type not supported', t)
 
-        return """
-if (%(x)s < 0) {
-    if (%(y)s < 0) {
-        %(z)s = %(x_div_y_mm)s;
-    } else {
-        %(z)s = - %(x_div_y_mp)s - ((%(x_mod_y_mp)s == 0) ? 0 : 1);
-    }
-} else {
-    if (%(y)s < 0) {
-        %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
-    } else {
-        %(z)s = %(x_div_y_mm)s;
-    }
-}
-        """ % locals()
+        return dedent("""
+            if (%(x)s < 0) {
+                if (%(y)s < 0) {
+                    %(z)s = %(x_div_y_mm)s;
+                } else {
+                    %(z)s = - %(x_div_y_mp)s - ((%(x_mod_y_mp)s == 0) ? 0 : 1);
+                }
+            } else {
+                if (%(y)s < 0) {
+                    %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
+                } else {
+                    %(z)s = %(x_div_y_mm)s;
+                }
+            }
+            """) % locals()
 
     def c_code_cache_version(self):
         return (1,)
@@ -1441,19 +1442,19 @@ class Mod(BinaryScalarOp):
         else:
             raise NotImplementedError('type not supported', t)
 
-        return """
-if (%(x)s < 0){
-   if (%(y)s < 0){
-      %(z)s = -(%(x_mod_ymm)s);
-   }else{
-      %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
-   }
-}else if (%(y)s < 0){
-   %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
-}else{
-   %(z)s = %(x_mod_y)s;
-}
-        """ % locals()
+        return dedent("""
+            if (%(x)s < 0){
+               if (%(y)s < 0){
+                  %(z)s = -(%(x_mod_ymm)s);
+               }else{
+                  %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
+               }
+            }else if (%(y)s < 0){
+               %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
+            }else{
+               %(z)s = %(x_mod_y)s;
+            }
+            """) % locals()
 
     def grad(self, (x, y), (gz, )):
         return None, None
@@ -1716,51 +1717,51 @@ class RoundHalfToEven(UnaryScalarOp):
         if not node.outputs[0].type.dtype in ['float32', 'float64']:
             Exception("The output should be float32 or float64")
 
-        return """
-#ifndef ROUNDING_EPSILON
-#define ROUNDING_EPSILON 0.0000001
-#endif
+        return dedent("""
+            #ifndef ROUNDING_EPSILON
+            #define ROUNDING_EPSILON 0.0000001
+            #endif
 
-    if (%(x)s < 0.0){
-      // We implement the else part like that: -else( -%(x)s);
-      %(typ)s i;
-      std::modf( -%(x)s, &i );
+            if (%(x)s < 0.0){
+              // We implement the else part like that: -else( -%(x)s);
+              %(typ)s i;
+              std::modf( -%(x)s, &i );
 
-      // If %(x)s is exactly halfway between two integers
-      if ((-%(x)s -(i +0.5)) < epsilon){
-          // If 'i' is even then return 'i'
-        if (std::fmod( i, 2.0 ) < epsilon){
-          %(z)s = - i;
-        }else{
-          // Else return the nearest even integer
-          %(z)s = - ceil( i +0.5 );
-        }
-      }else{
-        // round to closest
-        %(z)s = - round(%(x)s+5);
-      }
-    }else{
-      %(typ)s i;
-      std::modf( %(x)s, &i );
+              // If %(x)s is exactly halfway between two integers
+              if ((-%(x)s -(i +0.5)) < epsilon){
+                  // If 'i' is even then return 'i'
+                if (std::fmod( i, 2.0 ) < epsilon){
+                  %(z)s = - i;
+                }else{
+                  // Else return the nearest even integer
+                  %(z)s = - ceil( i +0.5 );
+                }
+              }else{
+                // round to closest
+                %(z)s = - round(%(x)s+5);
+              }
+            }else{
+              %(typ)s i;
+              std::modf( %(x)s, &i );
 
-      // If %(x)s is exactly halfway between two integers
-      if ((%(x)s -(i +0.5)) < epsilon){
-          // If 'i' is even then return 'i'
-        if (std::fmod( i, 2.0 ) < epsilon){
-          %(z)s = i;
-        }else{
-          // Else return the nearest even integer
-          %(z)s =  ceil( i +0.5 );
-        }
-      }else{
-        // round to closest
-        %(z)s = round(%(x)s+5);
-      }
-    }
+              // If %(x)s is exactly halfway between two integers
+              if ((%(x)s -(i +0.5)) < epsilon){
+                  // If 'i' is even then return 'i'
+                if (std::fmod( i, 2.0 ) < epsilon){
+                  %(z)s = i;
+                }else{
+                  // Else return the nearest even integer
+                  %(z)s =  ceil( i +0.5 );
+                }
+              }else{
+                // round to closest
+                %(z)s = round(%(x)s+5);
+              }
+            }
 
-#undef ROUNDING_EPSILON
+            #undef ROUNDING_EPSILON
 
-        """
+            """)
 round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 
