@@ -3003,7 +3003,13 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
     int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
     CudaNdarray * x_ = x;
     if(x_strides == 0){
-        assert(CudaNdarray_HOST_DIMS(x)[0] == 1);
+        if(CudaNdarray_HOST_DIMS(x)[0] != 1){
+            PyErr_Format(PyExc_RuntimeError,
+                         "CudaNdarray_sger: Invalid input x(should not happen)."
+                         " We received an CudaNdarray vector with a stride of 0"
+                         " that have more then 1 elements!");
+            return -1;
+        }
         x_strides = 4;
     } else if(x_strides < 0){
         x_ = (CudaNdarray*)CudaNdarray_Copy(x);
@@ -3013,7 +3019,13 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
     int y_strides = CudaNdarray_HOST_STRIDES(y)[0];
     CudaNdarray * y_ = y;
     if(y_strides == 0){
-        assert(CudaNdarray_HOST_DIMS(y)[0] == 1);
+        if(CudaNdarray_HOST_DIMS(y)[0] != 1){
+            PyErr_Format(PyExc_RuntimeError,
+                         "CudaNdarray_sger: Invalid input y(should not happen)."
+                         " We received an CudaNdarray vector with a stride of 0"
+                         " that have more then 1 elements!");
+            return -1;
+        }
         y_strides = 4;
     } else if(y_strides < 0){
         y_ = (CudaNdarray*)CudaNdarray_Copy(y);
