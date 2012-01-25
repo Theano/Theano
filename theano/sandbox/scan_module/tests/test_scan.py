@@ -135,7 +135,7 @@ class TestScan(unittest.TestCase):
             else:
                 shared_outs = [sh * 5 for sh in shared_vars]
                 states_out = [x for x in states_out]
-                pure_outs = [ 2 for x in xrange(n_outputs)]
+                pure_outs = [2 for x in xrange(n_outputs)]
             return states_out + pure_outs, dict(zip(shared_vars,
                                                     shared_outs))
 
@@ -220,7 +220,7 @@ class TestScan(unittest.TestCase):
                 if to_add is not None:
                     shared_values = [sh * 5 + to_add for sh in shared_values]
                     for state in nw_states_outs:
-                            state[step] += to_add
+                        state[step] += to_add
                     for out in out_mem_buffers:
                         out[step] = to_add ** 2
                 else:
@@ -249,7 +249,7 @@ class TestScan(unittest.TestCase):
                 if n_steps is not None and abs(n_steps) == 1:
                     all_nodes = my_f.maker.env.toposort()
                     assert len([x for x in all_nodes
-                                if isinstance(x.op,ScanOp)]) == 0
+                                if isinstance(x.op, ScanOp)]) == 0
                 print >>sys.stderr, '   n_steps', n_steps
                 print >>sys.stderr, '   go_backwards', go_backwards
 
@@ -319,7 +319,8 @@ class TestScan(unittest.TestCase):
                     if n_steps is not None:
                         # loose inputs make sense only when n_steps is
                         # defined
-                        data = rng.uniform(size=(abs(_n_steps) + offset + pos + 1, 4))
+                        data = rng.uniform(
+                                size=(abs(_n_steps) + offset + pos + 1, 4))
                     else:
                         data = rng.uniform(size=(abs(_n_steps) + offset, 4))
                     input_values.append(data)
@@ -400,9 +401,9 @@ class TestScan(unittest.TestCase):
                                    [dict(tap=-2, use=True),
                                         dict(tap=3, use=True)]]
         test_nb = 0
-        for n_ins in [1,2]:
+        for n_ins in [1, 2]:
             # Randomly pick up 4*n_ins combinations of arguments
-            for k in xrange(4*n_ins):
+            for k in xrange(4 * n_ins):
                 inp = []
                 for inp_nb in xrange(n_ins):
 
@@ -424,9 +425,9 @@ class TestScan(unittest.TestCase):
                                         dict(tap=-2, use=True)],
                                    [dict(tap=-4, use=False),
                                         dict(tap=-2, use=True)]]
-        for n_ins in [1,2]:
+        for n_ins in [1, 2]:
             # Randomly pick up 4*n_ins combinations of arguments
-            for k in xrange(4*n_ins):
+            for k in xrange(4 * n_ins):
                 state = []
                 for state_nb in xrange(n_ins):
                     pos = rng.randint(len(possible_taps_use_pairs))
@@ -442,8 +443,8 @@ class TestScan(unittest.TestCase):
         # The test will also have to be changesd following some further
         # restriction of scan and reduction of the number of corner cases
         return
-        for n_outputs in [0,1,2]:
-            for n_shared_updates in [0,1, 2]:
+        for n_outputs in [0, 1, 2]:
+            for n_shared_updates in [0, 1, 2]:
                 for n_random_combinations in xrange(1):
                     pos_inp = rng.randint(len(all_inputs_info))
                     pos_st = rng.randint(len(all_states_info))
@@ -463,8 +464,6 @@ class TestScan(unittest.TestCase):
                              n_outputs=n_outputs,
                              n_shared_updates=n_shared_updates)
 
-
-
     def test002_generator_one_scalar_output(self):
         # The test fails, because the `work-in-progress` ScanOp always runs in
         # place (even when told not to by DebugMode). As this op will change
@@ -472,6 +471,7 @@ class TestScan(unittest.TestCase):
         # error is marked as KnownFailure
         raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
                                'functional yet')
+
         def f_pow2(x_tm1):
             return 2 * x_tm1
 
@@ -506,8 +506,10 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
+
         raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
                                'functional yet')
+
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W
         u = theano.tensor.vector('u')
