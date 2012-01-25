@@ -3531,7 +3531,7 @@ class t_dot(unittest.TestCase):
                 self.assertTrue(
                     # Reported by numpy.
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or
-                    # Reported by blas.
+                    # Reported by blas or Theano.
                     e[0].split()[0:2] == ['Shape', 'mismatch:'] or
                     # Reported by Theano when 'exception_verbosity' is set
                     # to 'high'.
