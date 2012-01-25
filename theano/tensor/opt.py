@@ -788,6 +788,8 @@ class ShapeFeature(object):
         if s is None:
             self.shape_of[r] = s
         else:
+            if not isinstance(s, (tuple, list)):
+                raise TypeError('shapes must be tuple/list', (r, s))
             if r.ndim != len(s):
                 raise AssertionError(
                         "Something inferred a shape with %d dimensions "
