@@ -1208,6 +1208,8 @@ AllocTester = makeBroadcastTester(
         op = alloc,
         expected = (lambda x, *shp: numpy.zeros(shp, dtype=x.dtype) + x),
         good = dict(
+            correct01 = (rand(), numpy.int32(7)),
+            correct01_bcast = (rand(1), numpy.int32(7)),
             correct02 = (rand(), numpy.int32(4), numpy.int32(7)),
             correct12 = (rand(7), numpy.int32(4), numpy.int32(7)),
             correct13 = (rand(7), numpy.int32(2), numpy.int32(4), numpy.int32(7)),

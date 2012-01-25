@@ -2542,7 +2542,7 @@ class Alloc(gof.Op):
 
     def c_code(self, node, name, inp, out, sub):
         # TODO: use the elemwise code generator here
-        if node.inputs[0].ndim == 0:
+        if python_all(node.inputs[0].broadcastable):
             # filling with a scalar is a common use of alloc
             # that we can implement relatively easily
             vv = inp[0]
