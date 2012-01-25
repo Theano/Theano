@@ -1400,7 +1400,9 @@ class Mod(BinaryScalarOp):
         return (5,)
 
     def c_support_code(self):
-        #We use a macro as python use % as a special string caractere.
+        # We use a macro as python use % as a special string character,
+        # and the output of c_code may be run through another level
+        # of string formatting.
         return "#define THEANO_MACRO_MOD(x,y) (x % y)"
 
     def c_code(self, node, name, (x, y), (z, ), sub):
@@ -1437,7 +1439,7 @@ class Mod(BinaryScalarOp):
         elif str(t) in imap(str, complex_types):
             raise self.complex_error
         else:
-            raise NotImplementedError('type not supported', type)
+            raise NotImplementedError('type not supported', t)
 
         return """
 if (%(x)s < 0){
