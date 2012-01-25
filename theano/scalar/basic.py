@@ -16,6 +16,7 @@ import math
 import warnings
 from copy import copy
 from itertools import imap
+from textwrap import dedent
 
 import numpy
 
@@ -1305,15 +1306,69 @@ true_div = TrueDiv(upcast_out, name='true_div')
 
 
 class IntDiv(BinaryScalarOp):
+    complex_error = ComplexError(
+                "Theano does not support integer division (//) on "
+                "complex numbers, since numpy deprecated it.")
+
     def impl(self, x, y):
         return x // y
 
+    def c_support_code(self):
+        # We use a macro as python use % as a special string character,
+        # and the output of c_code may be run through another level
+        # of string formatting.
+        return "#define THEANO_MACRO_MOD(x,y) (x % y)"
+
     def c_code(self, node, name, (x, y), (z,), sub):
-        raise NotImplementedError("For integer arguments the behavior of"
-                                  " division in C and in Python [can] differ"
-                                  " when the quotient is negative.  C actually"
-                                  " does not even specify a correct behaviour"
-                                  " in this case, it is up to the chip.")
+        t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
+        if t in imap(str, discrete_types):
+            x_div_y_pp = '(%(x)s / %(y)s)' % locals()
+            x_div_y_mp = '((-%(x)s) / %(y)s)' % locals()
+            x_mod_y_mp = 'THEANO_MACRO_MOD((-%(x)s), %(y)s)' % locals()
+            x_div_y_pm = '(%(x)s / (-%(y)s))' % locals()
+            x_mod_y_pm = 'THEANO_MACRO_MOD(%(x)s, (-%(y)s))' % locals()
+            x_div_y_mm = '((-%(x)s) / (-%(y)s))' % locals()
+        elif t in imap(str, float_types):
+            # We need to call different functions of math.h
+            # depending on the type
+            if t == 'float32':
+                floor = 'floorf'
+                fmod = 'fmodf'
+            elif t == 'float64':
+                floor = 'floor'
+                fmod = 'fmod'
+            else:
+                raise NotImplementedError('type not supported', t)
+
+            x_div_y_pp = '%(floor)s(%(x)s / %(y)s)' % locals()
+            x_div_y_mp = '%(floor)s((-%(x)s) / %(y)s)' % locals()
+            x_mod_y_mp = '%(fmod)s((-%(x)s), %(y)s)' % locals()
+            x_div_y_pm = '%(floor)s(%(x)s / (-%(y)s))' % locals()
+            x_mod_y_pm = '%(fmod)s(%(x)s, (-%(y)s))' % locals()
+            x_div_y_mm = '%(floor)s((-%(x)s) / (-%(y)s))' % locals()
+        elif t in complex_types:
+            raise self.complex_error
+        else:
+            raise NotImplementedError('type not supported', t)
+
+        return dedent("""
+            if (%(x)s < 0) {
+                if (%(y)s < 0) {
+                    %(z)s = %(x_div_y_mm)s;
+                } else {
+                    %(z)s = - %(x_div_y_mp)s - ((%(x_mod_y_mp)s == 0) ? 0 : 1);
+                }
+            } else {
+                if (%(y)s < 0) {
+                    %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
+                } else {
+                    %(z)s = %(x_div_y_pp)s;
+                }
+            }
+            """) % locals()
+
+    def c_code_cache_version(self):
+        return (2,)
 
     def grad(self, inputs, g_output):
         return [None] * len(inputs)
@@ -1346,7 +1401,9 @@ class Mod(BinaryScalarOp):
         return (5,)
 
     def c_support_code(self):
-        #We use a macro as python use % as a special string caractere.
+        # We use a macro as python use % as a special string character,
+        # and the output of c_code may be run through another level
+        # of string formatting.
         return "#define THEANO_MACRO_MOD(x,y) (x % y)"
 
     def c_code(self, node, name, (x, y), (z, ), sub):
@@ -1383,21 +1440,21 @@ class Mod(BinaryScalarOp):
         elif str(t) in imap(str, complex_types):
             raise self.complex_error
         else:
-            raise NotImplementedError('type not supported', type)
+            raise NotImplementedError('type not supported', t)
 
-        return """
-if (%(x)s < 0){
-   if (%(y)s < 0){
-      %(z)s = -(%(x_mod_ymm)s);
-   }else{
-      %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
-   }
-}else if (%(y)s < 0){
-   %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
-}else{
-   %(z)s = %(x_mod_y)s;
-}
-        """ % locals()
+        return dedent("""
+            if (%(x)s < 0){
+               if (%(y)s < 0){
+                  %(z)s = -(%(x_mod_ymm)s);
+               }else{
+                  %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
+               }
+            }else if (%(y)s < 0){
+               %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
+            }else{
+               %(z)s = %(x_mod_y)s;
+            }
+            """) % locals()
 
     def grad(self, (x, y), (gz, )):
         return None, None
@@ -1660,51 +1717,51 @@ class RoundHalfToEven(UnaryScalarOp):
         if not node.outputs[0].type.dtype in ['float32', 'float64']:
             Exception("The output should be float32 or float64")
 
-        return """
-#ifndef ROUNDING_EPSILON
-#define ROUNDING_EPSILON 0.0000001
-#endif
+        return dedent("""
+            #ifndef ROUNDING_EPSILON
+            #define ROUNDING_EPSILON 0.0000001
+            #endif
 
-    if (%(x)s < 0.0){
-      // We implement the else part like that: -else( -%(x)s);
-      %(typ)s i;
-      std::modf( -%(x)s, &i );
+            if (%(x)s < 0.0){
+              // We implement the else part like that: -else( -%(x)s);
+              %(typ)s i;
+              std::modf( -%(x)s, &i );
 
-      // If %(x)s is exactly halfway between two integers
-      if ((-%(x)s -(i +0.5)) < epsilon){
-          // If 'i' is even then return 'i'
-        if (std::fmod( i, 2.0 ) < epsilon){
-          %(z)s = - i;
-        }else{
-          // Else return the nearest even integer
-          %(z)s = - ceil( i +0.5 );
-        }
-      }else{
-        // round to closest
-        %(z)s = - round(%(x)s+5);
-      }
-    }else{
-      %(typ)s i;
-      std::modf( %(x)s, &i );
+              // If %(x)s is exactly halfway between two integers
+              if ((-%(x)s -(i +0.5)) < epsilon){
+                  // If 'i' is even then return 'i'
+                if (std::fmod( i, 2.0 ) < epsilon){
+                  %(z)s = - i;
+                }else{
+                  // Else return the nearest even integer
+                  %(z)s = - ceil( i +0.5 );
+                }
+              }else{
+                // round to closest
+                %(z)s = - round(%(x)s+5);
+              }
+            }else{
+              %(typ)s i;
+              std::modf( %(x)s, &i );
 
-      // If %(x)s is exactly halfway between two integers
-      if ((%(x)s -(i +0.5)) < epsilon){
-          // If 'i' is even then return 'i'
-        if (std::fmod( i, 2.0 ) < epsilon){
-          %(z)s = i;
-        }else{
-          // Else return the nearest even integer
-          %(z)s =  ceil( i +0.5 );
-        }
-      }else{
-        // round to closest
-        %(z)s = round(%(x)s+5);
-      }
-    }
+              // If %(x)s is exactly halfway between two integers
+              if ((%(x)s -(i +0.5)) < epsilon){
+                  // If 'i' is even then return 'i'
+                if (std::fmod( i, 2.0 ) < epsilon){
+                  %(z)s = i;
+                }else{
+                  // Else return the nearest even integer
+                  %(z)s =  ceil( i +0.5 );
+                }
+              }else{
+                // round to closest
+                %(z)s = round(%(x)s+5);
+              }
+            }
 
-#undef ROUNDING_EPSILON
+            #undef ROUNDING_EPSILON
 
-        """
+            """)
 round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 
