@@ -846,7 +846,7 @@ class T_Scan(unittest.TestCase):
                                        truncate_gradient=-1,
                                        go_backwards=False,
                                        mode=mode)
-        f9 = theano.function([mu0, mu1, mu2, x0, x1]
+        f9 = theano.function([mu0, mu1, mu2, x0, x1],
                              outputs,
                              updates=updates,
                              mode=mode,
@@ -1098,11 +1098,11 @@ class T_Scan(unittest.TestCase):
                                                vsample,
                                                [],
                                                n_steps=10,
-                                               truncate_gradient=-1
+                                               truncate_gradient=-1,
                                                go_backwards=False)
 
         my_f = theano.function([vsample], theano_vsamples[-1],
-                               updates=updates
+                               updates=updates,
                                allow_input_downcast=True)
 
         _rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1145,8 +1145,8 @@ class T_Scan(unittest.TestCase):
                                       [],
                                       [],
                                       [],
-                                      n_steps=n_steps
-                                      truncate_gradient=-1
+                                      n_steps=n_steps,
+                                      truncate_gradient=-1,
                                       go_backwards=False)
         this_f = theano.function([n_steps],
                                  output,
@@ -1889,14 +1889,17 @@ class T_Scan(unittest.TestCase):
         y0 = theano.tensor.vector('y0')
 
         def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, y_tm3, W_in1):
-            return [y_tm3 + 1, y_tm3 + 2,
+            return [y_tm3 + 1,
+                    y_tm3 + 2,
                     theano.dot(u1_t, W_in1) + u2_t * W_in2 + \
                         theano.dot(x_tm1, W),
                     y_tm1 + theano.dot(x_tm1, W_out)]
 
         outputs, updates = theano.scan(f_rnn_cmpl,
-                                       [u1, u2]
-                                       [None, None, x0,
+                                       [u1, u2],
+                                       [None,
+                                        None,
+                                        x0,
                                         dict(initial=y0, taps=[-1, -3])],
                                        W_in1,
                                        n_steps=None,
@@ -1981,7 +1984,7 @@ class T_Scan(unittest.TestCase):
                         theano.dot(x_tm1, W),
                     y_tm1 + theano.dot(x_tm1, W_out)]
 
-        _outputs, updates = theano.scan(f_rnn_cmpl
+        _outputs, updates = theano.scan(f_rnn_cmpl,
                                        [u1, u2],
                                        [None,
                                         dict(initial=x0),
