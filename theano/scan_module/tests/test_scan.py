@@ -1571,7 +1571,7 @@ class T_Scan(unittest.TestCase):
         # trng  = theano.tensor.shared_randomstreams.RandomStreams(
         #                                               utt.fetch_seed())
 
-        def f_rnn_cmpl(u_t, x_tm1,  W_in):
+        def f_rnn_cmpl(u_t, x_tm1, W_in):
             trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
             x_t = theano.dot(u_t, W_in) + x_tm1 + \
                     trng1.uniform(low=-.1, high=.1)
