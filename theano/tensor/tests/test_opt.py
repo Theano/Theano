@@ -819,7 +819,7 @@ class test_fusion(unittest.TestCase):
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
             (fx-theano.tensor.true_div(fy,2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #No c_code for int_div#40
+            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),1,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #40
             (fx-(fy/2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
