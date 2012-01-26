@@ -261,6 +261,94 @@ class TestGpuGemv(TestCase, BaseGemv,
     gemv_inplace = gpu_gemv_inplace
 
 
+class TestVectorMatrixDot(TestCase):
+    ### Tolerance factor used in this tests
+    atol = 1e-6
+    ##########################
+
+    def test_dot_vm(self):
+        ''' Test vector dot matrix '''
+        v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
+        m = theano.shared( numpy.array(numpy.random.rand(2,5),
+                                       dtype='float32'))
+        no_gpu_f = theano.function([], theano.dot(v,m), mode = mode_without_gpu)
+        gpu_f    = theano.function([], theano.dot(v,m), mode = mode_with_gpu)
+        #gpu_f2 is needed to test the case when the input is not on the gpu
+        #but the output is moved to the gpu.
+        gpu_f2   = theano.function([], tcn.gpu_from_host(theano.dot(v,m)), mode = mode_with_gpu)
+
+        # Assert they produce the same output
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        # Assert that the gpu version actually uses gpu
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f.maker.env.toposort() ]) == 1
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f2.maker.env.toposort() ]) == 1
+
+    def test_dot_mv(self):
+        ''' Test matrix dot vector '''
+        v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
+        m = theano.shared( numpy.array(numpy.random.rand(5,2),
+                                       dtype='float32'))
+        no_gpu_f = theano.function([], theano.dot(m,v), mode = mode_without_gpu)
+        gpu_f    = theano.function([], theano.dot(m,v), mode = mode_with_gpu)
+        #gpu_f2 is needed to test the case when the input is not on the gpu
+        #but the output is moved to the gpu.
+        gpu_f2   = theano.function([], tcn.gpu_from_host(theano.dot(m,v)), mode = mode_with_gpu)
+
+        # Assert they produce the same output
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        # Assert that the gpu version actually uses gpu
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f.maker.env.toposort() ]) == 1
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f2.maker.env.toposort() ]) == 1
+
+    def test_gemv1(self):
+        ''' test vector1+dot(matrix,vector2) '''
+        v1 = theano.tensor._shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+        v2 = theano.tensor._shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
+        m  = theano.tensor._shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
+
+        no_gpu_f = theano.function([], v2+theano.dot(m,v1), mode = mode_without_gpu)
+        gpu_f    = theano.function([], v2+theano.dot(m,v1), mode = mode_with_gpu)
+        #gpu_f2 is needed to test the case when the input is not on the gpu
+        #but the output is moved to the gpu.
+        gpu_f2    = theano.function([], tcn.gpu_from_host(v2+theano.dot(m,v1)), mode = mode_with_gpu)
+
+        # Assert they produce the same output
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        # Assert that the gpu version actually uses gpu
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f2.maker.env.toposort()]) == 1
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f.maker.env.toposort()]) == 1
+
+    def test_gemv2(self):
+        ''' test vector1+dot(vector2,matrix) '''
+        v1 = theano.shared( numpy.array(numpy.random.rand(5)  , dtype='float32'))
+        v2 = theano.shared( numpy.array(numpy.random.rand(2)  , dtype='float32'))
+        m  = theano.shared( numpy.array(numpy.random.rand(5,2), dtype='float32'))
+
+        no_gpu_f = theano.function([], v2+theano.dot(v1,m), mode = mode_without_gpu)
+        gpu_f    = theano.function([], v2+theano.dot(v1,m), mode = mode_with_gpu)
+        #gpu_f2 is needed to test the case when the input is not on the gpu
+        #but the output is moved to the gpu.
+        gpu_f2    = theano.function([], tcn.gpu_from_host(v2+theano.dot(v1,m)), mode = mode_with_gpu)
+
+        # Assert they produce the same output
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        # Assert that the gpu version actually uses gpu
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f2.maker.env.toposort()]) == 1
+        assert sum([node.op is gpu_gemv_inplace for node in
+                    gpu_f.maker.env.toposort()]) == 1
+
+
 class TestGpuGer(TestGer):
     def setUp(self):
         self.mode = mode_with_gpu
