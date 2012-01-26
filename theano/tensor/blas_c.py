@@ -128,13 +128,19 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     }
 
     {
-
         int Nz0 = %(Z)s->dimensions[0];
         int Nz1 = %(Z)s->dimensions[1];
-        int Sz0 = %(Z)s->strides[0] / elemsize;
-        int Sz1 = %(Z)s->strides[1] / elemsize;
         int Sx = %(x)s->strides[0] / elemsize;
         int Sy = %(y)s->strides[0] / elemsize;
+
+        /* create appropriate strides for Z, if it is a row or column matrix.
+         * In that case, the value of the stride does not really matter, but
+         * some versions of BLAS insist that:
+         *  - they are not smaller than the number of elements in the array,
+         *  - they are not 0.
+         */
+        int Sz0 = (Nz0 > 1) ? (%(Z)s->strides[0] / elemsize) : (Nz1 + 1);
+        int Sz1 = (Nz1 > 1) ? (%(Z)s->strides[1] / elemsize) : (Nz0 + 1);
 
         if (1)
         {
@@ -198,7 +204,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 @local_optimizer([ger, ger_destructive])
