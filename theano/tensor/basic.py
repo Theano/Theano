@@ -4700,7 +4700,7 @@ class TileGrad(Op):
         if len(reps) == 2 and reps[1] == 1 and len(x.shape) == 1:
             gx[0] = numpy.sum(g_out, axis=0)
         else:
-            raise NotImplementedError('x.shape, reps combination not'
+            raise NotImplementedError('x.shape, reps combination not '
                                       'supported', (x.shape, reps))
 
 tilegrad = TileGrad()
