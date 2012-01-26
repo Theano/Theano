@@ -612,10 +612,22 @@ if config.floatX=='float32':
     # This is probably caused by our way of computing the gradient error.
     div_grad_rtol=0.025
 
+
+def _numpy_true_div(x, y):
+    """Performs true division, and cast the result in the type we expect.
+
+    We define that function so we can use it in TrueDivTester.expected,
+    because simply calling numpy.true_divide could cause a dtype mismatch.
+    """
+    out = numpy.true_divide(x, y)
+    # Use floatX as the result of int / int
+    if x.dtype in tensor.discrete_dtypes and y.dtype in tensor.discrete_dtypes:
+        out = theano._asarray(out, dtype=config.floatX)
+    return out
+
 TrueDivTester = makeBroadcastTester(
         op=tensor.true_div,
-        expected = (lambda x, y:
-            check_floatX((x, y), numpy.true_divide(x, y))),
+        expected=_numpy_true_div,
         good=_good_broadcast_div_mod_normal_float,
         grad=_grad_broadcast_div_mod_normal,
         grad_rtol=div_grad_rtol,
@@ -623,7 +635,7 @@ TrueDivTester = makeBroadcastTester(
 
 TrueDivInplaceTester = makeBroadcastTester(
         op=inplace.true_div_inplace,
-        expected=(lambda x, y: numpy.true_divide(x, y)),
+        expected=_numpy_true_div,
         good=copymod(
             _good_broadcast_div_mod_normal_float_inplace,
             # The output is now in float, we cannot work inplace on an int.
