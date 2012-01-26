@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast)
+        tile, patternbroadcast, sort, SortOp, )
 from theano.tests import unittest_tools as utt
 
 
@@ -5582,6 +5582,57 @@ def test_transpose():
     assert t3d.shape == (2, 4, 3)
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
+
+
+def test_sort():
+
+  testMatrix = [[4,9,1],[1,3,2]]
+  testVector = [1,10,0,2]
+
+  print "Example 1: "
+  a = theano.tensor.dmatrix()
+  w = sort(a)
+  f = theano.function([a],w)
+  print testMatrix
+  print f(testMatrix)
+  print "------------------------------"
+
+  print "Example 2: "
+  a = theano.tensor.dmatrix()
+  axis = theano.tensor.scalar()
+  w = sort(a,axis)
+  f = theano.function([a,axis],w)
+  print testMatrix
+  print f(testMatrix,1)
+  print "------------------------------"
+
+  print "Example 3: "
+  a = theano.tensor.dvector()
+  w2 = sort(a)
+  f = theano.function([a],w2)
+  print testVector
+  print f(testVector)
+  print "------------------------------"
+
+  print "Example 4: "
+  a = theano.tensor.dmatrix()
+  axis = theano.tensor.scalar()
+  l = sort(a,axis,"mergesort")
+  f = theano.function([a,axis],l)
+  print testMatrix
+  print f(testMatrix,1)
+  print "------------------------------"
+
+  print "Example 5: Check __eq__ function "
+  a = theano.tensor.dmatrix()
+  axis = theano.tensor.scalar()
+  a1 = SortOp("mergesort",[])
+  a2 = SortOp("quicksort",[])
+
+  #All the below should give true
+  print  a1 == a2
+  print  a1 == SortOp("mergesort",[])
+  print  a2 == SortOp("quicksort",[])
 
 
 if __name__ == '__main__':

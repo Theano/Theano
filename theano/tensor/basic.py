@@ -5756,3 +5756,52 @@ def any(x, axis=None):
 
 def all(x, axis=None):
     return elemwise.All(axis)(x)
+
+
+class SortOp(theano.Op):
+    def __init__(self, kind, order=None):
+      self.kind = kind
+      self.order = order
+
+    def __eq__(self, other):
+      return type(self) == type(other) and self.order == other.order
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.order)
+
+    def __str__(self):
+        return self.__class__.__name__ + "{%s, %s}" % (self.kind, str(self.order))
+
+    def make_node(self, input, axis=-1):
+
+        input = theano.tensor.as_tensor_variable(input)
+        axis = theano.tensor.as_tensor_variable(axis)
+
+        return theano.Apply(self, [input, axis], [input.type()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0]
+        axis = inputs[1]
+        z = output_storage[0]
+        z[0] = numpy.sort(a,axis,self.kind,self.order)
+
+    def infer_shape(self, node, inputs_shapes):
+        return [inputs_shapes[0]]
+
+    #**** It need the argsort, so we can't do it now.
+    #def grad(self, inputs, output_grads):
+
+    """
+    def R_op(self, inputs, eval_points):
+        # R_op can receive None as eval_points.
+        # That mean there is no diferientiable path through that input
+        # If this imply that you cannot compute some outputs,
+        # return None for those.
+        if eval_points[0] is None:
+            return eval_points
+        return self.grad(inputs, eval_points)
+    """
+
+
+def sort(a, axis=-1, kind='quicksort', order=None):
+    return SortOp(kind, order)(a, axis)
