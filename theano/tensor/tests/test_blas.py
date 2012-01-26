@@ -1378,6 +1378,12 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
     def test_f32_4_4(self):
         return self.given_dtype('float32', 4, 4)
 
+    def test_f32_7_1(self):
+        return self.given_dtype('float32', 7, 1)
+
+    def test_f32_1_2(self):
+        return self.given_dtype('float32', 1, 2)
+
     def test_f64_4_5(self):
         return self.given_dtype('float64', 4, 5)
 
