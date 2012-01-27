@@ -1422,6 +1422,10 @@ class _tensor_py_operators:
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype)
 
+    def prod(self, axis=None, dtype=None):
+        """See `theano.tensor.prod`"""
+        return prod(self, axis=axis, dtype=dtype)
+
     def norm(self, L, axis=None):
         if L==0:
             raise NotImplementedError()
@@ -2631,9 +2635,13 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 
 @constructor
-def prod(input, axis = None):
-    """WRITEME"""
-    return elemwise.Prod(axis)(input)
+def prod(input, axis=None, dtype=None):
+    """
+    Returns the Product of a tensor's elements along the given axis(es).
+
+    For full documentation see ``tensor.elemwise.Prod``.
+    """
+    return elemwise.Prod(axis, dtype=dtype)(input)
 
 class Mean(elemwise.CAReduce):
     def __init__(self, axis = None):
