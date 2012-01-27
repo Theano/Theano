@@ -64,7 +64,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     :param graph_inputs: variables considered to be constant
         (do not backpropagate through them)
 
-    :rtype: dictionary whose keys and values are of type `Variable`
+    :rtype: dictionary whose keys and values are of type Variable
 
     :return: mapping from each Variable encountered in the backward
         traversal to the gradient with respect to that Variable.
@@ -182,23 +182,22 @@ def Rop(f, wrt, eval_points):
     in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
     to `wrt` right muliplied by the eval points.
 
-    :type f: `Variable` or list of `Variable`s
-        `f` stands for the output of the computational graph to which you
-        want to apply the R operator
-    :type wrt: `Variable` or list of `Variables`s
-        variables for which you compute the R operator of the expression
-        described by `f`
-    :type eval_points: `Variable` or list of `Variable`s
-        evalutation points for each of the variables in `wrt`
-
-    :rtype: `Variable` or list/tuple of `Variable`s depending on type of f
+    :type f: Variable or list of Variables
+             `f` stands for the output of the computational graph to which you
+             want to apply the R operator
+    :type wrt: Variable or list of `Variables`s
+               variables for which you compute the R operator of the expression
+               described by `f`
+    :type eval_points: Variable or list of Variables
+                       evalutation points for each of the variables in `wrt`
+    :rtype: Variable or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last.
         If `wrt` is a list/tuple, then return a list/tuple with the results.
-        """
+    """
     from theano.tensor import as_tensor_variable
     using_list = isinstance(f, list)
     using_tuple = isinstance(f, tuple)
@@ -295,16 +294,16 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
     to `wrt` left muliplied by the eval points.
 
-    :type f: `Variable` or list of `Variable`s
+    :type f: Variable or list of Variables
         `f` stands for the output of the computational graph to which you
         want to apply the L operator
-    :type wrt: `Variable` or list of `Variables`s
+    :type wrt: Variable or list of `Variables`s
         variables for which you compute the L operator of the expression
         described by `f`
-    :type eval_points: `Variable` or list of `Variable`s
-        evalutation points for each of the variables in `f`
+    :type eval_points: Variable or list of Variables
+                        evalutation points for each of the variables in `f`
 
-    :rtype: `Variable` or list/tuple of `Variable`s depending on type of f
+    :rtype: Variable or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
         where the indices in that expression are magic multidimensional
@@ -374,9 +373,9 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
          disconnected_inputs='raise'):
     """
-    :type cost: Scalar (0-dimensional) `Variable`
-    :type wrt: `Variable` or list of `Variable`s.
-    :type g_cost: Scalar `Variable`, or None
+    :type cost: Scalar (0-dimensional) Variable.
+    :type wrt: Variable or list of Variables.
+    :type g_cost: Scalar Variable, or None.
     :param g_cost: an expression for the gradient through cost.  The default is
         ``ones_like(cost)``.
     :param consider_constant: a list of expressions not to backpropagate
@@ -393,7 +392,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :rtype: `Variable` or list/tuple of `Variable`s (depending upon `wrt`)
+    :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
 
     :return: symbolic expression of gradient of `cost` with respect to `wrt`.
              If an element of `wrt` is not differentiable with respect
@@ -672,9 +671,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
     """ Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
-    >>> verify_grad(theano.tensor.tanh,
-                    (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-                    rng=numpy.random)
+        >>> verify_grad(theano.tensor.tanh,
+                        (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
+                        rng=numpy.random)
 
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) of a
@@ -841,8 +840,8 @@ verify_grad.E_grad = GradientError
 def jacobian(expression, wrt, consider_constant=None, warn_type=False,
              disconnected_inputs='raise'):
     """
-    :type expression: Vector (1-dimensional) `Variable`
-    :type wrt: 'Variable' or list of `Variables`s
+    :type expression: Vector (1-dimensional) Variable
+    :type wrt: Variable or list of Variables
 
     :param consider_constant: a list of expressions not to backpropagate
         through
@@ -858,7 +857,7 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :return: either a instance of `Variable` or list/tuple of `Variable`s
+    :return: either a instance of Variable or list/tuple of Variables
             (depending upon `wrt`) repesenting the jacobian of `expression`
             with respect to (elements of) `wrt`. If an element of `wrt` is not
             differentiable with respect to the output, then a zero
@@ -914,9 +913,9 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
 def hessian(cost, wrt, consider_constant=None, warn_type=False,
              disconnected_inputs='raise'):
     """
-    :type cost: Scalar (0-dimensional) `Variable`
+    :type cost: Scalar (0-dimensional) Variable.
     :type wrt: Vector (1-dimensional tensor) 'Variable' or list of
-            vectors (1-dimensional tensors) `Variable`s
+               vectors (1-dimensional tensors) Variables
 
     :param consider_constant: a list of expressions not to backpropagate
         through
@@ -932,7 +931,7 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :return: either a instance of `Variable` or list/tuple of `Variable`s
+    :return: either a instance of Variable or list/tuple of Variables
             (depending upon `wrt`) repressenting the Hessian of the `cost`
             with respect to (elements of) `wrt`. If an element of `wrt` is not
             differentiable with respect to the output, then a zero
