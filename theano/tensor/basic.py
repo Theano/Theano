@@ -4750,10 +4750,21 @@ def tile(x, reps, ndim=None):
     Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
     for details.
 
+    Currently, `reps` must be a constant.
+
     TODO: expand this.
     """
+    if len(reps) != x.ndim:
+        raise ValueError("len(reps) != x.ndim not currently supported")
+
     if not hasattr(tile, 'op'):
         tile.op = {}
+
+    try:
+        assert builtin_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+                         "tuple, list of integers)")
     if ndim is None:
         ndim = len(reps)
 
@@ -5670,8 +5681,14 @@ def outer(x, y):
             y.dimshuffle('x', 0))
 
 
+builtin_any = any
+
+
 def any(x, axis=None):
     return elemwise.Any(axis)(x)
+
+
+builtin_all = all
 
 
 def all(x, axis=None):
