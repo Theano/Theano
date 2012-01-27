@@ -1418,8 +1418,9 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
-    def sum(self, *args, **kw):
-        return sum(self, *args, **kw)
+    def sum(self, axis=None, dtype=None):
+        """See `theano.tensor.sum`"""
+        return sum(self, axis=axis, dtype=dtype)
 
     def norm(self, L, axis=None):
         if L==0:
