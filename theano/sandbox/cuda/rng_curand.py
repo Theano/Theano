@@ -247,7 +247,8 @@ class CURAND_Uniform(CURAND_Base):
 
 
 class CURAND_RandomStreams(object):
-    """RandomStreams instance that creates CURAND-based random variables.
+    """
+    RandomStreams instance that creates CURAND-based random variables.
 
     One caveat is that generators are not serializable.
     """

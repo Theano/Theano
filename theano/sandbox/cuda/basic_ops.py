@@ -34,6 +34,9 @@ def as_cuda_array(obj):
         raise TypeError("Don't know how to cast to a CudaNdarray object")
 
 class HostFromGpu(Op):
+    """
+    Implement the transfer from gpu to the cpu.
+    """
     def __eq__(self, other):
         return type(self) == type(other)
     def __hash__(self):
@@ -63,6 +66,9 @@ class HostFromGpu(Op):
 host_from_gpu = HostFromGpu()
 
 class GpuFromHost(Op):
+    """
+    Implement the transfer from cpu to the gpu.
+    """
     def __eq__(self, other):
         return type(self) == type(other)
     def __hash__(self):
@@ -93,6 +99,9 @@ class GpuFromHost(Op):
 gpu_from_host = GpuFromHost()
 
 class GpuElemwise(Op):
+    """
+    Implement a generic elemwise on the gpu.
+    """
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -200,6 +209,9 @@ class GpuElemwise(Op):
         return self.src_generator.cache_version
 
 class GpuDimShuffle(Op):
+    """
+    Implement DimShuffle on the gpu.
+    """
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
@@ -403,7 +415,7 @@ class GpuSum(Op):
       - reduce_mask == (1,1,1) computes the sum of all elements in a 3-tensor.
 
     :note: any reduce_mask of all zeros is a sort of 'copy', and may be removed during graph
-    optimization
+           optimization
 
     """
     def __init__(self, reduce_mask):
@@ -1706,6 +1718,9 @@ class GpuSum(Op):
         return sio.getvalue()
 
 class GpuReshape(tensor.Reshape):
+    """
+    Implement Reshape on the gpu.
+    """
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
         host_reshaped = host_from_gpu(x).reshape(shp,ndim=self.ndim)
@@ -1719,6 +1734,9 @@ class GpuReshape(tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
 class GpuSubtensor(tensor.Subtensor):
+    """
+    Implement subtensor on the gpu.
+    """
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, *inputs):
         assert isinstance(x.type, CudaNdarrayType)
@@ -1747,6 +1765,9 @@ class GpuSubtensor(tensor.Subtensor):
         out[0] = x.__getitem__(cdata)
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
+    """
+    Implement AdvancedSubtensor1 on the gpu.
+    """
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
         ilist_ = tensor.as_tensor_variable(ilist)
@@ -1770,6 +1791,9 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
         out[0] = o
 
 class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
+    """
+    Implement AdvancedIncSubtensor1 on the gpu.
+    """
     def make_node(self, x, y, ilist):
         x_ = as_cuda_ndarray_variable(x)
         y_ = as_cuda_ndarray_variable(y)
@@ -1795,6 +1819,9 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
         # so we use the parent version that loop on each indices.
 
 class GpuIncSubtensor(tensor.IncSubtensor):
+    """
+    Implement IncSubtensor on the gpu.
+    """
     def make_node(self, x, y, *inputs):
         assert isinstance(x.type, CudaNdarrayType)
         assert isinstance(y.type, CudaNdarrayType)
@@ -1802,6 +1829,9 @@ class GpuIncSubtensor(tensor.IncSubtensor):
         return Apply(self, [x,y]+rval.inputs[2:], [x.type()])
 
 class GpuFlatten(tensor.Flatten):
+    """
+    Implement Flatten on the gpu.
+    """
     def make_node(self, x ):
         assert isinstance(x.type, CudaNdarrayType)
         rval = tensor.Flatten.make_node(self, x)
@@ -1810,11 +1840,17 @@ class GpuFlatten(tensor.Flatten):
         return Apply(self, [x], [out_type()])
 
 class GpuShape(tensor.Shape):
+    """
+    Implement Shape on the gpu.
+    """
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
 
 class GpuJoin(tensor.Join):
+    """
+    Implement Join on the gpu.
+    """
     def make_node(self, *axis_and_tensors):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         if not tensors:
@@ -1889,6 +1925,9 @@ class GpuJoin(tensor.Join):
 gpu_join = GpuJoin()
 
 class GpuAlloc(Op):
+    """
+    Implement Alloc on the gpu.
+    """
     def __init__(self):
         pass
 
@@ -1967,7 +2006,12 @@ class GpuAlloc(Op):
 
 gpu_alloc = GpuAlloc()
 
+
 class GpuContiguous(Op):
+    """
+    Always return a c contiguous output. Copy the input only if it is
+    not already c contiguous.
+    """
     view_map = {0: [0]}
 
     def __eq__(self, other):
