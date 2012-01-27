@@ -6,7 +6,11 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda.kernel_codegen import nvcc_kernel, inline_reduce_max, inline_reduce_sum, inline_softmax
 
+
 class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
+    """
+    Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
+    """
     nin=3
     nout=3
     def __eq__(self, other):
@@ -177,6 +181,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 class GpuCrossentropySoftmax1HotWithBiasDx (Op):
+    """
+    Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
+    """
     nin=3
     nout=1
     """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
@@ -296,7 +303,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 class GpuSoftmax (Op):
-    """Writeme"""
+    """
+    Implement Softmax on the gpu.
+    """
     def __eq__(self, other):
         return type(self) == type(other)
     def __hash__(self):
@@ -392,7 +401,9 @@ class GpuSoftmax (Op):
 gpu_softmax = GpuSoftmax()
 
 class GpuSoftmaxWithBias (Op):
-    """Writeme"""
+    """
+    Implement SoftmaxWithBias on the gpu.
+    """
     nin = 2
     nout = 1
     def __eq__(self, other):
