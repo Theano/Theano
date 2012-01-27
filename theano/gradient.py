@@ -58,23 +58,56 @@ def format_as(use_list, use_tuple, outputs):
 
 def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
-    :type sources: list of pairs of Variable: (v, gradient-on-v)
+    A gradient source is a pair (``v``, ``g_v``), in which ``v`` is
+    a `Variable`, and ``g_v`` is a `Variable` that is a gradient wrt
+    ``v``. More specifically, ``g_v`` is the gradient of an external
+    scalar cost, ``cost`` (that is not explicitly used), wrt ``v``.
+
+    This function traverses the graph backward from the ``r`` sources,
+    calling ``op.grad(...)`` for all ops with some non-None gradient
+    on an output, to compute gradients of ``cost`` wrt intermediate
+    variables and ``graph_inputs``.
+
+    The ``op.grad(...)`` functions are called like this:
+
+    .. code-block:: python
+
+        op.grad(op.inputs[:], [total_gradient(v) for v in op.outputs])
+
+    This call to ``op.grad`` should return a list or tuple: one symbolic
+    gradient per input. These gradients represent the gradients of
+    the same implicit ``cost`` mentionned above, wrt ``op.inputs``.  Note
+    that this is **not** the same as the gradient of ``op.outputs`` wrt
+    ``op.inputs``.
+
+    If ``op`` has a single input, then ``op.grad`` should return a list
+    or tuple of length 1.
+    For each input wrt to which ``op`` is not differentiable, it should
+    return ``None`` instead of a `Variable` instance.
+
+    If a source ``r`` receives a gradient from another source ``r2``,
+    then the effective gradient on ``r`` is the sum of both gradients.
+
+
+
+    :type sources: list of pairs of Variable: (v, gradient-on-v) to
+                   initialize the total_gradient dictionary
     :param sources: gradients to back-propagate using chain rule
     :type graph_inputs: list of Variable
     :param graph_inputs: variables considered to be constant
         (do not backpropagate through them)
+    :type warn_type: bool
+    :param warn_type: True will trigger warnings via the logging module when
+       the gradient on an expression has a different type than the original
+       expression
 
     :rtype: dictionary whose keys and values are of type Variable
-
     :return: mapping from each Variable encountered in the backward
         traversal to the gradient with respect to that Variable.
 
     It is assumed that there is some objective J shared between all members of
     sources, so that for each v, gradient-on-v is the gradient of J with
     respect to v
-
-
-
 
     """
     gmap = {}
