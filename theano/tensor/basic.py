@@ -1430,9 +1430,9 @@ class _tensor_py_operators:
         #optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0/L)
 
-    def mean(self, axis=None):
+    def mean(self, axis=None, dtype=None):
         """See `theano.tensor.mean`"""
-        return mean(self, axis)
+        return mean(self, axis=axis, dtype=dtype)
 
     def var(self, axis=None):
         """See `theano.tensor.var`"""
@@ -2668,35 +2668,54 @@ class Mean(elemwise.CAReduce):
 #      return grad(mean(x, self.axis, op=False),[x])
 
 @constructor
-def mean(input, axis = None, op = False):
+def mean(input, axis=None, dtype=None, op=False):
     """Compute the mean value along the given axis of a tensor `input`
 
     :param axis: compute the mean along this axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
-    :note: for gpu, if you manually cast the input to float32 before calling
-           mean, everything will be done on the gpu.
+    :param dtype: dtype to use for the inner summation. This will not
+                  necessarily be the dtype of the output (in particular
+                  if it is a discrete (int/uint) dtype, the output will
+                  be in a float type)
+    :type dtype: string
+
+    :note: for gpu, if you specify dtype=float32, everything will be done
+           on the gpu.
     """
     if op:
         return Mean(axis)(input)
 
-    if str(input.dtype) in discrete_dtypes:
-            # we need to cast eventually anyway, and this helps
-            # to prevents overflow
-        input = cast(input, 'float64')
-    s = sum(input, axis)
+    if dtype is not None:
+        # The summation will be done with the specified dtype.
+        # sum() will complain if it is not suitable.
+        sum_dtype = dtype
+    elif input.dtype in discrete_dtypes:
+        # we need to cast eventually anyway, and this helps
+        # to prevents overflow. Numpy uses 'float64'.
+        # TODO: use floatX? let casting_policy decide?
+        sum_dtype = 'float64'
+    else:
+        # Let sum() infer the appropriate dtype
+        sum_dtype = None
+
+    s = sum(input, axis=axis, dtype=sum_dtype)
     shp = shape(input)
-    if input.dtype == 'float32':
+
+    # Cast shp into a float type
+    if s.dtype in ('float32', 'complex64'):
         shp = cast(shp, 'float32')
+    else:
+        shp = cast(shp, 'float64')
+
     if axis is None:
         axis = range(input.ndim)
     elif isinstance(axis, int):
         axis = [axis]
     for i in axis:
         s = s / shp[i]
-    if str(input.dtype).startswith('float'):
-        assert input.dtype == s.dtype
+
     return s
 
 @constructor
