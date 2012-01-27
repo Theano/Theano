@@ -94,12 +94,12 @@ of symbolic differentiation).
 Computing the Jacobian
 ======================
 
-Theano implement :func:`theano.gradient.jacobian` macro that does all
-what is needed to compute the jacobian. The following text explain how
+Theano implements :func:`theano.gradient.jacobian` macro that does all
+what is needed to compute the Jacobian. The following text explains how
 to do it manually.
 
 In order to manually compute the Jacobian of some function ``y`` with
-respect to some parameter ``x`` we need to use the ``scan``. What we
+respect to some parameter ``x`` we need to use ``scan``. What we
 do is to loop over the entries in ``y`` and compute the gradient of
 ``y[i]`` with respect to ``x``.
 
@@ -138,13 +138,13 @@ matrix, which corresponds to the Jacobian.
 Computing the Hessian
 =====================
 
-Theano implement :func:`theano.gradient.hessian` macro that does all
-what is needed to compute the hessian. The following text explain how
+Theano implements :func:`theano.gradient.hessian` macro that does all
+that is needed to compute the Hessian. The following text explains how
 to do it manually.
 
-You can compute the hessian manually as the jacobian. The only
+You can compute the Hessian manually as the Jacobian. The only
 difference is that now, instead of computing the Jacobian of some expression
-``y``, we compute the jacobian of ``T.grad(cost,x)``, where ``cost`` is some
+``y``, we compute the Jacobian of ``T.grad(cost,x)``, where ``cost`` is some
 scalar. 
 
 
