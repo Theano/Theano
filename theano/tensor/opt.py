@@ -2865,6 +2865,7 @@ register_canonicalize(local_neg_to_mul)
 @gof.local_optimizer([])
 def local_sum_mul_by_scalar(node):
     """sum(scalar * smth) -> scalar * sum(smth)
+       sum(-smth) -> -sum(smth)
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
