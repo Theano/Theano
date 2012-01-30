@@ -1,9 +1,7 @@
 UPDATED THIS FILE UP TO: 41103b5d158739e4147428ce776fb5716062d4a8
 
- * fix subtensor bug(report RP, fix PL) TODO  BETTER DESCRIPTION! a7be89231eb26f7a39ab5448ef4abf90a6c0d529
-
 If you have updated to 0.5rc1, you are highly encouraged to update to
-0.5rc2. There is more bug fix and speed uptimization! But there is
+0.5rc2. There are more bug fixes and speed uptimization! But there is
 also a small new interface change about sum of [u]int* dtype.
 
 
@@ -70,17 +68,17 @@ Scan fix:
  * computing grad of a function of grad of scan(reported by ?, Razvan)
    before : most of the time crash, but could be wrong value with bad number of dimensions(so a visible bug)
    now : do the right thing.
- * gradient with respect to outputs using multiple taps(Timotty reported, fix Razvan)
+ * gradient with respect to outputs using multiple taps(Timothy reported, fix by Razvan)
    before : it used to return wrong values
    now : do the right thing.
    Note: The reported case of this bug was happening in conjunction with the
          save optimization of scan that give run time errors. So if you didn't
          manually disable the same memory optimization(number in the list4),
          you are fine if you didn't manually request multiple taps.
- * Rop of gradient of scan (reported by Timotty and Justin Buyer, fix by Razvan)
+ * Rop of gradient of scan (reported by Timothy and Justin Bayer, fix by Razvan)
    before : compilation error when computing R-op
    now : do the right thing.
- * save memory optimization of scan (reported by Timotty and Nicolas BL, fix by Razvan)
+ * save memory optimization of scan (reported by Timothy and Nicolas BL, fix by Razvan)
    before : for certain corner cases used to result in a runtime shape error
    now : do the right thing.
  * Scan grad when the input of scan has sequences of different lengths. (Razvan, reported by Michael Forbes)
@@ -154,7 +152,7 @@ Bug fixes (the result changed):
    code was affected by this bug. (Olivier, reported by Sander Dieleman)
  * When indexing into a subtensor of negative stride (for instance, x[a:b:-1][c]),
    an optimization replacing it with a direct indexing (x[d]) used an incorrect formula,
-   leading to incorrect results. (Pascal)
+   leading to incorrect results. (Pascal, reported by Razvan)
 
 
 Crashes fixed:
@@ -220,7 +218,7 @@ Others:
  * Add a warning about numpy bug with subtensor with more then 2**32 elemenent(TODO, more explicit)
  * Added Scalar.ndim=0 and ScalarSharedVariable.ndim=0 (simplify code)(Razvan)
  * New min_informative_str() function to print graph. (Ian)
- * Fix catching of exception. (Sometimes we catched interupt) (Frederic, David, Ian, Olivier)
+ * Fix catching of exception. (Sometimes we used to catch interrupts) (Frederic, David, Ian, Olivier)
  * Better support for uft string. (David)
  * Fix pydotprint with a function compiled with a ProfileMode (Frederic)
      * Was broken with change to the profiler.

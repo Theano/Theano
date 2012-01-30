@@ -1682,6 +1682,12 @@ def merge_two_slices(slice1, len1, slice2, len2):
             # the k-th element from sl.start but the k-th element from
             # sl.stop backwards
             n_val = sl1.stop - 1 - sl2 * sl1.step
+            if config.warn.subtensor_merge_bug:
+                _logger.warn((
+                    'Your current code is fine, but Theano versions '
+                    'prior to 0.5rc2 might have given an incorrect result. '
+                    'To disable this warning, set the Theano flag '
+                    'warn.subtensor_merge_bug to False.'))
             # we need to pick either n_val or p_val and then follow same
             # steps as above for covering the index error cases
             val = T.switch(T.lt(reverse1, 0), n_val, p_val)
