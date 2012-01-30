@@ -1842,7 +1842,13 @@ def local_subtensor_of_alloc(node):
         # If val was not copied over that dim,
         # we need to take the appropriate subtensor on it.
         if i >= n_added_dims:
-            val_slices.append(sl)
+            # We check that the corresponding val dimensions was
+            # not a broadcasted dimensions.
+            if (val.type.ndim > (i - n_added_dims) and
+                val.type.broadcastable[i - n_added_dims]):
+                val_slices.append(slice(None))
+            else:
+                val_slices.append(sl)
 
         csl, _ = T.get_canonical_form_slice(sl, dim)
         if type(csl) is not slice:
@@ -2865,6 +2871,7 @@ register_canonicalize(local_neg_to_mul)
 @gof.local_optimizer([])
 def local_sum_mul_by_scalar(node):
     """sum(scalar * smth) -> scalar * sum(smth)
+       sum(-smth) -> -sum(smth)
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
