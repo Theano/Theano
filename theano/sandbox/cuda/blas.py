@@ -6,6 +6,9 @@ import cuda_ndarray.cuda_ndarray as cuda
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 class GpuDot22(Op):
+    """
+    Implement dot(2d, 2d) on the gpu.
+    """
     def __str__(self):
         return 'GpuDot22'
     def __eq__(self, other):
@@ -74,6 +77,9 @@ class GpuDot22(Op):
 gpu_dot22 = GpuDot22()
 
 class GpuDot22Scalar(Op):
+    """
+    Implement dot(2d, 2d) * scalar on the gpu.
+    """
     def __str__(self):
         return 'GpuDot22Scalar'
     def __eq__(self, other):
@@ -434,6 +440,7 @@ gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
 class GpuOuter(Op):
+    """ Implement outer on the gpu."""
     def make_node(self, x, y):
         # we suppose type checking has been done, but make sure.
         assert (x.type.ndim == 1 and y.type.ndim == 1 and
@@ -526,6 +533,9 @@ gpu_outer = GpuOuter()
 # Not really a BLAS operation, but whatever.
 #
 class GpuConv(Op):
+    """
+    Implement the batched and stacked 2d convolution on the gpu.
+    """
     @staticmethod
     def logical_output_shape_2d(imshp, kshp, mode):
         if mode == 'valid':
@@ -689,6 +699,9 @@ class GpuConv(Op):
 
 
 class GpuDownsampleFactorMax(Op):
+    """
+    Implement downsample with max on the gpu.
+    """
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
@@ -846,6 +859,9 @@ class GpuDownsampleFactorMax(Op):
         """ % locals()
 
 class GpuDownsampleFactorMaxGrad(Op):
+    """
+    Implement the grad of downsample with max on the gpu.
+    """
     def __init__(self, ds, ignore_border):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border

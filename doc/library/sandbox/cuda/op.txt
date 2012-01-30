@@ -1,0 +1,35 @@
+.. _libdoc_cuda_op:
+
+======================================================
+:mod:`sandbox.cuda` -- List of CUDA GPU Op implemented
+======================================================
+
+.. moduleauthor:: LISA
+
+Normally you should not call directly those Ops! Theano should automatically transform cpu ops to their gpu equivalent. So this list is just useful to let people know what is implemented on the gpu.
+
+Basic Op
+========
+
+.. automodule:: theano.sandbox.cuda.basic_ops
+    :members:
+
+Blas Op
+=======
+
+.. automodule:: theano.sandbox.cuda.blas
+    :members:
+
+Nnet Op
+=======
+
+.. automodule:: theano.sandbox.cuda.nnet
+    :members:
+
+Curand Op
+=========
+
+Random generator based on the CURAND libraries. It is not inserted automatically.
+
+.. automodule:: theano.sandbox.cuda.rng_curand
+    :members:

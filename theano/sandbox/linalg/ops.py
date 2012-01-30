@@ -535,7 +535,7 @@ class MatrixInverse(Op):
     and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
 
     :note: When possible, the call to this op will be optimized to the call
-    of ``solve``.
+           of ``solve``.
     """
 
     def __init__(self):
