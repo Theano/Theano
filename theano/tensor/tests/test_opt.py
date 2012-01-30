@@ -2073,18 +2073,6 @@ class Test_alloc_zero(unittest.TestCase):
 
 def test_local_subtensor_of_alloc():
     x = tensor.matrix('x')
-    y = tensor.vector('y')
-
-    # The rows of yx are copies of y
-    yx = tensor.alloc(y, x.shape[0], x.shape[1])
-
-    # Slice of each row
-    z_mat = yx[:, 3:]
-    assert z_mat.ndim == 2
-
-    # Only one column
-    z_vec = yx[:, 3]
-    assert z_vec.ndim == 1
 
     # DebugMode should detect if something goes wrong.
     # test shape combination of odd and event shape.
@@ -2093,22 +2081,35 @@ def test_local_subtensor_of_alloc():
         xval = numpy.zeros(shape, dtype=config.floatX)
         yval = numpy.arange(shape[1], dtype=config.floatX)
 
-        for slices in [
-            # results are vector
-            (slice(None), 3),
-            (2, slice(None)),
-            # results are matrix
-            (slice(None), slice(3, None)),
-            (slice(3, None), ),
-            (slice(3, None), slice(3, None)),
-            (slice(1, 3), slice(None, -1)),
-            (slice(None, None, 2)),
-            (slice(1, None, 2)),
-            ]:
-            z = yx.__getitem__(slices)
-            f = theano.function([x, y], z)
-            val = f(xval, yval)
-            assert xval.__getitem__(slices).shape == val.shape
+        for y in [theano.shared(yval), tensor.constant([1.])]:
+
+            # The rows of yx are copies of y
+            yx = tensor.alloc(y, x.shape[0], x.shape[1])
+
+            # Slice of each row
+            z_mat = yx[:, 3:]
+            assert z_mat.ndim == 2
+
+            # Only one column
+            z_vec = yx[:, 3]
+            assert z_vec.ndim == 1
+
+            for slices in [
+                # results are vector
+                (slice(None), 3),
+                (2, slice(None)),
+                # results are matrix
+                (slice(None), slice(3, None)),
+                (slice(3, None), ),
+                (slice(3, None), slice(3, None)),
+                (slice(1, 3), slice(None, -1)),
+                (slice(None, None, 2)),
+                (slice(1, None, 2)),
+                ]:
+                z = yx.__getitem__(slices)
+                f = theano.function([x], z)
+                val = f(xval)
+                assert xval.__getitem__(slices).shape == val.shape
 
 
 def test_local_fill_useless():
