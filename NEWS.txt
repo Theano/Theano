@@ -168,6 +168,7 @@ Crashes fixed:
  * Support for OSX Enthought Python Distribution 7.x. (Graham Taylor, Olivier)
  * When the subtensor inputs had 0 dimensions and the outputs 0 dimensions. (Frederic)
  * Crash when the step to subtensor was not 1 in conjunction with some optimization. (Frederic, reported by Olivier Chapelle)
+ * Runtime crash related to an optimization with subtensor of alloc (reported by Razvan, fixed by Frederic)
  * Fix dot22scalar cast of integer scalars (Justin Bayer, Frédéric, Olivier)
  * Fix runtime crash in gemm, dot22. FB
  * Fix on 32bits computer: make sure all shape are int64.(Olivier)
