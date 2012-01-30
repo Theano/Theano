@@ -282,6 +282,13 @@ AddConfigVar('warn.sum_div_dimshuffle_bug',
              BoolParam(warn_default('0.3')),
              in_c_key=False)
 
+AddConfigVar('warn.subtensor_merge_bug',
+        "Warn if previous versions of Theano (before 0.5rc2) could have given "
+        "incorrect results when indexing into a subtensor with negative stride "
+        "(for instance, for instance, x[a:b:-1][c]).",
+        BoolParam(warn_default('0.5')),
+        in_c_key=False)
+
 AddConfigVar('compute_test_value',
         "If 'True', Theano will run each op at graph build time, using Constants, SharedVariables and the tag 'test_value' as inputs to the function. This helps the user track down problems in the graph before it gets optimized.",
         EnumStr('off', 'ignore', 'warn', 'raise'),
