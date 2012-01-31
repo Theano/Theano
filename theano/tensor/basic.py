@@ -32,7 +32,7 @@ import logging
 _logger=logging.getLogger("theano.tensor.basic")
 
 #This is needed as we will hide it later
-python_complex=complex
+python_complex = complex
 python_any = any
 python_all = all
 
