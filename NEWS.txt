@@ -153,6 +153,12 @@ Bug fixes (the result changed):
  * When indexing into a subtensor of negative stride (for instance, x[a:b:-1][c]),
    an optimization replacing it with a direct indexing (x[d]) used an incorrect formula,
    leading to incorrect results. (Pascal, reported by Razvan)
+ * The tile() function  is now stricter in what it accepts to allow for better
+   error-checking/avoiding nonsensical situations. The gradient has been
+   disabled for the time being as it only implemented (incorrectly) one special
+   case. The `reps` argument must be a constant (not a tensor variable), and
+   must have the same length as the number of dimensions in the `x` argument;
+   this is now checked. (David)
 
 
 Crashes fixed:
@@ -238,6 +244,7 @@ Others:
  * Fix opt warning when the opt ShapeOpt is disabled(enabled by default) (Frederic)
  * More internal verification on what each op.infer_shape return. (Frederic, James)
  * Argmax dtype to int64 (Olivier)
+ * Improved docstring and basic tests for the Tile Op (David).
 
 Reviewers (alphabetical order):
  * David, Frederic, Ian, James, Olivier, Razvan

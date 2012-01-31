@@ -32,7 +32,7 @@ import logging
 _logger=logging.getLogger("theano.tensor.basic")
 
 #This is needed as we will hide it later
-python_complex=complex
+python_complex = complex
 python_any = any
 python_all = all
 
@@ -4685,25 +4685,25 @@ def flatten(x, outdim=1):
     return Flatten(outdim)(x)
 
 
-class TileGrad(Op):
-    """
-    Calculates the gradient of the Tile Op.
-    """
-    #this is so weird, I can't think of how to make this a general thing.
-    def make_node(self, x, reps, g_out):
-        return gof.Apply(self, [x, reps, g_out], [x.type()])
-
-    def perform(self, node, inp, out):
-        x, reps, g_out = inp
-        gx, = out
-        xsh = x.shape
-        if len(reps) == 2 and reps[1] == 1 and len(x.shape) == 1:
-            gx[0] = numpy.sum(g_out, axis=0)
-        else:
-            raise NotImplementedError('x.shape, reps combination not '
-                                      'supported', (x.shape, reps))
-
-tilegrad = TileGrad()
+# class TileGrad(Op):
+#     """
+#     Calculates the gradient of the Tile Op.
+#     """
+#     #this is so weird, I can't think of how to make this a general thing.
+#     def make_node(self, x, reps, g_out):
+#         return gof.Apply(self, [x, reps, g_out], [x.type()])
+#
+#     def perform(self, node, inp, out):
+#         x, reps, g_out = inp
+#         gx, = out
+#         xsh = x.shape
+#         if len(reps) == 2 and reps[1] == 1 and len(x.shape) == 1:
+#             gx[0] = numpy.sum(g_out, axis=0)
+#         else:
+#             raise NotImplementedError('x.shape, reps combination not '
+#                                       'supported', (x.shape, reps))
+#
+# tilegrad = TileGrad()
 
 
 class Tile(Op):
@@ -4742,7 +4742,8 @@ class Tile(Op):
     def grad(self, inp, grads):
         x, reps = inp
         g_out, = grads
-        return [tilegrad(x, reps, g_out), None]
+        # return [tilegrad(x, reps, g_out), None]
+        raise NotImplementedError()
 
 
 def tile(x, reps, ndim=None):
@@ -4750,10 +4751,21 @@ def tile(x, reps, ndim=None):
     Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
     for details.
 
+    Currently, `reps` must be a constant.
+
     TODO: expand this.
     """
+    if len(reps) != x.ndim:
+        raise ValueError("len(reps) != x.ndim not currently supported")
+
     if not hasattr(tile, 'op'):
         tile.op = {}
+
+    try:
+        assert python_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+                         "tuple, list of integers)")
     if ndim is None:
         ndim = len(reps)
 
