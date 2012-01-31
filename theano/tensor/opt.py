@@ -2875,8 +2875,7 @@ def local_sum_mul_by_scalar(node):
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
-    # TODO Implement for sum.dtype != None.
-    if isinstance(node.op, T.Sum) and node.op.dtype is None:
+    if isinstance(node.op, T.Sum):
         thing_summed, = node.inputs
         if thing_summed.owner and thing_summed.owner.op == T.mul:
             terms = thing_summed.owner.inputs
@@ -2930,9 +2929,7 @@ def local_sum_div_dimshuffle(node):
     # dimshuffle is in the numerator, since elemwise inversion of the
     # denominator would still be needed before the summation.
 
-    # TODO Implement for sum.dtype != None.
-
-    if isinstance(node.op, T.Sum) and node.op.dtype is None:
+    if isinstance(node.op, T.Sum):
         axis = node.op.axis
         if axis is None:
             axis = range(node.inputs[0].ndim)
@@ -3029,24 +3026,21 @@ def local_sum_all_to_none(node):
 def local_sum_sum(node):
     """
     Sum(Sum()) -> Sum
-
-    Note that currently we only replace sums with default dtypes, to avoid
-    potential dtype conflict issues.
     """
-    if isinstance(node.op, T.Sum) and node.op.dtype is None:
+    if isinstance(node.op, T.Sum):
         summed, = node.inputs
+        out_dtype = node.op.dtype
         if len(summed.clients) == 1:
             if (summed.owner and
-                isinstance(summed.owner.op, T.Sum)
-                and summed.owner.op.dtype is None):
+                    isinstance(summed.owner.op, T.Sum)):
 
                 if summed.owner.op.axis is None:
                     # special case of local_cut_useless_reduce
-                    return [T.Sum(None)(summed.owner.inputs[0])]
+                    return [T.Sum(None, dtype=out_dtype)(summed.owner.inputs[0])]
                 if node.op.axis is None:
                     # we're summing up everything anyway so lets
                     # do it all at once
-                    return [T.Sum(None)(summed.owner.inputs[0])]
+                    return [T.Sum(None, dtype=out_dtype)(summed.owner.inputs[0])]
 
                 newaxis = list(tuple(summed.owner.op.axis))
                 # figure out which dimensions of the original input
@@ -3089,7 +3083,7 @@ def local_sum_sum(node):
                             "been fixed) set the theano flag "
                             "`warn.sum_sum_bug` to False.")
 
-                combined_sum = T.Sum(newaxis)
+                combined_sum = T.Sum(newaxis, dtype=out_dtype)
                 return [combined_sum(summed.owner.inputs[0])]
 
 
@@ -3108,8 +3102,7 @@ def local_cut_useless_reduce(node):
 @gof.local_optimizer([])
 def local_sum_alloc(node):
     """ sum(alloc(constant,shapes...)) => constant*prod(shapes)"""
-    # TODO Implement for sum.dtype != None
-    if isinstance(node.op, T.Sum) and node.op.dtype is None:
+    if isinstance(node.op, T.Sum):
         summed, = node.inputs
         if summed.owner and isinstance(summed.owner.op, T.Alloc):
             input = summed.owner.inputs[0]
