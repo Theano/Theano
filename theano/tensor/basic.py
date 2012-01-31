@@ -4762,7 +4762,7 @@ def tile(x, reps, ndim=None):
         tile.op = {}
 
     try:
-        assert builtin_all([int(i) == i for i in iter(reps)])
+        assert python_all([int(i) == i for i in iter(reps)])
     except (TypeError, AssertionError):
         raise ValueError("reps argument to tile must be a constant (e.g. "
                          "tuple, list of integers)")
@@ -5682,14 +5682,8 @@ def outer(x, y):
             y.dimshuffle('x', 0))
 
 
-builtin_any = any
-
-
 def any(x, axis=None):
     return elemwise.Any(axis)(x)
-
-
-builtin_all = all
 
 
 def all(x, axis=None):
