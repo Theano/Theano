@@ -29,6 +29,10 @@ def TensorVariable(*inputs, **kwargs):
 def TensorConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
+# Define common subsets of dtypes (as strings).
+discrete_dtypes = map(str, scalar.discrete_types)
+continuous_dtypes = map(str, scalar.continuous_types)
+
 
 ##################
 ### DimShuffle ###
@@ -1315,14 +1319,101 @@ class Any(CAReduce):
             return "Any{%s}" % ", ".join(map(str, self.axis))
 
 
-class Sum(CAReduce):
+class CAReduceDtype(CAReduce):
+    """
+    Reduces a scalar operation along the specified axis(es).
 
+    This subclass of CAReduce accepts an additional "dtype" parameter,
+    that specifies which dtype will be used for the accumulation.
+
+    If no dtype is provided, one will be inferred so as not to lose
+    too much precision.
+    """
+
+    def __init__(self, scalar_op, axis=None, dtype=None):
+        """
+        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None)
+
+        :param scalar_op: a binary scalar op with only one output.
+                     It must be commutative and associative.
+
+        :axis:  - the dimension along which we want to reduce
+                - list of dimensions that we want to reduce
+                - if None, all dimensions are reduced
+
+        :param dtype: The dtype of the internal accumulator and returned
+        tensor. If None, then we use the default dtype which is the same as the
+        input tensor's dtype except when:
+            - the input dtype is a signed integer of precision < 64 bit, in
+              which case we use int64
+            - the input dtype is an unsigned integer of precision < 64 bit, in
+              which case we use uint64
+        This behavior is similar in spirit to that of numpy (except numpy
+        uses the default machine integer while we always use 64 bit integers to
+        avoid platform-dependent behavior).
+
+        """
+        CAReduce.__init__(self, scalar_op, axis=axis)
+        self.dtype = dtype
+
+    def __eq__(self, other):
+        return CAReduce.__eq__(self, other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return CAReduce.__hash__(self) ^ hash(self.dtype)
+
+    def _output_dtype(self, idtype):
+        dtype = self.dtype
+        if dtype is None:
+            # If input has an discrete dtype, upcast it to 64
+            return dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    ).get(idtype, idtype)
+        elif dtype in continuous_dtypes and idtype in discrete_dtypes:
+            # Specifying a continuous output for discrete input is OK
+            return dtype
+        else:
+            # The conversion has to be considered an upcast.
+            upcasted_dtype = scalar.upcast(idtype, dtype)
+            if dtype != upcasted_dtype:
+                raise TypeError(
+                        'Cannot build %s node with input dtype %s '
+                        'and output dtype %s, as precision would be lost. '
+                        'To correct this error, you can either:\n'
+                        '  - not specify a dtype, or\n'
+                        '  - use a dtype at least as precise as %s.\n'
+                        'If you are expecting the precision loss, you can '
+                        'use tensor.cast(..., dtype="%s"), either on your '
+                        'input, or on the output of the reduce operation.'
+                        % (self, idtype, dtype, upcasted_dtype, dtype))
+            return dtype
+
+    def make_node(self, input):
+        # We need to redefine make_node so that, if self.dtype is None,
+        # we can infer what dtype should be, and create a node from an Op
+        # of the appropriate dtype.
+        dtype = self._output_dtype(input.dtype)
+        assert dtype is not None
+        if dtype == self.dtype:
+            # Don't build another instance
+            op = self
+        else:
+            op = self.__class__(axis=self.axis, dtype=dtype)
+        return CAReduce.make_node(op, input)
+
+
+class Sum(CAReduceDtype):
     """
     Sums all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduce(scalar.add, axis=axis), with the
-    difference that this defines the gradient of sum wrt its tensor
-    input.
+    Equivalent to CAReduceDtype(scalar.add, axis=axis, dtype=dtype),
+    with the difference that this defines the gradient of sum wrt its
+    tensor input.
     """
 
     def __init__(self, axis=None, dtype=None):
@@ -1340,38 +1431,8 @@ class Sum(CAReduce):
               which case we use int64
             - the input dtype is an unsigned integer of precision < 64 bit, in
               which case we use uint64
-        This behavior is similar in spirit to that of numpy (except numpy
-        uses the default machine integer while we always use 64 bit integers to
-        avoid platform-dependent behavior).
-
-        IMPORTANT: If you use a custom dtype (!= None), it is strongly advised
-        to set `config.on_opt_error` to 'raise' and to run your code in
-        DebugMode at least once. This is because some optimizations may not
-        currently be able to properly deal with such custom dtypes. Also please
-        note that using a custom dtype may prevent some optimizations from
-        being applied.
         """
-        CAReduce.__init__(self, scalar.add, axis)
-        self.dtype = dtype
-
-    def __eq__(self, other):
-        return CAReduce.__eq__(self, other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return CAReduce.__hash__(self) ^ hash(self.dtype)
-
-    def _output_dtype(self, idtype):
-        if self.dtype is None:
-            return dict(
-                    int8='int64',
-                    int16='int64',
-                    int32='int64',
-                    uint8='uint64',
-                    uint16='uint64',
-                    uint32='uint64',
-                    ).get(idtype, idtype)
-        else:
-            return self.dtype
+        CAReduceDtype.__init__(self, scalar.add, axis=axis, dtype=dtype)
 
     def grad(self, inp, grads):
         x, = inp
@@ -1407,7 +1468,7 @@ class Sum(CAReduce):
             return "Sum{%s}" % ", ".join(map(str, self.axis))
 
 
-class Prod(CAReduce):
+class Prod(CAReduceDtype):
     """
     Multiplies all the values of a tensor along the specified axis(es).
 
@@ -1415,9 +1476,8 @@ class Prod(CAReduce):
     difference that this defines the gradient of prod wrt its tensor
     input.
     """
-    def __init__(self, axis=None, no_zeros_in_input=False):
-        CAReduce.__init__(self, scalar.mul, axis)
-
+    def __init__(self, axis=None, dtype=None, no_zeros_in_input=False):
+        CAReduceDtype.__init__(self, scalar.mul, axis=axis, dtype=dtype)
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
@@ -1427,24 +1487,12 @@ class Prod(CAReduce):
             self.no_zeros_in_input = False
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.scalar_op == other.scalar_op and self.axis == other.axis and self.no_zeros_in_input == other.no_zeros_in_input
+        return (CAReduceDtype.__eq__(self, other)
+                and self.no_zeros_in_input == other.no_zeros_in_input)
 
     def __hash__(self):
-        if self.axis is None:
-            return hash(self.scalar_op) ^ hash(self.no_zeros_in_input)
-        else:
-            return hash(self.scalar_op) ^ hash(tuple(self.axis)) ^ hash(self.no_zeros_in_input)
-
-    def _output_dtype(self, idtype):
-        # we want to protect against overflow
-        return dict(
-                int8='int64',
-                int16='int64',
-                int32='int64',
-                uint8='uint64',
-                uint16='uint64',
-                uint32='uint64',
-                ).get(idtype, idtype)
+        return (CAReduceDtype.__hash__(self) ^
+                hash(self.no_zeros_in_input))
 
     def grad(self, inp, grads):
         '''
@@ -1596,20 +1644,9 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
         return (1,)
 mul_without_zeros = MulWithoutZeros(scalar.upcast_out, name = 'mul_without_zeros')
 
-class ProdWithoutZeros(CAReduce):
-    def __init__(self, axis = None):
-        CAReduce.__init__(self, mul_without_zeros, axis)
-
-    def _output_dtype(self, idtype):
-        # we want to protect against overflow
-        return dict(
-                int8='int32',
-                int16='int32',
-                int32='int64',
-                uint8='uint32',
-                uint16='uint32',
-                uint32='uint64',
-                ).get(idtype, idtype)
+class ProdWithoutZeros(CAReduceDtype):
+    def __init__(self, axis=None, dtype=None):
+        CAReduceDtype.__init__(self, mul_without_zeros, axis=axis, dtype=dtype)
 
     def __str__(self):
         if self.axis is None:

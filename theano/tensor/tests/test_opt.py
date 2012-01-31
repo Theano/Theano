@@ -3151,6 +3151,20 @@ class T_local_sum(unittest.TestCase):
         finally:
             config.on_opt_error = backup
 
+    def test_local_sum_sum_dtype(self):
+        """
+        Test that local_sum_sum works when specifying dtypes manually.
+        """
+        x = tensor.tensor3(dtype='int8')
+        y = x.sum(axis=0, dtype='int32').sum(axis=1, dtype='int64')
+        backup = config.on_opt_error
+        config.on_opt_error = 'raise'
+        try:
+            # This compilation would fail prior to fix.
+            f = theano.function([x], y)
+        finally:
+            config.on_opt_error = backup
+
 
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
