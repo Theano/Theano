@@ -1648,18 +1648,6 @@ class ProdWithoutZeros(CAReduceDtype):
     def __init__(self, axis=None, dtype=None):
         CAReduceDtype.__init__(self, mul_without_zeros, axis=axis, dtype=dtype)
 
-    def make_node(self, input):
-        # We need to redefine make_node so that, if self.dtype is None,
-        # we can infer what dtype should be, and create a node from an Op
-        # of the appropriate dtype.
-        dtype = self._output_dtype(input.dtype)
-        if dtype == self.dtype:
-            # Don't build another instance
-            op = self
-        else:
-            op = self.__class__(axis=self.axis, dtype=dtype)
-        return CAReduce.make_node(op, input)
-
     def __str__(self):
         if self.axis is None:
             return "ProdWithoutZeros"
