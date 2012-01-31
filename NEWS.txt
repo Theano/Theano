@@ -120,7 +120,8 @@ New features:
  * Added a_tensor.transpose(axes) axes is optional (James)
     * theano.tensor.transpose(a_tensor, kwargs) We where ignoring kwargs, now it is used as the axes.
  * a_CudaNdarray_object[*] = int, now work (Frederic)
-
+ * sparse_variable[N, N] now work (Li Yao, Frederic)
+ * sparse_variable[M:N, O:P] now work (Li Yao, Frederic)
 
 New optimizations:
  * AdvancedSubtensor1 reuses preallocated memory if available (scan, c|py_nogc linker) (Frederic)
