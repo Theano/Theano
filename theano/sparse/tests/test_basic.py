@@ -929,6 +929,7 @@ def test_size():
         y[0, 1] = 0
         check()
 
+
 def test_GetItem2D():
     sparse_formats = ('csc', 'csr')
     for format in sparse_formats:
@@ -941,16 +942,14 @@ def test_GetItem2D():
         # index
         m = 1
         n = 5
-        p = 10 
+        p = 10
         q = 15
-        
-        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)), format).astype(
-             theano.config.floatX)
+
+        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)),
+                              format).astype(theano.config.floatX)
         #mode_no_debug = theano.compile.mode.get_default_mode()
-        
         #if isinstance(mode_no_debug, theano.compile.DebugMode):
         #    mode_no_debug = 'FAST_RUN'
-        
         f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
         r1 = f1(vx, m, n, p, q)
         t1 = vx[m:n, p:q]
@@ -959,16 +958,17 @@ def test_GetItem2D():
 
         """"
         Important: based on a discussion with both Fred and James
-        The following indexing methods is not supported because the rval would be a sparse
-        matrix rather than a sparse vector, which is a deviation from numpy indexing rule.
-        This decision is made largely for keeping the consistency between numpy and theano.
-        
+        The following indexing methods is not supported because the rval
+        would be a sparse matrix rather than a sparse vector, which is a
+        deviation from numpy indexing rule. This decision is made largely
+        for keeping the consistency between numpy and theano.
+
         f2 = theano.function([x, a, b, c], x[a:b, c])
         r2 = f2(vx, m, n, p)
         t2 = vx[m:n, p]
         assert r2.shape == t2.shape
         assert numpy.all(t2.toarray() == r2.toarray())
-        
+
         f3 = theano.function([x, a, b, c], x[a, b:c])
         r3 = f3(vx, m, n, p)
         t3 = vx[m, n:p]
@@ -987,7 +987,7 @@ def test_GetItem2D():
         assert r7.shape == t7.shape
         assert numpy.all(r7.toarray() == t7.toarray())
         """
-        
+
         f4 = theano.function([x, a, b], x[a:b])
         r4 = f4(vx, m, n)
         t4 = vx[m:n]
@@ -995,27 +995,28 @@ def test_GetItem2D():
         assert numpy.all(t4.toarray() == r4.toarray())
         #-----------------------------------------------------------
         # test cases using int indexing instead of theano variable
-        
-        f6 = theano.function([x], x[1:10,10:20])
+
+        f6 = theano.function([x], x[1:10, 10:20])
         r6 = f6(vx)
-        t6 = vx[1:10,10:20]
+        t6 = vx[1:10, 10:20]
         assert r6.shape == t6.shape
         assert numpy.all(r6.toarray() == t6.toarray())
-        
+
         #----------------------------------------------------------
         # test cases with indexing both with theano variable and int
-        f8 = theano.function([x,a,b], x[a:b,10:20])
+        f8 = theano.function([x, a, b], x[a:b, 10:20])
         r8 = f8(vx, m, n)
         t8 = vx[m:n, 10:20]
         assert r8.shape == t8.shape
         assert numpy.all(r8.toarray() == t8.toarray())
 
-        f9 = theano.function([x, a, b],x[1:a, 1:b])
+        f9 = theano.function([x, a, b], x[1:a, 1:b])
         r9 = f9(vx, p, q)
         t9 = vx[1:p, 1:q]
         assert r9.shape == t9.shape
         assert numpy.all(r9.toarray() == t9.toarray())
-        
+
+
 def test_GetItemScalar():
     sparse_formats = ('csc', 'csr')
     for format in sparse_formats:
@@ -1025,9 +1026,9 @@ def test_GetItemScalar():
 
         m = 50
         n = 50
-        
-        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)), format).astype(
-             theano.config.floatX)
+
+        vx = as_sparse_format(numpy.random.binomial(1, 0.5, (100, 100)),
+                             format).astype(theano.config.floatX)
 
         f1 = theano.function([x, a, b], x[a, b])
         r1 = f1(vx, 10, 10)
