@@ -4009,6 +4009,7 @@ def test_tile():
 # XXX: It turns out that almost no cases of the tile gradient actually work.
 # This is a test that should pass if the proper implementation is filled in.
 def test_tile_grad_3d():
+    # N.B.: we should also use verify_grad in this test.
     raise SkipTest()  # Remove me when this is implemented.
     rng = numpy.random.RandomState(utt.fetch_seed())
     w = rng.randn(3, 4, 2)
