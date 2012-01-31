@@ -5,7 +5,7 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 
 @todo: Automatic methods for determining best sparse format?
 """
-
+from itertools import izip
 import sys
 
 import numpy, theano
@@ -473,13 +473,13 @@ class CSM(gof.Op):
         shape = tensor.as_tensor_variable(shape)
 
         if data.type.ndim != 1:
-            raise TypeError('data argument must be a vector', data.type)
-        if indices.type != tensor.ivector:
-            raise TypeError('indices must be vector of integers', indices)
-        if indptr.type != tensor.ivector:
-            raise TypeError('indices must be vector of integers', indptr)
-        if shape.type != tensor.ivector:
-            raise TypeError('n_rows must be integer type', shape)
+            raise TypeError('data argument must be a vector', data.type, data.type.ndim)
+        if indices.type.ndim != 1 or indices.type.dtype != 'int32':
+            raise TypeError('indices must be vector of integers', indices, indices.type)
+        if indptr.type.ndim != 1 or indptr.type.dtype != 'int32':
+            raise TypeError('indices must be vector of integers', indptr, indptr.type)
+        if shape.type.ndim != 1 or shape.type.dtype != 'int32':
+            raise TypeError('n_rows must be integer type', shape, shape.type)
 
         return gof.Apply(self,
                          [data, indices, indptr, shape],
@@ -553,7 +553,12 @@ def skip_pack_csc01(node):
     if node.op == csm_properties:
         csm, = node.inputs
         if csm.owner and (csm.owner.op == CSC or csm.owner.op == CSR):
-            return csm.owner.inputs
+            # csm.owner.inputs could be broadcastable. In that case, we have
+            # to adjust the broadcasting flag here.
+            ret_var = [tensor.patternbroadcast(i, o.broadcastable)
+                    for i, o in izip(csm.owner.inputs, node.outputs)]
+            return ret_var
+
     return False
 register_specialize(skip_pack_csc01)
 
