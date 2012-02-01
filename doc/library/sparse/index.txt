@@ -54,8 +54,8 @@ grad?
       this operation can be performed inplace by UsmmCscDense. This leads to
       significant speed-ups.
 - Subtensor
-    - sparse_varible[N, N], return a tensor scalar
-    - sparse_varible[M:N, O:P], return a sparse matrix
+    - sparse_variable[N, N], return a tensor scalar
+    - sparse_variable[M:N, O:P], return a sparse matrix
     - Don't support [M, N:O] and [M:N, O] as we don't support sparse vector
       and returning a sparse matrix would break the numpy interface.
       Use [M:M+1, N:O] and [M:N, O:O+1] instead.
