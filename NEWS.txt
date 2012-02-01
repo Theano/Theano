@@ -109,8 +109,8 @@ New features:
        The new theano.sparse.dot() has a dense gradient for all inputs.
  * GpuAdvancedSubtensor1 supports broadcasted dimensions. (Frederic)
  * TensorVariable.zeros_like() and SparseVariable.zeros_like()
- * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.device_properties()(Frederic)
- * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.mem_info()return free and total gpu memory(Frederic)
+ * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.device_properties() (Frederic)
+ * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.mem_info() return free and total gpu memory (Frederic)
  * Theano flags compiledir_format. Keep the same default as before: compiledir_%(platform)s-%(processor)s-%(python_version)s. (Josh Bleecher Snyder)
      * We also support the "theano_version" substitution.
  * IntDiv c code (faster and allow this elemwise to be fused with other elemwise) (Pascal)
