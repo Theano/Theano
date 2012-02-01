@@ -717,10 +717,16 @@ class GetItem2d(gof.op.Op):
                             "slice where stop=%s" % stop),
                             stop.ndim, stop.dtype)
 
-            else:
+            elif ((isinstance(ind, gof.Variable) and
+                        getattr(ind, 'ndim', -1) == 0)
+                        or numpy.isscalar(ind)):
                 raise NotImplementedError(
                     'Theano has no sparse vector' +
                     'Use X[a:b,c:d], X[a:b,c:c+1] or X[a:b] instead.')
+            else:
+                raise ValueError((
+                    'Advanced indexing is not implemented for sparse '
+                    'matrices. Argument not supported: %s' % ind))
             input_op += [start, stop]
         if len(index) == 1:
             input_op += [generic_None, generic_None]
