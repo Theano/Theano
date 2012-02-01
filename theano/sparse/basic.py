@@ -188,13 +188,11 @@ class _sparse_py_operators:
         if not isinstance(args, tuple):
             args = args,
 
-        scalar_var = tensor.iscalar()
-
         if len(args) == 2:
             scalar_arg_1 = (numpy.isscalar(args[0]) or
-                            getattr(args[0], 'type', None) == scalar_var.type)
+                            getattr(args[0], 'type', None) == tensor.iscalar)
             scalar_arg_2 = (numpy.isscalar(args[1]) or
-                            getattr(args[1], 'type', None) == scalar_var.type)
+                            getattr(args[1], 'type', None) == tensor.iscalar)
             if scalar_arg_1 and scalar_arg_2:
                 ret = get_item_scalar(self, args)
             else:
@@ -202,8 +200,8 @@ class _sparse_py_operators:
         else:
             ret = get_item_2d(self, args)
         return ret
-            
-                        
+
+
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
