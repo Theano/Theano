@@ -122,8 +122,10 @@ New features:
  * a_CudaNdarray_object[*] = int, now work (Frederic)
  * tensor_variable.size (as numpy) computes the product of the shape elements. (Olivier)
  * sparse_variable.size (as scipy) computes the number of stored values. (Olivier)
- * sparse_variable[N, N] now work (Li Yao, Frederic)
- * sparse_variable[M:N, O:P] now work (Li Yao, Frederic)
+ * sparse_variable[N, N] now works (Li Yao, Frederic)
+ * sparse_variable[M:N, O:P] now works (Li Yao, Frederic)
+    * Warning: M, N, O, and P should be Python int or scalar tensor variables,
+      in particular, None is not well-supported.
 
 New optimizations:
  * AdvancedSubtensor1 reuses preallocated memory if available (scan, c|py_nogc linker) (Frederic)
