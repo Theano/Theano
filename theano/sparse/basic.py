@@ -188,13 +188,11 @@ class _sparse_py_operators:
         if not isinstance(args, tuple):
             args = args,
 
-        scalar_var = tensor.iscalar()
-
         if len(args) == 2:
             scalar_arg_1 = (numpy.isscalar(args[0]) or
-                            getattr(args[0], 'type', None) == scalar_var.type)
+                            getattr(args[0], 'type', None) == tensor.iscalar)
             scalar_arg_2 = (numpy.isscalar(args[1]) or
-                            getattr(args[1], 'type', None) == scalar_var.type)
+                            getattr(args[1], 'type', None) == tensor.iscalar)
             if scalar_arg_1 and scalar_arg_2:
                 ret = get_item_scalar(self, args)
             else:
@@ -202,8 +200,8 @@ class _sparse_py_operators:
         else:
             ret = get_item_2d(self, args)
         return ret
-            
-                        
+
+
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
@@ -681,35 +679,57 @@ class GetItem2d(gof.op.Op):
         assert len(index) in [1, 2]
 
         input_op = [x]
+        generic_None = theano.gof.Constant(theano.gof.generic, None)
 
         for ind in index:
             if isinstance(ind, slice):
                 # in case of slice is written in theano variable
                 start = ind.start
                 stop = ind.stop
+                if ind.step is not None:
+                    raise ValueError((
+                        "Using a slice with non-default step when "
+                        "indexing into a sparse matrix is not supported. "),
+                        ind, ind.step)
 
-                # in case of slice is written in python int
-                if isinstance(start, int):
-                    start = theano.tensor.constant(start)
-                if isinstance(stop, int):
-                    stop = theano.tensor.constant(stop)
+                # If start or stop are None, make them a Generic constant
+                # Else, they should be converted to Tensor Variables of
+                # dimension 1 and int/uint dtype.
+                if start is None:
+                    start = generic_None
+                else:
+                    if not isinstance(start, gof.Variable):
+                        start = tensor.as_tensor_variable(start)
+                    if not (start.ndim == 0 and start.dtype in tensor.discrete_dtypes):
+                        raise ValueError((
+                            "Impossible to index into a sparse matrix with "
+                            "slice where start=%s" % start),
+                            start.ndim, start.dtype)
 
-            #in case of indexing using python int
-            #elif isinstance(ind,int):
-            #    start = theano.tensor.constant(ind)
-            #    stop = start + 1
-            #elif ind.ndim == 0:
-            #    start = ind
-            #    stop = ind + 1
+                if stop is None:
+                    stop = generic_None
+                else:
+                    if not isinstance(stop, gof.Variable):
+                        stop = tensor.as_tensor_variable(stop)
+                    if not (stop.ndim == 0 and stop.dtype in tensor.discrete_dtypes):
+                        raise ValueError((
+                            "Impossible to index into a sparse matrix with "
+                            "slice where stop=%s" % stop),
+                            stop.ndim, stop.dtype)
 
-            else:
-                raise NotImplemented(
+            elif ((isinstance(ind, gof.Variable) and
+                        getattr(ind, 'ndim', -1) == 0)
+                        or numpy.isscalar(ind)):
+                raise NotImplementedError(
                     'Theano has no sparse vector' +
                     'Use X[a:b,c:d], X[a:b,c:c+1] or X[a:b] instead.')
+            else:
+                raise ValueError((
+                    'Advanced indexing is not implemented for sparse '
+                    'matrices. Argument not supported: %s' % ind))
             input_op += [start, stop]
         if len(index) == 1:
-            i = theano.gof.Constant(theano.gof.generic, None)
-            input_op += [i, i]
+            input_op += [generic_None, generic_None]
 
         return gof.Apply(self, input_op, [x.type()])
 
@@ -765,7 +785,7 @@ class GetItemScalar(gof.op.Op):
 
     def perform(self, node, (x, ind1, ind2), (out, )):
         assert _is_sparse(x)
-        out[0] = x[ind1, ind2]
+        out[0] = theano._asarray(x[ind1, ind2], x.dtype)
 
     def __str__(self):
         return self.__class__.__name__
