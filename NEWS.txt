@@ -68,7 +68,7 @@ Scan fix:
  * computing grad of a function of grad of scan(reported by ?, Razvan)
    before : most of the time crash, but could be wrong value with bad number of dimensions(so a visible bug)
    now : do the right thing.
- * gradient with respect to outputs using multiple taps(Timothy reported, fix by Razvan)
+ * gradient with respect to outputs using multiple taps(reported by Timothy, fix by Razvan)
    before : it used to return wrong values
    now : do the right thing.
    Note: The reported case of this bug was happening in conjunction with the
