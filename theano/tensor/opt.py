@@ -1212,6 +1212,13 @@ def local_alloc_unary(node):
 
 
 class Assert(T.Op):
+    """
+    Implements assertion in a computational graph.
+    Notes:
+    This Op can be removed from the graph because of optimizations. Also, the
+    output of the Op must be returned by the function computing the graph,
+    otherwise it will not be used.
+    """
     view_map = {0: [0]}
 
     def make_node(self, value, *conds):
@@ -1254,7 +1261,6 @@ class Assert(T.Op):
         %(out)s = %(value)s;
         Py_INCREF(%(value)s);
         """ % locals()
-        pass
 
     def c_code_cache_version(self):
         return (0, 1)
