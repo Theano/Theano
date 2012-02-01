@@ -785,7 +785,7 @@ class GetItemScalar(gof.op.Op):
 
     def perform(self, node, (x, ind1, ind2), (out, )):
         assert _is_sparse(x)
-        out[0] = x[ind1, ind2]
+        out[0] = theano._asarray(x[ind1, ind2], x.dtype)
 
     def __str__(self):
         return self.__class__.__name__
