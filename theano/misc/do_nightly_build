@@ -6,7 +6,6 @@ NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
 RELEASE=""
-COMPILEDIR=`python -c "import theano;print theano.config.compiledir"`
 if [ "$1" == "--release" ]; then
     RELEASE="True"
     shift
@@ -21,6 +20,8 @@ if [ "$1" == "--buildbot" ]; then
     cd ..
     ARGS="Theano"
     PROFILING="--with-coverage --cover-package=theano"
+else
+    COMPILEDIR=`python -c "import theano;print theano.config.compiledir"`
 fi
 
 echo "Number of elements in the compiledir:"
