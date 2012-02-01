@@ -933,11 +933,11 @@ def test_size():
 def test_GetItem2D():
     sparse_formats = ('csc', 'csr')
     for format in sparse_formats:
-        x = theano.sparse.matrix(format)
-        a = theano.tensor.iscalar()
-        b = theano.tensor.iscalar()
-        c = theano.tensor.iscalar()
-        d = theano.tensor.iscalar()
+        x = theano.sparse.matrix(format, name='x')
+        a = theano.tensor.iscalar('a')
+        b = theano.tensor.iscalar('b')
+        c = theano.tensor.iscalar('c')
+        d = theano.tensor.iscalar('d')
 
         # index
         m = 1
