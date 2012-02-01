@@ -1330,11 +1330,16 @@ class _Linker(gof.link.LocalLinker):
                 r_vals_initialized = []
                 for r in storage_map:
                     if (r.owner is None):
-                        if (storage_map[r][0] is None):
-                            raise Exception('Missing input', r)
                         if not r.type.is_valid_value(storage_map[r][0]):
+                            # None may be a valid input value (for instance,
+                            # for a Generic object). We only want to raise
+                            # an error if it is not valid.
+                            if (storage_map[r][0] is None):
+                                raise InvalidValueError(r, storage_map[r][0],
+                                       hint="Graph Input '%s' is missing" % str(r))
                             raise InvalidValueError(r, storage_map[r][0],
-                                   hint="Graph Input '%s' is missing" % str(r))
+                                   hint=("Graph Input '%s' has invalid value "
+                                       "%s" % (r, storage_map[r][0])))
                         r_vals[r] = storage_map[r][0]
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
@@ -1577,7 +1582,8 @@ class _Linker(gof.link.LocalLinker):
             #print storage_map
             for r in storage_map:
                 if (r.owner is None):
-                    assert storage_map[r][0] is not None
+                    if not r.type.is_valid_value(None):
+                        assert storage_map[r][0] is not None
 
 
             ###############
