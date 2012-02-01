@@ -126,6 +126,10 @@ New features:
  * sparse_variable[M:N, O:P] now works (Li Yao, Frederic)
     * Warning: M, N, O, and P should be Python int or scalar tensor variables,
       in particular, None is not well-supported.
+ * tensor.tensordot can now be moved to GPU (Sander Dieleman,
+   Pascal, based on code from Tijmen Tieleman's gnumpy,
+   http://www.cs.toronto.edu/~tijmen/gnumpy.html)
+
 
 New optimizations:
  * AdvancedSubtensor1 reuses preallocated memory if available (scan, c|py_nogc linker) (Frederic)

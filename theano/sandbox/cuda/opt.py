@@ -746,6 +746,36 @@ def local_gpu_print_op(node):
             return [host_from_gpu(new_op(gpu_x))]
     return False
 
+
+@register_opt()
+@local_optimizer([tensor.TensorDot])
+def local_gpu_tensordot(node):
+    '''
+    T.tensordot(host_from_gpu) -> basic_ops.tensordot(host_from_gpu)
+
+    There is no Cuda Op for tensordot, however we can build a chain of
+    CPU Ops implementing tensordot. These Ops all have a GPU equivalent.
+
+    Note: applying this optimization at that stage is not ideal, because
+    all blas-related optimizations have already been applied.
+    However, if we want to apply it before the blas optimizations, then
+    we don't know which variables may end up on the GPU or not.
+    '''
+    if (isinstance(node.op, tensor.TensorDot) and
+            node.outputs[0].dtype == 'float32'):
+        x, y = node.inputs
+        if ((x.owner and
+                x.owner.op == host_from_gpu and
+                y.dtype=='float32') or
+            (y.owner and
+                y.owner.op == host_from_gpu and
+                x.dtype=='float32')):
+
+            axes = node.op.axes
+            out = tensordot(x, y, axes=axes)
+            return [out]
+
+
 def cast(x, dtype):
     stype = scal.Scalar(dtype)
     cast_op = theano.tensor.Elemwise(scal.Identity(scal.specific_out(stype)))
