@@ -692,7 +692,7 @@ class GetItem2d(gof.op.Op):
                         "indexing into a sparse matrix is not supported. "),
                         ind, ind.step)
 
-                # If start or step are None, make them a Generic constant
+                # If start or stop are None, make them a Generic constant
                 # Else, they should be converted to Tensor Variables of
                 # dimension 1 and int/uint dtype.
                 if start is None:
