@@ -1215,9 +1215,10 @@ class Assert(T.Op):
     """
     Implements assertion in a computational graph.
     Notes:
-    This Op can be removed from the graph because of optimizations. Also, the
-    output of the Op must be returned by the function computing the graph,
-    otherwise it will not be used.
+    This Op can be removed from the graph because of optimizations, and can hide
+    some possible optimizations to the optimizer.
+    Also, the output of the Op must be returned by the function computing the
+    graph, otherwise it will not be used.
     """
     view_map = {0: [0]}
 
