@@ -949,7 +949,7 @@ class Test_getitem(unittest.TestCase):
             p = 10
             q = 15
 
-            vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 100)),
+            vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 97)),
                                   format).astype(theano.config.floatX)
             #mode_no_debug = theano.compile.mode.get_default_mode()
             #if isinstance(mode_no_debug, theano.compile.DebugMode):
@@ -1067,9 +1067,9 @@ class Test_getitem(unittest.TestCase):
             b = theano.tensor.iscalar()
 
             m = 50
-            n = 50
+            n = 42
 
-            vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 100)),
+            vx = as_sparse_format(self.rng.binomial(1, 0.5, (97, 100)),
                                  format).astype(theano.config.floatX)
 
             f1 = theano.function([x, a, b], x[a, b])
@@ -1090,7 +1090,7 @@ class Test_getitem(unittest.TestCase):
             assert r3.shape == t3.shape
             assert numpy.all(t3 == r3)
 
-            f4 = theano.function([x], x[50, 50])
+            f4 = theano.function([x], x[50, 42])
             r4 = f4(vx)
             t4 = vx[m, n]
             assert r3.shape == t3.shape
