@@ -391,7 +391,11 @@ class Constant(Value):
     def __str__(self):
         if self.name is not None:
             return self.name
-        return str(self.data) #+ "::" + str(self.type)
+        else:
+            name = str(self.data)
+            if len(name) > 20:
+                name = name[:10] + '...' + name[-10]
+            return 'Constant{%s}' % name
     def clone(self):
         """
         We clone this object, but we don't clone the data to lower memory requirement

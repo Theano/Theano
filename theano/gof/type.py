@@ -423,4 +423,7 @@ class Generic(SingletonType):
         Py_INCREF(py_%(name)s);
         """ % locals()
 
+    def __str__(self):
+        return self.__class__.__name__
+
 generic = Generic()
