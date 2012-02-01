@@ -764,7 +764,6 @@ def local_gpu_tensordot(node):
     if (isinstance(node.op, tensor.TensorDot) and
             node.outputs[0].dtype == 'float32'):
         x, y = node.inputs
-        transfer = False
         if ((x.owner and
                 x.owner.op == host_from_gpu and
                 y.dtype=='float32') or
