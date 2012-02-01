@@ -1,4 +1,8 @@
-UPDATED THIS FILE UP TO: 41103b5d158739e4147428ce776fb5716062d4a8
+.. _NEWS:
+
+=============
+Release Notes
+=============
 
 If you have updated to 0.5rc1, you are highly encouraged to update to
 0.5rc2. There are more bug fixes and speed uptimization! But there is
@@ -6,7 +10,7 @@ also a small new interface change about sum of [u]int* dtype.
 
 
 Modifications in the trunk since the 0.4.1 release (August 12th, 2011)
-
+======================================================================
 
 Upgrading to Theano 0.5rc2 is recommended for everyone, but you should first make
 sure that your code does not raise deprecation warnings with Theano 0.4.1.

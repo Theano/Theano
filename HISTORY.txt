@@ -6,7 +6,8 @@ Old Release Notes
 =================
 
 
-Modifications in the 0.4.1 (12 August 2011)
+Theano 0.4.1 (12 August 2011)
+=============================
 
 New features:
 
