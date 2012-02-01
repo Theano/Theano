@@ -3990,19 +3990,19 @@ def test_tile():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = vector()
     f = function([x], tile(x, (2,)))
-    x_ = rng.randn(5)
+    x_ = rng.randn(5).astype(config.floatX)
     assert numpy.all(f(x_) == numpy.tile(x_, (2,)))
 
     # Test the two-dimensional case.
     x = matrix()
     f = function([x], tile(x, (2, 3)))
-    x_ = rng.randn(2, 4)
+    x_ = rng.randn(2, 4).astype(config.floatX)
     assert numpy.all(f(x_) == numpy.tile(x_, (2, 3)))
 
     # Test the three-dimensional case.
     x = tensor3()
     f = function([x], tile(x, (2, 3, 4)))
-    x_ = rng.randn(2, 4, 3)
+    x_ = rng.randn(2, 4, 3).astype(config.floatX)
     assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4)))
 
 
