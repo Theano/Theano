@@ -37,9 +37,10 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-int_dtypes = map(str, scal.int_types)
-discrete_dtypes = map(str, scal.discrete_types)
 complex_dtypes = map(str, scal.complex_types)
+continuous_dtypes = map(str, scal.continuous_types)
+discrete_dtypes = map(str, scal.discrete_types)
+int_dtypes = map(str, scal.int_types)
 
 
 class ShapeError(Exception):

@@ -534,8 +534,8 @@ class T_sum_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     sum_var = x.sum(dtype=output_dtype, axis=axis)
                     assert sum_var.dtype == output_dtype
@@ -559,7 +559,7 @@ class T_mean_dtype(unittest.TestCase):
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype).mean(axis=axis)
-            if dtype in discrete_dtypes:
+            if dtype in tensor.discrete_dtypes:
                 assert x.dtype == 'float64'
             else:
                 assert x.dtype == dtype, (x, x.dtype, dtype)
@@ -582,7 +582,7 @@ class T_mean_dtype(unittest.TestCase):
                     pass
                 else:
                     # Executed if no TypeError was raised
-                    if sum_dtype in discrete_dtypes:
+                    if sum_dtype in tensor.discrete_dtypes:
                         assert mean_var.dtype == 'float64', (mean_var.dtype, sum_dtype)
                     else:
                         assert mean_var.dtype == sum_dtype, (mean_var.dtype, output_dtype)
@@ -635,8 +635,8 @@ class T_prod_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     prod_var = x.prod(dtype=output_dtype, axis=axis)
                     assert prod_var.dtype == output_dtype
@@ -684,8 +684,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     prod_woz_var = ProdWithoutZeros(
                             axis=axis, dtype=output_dtype)(x)

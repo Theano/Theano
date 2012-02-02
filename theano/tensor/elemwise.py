@@ -13,7 +13,6 @@ from theano.gof.python25 import all, any
 config = theano.config
 
 
-
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
 # placeholders and the tensor module fills them
@@ -28,10 +27,6 @@ def TensorVariable(*inputs, **kwargs):
 
 def TensorConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
-
-# Define common subsets of dtypes (as strings).
-discrete_dtypes = map(str, scalar.discrete_types)
-continuous_dtypes = map(str, scalar.continuous_types)
 
 
 ##################
@@ -1374,7 +1369,8 @@ class CAReduceDtype(CAReduce):
                     uint16='uint64',
                     uint32='uint64',
                     ).get(idtype, idtype)
-        elif dtype in continuous_dtypes and idtype in discrete_dtypes:
+        elif (dtype in theano.tensor.continuous_dtypes and
+              idtype in theano.tensor.discrete_dtypes):
             # Specifying a continuous output for discrete input is OK
             return dtype
         else:
