@@ -13,7 +13,6 @@ from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import *
 from theano.tests import unittest_tools
 
-complex_dtypes = map(str, scalar.complex_types)
 
 def Env(i, o):
     e = gof.Env(i, o)
@@ -534,8 +533,8 @@ class T_sum_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     sum_var = x.sum(dtype=output_dtype, axis=axis)
                     assert sum_var.dtype == output_dtype
@@ -559,7 +558,7 @@ class T_mean_dtype(unittest.TestCase):
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype).mean(axis=axis)
-            if dtype in discrete_dtypes:
+            if dtype in tensor.discrete_dtypes:
                 assert x.dtype == 'float64'
             else:
                 assert x.dtype == dtype, (x, x.dtype, dtype)
@@ -582,7 +581,7 @@ class T_mean_dtype(unittest.TestCase):
                     pass
                 else:
                     # Executed if no TypeError was raised
-                    if sum_dtype in discrete_dtypes:
+                    if sum_dtype in tensor.discrete_dtypes:
                         assert mean_var.dtype == 'float64', (mean_var.dtype, sum_dtype)
                     else:
                         assert mean_var.dtype == sum_dtype, (mean_var.dtype, output_dtype)
@@ -594,7 +593,7 @@ class T_mean_dtype(unittest.TestCase):
                     except NotImplementedError:
                         # TrueDiv does not seem to have a gradient when
                         # the numerator is complex.
-                        if mean_var.dtype in complex_dtypes:
+                        if mean_var.dtype in tensor.complex_dtypes:
                             pass
                         else:
                             raise
@@ -635,8 +634,8 @@ class T_prod_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     prod_var = x.prod(dtype=output_dtype, axis=axis)
                     assert prod_var.dtype == output_dtype
@@ -684,8 +683,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
                 if (output_dtype == upcasted_dtype or
-                        (input_dtype in discrete_dtypes and
-                            output_dtype in continuous_dtypes)
+                        (input_dtype in tensor.discrete_dtypes and
+                            output_dtype in tensor.continuous_dtypes)
                         ):
                     prod_woz_var = ProdWithoutZeros(
                             axis=axis, dtype=output_dtype)(x)

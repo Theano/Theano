@@ -13,7 +13,6 @@ from theano.gof.python25 import all, any
 config = theano.config
 
 
-
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
 # placeholders and the tensor module fills them
@@ -28,10 +27,6 @@ def TensorVariable(*inputs, **kwargs):
 
 def TensorConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
-
-# Define common subsets of dtypes (as strings).
-discrete_dtypes = map(str, scalar.discrete_types)
-continuous_dtypes = map(str, scalar.continuous_types)
 
 
 ##################
@@ -1337,9 +1332,9 @@ class CAReduceDtype(CAReduce):
         :param scalar_op: a binary scalar op with only one output.
                      It must be commutative and associative.
 
-        :axis:  - the dimension along which we want to reduce
-                - list of dimensions that we want to reduce
-                - if None, all dimensions are reduced
+        :param axis: - the dimension along which we want to reduce
+                     - list of dimensions that we want to reduce
+                     - if None, all dimensions are reduced
 
         :param dtype: The dtype of the internal accumulator and returned
         tensor. If None, then we use the default dtype which is the same as the
@@ -1365,7 +1360,7 @@ class CAReduceDtype(CAReduce):
     def _output_dtype(self, idtype):
         dtype = self.dtype
         if dtype is None:
-            # If input has an discrete dtype, upcast it to 64
+            # If input has a discrete dtype, upcast it to 64
             return dict(
                     int8='int64',
                     int16='int64',
@@ -1374,7 +1369,8 @@ class CAReduceDtype(CAReduce):
                     uint16='uint64',
                     uint32='uint64',
                     ).get(idtype, idtype)
-        elif dtype in continuous_dtypes and idtype in discrete_dtypes:
+        elif (dtype in theano.tensor.continuous_dtypes and
+              idtype in theano.tensor.discrete_dtypes):
             # Specifying a continuous output for discrete input is OK
             return dtype
         else:

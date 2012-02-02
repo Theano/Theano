@@ -37,9 +37,10 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-int_dtypes = map(str, scal.int_types)
-discrete_dtypes = map(str, scal.discrete_types)
 complex_dtypes = map(str, scal.complex_types)
+continuous_dtypes = map(str, scal.continuous_types)
+discrete_dtypes = map(str, scal.discrete_types)
+int_dtypes = map(str, scal.int_types)
 
 
 class ShapeError(Exception):
@@ -2686,8 +2687,10 @@ def mean(input, axis=None, dtype=None, op=False):
     :param dtype: dtype to use for the inner summation. This will not
                   necessarily be the dtype of the output (in particular
                   if it is a discrete (int/uint) dtype, the output will
-                  be in a float type)
-    :type dtype: string
+                  be in a float type).
+                  If None, then we use float64 for a discrete input, and the
+                  same rules as `sum()` for a continuous input.
+    :type dtype: None or string
 
     :note: for gpu, if you specify dtype=float32, everything will be done
            on the gpu.
@@ -2712,6 +2715,8 @@ def mean(input, axis=None, dtype=None, op=False):
     shp = shape(input)
 
     # Cast shp into a float type
+    # TODO Once we have a consistent casting policy, we could simply
+    # use true_div.
     if s.dtype in ('float32', 'complex64'):
         shp = cast(shp, 'float32')
     else:
