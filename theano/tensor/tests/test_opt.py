@@ -63,12 +63,14 @@ _optimizer_specialize = compile.optdb.query(_optimizer_specialize)
 
 _optimizer_fast_run = gof.Query(include=['fast_run'])
 _optimizer_fast_run = compile.optdb.query(_optimizer_fast_run)
+
+
 def optimize(g, level='fast_run'):
-    if 'fast_run' is level:
+    if level == 'fast_run':
         _optimizer_fast_run.optimize(g)
-    elif 'specialize' is level:
+    elif level == 'specialize':
         _optimizer_specialize.optimize(g)
-    elif 'stabilize' is level:
+    elif level == 'stabilize':
         _optimizer_stabilize.optimize(g)
     else:
         raise ValueError(level)
