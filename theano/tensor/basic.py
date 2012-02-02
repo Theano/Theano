@@ -2715,6 +2715,8 @@ def mean(input, axis=None, dtype=None, op=False):
     shp = shape(input)
 
     # Cast shp into a float type
+    # TODO Once we have a consistent casting policy, we could simply
+    # use true_div.
     if s.dtype in ('float32', 'complex64'):
         shp = cast(shp, 'float32')
     else:
