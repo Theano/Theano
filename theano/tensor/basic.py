@@ -5173,7 +5173,10 @@ class AdvancedIncSubtensor1(Op):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
         if y_.type.ndim > x_.type.ndim:
-            opname = 'increment'
+            if self.set_instead_of_inc:
+                opname = 'set'
+            else:
+                opname = 'increment'
             raise TypeError('cannot %s x subtensor with ndim=%s'
             ' by y with ndim=%s to x subtensor with ndim=%s '%(
                 opname, x_.type.ndim, y_.type.ndim ))
@@ -5186,19 +5189,19 @@ class AdvancedIncSubtensor1(Op):
         out, = out_
         if not self.inplace:
             x = x.copy()
-        # x[idx] += y don't work if the same index is present many times.
-        # It do it only once
-        #  -- Numpy also behaves this way, is it a bug in numpy?
+        # In Numpy, x[idx] += y doesn't work if the same index is present
+        # many times: it does it only once. Is it a bug? In any case, for
+        # this reason we implement our own 'inc' iteration.
         if self.set_instead_of_inc:
-            if y.ndim:
-                for (j,i) in enumerate(idx):
-                    x[i] = y[j]
-            else:
-                for i in idx:
-                    x[i] = y
+            x[idx] = y
         else:
-            if y.ndim:
-                for (j,i) in enumerate(idx):
+            # If `y` has as many dimensions as `x`, then we want to iterate
+            # jointly on `x` and `y`. Otherwise, it means `y` should be
+            # broadcasted to fill all relevant rows of `x`.
+            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
+            if y.ndim == x.ndim:
+                assert len(y) == len(idx)
+                for (j, i) in enumerate(idx):
                     x[i] += y[j]
             else:
                 for i in idx:

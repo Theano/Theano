@@ -2049,6 +2049,7 @@ class T_subtensor(unittest.TestCase):
                     raise
         finally:
             _logger.setLevel(oldlevel)
+
     def test1_err_subslice(self):
         n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
@@ -2121,6 +2122,7 @@ class T_subtensor(unittest.TestCase):
         tval = f()
         self.assertTrue(tval.shape == ())
         self.assertTrue(tval == 5.0)
+
     def test1_ok_range_infinite(self):
         #Subtensor.debug = True
         n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
@@ -2185,6 +2187,7 @@ class T_subtensor(unittest.TestCase):
                     raise
         finally:
             sys.stderr = old_stderr
+
     def test2_ok_elem(self):
         n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[0,2]
@@ -2192,6 +2195,7 @@ class T_subtensor(unittest.TestCase):
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == ())
         self.assertTrue(numpy.all(tval == 2))
+
     def test2_ok_row(self):
         n = self.shared(numpy.asarray(range(6), dtype=self.dtype).reshape((2,3)))
         t = n[1]
@@ -2404,7 +2408,6 @@ class T_subtensor(unittest.TestCase):
                     assert numpy.all(
                             f(start,stop,step) == v_data[start:stop:step].shape)
 
-
     def test_slice_canonical_form_0(self):
         start  = tensor.iscalar('b')
         stop   = tensor.iscalar('e')
@@ -2427,7 +2430,6 @@ class T_subtensor(unittest.TestCase):
                     v_out = a[start:stop:step]
                     assert numpy.all(t_out == v_out)
                     assert numpy.all(t_out.shape == v_out.shape)
-
 
     def test_slice_canonical_form_1(self):
         stop   = tensor.iscalar('e')
@@ -2673,6 +2675,110 @@ class T_subtensor(unittest.TestCase):
         utt.verify_grad(
             inc_slice(2, 1),
             (numpy.asarray([[0, 1],[2, 3],[4, 5.]]), numpy.asarray(9.),))
+
+    def test_advanced_inc_and_set(self):
+        """
+        Test advanced increment and set.
+        """
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        all_inputs_var = []
+        all_inputs_num = []
+        all_outputs_var = []
+        all_outputs_num = []
+        for set_instead_of_inc in (False, True):
+            for inplace in (False, True):
+                for data_shape in ((10,), (4, 5), (1, 2, 3), (4, 5, 6, 7)):
+                    data_n_dims = len(data_shape)
+                    # Symbolic variable to be incremented.
+                    data_var = tensor.tensor(
+                            broadcastable=[False] * data_n_dims,
+                            dtype=self.dtype)
+                    data_size = numpy.product(data_shape)
+                    # Corresponding numeric variable.
+                    data_num_init = numpy.arange(data_size, dtype=self.dtype)
+                    data_num_init = data_num_init.reshape(data_shape)
+                    inc_shapes = [data_shape[i:]
+                                  for i in xrange(0, len(data_shape) + 1)]
+                    for inc_shape in inc_shapes:
+                        inc_n_dims = len(inc_shape)
+                        # We copy the numeric value to be 100% sure there is no
+                        # risk of accidentally sharing it.
+                        data_num = data_num_init.copy()
+                        if inplace:
+                            # We need to copy `data_var` as we do not want
+                            # multiple in-place operations on it.
+                            data_var = deepcopy(data_var)
+                        # Symbolic variable with rows to be incremented.
+                        idx_var = theano.tensor.vector(dtype='int64')
+                        n_to_inc = rng.randint(data_shape[0])
+                        # Corresponding numeric variable.
+                        idx_num = rng.randint(0, data_shape[0], n_to_inc)
+                        idx_num = idx_num.astype('int64')
+                        # Symbolic variable with increment value.
+                        inc_var = tensor.tensor(
+                                broadcastable=[False] * inc_n_dims,
+                                dtype=self.dtype)
+                        # Trick for the case where `inc_shape` is the same as
+                        # `data_shape`: what we actually want is the first
+                        # shape element to be equal to the number of rows to
+                        # increment.
+                        if len(inc_shape) == len(data_shape):
+                            inc_shape = (n_to_inc,) + inc_shape[1:]
+                        inc_size = numpy.product(inc_shape)
+                        # Corresponding numeric variable.
+                        inc_num = rng.uniform(size=inc_size).astype(self.dtype)
+                        inc_num = inc_num.reshape(inc_shape)
+                        # Result of the incrementation.
+                        # (i) Theano
+                        if set_instead_of_inc:
+                            op = set_subtensor
+                        else:
+                            op = inc_subtensor
+                        output = op(data_var[idx_var], inc_var,
+                                    inplace=inplace)
+                        # (ii) Numpy (note that Numpy increments only once
+                        # duplicated indices, so we cannot directly use +=).
+                        data_copy = data_num.copy()
+                        for j, idx in enumerate(idx_num):
+                            if len(inc_shape) == len(data_shape):
+                                # Special case where there is no broadcasting.
+                                if set_instead_of_inc:
+                                    data_copy[idx] = inc_num[j]
+                                else:
+                                    data_copy[idx] += inc_num[j]
+                            else:
+                                if set_instead_of_inc:
+                                    data_copy[idx] = inc_num
+                                else:
+                                    data_copy[idx] += inc_num
+                        # Remember data for the Theano function (see below).
+                        all_inputs_var += [data_var, idx_var, inc_var]
+                        all_inputs_num += [data_num, idx_num, inc_num]
+                        all_outputs_var.append(output)
+                        all_outputs_num.append(data_copy)
+                        if False:  # Enable for debugging purpose.
+                            f = theano.function([data_var, idx_var, inc_var],
+                                                output, accept_inplace=inplace)
+                            if inplace:
+                                # Ensure calling `f` will not alter `data_num`.
+                                data_num = data_num.copy()
+                            f_out = f(data_num.copy(), idx_num, inc_num)
+                            assert numpy.allclose(f_out, data_copy)
+                            if not inplace:
+                                # Sanity check: `data_num` should be intact.
+                                assert (data_num == data_num_init).all()
+
+        # Actual test (we compile a single Theano function to make it faster).
+        f = theano.function(all_inputs_var, all_outputs_var,
+                            accept_inplace=True)
+        f_outs = f(*all_inputs_num)
+        # NB: if this assert fails, it will probably be easier to debug if you
+        # enable the debug code above.
+        assert len(f_outs) == len(all_outputs_num)
+        for f_out, output_num in izip(f_outs, all_outputs_num):
+            #print f_out
+            #print
+            assert numpy.allclose(f_out, output_num)
 
 
 class TestIncSubtensor1(unittest.TestCase):
