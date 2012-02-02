@@ -39,7 +39,10 @@ class MyType(Type):
     def filter(self, x, strict=False, allow_downcast=None):
         # Dummy filter: we want this type to represent strings that
         # start with `self.thingy`.
-        assert isinstance(x, basestring) and x.startswith(self.thingy)
+        if not isinstance(x, basestring):
+            raise TypeError("Invalid type")
+        if not x.startswith(self.thingy):
+            raise ValueError("Invalid value")
         return x
 
 class MyOp(Op):
