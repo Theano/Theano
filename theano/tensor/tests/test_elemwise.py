@@ -13,7 +13,6 @@ from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import *
 from theano.tests import unittest_tools
 
-complex_dtypes = map(str, scalar.complex_types)
 
 def Env(i, o):
     e = gof.Env(i, o)
@@ -594,7 +593,7 @@ class T_mean_dtype(unittest.TestCase):
                     except NotImplementedError:
                         # TrueDiv does not seem to have a gradient when
                         # the numerator is complex.
-                        if mean_var.dtype in complex_dtypes:
+                        if mean_var.dtype in tensor.complex_dtypes:
                             pass
                         else:
                             raise
