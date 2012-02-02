@@ -77,10 +77,10 @@ def optimize(g, level='fast_run'):
     return g
 
 
-def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
-    x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
-    y = TensorType(broadcastable = ybc, dtype = 'float64')('y')
-    z = TensorType(broadcastable = zbc, dtype = 'float64')('z')
+def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
+    x = TensorType(broadcastable=xbc, dtype='float64')('x')
+    y = TensorType(broadcastable=ybc, dtype='float64')('y')
+    z = TensorType(broadcastable=zbc, dtype='float64')('z')
     return x, y, z
 
 
@@ -97,7 +97,9 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = Env([x], [e])
-        self.assertTrue(str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]", str(g))
+        self.assertTrue(
+                str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]",
+                str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
 
@@ -105,12 +107,15 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs()
         e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
         g = Env([x], [e])
-        self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}(DimShuffle{0,x,1}(x)))]", str(g))
+        self.assertTrue(
+                str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}"
+                          "(DimShuffle{0,x,1}(x)))]",
+                str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
 
     def test_lift(self):
-        x, y, z = inputs([False]*1, [False]*2, [False]*3)
+        x, y, z = inputs([False] * 1, [False] * 2, [False] * 3)
         e = x + y + z
         g = Env([x, y, z], [e])
         self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}("
@@ -696,23 +701,24 @@ class test_canonize(unittest.TestCase):
 
 
 def test_local_merge_abs():
-    x,y,z = T.matrices('xyz')
-    x_val = numpy.random.rand(5,5).astype(config.floatX)
-    y_val = numpy.random.rand(5,5).astype(config.floatX)
-    z_val = numpy.random.rand(5,5).astype(config.floatX)
+    x, y, z = T.matrices('xyz')
+    x_val = numpy.random.rand(5, 5).astype(config.floatX)
+    y_val = numpy.random.rand(5, 5).astype(config.floatX)
+    z_val = numpy.random.rand(5, 5).astype(config.floatX)
     mode = theano.config.mode
     if mode == "FAST_COMPILE":
         mode = "FAST_RUN"
-    mode = theano.compile.mode.get_mode(mode).excluding("local_elemwise_fusion")
+    mode = theano.compile.mode.get_mode(mode).excluding(
+                                                    "local_elemwise_fusion")
 
-    f = theano.function([x,y,z],(abs(y*z*-2)), mode=mode)
-    f(x_val,y_val,z_val)
+    f = theano.function([x, y, z], (abs(y * z * -2)), mode=mode)
+    f(x_val, y_val, z_val)
     theano.printing.debugprint(f)
     assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
-    assert len(f.maker.env.toposort())==2
+    assert len(f.maker.env.toposort()) == 2
 
-    f = theano.function([x,y,z],abs(x/y), mode=mode)
-    f(x_val,y_val,z_val)
+    f = theano.function([x, y, z],abs(x / y), mode=mode)
+    f(x_val, y_val, z_val)
     theano.printing.debugprint(f)
     assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
     assert len(f.maker.env.toposort())==2
