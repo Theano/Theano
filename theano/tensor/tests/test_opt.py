@@ -1,6 +1,8 @@
 ## PENDING REWRITE OF tensor_opt.py
 
 import copy
+import logging
+import StringIO
 import time
 import unittest
 
@@ -669,6 +671,28 @@ class test_canonize(unittest.TestCase):
         """ test those case take from the comment in Canonizer
         """
         raise SkipTest("Not implemented")
+
+    def test_canonicalize_nan(self):
+        """
+        Regression test for bug in canonicalization of NaN values.
+
+        This bug caused an infinite loop which was caught by the equilibrium
+        optimizer, resulting in an error log message.
+        """
+        sio = StringIO.StringIO()
+        handler = logging.StreamHandler(sio)
+        handler.setLevel(logging.ERROR)
+        logging.getLogger('theano.gof.opt').addHandler(handler)
+        try:
+            x = vector()
+            f = theano.function([x], x + numpy.nan)
+        finally:
+            logging.getLogger('theano.gof.opt').removeHandler(handler)
+        # Ideally this test would only catch the maxed out equilibrium
+        # optimizer error message, but to be safe in case this message
+        # is modified in the future, we assert that there is no error
+        # at all.
+        assert not sio.getvalue()
 
 
 def test_local_merge_abs():
