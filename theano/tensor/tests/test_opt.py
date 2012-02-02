@@ -63,12 +63,14 @@ _optimizer_specialize = compile.optdb.query(_optimizer_specialize)
 
 _optimizer_fast_run = gof.Query(include=['fast_run'])
 _optimizer_fast_run = compile.optdb.query(_optimizer_fast_run)
+
+
 def optimize(g, level='fast_run'):
-    if 'fast_run' is level:
+    if level == 'fast_run':
         _optimizer_fast_run.optimize(g)
-    elif 'specialize' is level:
+    elif level == 'specialize':
         _optimizer_specialize.optimize(g)
-    elif 'stabilize' is level:
+    elif level == 'stabilize':
         _optimizer_stabilize.optimize(g)
     else:
         raise ValueError(level)
@@ -3177,61 +3179,63 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         d = T.scalar('d')
         sum = tensor.sum
         sums = [
-            sum(a/d),
-            sum(a/d.dimshuffle('x','x')),
-            sum(a/d.dimshuffle('x','x'), axis=0),
-            sum(a/d.dimshuffle('x','x'), axis=1),
-            sum(b/d),
-            sum(b/d.dimshuffle('x')),
-            sum(c/d),
-            sum(c/d.dimshuffle('x','x','x')),
-            sum(c/d.dimshuffle('x','x','x'),axis=0),
-            sum(c/d.dimshuffle('x','x','x'),axis=1),
-            sum(c/d.dimshuffle('x','x','x'),axis=2),
+            sum(a / d),
+            sum(a / d.dimshuffle('x', 'x')),
+            sum(a / d.dimshuffle('x', 'x'), axis=0),
+            sum(a / d.dimshuffle('x', 'x'), axis=1),
+            sum(b / d),
+            sum(b / d.dimshuffle('x')),
+            sum(c / d),
+            sum(c / d.dimshuffle('x', 'x', 'x')),
+            sum(c / d.dimshuffle('x', 'x', 'x'), axis=0),
+            sum(c / d.dimshuffle('x', 'x', 'x'), axis=1),
+            sum(c / d.dimshuffle('x', 'x', 'x'), axis=2),
 
             sum(a / b, axis=0),
-            sum(a / b.dimshuffle(0,'x'), axis=1),
-            sum(a.dimshuffle(0,1)/ b.dimshuffle(0,'x'), axis=1),
-            sum(a.dimshuffle(1,0)/ b.dimshuffle(0,'x'), axis=1),
+            sum(a / b.dimshuffle(0, 'x'), axis=1),
+            sum(a.dimshuffle(0, 1) / b.dimshuffle(0, 'x'), axis=1),
+            sum(a.dimshuffle(1, 0) / b.dimshuffle(0, 'x'), axis=1),
             sum(c / a, axis=0),
             sum(c / a.dimshuffle(1, 0), axis=0),
-            sum(c / a.dimshuffle(0,'x',1), axis=1),
-            sum(c / a.dimshuffle(1,'x',0), axis=1),
+            sum(c / a.dimshuffle(0, 'x', 1), axis=1),
+            sum(c / a.dimshuffle(1, 'x', 0), axis=1),
             sum(c / a.dimshuffle(0, 1, 'x'), axis=2),
             sum(c / a.dimshuffle(1, 0, 'x'), axis=2),
             sum(c / b, axis=0),
             sum(c / b, axis=1),
-            sum(c / b, axis=(0,1)),
-            sum(c / b.dimshuffle(0,'x'), axis=0),
-            sum(c / b.dimshuffle(0,'x'), axis=2),
-            sum(c / b.dimshuffle(0,'x'), axis=(0,2)),
-            sum(c / b.dimshuffle(0,'x','x'), axis=1),
-            sum(c / b.dimshuffle(0,'x','x'), axis=2),
-            sum(c / b.dimshuffle(0,'x','x'), axis=(1,2)),
+            sum(c / b, axis=(0, 1)),
+            sum(c / b.dimshuffle(0, 'x'), axis=0),
+            sum(c / b.dimshuffle(0, 'x'), axis=2),
+            sum(c / b.dimshuffle(0, 'x'), axis=(0, 2)),
+            sum(c / b.dimshuffle(0, 'x', 'x'), axis=1),
+            sum(c / b.dimshuffle(0, 'x', 'x'), axis=2),
+            sum(c / b.dimshuffle(0, 'x', 'x'), axis=(1, 2)),
             sum(sum(c, axis=0) / b, axis=0),
             sum(sum(c, axis=1) / b, axis=0),
             ]
 
         rng = numpy.random.RandomState(utt.fetch_seed())
-        a_val = rng.randn(2,2).astype(config.floatX)
+        a_val = rng.randn(2, 2).astype(config.floatX)
         b_val = rng.randn(2).astype(config.floatX)
-        c_val = rng.randn(2,2,2).astype(config.floatX)
+        c_val = rng.randn(2, 2, 2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
         backup = config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug
         config.warn.sum_sum_bug = False
         config.warn.sum_div_dimshuffle_bug = False
         try:
-            for i,s in enumerate(sums):
+            for i, s in enumerate(sums):
                 print i
-                f = theano.function([a,b,c,d], s, mode=self.mode)
+                f = theano.function([a, b, c, d], s, mode=self.mode)
                 theano.printing.debugprint(f)
                 g = f.maker.env.toposort()
                 #print 'g =', g
-                assert isinstance(g[-1].op.scalar_op, theano.scalar.basic.TrueDiv)
+                assert isinstance(g[-1].op.scalar_op,
+                                  theano.scalar.basic.TrueDiv)
                 f(a_val, b_val, c_val, d_val)
         finally:
-            config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug = backup
+            config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug =\
+                                                                        backup
 
     # TODO:
     # test_local_sum_prod_dimshuffle (a * b * c)
@@ -3249,21 +3253,20 @@ def test_make_vector():
            d: 0.7}
 
     # Should work
-    for (dtype, inputs) in [("int8", (b,b)),
-                            ("int32", (i,b)),
-                            ("int32", (b,i)),
-                            ("float64", (b,i)),
-                            ("float64", (b,d)),
-                            ("float64", (d,i)),
+    for (dtype, inputs) in [("int8", (b, b)),
+                            ("int32", (i, b)),
+                            ("int32", (b, i)),
+                            ("float64", (b, i)),
+                            ("float64", (b, d)),
+                            ("float64", (d, i)),
                             ("float64", ()),
                             ("int64", ()),
                             ]:
         mv = opt.MakeVector(dtype=dtype)(*inputs)
         assert mv.dtype == dtype
-        f = theano.function([b,i,d], mv)
+        f = theano.function([b, i, d], mv)
         f_val = f(val[b], val[i], val[d])
         #print 'f_val =', f_val
-
 
         s = mv.sum()
         gb = T.grad(s, b, disconnected_inputs='ignore')
@@ -3273,7 +3276,7 @@ def test_make_vector():
         #print 'gi =', gi
         #print 'gd =', gd
 
-        g = theano.function([b,i,d], [gb, gi, gd])
+        g = theano.function([b, i, d], [gb, gi, gd])
         g_val = g(val[b], val[i], val[d])
         #print 'g_val =', g_val
 
@@ -3281,7 +3284,7 @@ def test_make_vector():
             # The gradient should be 0
             assert numpy.allclose(g_val, 0)
         else:
-            for var, grval in zip((b,i,d), g_val):
+            for var, grval in zip((b, i, d), g_val):
                 float_inputs = []
                 if var.dtype.startswith('int'):
                     assert grval == 0
@@ -3307,13 +3310,13 @@ def test_make_vector():
                 utt.verify_grad(fun, [val[ri] for ri in float_inputs])
 
     #should fail
-    for (dtype,inputs) in [("int8",(b,i)),
-                           ("int8",(i,b)),
-                           ("int8",(b,d)),
-                           ("int8",(i,i)),
-                           ("int32",(d,i)),
-                           ("int32",(i,d)),
-                           ("float32",(i,d)),
+    for (dtype, inputs) in [("int8", (b, i)),
+                            ("int8", (i, b)),
+                            ("int8", (b, d)),
+                            ("int8", (i, i)),
+                            ("int32", (d, i)),
+                            ("int32", (i, d)),
+                            ("float32", (i, d)),
                            ]:
         try:
             opt.MakeVector(dtype=dtype)(*inputs)
@@ -3335,7 +3338,7 @@ def test_local_join_1():
 
     #test for matrix join(0,a)
     a = tensor.matrix('a')
-    s = join(0,a)
+    s = join(0, a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
     assert numpy.all(val == [[1]])
@@ -3344,7 +3347,7 @@ def test_local_join_1():
     assert f.maker.env.outputs[0].dtype == config.floatX
 
     #test for matrix join(1,a)
-    s = join(1,a)
+    s = join(1, a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
     assert numpy.all(val == [[1]])
@@ -3353,7 +3356,7 @@ def test_local_join_1():
     assert f.maker.env.outputs[0].dtype == config.floatX
 
     #test we don't apply when their is 2 inputs
-    s = join(1,a,a)
+    s = join(1, a, a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
     assert numpy.all(val == [[1]])
@@ -3367,9 +3370,9 @@ def test_local_mul_to_neg():
     Test that a multiplication by -1 or -1.0 yields the appropriate data type
     """
     a = T.imatrix()
-    f1 = theano.function([a], -1*a)
-    f2 = theano.function([a], -1.0*a)
-    aval = numpy.random.randint(0,10,(2,2)).astype('int32')
+    f1 = theano.function([a], -1 * a)
+    f2 = theano.function([a], -1.0 * a)
+    aval = numpy.random.randint(0, 10, (2, 2)).astype('int32')
     if config.cast_policy == 'custom':
         assert f1(aval).dtype == a.dtype
         assert f2(aval).dtype == 'float64'
