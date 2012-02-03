@@ -43,8 +43,8 @@ def filter_compiledir(path):
         if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
             # If it exist we need read, write and listing access
             raise ValueError(
-                    "compiledir '%s' exist but you don't have read, write or"
-                    " listing permissions." % path)
+                    "compiledir '%s' exists but you don't have read, write"
+                    " or listing permissions." % path)
     else:
         try:
             os.makedirs(path, 0770)  # read-write-execute for user and group
@@ -53,18 +53,14 @@ def filter_compiledir(path):
             # the same directory at the same time.
             if e.errno != errno.EEXIST:
                 raise ValueError(
-                    "We where not able to create the compiledir directory"
+                    "Unable to create to create the compiledir directory"
                     " '%s'. Check the permissions." % path)
 
-    try:
-        # PROBLEM: sometimes the initial approach based on
-        # os.system('touch') returned -1 for an unknown reason; the
-        # alternate approach here worked in all cases... it was weird.
-        open(os.path.join(path, '__init__.py'), 'w').close()
-    except Exception:
-        # This should not happen as we checked that we have the permissions.
-        raise ValueError('Failed to create the __init__.py file in the '
-                         'compiledir: "%s". Check the permissions.' % path)
+    # PROBLEM: sometimes the initial approach based on
+    # os.system('touch') returned -1 for an unknown reason; the
+    # alternate approach here worked in all cases... it was weird.
+    # No error should happen as we checked the permissions.
+    open(os.path.join(path, '__init__.py'), 'w').close()
 
     return path
 
