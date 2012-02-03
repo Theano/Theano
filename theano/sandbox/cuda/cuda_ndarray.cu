@@ -47,7 +47,7 @@ void * device_malloc(size_t size)
     if (cudaSuccess != err)
     {
 #if COMPUTE_GPU_MEM_USED
-        fprintf(stderr, "Error allocating %li bytes of device memory (%s). %d already allocated\n", (long)size, cudaGetErrorString(err),_allocated_size);
+        fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
 #else
         fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
 #endif
@@ -65,7 +65,7 @@ void * device_malloc(size_t size)
     }
     _allocated_size += size;
 #endif
-    //fprintf(stderr, "allocated %li bytes of device memory (%s). %d already allocated, ptr: %p\n", (long)size, cudaGetErrorString(err),_allocated_size,rval);
+    //fprintf(stderr, "allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n", (long)size, cudaGetErrorString(err),_allocated_size,rval);
 
     if(ALLOC_MEMSET){
         //We init them to nan to make sure we catch more debug case.
@@ -76,6 +76,7 @@ void * device_malloc(size_t size)
 }
 int device_free(void *ptr)
 {
+
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
         return 0;
@@ -219,7 +220,7 @@ CudaNdarray_dealloc(CudaNdarray* self)
 {
     if (0) std::cerr << "CudaNdarray dealloc " << self << " " << self->devdata << '\n';
     if(self->ob_refcnt>1)
-      printf("WARNING:CudaNdarray_dealloc called when their is still active reference to it.\n");
+      printf("WARNING:CudaNdarray_dealloc called when there is still active reference to it.\n");
     CudaNdarray_uninit(self);
     self->ob_type->tp_free((PyObject*)self);
     --_outstanding_mallocs[1];
