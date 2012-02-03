@@ -30,6 +30,7 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
 
     def run_f(self, f):
         f(self.Aval, self.xval, self.yval)
+        f(self.Aval[::-1, ::-1], self.xval[::-1], self.yval[::-1])
 
     def b(self, bval):
         return tensor.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))

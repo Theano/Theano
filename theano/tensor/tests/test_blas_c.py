@@ -41,7 +41,8 @@ class TestCGer(TestCase, TestOptimizationMixin):
                 )
 
     def run_f(self, f):
-        return f(self.Aval, self.xval, self.yval)
+        f(self.Aval, self.xval, self.yval)
+        f(self.Aval[::-1, ::-1], self.xval[::-1], self.yval[::-1])
 
     def b(self, bval):
         return tensor.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
@@ -132,6 +133,10 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         assert numpy.allclose(f(self.xval, self.Aval),
                 numpy.dot(self.xval, self.Aval))
 
+        # Test with negative strides on 2 dims
+        assert numpy.allclose(f(self.xval, self.Aval[::-1, ::-1]),
+                numpy.dot(self.xval, self.Aval[::-1, ::-1]))
+
     def test_optimizations_mv(self):
         ''' Test matrix dot vector '''
         f = theano.function([self.A, self.y],
@@ -145,6 +150,10 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         # Assert they produce the same output
         assert numpy.allclose(f(self.Aval, self.yval),
                 numpy.dot(self.Aval, self.yval))
+        # Test with negative strides on 2 dims
+        assert numpy.allclose(f(self.Aval[::-1, ::-1], self.yval),
+                numpy.dot(self.Aval[::-1, ::-1], self.yval))
+
 
     def t_gemv1(self, m_shp):
         ''' test vector2 + dot(matrix, vector1) '''
@@ -164,16 +173,27 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         assert topo == [CGemv(inplace=False)], topo
 
         #test the inplace version
-        f = theano.function([], [],
+        g = theano.function([], [],
                 updates={v2:v2+theano.dot(m,v1)},
                 mode=self.mode)
 
         # Assert they produce the same output
-        f()
+        g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = [n.op for n in f.maker.env.toposort()]
+        topo = [n.op for n in g.maker.env.toposort()]
         assert topo == [CGemv(inplace=True)]
+
+        # Do the same tests with a matrix with strides in both dimensions
+        m.set_value(
+                m.get_value(borrow=True)[::-1, ::-1],
+                borrow=True)
+        v2.set_value(v2_orig)
+        assert numpy.allclose(f(),
+            numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        g()
+        assert numpy.allclose(v2.get_value(),
+            numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     def test_gemv1(self):
         self.t_gemv1((3,2))
@@ -200,6 +220,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         ones_6 = numpy.ones(6, dtype=dtype)
 
         f(A_val, ones_3, ones_5)
+        f(A_val[::-1, ::-1], ones_3, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_6)

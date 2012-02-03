@@ -878,6 +878,11 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
+        # Assert it works when m has no contiguous dimension
+        m.set_value(
+                m.get_value(borrow=True)[::-1, ::-1],
+                borrow=True)
+        assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
 
 
     def test_dot_mv(self):
@@ -893,6 +898,11 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
+        assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
+        # Assert it works when m has no contiguous dimension
+        m.set_value(
+                m.get_value(borrow=True)[::-1, ::-1],
+                borrow=True)
         assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
 
     @staticmethod
@@ -915,18 +925,29 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert topo[0].op.inplace==False
 
         #test the inplace version
-        f = theano.function([], [], updates={v2:v2+theano.dot(m,v1)}
+        g = theano.function([], [], updates={v2:v2+theano.dot(m,v1)}
                             , mode = mode_blas_opt)
 
         # Assert they produce the same output
-        f()
+        g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = f.maker.env.toposort()
+        topo = g.maker.env.toposort()
         assert len(topo)==1
         assert isinstance(topo[0].op, Gemv)
         if config.mode != 'FAST_COMPILE':
             assert topo[0].op.inplace==True
+
+        # Do the same tests with a matrix with strides in both dimensions
+        m.set_value(
+                m.get_value(borrow=True)[::-1, ::-1],
+                borrow=True)
+        v2.set_value(v2_orig)
+        assert numpy.allclose(f(),
+                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        g()
+        assert numpy.allclose(v2.get_value(),
+                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     def test_gemv1(self):
         self.t_gemv1((3,2))
@@ -952,17 +973,28 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert topo[-1].op.inplace==False
 
         #test the inplace version
-        f = theano.function([], [], updates={v2:v2+theano.dot(v1,m)}
+        g = theano.function([], [], updates={v2:v2+theano.dot(v1,m)}
                             , mode = mode_blas_opt)
 
         # Assert they produce the same output
-        f()
+        g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
-        topo = f.maker.env.toposort()
+        topo = g.maker.env.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo)==1
         if config.mode != 'FAST_COMPILE':
             assert topo[-1].op.inplace==True
+
+        # Do the same tests with a matrix with strides in both dimensions
+        m.set_value(
+                m.get_value(borrow=True)[::-1, ::-1],
+                borrow=True)
+        v2.set_value(v2_orig)
+        assert numpy.allclose(f(),
+                numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
+        g()
+        assert numpy.allclose(v2.get_value(),
+                numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
 
     def test_gemv_dimensions(self):
         A = T.matrix('A')
@@ -984,6 +1016,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         ones_6 = numpy.ones(6, dtype=config.floatX)
 
         f(A_val, ones_3, ones_5)
+        f(A_val[::-1, ::-1], ones_3, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
@@ -1136,6 +1169,46 @@ class BaseGemv(object):
         desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v[::2]
 
         oy = alpha * T.dot(a.T,x)+beta*y[::2]
+
+        oy_func = theano.function([], oy, mode=self.mode)
+
+        self.assertFunctionContains1(oy_func, self.gemv)
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_a_strides(self):
+        vs = self.get_data()
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        a_v = a_v[::-1, ::-1]
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+
+        desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v
+
+        oy = alpha * T.dot(a,x)+beta*y
+
+        oy_func = theano.function([], oy, mode=self.mode)
+
+        self.assertFunctionContains1(oy_func, self.gemv)
+
+        oy_v = oy_func()
+        assert_array_almost_equal(desired_oy, oy_v)
+
+    def test_a_strides_transpose(self):
+        vs = self.get_data()
+        alpha_v, beta_v, a_v, x_v, y_v = vs
+        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        a_v = a_v[::-1, ::-1]
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
+
+        oy = alpha * T.dot(a.T,x)+beta*y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1332,12 +1405,18 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         f(numpy.random.rand(5, 4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype),
           numpy.random.rand(4).astype(self.dtype))
+        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
         f(numpy.random.rand(5, 4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
+        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
           numpy.random.rand(5).astype(self.dtype),
           numpy.random.rand(4).astype(self.dtype))
 
@@ -1352,6 +1431,9 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         f(numpy.random.rand(5, 4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype),
           numpy.random.rand(4).astype(self.dtype))
+        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
+          numpy.random.rand(5).astype(self.dtype),
+          numpy.random.rand(4).astype(self.dtype))
 
     def given_dtype(self, dtype, M, N):
         """ test corner case shape and dtype"""
@@ -1360,6 +1442,9 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
                 self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
         f(numpy.random.rand(M, N).astype(self.dtype),
+          numpy.random.rand(M).astype(self.dtype),
+          numpy.random.rand(N).astype(self.dtype))
+        f(numpy.random.rand(M, N).astype(self.dtype)[::-1, ::-1],
           numpy.random.rand(M).astype(self.dtype),
           numpy.random.rand(N).astype(self.dtype))
 
@@ -1399,5 +1484,9 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
                           updates={A: A + T.constant(0.1, dtype=self.dtype) *
                                    T.outer(self.x, self.y)})
         self.assertFunctionContains(f, self.ger_destructive)
+        f(numpy.random.rand(4).astype(self.dtype),
+          numpy.random.rand(5).astype(self.dtype))
+
+        A.set_value(A.get_value(borrow=True)[::-1, ::-1], borrow=True)
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))

@@ -286,6 +286,14 @@ class TestVectorMatrixDot(TestCase):
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f2.maker.env.toposort() ]) == 1
 
+        # Check double-strided m
+        m.set_value(
+                m.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+
+
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
         v = theano.shared( numpy.array(numpy.random.rand(2), dtype='float32'))
