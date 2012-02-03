@@ -39,27 +39,32 @@ def filter_compiledir(path):
     #   2. The path is stable w.r.t. e.g. symlinks (which makes it easier
     #      to re-use compiled modules).
     path = os.path.realpath(path)
-    valid = True
-    if not os.access(path, os.R_OK | os.W_OK):
+    if os.access(path, os.F_OK):  # Do it exist?
+        if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
+            # If it exist we need read, write and listing access
+            raise ValueError(
+                    "compiledir '%s' exist but you don't have read, write or"
+                    " listing permissions." % path)
+    else:
         try:
             os.makedirs(path, 0770)  # read-write-execute for user and group
         except OSError, e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
             if e.errno != errno.EEXIST:
-                valid = False
+                raise ValueError(
+                    "We where not able to create the compiledir directory"
+                    " '%s'. Check the permissions." % path)
 
-    if valid:
-        try:
-            # PROBLEM: sometimes the initial approach based on
-            # os.system('touch') returned -1 for an unknown reason; the
-            # alternate approach here worked in all cases... it was weird.
-            open(os.path.join(path, '__init__.py'), 'w').close()
-        except:
-            valid = False
-
-    if not valid:
-        raise ValueError('Invalid value for compiledir: %s' % path)
+    try:
+        # PROBLEM: sometimes the initial approach based on
+        # os.system('touch') returned -1 for an unknown reason; the
+        # alternate approach here worked in all cases... it was weird.
+        open(os.path.join(path, '__init__.py'), 'w').close()
+    except Exception:
+        # This should not happen as we checked that we have the permissions.
+        raise ValueError('Failed to create the __init__.py file in the '
+                         'compiledir: "%s". Check the permissions.' % path)
 
     return path
 
