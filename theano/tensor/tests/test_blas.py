@@ -1050,6 +1050,7 @@ def matrixmultiply(a, b):
 
 class BaseGemv(object):
     mode = mode_blas_opt  # can be overridden with self.mode
+    shared = staticmethod(theano.shared)
 
     def get_data(self,x_stride=1,y_stride=1):
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
@@ -1064,7 +1065,7 @@ class BaseGemv(object):
         return alpha,beta,a,x,y
 
     def test_simple(self):
-        alpha, beta, a, x, y = [ shared(value) for value in self.get_data() ]
+        alpha, beta, a, x, y = [ self.shared(value) for value in self.get_data() ]
         desired_oy = alpha.get_value() * matrixmultiply(a.get_value(),x.get_value()) + beta.get_value() * y.get_value()
 
         oy    = alpha * T.dot(a,x) + beta * y
@@ -1082,8 +1083,8 @@ class BaseGemv(object):
 
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        a = shared(a_v)
-        x = shared(x_v)
+        a = self.shared(a_v)
+        x = self.shared(x_v)
 
         desired_oy = matrixmultiply(a_v, x_v)
 
@@ -1100,7 +1101,7 @@ class BaseGemv(object):
     def test_simple_transpose(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
 
         desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
 
@@ -1116,7 +1117,7 @@ class BaseGemv(object):
     def test_x_stride(self):
         vs = self.get_data(x_stride = 2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
 
         desired_oy = alpha_v * matrixmultiply(a_v,x_v[::2])+beta_v*y_v
 
@@ -1132,7 +1133,7 @@ class BaseGemv(object):
     def test_x_stride_transpose(self):
         vs = self.get_data(x_stride = 2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
 
         desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v[::2])+beta_v*y_v
 
@@ -1148,7 +1149,7 @@ class BaseGemv(object):
     def test_y_stride(self):
         vs = self.get_data(y_stride = 2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
 
         desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v[::2]
 
@@ -1164,7 +1165,7 @@ class BaseGemv(object):
     def test_y_stride_transpose(self):
         vs = self.get_data(y_stride = 2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
 
         desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v[::2]
 
@@ -1180,7 +1181,7 @@ class BaseGemv(object):
     def test_a_strides(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
         a_v = a_v[::-1, ::-1]
         a.set_value(
                 a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
@@ -1200,7 +1201,7 @@ class BaseGemv(object):
     def test_a_strides_transpose(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ shared(v) for v in vs ]
+        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
         a_v = a_v[::-1, ::-1]
         a.set_value(
                 a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],

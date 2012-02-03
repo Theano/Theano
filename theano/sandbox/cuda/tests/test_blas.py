@@ -260,6 +260,23 @@ class TestGpuGemv(TestCase, BaseGemv,
     gemv = gpu_gemv_inplace
     gemv_inplace = gpu_gemv_inplace
 
+class TestGpuGemvNoTransfer(TestCase, BaseGemv,
+                  unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+
+    # Mimic shared constructors registry
+    @staticmethod
+    def shared(val):
+        try:
+            return tcn.shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
+    # In this test, inputs are not always transfered to GPU
+    gemv = gpu_gemv_no_inplace
+    gemv_inplace = gpu_gemv_inplace
+
 
 class TestVectorMatrixDot(TestCase):
     ### Tolerance factor used in this tests
