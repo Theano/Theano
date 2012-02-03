@@ -16,7 +16,6 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
-from theano.configdefaults import config
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
