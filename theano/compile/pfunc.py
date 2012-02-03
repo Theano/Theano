@@ -427,13 +427,17 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         i.variable = iv
 
     for sv in shared_inputs:
+        #pass value of None here
+        #value will be stored in the resulting functions' defaults list
+        #but since the value of shared variables never needs to be refed, it is not needed
         if sv in update_d:
-            si = In(variable=sv, value=sv.container, mutable=True,
-                    borrow=True, update=update_d[sv])
+            si = In(variable=sv, value = sv.container, mutable=True,
+                    borrow=True, update=update_d[sv], shared = True)
         else:
-            si = In(variable=sv, value=sv.container,
-                    mutable=False, borrow=True)
+            si = In(variable=sv, value = sv.container,
+                    mutable=False, borrow=True, shared = True)
         inputs.append(si)
+
 
     return orig_function(inputs, cloned_outputs, mode,
             accept_inplace=accept_inplace, name=name, profile=profile)
