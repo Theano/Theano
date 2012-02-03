@@ -121,11 +121,9 @@ def print_compiledir_content():
             return [a]
 
     compiledir = theano.config.compiledir
-    print "List compiled ops in this theano cache:", compiledir
-    print "sub directory/Op/Associated Type"
-    print
     table = []
-
+    more_then_one_ops = 0
+    zeros_op = 0
     for dir in os.listdir(compiledir):
         file = None
         try:
@@ -134,16 +132,38 @@ def print_compiledir_content():
                 keydata = cPickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
-                assert len(ops) == 1
-                types = list(set([x for x in flatten(keydata.keys)
-                                  if isinstance(x, theano.gof.Type)]))
-                table.append((dir, ops[0], types))
+                if len(ops) == 0:
+                    zeros_op += 1
+                elif len(ops) > 1:
+                    more_then_one_ops += 1
+                else:
+                    types = list(set([x for x in flatten(keydata.keys)
+                                      if isinstance(x, theano.gof.Type)]))
+                    table.append((dir, ops[0], types))
             except IOError:
                 pass
         finally:
             if file is not None:
                 file.close()
 
+    print "List %d compiled individual op in this theano cache %s:" % (
+        len(table), compiledir)
+    print "sub directory/Op/a set of the different associated Theano type"
     table = sorted(table, key=lambda t: str(t[1]))
+    table_op_class = {}
     for dir, op, types in table:
         print dir, op, types
+        table_op_class.setdefault(op.__class__, 0)
+        table_op_class[op.__class__] += 1
+
+    print
+    print "List %d of individual compiled Op class and" % (len(table_op_class)),
+    print " the number of time it got compiled"
+    table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
+    for op_class, nb in table_op_class:
+        print op_class, nb
+    print ("Skipped %d files that contained more then"
+           " 1 op (was compiled with the c linker)" % (more_then_one_ops))
+    print ("Skipped %d files that contained 0 op"
+           "(Are they always theano.scalar ops?)" % (
+            more_then_one_ops))
