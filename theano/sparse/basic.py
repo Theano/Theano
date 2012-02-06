@@ -460,6 +460,7 @@ class CSMProperties(gof.Op):
 # don't make this a function or it breaks some optimizations below
 csm_properties = CSMProperties()
 
+
 def csm_data(csm): return csm_properties(csm)[0]
 
 
@@ -634,6 +635,7 @@ class DenseFromSparse(gof.op.Op):
     """WRITEME"""
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
 
@@ -644,6 +646,7 @@ class DenseFromSparse(gof.op.Op):
                          [tensor.TensorType(dtype=x.type.dtype,
                                             broadcastable=(False, False)
                                            ).make_variable()])
+
     def perform(self, node, (x, ), (out, )):
         if _is_dense(x):
             print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix."
