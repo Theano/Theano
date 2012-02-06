@@ -817,9 +817,9 @@ class CLinker(link.Linker):
         Input Signature
         ---------------
 
-        Each input signature is a tuple with an element for each input to the corresponding
-        Apply node.
-        Each element identifies the type of the node input, and the nature of that input in the
+        Each input signature is a tuple with an element for each input
+        to the corresponding Apply node.  Each element identifies the
+        type of the node input, and the nature of that input in the
         graph.
 
         The nature of a typical variable is encoded by integer pairs ``((a,b),c)``:
@@ -827,25 +827,31 @@ class CLinker(link.Linker):
         ``b`` is the index of the variable in the owner's output list.
         ``c`` is a flag indicating whether the variable is in the no_recycling set.
 
-        If a variable is also a graph output, then its position in the outputs list is also
-        bundled with this tuple (after the b).
+        If a variable is also a graph output, then its position in the
+        outputs list is also bundled with this tuple (after the b).
 
-        The nature of a Constant instance is defined as its signature, together with
-        two integers: the topological position of the first Apply using that Constant instance,
-        and the lowest index into that Apply's inputs that refers to that Constant.  (These two
-        integers are a surrogate for the id() of the Constant.  The integers are important
-        because merge-able constants have the same signature, but require separate containers
-        in C code.)  The membership in no_recycling is also included in the signature.
+
+        The nature of a Constant instance is defined as its signature,
+        together with two integers: the topological position of the
+        first Apply using that Constant instance, and the lowest index
+        into that Apply's inputs that refers to that Constant.  (These
+        two integers are a surrogate for the id() of the Constant.
+        The integers are important because merge-able constants have
+        the same signature, but require separate containers in C
+        code.)  The membership in no_recycling is also included in the
+        signature.
 
         Output Signature
         ----------------
 
-        The outputs of a node are entirely determined by the node's Op and the nature of the
-        inputs, but the set of outputs that may be re-used by the computation (the elements of
+        The outputs of a node are entirely determined by the node's Op
+        and the nature of the inputs, but the set of outputs that may
+        be re-used by the computation (the elements of
         self.no_recycling) can affect the code that is generated.
 
-        The format of each Op's output signature is simply a list of booleans, indicating
-        whether each output is in the no_recycling set.
+        The format of each Op's output signature is simply a list of
+        booleans, indicating whether each output is in the
+        no_recycling set.
 
         """
         return self.cmodule_key_(self.env, self.no_recycling,
