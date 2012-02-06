@@ -114,9 +114,9 @@ def as_sparse_or_tensor_variable(x, name=None):
     If we can't make a sparse variable, we try to make a tensor variable.
     """
     try:
-        return as_sparse_variable(x,name)
+        return as_sparse_variable(x, name)
     except (ValueError, TypeError):
-        return theano.tensor.as_tensor_variable(x,name)
+        return theano.tensor.as_tensor_variable(x, name)
 
 
 def constant(x, name=None):
@@ -124,7 +124,7 @@ def constant(x, name=None):
         raise TypeError("sparse.constant must be called on a scipy.sparse.spmatrix")
     try:
         return SparseConstant(SparseType(format = x.format,
-                                     dtype = x.dtype), x.copy(),name=name)
+                                     dtype = x.dtype), x.copy(), name=name)
     except TypeError:
         raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
@@ -233,7 +233,7 @@ class SparseVariable(gof.Variable, _sparse_py_operators):
 
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
-        (a, b), (x,y) = self, other
+        (a, b), (x, y) = self, other
         return a == x \
                 and (b.dtype == y.dtype)\
                 and (type(b) == type(y))\
@@ -241,7 +241,7 @@ class SparseConstantSignature(tuple):
                 and (abs(b-y).sum() < 1e-6 * b.nnz)
 
     def __hash__(self):
-        (a,b) = self
+        (a, b) = self
         return hash(type(self)) ^ hash(a) ^ hash(type(b))
 
 
@@ -282,7 +282,7 @@ class SparseType(gof.Type):
             'csr' : scipy.sparse.csr_matrix,
             'csc' : scipy.sparse.csc_matrix
             }
-    dtype_set = set(['int', 'int8', 'int16','int32', 'int64', 'float32', 'float64', 'complex64','complex128'])
+    dtype_set = set(['int', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'complex64', 'complex128'])
     ndim = 2
 
     Variable = SparseVariable
@@ -320,23 +320,23 @@ class SparseType(gof.Type):
         else:
             sp = self.format_cls[self.format](value)
             if str(sp.dtype) != self.dtype:
-                raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype,str(sp.dtype)))
+                raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype, str(sp.dtype)))
         if sp.format != self.format:
             raise NotImplementedError()
         return sp
 
     @staticmethod
-    def may_share_memory(a,b):
+    def may_share_memory(a, b):
         # This is Fred suggestion for a quick and dirty way of checking
         # aliasing .. this can potentially be further refined (ticket #374)
         if _is_sparse(a) and _is_sparse(b):
             return a is b
         if _is_sparse(b) and isinstance(a, numpy.ndarray):
-            a,b=b,a
+            a, b = b, a
         if _is_sparse(a) and isinstance(b, numpy.ndarray):
-            if (numpy.may_share_memory(a.data,b) or
-                numpy.may_share_memory(a.indices,b) or
-                numpy.may_share_memory(a.indptr,b)):
+            if (numpy.may_share_memory(a.data, b) or
+                numpy.may_share_memory(a.indices, b) or
+                numpy.may_share_memory(a.indptr, b)):
                     #currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
@@ -412,7 +412,7 @@ class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr"""
 
     #we don't return a view of the shape, we create a new ndarray from the shape tuple.
-    view_map = {0:[0],1:[0],2:[0]}
+    view_map = {0: [0], 1: [0], 2: [0]}
 
     kmap = None
     """ WRITEME """
@@ -472,7 +472,8 @@ def csm_shape(csm): return csm_properties(csm)[3]
 
 class CSM(gof.Op):
     """Construct a CSC or CSR matrix from the internal representation """
-    view_map = {0:[0]} #should view the other inputs too, but viewing multiple inputs is not
+    # should view the other inputs too, but viewing multiple inputs is not
+    view_map = {0: [0]}
     #currently supported by the destroyhandler
 
     format = None
@@ -568,7 +569,7 @@ class CSM(gof.Op):
     def grad(self, (data, indices, indptr, shape), (g_out,)):
         """Return a gradient on the data vector"""
         #unpack the data vector and wrap it as a 1d TensorType
-        g_data = csm_grad(self.kmap)(data, csm_data(g_out),csm_indices(g_out))
+        g_data = csm_grad(self.kmap)(data, csm_data(g_out), csm_indices(g_out))
         return [g_data, None, None, None]
 
 CSC = CSM('csc')
@@ -770,7 +771,7 @@ class GetItem2d(gof.op.Op):
                         or numpy.isscalar(ind)):
                 raise NotImplementedError(
                     'Theano has no sparse vector' +
-                    'Use X[a:b,c:d], X[a:b,c:c+1] or X[a:b] instead.')
+                    'Use X[a:b, c:d], X[a:b, c:c+1] or X[a:b] instead.')
             else:
                 raise ValueError((
                     'Advanced indexing is not implemented for sparse '
@@ -956,7 +957,7 @@ class AddSD(gof.op.Op):
 add_s_d = AddSD()
 
 
-def add(x,y):
+def add(x, y):
     """
     Add two matrices, at least one of which is sparse.
     """
@@ -967,13 +968,13 @@ def add(x,y):
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return add_s_s(x,y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return add_s_d(x,y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return add_s_d(y,x)
+    if x_is_sparse_variable and y_is_sparse_variable: return add_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable: return add_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable: return add_s_d(y, x)
     else: raise NotImplementedError()
 
 
-def sub(x,y):
+def sub(x, y):
     return x + (-y)
 
 
@@ -1020,7 +1021,7 @@ class MulSD(gof.op.Op):
         #upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if y.type.dtype != dtype:
-            y = tensor.cast(y,dtype)
+            y = tensor.cast(y, dtype)
 
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
@@ -1053,7 +1054,7 @@ class MulSD(gof.op.Op):
                 for j in xrange(0, N):
                     for i_idx in xrange(indptr[j], indptr[j+1]):
                         i = indices[i_idx]
-                        z_data[i_idx] *= y[i,j]
+                        z_data[i_idx] *= y[i, j]
                 out[0] = z
             elif x.format == 'csr':
                 x_data = x.data
@@ -1065,7 +1066,7 @@ class MulSD(gof.op.Op):
                 for i in xrange(0, M):
                     for j_idx in xrange(indptr[i], indptr[i+1]):
                         j = indices[j_idx]
-                        z_data[j_idx] *= y[i,j]
+                        z_data[j_idx] *= y[i, j]
                 out[0] = z
             else:
                 print >> sys.stderr, "WARNING: crappy implementation of MulSD", x.format
@@ -1078,7 +1079,7 @@ class MulSD(gof.op.Op):
 mul_s_d = MulSD()
 
 
-def mul(x,y):
+def mul(x, y):
     """
     Multiply (elementwise) two matrices, at least one of which is sparse.
     """
@@ -1089,9 +1090,9 @@ def mul(x,y):
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return mul_s_s(x,y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return mul_s_d(x,y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return mul_s_d(y,x)
+    if x_is_sparse_variable and y_is_sparse_variable: return mul_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable: return mul_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable: return mul_s_d(y, x)
     else: raise NotImplementedError()
 
 
@@ -1119,17 +1120,17 @@ class StructuredDot(gof.Op):
             raise NotImplementedError('non-matrix b')
 
         if _is_sparse_variable(b):
-            return gof.Apply(self, [a,b], [SparseType(a.type.format,dtype_out)()])
+            return gof.Apply(self, [a, b], [SparseType(a.type.format, dtype_out)()])
         else:
-            return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
+            return gof.Apply(self, [a, b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
 
-    def perform(self, node, (a,b), (out,)):
+    def perform(self, node, (a, b), (out,)):
         if a.shape[1] != b.shape[0]:
             raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
 
         #variable = a.dot(b)  # deprecated
         variable = a * b
-        if isinstance(node.outputs[0].type,SparseType):
+        if isinstance(node.outputs[0].type, SparseType):
             assert _is_sparse(variable)
             out[0] = variable
             return
@@ -1138,7 +1139,7 @@ class StructuredDot(gof.Op):
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
         if variable.ndim == 1:
-            variable = numpy.expand_dims(variable,1)
+            variable = numpy.expand_dims(variable, 1)
         elif variable.ndim != 2:
             raise Exception('Output of structured dot should be a matrix (ndim=2)')
 
@@ -1154,11 +1155,11 @@ class StructuredDot(gof.Op):
         #theano._asarray function documentation.
         out[0] = theano._asarray(variable, str(variable.dtype))
 
-    def grad(self, (a,b), (g_out,)):
+    def grad(self, (a, b), (g_out,)):
         # a is sparse, b is dense, g_out is dense
         # ga = g_out x b.T
         # gb = a.T x g_out
-        return [structured_dot_grad(a, b, g_out), structured_dot(a.T,g_out)]
+        return [structured_dot_grad(a, b, g_out), structured_dot(a.T, g_out)]
 _structured_dot = StructuredDot()
 
 
@@ -1212,7 +1213,7 @@ class StructuredDotCSC(gof.Op):
         @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
         @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
         @param n_rows: number of rows of sparse matrix
-        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param b: dense matrix to perform dot product with, as in dot(a, b)
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
@@ -1261,7 +1262,7 @@ class StructuredDotCSC(gof.Op):
             )
         {
             {Py_XDECREF(%(z)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
             dims[1] = %(b)s->dimensions[1];
             %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
@@ -1299,12 +1300,12 @@ class StructuredDotCSC(gof.Op):
             // for m
             //   for n
             //     for k
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
             // Here instead: Z =
             // for k
             //   for m (sparse)
             //     for n
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
 
             // loop over inner dimension
             for (npy_int32 k = 0; k < K; ++k)
@@ -1381,7 +1382,7 @@ class StructuredDotCSR(gof.Op):
         @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
         @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
         @param n_cols: number of columns of sparse matrix
-        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param b: dense matrix to perform dot product with, as in dot(a, b)
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
@@ -1412,7 +1413,7 @@ class StructuredDotCSR(gof.Op):
             )
         {
             {Py_XDECREF(%(z)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = %(a_ptr)s->dimensions[0]-1;
             dims[1] = %(b)s->dimensions[1];
             %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
@@ -1449,12 +1450,12 @@ class StructuredDotCSR(gof.Op):
             // for m
             //   for n
             //     for k
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
             // Here instead:
             // for m
             //   for k (sparse)
             //     for n
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
 
             // loop over inner dimension
             for (npy_int64 m = 0; m < M; ++m)
@@ -1510,7 +1511,7 @@ def local_structured_dot(node):
 
 
 def structured_dot_grad(sparse_A, dense_B, ga):
-    if sparse_A.type.format in ('csc','csr'):
+    if sparse_A.type.format in ('csc', 'csr'):
 
         if sparse_A.type.format == 'csc':
             sdgcsx = sdg_csc
@@ -1526,10 +1527,10 @@ def structured_dot_grad(sparse_A, dense_B, ga):
         #backport
         #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
-        g_A_data = sdgcsx(csm_indices(sparse_A),\
+        g_A_data = sdgcsx(csm_indices(sparse_A), \
                           csm_indptr(sparse_A), dense_B, ga)
-        return CSx(g_A_data, csm_indices(sparse_A),\
-                                 csm_indptr(sparse_A),\
+        return CSx(g_A_data, csm_indices(sparse_A), \
+                                 csm_indptr(sparse_A), \
                                  csm_shape(sparse_A))
     else:
         raise NotImplementedError()
@@ -2088,7 +2089,7 @@ class UsmmCscDense(gof.Op):
             )
         {
             {Py_XDECREF(%(zn)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = ((npy_int32 *)%(x_nrows)s->data)[0];
             dims[1] = %(y)s->dimensions[1];
             %(zn)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_zn)s);
