@@ -1,84 +1,106 @@
 """
 Classes for handling sparse matrices.
 
-To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
+To read about different sparse formats, see
+U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 
 @todo: Automatic methods for determining best sparse format?
 """
 from itertools import izip
 import sys
 
-import numpy, theano
+import numpy
+import theano
 import scipy.sparse
 
-from theano import gof
-from theano import tensor
-from theano import compile
-from theano import scalar
-from theano import config
-from theano.gof.python25 import all, any
+from theano import gof, tensor, compile, scalar, config
+from theano.gof.python25 import all
 from theano.tensor import blas
 
 sparse_formats = ['csc', 'csr']
 
+
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
-    compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run', *tags)
+    compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
+                                         lopt.__name__, lopt, 'fast_run',
+                                         *tags)
 
 
 """ Types of sparse matrices to use for testing """
 _mtypes = [scipy.sparse.csc_matrix, scipy.sparse.csr_matrix]
-#_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
+#_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix,
+# sparse.lil_matrix, sparse.coo_matrix]
 #* new class ``dia_matrix`` : the sparse DIAgonal format
 #* new class ``bsr_matrix`` : the Block CSR format
-_mtype_to_str = {scipy.sparse.csc_matrix: "csc", scipy.sparse.csr_matrix: "csr"}
+_mtype_to_str = {scipy.sparse.csc_matrix: "csc",
+                 scipy.sparse.csr_matrix: "csr"}
+
 
 def _is_sparse_variable(x):
     """
     @rtype: boolean
     @return: True iff x is a L{SparseVariable} (and not a L{tensor.TensorType})
     """
-    if not isinstance(x.type, SparseType) and not isinstance(x.type, tensor.TensorType):
-        raise NotImplementedError("this function should only be called on *variables* (of type sparse.SparseType or tensor.TensorType), not,", x)
+    if not isinstance(x.type, (SparseType, tensor.TensorType)):
+        raise NotImplementedError("this function should only be called on "
+                                  "*variables* (of type sparse.SparseType "
+                                  "or tensor.TensorType), not,", x)
     return isinstance(x.type, SparseType)
+
+
 def _is_dense_variable(x):
     """
     @rtype: boolean
-    @return: True unless x is a L{SparseVariable} (and not a L{tensor.TensorType})
+    @return: True unless x is a L{SparseVariable} (and not a
+    L{tensor.TensorType})
     """
-    if not isinstance(x.type, SparseType) and not isinstance(x.type, tensor.TensorType):
-        raise NotImplementedError("this function should only be called on *variables* (of type sparse.SparseType or tensor.TensorType), not,", x)
+    if not isinstance(x.type, (SparseType, tensor.TensorType)):
+        raise NotImplementedError("this function should only be called on "
+                                  "*variables* (of type sparse.SparseType or "
+                                  "tensor.TensorType), not,", x)
     return isinstance(x.type, tensor.TensorType)
+
 
 def _is_sparse(x):
     """
     @rtype: boolean
-    @return: True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray})
+    @return: True iff x is a L{scipy.sparse.spmatrix} (and not a
+    L{numpy.ndarray})
     """
-    if not isinstance(x, scipy.sparse.spmatrix) and not isinstance(x, numpy.ndarray):
-        raise NotImplementedError("this function should only be called on sparse.scipy.sparse.spmatrix or numpy.ndarray, not,", x)
+    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray)):
+        raise NotImplementedError("this function should only be called on "
+                                  "sparse.scipy.sparse.spmatrix or "
+                                  "numpy.ndarray, not,", x)
     return isinstance(x, scipy.sparse.spmatrix)
+
+
 def _is_dense(x):
     """
     @rtype: boolean
-    @return: True unless x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray})
+    @return: True unless x is a L{scipy.sparse.spmatrix} (and not a
+    L{numpy.ndarray})
     """
-    if not isinstance(x, scipy.sparse.spmatrix) and not isinstance(x, numpy.ndarray):
-        raise NotImplementedError("this function should only be called on sparse.scipy.sparse.spmatrix or numpy.ndarray, not,", x)
+    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray)):
+        raise NotImplementedError("this function should only be called on "
+                                  "sparse.scipy.sparse.spmatrix or "
+                                  "numpy.ndarray, not,", x)
     return isinstance(x, numpy.ndarray)
+
 
 def _kmap_eq(a, b):
     if a is None and b is None:
         return True
     return numpy.all(a == b)
 
+
 def _kmap_hash(a):
-    if a is None: return 12345
+    if a is None:
+        return 12345
     return hash(numpy.str(a))
 
 
 # Wrapper type
-
 def as_sparse_variable(x, name=None):
     """
     Wrapper around SparseVariable constructor.
@@ -86,55 +108,62 @@ def as_sparse_variable(x, name=None):
     properties out of this sparse matrix.
     @return: SparseVariable version of sp.
 
-    @todo Verify that sp is sufficiently sparse, and raise a warning if it is not
+    @todo Verify that sp is sufficiently sparse, and raise a warning if it is
+    not
     """
     if isinstance(x, gof.Apply):
         if len(x.outputs) != 1:
-            raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
+            raise ValueError("It is ambiguous which output of a "
+                             "multi-output Op has to be fetched.", x)
         else:
             x = x.outputs[0]
     if isinstance(x, gof.Variable):
         if not isinstance(x.type, SparseType):
-            raise TypeError("Variable type field must be a SparseType.", x, x.type)
+            raise TypeError("Variable type field must be a SparseType.", x,
+                            x.type)
         return x
     try:
         return constant(x, name=name)
     except TypeError:
         raise TypeError("Cannot convert %s to SparseType" % x, type(x))
-
-
 as_sparse = as_sparse_variable
+
+
 def as_sparse_or_tensor_variable(x, name=None):
     """
     If we can't make a sparse variable, we try to make a tensor variable.
     """
     try:
-        return as_sparse_variable(x,name)
+        return as_sparse_variable(x, name)
     except (ValueError, TypeError):
-        return theano.tensor.as_tensor_variable(x,name)
+        return theano.tensor.as_tensor_variable(x, name)
 
 
 def constant(x, name=None):
     if not isinstance(x, scipy.sparse.spmatrix):
-        raise TypeError("sparse.constant must be called on a scipy.sparse.spmatrix")
+        raise TypeError("sparse.constant must be called on a "
+                        "scipy.sparse.spmatrix")
     try:
-        return SparseConstant(SparseType(format = x.format,
-                                     dtype = x.dtype), x.copy(),name=name)
+        return SparseConstant(SparseType(format=x.format,
+                                         dtype=x.dtype), x.copy(), name=name)
     except TypeError:
         raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
 if 0:
     def value(x):
         if not isinstance(x, scipy.sparse.spmatrix):
-            raise TypeError("sparse.value must be called on a scipy.sparse.spmatrix")
+            raise TypeError("sparse.value must be called on a "
+                            "scipy.sparse.spmatrix")
         try:
-            return SparseValue(SparseType(format = x.format,
-                                      dtype = x.dtype), x)
+            return SparseValue(SparseType(format=x.format,
+                                          dtype=x.dtype), x)
         except TypeError:
             raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
+
 def sp_ones_like(x):
-    data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
+    # TODO: don't restrict to CSM formats
+    data, indices, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
 
@@ -147,31 +176,51 @@ def sp_zeros_like(x):
 
 
 class _sparse_py_operators:
-    T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
-    def __neg__(self): return neg(self)
-    def __add__(left, right): return add(left, right)
-    def __radd__(right, left): return add(left, right)
-    def __sub__(left, right): return sub(left, right)
-    def __rsub__(right, left): return sub(left, right)
-    def __mul__(left, right): return mul(left, right)
-    def __rmul__(left, right): return mul(left, right)
+    T = property(lambda self: transpose(self),
+                 doc="Return aliased transpose of self (read-only)")
+
+    def __neg__(self):
+        return neg(self)
+
+    def __add__(left, right):
+        return add(left, right)
+
+    def __radd__(right, left):
+        return add(left, right)
+
+    def __sub__(left, right):
+        return sub(left, right)
+
+    def __rsub__(right, left):
+        return sub(left, right)
+
+    def __mul__(left, right):
+        return mul(left, right)
+
+    def __rmul__(left, right):
+        return mul(left, right)
 
     #extra pseudo-operator symbols
-    def __dot__(left, right): return structured_dot(left, right)
-    def __rdot__(right, left): return structured_dot(left, right)
+
+    def __dot__(left, right):
+        return structured_dot(left, right)
+
+    def __rdot__(right, left):
+        return structured_dot(left, right)
 
     #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
     #     Discussion with Fred & James (at least, and maybe others before)
     #     we decided that casting from a sparse to dense should be explicit
-    #     because it's usually something you just want to be pretty careful about,
-    #     and not to do by accident.
+    #     because it's usually something you just want to be pretty careful
+    #     about, and not to do by accident.
     #def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
 
-    shape = property(lambda self: tensor.shape(dense_from_sparse(self))) # don't worry!
-    # ... the plan is that the ShapeFeature in tensor.opt will do shape propagation
-    # ... and remove the dense_from_sparse from the graph.  This will *NOT* actually expand
-    # ... your sparse matrix just to get the shape.
+    shape = property(lambda self: tensor.shape(dense_from_sparse(self)))
+    # don't worry!
+    # the plan is that the ShapeFeature in tensor.opt will do shape propagation
+    # and remove the dense_from_sparse from the graph.  This will *NOT*
+    # actually expand your sparse matrix just to get the shape.
     ndim = property(lambda self: self.type.ndim)
     dtype = property(lambda self: self.type.dtype)
 
@@ -205,25 +254,30 @@ class _sparse_py_operators:
 class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
+
     def __str__(self):
-        return '%s{%s,%s}'%(
+        return '%s{%s,%s}' % (
                 self.__class__.__name__,
                 self.format,
                 self.dtype)
+
     def __repr__(self):
         return str(self)
 
+
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
-        (a, b), (x,y) = self, other
+        (a, b), (x, y) = self, other
         return a == x \
                 and (b.dtype == y.dtype)\
                 and (type(b) == type(y))\
                 and (b.shape == y.shape)\
-                and (abs(b-y).sum() < 1e-6 * b.nnz)
+                and (abs(b - y).sum() < 1e-6 * b.nnz)
+
     def __hash__(self):
-        (a,b) = self
+        (a, b) = self
         return hash(type(self)) ^ hash(a) ^ hash(type(b))
+
 
 class SparseConstant(gof.Constant, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
@@ -232,19 +286,23 @@ class SparseConstant(gof.Constant, _sparse_py_operators):
     def signature(self):
         assert self.data is not None
         return SparseConstantSignature((self.type, self.data))
+
     def __str__(self):
-        return '%s{%s,%s,shape=%s,nnz=%s}'%(
+        return '%s{%s,%s,shape=%s,nnz=%s}' % (
                 self.__class__.__name__,
                 self.format,
                 self.dtype,
                 self.data.shape,
                 self.data.nnz)
+
     def __repr__(self):
         return str(self)
+
 
 class SparseValue(gof.Value, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
+
 
 class SparseType(gof.Type):
     """
@@ -252,13 +310,13 @@ class SparseType(gof.Type):
     @type format: string
     @ivar format: The sparse storage strategy.
 
-    @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e. have dimension 2.
+    @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e.
+    have dimension 2.
     """
-    format_cls = {
-            'csr' : scipy.sparse.csr_matrix,
-            'csc' : scipy.sparse.csc_matrix
-            }
-    dtype_set = set(['int', 'int8', 'int16','int32', 'int64', 'float32', 'float64', 'complex64','complex128'])
+    format_cls = {'csr': scipy.sparse.csr_matrix,
+                  'csc': scipy.sparse.csc_matrix}
+    dtype_set = set(['int', 'int8', 'int16', 'int32', 'int64', 'float32',
+                     'float64', 'complex64', 'complex128'])
     ndim = 2
 
     Variable = SparseVariable
@@ -275,54 +333,57 @@ class SparseType(gof.Type):
         if dtype in self.dtype_set:
             self.dtype = dtype
         else:
-            raise NotImplementedError('unsupported dtype "%s" not in list' % dtype, list(self.dtype_set))
+            raise NotImplementedError('unsupported dtype "%s" not in list' %
+                                      dtype, list(self.dtype_set))
 
         assert isinstance(format, basestring)
         if format in self.format_cls:
             self.format = format
         else:
-            raise NotImplementedError('unsupported format "%s" not in list' % format, self.format_cls.keys())
+            raise NotImplementedError('unsupported format "%s" not in list' %
+                                      format, self.format_cls.keys())
 
     def filter(self, value, strict=False, allow_downcast=None):
         if isinstance(value, self.format_cls[self.format])\
                 and value.dtype == self.dtype:
             return value
         if strict:
-            raise TypeError("%s is not sparse, or not the right dtype (is %s, expected %s)"
-                    % (value, value.dtype, self.dtype))
+            raise TypeError("%s is not sparse, or not the right dtype (is %s, "
+                            "expected %s)" % (value, value.dtype, self.dtype))
         #The input format could be converted here
         if allow_downcast:
             sp = self.format_cls[self.format](value, dtype=self.dtype)
         else:
             sp = self.format_cls[self.format](value)
             if str(sp.dtype) != self.dtype:
-                raise NotImplementedError("Expected %s dtype but got %s"%(self.dtype,str(sp.dtype)))
+                raise NotImplementedError("Expected %s dtype but got %s" %
+                                          (self.dtype, str(sp.dtype)))
         if sp.format != self.format:
             raise NotImplementedError()
         return sp
 
     @staticmethod
-    def may_share_memory(a,b):
+    def may_share_memory(a, b):
         # This is Fred suggestion for a quick and dirty way of checking
         # aliasing .. this can potentially be further refined (ticket #374)
         if _is_sparse(a) and _is_sparse(b):
             return a is b
         if _is_sparse(b) and isinstance(a, numpy.ndarray):
-            a,b=b,a
+            a, b = b, a
         if _is_sparse(a) and isinstance(b, numpy.ndarray):
-            if (numpy.may_share_memory(a.data,b) or
-                numpy.may_share_memory(a.indices,b) or
-                numpy.may_share_memory(a.indptr,b)):
-                    #currently we can't share memory with a.shape as it is a tuple
+            if (numpy.may_share_memory(a.data, b) or
+                numpy.may_share_memory(a.indices, b) or
+                numpy.may_share_memory(a.indptr, b)):
+                # currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
 
-
-    def make_variable(self, name = None):
-        return SparseVariable(self, name = name)
+    def make_variable(self, name=None):
+        return SparseVariable(self, name=name)
 
     def __eq__(self, other):
-        return type(self) == type(other) and other.dtype == self.dtype and other.format == self.format
+        return (type(self) == type(other) and other.dtype == self.dtype and
+                other.format == self.format)
 
     def __hash__(self):
         return hash(self.dtype) ^ hash(self.format)
@@ -339,10 +400,10 @@ class SparseType(gof.Type):
         # a FAST_RUN computation..
         if not scipy.sparse.issparse(a) or not scipy.sparse.issparse(b):
             return False
-        diff = abs(a-b)
+        diff = abs(a - b)
         if diff.nnz == 0:
             return True
-        return max(diff)<eps
+        return max(diff) < eps
 
     def values_eq(self, a, b):
         #WARNING: equality comparison of sparse matrices is not fast or easy
@@ -350,7 +411,7 @@ class SparseType(gof.Type):
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
                 and scipy.sparse.issparse(b) \
-                and abs(a-b).sum() == 0.0
+                and abs(a - b).sum() == 0.0
 
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
@@ -366,10 +427,16 @@ def matrix(format, name=None, dtype=None):
         dtype = config.floatX
     type = SparseType(format=format, dtype=dtype)
     return type(name)
+
+
 def csc_matrix(name=None, dtype=None):
     return matrix('csc', name, dtype)
+
+
 def csr_matrix(name=None, dtype=None):
     return matrix('csr', name, dtype)
+
+
 # for more dtypes, call SparseType(format, dtype)
 csc_matrix = SparseType(format='csc', dtype=config.floatX)
 csr_matrix = SparseType(format='csr', dtype=config.floatX)
@@ -378,12 +445,14 @@ csr_dmatrix = SparseType(format='csr', dtype='float64')
 csc_fmatrix = SparseType(format='csc', dtype='float32')
 csr_fmatrix = SparseType(format='csr', dtype='float32')
 
+
 # CONSTRUCTION
 class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr"""
 
-    #we don't return a view of the shape, we create a new ndarray from the shape tuple.
-    view_map = {0:[0],1:[0],2:[0]}
+    # we don't return a view of the shape, we create a new ndarray from the
+    # shape tuple.
+    view_map = {0: [0], 1: [0], 2: [0]}
 
     kmap = None
     """ WRITEME """
@@ -394,14 +463,16 @@ class CSMProperties(gof.Op):
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other): return not (self == other)
+    def __ne__(self, other):
+        return not (self == other)
 
     def __hash__(self):
         return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
 
     def make_node(self, csm):
         csm = as_sparse_variable(csm)
-        data = tensor.TensorType(dtype=csm.type.dtype, broadcastable = (False,)).make_variable()
+        data = tensor.TensorType(dtype=csm.type.dtype,
+                                 broadcastable=(False,)).make_variable()
         return gof.Apply(self, [csm],
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
@@ -426,15 +497,30 @@ class CSMProperties(gof.Op):
             return [CSM('csc')(g_data, indices, indptr, shape)]
         else:
             return [CSR('csm')(g_data, indices, indptr, shape)]
-csm_properties = CSMProperties() #don't make this a function or it breaks some optimizations below
-def csm_data(csm): return csm_properties(csm)[0]
-def csm_indices(csm): return csm_properties(csm)[1]
-def csm_indptr(csm): return csm_properties(csm)[2]
-def csm_shape(csm): return csm_properties(csm)[3]
+# don't make this a function or it breaks some optimizations below
+csm_properties = CSMProperties()
+
+
+def csm_data(csm):
+    return csm_properties(csm)[0]
+
+
+def csm_indices(csm):
+    return csm_properties(csm)[1]
+
+
+def csm_indptr(csm):
+    return csm_properties(csm)[2]
+
+
+def csm_shape(csm):
+    return csm_properties(csm)[3]
+
 
 class CSM(gof.Op):
     """Construct a CSC or CSR matrix from the internal representation """
-    view_map = {0:[0]} #should view the other inputs too, but viewing multiple inputs is not
+    # should view the other inputs too, but viewing multiple inputs is not
+    view_map = {0: [0]}
     #currently supported by the destroyhandler
 
     format = None
@@ -452,16 +538,17 @@ class CSM(gof.Op):
         self.format = format
 
         # for efficiency, if remap does nothing, then do not apply it
-        if kmap is not None and all(kmap==numpy.arange(numpy.size(kmap))):
+        if kmap is not None and all(kmap == numpy.arange(numpy.size(kmap))):
             kmap = None
 
         self.kmap = kmap
 
-        self._hashval = hash(type(self)) ^ hash(self.format) ^ _kmap_hash(self.kmap)
+        self._hashval = (hash(type(self)) ^ hash(self.format) ^
+                         _kmap_hash(self.kmap))
 
     def __eq__(self, other):
-        return type(other) is CSM \
-                and other.format == self.format and _kmap_eq(self.kmap, other.kmap)
+        return (type(other) is CSM and other.format == self.format and
+                _kmap_eq(self.kmap, other.kmap))
 
     def __hash__(self):
         return self._hashval
@@ -490,18 +577,21 @@ class CSM(gof.Op):
         shape = tensor.as_tensor_variable(shape)
 
         if data.type.ndim != 1:
-            raise TypeError('data argument must be a vector', data.type, data.type.ndim)
+            raise TypeError('data argument must be a vector', data.type,
+                            data.type.ndim)
         if indices.type.ndim != 1 or indices.type.dtype != 'int32':
-            raise TypeError('indices must be vector of integers', indices, indices.type)
+            raise TypeError('indices must be vector of integers', indices,
+                            indices.type)
         if indptr.type.ndim != 1 or indptr.type.dtype != 'int32':
-            raise TypeError('indices must be vector of integers', indptr, indptr.type)
+            raise TypeError('indices must be vector of integers', indptr,
+                            indptr.type)
         if shape.type.ndim != 1 or shape.type.dtype != 'int32':
             raise TypeError('n_rows must be integer type', shape, shape.type)
 
         return gof.Apply(self,
                          [data, indices, indptr, shape],
-                         [SparseType(dtype = data.type.dtype,
-                                 format = self.format).make_variable()])
+                         [SparseType(dtype=data.type.dtype,
+                                     format=self.format).make_variable()])
 
     def perform(self, node, (data, indices, indptr, shape), (out,)):
         """Build a csc_matrix"""
@@ -511,41 +601,45 @@ class CSM(gof.Op):
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
-        if data.shape != indices.shape and numpy.size(data) != numpy.size(self.kmap):
-            errmsg = 'Data (shape '+`data.shape`+' must have the same number of elements '+\
-                     'as indices (shape'+`indices.shape`+') or elements as kmap ('+`numpy.size(self.kmap)`+')'
+        if (data.shape != indices.shape and numpy.size(data) !=
+            numpy.size(self.kmap)):
+            errmsg = ('Data (shape ' + repr(data.shape) +
+                      ' must have the same number of elements ' +
+                      'as indices (shape' + repr(indices.shape) +
+                      ') or elements as kmap (' +
+                      repr(numpy.size(self.kmap)) + ')')
             raise ValueError(errmsg)
         if self.format == 'csc':
-            out[0] = scipy.sparse.csc_matrix((data, indices.copy(), indptr.copy()),
-                    numpy.asarray(shape),
-                    copy = False #1000*len(data.flatten())
-                    )
+            out[0] = scipy.sparse.csc_matrix((data, indices.copy(),
+                                              indptr.copy()),
+                                             numpy.asarray(shape), copy=False)
         else:
             assert self.format == 'csr'
-            out[0] = scipy.sparse.csr_matrix((data, indices.copy(), indptr.copy()),
-                    shape.copy(),
-                    copy = False #1000*len(data.flatten())
-                    )
+            out[0] = scipy.sparse.csr_matrix((data, indices.copy(),
+                                              indptr.copy()), shape.copy(),
+                                             copy=False)
 
     def grad(self, (data, indices, indptr, shape), (g_out,)):
         """Return a gradient on the data vector"""
         #unpack the data vector and wrap it as a 1d TensorType
-        g_data = csm_grad(self.kmap)(data, csm_data(g_out),csm_indices(g_out))
+        g_data = csm_grad(self.kmap)(data, csm_data(g_out), csm_indices(g_out))
         return [g_data, None, None, None]
 
 CSC = CSM('csc')
 CSR = CSM('csr')
 
+
 class CSMGrad(gof.op.Op):
     def __init__(self, kmap=None):
         self.kmap = kmap
         if self.kmap is None:
-            self.view_map = {0 : [1]}
+            self.view_map = {0: [1]}
 
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other): return not (self == other)
+    def __ne__(self, other):
+        return not (self == other)
 
     def __hash__(self):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
@@ -563,10 +657,11 @@ class CSMGrad(gof.op.Op):
             g_data[0] = grad
 csm_grad = CSMGrad
 
+
 @gof.local_optimizer([csm_properties])
 def skip_pack_csc01(node):
-    """if we find csm_properties(CSM(*args)), then we can replace that with the *args
-    directly"""
+    """if we find csm_properties(CSM(*args)), then we can replace that with the
+    *args directly"""
     if node.op == csm_properties:
         csm, = node.inputs
         if csm.owner and (csm.owner.op == CSC or csm.owner.op == CSR):
@@ -580,7 +675,6 @@ def skip_pack_csc01(node):
 register_specialize(skip_pack_csc01)
 
 
-
 #
 # Conversion
 #
@@ -592,6 +686,7 @@ class DenseFromSparse(gof.op.Op):
     """WRITEME"""
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
 
@@ -599,31 +694,41 @@ class DenseFromSparse(gof.op.Op):
         x = as_sparse_variable(x)
         return gof.Apply(self,
                          [x],
-                         [tensor.TensorType(dtype = x.type.dtype,
-                                        broadcastable = (False, False)).make_variable()])
+                         [tensor.TensorType(dtype=x.type.dtype,
+                                            broadcastable=(False, False)
+                                           ).make_variable()])
+
     def perform(self, node, (x, ), (out, )):
         if _is_dense(x):
-            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix."
+            print >> sys.stderr, (
+                "WARNING: You just called DenseFromSparse on a dense matrix."
+            )
             out[0] = x
         else:
             out[0] = x.toarray()
         assert _is_dense(out[0])
+
     def grad(self, (x, ), (gz, )):
         if self.sparse_grad:
             return [sp_ones_like(x) * gz]
         else:
             return [SparseFromDense(x.type.format)(gz)]
+
     def infer_shape(self, node, (ishape,)):
         return [ishape]
 dense_from_sparse = DenseFromSparse()
 
+
 class SparseFromDense(gof.op.Op):
     def __init__(self, format):
         self.format = format
+
     def __eq__(self, other):
         return type(self) == type(other) and self.format == other.format
+
     def __ne__(self, other):
         return not (self == other)
+
     def __hash__(self):
         return 982374 ^ hash(self.format) ^ hash(DenseFromSparse)
 
@@ -631,12 +736,16 @@ class SparseFromDense(gof.op.Op):
         x = tensor.as_tensor_variable(x)
         return gof.Apply(self,
                          [x],
-                         [SparseType(dtype = x.type.dtype,
-                                 format = self.format).make_variable()])
+                         [SparseType(dtype=x.type.dtype,
+                                     format=self.format
+                                    ).make_variable()])
+
     def perform(self, node, (x, ), (out, )):
         out[0] = SparseType.format_cls[self.format](x)
+
     def grad(self, (x, ), (gz, )):
         return dense_from_sparse(gz),
+
     def infer_shape(self, node, (ishape,)):
         return [ishape]
 csr_from_dense = SparseFromDense('csr')
@@ -700,7 +809,8 @@ class GetItem2d(gof.op.Op):
                 else:
                     if not isinstance(start, gof.Variable):
                         start = tensor.as_tensor_variable(start)
-                    if not (start.ndim == 0 and start.dtype in tensor.discrete_dtypes):
+                    if not (start.ndim == 0 and start.dtype in
+                            tensor.discrete_dtypes):
                         raise ValueError((
                             "Impossible to index into a sparse matrix with "
                             "slice where start=%s" % start),
@@ -711,7 +821,8 @@ class GetItem2d(gof.op.Op):
                 else:
                     if not isinstance(stop, gof.Variable):
                         stop = tensor.as_tensor_variable(stop)
-                    if not (stop.ndim == 0 and stop.dtype in tensor.discrete_dtypes):
+                    if not (stop.ndim == 0 and stop.dtype in
+                            tensor.discrete_dtypes):
                         raise ValueError((
                             "Impossible to index into a sparse matrix with "
                             "slice where stop=%s" % stop),
@@ -722,7 +833,7 @@ class GetItem2d(gof.op.Op):
                         or numpy.isscalar(ind)):
                 raise NotImplementedError(
                     'Theano has no sparse vector' +
-                    'Use X[a:b,c:d], X[a:b,c:c+1] or X[a:b] instead.')
+                    'Use X[a:b, c:d], X[a:b, c:c+1] or X[a:b] instead.')
             else:
                 raise ValueError((
                     'Advanced indexing is not implemented for sparse '
@@ -796,18 +907,23 @@ get_item_scalar = GetItemScalar()
 
 
 class Transpose(gof.op.Op):
-    format_map = {'csr' : 'csc',
-                  'csc' : 'csr'}
+    format_map = {'csr': 'csc',
+                  'csc': 'csr'}
+
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self,
                          [x],
-                         [SparseType(dtype = x.type.dtype,
-                                 format = self.format_map[x.type.format]).make_variable()])
+                         [SparseType(dtype=x.type.dtype,
+                                     format=self.format_map[x.type.format]
+                                    ).make_variable()])
+
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
         out[0] = x.transpose()
@@ -817,28 +933,36 @@ class Transpose(gof.op.Op):
         return transpose(gz),
 transpose = Transpose()
 
+
 class Neg(gof.op.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self, [x], [x.type()])
+
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
         out[0] = -x
+
     def grad(self, (x,), (gz,)):
         assert _is_sparse_variable(x) and _is_sparse_variable(gz)
         return -gz,
 neg = Neg()
 
+
 class AddSS(gof.op.Op):
     '''Add two sparse matrices '''
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
         if x.type.dtype != y.type.dtype:
@@ -847,23 +971,30 @@ class AddSS(gof.op.Op):
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
-                         [SparseType(dtype = x.type.dtype,
-                                 format = x.type.format).make_variable()])
+                         [SparseType(dtype=x.type.dtype,
+                                     format=x.type.format
+                                    ).make_variable()])
+
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         out[0] = x + y
+
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
         return gz, gz
 add_s_s = AddSS()
+
+
 class AddSD(gof.op.Op):
     ''' Add a sparse and a dense matrix '''
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
         if x.type.dtype != y.type.dtype:
@@ -873,74 +1004,95 @@ class AddSD(gof.op.Op):
         assert y.type.ndim == 2
         return gof.Apply(self,
                          [x, y],
-                         [tensor.TensorType(dtype = y.type.dtype,
-                                        broadcastable = y.type.broadcastable).make_variable()])
+                         [tensor.TensorType(dtype=y.type.dtype,
+                                            broadcastable=y.type.broadcastable
+                                           ).make_variable()])
+
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
         out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
         return sp_ones_like(x) * gz, gz
 add_s_d = AddSD()
-def add(x,y):
+
+
+def add(x, y):
     """
     Add two matrices, at least one of which is sparse.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return add_s_s(x,y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return add_s_d(x,y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return add_s_d(y,x)
-    else: raise NotImplementedError()
-def sub(x,y):
-    return x + (-y)
+    if x_is_sparse_variable and y_is_sparse_variable:
+        return add_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable:
+        return add_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable:
+        return add_s_d(y, x)
+    else:
+        raise NotImplementedError()
 
+
+def sub(x, y):
+    return x + (-y)
 
 
 class MulSS(gof.op.Op):
     ''' Elementwise multiply a sparse and a sparse '''
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
         if x.type != y.type:
             raise NotImplementedError()
         return gof.Apply(self, [x, y], [x.type()])
+
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert len(x.shape) == 2
         assert y.shape == x.shape
-        if (numpy.all(y.indptr == x.indptr) and numpy.all(y.indices == x.indices)):
+        if (numpy.all(y.indptr == x.indptr) and
+            numpy.all(y.indices == x.indices)):
             out[0] = y.copy()
             out[0].data *= x.data
         else:
-            raise NotImplementedError() #RowScale / ColScale
+            raise NotImplementedError()  # RowScale / ColScale
+
     def grad(self, (x, y), (gz,)):
         return y * gz, x * gz
 mul_s_s = MulSS()
+
+
 class MulSD(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         #upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if y.type.dtype != dtype:
-            y = tensor.cast(y,dtype)
+            y = tensor.cast(y, dtype)
 
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
@@ -949,15 +1101,17 @@ class MulSD(gof.op.Op):
         # Broadcasting of the sparse matrix is not supported.
         assert y.type.ndim <= 2
         return gof.Apply(self, [x, y], [x.type()])
+
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         if len(y.shape) == 0:
             out[0] = x.copy()
             out[0].data *= y
         elif len(y.shape) == 1:
-            raise NotImplementedError() #RowScale / ColScale
+            raise NotImplementedError()  # RowScale / ColScale
         elif len(y.shape) == 2:
-            #if we have enough memory to fit y, maybe we can fit x.asarray() too?
+            # if we have enough memory to fit y, maybe we can fit x.asarray()
+            # too?
             #TODO: change runtime from O(M*N) to O(nonzeros)
             M, N = x.shape
             assert x.shape == y.shape
@@ -970,9 +1124,9 @@ class MulSD(gof.op.Op):
                 z_data = z.data
 
                 for j in xrange(0, N):
-                    for i_idx in xrange(indptr[j], indptr[j+1]):
+                    for i_idx in xrange(indptr[j], indptr[j + 1]):
                         i = indices[i_idx]
-                        z_data[i_idx] *= y[i,j]
+                        z_data[i_idx] *= y[i, j]
                 out[0] = z
             elif x.format == 'csr':
                 x_data = x.data
@@ -982,12 +1136,14 @@ class MulSD(gof.op.Op):
                 z_data = z.data
 
                 for i in xrange(0, M):
-                    for j_idx in xrange(indptr[i], indptr[i+1]):
+                    for j_idx in xrange(indptr[i], indptr[i + 1]):
                         j = indices[j_idx]
-                        z_data[j_idx] *= y[i,j]
+                        z_data[j_idx] *= y[i, j]
                 out[0] = z
             else:
-                print >> sys.stderr, "WARNING: crappy implementation of MulSD", x.format
+                print >> sys.stderr, (
+                    "WARNING: crappy implementation of MulSD"
+                ), x.format
                 out[0] = type(x)(x.toarray() * y)
 
     def grad(self, (x, y), (gz,)):
@@ -995,7 +1151,9 @@ class MulSD(gof.op.Op):
         assert _is_sparse_variable(gz)
         return y * gz, x * gz
 mul_s_d = MulSD()
-def mul(x,y):
+
+
+def mul(x, y):
     """
     Multiply (elementwise) two matrices, at least one of which is sparse.
     """
@@ -1006,84 +1164,110 @@ def mul(x,y):
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return mul_s_s(x,y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return mul_s_d(x,y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return mul_s_d(y,x)
-    else: raise NotImplementedError()
+    if x_is_sparse_variable and y_is_sparse_variable:
+        return mul_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable:
+        return mul_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable:
+        return mul_s_d(y, x)
+    else:
+        raise NotImplementedError()
+
 
 ###############
 #
 # StructuredDot
 #
 class StructuredDot(gof.Op):
-    """Structured Dot is like dot, except that only the gradient wrt non-zero elements of the
-    sparse matrix A are calculated and propagated.
+    """Structured Dot is like dot, except that only the gradient wrt non-zero
+    elements of the sparse matrix A are calculated and propagated.
 
-    The output is presumed to be a dense matrix, and is represented by a TensorType instance.
+    The output is presumed to be a dense matrix, and is represented by a
+    TensorType instance.
     """
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a, b):
         if not _is_sparse_variable(a):
-            raise TypeError('First argument must be of type SparseVariable or SparseConstant');
+            raise TypeError('First argument must be of type SparseVariable '
+                            'or SparseConstant')
         dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
         if b.type.ndim != 2:
             raise NotImplementedError('non-matrix b')
 
         if _is_sparse_variable(b):
-            return gof.Apply(self, [a,b], [SparseType(a.type.format,dtype_out)()])
+            return gof.Apply(self, [a, b],
+                             [SparseType(a.type.format, dtype_out)()])
         else:
-            return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
+            return gof.Apply(self, [a, b],
+                             [tensor.tensor(dtype_out,
+                                            (False, b.type.broadcastable[1]))])
 
-    def perform(self, node, (a,b), (out,)):
+    def perform(self, node, (a, b), (out,)):
         if a.shape[1] != b.shape[0]:
-            raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
+            raise ValueError('shape mismatch in StructuredDot.perform',
+                             (a.shape, b.shape))
 
         #variable = a.dot(b)  # deprecated
         variable = a * b
-        if isinstance(node.outputs[0].type,SparseType):
+        if isinstance(node.outputs[0].type, SparseType):
             assert _is_sparse(variable)
             out[0] = variable
             return
 
-        assert _is_dense(variable) # scipy 0.7 automatically converts to dense
+        assert _is_dense(variable)  # scipy 0.7 automatically converts to dense
 
-        # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
+        # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector
+        # not matrix
         if variable.ndim == 1:
-            variable = numpy.expand_dims(variable,1)
+            variable = numpy.expand_dims(variable, 1)
         elif variable.ndim != 2:
-            raise Exception('Output of structured dot should be a matrix (ndim=2)')
+            raise Exception('Output of structured dot should be a matrix '
+                            '(ndim=2)')
 
         assert variable.ndim == 2
 
         if variable.shape != (a.shape[0], b.shape[1]):
             if b.shape[0] == 1:
-                raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? This is probably because scipy.csc_matrix dot has a bug with singleton dimensions (i.e. b.shape[0]=1), for scipy 0.6. Use scipy 0.7. NB you have scipy version %s" % (a.shape, b.shape, variable.shape, scipy.__version__))
+                raise Exception("a.shape=%s, b.shape=%s, "
+                                "variable.shape=%s ??? This is probably "
+                                "because scipy.csc_matrix dot has a bug "
+                                "with singleton dimensions (i.e. "
+                                "b.shape[0]=1), for scipy 0.6. Use scipy "
+                                "0.7. NB you have scipy version %s" %
+                                (a.shape, b.shape, variable.shape,
+                                 scipy.__version__))
             else:
-                raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? I have no idea why")
+                raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s "
+                                " ??? I have no idea why")
 
         #The cast is needed as otherwise we hit the bug mentioned into
         #theano._asarray function documentation.
         out[0] = theano._asarray(variable, str(variable.dtype))
 
-    def grad(self, (a,b), (g_out,)):
+    def grad(self, (a, b), (g_out,)):
         # a is sparse, b is dense, g_out is dense
         # ga = g_out x b.T
         # gb = a.T x g_out
-        return [structured_dot_grad(a, b, g_out), structured_dot(a.T,g_out)]
-
+        return [structured_dot_grad(a, b, g_out), structured_dot(a.T, g_out)]
 _structured_dot = StructuredDot()
+
 
 def structured_dot(x, y):
     """
     @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
-    (JB 20090528: Transposing tensors and sparse matrices is constant-time, inplace, and fast.)
+    (JB 20090528: Transposing tensors and sparse matrices is constant-time,
+    inplace, and fast.)
     """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
@@ -1096,11 +1280,14 @@ def structured_dot(x, y):
         assert y_is_sparse_variable
         return _structured_dot(y.T, x.T).T
 
+
 class StructuredDotCSC(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b],
@@ -1110,19 +1297,22 @@ class StructuredDotCSC(gof.Op):
     def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
         a = scipy.sparse.csc_matrix((a_val, a_ind, a_ptr),
                 (a_nrows, b.shape[0]),
-                copy = False)
+                copy=False)
         #out[0] = a.dot(b)
         out[0] = theano._asarray(a * b, dtype=node.outputs[0].type.dtype)
-        assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense
+        assert _is_dense(out[0])  # scipy 0.7 automatically converts to dense
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
         """
-        C-implementation of the dot product of the sparse matrix A and matrix B.
+        C-implementation of the dot product of the sparse matrix A and matrix
+        B.
         @param a_val: non-zero values of the sparse matrix
-        @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
-        @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
+        @param a_ind: column indices of the non-null values (.indices of a
+        scipy.csc_matrix)
+        @param a_ptr: a_ptr indicates col indices for col. i are in the range
+        a_ptr[i]:a_ptr[i+1]
         @param n_rows: number of rows of sparse matrix
-        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param b: dense matrix to perform dot product with, as in dot(a, b)
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
@@ -1132,9 +1322,9 @@ class StructuredDotCSC(gof.Op):
         if node.inputs[4].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b')
 
-        typenum_z = node.outputs[0].type.dtype_specs()[-1] # retrieve dtype number
-        typenum_a_val = node.inputs[0].type.dtype_specs()[-1] # retrieve dtype number
-        typenum_b = node.inputs[4].type.dtype_specs()[-1] # retrieve dtype number
+        typenum_z = node.outputs[0].type.dtype_specs()[-1]  # retrieve dtype number
+        typenum_a_val = node.inputs[0].type.dtype_specs()[-1]  # retrieve dtype number
+        typenum_b = node.inputs[4].type.dtype_specs()[-1]  # retrieve dtype number
 
         rval = """
 
@@ -1171,7 +1361,7 @@ class StructuredDotCSC(gof.Op):
             )
         {
             {Py_XDECREF(%(z)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
             dims[1] = %(b)s->dimensions[1];
             %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
@@ -1209,12 +1399,12 @@ class StructuredDotCSC(gof.Op):
             // for m
             //   for n
             //     for k
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
             // Here instead: Z =
             // for k
             //   for m (sparse)
             //     for n
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
 
             // loop over inner dimension
             for (npy_int32 k = 0; k < K; ++k)
@@ -1254,7 +1444,7 @@ class StructuredDotCSC(gof.Op):
                 }
             }
         }
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 
         return rval
 
@@ -1262,37 +1452,46 @@ class StructuredDotCSC(gof.Op):
         return (2,)
 sd_csc = StructuredDotCSC()
 
+
 class StructuredDotCSR(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, b],
-                [tensor.tensor(self.dtype_out, (False, b.type.broadcastable[1]))])
+                [tensor.tensor(self.dtype_out, (False,
+                                                b.type.broadcastable[1]))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, b), (out,)):
         a = scipy.sparse.csr_matrix((a_val, a_ind, a_ptr),
-                (len(a_ptr)-1, b.shape[0]),
-                copy = True) #use view_map before setting this to False
+                (len(a_ptr) - 1, b.shape[0]),
+                copy=True)  # use view_map before setting this to False
         #out[0] = a.dot(b)
         out[0] = a * b
-        assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense, but not .6 sometimes
+        # scipy 0.7 automatically converts to dense, but not .6 sometimes
+        assert _is_dense(out[0])
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, b), (z,), sub):
         """
-        C-implementation of the dot product of the sparse matrix A and matrix B.
+        C-implementation of the dot product of the sparse matrix A and matrix
+        B.
         @param a_val: non-zero values of the sparse matrix
-        @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
-        @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
+        @param a_ind: column indices of the non-null values (.indices of a
+        scipy.csc_matrix)
+        @param a_ptr: a_ptr indicates col indices for col. i are in the range
+        a_ptr[i]:a_ptr[i+1]
         @param n_cols: number of columns of sparse matrix
-        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param b: dense matrix to perform dot product with, as in dot(a, b)
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
-        typenum_z = tensor.TensorType(self.dtype_out, []).dtype_specs()[-1] # retrieve dtype number
+        # retrieve dtype number
+        typenum_z = tensor.TensorType(self.dtype_out, []).dtype_specs()[-1]
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
@@ -1319,7 +1518,7 @@ class StructuredDotCSR(gof.Op):
             )
         {
             {Py_XDECREF(%(z)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = %(a_ptr)s->dimensions[0]-1;
             dims[1] = %(b)s->dimensions[1];
             %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
@@ -1356,12 +1555,12 @@ class StructuredDotCSR(gof.Op):
             // for m
             //   for n
             //     for k
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
             // Here instead:
             // for m
             //   for k (sparse)
             //     for n
-            //        z[m,n] += a[m,k] * b[k,n]
+            //        z[m, n] += a[m, k] * b[k, n]
 
             // loop over inner dimension
             for (npy_int64 m = 0; m < M; ++m)
@@ -1388,11 +1587,12 @@ class StructuredDotCSR(gof.Op):
             }
         }
 
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 
     def c_code_cache_version(self):
         return (1,)
 sd_csr = StructuredDotCSR()
+
 
 # register a specialization to replace StructuredDot -> StructuredDotCSx
 @gof.local_optimizer([_structured_dot])
@@ -1409,13 +1609,15 @@ def local_structured_dot(node):
     return False
 
 # Commented out because
-# a) it is only slightly faster than scipy these days, and sometimes a little slower, and
-# b) the resulting graphs make it very difficult for an op to do size checking on the matrices
-#    involved.  dimension mismatches are hard to detect sensibly.
+# a) it is only slightly faster than scipy these days, and sometimes a little
+# slower, and
+# b) the resulting graphs make it very difficult for an op to do size checking
+# on the matrices involved.  dimension mismatches are hard to detect sensibly.
 #register_specialize(local_structured_dot)
 
+
 def structured_dot_grad(sparse_A, dense_B, ga):
-    if sparse_A.type.format in ('csc','csr'):
+    if sparse_A.type.format in ('csc', 'csr'):
 
         if sparse_A.type.format == 'csc':
             sdgcsx = sdg_csc
@@ -1431,10 +1633,10 @@ def structured_dot_grad(sparse_A, dense_B, ga):
         #backport
         #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
-        g_A_data = sdgcsx(csm_indices(sparse_A),\
+        g_A_data = sdgcsx(csm_indices(sparse_A), \
                           csm_indptr(sparse_A), dense_B, ga)
-        return CSx(g_A_data, csm_indices(sparse_A),\
-                                 csm_indptr(sparse_A),\
+        return CSx(g_A_data, csm_indices(sparse_A), \
+                                 csm_indptr(sparse_A), \
                                  csm_shape(sparse_A))
     else:
         raise NotImplementedError()
@@ -1443,26 +1645,31 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 class StructuredDotGradCSC(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
                                [tensor.tensor(g_ab.dtype, (False,))])
+
     def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
-        for j in xrange(len(a_indptr)-1):
+        for j in xrange(len(a_indptr) - 1):
             ind0 = a_indptr[j]
-            ind1 = a_indptr[j+1]
+            ind1 = a_indptr[j + 1]
             for i_idx in xrange(ind0, ind1):
                 i = a_indices[i_idx]
                 g_a_data[i_idx] = numpy.dot(g_ab[i], b[j])
         out[0] = g_a_data
+
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
 
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
-            raise NotImplementedError('Complex types are not supported for g_ab')
+            raise NotImplementedError('Complex types are not supported for '
+                                      'g_ab')
 
         return """
         if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
@@ -1540,25 +1747,28 @@ class StructuredDotGradCSC(gof.Op):
             }
         }
 
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 sdg_csc = StructuredDotGradCSC()
 
 
 class StructuredDotGradCSR(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
 
     def make_node(self, a_indices, a_indptr, b, g_ab):
-        return gof.Apply(self, [a_indices, a_indptr, b, g_ab], [tensor.tensor(b.dtype, (False,))])
+        return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
+                         [tensor.tensor(b.dtype, (False,))])
 
     def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
-        for i in xrange(len(a_indptr)-1): # loop over rows
+        for i in xrange(len(a_indptr) - 1):  # loop over rows
             ind0 = a_indptr[i]
-            ind1 = a_indptr[i+1]
-            for j_idx in xrange(ind0, ind1): # loop over values in that row (columns)
+            ind1 = a_indptr[i + 1]
+            # loop over values in that row (columns)
+            for j_idx in xrange(ind0, ind1):
                 j = a_indices[j_idx]
                 # grad is dot product of i-th row of gradient with j-th row of b
                 g_a_data[j_idx] = numpy.dot(g_ab[i], b[j])
@@ -1569,7 +1779,8 @@ class StructuredDotGradCSR(gof.Op):
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
-            raise NotImplementedError('Complex types are not supported for g_ab')
+            raise NotImplementedError('Complex types are not supported for '
+                                      'g_ab')
 
         return """
         if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
@@ -1648,7 +1859,7 @@ class StructuredDotGradCSR(gof.Op):
             }
         }
 
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 
 
 sdg_csr = StructuredDotGradCSR()
@@ -1752,7 +1963,8 @@ class Usmm(gof.op.Op):
     z is a dense matrix
     alpha is a scalar
 
-    :note: We don't implement the infer_shape as it is inserted by optimization only
+    :note: We don't implement the infer_shape as it is inserted by optimization
+    only
     """
     def __eq__(self, other):
         return type(self) == type(other)
@@ -1822,7 +2034,8 @@ class UsmmCscDense(gof.Op):
     y, z is a dense matrix
     alpha is a scalar
 
-    :note: We don't implement the infer_shape as it is inserted by optimization only
+    :note: We don't implement the infer_shape as it is inserted by optimization
+    only
     """
     def __init__(self, inplace):
         self.inplace = inplace
@@ -1859,10 +2072,11 @@ class UsmmCscDense(gof.Op):
 
         dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
             y.type.dtype, z.type.dtype)
-        
+
         if dtype_out not in ('float32', 'float64'):
-            raise NotImplementedError('only float types are supported in operands')
-        
+            raise NotImplementedError('only float types are supported in '
+                                      'operands')
+
         if self.inplace:
             assert z.type.dtype == dtype_out
 
@@ -1875,7 +2089,7 @@ class UsmmCscDense(gof.Op):
             y = tensor.cast(y, dtype_out)
         if dtype_out != z.type.dtype:
             z = tensor.cast(z, dtype_out)
-        
+
         r = gof.Apply(self, [alpha, x_val, x_ind, x_ptr, x_nrows, y, z],
                 [tensor.tensor(dtype_out, (False, y.type.broadcastable[1]))])
         return r
@@ -1988,7 +2202,7 @@ class UsmmCscDense(gof.Op):
             )
         {
             {Py_XDECREF(%(zn)s);}
-            npy_intp dims[] = {0,0};
+            npy_intp dims[] = {0, 0};
             dims[0] = ((npy_int32 *)%(x_nrows)s->data)[0];
             dims[1] = %(y)s->dimensions[1];
             %(zn)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_zn)s);
