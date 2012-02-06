@@ -16,7 +16,6 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
-from theano.configdefaults import config
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -345,6 +344,7 @@ class Function(object):
         """
         Initialize attributes. create finder, inv_finder.
         """
+
 
         self.fn = fn
         self.input_storage = input_storage
@@ -1082,6 +1082,7 @@ class FunctionMaker(object):
                     acts as initialization.
         trustme -> disables some exceptions, used internally
         """
+
         if input_storage is None:
             input_storage = [None]*len(self.inputs)
         input_storage_lists = [] # list of independent one-element lists, will be passed to the linker
@@ -1090,6 +1091,7 @@ class FunctionMaker(object):
         # The following loop is to fill in the input_storage_lists and defaults lists.
         assert len(self.indices) == len(input_storage)
         for i, ((input, indices, subinputs), input_storage_i) in enumerate(zip(self.indices, input_storage)):
+
             # Replace any default value given as a variable by its container.
             # Note that this makes sense only in the context of shared variables,
             # but for now we avoid dealing directly with them to avoid dependency
@@ -1104,13 +1106,38 @@ class FunctionMaker(object):
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
                 input_storage_lists.append(input_storage_i.storage)
-                defaults.append((self.required[i],
-                    self.refeed[i],
-                    input_storage_i.storage[0]))
+
+                storage = input_storage[i].storage[0]
+
             else:
                 # Normal case: one new, independent storage unit
                 input_storage_lists.append([input_storage_i])
-                defaults.append((self.required[i], self.refeed[i], input_storage_i))
+
+                storage = input_storage_i
+
+            required = self.required[i]
+            refeed = self.refeed[i]
+            #sanity check-- if an input is required it should not need to be refed
+            assert not (required and refeed)
+
+            #shared variables need neither be input by the user nor refed
+            if input.shared:
+                assert not required
+                assert not refeed
+                storage = None
+
+            #if an input is required, it never need be refed
+            if required:
+                storage = None
+
+            #make sure that we only store a value if we actually need it
+            if storage is not None:
+                assert refeed or not required
+
+            defaults.append((required,
+                refeed,
+                storage))
+
 
 
         # Get a function instance
@@ -1124,6 +1151,7 @@ class FunctionMaker(object):
         if self.profile:
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
+
 
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                 defaults, self.unpack_single, self.return_none, self)

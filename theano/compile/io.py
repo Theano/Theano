@@ -194,7 +194,12 @@ class In(SymbolicInput):
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
             mutable=None, strict=False, allow_downcast=None, autoname=True,
-            implicit=None, borrow=None):
+            implicit=None, borrow=None, shared = False):
+
+
+        #if shared, an input's value comes from its persistent storage, not from a default stored
+        #in the function or from the caller
+        self.shared = shared
 
         # mutable implies the output can be both aliased to the input and that the input can be
         # destroyed. borrow simply implies the output can be aliased to the input. Thus
