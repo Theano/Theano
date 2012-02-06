@@ -15,7 +15,8 @@ compiledir_format_dict = {"platform": platform.platform(),
                           "theano_version": theano.__version__,
                          }
 compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
-default_compiledir_format = "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+default_compiledir_format =\
+                    "compiledir_%(platform)s-%(processor)s-%(python_version)s"
 
 AddConfigVar("compiledir_format",
              textwrap.fill(textwrap.dedent("""\
@@ -153,8 +154,8 @@ def print_compiledir_content():
         table_op_class[op.__class__] += 1
 
     print
-    print "List %d of individual compiled Op classes and" % len(table_op_class),
-    print " the number of times they got compiled"
+    print ("List %d of individual compiled Op classes and "
+           "the number of times they got compiled" % len(table_op_class))
     table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
     for op_class, nb in table_op_class:
         print op_class, nb
