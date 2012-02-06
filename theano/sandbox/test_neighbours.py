@@ -39,96 +39,57 @@ def test_neibs():
 def test_neibs_bad_shape():
     shape = (2, 3, 10, 10)
     images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
-    neib_shape = T.as_tensor_variable((3, 2))
 
-    try:
-        f = function([], images2neibs(images, neib_shape),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError:
-        pass
+    for neib_shape in [(3, 2), (2, 3)]:
+        neib_shape = T.as_tensor_variable(neib_shape)
 
-    shape = (2, 3, 10, 10)
-    images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
-    neib_shape = T.as_tensor_variable((2, 3))
-
-    try:
-        f = function([], images2neibs(images, neib_shape),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError:
-        pass
+        try:
+            f = function([], images2neibs(images, neib_shape),
+                         mode=mode_without_gpu)
+            f()
+            assert False, "An error was expected"
+        except TypeError:
+            pass
 
 
 def test_neibs_bad_shape_warp_centered():
     shape = (2, 3, 10, 10)
     images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
-    neib_shape = T.as_tensor_variable((3, 2))
 
-    try:
-        f = function([], images2neibs(images, neib_shape,
-                                      mode="wrap_centered"),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError:
-        pass
+    for neib_shape in [(3, 2), (2, 3)]:
+        neib_shape = T.as_tensor_variable(neib_shape)
 
-    shape = (2, 3, 10, 10)
-    images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
-    neib_shape = T.as_tensor_variable((2, 3))
-
-    try:
-        f = function([], images2neibs(images, neib_shape,
-                                      mode="wrap_centered"),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError:
-        pass
+        try:
+            f = function([], images2neibs(images, neib_shape,
+                                          mode="wrap_centered"),
+                         mode=mode_without_gpu)
+            f()
+            assert False, "An error was expected"
+        except TypeError:
+            pass
 
     shape = (2, 3, 2, 3)
     images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
     neib_shape = T.as_tensor_variable((3, 3))
 
-    try:
-        f = function([], images2neibs(images, neib_shape,
-                                      mode="wrap_centered"),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError:
-        pass
+    for shape in [(2, 3, 2, 3), (2, 3, 3, 2)]:
+        try:
+            f = function([], images2neibs(images, neib_shape,
+                                          mode="wrap_centered"),
+                         mode=mode_without_gpu)
+            f()
+            assert False, "An error was expected"
+        except TypeError:
+            pass
 
-    shape = (2, 3, 3, 2)
-    images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
-    neib_shape = T.as_tensor_variable((3, 3))
-
-    try:
-        f = function([], images2neibs(images, neib_shape,
-                                      mode="wrap_centered"),
-                     mode=mode_without_gpu)
-        neibs = f()
-        #print neibs
-        assert False, "An error was expected"
-    except TypeError, e:
-        pass
-
+    # Test a valid shapes
     shape = (2, 3, 3, 3)
     images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
     neib_shape = T.as_tensor_variable((3, 3))
 
     f = function([], images2neibs(images, neib_shape, mode="wrap_centered"),
                  mode=mode_without_gpu)
-    neibs = f()
-        #print neibs
+    f()
 
 
 def test_neibs_manual():
