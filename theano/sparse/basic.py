@@ -1151,7 +1151,7 @@ class StructuredDot(gof.Op):
 
     def make_node(self, a, b):
         if not _is_sparse_variable(a):
-            raise TypeError('First argument must be of type SparseVariable or SparseConstant');
+            raise TypeError('First argument must be of type SparseVariable or SparseConstant')
         dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
         if b.type.ndim != 2:
             raise NotImplementedError('non-matrix b')
