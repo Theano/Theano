@@ -891,7 +891,6 @@ class Transpose(gof.op.Op):
         assert _is_sparse(x)
         out[0] = x.transpose()
 
-
     def grad(self, (x,), (gz,)):
         assert _is_sparse_variable(x) and _is_sparse_variable(gz)
         return transpose(gz),
@@ -1236,7 +1235,6 @@ class StructuredDotCSC(gof.Op):
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b],
                 [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
         return r
-
 
     def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
         a = scipy.sparse.csc_matrix((a_val, a_ind, a_ptr),
