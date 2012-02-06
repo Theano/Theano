@@ -79,7 +79,8 @@ def _kmap_eq(a, b):
 
 
 def _kmap_hash(a):
-    if a is None: return 12345
+    if a is None:
+        return 12345
     return hash(numpy.str(a))
 
 
@@ -157,25 +158,34 @@ class _sparse_py_operators:
     T = property(lambda self: transpose(self),
                  doc="Return aliased transpose of self (read-only)")
 
-    def __neg__(self): return neg(self)
+    def __neg__(self):
+        return neg(self)
 
-    def __add__(left, right): return add(left, right)
+    def __add__(left, right):
+        return add(left, right)
 
-    def __radd__(right, left): return add(left, right)
+    def __radd__(right, left):
+        return add(left, right)
 
-    def __sub__(left, right): return sub(left, right)
+    def __sub__(left, right):
+        return sub(left, right)
 
-    def __rsub__(right, left): return sub(left, right)
+    def __rsub__(right, left):
+        return sub(left, right)
 
-    def __mul__(left, right): return mul(left, right)
+    def __mul__(left, right):
+        return mul(left, right)
 
-    def __rmul__(left, right): return mul(left, right)
+    def __rmul__(left, right):
+        return mul(left, right)
 
     #extra pseudo-operator symbols
 
-    def __dot__(left, right): return structured_dot(left, right)
+    def __dot__(left, right):
+        return structured_dot(left, right)
 
-    def __rdot__(right, left): return structured_dot(left, right)
+    def __rdot__(right, left):
+        return structured_dot(left, right)
 
     #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
     #     Discussion with Fred & James (at least, and maybe others before)
@@ -399,6 +409,8 @@ def csc_matrix(name=None, dtype=None):
 
 def csr_matrix(name=None, dtype=None):
     return matrix('csr', name, dtype)
+
+
 # for more dtypes, call SparseType(format, dtype)
 csc_matrix = SparseType(format='csc', dtype=config.floatX)
 csr_matrix = SparseType(format='csr', dtype=config.floatX)
@@ -424,7 +436,8 @@ class CSMProperties(gof.Op):
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other): return not (self == other)
+    def __ne__(self, other):
+        return not (self == other)
 
     def __hash__(self):
         return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
@@ -461,16 +474,20 @@ class CSMProperties(gof.Op):
 csm_properties = CSMProperties()
 
 
-def csm_data(csm): return csm_properties(csm)[0]
+def csm_data(csm):
+    return csm_properties(csm)[0]
 
 
-def csm_indices(csm): return csm_properties(csm)[1]
+def csm_indices(csm):
+    return csm_properties(csm)[1]
 
 
-def csm_indptr(csm): return csm_properties(csm)[2]
+def csm_indptr(csm):
+    return csm_properties(csm)[2]
 
 
-def csm_shape(csm): return csm_properties(csm)[3]
+def csm_shape(csm):
+    return csm_properties(csm)[3]
 
 
 class CSM(gof.Op):
@@ -588,7 +605,8 @@ class CSMGrad(gof.op.Op):
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other): return not (self == other)
+    def __ne__(self, other):
+        return not (self == other)
 
     def __hash__(self):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
@@ -971,17 +989,23 @@ def add(x, y):
     """
     Add two matrices, at least one of which is sparse.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return add_s_s(x, y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return add_s_d(x, y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return add_s_d(y, x)
-    else: raise NotImplementedError()
+    if x_is_sparse_variable and y_is_sparse_variable:
+        return add_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable:
+        return add_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable:
+        return add_s_d(y, x)
+    else:
+        raise NotImplementedError()
 
 
 def sub(x, y):
@@ -1100,10 +1124,14 @@ def mul(x, y):
     y_is_sparse_variable = _is_sparse_variable(y)
 
     assert x_is_sparse_variable or y_is_sparse_variable
-    if x_is_sparse_variable and y_is_sparse_variable: return mul_s_s(x, y)
-    elif x_is_sparse_variable and not y_is_sparse_variable: return mul_s_d(x, y)
-    elif y_is_sparse_variable and not x_is_sparse_variable: return mul_s_d(y, x)
-    else: raise NotImplementedError()
+    if x_is_sparse_variable and y_is_sparse_variable:
+        return mul_s_s(x, y)
+    elif x_is_sparse_variable and not y_is_sparse_variable:
+        return mul_s_d(x, y)
+    elif y_is_sparse_variable and not x_is_sparse_variable:
+        return mul_s_d(y, x)
+    else:
+        raise NotImplementedError()
 
 
 ###############
@@ -1179,8 +1207,10 @@ def structured_dot(x, y):
     is slow. See if there is a direct way to do this.
     (JB 20090528: Transposing tensors and sparse matrices is constant-time, inplace, and fast.)
     """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
