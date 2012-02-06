@@ -5,7 +5,8 @@ from theano import gof
 from sharedvalue import SharedVariable
 
 import logging
-_logger=logging.getLogger("theano.compile.io")
+_logger = logging.getLogger("theano.compile.io")
+
 
 class SymbolicInput(object):
     """
@@ -49,7 +50,7 @@ class SymbolicInput(object):
     def __init__(self, variable, name=None, update=None, mutable=None,
             strict=False, allow_downcast=None, autoname=True,
             implicit=False):
-        assert implicit is not None # Safety check.
+        assert implicit is not None  # Safety check.
         self.variable = variable
         if  (autoname and name is None):
             self.name = variable.name
@@ -194,8 +195,7 @@ class In(SymbolicInput):
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
             mutable=None, strict=False, allow_downcast=None, autoname=True,
-            implicit=None, borrow=None, shared = False):
-
+            implicit=None, borrow=None, shared=False):
 
         #if shared, an input's value comes from its persistent storage, not from a default stored
         #in the function or from the caller
@@ -206,7 +206,7 @@ class In(SymbolicInput):
         # mutable=True should require borrow=True. Raise warning when borrow is explicitely set
         # to False with mutable=True.
         if mutable:
-            if borrow==False:
+            if borrow == False:
                 _logger.warning("Symbolic input for variable %s (name=%s) has "
                         "flags mutable=True, borrow=False. This combination is "
                         "incompatible since mutable=True implies that the "
