@@ -8,15 +8,12 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 from itertools import izip
 import sys
 
-import numpy, theano
+import numpy
+import theano
 import scipy.sparse
 
-from theano import gof
-from theano import tensor
-from theano import compile
-from theano import scalar
-from theano import config
-from theano.gof.python25 import all, any
+from theano import gof, tensor, compile, scalar, config
+from theano.gof.python25 import all
 from theano.tensor import blas
 
 sparse_formats = ['csc', 'csr']
