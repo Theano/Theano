@@ -720,6 +720,9 @@ dense_from_sparse = DenseFromSparse()
 
 
 class SparseFromDense(gof.op.Op):
+    """
+    Convert an `ndarray` matrix to a sparse matrix.
+    """
     def __init__(self, format):
         self.format = format
 

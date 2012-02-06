@@ -39,27 +39,28 @@ def filter_compiledir(path):
     #   2. The path is stable w.r.t. e.g. symlinks (which makes it easier
     #      to re-use compiled modules).
     path = os.path.realpath(path)
-    valid = True
-    if not os.access(path, os.R_OK | os.W_OK):
+    if os.access(path, os.F_OK):  # Do it exist?
+        if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
+            # If it exist we need read, write and listing access
+            raise ValueError(
+                    "compiledir '%s' exists but you don't have read, write"
+                    " or listing permissions." % path)
+    else:
         try:
             os.makedirs(path, 0770)  # read-write-execute for user and group
         except OSError, e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
             if e.errno != errno.EEXIST:
-                valid = False
+                raise ValueError(
+                    "Unable to create to create the compiledir directory"
+                    " '%s'. Check the permissions." % path)
 
-    if valid:
-        try:
-            # PROBLEM: sometimes the initial approach based on
-            # os.system('touch') returned -1 for an unknown reason; the
-            # alternate approach here worked in all cases... it was weird.
-            open(os.path.join(path, '__init__.py'), 'w').close()
-        except:
-            valid = False
-
-    if not valid:
-        raise ValueError('Invalid value for compiledir: %s' % path)
+    # PROBLEM: sometimes the initial approach based on
+    # os.system('touch') returned -1 for an unknown reason; the
+    # alternate approach here worked in all cases... it was weird.
+    # No error should happen as we checked the permissions.
+    open(os.path.join(path, '__init__.py'), 'w').close()
 
     return path
 
@@ -116,11 +117,9 @@ def print_compiledir_content():
             return [a]
 
     compiledir = theano.config.compiledir
-    print "List compiled ops in this theano cache:", compiledir
-    print "sub directory/Op/Associated Type"
-    print
     table = []
-
+    more_then_one_ops = 0
+    zeros_op = 0
     for dir in os.listdir(compiledir):
         file = None
         try:
@@ -129,16 +128,38 @@ def print_compiledir_content():
                 keydata = cPickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
-                assert len(ops) == 1
-                types = list(set([x for x in flatten(keydata.keys)
-                                  if isinstance(x, theano.gof.Type)]))
-                table.append((dir, ops[0], types))
+                if len(ops) == 0:
+                    zeros_op += 1
+                elif len(ops) > 1:
+                    more_then_one_ops += 1
+                else:
+                    types = list(set([x for x in flatten(keydata.keys)
+                                      if isinstance(x, theano.gof.Type)]))
+                    table.append((dir, ops[0], types))
             except IOError:
                 pass
         finally:
             if file is not None:
                 file.close()
 
+    print "List %d compiled individual op in this theano cache %s:" % (
+        len(table), compiledir)
+    print "sub directory/Op/a set of the different associated Theano type"
     table = sorted(table, key=lambda t: str(t[1]))
+    table_op_class = {}
     for dir, op, types in table:
         print dir, op, types
+        table_op_class.setdefault(op.__class__, 0)
+        table_op_class[op.__class__] += 1
+
+    print
+    print "List %d of individual compiled Op class and" % (len(table_op_class)),
+    print " the number of time it got compiled"
+    table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
+    for op_class, nb in table_op_class:
+        print op_class, nb
+    print ("Skipped %d files that contained more then"
+           " 1 op (was compiled with the c linker)" % (more_then_one_ops))
+    print ("Skipped %d files that contained 0 op"
+           "(Are they always theano.scalar ops?)" % (
+            more_then_one_ops))
