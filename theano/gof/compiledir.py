@@ -143,7 +143,7 @@ def print_compiledir_content():
             if file is not None:
                 file.close()
 
-    print "List %d compiled individual ops in this theano cache %s:" % (
+    print "List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir)
     print "sub directory/Op/a set of the different associated Theano type"
     table = sorted(table, key=lambda t: str(t[1]))
@@ -154,7 +154,7 @@ def print_compiledir_content():
         table_op_class[op.__class__] += 1
 
     print
-    print ("List %d of individual compiled Op classes and "
+    print ("List of %d individual compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class))
     table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
     for op_class, nb in table_op_class:
