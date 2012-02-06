@@ -20,6 +20,7 @@ from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
+from theano.tensor.utils import hash_from_ndarray
 
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
@@ -1504,6 +1505,10 @@ class TensorConstantSignature(tuple):
     def __hash__(self):
         t, d = self
         return hashtype(self) ^ hash(t) ^ hash(d.shape) ^ hash(self.sum)
+
+    def theano_hash(self):
+        _, d = self
+        return hash_from_ndarray(d)
 
     def _get_sum(self):
         """Compute sum of non NaN / Inf values in the array."""

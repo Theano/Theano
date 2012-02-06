@@ -906,6 +906,8 @@ class CLinker(link.Linker):
             if isinstance(i, graph.Constant): #orphans
                 if id(i) not in constant_ids:
                     isig = (i.signature(), topological_pos, i_idx)
+                    if hasattr(isig[0], "theano_hash"):
+                        isig = (isig[0].theano_hash(), topological_pos, i_idx)
                     try:
                         hash(isig)
                     except Exception: #generic constants don't have a hashable signature
