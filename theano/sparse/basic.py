@@ -571,8 +571,11 @@ class CSM(gof.Op):
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
         if data.shape != indices.shape and numpy.size(data) != numpy.size(self.kmap):
-            errmsg = 'Data (shape ' + `data.shape` + ' must have the same number of elements ' + \
-                     'as indices (shape' + `indices.shape` + ') or elements as kmap (' + `numpy.size(self.kmap)` + ')'
+            errmsg = ('Data (shape ' + repr(data.shape) +
+                      ' must have the same number of elements ' +
+                      'as indices (shape' + repr(indices.shape) +
+                      ') or elements as kmap (' +
+                      repr(numpy.size(self.kmap)) + ')')
             raise ValueError(errmsg)
         if self.format == 'csc':
             out[0] = scipy.sparse.csc_matrix((data, indices.copy(), indptr.copy()),
