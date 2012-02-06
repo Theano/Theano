@@ -600,7 +600,7 @@ class CSMGrad(gof.op.Op):
     def __init__(self, kmap=None):
         self.kmap = kmap
         if self.kmap is None:
-            self.view_map = {0 : [1]}
+            self.view_map = {0: [1]}
 
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
@@ -870,8 +870,8 @@ get_item_scalar = GetItemScalar()
 
 
 class Transpose(gof.op.Op):
-    format_map = {'csr' : 'csc',
-                  'csc' : 'csr'}
+    format_map = {'csr': 'csc',
+                  'csc': 'csr'}
 
     def __eq__(self, other):
         return (type(self) == type(other))
