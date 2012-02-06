@@ -1859,10 +1859,10 @@ class UsmmCscDense(gof.Op):
 
         dtype_out = scalar.upcast(alpha.type.dtype, x_val.type.dtype,
             y.type.dtype, z.type.dtype)
-        
+
         if dtype_out not in ('float32', 'float64'):
             raise NotImplementedError('only float types are supported in operands')
-        
+
         if self.inplace:
             assert z.type.dtype == dtype_out
 
@@ -1875,7 +1875,7 @@ class UsmmCscDense(gof.Op):
             y = tensor.cast(y, dtype_out)
         if dtype_out != z.type.dtype:
             z = tensor.cast(z, dtype_out)
-        
+
         r = gof.Apply(self, [alpha, x_val, x_ind, x_ptr, x_nrows, y, z],
                 [tensor.tensor(dtype_out, (False, y.type.broadcastable[1]))])
         return r
