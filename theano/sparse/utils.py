@@ -2,17 +2,17 @@ from theano.gof.cc import hash_from_code
 
 
 def hash_from_sparse(data):
-    # We need to hash the shapes as hash_from_code only hash
+    # We need to hash the shapes as hash_from_code only hashes
     # the data buffer. Otherwise, this will cause problem with shapes like:
     # (1, 0) and (2, 0)
     # We also need to add the dtype to make the distinction between
     # uint32 and int32 of zeros with the same shape.
 
-    # python hash are not strong, so I always use md5. To don't have a too long
-    # hash, I call it again on the contatenation of all part.
-    return (hash_from_code(hash_from_code(data.data) +
-                           hash_from_code(data.indices) +
-                           hash_from_code(data.indptr) +
-                           hash_from_code(str(data.shape)) +
-                           hash_from_code(str(data.dtype)) +
-                           hash_from_code(data.format)))
+    # Python hash is not strong, so I always use md5. To avoid having a too
+    # long hash, I call it again on the contatenation of all parts.
+    return hash_from_code(hash_from_code(data.data) +
+                          hash_from_code(data.indices) +
+                          hash_from_code(data.indptr) +
+                          hash_from_code(str(data.shape)) +
+                          hash_from_code(str(data.dtype)) +
+                          hash_from_code(data.format))

@@ -84,7 +84,7 @@ Benjamin J. McCann provides `installation documentation <http://www.benmccann.co
 Gentoo
 ~~~~~~
 
-Brian Vandenberg emailed `installation instruction on Gentoo <https://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`.
+Brian Vandenberg emailed `installation instructions on Gentoo <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`.
 
 
 .. _linux_basic:

@@ -906,11 +906,12 @@ class CLinker(link.Linker):
             if isinstance(i, graph.Constant): #orphans
                 if id(i) not in constant_ids:
                     isig = (i.signature(), topological_pos, i_idx)
-                    # If the Theano constant provide a strong hash
+                    # If the Theano constant provides a strong hash
                     # (no collision for transpose, 2, 1, 0, -1, -2,
                     # 2 element swapped...) we put this hash in the signature
-                    # instead of the value. This make the key file much smaller
-                    # for big constant. Before this, we saw key file up to 80M.
+                    # instead of the value. This makes the key file much
+                    # smaller for big constant arrays. Before this, we saw key
+                    # files up to 80M.
                     if hasattr(isig[0], "theano_hash"):
                         isig = (isig[0].theano_hash(), topological_pos, i_idx)
                     try:
