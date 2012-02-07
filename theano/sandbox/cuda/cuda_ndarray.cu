@@ -1095,7 +1095,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 k3<<<n_blocks, n_threads>>>(
                         1, //d0
                         1, //d1
-			1, //d2
+                        1, //d2
                         CudaNdarray_DEV_DATA(self),
                         1, //strides
                         1,
@@ -3991,4 +3991,4 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
   fill-column:79
   End:
 */
-// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:encoding=utf-8:textwidth=79 :
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=79 :
