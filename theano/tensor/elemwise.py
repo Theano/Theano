@@ -1360,8 +1360,25 @@ class CAReduceDtype(CAReduce):
     def __hash__(self):
         return CAReduce.__hash__(self) ^ hash(self.dtype)
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, "dtype"):
+            # This is needed as old pickled will crash otherwise.
+            # We need to keep the old dtype behavior as the op
+            # could be in an apply node with a specified dtype.
+            self.dtype = "OLD"
+
     def _output_dtype(self, idtype):
         dtype = self.dtype
+        if dtype == "OLD":
+            return dict(
+                int8='int32',
+                int16='int32',
+                int32='int64',
+                uint8='uint32',
+                uint16='uint32',
+                uint32='uint64',
+                ).get(idtype, idtype)
         if dtype is None:
             # If input has a discrete dtype, upcast it to 64
             return dict(
