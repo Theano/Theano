@@ -2772,12 +2772,10 @@ class T_subtensor(unittest.TestCase):
         f = theano.function(all_inputs_var, all_outputs_var,
                             accept_inplace=True)
         f_outs = f(*all_inputs_num)
-        # NB: if this assert fails, it will probably be easier to debug if you
-        # enable the debug code above.
         assert len(f_outs) == len(all_outputs_num)
         for f_out, output_num in izip(f_outs, all_outputs_num):
-            #print f_out
-            #print
+            # NB: if this assert fails, it will probably be easier to debug if
+            # you enable the debug code above.
             assert numpy.allclose(f_out, output_num)
 
 
