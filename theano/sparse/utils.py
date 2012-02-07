@@ -3,7 +3,7 @@ from theano.gof.cc import hash_from_code
 
 def hash_from_sparse(data):
     # We need to hash the shapes as hash_from_code only hash
-    # the data buffer. Otherwise, this will cause problem with shapes likes:
+    # the data buffer. Otherwise, this will cause problem with shapes like:
     # (1, 0) and (2, 0)
     # We also need to add the dtype to make the distinction between
     # uint32 and int32 of zeros with the same shape.
