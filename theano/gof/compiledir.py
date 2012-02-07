@@ -107,7 +107,7 @@ AddConfigVar('compiledir',
 
 
 def print_compiledir_content():
-    max_key_file_size = 1 * 1024 * 1024
+    max_key_file_size = 1 * 1024 * 1024  # 1M
 
     def flatten(a):
         if isinstance(a, (tuple, list, set)):
