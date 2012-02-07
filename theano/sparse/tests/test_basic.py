@@ -1149,7 +1149,7 @@ class Test_getitem(unittest.TestCase):
             assert r10.shape == t10.shape
             assert numpy.all(r10.toarray() == t10.toarray())
 
-            f11 = theano.function([x, a], x[:,a:])
+            f11 = theano.function([x, a], x[:, a:])
             r11 = f11(vx, p)
             t11 = vx[:, p:]
             assert r11.shape == t11.shape
@@ -1178,7 +1178,7 @@ class Test_getitem(unittest.TestCase):
             self.assertRaises(ValueError,
                     x.__getitem__, slice(tensor.fscalar('f'), None))
             self.assertRaises(ValueError,
-                    x.__getitem__, (slice(None), slice([1,3,4], None)))
+                    x.__getitem__, (slice(None), slice([1, 3, 4], None)))
 
     def test_GetItemScalar(self):
         sparse_formats = ('csc', 'csr')
