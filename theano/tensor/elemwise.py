@@ -1081,7 +1081,7 @@ class CAReduce(Op):
 
     def __getstate__(self):
         d = copy(self.__dict__)
-        d.pop('ufunc')
+        d.pop('ufunc', None)
         return d
 
     def __setstate__(self, d):
