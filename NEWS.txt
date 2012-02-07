@@ -1,5 +1,13 @@
 .. _NEWS:
 
+Since 0.5rc2
+
+ * Fix a memory leak with shared variable(we kept a pointor to the original value)
+ * The key in our cache now store the hash of constant and not the constant value itself. This is significat for big constant.
+ * theano-cache list list key file bigger then 1M
+ * theano-cache list print an histograme of the number of key per compiled module
+ * theano-cache list print the number of compiled module per op class
+
 =============
 Release Notes
 =============
