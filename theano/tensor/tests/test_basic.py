@@ -2674,7 +2674,7 @@ class T_subtensor(unittest.TestCase):
         #single element
         utt.verify_grad(
             inc_slice(2, 1),
-            (numpy.asarray([[0, 1],[2, 3],[4, 5.]]), numpy.asarray(9.),))
+            (numpy.asarray([[0, 1], [2, 3], [4, 5.]]), numpy.asarray(9.),))
 
     def test_advanced_inc_and_set(self):
         """
@@ -5257,7 +5257,7 @@ class test_broadcast(unittest.TestCase):
 
 def test_len():
     for shape in [(5,), (3, 4), (7, 4, 6)]:
-        x = tensor.tensor(dtype='floatX', broadcastable=(False,)*len(shape))
+        x = tensor.tensor(dtype='floatX', broadcastable=(False,) * len(shape))
         try:
             len(x)
             assert False, "Expected an error"
@@ -5272,12 +5272,12 @@ def test_mod():
     as Python. That is what we want.
     """
     x, y = fscalars('xy')
-    fn = gof.DualLinker().accept(gof.Env([x,y], [x%y])).make_function()
-    for a,b in ((0,1), (1,1), (0,-1), (1,-1), (-1,-1),
-                (1,2), (-1,2), (1,-2), (-1,-2),
-                (5,3), (-5,3), (5,-3), (-5,-3)
+    fn = gof.DualLinker().accept(gof.Env([x, y], [x % y])).make_function()
+    for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
+                (1, 2), (-1, 2), (1, -2), (-1, -2),
+                (5, 3), (-5, 3), (5, -3), (-5, -3)
                 ):
-        assert fn(a,b) == a%b, (a,)
+        assert fn(a, b) == a % b, (a,)
 
 
 def test_mod_compile():
@@ -5301,14 +5301,14 @@ def test_mod_compile():
     shape = x.shape
     out = tensor.switch(tensor.eq(3 % x.shape[0], 0), y, y[:-1])
 
-    f = theano.function([x,y],out)
+    f = theano.function([x, y], out)
 
 
 def test_unalign():
     if config.floatX == 'float64':
-        dtype="b1,f8"
+        dtype = "b1,f8"
     else:
-        dtype="b1,f4"
+        dtype = "b1,f4"
 
     a = numpy.empty(1e4, dtype=dtype)['f1']
     b = numpy.empty(1e4, dtype=dtype)['f1']
@@ -5316,24 +5316,25 @@ def test_unalign():
     assert not b.flags.aligned
     a[:] = rand(len(a))
     b[:] = rand(len(b))
-    out_numpy = 2*a + 3*b
+    out_numpy = 2 * a + 3 * b
 
-    av,bv = tensor.vectors('ab')
-    f = theano.function([av,bv],2*av+3*bv)
+    av, bv = tensor.vectors('ab')
+    f = theano.function([av, bv], 2 * av + 3 * bv)
     f.maker.env.toposort()
     # FAST_COMPILE use the python code that support unaligned data
     # The DebugMode make a copy of the inputs, so they will be aligned.
-    should_raise = theano.config.mode not in ["FAST_COMPILE","DebugMode", "DEBUG_MODE"]
+    should_raise = theano.config.mode not in ["FAST_COMPILE", "DebugMode",
+                                              "DEBUG_MODE"]
     try:
-        out_theano = f(a,b)
+        out_theano = f(a, b)
         assert not a.flags.aligned
         assert not b.flags.aligned
-        assert numpy.allclose(out_numpy,out_theano)
+        assert numpy.allclose(out_numpy, out_theano)
         if should_raise:
             raise Exception("Expected an error from Theano!")
     except NotImplementedError, e:
         if not should_raise:
-            raise Exception("Theano raised an exception when none was expected")
+            raise Exception("Theano raised an unexpected exception")
 
 
 def test_dimshuffle_duplicate():
