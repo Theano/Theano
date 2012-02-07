@@ -3115,12 +3115,6 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
         return -1;
     }
 
-    // Maybe this could work, but be safe for now
-    if (!CudaNdarray_is_c_contiguous(A)) {
-        PyErr_SetString(PyExc_NotImplementedError, "non-c continugous A in sger");
-        return -1;
-    }
-    // Since Sger expects A in col-major, we invert x and y to fake this.
     int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
     const CudaNdarray * x_ = x;
     if(x_strides == 0){
@@ -3131,7 +3125,7 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
                          " that have more then 1 elements!");
             return -1;
         }
-        x_strides = 4;
+        x_strides = 1;
     } else if(x_strides < 0){
         x_ = (CudaNdarray*)CudaNdarray_Copy(x);
         x_strides = CudaNdarray_HOST_STRIDES(x_)[0];
@@ -3147,17 +3141,40 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
                          " that have more then 1 elements!");
             return -1;
         }
-        y_strides = 4;
+        y_strides = 1;
     } else if(y_strides < 0){
         y_ = (CudaNdarray*)CudaNdarray_Copy(y);
         y_strides = CudaNdarray_HOST_STRIDES(y_)[0];
     }
 
     if(CudaNdarray_SIZE(A)){
-        cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
-                   CudaNdarray_DEV_DATA(y_), y_strides,
-                   CudaNdarray_DEV_DATA(x_), x_strides,
-                   CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_DIMS(A)[1]);
+        // If A is in col-major
+        if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
+            || ((CudaNdarray_HOST_STRIDES(A)[0] == 1)
+                && (CudaNdarray_HOST_STRIDES(A)[1] > 0)))
+        {
+            cublasSger(CudaNdarray_HOST_DIMS(x)[0], CudaNdarray_HOST_DIMS(y)[0], alpha,
+                       CudaNdarray_DEV_DATA(x_), x_strides,
+                       CudaNdarray_DEV_DATA(y_), y_strides,
+                       CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_STRIDES(A)[1]);
+        }
+        // Since Sger expects A in col-major, we invert x and y to fake this.
+        else if ((CudaNdarray_HOST_DIMS(A)[1] <= 1)
+                || ((CudaNdarray_HOST_STRIDES(A)[1] == 1)
+                    && (CudaNdarray_HOST_STRIDES(A)[0] > 0)))
+        {
+            cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
+                       CudaNdarray_DEV_DATA(y_), y_strides,
+                       CudaNdarray_DEV_DATA(x_), x_strides,
+                       CudaNdarray_DEV_DATA(A), CudaNdarray_HOST_STRIDES(A)[0]);
+        }
+        // A has to be either c- or f-contiguous, with no negative strides
+        else
+        {
+            PyErr_SetString(PyExc_NotImplementedError,
+                            "non-contiguous A, or negative strides, in sger");
+            return -1;
+        }
     }
     CNDA_THREAD_SYNC;
     if(x_ != x)
