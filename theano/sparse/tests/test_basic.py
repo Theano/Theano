@@ -112,7 +112,21 @@ class SparseInferShapeTester(unittest.TestCase):
         raise SkipTest('infer_shape not implemented for getitem2d yet')
 
     def test_csm_grad(self):
-        raise SkipTest('somebody who understands this should write it')
+        for sparsetype in ('csr', 'csc'):
+            x = tensor.vector()
+            y = tensor.ivector()
+            z = tensor.ivector()
+            s = tensor.ivector()
+            spm = sp.csr_matrix(random_lil((100, 100), config.floatX, 5))
+            out = tensor.grad(dense_from_sparse(
+                CSM(sparsetype)(x, y, z, s)
+            ).sum(), x)
+            self._compile_and_check([x, y, z, s],
+                                    [out],
+                                    [spm.data, spm.indices, spm.indptr,
+                                     spm.shape],
+                                    CSMGrad
+                                   )
 
     def test_transpose(self):
         x = SparseType('csr', dtype=config.floatX)()
