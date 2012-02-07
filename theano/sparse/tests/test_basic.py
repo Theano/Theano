@@ -25,7 +25,7 @@ from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 from theano.sparse import Dot, Usmm, UsmmCscDense
-from theano.sparse import get_item_2d, get_item_scalar
+#from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
@@ -109,7 +109,7 @@ class SparseInferShapeTester(unittest.TestCase):
             assert numpy.all(out.shape == shape)
 
     def test_getitem_2d(self):
-        raise SkipTest('infer_shape not implemented for getitem2d yet')
+        raise SkipTest('infer_shape not implemented for GetItem2d yet')
 
     def test_csm_grad(self):
         for sparsetype in ('csr', 'csc'):
