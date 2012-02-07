@@ -6,6 +6,7 @@ Defines Linkers that deal with C implementations.
 from copy import copy
 import re #for set_compiledir
 import os, sys, StringIO
+from itertools import izip
 
 
 if sys.version_info[:2] >= (2,5):
@@ -733,8 +734,8 @@ class CLinker(link.Linker):
                                     output_storage,
                                     keep_lock=keep_lock)
         return thunk, \
-            [link.Container(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
-            [link.Container(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
+            [link.Container(input, storage) for input, storage in izip(self.env.inputs, input_storage)], \
+            [link.Container(output, storage, True) for output, storage in izip(self.env.outputs, output_storage)], \
             error_storage
 
     def get_init_tasks(self):
@@ -1302,8 +1303,8 @@ class OpWiseCLinker(link.LocalLinker):
                 release_lock()
                 assert get_lock.n_lock == orig_n_lock
 
-        return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [link.Container(input, storage) for input, storage in izip(env.inputs, input_storage)], \
+            [link.Container(output, storage, True) for output, storage in izip(env.outputs, output_storage)], \
             thunks, order
 
 
@@ -1372,21 +1373,21 @@ class DualLinker(link.Linker):
         _f, i2, o2, thunks2, order2 =      OpWiseCLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
 
         def f():
-            for input1, input2 in zip(i1, i2):
+            for input1, input2 in izip(i1, i2):
                 # set the inputs to be the same in both branches
                 # the copy is necessary in order for inplace ops not to interfere
                 input2.storage[0] = copy(input1.storage[0])
-            for thunk1, thunk2, node1, node2 in zip(thunks1, thunks2, order1, order2):
-                for output, storage in zip(node1.outputs, thunk1.outputs):
+            for thunk1, thunk2, node1, node2 in izip(thunks1, thunks2, order1, order2):
+                for output, storage in izip(node1.outputs, thunk1.outputs):
                     if output in no_recycling:
                         storage[0] = None
-                for output, storage in zip(node2.outputs, thunk2.outputs):
+                for output, storage in izip(node2.outputs, thunk2.outputs):
                     if output in no_recycling:
                         storage[0] = None
                 try:
                     thunk1()
                     thunk2()
-                    for output1, output2 in zip(thunk1.outputs, thunk2.outputs):
+                    for output1, output2 in izip(thunk1.outputs, thunk2.outputs):
                         self.checker(output1, output2)
                 except Exception:
                     link.raise_with_op(node1)
