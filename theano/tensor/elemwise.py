@@ -737,10 +737,23 @@ class Elemwise(Op):
         try:
             variables = ufunc(*ufunc_args)
         except Exception, e:
-            errormsg = 'While computing '+str(node.outputs)+': Failed calling ufunc for op', self.scalar_op,\
-                        'for params of shape', [arg.shape for arg in ufunc_args]
-            e.args = e.args + errormsg
-            raise
+            errormsg = 'While computing '+str(node.outputs)+ \
+                    ': Failed calling ufunc for op' + str(self.scalar_op) +\
+                    'for params of shape' + str( [arg.shape for arg in ufunc_args])
+
+            if config.exception_verbosity == 'high':
+                errormsg += 'inputs are: \n'
+                for i, ipt in enumerate(node.inputs):
+                    errormsg += '('+str(i)+') '+min_informative_str(ipt)+'\n'
+                errormsg += 'outputs are: \n'
+                for i, output in enumerate(node.outputs):
+                    errormsg += '('+str(i)+') '+min_informative_str(output)+'\n'
+                errormsg += 'original exception was: '+str(e)
+                raise Exception(errormsg)
+            else:
+                e.args = (e.args, errormsg)
+                raise
+
         if nout == 1:
             variables = [variables]
         for variable, storage, nout in zip(variables, output_storage, node.outputs):
