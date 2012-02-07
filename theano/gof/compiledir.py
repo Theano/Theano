@@ -3,8 +3,11 @@ import errno
 import os
 import platform
 import re
+import shutil
 import sys
 import textwrap
+
+import numpy
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
@@ -106,17 +109,55 @@ AddConfigVar('compiledir',
             allow_override=False))
 
 
+def flatten(a):
+    if isinstance(a, (tuple, list, set)):
+        l = []
+        for item in a:
+            l.extend(flatten(item))
+        return l
+    else:
+        return [a]
+
+
+def cleanup():
+    """ Delete old keys from the compiledir
+
+        We define old key as key that have an ndarray in them.
+        Now we use an hash in the keys of the constant data.
+
+        If there is no key left for a compiled module, we delete the module.
+    """
+    compiledir = theano.config.compiledir
+    for directory in os.listdir(compiledir):
+        file = None
+        try:
+            try:
+                filename = os.path.join(compiledir, directory, "key.pkl")
+                file = open(filename, 'rb')
+                #print file
+                try:
+                    keydata = cPickle.load(file)
+                    for key in list(keydata.keys):
+                        for obj in flatten(key):
+                            if isinstance(obj, numpy.ndarray):
+                                keydata.remove_key(key)
+                                break
+                    if len(keydata.keys) == 0:
+                        shutil.rmtree(os.path.join(compiledir, directory))
+                        pass
+
+                except EOFError:
+                    print ("ERROR while reading this key file '%s'."
+                           " Delete its directory" % filename)
+            except IOError:
+                pass
+        finally:
+            if file is not None:
+                file.close()
+
+
 def print_compiledir_content():
     max_key_file_size = 1 * 1024 * 1024  # 1M
-
-    def flatten(a):
-        if isinstance(a, (tuple, list, set)):
-            l = []
-            for item in a:
-                l.extend(flatten(item))
-            return l
-        else:
-            return [a]
 
     compiledir = theano.config.compiledir
     table = []
