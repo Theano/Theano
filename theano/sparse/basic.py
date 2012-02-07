@@ -714,8 +714,9 @@ class DenseFromSparse(gof.op.Op):
         else:
             return [SparseFromDense(x.type.format)(gz)]
 
-    def infer_shape(self, node, (ishape,)):
-        return [ishape]
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
 dense_from_sparse = DenseFromSparse()
 
 
@@ -749,8 +750,9 @@ class SparseFromDense(gof.op.Op):
     def grad(self, (x, ), (gz, )):
         return dense_from_sparse(gz),
 
-    def infer_shape(self, node, (ishape,)):
-        return [ishape]
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
 csr_from_dense = SparseFromDense('csr')
 csc_from_dense = SparseFromDense('csc')
 
@@ -870,7 +872,7 @@ class GetItemScalar(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
-    def infer_shape(self, node, i0_shapes):
+    def infer_shape(self, node, shapes):
         return [()]
 
     def make_node(self, x, index):
