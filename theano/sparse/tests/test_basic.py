@@ -91,6 +91,80 @@ class T_transpose(unittest.TestCase):
         self.assertTrue(vta.shape == (3, 5))
 
 
+class SparseInferShapeTester(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def _compile_and_check(self, inputs, outputs, numeric_inputs):
+        outputs_function = theano.function(inputs, outputs)
+        shapes_function = theano.function(inputs, [o.shape for o in outputs])
+        topo = shapes_function.maker.env.toposort()
+        assert not any(isinstance(t, self.__class__) for t in topo)
+
+        numeric_outputs = outputs_function(*numeric_inputs)
+        numeric_shapes = shapes_function(*numeric_inputs)
+        for out, shape in zip(numeric_outputs, numeric_shapes):
+            assert numpy.all(out.shape == shape)
+
+    def test_getitem_2d(self):
+        raise SkipTest('infer_shape not implemented for getitem2d yet')
+
+    def test_csm_grad(self):
+        raise SkipTest('somebody who understands this should write it')
+
+    def test_transpose(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [x.T],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3))])
+
+    def test_neg(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [-x],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3))])
+
+
+    def test_add_ss(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x, y],
+                                [x + y],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3)),
+                                 sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3))])
+
+    def test_add_sd(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = tensor.matrix()
+        self._compile_and_check([x, y],
+                                [x + y],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3)),
+                                 numpy.random.randn(10, 10)])
+
+    def test_mul_ss(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x, y],
+                                [x * y],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3)),
+                                ] * 2)
+
+    def test_mul_sd(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = tensor.matrix()
+        self._compile_and_check([x, y],
+                                [x * y],
+                                [sp.csr_matrix(random_lil((10, 10),
+                                               config.floatX, 3)),
+                                 numpy.random.randn(10, 10)])
+
+
 class T_AddMul(unittest.TestCase):
     def testAddSS(self):
         self._testSS(add)
