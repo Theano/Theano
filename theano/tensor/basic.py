@@ -5097,6 +5097,7 @@ class AdvancedSubtensor1(Op):
 
     def __hash__(self):
         return hash(type(self))
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -5115,7 +5116,7 @@ class AdvancedSubtensor1(Op):
         x, i = inp
         out, = out_
         # Copy always implied by numpy advanced indexing semantic.
-        if out[0] is not None and out[0].shape==(len(i),)+x.shape[1:]:
+        if out[0] is not None and out[0].shape == (len(i),) + x.shape[1:]:
             o = out[0]
         else:
             o = None
@@ -5131,8 +5132,9 @@ class AdvancedSubtensor1(Op):
 
     def grad(self, inputs, grads):
         gz, = grads
-        assert len(inputs)==2
-        return [advanced_inc_subtensor1(zeros_like(inputs[0]),gz,inputs[1])]+[None]*(len(inputs)-1)
+        assert len(inputs) == 2
+        rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
+        return rval1 + [None] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -5141,9 +5143,10 @@ class AdvancedSubtensor1(Op):
 
     def infer_shape(self, node, ishapes):
         x, ilist = ishapes
-        return [ilist+x[1:]]
+        return [ilist + x[1:]]
 
 advanced_subtensor1 = AdvancedSubtensor1()
+
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
@@ -5173,10 +5176,13 @@ class AdvancedIncSubtensor1(Op):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
         if y_.type.ndim > x_.type.ndim:
-            opname = 'increment'
+            if self.set_instead_of_inc:
+                opname = 'set'
+            else:
+                opname = 'increment'
             raise TypeError('cannot %s x subtensor with ndim=%s'
-            ' by y with ndim=%s to x subtensor with ndim=%s '%(
-                opname, x_.type.ndim, y_.type.ndim ))
+            ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -5186,19 +5192,19 @@ class AdvancedIncSubtensor1(Op):
         out, = out_
         if not self.inplace:
             x = x.copy()
-        # x[idx] += y don't work if the same index is present many times.
-        # It do it only once
-        #  -- Numpy also behaves this way, is it a bug in numpy?
+        # In Numpy, x[idx] += y doesn't work if the same index is present
+        # many times: it does it only once. Is it a bug? In any case, for
+        # this reason we implement our own 'inc' iteration.
         if self.set_instead_of_inc:
-            if y.ndim:
-                for (j,i) in enumerate(idx):
-                    x[i] = y[j]
-            else:
-                for i in idx:
-                    x[i] = y
+            x[idx] = y
         else:
-            if y.ndim:
-                for (j,i) in enumerate(idx):
+            # If `y` has as many dimensions as `x`, then we want to iterate
+            # jointly on `x` and `y`. Otherwise, it means `y` should be
+            # broadcasted to fill all relevant rows of `x`.
+            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
+            if y.ndim == x.ndim:
+                assert len(y) == len(idx)
+                for (j, i) in enumerate(idx):
                     x[i] += y[j]
             else:
                 for i in idx:
@@ -5215,7 +5221,6 @@ class AdvancedIncSubtensor1(Op):
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
 
-
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
@@ -5228,6 +5233,7 @@ class AdvancedIncSubtensor1(Op):
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
+
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
     """
@@ -5235,10 +5241,10 @@ class AdvancedSubtensor(Op):
     # AdvancedSubtensor(args)(self, *args),
     # if args contains and advanced indexing pattern
 
-    def __init__(self, args): #idx_list?
+    def __init__(self, args):  # idx_list?
         # For the moment, __init__ will be passed the whole list of arguments
         #TODO: see what's the best solution
-        self.args = args #?
+        self.args = args  # ?
 
         #FIXME: do not store variables in the class instance
 
@@ -5590,6 +5596,7 @@ class TensorDotGrad(Op):
 
 tensordot_grad = TensorDotGrad
 
+
 class TensorDot(Op):
     """Compute tensor-tensor products over the given axes.
     See numpy documentation for details.
@@ -5600,21 +5607,23 @@ class TensorDot(Op):
     @classmethod
     def parse_axes(cls, axes):
 
-        if not numpy.isscalar(axes) and len(axes)!=2:
-            raise ValueError("Axes should be scalar valued or a list/tuple of len 2.")
+        if not numpy.isscalar(axes) and len(axes) != 2:
+            raise ValueError("Axes should be scalar valued or a list/tuple of "
+                             "len 2.")
 
-        if isinstance(axes,(list,tuple)):
+        if isinstance(axes, (list, tuple)):
             axes_out = []
             # cast axes[0] and axes[1] to tuples
-            for i,a in enumerate(axes):
+            for i, a in enumerate(axes):
                 if numpy.isscalar(a):
                     axes_out.append((a,))
                 else:
                     axes_out.append(tuple(a))
 
             # these should be of same length
-            if len(axes_out[0])!=len(axes_out[1]):
-                raise ValueError("Elements of the axes list/tuple need to be of the same size.")
+            if len(axes_out[0]) != len(axes_out[1]):
+                raise ValueError("Elements of the axes list/tuple need to be "
+                                 "of the same size.")
 
             axes = tuple(axes_out)
 
@@ -5631,22 +5640,23 @@ class TensorDot(Op):
 
     def make_node(self, x, y):
         op = self
-        if isinstance(self.axes,int):
-            axes = [range(x.ndim-self.axes,x.ndim),range(self.axes)]
+        if isinstance(self.axes, int):
+            axes = [range(x.ndim - self.axes, x.ndim), range(self.axes)]
             op = TensorDot(axes)
 
-        axesdim = numpy.size(op.axes)/2
+        axesdim = numpy.size(op.axes) / 2
 
         x, y = map(as_tensor_variable, [x, y])
 
         if axesdim > x.type.ndim or axesdim > y.type.ndim:
-            raise TypeError('Cannot sum over more dimensions than input. %i > %i,%i' %
-                    axesdim, x.type.ndim, y.type.ndim)
+            raise TypeError('Cannot sum over more dimensions than input. '
+                            '%i > %i,%i' %
+                            (axesdim, x.type.ndim, y.type.ndim))
 
-        outdim = x.type.ndim + y.type.ndim - 2*axesdim
+        outdim = x.type.ndim + y.type.ndim - 2 * axesdim
         output = tensor(dtype=scal.upcast(x.dtype, y.dtype),
-                        broadcastable=[False]*outdim);
-        return Apply(op, inputs=[x,y], outputs=[output,])
+                        broadcastable=[False] * outdim)
+        return Apply(op, inputs=[x, y], outputs=[output, ])
 
     def perform(self, node, inp, out):
         x, y = inp
@@ -5654,7 +5664,8 @@ class TensorDot(Op):
         try:
             z[0] = numpy.asarray(numpy.tensordot(x, y, self.axes))
         except ValueError, e:
-            # The error raised by numpy has no shape information, we mean to add that
+            # The error raised by numpy has no shape information, we mean to
+            # add that.
             e.args = e.args + (x.shape, y.shape, self.axes)
             raise
 
@@ -5667,13 +5678,15 @@ class TensorDot(Op):
     def __str__(self):
         return "tensordot"
 
-def tensordot(x, y=None, axes=2):
-    if y==None:
-        raise NotImplementedError('The interface to tensordot has changed from '\
-            'tensor.tensordot(axes)(x,y) to tensor.tensordot(x,y,axes). Please '\
-            'modify your code accordingly.')
 
-    if x.ndim==0 or y.ndim==0:
+def tensordot(x, y=None, axes=2):
+    if y is None:
+        raise NotImplementedError(
+                'The interface to tensordot has changed from '
+                'tensor.tensordot(axes)(x,y) to tensor.tensordot(x,y,axes). '
+                'Please modify your code accordingly.')
+
+    if x.ndim == 0 or y.ndim == 0:
         raise ValueError('Cannot perform tensordot of 0-d inputs.')
 
     axes = TensorDot.parse_axes(axes)
@@ -5682,16 +5695,16 @@ def tensordot(x, y=None, axes=2):
     if numpy.isscalar(axes):
         if axes >= x.ndim or axes >= y.ndim:
             raise ValueError('axes should be smaller than the dimension of '\
-                    'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim,y.ndim))
-    elif isinstance(axes, (list,tuple)):
+                    'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim, y.ndim))
+    elif isinstance(axes, (list, tuple)):
 
-        if isinstance(axes[0],(list,tuple)) and \
+        if isinstance(axes[0], (list, tuple)) and \
            (len(axes[0]) > x.ndim or (numpy.array(axes[0]) >= x.ndim).any()):
             raise ValueError('axes[0] should be array_like, of length smaller'\
                     ' than the dimension of x (x.ndim=%i, len(axes[0])=%i).' %
                     (x.ndim, len(axes[0])))
 
-        if isinstance(axes[1],(list,tuple)) and \
+        if isinstance(axes[1], (list, tuple)) and \
            (len(axes[1]) > y.ndim or (numpy.array(axes[1]) >= y.ndim).any()):
             raise ValueError('axes[1] should be array_like, of length smaller'\
                     'than the dimension of y (y.ndim=%i, len(axes[1])=%i).' %
