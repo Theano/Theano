@@ -254,11 +254,6 @@ class DimShuffle(Op):
                 shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
             else:
                 shape_statements += [('dimensions['+str(i)+'] = 1')]
-        #backport
-        #shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')
-        #    if o != 'x' else
-        #    ('dimensions['+str(i)+'] = 1')
-        #    for i, o in enumerate(self.new_order)]
 
 
         strides_statements = ['npy_intp strides[%i]'%nd_out]
@@ -269,11 +264,6 @@ class DimShuffle(Op):
                 strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
             else:
                 strides_statements += [('strides['+str(i)+'] = 0')]
-        #backport
-        #strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')
-        #    if o != 'x' else
-        #    ('strides['+str(i)+'] = 0')
-        #    for i, o in enumerate(self.new_order)]
 
         # set the strides of the broadcasted dimensions
         # this algorithm is from numpy: PyArray_Newshape() in cvs/numpy/numpy/core/src/multiarraymodule.c
