@@ -16,6 +16,7 @@ import scipy.sparse
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.tensor import blas
+from theano.sparse.utils import hash_from_sparse
 
 sparse_formats = ['csc', 'csr']
 
@@ -277,6 +278,10 @@ class SparseConstantSignature(tuple):
     def __hash__(self):
         (a, b) = self
         return hash(type(self)) ^ hash(a) ^ hash(type(b))
+
+    def theano_hash(self):
+        (_, d) = self
+        return hash_from_sparse(d)
 
 
 class SparseConstant(gof.Constant, _sparse_py_operators):

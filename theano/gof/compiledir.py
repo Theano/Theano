@@ -3,8 +3,11 @@ import errno
 import os
 import platform
 import re
+import shutil
 import sys
 import textwrap
+
+import numpy
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
@@ -106,26 +109,69 @@ AddConfigVar('compiledir',
             allow_override=False))
 
 
-def print_compiledir_content():
+def flatten(a):
+    if isinstance(a, (tuple, list, set)):
+        l = []
+        for item in a:
+            l.extend(flatten(item))
+        return l
+    else:
+        return [a]
 
-    def flatten(a):
-        if isinstance(a, (tuple, list, set)):
-            l = []
-            for item in a:
-                l.extend(flatten(item))
-            return l
-        else:
-            return [a]
+
+def cleanup():
+    """ Delete old keys from the compiledir
+
+        We define old key as key that have an ndarray in them.
+        Now we use an hash in the keys of the constant data.
+
+        If there is no key left for a compiled module, we delete the module.
+    """
+    compiledir = theano.config.compiledir
+    for directory in os.listdir(compiledir):
+        file = None
+        try:
+            try:
+                filename = os.path.join(compiledir, directory, "key.pkl")
+                file = open(filename, 'rb')
+                #print file
+                try:
+                    keydata = cPickle.load(file)
+                    for key in list(keydata.keys):
+                        for obj in flatten(key):
+                            if isinstance(obj, numpy.ndarray):
+                                keydata.remove_key(key)
+                                break
+                    if len(keydata.keys) == 0:
+                        shutil.rmtree(os.path.join(compiledir, directory))
+                        pass
+
+                except EOFError:
+                    print ("ERROR while reading this key file '%s'."
+                           " Delete its directory" % filename)
+            except IOError:
+                pass
+        finally:
+            if file is not None:
+                file.close()
+
+
+def print_compiledir_content():
+    max_key_file_size = 1 * 1024 * 1024  # 1M
 
     compiledir = theano.config.compiledir
     table = []
     more_than_one_ops = 0
     zeros_op = 0
+    big_key_files = []
+    total_key_sizes = 0
+    nb_keys = {}
     for dir in os.listdir(compiledir):
         file = None
         try:
             try:
-                file = open(os.path.join(compiledir, dir, "key.pkl"), 'rb')
+                filename = os.path.join(compiledir, dir, "key.pkl")
+                file = open(filename, 'rb')
                 keydata = cPickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
@@ -137,6 +183,14 @@ def print_compiledir_content():
                     types = list(set([x for x in flatten(keydata.keys)
                                       if isinstance(x, theano.gof.Type)]))
                     table.append((dir, ops[0], types))
+
+                size = os.path.getsize(filename)
+                total_key_sizes += size
+                if size > max_key_file_size:
+                    big_key_files.append((dir, size, ops))
+
+                nb_keys.setdefault(len(keydata.keys), 0)
+                nb_keys[len(keydata.keys)] += 1
             except IOError:
                 pass
         finally:
@@ -159,6 +213,31 @@ def print_compiledir_content():
     table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
     for op_class, nb in table_op_class:
         print op_class, nb
+
+    if big_key_files:
+        big_key_files = sorted(big_key_files, key=lambda t: str(t[1]))
+        big_total_size = sum([size for dir, size, ops in big_key_files])
+        print ("There are directories with key files bigger than %d bytes "
+               "(they probably contain big tensor constants)" %
+               max_key_file_size)
+        print ("They use %d bytes out of %d (total size used by all key files)"
+               "" % (big_total_size, total_key_sizes))
+
+    print
+    print "Directory with a key file bigger then %d bytes" % max_key_file_size,
+    print "(probably they there is a big constant inside)"
+    print "There total are %d bytes on a total size of %d for key files" % (
+        big_total_size, total_key_sizes)
+    for dir, size, ops in big_key_files:
+        print dir, size, ops
+
+    nb_keys = sorted(nb_keys.iteritems())
+    print
+    print "Number of keys for a compiled module"
+    print "number of keys/number of modules with that number of keys"
+    for n_k, n_m in nb_keys:
+        print n_k, n_m
+
     print ("Skipped %d files that contained more than"
            " 1 op (was compiled with the C linker)" % more_than_one_ops)
     print ("Skipped %d files that contained 0 op "

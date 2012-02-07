@@ -28,6 +28,8 @@ elif sys.argv[1] in ('clear'):
                       (len(items), ', '.join(items)))
 elif sys.argv[1] in ('list'):
     theano.gof.compiledir.print_compiledir_content()
+elif sys.argv[1] in ('cleanup'):
+    theano.gof.compiledir.cleanup()
 elif sys.argv[1] == 'unlock':
     theano.gof.compilelock.force_unlock()
     print 'Lock successfully removed!'
@@ -37,5 +39,6 @@ else:
     print 'Type "theano-cache clear" to erase the cache'
     print 'Type "theano-cache list" to print the cache content'
     print 'Type "theano-cache unlock" to unlock the cache directory'
+    print 'Type "theano-cache cleanup" to delete old key format'
     sys.exit(1)
 
