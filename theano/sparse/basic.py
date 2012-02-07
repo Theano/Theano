@@ -1700,7 +1700,7 @@ class StructuredDotGradCSC(gof.Op):
             ind1 = a_indptr[j + 1]
             for i_idx in xrange(ind0, ind1):
                 i = a_indices[i_idx]
-                g_a_data[i_idx] = numpy.dot(g_ab[i], b[j])
+                g_a_data[i_idx] = numpy.dot(g_ab[i], b[j].T)[0, 0]
         out[0] = g_a_data
 
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
@@ -1815,7 +1815,7 @@ class StructuredDotGradCSR(gof.Op):
             for j_idx in xrange(ind0, ind1):
                 j = a_indices[j_idx]
                 # grad is dot product of i-th row of gradient with j-th row of b
-                g_a_data[j_idx] = numpy.dot(g_ab[i], b[j])
+                g_a_data[j_idx] = numpy.dot(g_ab[i], b[j].T)[0, 0]
         out[0] = g_a_data
 
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
