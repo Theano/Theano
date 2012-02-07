@@ -1026,6 +1026,9 @@ class CAReduce(Op):
             self.axis.sort()
             self.axis = tuple(self.axis)
 
+        self.set_ufunc(scalar_op)
+
+    def set_ufunc(self, scalar_op):
         # This is probably a speed up of the implementation
         if isinstance(scalar_op, theano.scalar.basic.Add):
             self.ufunc = numpy.add
@@ -1083,7 +1086,7 @@ class CAReduce(Op):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.ufunc = numpy.frompyfunc(self.scalar_op.impl, 2, 1)
+        self.set_ufunc(self.scalar_op)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.scalar_op == other.scalar_op and self.axis == other.axis
