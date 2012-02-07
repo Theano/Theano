@@ -358,6 +358,28 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
 
         if (Nx0 * Nx1)
         {
+            // If xx is neither C- nor F-contiguous, we make a copy.
+            // TODO:
+            // - if one stride is equal to "- elemsize", we can still call
+            //   gemv on reversed matrix and vectors
+            // - if the copy is too long, maybe call vector/vector dot on
+            //   each row instead
+            if ((%(xx)s->strides[0] != elemsize)
+                && (%(xx)s->strides[1] != elemsize))
+            {
+                npy_intp dims[2];
+                dims[0] = Nx0;
+                dims[1] = Nx1;
+
+                PyArrayObject * xx_copy = PyArray_GETCONTIGUOUS(%(xx)s);
+                if (!xx_copy)
+                    %(fail)s
+                Py_XDECREF(%(xx)s);
+                %(xx)s = xx_copy;
+                Sx0 = %(xx)s->strides[0] / elemsize;
+                Sx1 = %(xx)s->strides[1] / elemsize;
+            }
+
             if (%(xx)s->strides[0] == elemsize)
             {
                 if (%(xx)s->descr->type_num == PyArray_FLOAT)
@@ -420,9 +442,9 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             }
             else
             {
-                // if xx is strided in both directions, then just do the gemv with a
-                // pair of for loops.
-                PyErr_SetString(PyExc_NotImplementedError, "double-strided matrix");
+                PyErr_SetString(PyExc_AssertionError,
+                    "xx is a double-strided matrix, and should have been copied "
+                    "into a memory-contiguous one.");
                 %(fail)s
             }
         }
@@ -453,7 +475,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (6,)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
