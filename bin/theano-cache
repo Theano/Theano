@@ -39,6 +39,6 @@ else:
     print 'Type "theano-cache clear" to erase the cache'
     print 'Type "theano-cache list" to print the cache content'
     print 'Type "theano-cache unlock" to unlock the cache directory'
-    print 'Type "theano-cache cleanup" to delete old key format'
+    print 'Type "theano-cache cleanup" to delete keys in the old format'
     sys.exit(1)
 

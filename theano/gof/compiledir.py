@@ -120,12 +120,13 @@ def flatten(a):
 
 
 def cleanup():
-    """ Delete old keys from the compiledir
+    """
+    Delete keys in old format from the compiledir.
 
-        We define old key as key that have an ndarray in them.
-        Now we use an hash in the keys of the constant data.
+    We define keys in old format as keys that have an ndarray in them.
+    Now we use a hash in the keys of the constant data.
 
-        If there is no key left for a compiled module, we delete the module.
+    If there is no key left for a compiled module, we delete the module.
     """
     compiledir = theano.config.compiledir
     for directory in os.listdir(compiledir):
@@ -144,7 +145,6 @@ def cleanup():
                                 break
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))
-                        pass
 
                 except EOFError:
                     print ("ERROR while reading this key file '%s'."

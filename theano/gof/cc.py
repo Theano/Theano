@@ -6,6 +6,7 @@ Defines Linkers that deal with C implementations.
 from copy import copy
 import re #for set_compiledir
 import os, sys, StringIO
+from itertools import izip
 
 
 if sys.version_info[:2] >= (2,5):
@@ -733,8 +734,8 @@ class CLinker(link.Linker):
                                     output_storage,
                                     keep_lock=keep_lock)
         return thunk, \
-            [link.Container(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
-            [link.Container(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
+            [link.Container(input, storage) for input, storage in izip(self.env.inputs, input_storage)], \
+            [link.Container(output, storage, True) for output, storage in izip(self.env.outputs, output_storage)], \
             error_storage
 
     def get_init_tasks(self):
@@ -906,11 +907,12 @@ class CLinker(link.Linker):
             if isinstance(i, graph.Constant): #orphans
                 if id(i) not in constant_ids:
                     isig = (i.signature(), topological_pos, i_idx)
-                    # If the Theano constant provide a strong hash
+                    # If the Theano constant provides a strong hash
                     # (no collision for transpose, 2, 1, 0, -1, -2,
                     # 2 element swapped...) we put this hash in the signature
-                    # instead of the value. This make the key file much smaller
-                    # for big constant. Before this, we saw key file up to 80M.
+                    # instead of the value. This makes the key file much
+                    # smaller for big constant arrays. Before this, we saw key
+                    # files up to 80M.
                     if hasattr(isig[0], "theano_hash"):
                         isig = (isig[0].theano_hash(), topological_pos, i_idx)
                     try:
@@ -1234,20 +1236,21 @@ class OpWiseCLinker(link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler = None, input_storage = None, output_storage = None):
+    def make_all(self, profiler=None, input_storage=None, output_storage=None):
 
         # The lock will be acquired when we compile the first
         # C code. We will keep the lock untill all the function
         # compilation will be finished. This allow to don't
         # require the lock when all c code are already compiled!
-        orig_n_lock = getattr(get_lock,"n_lock",0)
+        orig_n_lock = getattr(get_lock, "n_lock", 0)
         try:
 
             env = self.env
             order = env.toposort()
             no_recycling = self.no_recycling
 
-            input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
+            input_storage, output_storage, storage_map = link.map_storage(
+                                    env, order, input_storage, output_storage)
             if self.allow_gc:
                 computed, last_user = link.gc_helper(order)
                 post_thunk_old_storage = []
@@ -1265,7 +1268,7 @@ class OpWiseCLinker(link.LocalLinker):
                 # There are ops that don't have _op_use_c_code property
                 # for example ifelse (or any ops that come with their own
                 # make_thunk
-                old_value = getattr(node.op,'_op_use_c_code', False)
+                old_value = getattr(node.op, '_op_use_c_code', False)
                 try:
                     node.op._op_use_c_code = True
                     thunks += [node.op.make_thunk(node,
@@ -1280,31 +1283,37 @@ class OpWiseCLinker(link.LocalLinker):
                 if self.allow_gc:
                     post_thunk_old_storage.append([storage_map[input]
                         for input in node.inputs
-                        if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                        if ((input in computed) and
+                            (input not in env.outputs) and
+                            node == last_user[input])])
 
             if no_recycling is True:
                 no_recycling = storage_map.values()
                 no_recycling = utils.difference(no_recycling, input_storage)
             else:
-                no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
+                no_recycling = [storage_map[r]
+                                for r in no_recycling if r not in env.inputs]
 
             f = link.streamline(env, thunks, order,
                     post_thunk_old_storage,
-                    no_recycling = no_recycling,
-                    nice_errors = self.nice_errors)
+                    no_recycling=no_recycling,
+                    nice_errors=self.nice_errors)
 
             f.allow_gc = self.allow_gc
 
         finally:
             # Release lock on compilation directory.
-            if getattr(get_lock,"n_lock",0) > orig_n_lock:
+            if getattr(get_lock, "n_lock", 0) > orig_n_lock:
                 release_lock()
                 assert get_lock.n_lock == orig_n_lock
 
-        return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
-            thunks, order
-
+        return (f,
+                [link.Container(input, storage)
+                 for input, storage in izip(env.inputs, input_storage)],
+                [link.Container(output, storage, True)
+                 for output, storage in izip(env.outputs, output_storage)],
+                thunks,
+                order)
 
 
 def _default_checker(x, y):
@@ -1313,7 +1322,9 @@ def _default_checker(x, y):
     variables contain the same data using ==.
     """
     if x[0] != y[0]:
-        raise Exception("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
+        raise Exception("Output mismatch.",
+                        {'performlinker': x[0], 'clinker': y[0]})
+
 
 class DualLinker(link.Linker):
     """WRITEME
@@ -1327,7 +1338,7 @@ class DualLinker(link.Linker):
     function.
     """
 
-    def __init__(self, checker = _default_checker):
+    def __init__(self, checker=_default_checker):
         """
         Initialize a DualLinker.
 
@@ -1353,10 +1364,11 @@ class DualLinker(link.Linker):
         self.env = None
         self.checker = checker
 
-    def accept(self, env, no_recycling = []):
+    def accept(self, env, no_recycling=[]):
         if self.env is not None and self.env is not env:
             return type(self)(self.checker).accept(env, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            # raise Exception("Cannot accept from a Linker that is already "
+            #                 "tied to another Env.")
         self.env = env
         self.no_recycling = no_recycling
         return self
@@ -1366,26 +1378,31 @@ class DualLinker(link.Linker):
         env = self.env
         no_recycling = self.no_recycling
 
-        _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(env,
+                                no_recycling=no_recycling).make_all(**kwargs)
         kwargs.pop('input_storage', None)
-        _f, i2, o2, thunks2, order2 =      OpWiseCLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 = OpWiseCLinker().accept(env,
+                                no_recycling=no_recycling).make_all(**kwargs)
 
         def f():
-            for input1, input2 in zip(i1, i2):
-                # set the inputs to be the same in both branches
-                # the copy is necessary in order for inplace ops not to interfere
+            for input1, input2 in izip(i1, i2):
+                # Set the inputs to be the same in both branches.
+                # The copy is necessary in order for inplace ops not to
+                # interfere.
                 input2.storage[0] = copy(input1.storage[0])
-            for thunk1, thunk2, node1, node2 in zip(thunks1, thunks2, order1, order2):
-                for output, storage in zip(node1.outputs, thunk1.outputs):
+            for thunk1, thunk2, node1, node2 in izip(thunks1, thunks2,
+                                                     order1, order2):
+                for output, storage in izip(node1.outputs, thunk1.outputs):
                     if output in no_recycling:
                         storage[0] = None
-                for output, storage in zip(node2.outputs, thunk2.outputs):
+                for output, storage in izip(node2.outputs, thunk2.outputs):
                     if output in no_recycling:
                         storage[0] = None
                 try:
                     thunk1()
                     thunk2()
-                    for output1, output2 in zip(thunk1.outputs, thunk2.outputs):
+                    for output1, output2 in izip(thunk1.outputs,
+                                                 thunk2.outputs):
                         self.checker(output1, output2)
                 except Exception:
                     link.raise_with_op(node1)
