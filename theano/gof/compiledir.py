@@ -173,8 +173,15 @@ def print_compiledir_content():
     for op_class, nb in table_op_class:
         print op_class, nb
 
-    big_key_files = sorted(big_key_files, key=lambda t: str(t[1]))
-    big_total_size = sum([size for dir, size, ops in big_key_files])
+    if big_key_files:
+        big_key_files = sorted(big_key_files, key=lambda t: str(t[1]))
+        big_total_size = sum([size for dir, size, ops in big_key_files])
+        print ("There are directories with key files bigger than %d bytes "
+               "(they probably contain big tensor constants)" %
+               max_key_file_size)
+        print ("They use %d bytes out of %d (total size used by all key files)"
+               "" % (big_total_size, total_key_sizes))
+
     print
     print "Directory with a key file bigger then %d bytes" % max_key_file_size,
     print "(probably they there is a big constant inside)"
@@ -183,10 +190,10 @@ def print_compiledir_content():
     for dir, size, ops in big_key_files:
         print dir, size, ops
 
-    nb_keys = sorted(nb_keys.iteritems(), key=lambda t: t[0])
+    nb_keys = sorted(nb_keys.iteritems())
     print
-    print "Number of key for a compiled module"
-    print "nb key/nb module with that number of key"
+    print "Number of keys for a compiled module"
+    print "number of keys/number of modules with that number of keys"
     for n_k, n_m in nb_keys:
         print n_k, n_m
 
