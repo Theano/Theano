@@ -730,10 +730,11 @@ class Elemwise(Op):
                     if odat is not None:
                         odat.resize(shape, refcheck = 0)
                     else:
-                        odat = numpy.ndarray(shape, dtype = output.type.dtype)
+                        odat = \
+                    numpy.ndarray(shape, dtype = output.type.dtype)
                 storage[0] = odat
 
-        ufunc_args = inputs # + output_storage
+        ufunc_args = inputs  # + output_storage
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]
@@ -745,9 +746,11 @@ class Elemwise(Op):
             # optimization is probably not worth the effort, since we
             # should normally run the C version of the Op.
         else:
-            # the second calling form is used because in certain versions of numpy
+            # the second calling form is
+            #used because in certain versions of numpy
             # the first (faster) version leads to segfaults
-            ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+            ufunc = self.ufunc or \
+             numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
             nout = ufunc.nout
 
         try:
@@ -767,13 +770,13 @@ class Elemwise(Op):
                 errormsg += 'outputs are: \n'
                 for i, output in enumerate(node.outputs):
                     errormsg += '(' + str(i) + ') ' + \
-                            min_informative_str(output)+'\n'
+                            min_informative_str(output) + '\n'
                 errormsg += 'original exception was: ' + \
                   '\n'.join( \
                   traceback.format_exception_only(*sys.exc_info()[0:2]))
                 raise Exception(errormsg)
             else:
-                e.args = (e.args, errormsg)
+                e.args = e.args + (errormsg, )
                 raise
 
         if nout == 1:
