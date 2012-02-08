@@ -117,7 +117,7 @@ class SparseInferShapeTester(unittest.TestCase):
             y = tensor.ivector()
             z = tensor.ivector()
             s = tensor.ivector()
-            spm = sp.csr_matrix(random_lil((100, 100), config.floatX, 5))
+            spm = sp.csr_matrix(random_lil((200, 400), config.floatX, 5))
             out = tensor.grad(dense_from_sparse(
                 CSM(sparsetype)(x, y, z, s)
             ).sum(), x)
@@ -132,7 +132,7 @@ class SparseInferShapeTester(unittest.TestCase):
         x = SparseType('csr', dtype=config.floatX)()
         self._compile_and_check([x],
                                 [x.T],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3))],
                                 Transpose)
 
@@ -140,7 +140,7 @@ class SparseInferShapeTester(unittest.TestCase):
         x = SparseType('csr', dtype=config.floatX)()
         self._compile_and_check([x],
                                 [-x],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3))],
                                 Neg)
 
@@ -149,9 +149,9 @@ class SparseInferShapeTester(unittest.TestCase):
         y = SparseType('csr', dtype=config.floatX)()
         self._compile_and_check([x, y],
                                 [x + y],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
-                                 sp.csr_matrix(random_lil((10, 10),
+                                 sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3))],
                                 AddSS)
 
@@ -160,7 +160,7 @@ class SparseInferShapeTester(unittest.TestCase):
         y = tensor.matrix()
         self._compile_and_check([x, y],
                                 [x + y],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
                                  numpy.random.randn(10, 10)],
                                 AddSD)
@@ -170,7 +170,7 @@ class SparseInferShapeTester(unittest.TestCase):
         y = SparseType('csr', dtype=config.floatX)()
         self._compile_and_check([x, y],
                                 [x * y],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
                                 ] * 2,
                                 MulSS)
@@ -180,7 +180,7 @@ class SparseInferShapeTester(unittest.TestCase):
         y = tensor.matrix()
         self._compile_and_check([x, y],
                                 [x * y],
-                                [sp.csr_matrix(random_lil((10, 10),
+                                [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
                                  numpy.random.randn(10, 10)],
                                 MulSD)
