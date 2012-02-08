@@ -164,7 +164,7 @@ class SparseInferShapeTester(unittest.TestCase):
                                 [x + y],
                                 [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
-                                 numpy.random.randn(10, 10)],
+                                 numpy.random.randn(10, 40)],
                                 AddSD)
 
     def test_mul_ss(self):
@@ -184,7 +184,7 @@ class SparseInferShapeTester(unittest.TestCase):
                                 [x * y],
                                 [sp.csr_matrix(random_lil((10, 40),
                                                config.floatX, 3)),
-                                 numpy.random.randn(10, 10)],
+                                 numpy.random.randn(10, 40)],
                                 MulSD)
 
 
