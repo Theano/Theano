@@ -119,7 +119,8 @@ class SparseInferShapeTester(unittest.TestCase):
             y = tensor.ivector()
             z = tensor.ivector()
             s = tensor.ivector()
-            spm = sp.csr_matrix(random_lil((200, 400), config.floatX, 5))
+            call = getattr(sp, sparsetype + '_matrix')
+            spm = call(random_lil((300, 400), config.floatX, 5))
             out = tensor.grad(dense_from_sparse(
                 CSM(sparsetype)(x, y, z, s)
             ).sum(), x)
