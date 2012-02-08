@@ -20,11 +20,12 @@ if enable_sparse == False:
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
-from theano.sparse import SparseType, StructuredDotCSC
+from theano.sparse import SparseType, StructuredDotCSC, CSMGrad
+from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
 from theano.sparse import Dot, Usmm, UsmmCscDense
-from theano.sparse import get_item_2d, get_item_scalar
+#from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
 from theano import tensor
@@ -89,6 +90,103 @@ class T_transpose(unittest.TestCase):
 
         vta = eval_outputs([ta])
         self.assertTrue(vta.shape == (3, 5))
+
+
+class SparseInferShapeTester(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def _compile_and_check(self, inputs, outputs, numeric_inputs, cls):
+        outputs_function = theano.function(inputs, outputs)
+        shapes_function = theano.function(inputs, [o.shape for o in outputs])
+        # Check that the Op is removed from the compiled function.
+        topo_shape = shapes_function.maker.env.toposort()
+        assert not any(isinstance(t.op, cls) for t in topo_shape)
+        topo_out = outputs_function.maker.env.toposort()
+        assert any(isinstance(t.op, cls) for t in topo_out)
+        # Check that the shape produced agrees with the actual shape.
+        numeric_outputs = outputs_function(*numeric_inputs)
+        numeric_shapes = shapes_function(*numeric_inputs)
+        for out, shape in zip(numeric_outputs, numeric_shapes):
+            assert numpy.all(out.shape == shape)
+
+    def test_getitem_2d(self):
+        raise SkipTest('infer_shape not implemented for GetItem2d yet')
+
+    def test_csm_grad(self):
+        for sparsetype in ('csr', 'csc'):
+            x = tensor.vector()
+            y = tensor.ivector()
+            z = tensor.ivector()
+            s = tensor.ivector()
+            call = getattr(sp, sparsetype + '_matrix')
+            spm = call(random_lil((300, 400), config.floatX, 5))
+            out = tensor.grad(dense_from_sparse(
+                CSM(sparsetype)(x, y, z, s)
+            ).sum(), x)
+            self._compile_and_check([x, y, z, s],
+                                    [out],
+                                    [spm.data, spm.indices, spm.indptr,
+                                     spm.shape],
+                                    CSMGrad
+                                   )
+
+    def test_transpose(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [x.T],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                Transpose)
+
+    def test_neg(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [-x],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                Neg)
+
+    def test_add_ss(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x, y],
+                                [x + y],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3)),
+                                 sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                AddSS)
+
+    def test_add_sd(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = tensor.matrix()
+        self._compile_and_check([x, y],
+                                [x + y],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3)),
+                                 numpy.random.randn(10, 40)],
+                                AddSD)
+
+    def test_mul_ss(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x, y],
+                                [x * y],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3)),
+                                ] * 2,
+                                MulSS)
+
+    def test_mul_sd(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        y = tensor.matrix()
+        self._compile_and_check([x, y],
+                                [x * y],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3)),
+                                 numpy.random.randn(10, 40)],
+                                MulSD)
 
 
 class T_AddMul(unittest.TestCase):
@@ -363,6 +461,22 @@ class test_structureddot(unittest.TestCase):
         utt.verify_grad(buildgraph,
                     [spmat.data, mat])
 
+    def test_infer_shape_csr_csc_grad(self):
+        for sparsetype in ('csr', 'csc'):
+            a = SparseType(sparsetype, dtype=config.floatX)()
+            b = SparseType(sparsetype, dtype=config.floatX)()
+            grads = tensor.grad(dense_from_sparse(structured_dot(a, b)).sum(),
+                                [a, b])
+            f = theano.function([a, b], [g.shape for g in grads])
+            topo = f.maker.env.toposort()
+            assert not any(isinstance(t, self.__class__) for t in topo)
+            call = getattr(sp, sparsetype + '_matrix')
+            x = call(random_lil((500, 300), config.floatX, 10))
+            y = call(random_lil((300, 400), config.floatX, 5))
+            out1, out2 = f(x, y)
+            assert numpy.all(out1 == x.shape)
+            assert numpy.all(out2 == y.shape)
+
     def test_upcast(self):
 
         typenames = ('float32', 'int64', 'int8', 'int32',
@@ -552,6 +666,16 @@ class test_structureddot(unittest.TestCase):
             if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
+
+    def test_infer_shape(self):
+        a = SparseType('csc', dtype=config.floatX)()
+        b = SparseType('csc', dtype=config.floatX)()
+        f = theano.function([a, b], structured_dot(a, b).shape)
+        topo = f.maker.env.toposort()
+        assert not any(isinstance(t, self.__class__) for t in topo)
+        x = sp.csc_matrix((4, 5), dtype=config.floatX)
+        y = sp.csc_matrix((5, 3), dtype=config.floatX)
+        assert numpy.all(f(x, y) == numpy.array((4, 3)))
 
 
 class DotTests(unittest.TestCase):
@@ -1028,7 +1152,7 @@ class Test_getitem(unittest.TestCase):
             assert r10.shape == t10.shape
             assert numpy.all(r10.toarray() == t10.toarray())
 
-            f11 = theano.function([x, a], x[:,a:])
+            f11 = theano.function([x, a], x[:, a:])
             r11 = f11(vx, p)
             t11 = vx[:, p:]
             assert r11.shape == t11.shape
@@ -1057,7 +1181,7 @@ class Test_getitem(unittest.TestCase):
             self.assertRaises(ValueError,
                     x.__getitem__, slice(tensor.fscalar('f'), None))
             self.assertRaises(ValueError,
-                    x.__getitem__, (slice(None), slice([1,3,4], None)))
+                    x.__getitem__, (slice(None), slice([1, 3, 4], None)))
 
     def test_GetItemScalar(self):
         sparse_formats = ('csc', 'csr')
