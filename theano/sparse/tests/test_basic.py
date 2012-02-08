@@ -100,8 +100,10 @@ class SparseInferShapeTester(unittest.TestCase):
         outputs_function = theano.function(inputs, outputs)
         shapes_function = theano.function(inputs, [o.shape for o in outputs])
         # Check that the Op is removed from the compiled function.
-        topo = shapes_function.maker.env.toposort()
-        assert not any(isinstance(t, cls) for t in topo)
+        topo_shape = shapes_function.maker.env.toposort()
+        assert not any(isinstance(t.op, cls) for t in topo_shape)
+        topo_out = outputs_function.maker.env.toposort()
+        assert any(isinstance(t.op, cls) for t in topo_out)
         # Check that the shape produced agrees with the actual shape.
         numeric_outputs = outputs_function(*numeric_inputs)
         numeric_shapes = shapes_function(*numeric_inputs)
