@@ -1,4 +1,7 @@
+import sys
+import traceback
 from copy import copy
+from itertools import izip
 
 import numpy
 
@@ -11,32 +14,29 @@ from theano.scalar import Scalar
 from theano.printing import min_informative_str, pprint
 from theano.gof.python25 import all, any
 config = theano.config
-import traceback
-import sys
 
 
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
 # placeholders and the tensor module fills them
 def as_tensor_variable(data):
-    raise Exception("Circular dependencies prevent using this",
-            "here. import tensor before elemwise")
+    raise Exception("Circular dependencies prevent using this"
+                    "here. import tensor before elemwise")
 
 
 def TensorType(*inputs, **kwargs):
-    raise Exception("Circular dependencies prevent ",
-            "using this here. import tensor before elemwise")
+    raise Exception("Circular dependencies prevent "
+                    "using this here. import tensor before elemwise")
 
 
 def TensorVariable(*inputs, **kwargs):
-    raise Exception("Circular ",
-            "dependencies ",
-            "prevent using this here. import tensor before elemwise")
+    raise Exception("Circular dependencies "
+                    "prevent using this here. import tensor before elemwise")
 
 
 def TensorConstant(*inputs, **kwargs):
-    raise Exception("Circular dependencies ",
-            "prevent using this here. import tensor before elemwise")
+    raise Exception("Circular dependencies "
+                    "prevent using this here. import tensor before elemwise")
 
 
 ##################
@@ -66,11 +66,10 @@ class DimShuffle(Op):
 
        This op will only work on 2d tensors with the first dimension
        broadcastable.
-       The second dimension of the
-       input tensor will be the first dimension of
+       The second dimension of the input tensor will be the first dimension of
        the resulting tensor.
-       If the tensor has shape (1, 20), the resulting tensor
-       will have shape (20, ).
+       If the tensor has shape (1, 20), the resulting tensor will have shape
+       (20, ).
 
     More examples:
       DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
@@ -730,8 +729,7 @@ class Elemwise(Op):
                     if odat is not None:
                         odat.resize(shape, refcheck = 0)
                     else:
-                        odat = \
-                    numpy.ndarray(shape, dtype = output.type.dtype)
+                        odat = numpy.ndarray(shape, dtype=output.type.dtype)
                 storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
@@ -746,21 +744,21 @@ class Elemwise(Op):
             # optimization is probably not worth the effort, since we
             # should normally run the C version of the Op.
         else:
-            # the second calling form is
-            #used because in certain versions of numpy
-            # the first (faster) version leads to segfaults
-            ufunc = self.ufunc or \
-             numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+            # the second calling form is used because in certain versions of
+            # numpy the first (faster) version leads to segfaults
+            ufunc = (self.ufunc or
+                     numpy.frompyfunc(self.scalar_op.impl, len(inputs),
+                                      self.scalar_op.nout))
             nout = ufunc.nout
 
         try:
             variables = ufunc(*ufunc_args)
         except Exception, e:
-
-            errormsg = 'While computing ' + str(node.outputs) + \
-                    ': Failed calling ufunc for op' + str(self.scalar_op) +\
-                    'for params of shape' + \
-                    str([arg.shape for arg in ufunc_args])
+            errormsg = ('While computing ' + str(node.outputs) +
+                        ': Failed calling ufunc for op ' +
+                        str(self.scalar_op) +
+                        'for params of shape ' +
+                        str([arg.shape for arg in ufunc_args]))
 
             if config.exception_verbosity == 'high':
                 errormsg += 'inputs are: \n'
@@ -771,9 +769,8 @@ class Elemwise(Op):
                 for i, output in enumerate(node.outputs):
                     errormsg += '(' + str(i) + ') ' + \
                             min_informative_str(output) + '\n'
-                errormsg += 'original exception was: ' + \
-                  '\n'.join( \
-                  traceback.format_exception_only(*sys.exc_info()[0:2]))
+                errormsg += 'original exception was: ' + '\n'.join(
+                        traceback.format_exception_only(*sys.exc_info()[0:2]))
                 raise Exception(errormsg)
             else:
                 e.args = e.args + (errormsg, )
@@ -781,8 +778,8 @@ class Elemwise(Op):
 
         if nout == 1:
             variables = [variables]
-        for variable, storage, nout \
-            in zip(variables, output_storage, node.outputs):
+        for variable, storage, nout in izip(variables, output_storage,
+                                            node.outputs):
             if str(getattr(variable, "dtype", "")) == 'object':
                 # Since numpy 1.6, function created with numpy.frompyfunc
                 # always return an ndarray with dtype object
