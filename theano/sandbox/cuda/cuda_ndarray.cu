@@ -453,7 +453,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
 
 
 
-PyObject * CudaNdarray_Copy(CudaNdarray * self)
+PyObject * CudaNdarray_Copy(const CudaNdarray * self)
 {
     PyObject * rval = CudaNdarray_New();
     if ((!rval) || (-1 == self->nd))
@@ -2777,7 +2777,7 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
 }
 
 //copy from other into self
-int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast)
+int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast)
 {
     int verbose = 0;
     if (verbose>1) fprintf(stderr, "CudaNdarray_CopyFromCudaNdarray\n");
@@ -2856,7 +2856,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
                 // call worker routine
                 unsigned int n_blocks = std::min(size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 unsigned int threads_per_block = std::min(ceil_intdiv(size, n_blocks), (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                CudaNdarray * cuda_dims = other;
+                const CudaNdarray * cuda_dims = other;
                 if(unbroadcast)
                     cuda_dims = self;
                 //copy from other into self
@@ -3099,7 +3099,7 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     return 0;
 }
 
-int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray * A) {
+int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, CudaNdarray * A) {
     if (x->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg x to sger"); return -1; }
     if (y->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg y to sger"); return -1; }
     if (A->nd != 2) { PyErr_SetString(PyExc_ValueError, "non-matrix arg A to sger"); return -1; }
@@ -3122,7 +3122,7 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
     }
     // Since Sger expects A in col-major, we invert x and y to fake this.
     int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
-    CudaNdarray * x_ = x;
+    const CudaNdarray * x_ = x;
     if(x_strides == 0){
         if(CudaNdarray_HOST_DIMS(x)[0] != 1){
             PyErr_Format(PyExc_RuntimeError,
@@ -3138,7 +3138,7 @@ int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray 
     }
 
     int y_strides = CudaNdarray_HOST_STRIDES(y)[0];
-    CudaNdarray * y_ = y;
+    const CudaNdarray * y_ = y;
     if(y_strides == 0){
         if(CudaNdarray_HOST_DIMS(y)[0] != 1){
             PyErr_Format(PyExc_RuntimeError,
@@ -3816,7 +3816,7 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
 
 
 int
-cnda_copy_structure_to_device(CudaNdarray * self)
+cnda_copy_structure_to_device(const CudaNdarray * self)
 {
     cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
     CNDA_THREAD_SYNC;
@@ -3830,7 +3830,7 @@ cnda_copy_structure_to_device(CudaNdarray * self)
 }
 
 const int *
-CudaNdarray_DEV_DIMS(CudaNdarray * self)
+CudaNdarray_DEV_DIMS(const CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
     {
@@ -3840,7 +3840,7 @@ CudaNdarray_DEV_DIMS(CudaNdarray * self)
     return self->dev_structure;
 }
 const int *
-CudaNdarray_DEV_STRIDES(CudaNdarray * self)
+CudaNdarray_DEV_STRIDES(const CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
     {
@@ -3850,7 +3850,7 @@ CudaNdarray_DEV_STRIDES(CudaNdarray * self)
     return self->dev_structure + self->nd;
 }
 const int *
-CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self)
+CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self)
 {
     if (!self->dev_structure_fresh)
     {

@@ -81,7 +81,7 @@ struct CudaNdarray
 
 
     //device pointers (allocated by cudaMalloc)
-    int dev_structure_fresh;
+    mutable int dev_structure_fresh;
     //dev_structure should be accessed via macros, otherwise may not be synchronized
     int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
@@ -154,11 +154,11 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
  *
  *  This means: recalculate the log2dims and transfer structure to the card
  */
-DllExport int cnda_copy_structure_to_device(CudaNdarray * self);
+DllExport int cnda_copy_structure_to_device(const CudaNdarray * self);
 
-DllExport const int *CudaNdarray_DEV_DIMS(CudaNdarray * self);
-DllExport const int *CudaNdarray_DEV_STRIDES(CudaNdarray * self);
-DllExport const int *CudaNdarray_DEV_LOG2DIMS(CudaNdarray * self);
+DllExport const int *CudaNdarray_DEV_DIMS(const CudaNdarray * self);
+DllExport const int *CudaNdarray_DEV_STRIDES(const CudaNdarray * self);
+DllExport const int *CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self);
 DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
 
 /**
@@ -283,7 +283,7 @@ DllExport PyObject * CudaNdarray_DeepCopy(CudaNdarray * self, PyObject * memo);
 /**
  * Return an independent copy of self
  */
-DllExport PyObject * CudaNdarray_Copy(CudaNdarray * self);
+DllExport PyObject * CudaNdarray_Copy(const CudaNdarray * self);
 
 /**
  * Return a new object obtained by summing over the dimensions for which there is a 1 in the mask.
@@ -302,7 +302,7 @@ DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  *
  * self is reallocated to have the correct dimensions if necessary.
  */
-DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast = false);
+DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
@@ -321,7 +321,7 @@ DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
 
 DllExport int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
 DllExport int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
-DllExport int CudaNdarray_sger(float alpha, CudaNdarray * x, CudaNdarray * y, CudaNdarray* A);
+DllExport int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, CudaNdarray* A);
 
 DllExport int CudaNdarray_reduce_sum(CudaNdarray * self, CudaNdarray * A);
 DllExport int CudaNdarray_reduce_prod(CudaNdarray * self, CudaNdarray * A);
