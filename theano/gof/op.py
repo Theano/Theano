@@ -509,6 +509,16 @@ class PureOp(object):
         """
         raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
 
+    def do_constant_folding(self, node):
+        """
+        This allows each op to determine if it wants to be constant
+        folded when all its inputs are constant. This allows it to
+        choose where it puts its memory/speed trade-off. Also, it
+        could make things faster as constants can't be used for inplace
+        operations (see *IncSubtensor).
+        """
+        return True
+
 
 class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""

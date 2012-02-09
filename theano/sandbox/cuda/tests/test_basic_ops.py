@@ -728,7 +728,16 @@ def test_gpualloc_output_to_gpu():
     assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape)+9,f_gpu(9))
     assert numpy.allclose(f(5),f_gpu(5))
 
+
 import theano.tensor.tests.test_basic
+
+
+class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
+    dtype = "float32"
+    mode = mode_with_gpu
+    shared = staticmethod(cuda.shared_constructor)
+    allocs = [B.GpuAlloc, B.GpuAlloc, tensor.Alloc]
+
 class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
     def setUp(self):
         utt.seed_rng()

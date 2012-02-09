@@ -48,6 +48,11 @@ except ImportError:
         mode_no_scipy = "FAST_RUN"
 floatX = config.floatX
 
+if config.mode == "FAST_COMPILE":
+    mode_opt = "FAST_RUN"
+else:
+    mode_opt = get_default_mode()
+
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
 
@@ -1265,6 +1270,48 @@ Alloc13GradTester = makeBroadcastTester(
             x3 = (rand(s3),),
             ),
         )
+
+
+class TestAlloc(unittest.TestCase):
+    dtype = config.floatX
+    mode = mode_opt
+    shared = staticmethod(theano.shared)
+    allocs = [tensor.Alloc] * 3
+
+    def test_alloc_constant_folding(self):
+        test_params = numpy.asarray(numpy.random.randn(50 * 60),
+                                    self.dtype)
+
+        some_vector = vector('some_vector', dtype=self.dtype)
+        some_matrix = some_vector.reshape((60, 50))
+        variables = self.shared(numpy.ones((50,), dtype=self.dtype))
+        idx = tensor.constant(numpy.arange(50))
+
+        for alloc, (subtensor, n_alloc) in zip(self.allocs, [
+                #IncSubtensor1
+                (some_matrix[:60], 2),
+                #AdvancedIncSubtensor1
+                (some_matrix[arange(60)], 2),
+                #AdvancedIncSubtensor
+                (some_matrix[idx, idx], 1)]):
+            derp = sum(dot(subtensor, variables))
+
+            fobj = theano.function([some_vector], derp, mode=self.mode)
+            grad_derp = theano.grad(derp, some_vector)
+            fgrad = theano.function([some_vector], grad_derp,
+                                    mode=self.mode)
+            topo_obj = fobj.maker.env.toposort()
+            assert numpy.sum([isinstance(node.op, alloc)
+                              for node in topo_obj]) == 0
+            topo_grad = fgrad.maker.env.toposort()
+
+            #print subtensor
+            #theano.printing.debugprint(fgrad)
+            assert numpy.sum([isinstance(node.op, alloc)
+                              for node in topo_grad]) == n_alloc
+            fobj(test_params)
+            fgrad(test_params)
+
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):
