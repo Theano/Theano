@@ -217,6 +217,20 @@ following methods:
    ``__str__`` method include the name of the op and the Op's parameters'
    values.
 
+.. function:: do_constant_folding(node)
+
+   *Default:* Return True
+
+   By default when optimizations are enabled, we remove during
+   function compilation apply node that have all their input
+   constants. We replace the Apply node with a Theano constant
+   variable. This way, the apply node is not executed at each function
+   call. If you want to force the execution of an op during the
+   function call, make do_constant_folding return False.
+
+   As done in the Alloc op, you can return False only in some case by
+   analysing the graph from the node parameter.
+
 At a bare minimum, a new Op must define ``make_node`` and ``perform``, which
 have no defaults.
 

@@ -2616,6 +2616,16 @@ class Alloc(gof.Op):
             return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
+    def do_constant_folding(self, node):
+        if python_any([isinstance(client[0].op, (IncSubtensor,
+                                                 AdvancedIncSubtensor1,
+                                                 AdvancedIncSubtensor,
+                                                 ))
+                       for client in node.outputs[0].clients]):
+            return False
+        return True
+
+
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
