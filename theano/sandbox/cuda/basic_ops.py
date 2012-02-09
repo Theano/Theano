@@ -2004,6 +2004,17 @@ class GpuAlloc(Op):
     def c_code_cache_version(self):
         return (3,)
 
+    def do_constant_folding(self, node):
+        if any([isinstance(client[0].op, (
+                        tensor.IncSubtensor,
+                        tensor.AdvancedIncSubtensor1,
+                        GpuIncSubtensor,
+                        GpuAdvancedIncSubtensor1
+                        ))
+                for client in node.outputs[0].clients]):
+            return False
+        return True
+
 gpu_alloc = GpuAlloc()
 
 
