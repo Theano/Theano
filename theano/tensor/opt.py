@@ -3768,7 +3768,7 @@ def constant_folding(node):
             return False
     #condition:  all inputs are constant
     if not node.op.do_constant_folding(node):
-        # The op ask to don't be constant folded.
+        # The op asks not to be constant folded.
         return False
 
     storage_map = dict([(i, [i.data]) for i in node.inputs])

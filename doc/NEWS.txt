@@ -3,6 +3,7 @@
 Since 0.5rc2
 
  * Fixed a memory leak with shared variable (we kept a pointer to the original value)
+ * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization) at compile time if all their inputs are constant
  * The keys in our cache now store the hash of constants and not the constant values themselves. This is significantly more efficient for big constant arrays.
  * 'theano-cache list' lists key files bigger than 1M
  * 'theano-cache list' prints an histogram of the number of keys per compiled module

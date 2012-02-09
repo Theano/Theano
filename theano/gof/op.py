@@ -511,11 +511,11 @@ class PureOp(object):
 
     def do_constant_folding(self, node):
         """
-        This allow each op to dertermine if they want to be constant
-        folded when all there in put are constant. This allow them to
-        choose where they put their memory/speed trade off. Also, it
-        could make thing faster as Constant can't be used for inplace
-        operation(see *IncSubtensor)
+        This allows each op to determine if it wants to be constant
+        folded when all its inputs are constant. This allows it to
+        choose where it puts its memory/speed trade-off. Also, it
+        could make things faster as constants can't be used for inplace
+        operations (see *IncSubtensor).
         """
         return True
 
