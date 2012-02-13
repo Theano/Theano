@@ -1,3 +1,4 @@
+import itertools
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
@@ -31,6 +32,10 @@ else:
 
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
+
+def transpose(cuda_mat):
+    # The easiest way to transpose a cuda matrix for now
+    return tcn.dimshuffle(cuda_mat, [1, 0])
 
 def test_dot22():
     def cmp(a_shp, b_shp):
@@ -160,6 +165,58 @@ def test_gemm_no_inplace():
     cmp((3,0),(0,5))
     cmp((0,4),(4,0))
     cmp((0,0),(0,0))
+
+
+def test_ger_strides():
+    def cmp(a_shp, b_shp, c_shp):
+        av = my_rand(*a_shp)
+        bv = my_rand(b_shp)
+        cv = my_rand(c_shp)
+        l = numpy.float32(0.2)
+
+        a = tcn.shared_constructor(av, 'a')
+        b = tcn.shared_constructor(bv, 'b')
+        c = tcn.shared_constructor(cv, 'c')
+        a_t = tcn.shared_constructor(av.T, 'a.T')
+
+        a_gpu = a.get_value(borrow=False, return_internal_type=True)
+        b_gpu = b.get_value(borrow=False, return_internal_type=True)
+        c_gpu = c.get_value(borrow=False, return_internal_type=True)
+
+        f_n = pfunc([], [], updates={a: (a + l * tensor.outer(b, c))},
+                mode=mode_with_gpu)
+
+        f_t = pfunc([], [], updates={a_t: (a_t + l * tensor.outer(b, c).T)},
+                mode=mode_with_gpu)
+
+        # Try with all stride patterns, and all transposed patterns
+        for steps in itertools.product((1, -1), repeat=4):
+            a_step1, a_step2, b_step, c_step = steps
+            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+            a_t.set_value(transpose(a_gpu.copy())[::a_step1, ::a_step2],
+                    borrow=True)
+            b.set_value(b_gpu.copy()[::b_step], borrow=True)
+            c.set_value(c_gpu.copy()[::c_step], borrow=True)
+
+            f_n()
+            n_n = (av[::a_step1, ::a_step2]
+                    + l * numpy.outer(bv[::b_step], cv[::c_step]))
+            assert numpy.allclose(a.get_value(), n_n), (a.get_value(), n_n)
+
+            f_t()
+            n_t = (av.T[::a_step1, ::a_step2]
+                    + l * numpy.outer(bv[::b_step], cv[::c_step]).T)
+            assert numpy.allclose(a_t.get_value(), n_t), (a_t.get_value(), n_t)
+
+    cmp((3, 5), 3, 5)
+    cmp((1, 5), 1, 5)
+    cmp((3, 1), 3, 1)
+    cmp((0, 5), 0, 5)
+    cmp((3, 0), 3, 0)
+    cmp((0, 1), 0, 1)
+    cmp((1, 0), 1, 0)
+    cmp((0, 0), 0, 0)
+
 
 def test_outer():
     x = tcn.shared_constructor(my_rand(8,), 'x')
