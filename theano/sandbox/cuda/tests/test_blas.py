@@ -167,6 +167,114 @@ def test_gemm_no_inplace():
     cmp((0,0),(0,0))
 
 
+def test_gemm_strides():
+    def cmp(a_shp, b_shp, c_shp):
+        av = my_rand(*a_shp)
+        bv = my_rand(*b_shp)
+        cv = my_rand(*c_shp)
+        l = numpy.float32(0.2)
+
+        a = tcn.shared_constructor(av, 'a')
+        b = tcn.shared_constructor(bv, 'b')
+        c = tcn.shared_constructor(cv, 'c')
+
+        a_t = tcn.shared_constructor(av.T, 'a.T')
+        b_t = tcn.shared_constructor(bv.T, 'b.T')
+        c_t = tcn.shared_constructor(cv.T, 'c.T')
+
+        a_gpu = a.get_value(borrow=False, return_internal_type=True)
+        b_gpu = b.get_value(borrow=False, return_internal_type=True)
+        c_gpu = c.get_value(borrow=False, return_internal_type=True)
+        bt_gpu = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_gpu = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nnn = pfunc([], [], updates={a: (l * a + tensor.dot(b, c))},
+                mode=mode_with_gpu)
+        f_nnt = pfunc([], [], updates={a: (l * a + tensor.dot(b, c_t.T))},
+                mode=mode_with_gpu)
+        f_ntn = pfunc([], [], updates={a: (l * a + tensor.dot(b_t.T, c))},
+                mode=mode_with_gpu)
+        f_ntt = pfunc([], [], updates={a: (l * a + tensor.dot(b_t.T, c_t.T))},
+                mode=mode_with_gpu)
+        f_tnn = pfunc([], [], updates={a_t: (l * a_t + tensor.dot(b, c).T)},
+                mode=mode_with_gpu)
+        f_tnt = pfunc([], [], updates={a_t: (l * a_t + tensor.dot(b, c_t.T).T)},
+                mode=mode_with_gpu)
+        f_ttn = pfunc([], [], updates={a_t: (l * a_t + tensor.dot(b_t.T, c).T)},
+                mode=mode_with_gpu)
+        f_ttt = pfunc([], [], updates={a_t: (l * a_t + tensor.dot(b_t.T, c_t.T).T)},
+                mode=mode_with_gpu)
+
+        # Try with all stride patterns, and all transposed pattern
+        for steps in itertools.product((-1, 1), repeat=6):
+            a_step1, a_step2, b_step1, b_step2, c_step1, c_step2 = steps
+
+            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+
+            # Numpy results
+            a_n = (l * av[::a_step1, ::a_step2]
+                   + numpy.dot(bv[::b_step1, ::b_step2],
+                               cv[::c_step1, ::c_step2]))
+            at_n = (l * av[::a_step1, ::a_step2].T
+                    + numpy.dot(bv[::b_step1, ::b_step2],
+                                cv[::c_step1, ::c_step2]).T)
+
+            # a's value is updated, so we need to reinitialize it each time
+            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+            f_nnn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+            f_nnt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+            f_ntn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+            f_ntt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                    borrow=True)
+            f_tnn()
+            assert numpy.allclose(a_t.get_value(), at_n)
+
+            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                    borrow=True)
+            f_tnt()
+            assert numpy.allclose(a_t.get_value(), at_n)
+
+            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                    borrow=True)
+            f_ttn()
+            assert numpy.allclose(a_t.get_value(), at_n)
+
+            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                    borrow=True)
+            f_ttt()
+            assert numpy.allclose(a_t.get_value(), at_n)
+
+
+    cmp((3, 5), (3, 4), (4, 5))
+    cmp((1, 5), (1, 4), (4, 5))
+    cmp((3, 1), (3, 4), (4, 1))
+    cmp((3, 1), (3, 1), (1, 1))
+    cmp((1, 1), (1, 4), (4, 1))
+    cmp((3, 5), (3, 1), (1, 5))
+    cmp((0, 5), (0, 4), (4, 5))
+    cmp((0, 1), (0, 4), (4, 1))
+    cmp((0, 5), (0, 1), (1, 5))
+    cmp((3, 0), (3, 4), (4, 0))
+    cmp((3, 5), (3, 0), (0, 5))
+    cmp((0, 0), (0, 4), (4, 0))
+    cmp((0, 0), (0, 0), (0, 0))
+
+
 def test_ger_strides():
     def cmp(a_shp, b_shp, c_shp):
         av = my_rand(*a_shp)
