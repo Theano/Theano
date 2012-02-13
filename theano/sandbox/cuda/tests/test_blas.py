@@ -34,17 +34,24 @@ def my_rand(*shape):
 
 def test_dot22():
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
 
         b = tensor.fmatrix()
 
         f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
-        a0 = a.get_value() * 1.0
         bval = my_rand(*b_shp)
         f(bval)
 
         assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval)
 
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
@@ -90,7 +97,8 @@ def test_dot22scalar():
 
 def test_gemm():
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
 
         b = tensor.fmatrix('b')
         c = tensor.fmatrix('c')
@@ -98,12 +106,19 @@ def test_gemm():
         f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
         assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
-        a0 = a.get_value() * 1.0
         bval = my_rand(*b_shp)
         cval = my_rand(a_shp[0],b_shp[1])
         f(bval,cval)
 
         assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval, cval)
+
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
     cmp((3,4),(4,0))
@@ -114,7 +129,8 @@ def test_gemm():
 def test_gemm_no_inplace():
 
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
         cval = my_rand(a_shp[0], b_shp[1])
         c = tcn.shared_constructor(cval.copy(), 'c')
 
@@ -123,7 +139,6 @@ def test_gemm_no_inplace():
 
         f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
 
-        a0 = a.get_value() * 1.0
         assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
         bval = my_rand(*b_shp)
         bval2 = my_rand(*b_shp)
@@ -131,6 +146,13 @@ def test_gemm_no_inplace():
 
         assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
         assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval, bval2)
 
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
