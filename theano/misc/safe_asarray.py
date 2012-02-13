@@ -19,11 +19,9 @@ def _asarray(a, dtype, order=None):
     data type to the user-provided type. For more information see ticket
     http://projects.scipy.org/numpy/ticket/870.
 
-    Currently, this issue has only been causing trouble when the target
-    data type is 'int32' or 'int64', on some computers. As a result, we
-    silently fix it only in this situation: if a type mismatch is detected
-    with another data type, an exception is raised (if that happens, then this
-    function may need to be modified to also handle this other data type).
+    In that case, we check that both dtype have the same string
+    description (byte order, basic type, and number of bytes), and
+    return a view with the desired dtype.
 
     This function's name starts with a '_' to indicate that it is meant to be
     used internally. It is imported so as to be available directly through
