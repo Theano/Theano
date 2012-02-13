@@ -23,10 +23,13 @@ What's New
 [Include the content of NEWS.txt here]
 
 
-Download
---------
+Download and Install
+--------------------
 
 You can download Theano from http://pypi.python.org/pypi/Theano.
+
+Installation instructions are available at
+http://http://deeplearning.net/software/theano/install.html.
 
 Description
 -----------
