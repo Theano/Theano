@@ -2422,10 +2422,11 @@ class Composite(ScalarOp):
         rval = []
         for subnode, subnodename in zip(self.env.toposort(), self.nodenames):
             try:
-                rval.append(
-                        subnode.op.c_support_code_apply(
+                subnode_support_code = subnode.op.c_support_code_apply(
                             subnode,
-                            subnodename % dict(nodename=name)))
+                            subnodename % dict(nodename=name))
+                if subnode_support_code:
+                    rval.append(subnode_support_code)
             except gof.utils.MethodNotDefined:
                 pass
         # there should be no need to remove duplicate code blocks because
