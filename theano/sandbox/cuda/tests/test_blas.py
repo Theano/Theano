@@ -167,6 +167,141 @@ def test_gemm_no_inplace():
     cmp((0,0),(0,0))
 
 
+def test_dot22_strides():
+    def cmp(b_shp, c_shp):
+        av = numpy.zeros((0, 0), dtype='float32')
+        bv = my_rand(*b_shp)
+        cv = my_rand(*c_shp)
+
+        a = tcn.shared_constructor(av, 'a')
+        b = tcn.shared_constructor(bv, 'b')
+        c = tcn.shared_constructor(cv, 'c')
+
+        b_t = tcn.shared_constructor(bv.T, 'b.T')
+        c_t = tcn.shared_constructor(cv.T, 'c.T')
+
+        b_gpu = b.get_value(borrow=False, return_internal_type=True)
+        c_gpu = c.get_value(borrow=False, return_internal_type=True)
+        bt_gpu = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_gpu = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nn = pfunc([], [], updates={a: tensor.dot(b, c)},
+                mode=mode_with_gpu)
+        f_nt = pfunc([], [], updates={a: tensor.dot(b, c_t.T)},
+                mode=mode_with_gpu)
+        f_tn = pfunc([], [], updates={a: tensor.dot(b_t.T, c)},
+                mode=mode_with_gpu)
+        f_tt = pfunc([], [], updates={a: tensor.dot(b_t.T, c_t.T)},
+                mode=mode_with_gpu)
+
+        # Try with all stride patterns, and all transposed pattern
+        for steps in itertools.product((-1, 1), repeat=4):
+            b_step1, b_step2, c_step1, c_step2 = steps
+
+            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+
+            # Numpy result
+            a_n = numpy.dot(bv[::b_step1, ::b_step2],
+                            cv[::c_step1, ::c_step2])
+
+            f_nn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_nt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_tn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_tt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+    cmp((3, 4), (4, 5))
+    cmp((1, 4), (4, 5))
+    cmp((3, 4), (4, 1))
+    cmp((3, 1), (1, 1))
+    cmp((1, 4), (4, 1))
+    cmp((3, 1), (1, 5))
+    cmp((0, 4), (4, 5))
+    cmp((0, 4), (4, 1))
+    cmp((0, 1), (1, 5))
+    cmp((3, 4), (4, 0))
+    cmp((3, 0), (0, 5))
+    cmp((0, 4), (4, 0))
+    cmp((0, 0), (0, 0))
+
+
+def test_dot22scalar_strides():
+    def cmp(b_shp, c_shp):
+        av = numpy.zeros((0, 0), dtype='float32')
+        bv = my_rand(*b_shp)
+        cv = my_rand(*c_shp)
+        l = numpy.float32(0.2)
+
+        a = tcn.shared_constructor(av, 'a')
+        b = tcn.shared_constructor(bv, 'b')
+        c = tcn.shared_constructor(cv, 'c')
+
+        b_t = tcn.shared_constructor(bv.T, 'b.T')
+        c_t = tcn.shared_constructor(cv.T, 'c.T')
+
+        b_gpu = b.get_value(borrow=False, return_internal_type=True)
+        c_gpu = c.get_value(borrow=False, return_internal_type=True)
+        bt_gpu = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_gpu = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nn = pfunc([], [], updates={a: l * tensor.dot(b, c)},
+                mode=mode_with_gpu)
+        f_nt = pfunc([], [], updates={a: l * tensor.dot(b, c_t.T)},
+                mode=mode_with_gpu)
+        f_tn = pfunc([], [], updates={a: l * tensor.dot(b_t.T, c)},
+                mode=mode_with_gpu)
+        f_tt = pfunc([], [], updates={a: l * tensor.dot(b_t.T, c_t.T)},
+                mode=mode_with_gpu)
+
+        # Try with all stride patterns, and all transposed pattern
+        for steps in itertools.product((-1, 1), repeat=4):
+            b_step1, b_step2, c_step1, c_step2 = steps
+
+            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+
+            # Numpy result
+            a_n = l * numpy.dot(bv[::b_step1, ::b_step2],
+                                cv[::c_step1, ::c_step2])
+
+            f_nn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_nt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_tn()
+            assert numpy.allclose(a.get_value(), a_n)
+
+            f_tt()
+            assert numpy.allclose(a.get_value(), a_n)
+
+    cmp((3, 4), (4, 5))
+    cmp((1, 4), (4, 5))
+    cmp((3, 4), (4, 1))
+    cmp((3, 1), (1, 1))
+    cmp((1, 4), (4, 1))
+    cmp((3, 1), (1, 5))
+    cmp((0, 4), (4, 5))
+    cmp((0, 4), (4, 1))
+    cmp((0, 1), (1, 5))
+    cmp((3, 4), (4, 0))
+    cmp((3, 0), (0, 5))
+    cmp((0, 4), (4, 0))
+    cmp((0, 0), (0, 0))
+
+
 def test_gemm_strides():
     def cmp(a_shp, b_shp, c_shp):
         av = my_rand(*a_shp)
