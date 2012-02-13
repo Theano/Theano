@@ -410,6 +410,58 @@ def test_gemm_strides():
     cmp((0, 0), (0, 0), (0, 0))
 
 
+def test_gemv_strides():
+    def cmp(a_shp, b_shp, c_shp):
+        av = my_rand(a_shp)
+        bv = my_rand(*b_shp)
+        cv = my_rand(c_shp)
+        l = numpy.float32(0.2)
+
+        a = tcn.shared_constructor(av, 'a')
+        b = tcn.shared_constructor(bv, 'b')
+        c = tcn.shared_constructor(cv, 'c')
+        b_t = tcn.shared_constructor(bv.T, 'b.T')
+
+        a_gpu = a.get_value(borrow=False, return_internal_type=True)
+        b_gpu = b.get_value(borrow=False, return_internal_type=True)
+        c_gpu = c.get_value(borrow=False, return_internal_type=True)
+
+        f_n = pfunc([], [], updates={a: (a + l * tensor.dot(b, c))},
+                mode=mode_with_gpu)
+
+        f_t = pfunc([], [], updates={a: (a + l * tensor.dot(b_t.T, c))},
+                mode=mode_with_gpu)
+
+        # Try with all stride patterns, and all transposed pattern
+        for steps in itertools.product((1, -1), repeat=4):
+            a_step, b_step1, b_step2, c_step = steps
+
+            a.set_value(a_gpu.copy()[::a_step], borrow=True)
+            b.set_value(b_gpu.copy()[::b_step1, ::b_step2],
+                    borrow=True)
+            b_t.set_value(transpose(b_gpu.copy())[::b_step2, ::b_step1],
+                    borrow=True)
+            c.set_value(c_gpu.copy()[::c_step], borrow=True)
+
+            a_n = (av[::a_step]
+                    + l * numpy.dot(bv[::b_step1, ::b_step2], cv[::c_step]))
+            f_n()
+            assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+
+            a.set_value(a_gpu.copy()[::a_step], borrow=True)
+            f_t()
+            assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+
+    cmp(3, (3, 5), 5)
+    cmp(1, (1, 5), 5)
+    cmp(3, (3, 1), 1)
+    cmp(0, (0, 5), 5)
+    cmp(3, (3, 0), 0)
+    cmp(0, (0, 1), 1)
+    cmp(1, (1, 0), 0)
+    cmp(0, (0, 0), 0)
+
+
 def test_ger_strides():
     def cmp(a_shp, b_shp, c_shp):
         av = my_rand(*a_shp)
