@@ -497,6 +497,8 @@ class GemmRelated(Op):
             || ((Sx[0] != type_size) && (Sx[1] != type_size)))
         {
             PyArrayObject * _x_copy = PyArray_GETCONTIGUOUS(%(_x)s);
+            if (!_x_copy)
+                %(fail)s
             Py_XDECREF(%(_x)s);
             %(_x)s = _x_copy;
             Sx = %(_x)s->strides;
@@ -506,6 +508,8 @@ class GemmRelated(Op):
             || ((Sy[0] != type_size) && (Sy[1] != type_size)))
         {
             PyArrayObject * _y_copy = PyArray_GETCONTIGUOUS(%(_y)s);
+            if (!_y_copy)
+                %(fail)s
             Py_XDECREF(%(_y)s);
             %(_y)s = _y_copy;
             Sy = %(_y)s->strides;
@@ -515,6 +519,8 @@ class GemmRelated(Op):
             || ((Sz[0] != type_size) && (Sz[1] != type_size)))
         {
             PyArrayObject * _z_copy = PyArray_GETCONTIGUOUS(%(_zout)s);
+            if (!_z_copy)
+                %(fail)s
             Py_XDECREF(%(_zout)s);
             %(_zout)s = _z_copy;
             Sz = %(_zout)s->strides;
@@ -649,7 +655,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (10,)
+        return (11,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
