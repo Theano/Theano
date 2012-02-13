@@ -390,6 +390,26 @@ class TestGpuGer(TestGer):
         self.ger = gpu_ger_inplace
         self.gemm = tcn.blas.gpu_gemm_inplace
 
+class TestGpuGerNoTransfer(TestGer):
+    @staticmethod
+    def shared(val):
+        try:
+            return tcn.shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
+    def setUp(self):
+        self.mode = mode_with_gpu
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        # data on the gpu make the op always inplace
+        self.ger = gpu_ger_inplace
+        self.ger_destructive = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_inplace
+
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):

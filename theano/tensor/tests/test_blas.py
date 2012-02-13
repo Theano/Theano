@@ -1355,6 +1355,7 @@ class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
 
 
 class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
+    shared = staticmethod(theano.shared)
 
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
@@ -1480,7 +1481,7 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         return self.given_dtype('complex128', 1, 9)
 
     def test_inplace(self):
-        A = theano.shared(numpy.random.rand(4, 5).astype(self.dtype))
+        A = self.shared(numpy.random.rand(4, 5).astype(self.dtype))
         f = self.function([self.x, self.y], [],
                           updates={A: A + T.constant(0.1, dtype=self.dtype) *
                                    T.outer(self.x, self.y)})
@@ -1488,6 +1489,8 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))
 
-        A.set_value(A.get_value(borrow=True)[::-1, ::-1], borrow=True)
+        A.set_value(
+            A.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+            borrow=True)
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))
