@@ -79,12 +79,16 @@ Linux
 Alternative installation on Ubuntu with PPA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Benjamin J. McCann provides `installation documentation <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for Ubuntu 11.04 with CUDA 4.0 PPA.
+Benjamin J. McCann provides `installation documentation
+<http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for
+Ubuntu 11.04 with CUDA 4.0 PPA.
 
 Gentoo
 ~~~~~~
 
-Brian Vandenberg emailed `installation instructions on Gentoo <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`.
+Brian Vandenberg emailed `installation instructions on Gentoo
+<http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
+focusing on how to install the appropriate dependencies.
 
 
 .. _linux_basic:
