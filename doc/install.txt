@@ -336,7 +336,7 @@ directly).
 (against which Theano links) does not work. If you have root or sudo access in
 fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian
 ``sudo apt-get install libblas-dev``. Then use the Theano flags
-``blas.ldflags=-lblas``. Not that the default version of blas is not optimized.
+``blas.ldflags=-lblas``. Note that the default version of blas is not optimized.
 Using an optimized version can give up to 10x speedups in the BLAS functions
 that we use.
 
