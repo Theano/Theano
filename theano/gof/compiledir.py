@@ -223,13 +223,8 @@ def print_compiledir_content():
         print ("They use %d bytes out of %d (total size used by all key files)"
                "" % (big_total_size, total_key_sizes))
 
-    print
-    print "Directory with a key file bigger then %d bytes" % max_key_file_size,
-    print "(probably they there is a big constant inside)"
-    print "There total are %d bytes on a total size of %d for key files" % (
-        big_total_size, total_key_sizes)
-    for dir, size, ops in big_key_files:
-        print dir, size, ops
+        for dir, size, ops in big_key_files:
+            print dir, size, ops
 
     nb_keys = sorted(nb_keys.iteritems())
     print
