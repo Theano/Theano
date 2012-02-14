@@ -195,29 +195,31 @@ def test_dot22_strides():
                 mode=mode_with_gpu)
 
         # Try with all stride patterns, and all transposed pattern
-        for steps in itertools.product((-1, 1), repeat=4):
-            b_step1, b_step2, c_step1, c_step2 = steps
+        for step_signs in itertools.product((-1, 1), repeat=4):
+            for step in (1, 2):
+                b_step1, b_step2, c_step1, c_step2 = (s * step
+                        for s in step_signs)
 
-            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
-            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
-            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
-            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+                b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
 
-            # Numpy result
-            a_n = numpy.dot(bv[::b_step1, ::b_step2],
-                            cv[::c_step1, ::c_step2])
+                # Numpy result
+                a_n = numpy.dot(bv[::b_step1, ::b_step2],
+                                cv[::c_step1, ::c_step2])
 
-            f_nn()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_nn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_nt()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_nt()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_tn()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_tn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_tt()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_tt()
+                assert numpy.allclose(a.get_value(), a_n)
 
     cmp((3, 4), (4, 5))
     cmp((1, 4), (4, 5))
@@ -263,29 +265,31 @@ def test_dot22scalar_strides():
                 mode=mode_with_gpu)
 
         # Try with all stride patterns, and all transposed pattern
-        for steps in itertools.product((-1, 1), repeat=4):
-            b_step1, b_step2, c_step1, c_step2 = steps
+        for step_signs in itertools.product((-1, 1), repeat=4):
+            for step in (1, 2):
+                b_step1, b_step2, c_step1, c_step2 = (s * step
+                        for s in step_signs)
 
-            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
-            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
-            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
-            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+                b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
 
-            # Numpy result
-            a_n = l * numpy.dot(bv[::b_step1, ::b_step2],
-                                cv[::c_step1, ::c_step2])
+                # Numpy result
+                a_n = l * numpy.dot(bv[::b_step1, ::b_step2],
+                                    cv[::c_step1, ::c_step2])
 
-            f_nn()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_nn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_nt()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_nt()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_tn()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_tn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            f_tt()
-            assert numpy.allclose(a.get_value(), a_n)
+                f_tt()
+                assert numpy.allclose(a.get_value(), a_n)
 
     cmp((3, 4), (4, 5))
     cmp((1, 4), (4, 5))
@@ -341,58 +345,60 @@ def test_gemm_strides():
                 mode=mode_with_gpu)
 
         # Try with all stride patterns, and all transposed pattern
-        for steps in itertools.product((-1, 1), repeat=6):
-            a_step1, a_step2, b_step1, b_step2, c_step1, c_step2 = steps
+        for step_signs in itertools.product((-1, 1), repeat=6):
+            for step in (1, 2):
+                a_step1, a_step2, b_step1, b_step2, c_step1, c_step2 = \
+                        (s * step for s in step_signs)
 
-            b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
-            c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
-            b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
-            c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
+                b.set_value(b_gpu.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_gpu.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_gpu.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_gpu.copy()[::c_step2, ::c_step1], borrow=True)
 
-            # Numpy results
-            a_n = (l * av[::a_step1, ::a_step2]
-                   + numpy.dot(bv[::b_step1, ::b_step2],
-                               cv[::c_step1, ::c_step2]))
-            at_n = (l * av[::a_step1, ::a_step2].T
-                    + numpy.dot(bv[::b_step1, ::b_step2],
-                                cv[::c_step1, ::c_step2]).T)
+                # Numpy results
+                a_n = (l * av[::a_step1, ::a_step2]
+                       + numpy.dot(bv[::b_step1, ::b_step2],
+                                   cv[::c_step1, ::c_step2]))
+                at_n = (l * av[::a_step1, ::a_step2].T
+                        + numpy.dot(bv[::b_step1, ::b_step2],
+                                    cv[::c_step1, ::c_step2]).T)
 
-            # a's value is updated, so we need to reinitialize it each time
-            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
-            f_nnn()
-            assert numpy.allclose(a.get_value(), a_n)
+                # a's value is updated, so we need to reinitialize it each time
+                a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+                f_nnn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
-            f_nnt()
-            assert numpy.allclose(a.get_value(), a_n)
+                a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+                f_nnt()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
-            f_ntn()
-            assert numpy.allclose(a.get_value(), a_n)
+                a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+                f_ntn()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
-            f_ntt()
-            assert numpy.allclose(a.get_value(), a_n)
+                a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+                f_ntt()
+                assert numpy.allclose(a.get_value(), a_n)
 
-            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
-                    borrow=True)
-            f_tnn()
-            assert numpy.allclose(a_t.get_value(), at_n)
+                a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_tnn()
+                assert numpy.allclose(a_t.get_value(), at_n)
 
-            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
-                    borrow=True)
-            f_tnt()
-            assert numpy.allclose(a_t.get_value(), at_n)
+                a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_tnt()
+                assert numpy.allclose(a_t.get_value(), at_n)
 
-            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
-                    borrow=True)
-            f_ttn()
-            assert numpy.allclose(a_t.get_value(), at_n)
+                a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_ttn()
+                assert numpy.allclose(a_t.get_value(), at_n)
 
-            a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
-                    borrow=True)
-            f_ttt()
-            assert numpy.allclose(a_t.get_value(), at_n)
+                a_t.set_value(transpose(a_gpu.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_ttt()
+                assert numpy.allclose(a_t.get_value(), at_n)
 
 
     cmp((3, 5), (3, 4), (4, 5))
@@ -433,24 +439,26 @@ def test_gemv_strides():
                 mode=mode_with_gpu)
 
         # Try with all stride patterns, and all transposed pattern
-        for steps in itertools.product((1, -1), repeat=4):
-            a_step, b_step1, b_step2, c_step = steps
+        for step_signs in itertools.product((1, -1), repeat=4):
+            for step in (1, 2):
+                a_step, b_step1, b_step2, c_step = (s * step
+                        for s in step_signs)
 
-            a.set_value(a_gpu.copy()[::a_step], borrow=True)
-            b.set_value(b_gpu.copy()[::b_step1, ::b_step2],
-                    borrow=True)
-            b_t.set_value(transpose(b_gpu.copy())[::b_step2, ::b_step1],
-                    borrow=True)
-            c.set_value(c_gpu.copy()[::c_step], borrow=True)
+                a.set_value(a_gpu.copy()[::a_step], borrow=True)
+                b.set_value(b_gpu.copy()[::b_step1, ::b_step2],
+                        borrow=True)
+                b_t.set_value(transpose(b_gpu.copy())[::b_step2, ::b_step1],
+                        borrow=True)
+                c.set_value(c_gpu.copy()[::c_step], borrow=True)
 
-            a_n = (av[::a_step]
-                    + l * numpy.dot(bv[::b_step1, ::b_step2], cv[::c_step]))
-            f_n()
-            assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+                a_n = (av[::a_step]
+                        + l * numpy.dot(bv[::b_step1, ::b_step2], cv[::c_step]))
+                f_n()
+                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
 
-            a.set_value(a_gpu.copy()[::a_step], borrow=True)
-            f_t()
-            assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+                a.set_value(a_gpu.copy()[::a_step], borrow=True)
+                f_t()
+                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
 
     cmp(3, (3, 5), 5)
     cmp(1, (1, 5), 5)
@@ -485,23 +493,27 @@ def test_ger_strides():
                 mode=mode_with_gpu)
 
         # Try with all stride patterns, and all transposed patterns
-        for steps in itertools.product((1, -1), repeat=4):
-            a_step1, a_step2, b_step, c_step = steps
-            a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
-            a_t.set_value(transpose(a_gpu.copy())[::a_step1, ::a_step2],
-                    borrow=True)
-            b.set_value(b_gpu.copy()[::b_step], borrow=True)
-            c.set_value(c_gpu.copy()[::c_step], borrow=True)
+        for step_signs in itertools.product((1, -1), repeat=4):
+            for step in (1, 2):
+                a_step1, a_step2, b_step, c_step = (s * step
+                        for s in step_signs)
 
-            f_n()
-            n_n = (av[::a_step1, ::a_step2]
-                    + l * numpy.outer(bv[::b_step], cv[::c_step]))
-            assert numpy.allclose(a.get_value(), n_n), (a.get_value(), n_n)
+                a.set_value(a_gpu.copy()[::a_step1, ::a_step2], borrow=True)
+                a_t.set_value(transpose(a_gpu.copy())[::a_step1, ::a_step2],
+                        borrow=True)
+                b.set_value(b_gpu.copy()[::b_step], borrow=True)
+                c.set_value(c_gpu.copy()[::c_step], borrow=True)
 
-            f_t()
-            n_t = (av.T[::a_step1, ::a_step2]
-                    + l * numpy.outer(bv[::b_step], cv[::c_step]).T)
-            assert numpy.allclose(a_t.get_value(), n_t), (a_t.get_value(), n_t)
+                f_n()
+                n_n = (av[::a_step1, ::a_step2]
+                        + l * numpy.outer(bv[::b_step], cv[::c_step]))
+                assert numpy.allclose(a.get_value(), n_n), (a.get_value(), n_n)
+
+                f_t()
+                n_t = (av.T[::a_step1, ::a_step2]
+                        + l * numpy.outer(bv[::b_step], cv[::c_step]).T)
+                assert numpy.allclose(a_t.get_value(), n_t),\
+                        (a_t.get_value(), n_t)
 
     cmp((3, 5), 3, 5)
     cmp((1, 5), 1, 5)
