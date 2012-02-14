@@ -2884,12 +2884,12 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
 {
     if (A->nd != 2)
     {
-        PyErr_SetString(PyExc_ValueError, "non-matrix arg A_ to gemm");
+        PyErr_SetString(PyExc_ValueError, "non-matrix arg A to gemm");
         return -1;
     }
     if (B->nd != 2)
     {
-        PyErr_SetString(PyExc_ValueError, "non-matrix arg B_ to gemm");
+        PyErr_SetString(PyExc_ValueError, "non-matrix arg B to gemm");
         return -1;
     }
     if (C->nd != 2)
@@ -2913,7 +2913,7 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         return -1;
     }
 
-    // If matrix A_ or B_ has non-unit size and non-unit stride in both
+    // If matrix A or B has non-unit size and non-unit stride in both
     // dimensions, we can make a copy.
     if (((CudaNdarray_HOST_DIMS(A)[0] > 1)
          && (CudaNdarray_HOST_STRIDES(A)[0] != 1)
