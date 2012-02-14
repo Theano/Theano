@@ -229,13 +229,22 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         return -1;
     }
 
-    assert(size>0);
-    self->devdata = (float*)device_malloc(size*sizeof(real));
-    if (!self->devdata)
+    if (size < 0)
     {
-        CudaNdarray_set_nd(self,-1);
+        PyErr_Format(PyExc_AssertionError,
+                     "size (%i) < 0",
+                     size);
+        return -1;
+    }
+
+    self->devdata = (float*)device_malloc(size*sizeof(real));
+    if (size && !self->devdata)
+    {
+        CudaNdarray_set_nd(self, -1);
         self->data_allocated = 0;
         self->devdata = 0;
+        PyErr_SetString(PyExc_RuntimeError,
+                        "Could not allocate memory on device");
         return -1;
     }
     if (0)
