@@ -47,7 +47,7 @@ Interface Behavior Change (was deprecated and generated a warning since Theano 0
    You can specify the output dtype with a new dtype parameter to sum.
    The output dtype is the one using for the summation.
    There is no warning in previous Theano version about this.
-   The consequence is that the sum is done in a dtype with more precession then before.
+   The consequence is that the sum is done in a dtype with more precision than before.
    So the sum could be slower, but will be more resistent to overflow.
    This new behavior is the same as numpy. (Olivier, Pascal)
 
@@ -78,15 +78,15 @@ New deprecation (will be removed in Theano 0.6, warning generated if you use the
  * tensor.shared() renamed to tensor._shared(). You probably want to call theano.shared() instead! (Olivier D.)
 
 Scan fix:
- * computing grad of a function of grad of scan(reported by ?, Razvan)
-   before : most of the time crash, but could be wrong value with bad number of dimensions(so a visible bug)
+ * computing grad of a function of grad of scan (reported by Justin Bayer, fix by Razvan)
+   before : most of the time crash, but could be wrong value with bad number of dimensions (so a visible bug)
    now : do the right thing.
- * gradient with respect to outputs using multiple taps(reported by Timothy, fix by Razvan)
+ * gradient with respect to outputs using multiple taps (reported by Timothy, fix by Razvan)
    before : it used to return wrong values
    now : do the right thing.
    Note: The reported case of this bug was happening in conjunction with the
          save optimization of scan that give run time errors. So if you didn't
-         manually disable the same memory optimization(number in the list4),
+         manually disable the same memory optimization (number in the list4),
          you are fine if you didn't manually request multiple taps.
  * Rop of gradient of scan (reported by Timothy and Justin Bayer, fix by Razvan)
    before : compilation error when computing R-op
@@ -97,7 +97,7 @@ Scan fix:
  * Scan grad when the input of scan has sequences of different lengths. (Razvan, reported by Michael Forbes)
  * Scan.infer_shape now works correctly when working with a condition for the number of loops.
    In the past, it returned n_steps as the length, which is not always true. (Razvan)
- * Scan.infer_shape crash fix. (Reported by ?, Razvan)
+ * Scan.infer_shape crash fix. (Razvan)
 
 New features:
  * AdvancedIncSubtensor grad defined and tested (Justin Bayer)
@@ -128,17 +128,17 @@ New features:
      * We also support the "theano_version" substitution.
  * IntDiv c code (faster and allow this elemwise to be fused with other elemwise) (Pascal)
  * Internal filter_variable mechanism in Type. (Pascal, Ian)
-    * Ifelse work on sparse.
-    * Make use of gpu shared variable more transparent with theano.function updates and givens parameter.
+    * Ifelse works on sparse.
+    * It makes use of gpu shared variable more transparent with theano.function updates and givens parameter.
  * Added a_tensor.transpose(axes) axes is optional (James)
     * theano.tensor.transpose(a_tensor, kwargs) We where ignoring kwargs, now it is used as the axes.
- * a_CudaNdarray_object[*] = int, now work (Frederic)
+ * a_CudaNdarray_object[*] = int, now works (Frederic)
  * tensor_variable.size (as numpy) computes the product of the shape elements. (Olivier)
  * sparse_variable.size (as scipy) computes the number of stored values. (Olivier)
  * sparse_variable[N, N] now works (Li Yao, Frederic)
- * sparse_variable[M:N, O:P] now works (Li Yao, Frederic)
-    * Warning: M, N, O, and P should be Python int or scalar tensor variables,
-      in particular, None is not well-supported.
+ * sparse_variable[M:N, O:P] now works (Li Yao, Frederic, Pascal)
+   M, N, O, and P can be Python int or scalar tensor variables, None, or
+   omitted (sparse_variable[:, :M] or sparse_variable[:M, N:] work).
  * tensor.tensordot can now be moved to GPU (Sander Dieleman,
    Pascal, based on code from Tijmen Tieleman's gnumpy,
    http://www.cs.toronto.edu/~tijmen/gnumpy.html)
@@ -199,7 +199,13 @@ Crashes fixed:
  * Fix runtime crash in gemm, dot22. FB
  * Fix on 32bits computer: make sure all shape are int64.(Olivier)
  * Fix to deque on python 2.4 (Olivier)
- * Fix crash when not using c code(or using DebugMode)(not used by default) with numpy 1.6*. Numpy have a bug in the reduction code that make it crash. ufunc.reduce (Pascal)
+ * Fix crash when not using c code (or using DebugMode) (not used by
+   default) with numpy 1.6*. Numpy has a bug in the reduction code that
+   made it crash. (Pascal)
+ * Crashes of blas functions (Gemv on CPU; Ger, Gemv and Gemm on GPU)
+   when matrices had non-unit stride in both dimensions (CPU and GPU),
+   or when matrices had negative strides (GPU only). In those cases,
+   we are now making copies. (Pascal)
 
 
 Known bugs:
@@ -242,26 +248,30 @@ Documentation:
 Others:
  * Better error messages in many places. (Many people)
  * PEP8 fixes. (Many people)
- * Add a warning about numpy bug with subtensor with more then 2**32 elemenent(TODO, more explicit)
- * Added Scalar.ndim=0 and ScalarSharedVariable.ndim=0 (simplify code)(Razvan)
+ * Add a warning about numpy bug when using advanced indexing on a
+   tensor with more than 2**32 elements (the resulting array is not
+   correctly filled and ends with zeros). (Pascal, reported by David WF)
+ * Added Scalar.ndim=0 and ScalarSharedVariable.ndim=0 (simplify code) (Razvan)
  * New min_informative_str() function to print graph. (Ian)
  * Fix catching of exception. (Sometimes we used to catch interrupts) (Frederic, David, Ian, Olivier)
- * Better support for uft string. (David)
+ * Better support for utf string. (David)
  * Fix pydotprint with a function compiled with a ProfileMode (Frederic)
      * Was broken with change to the profiler.
  * Warning when people have old cache entries. (Olivier)
  * More tests for join on the GPU and CPU. (Frederic)
- * Don't request to load the GPU module by default in scan module. (Razvan)
+ * Do not request to load the GPU module by default in scan module. (Razvan)
  * Fixed some import problems. (Frederic and others)
  * Filtering update. (James)
- * On Windows, the default compiledir changed to be local to the computer/user and not transferred with roaming profile. (Sebastian Urban)
+ * On Windows, the default compiledir changed to be local to the
+   computer/user and not transferred with roaming profile. (Sebastian
+   Urban)
  * New theano flag "on_shape_error". Defaults to "warn" (same as previous behavior):
    it prints a warning when an error occurs when inferring the shape of some apply node.
    The other accepted value is "raise" to raise an error when this happens. (Frederic)
  * The buidbot now raises optimization/shape errors instead of just printing a warning. (Frederic)
  * better pycuda tests (Frederic)
  * check_blas.py now accept the shape and the number of iteration as parameter (Frederic)
- * Fix opt warning when the opt ShapeOpt is disabled(enabled by default) (Frederic)
+ * Fix opt warning when the opt ShapeOpt is disabled (enabled by default) (Frederic)
  * More internal verification on what each op.infer_shape return. (Frederic, James)
  * Argmax dtype to int64 (Olivier)
  * Improved docstring and basic tests for the Tile Op (David).
