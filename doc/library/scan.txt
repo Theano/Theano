@@ -27,7 +27,7 @@ More precisely, if *A* is a tensor you want to compute
   for i in xrange(k):
     result = result * A
 
-There are three thing here that we need to handle: the initial value
+There are three things here that we need to handle: the initial value
 assigned to ``result``, the accumulation of results in ``result``, and
 the unchanging variable ``A``. Unchanging variables are passed to scan as
 ``non_sequences``. Initialization occurs in ``outputs_info``, and the accumulation
