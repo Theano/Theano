@@ -3061,10 +3061,13 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     CNDA_THREAD_SYNC;
     Py_XDECREF(A);
     Py_XDECREF(B);
-    cudaError_t err = cudaGetLastError();
+
+    cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)
     {
-        PyErr_Format(PyExc_RuntimeError, "cublassGemm failed (%s)",cudaGetErrorString(err));
+        PyErr_Format(PyExc_RuntimeError,
+                     "cublasSgemm failed (%i)",
+                     err);
         return -1;
     }
     return 0;
@@ -3192,10 +3195,13 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     CNDA_THREAD_SYNC;
     Py_XDECREF(A);
     Py_XDECREF(B);
-    cudaError_t err = cudaGetLastError();
+
+    cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)
     {
-        PyErr_Format(PyExc_RuntimeError, "cublassGemv failed (%s)",cudaGetErrorString(err));
+        PyErr_Format(PyExc_RuntimeError,
+                     "cublasSgemv failed (%i)",
+                     err);
         return -1;
     }
     return 0;
@@ -3284,12 +3290,15 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
     if(y_ != y)
         Py_DECREF(y_);
 
-    cudaError_t err = cudaGetLastError();
+    cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)
     {
-        PyErr_Format(PyExc_RuntimeError, "cublasSger failed (%s)",cudaGetErrorString(err));
+        PyErr_Format(PyExc_RuntimeError,
+                     "cublasSger failed (%i)",
+                     err);
         return -1;
     }
+
     return 0;
 }
 
