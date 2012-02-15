@@ -182,8 +182,19 @@ def use(device,
         move_shared_float32_to_gpu=True,
         enable_cuda=True):
     """
-    Error and warning about CUDA should be displayed only when this function is called.
-    We need to be able to load this module only to check if it is available!
+    Error and warning about CUDA should be displayed only when this
+    function is called.  We need to be able to load this module only
+    to check if it is available!
+
+    :param device: string "cpu", "gpu", "gpuN" N is the device number to use
+    :param force: Will always raise an exception if we can't use the gpu.
+    :param default_to_move_computation_to_gpu: If gpu init succeeded, enable by
+                                               default optimization to move
+                                               computation to the gpu
+    :param move_shared_float32_to_gpu: If gpu init succeeded, put new shared
+                                       variable in float32 on the gpu.
+    :param enable_cuda: If the gpu is correctly enabled,
+                        set the the variable cuda_enabled to True.
     """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
