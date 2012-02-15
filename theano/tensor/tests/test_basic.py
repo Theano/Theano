@@ -1278,8 +1278,11 @@ class TestAlloc(unittest.TestCase):
     shared = staticmethod(theano.shared)
     allocs = [tensor.Alloc] * 3
 
+    def setUp(self):
+        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
+
     def test_alloc_constant_folding(self):
-        test_params = numpy.asarray(numpy.random.randn(50 * 60),
+        test_params = numpy.asarray(self.rng.randn(50 * 60),
                                     self.dtype)
 
         some_vector = vector('some_vector', dtype=self.dtype)
