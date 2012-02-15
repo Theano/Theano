@@ -750,6 +750,17 @@ class SparseFromDense(gof.op.Op):
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
+        if x.ndim > 2:
+            raise TypeError(
+                    "Theano does not have sparse tensor types with more "
+                    "than 2 dimensions, but %s.ndim = %i" % (x, x.ndim))
+        elif x.ndim == 1:
+            x = x.dimshuffle('x', 0)
+        elif x.ndim == 0:
+            x = x.dimshuffle('x', 'x')
+        else:
+            assert x.ndim == 2
+
         return gof.Apply(self,
                          [x],
                          [SparseType(dtype=x.type.dtype,
@@ -760,7 +771,9 @@ class SparseFromDense(gof.op.Op):
         out[0] = SparseType.format_cls[self.format](x)
 
     def grad(self, (x, ), (gz, )):
-        return dense_from_sparse(gz),
+        gx = dense_from_sparse(gz)
+        gx = tensor.patternbroadcast(gx, x.broadcastable)
+        return gx,
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
