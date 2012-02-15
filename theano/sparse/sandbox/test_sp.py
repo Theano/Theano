@@ -464,7 +464,20 @@ def test_remove0():
         mat.eliminate_zeros()
         assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
 
-def test_diagonal():
+def test_diag():
+    m = theano.sparse.csc_matrix()
+    d = sp.diag(m)
+    f = theano.function([m], d)
+    f2 = theano.function([m], d.shape)
+    for K in 1, 5:
+        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),dtype='float64')
+        diag = numpy.diagonal(np_matrix)
+        sp_matrix = scipy.sparse.csc_matrix(np_matrix)
+         
+        assert numpy.all(diag == f(sp_matrix))
+        assert f2(sp_matrix) == diag.shape
+        
+def test_square_diagonal():
     for K in 1, 5:
 
         d = tensor.ivector()
@@ -500,10 +513,23 @@ def test_ensure_sorted_indices():
         sorted_theano = f(sample)
         assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
 
-def test_diagonal_grad():
+def test_square_diagonal_grad():
     def d(x):
         return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
     utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
+            mode=theano.Mode(linker='py', optimizer='fast_compile'))
+
+def test_diag_grad():
+    def d(x):
+        sp_x = theano.sparse.csc_from_dense(x)
+        diag_x = sp.diag(sp_x)
+        return diag_x.sum()
+
+    diag_mat = numpy.zeros((4,4))
+    for idx in xrange(4):
+        diag_mat[idx, idx] += idx * 0.1
+
+    utt.verify_grad(d, [diag_mat],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
 def test_row_scale():
