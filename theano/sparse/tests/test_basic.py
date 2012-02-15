@@ -95,10 +95,15 @@ class T_transpose(unittest.TestCase):
 class SparseInferShapeTester(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
+        # This mode seems to be the minimal one including the shape_i
+        # optimizations, if we don't want to enumerate them explicitly.
+        self.mode = theano.compile.get_default_mode().including("canonicalize")
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls):
-        outputs_function = theano.function(inputs, outputs)
-        shapes_function = theano.function(inputs, [o.shape for o in outputs])
+        outputs_function = theano.function(inputs, outputs, mode=self.mode)
+        shapes_function = theano.function(inputs, [o.shape for o in outputs],
+                mode=self.mode)
+        theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
         topo_shape = shapes_function.maker.env.toposort()
         assert not any(isinstance(t.op, cls) for t in topo_shape)
