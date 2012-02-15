@@ -108,6 +108,15 @@ class Diag(Op):
     """
     Extract the diagonal of a square sparse matrix as a dense vector.
     """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return "Diag"
+
     def make_node(self, x):
         return gof.Apply(self, [x], [tensor.tensor(broadcastable=(False,), dtype=x.dtype)])
 
@@ -125,6 +134,8 @@ class Diag(Op):
         diag = numpy.zeros(N, x.dtype)
 
         #TODO: try using ndarrays and then prune() on the result
+        # it could be optimized in the case the sparse structure
+        # does not allow index duplication
 
         for j in xrange(0, N):
             for i_idx in xrange(indptr[j], indptr[j+1]):
@@ -135,8 +146,12 @@ class Diag(Op):
     def grad(self, (diag,), (gz,)):
         return [square_diagonal(gz)]
 
-diag = Diag()
+    def infer_shape(self, nodes, shapes):
+        matrix_shape = shapes[0] 
+        diag_length = matrix_shape[0]
+        return [(diag_length,)]
 
+diag = Diag()
 
 class SquareDiagonal(Op):
     """
