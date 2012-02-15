@@ -166,12 +166,13 @@ class SparseInferShapeTester(unittest.TestCase):
     def test_add_sd(self):
         x = SparseType('csr', dtype=config.floatX)()
         y = tensor.matrix()
-        self._compile_and_check([x, y],
-                                [x + y],
-                                [sp.csr_matrix(random_lil((10, 40),
-                                               config.floatX, 3)),
-                                 numpy.random.randn(10, 40)],
-                                AddSD)
+        self._compile_and_check(
+                [x, y],
+                [x + y],
+                [sp.csr_matrix(random_lil((10, 40),
+                               config.floatX, 3)),
+                 numpy.random.randn(10, 40).astype(config.floatX)],
+                AddSD)
 
     def test_mul_ss(self):
         x = SparseType('csr', dtype=config.floatX)()
@@ -186,12 +187,13 @@ class SparseInferShapeTester(unittest.TestCase):
     def test_mul_sd(self):
         x = SparseType('csr', dtype=config.floatX)()
         y = tensor.matrix()
-        self._compile_and_check([x, y],
-                                [x * y],
-                                [sp.csr_matrix(random_lil((10, 40),
-                                               config.floatX, 3)),
-                                 numpy.random.randn(10, 40)],
-                                MulSD)
+        self._compile_and_check(
+                [x, y],
+                [x * y],
+                [sp.csr_matrix(random_lil((10, 40),
+                               config.floatX, 3)),
+                 numpy.random.randn(10, 40).astype(config.floatX)],
+                MulSD)
 
 
 class T_AddMul(unittest.TestCase):
