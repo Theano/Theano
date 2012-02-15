@@ -423,6 +423,30 @@ class T_conversion(unittest.TestCase):
                 self.assertTrue(str(val.dtype) == s.dtype)
                 self.assertTrue(numpy.all(val[0] == [1, 0, 0, 0, 0]))
 
+    @staticmethod
+    def check_format_ndim(format, ndim):
+        x = tensor.tensor(
+                dtype=config.floatX,
+                broadcastable=([False] * ndim),
+                name='x')
+
+        s = csc_from_dense(x)
+        s_m = - s
+        d = dense_from_sparse(s_m)
+        c = d.sum()
+        g = tensor.grad(c, x)
+        f = theano.function([x], [s, g])
+        f(numpy.array(0, ndmin=ndim))
+        f(numpy.array(7, ndmin=ndim))
+
+    def test_format_ndim(self):
+        for format in 'csc', 'csr':
+            for ndim in 0, 1, 2:
+                self.check_format_ndim(format, ndim)
+
+            self.assertRaises(TypeError, self.check_format_ndim, format, 3)
+            self.assertRaises(TypeError, self.check_format_ndim, format, 4)
+
 
 class test_structureddot(unittest.TestCase):
     def setUp(self):
