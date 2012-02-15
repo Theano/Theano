@@ -441,6 +441,17 @@ class test_structureddot(unittest.TestCase):
         utt.verify_grad(buildgraphCSC,
                     [spmat.data, mat])
 
+        def buildgraphCSC_T(spdata, sym_mat):
+            csc = CSC(spdata, spmat.indices[:spmat.size],
+                    spmat.indptr, spmat.shape)
+            assert csc.type.dtype == 'float32'
+            rval = structured_dot(sym_mat.T, csc.T)
+            assert rval.type.dtype == 'float32'
+            return rval
+
+        utt.verify_grad(buildgraphCSC_T,
+                    [spmat.data, mat])
+
     def test_structureddot_csr_grad(self):
 
         #shortcut: testing csc in float32, testing csr in float64
@@ -455,6 +466,17 @@ class test_structureddot(unittest.TestCase):
                     spmat.indptr, spmat.shape)
             assert csr.type.dtype == 'float64'
             rval = structured_dot(csr, sym_mat)
+            assert rval.type.dtype == 'float64'
+            return rval
+
+        utt.verify_grad(buildgraph,
+                    [spmat.data, mat])
+
+        def buildgraph_T(spdata, sym_mat):
+            csr = CSR(spdata, spmat.indices[:spmat.size],
+                    spmat.indptr, spmat.shape)
+            assert csr.type.dtype == 'float64'
+            rval = structured_dot(sym_mat.T, csr.T)
             assert rval.type.dtype == 'float64'
             return rval
 
