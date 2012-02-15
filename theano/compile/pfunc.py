@@ -294,7 +294,9 @@ class Param(object):
         # mutable=True should require borrow=True. Raise warning when borrow is explicitely set
         # to False with mutable=True.
         if mutable:
-            if not borrow:
+            # Do not compare with "if not borrow", because borrow can be None,
+            # and "not None" would be True.
+            if borrow is False:
                 _logger.warning("Symbolic input for variable %s (name=%s) has "
                         "flags mutable=True, borrow=False. This combination is "
                         "incompatible since mutable=True implies that the "
