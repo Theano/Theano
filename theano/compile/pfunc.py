@@ -268,11 +268,11 @@ class Param(object):
 
         :param mutable: True -> function is allowed to modify this argument.
 
-        :param borrow: True -> function is allowed to alias some output to
-                       this input
+        :param borrow:
+            True -> function is allowed to alias some output to this input
+            False -> do not permit any output to be aliased to the input
+            None (default) -> False if mutable evaluates to False, else True
 
-
-        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
         type required by the parameter `variable`.  True -> function arguments must exactly match the type
         required by `variable`.
