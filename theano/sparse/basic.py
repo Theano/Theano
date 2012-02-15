@@ -1666,17 +1666,10 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 
         if sparse_A.type.format == 'csc':
             sdgcsx = sdg_csc
-        else:
-            sdgcsx = sdg_csr
-        #backport
-        #sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
-
-        if sparse_A.type.format == 'csc':
             CSx = CSC
         else:
+            sdgcsx = sdg_csr
             CSx = CSR
-        #backport
-        #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
         g_A_data = sdgcsx(csm_indices(sparse_A), \
                           csm_indptr(sparse_A), dense_B, ga)
