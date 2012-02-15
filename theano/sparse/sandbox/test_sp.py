@@ -519,11 +519,17 @@ def test_square_diagonal_grad():
     utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
-# Disabled as verify_grad don't support sparse
-def tes_diag_grad():
+def test_diag_grad():
     def d(x):
-        return sp.sp_sum(sp.diag(x), sparse_grad=True)
-    utt.verify_grad(d, [scipy.sparse.csr_matrix([[0.0, 0.1, 0.2, 0.3]])],
+        sp_x = theano.sparse.csc_from_dense(x)
+        diag_x = sp.diag(sp_x)
+        return diag_x.sum()
+
+    diag_mat = numpy.zeros((4,4))
+    for idx in xrange(4):
+        diag_mat[idx, idx] += idx * 0.1
+
+    utt.verify_grad(d, [diag_mat],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
 def test_row_scale():
