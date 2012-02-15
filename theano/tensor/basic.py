@@ -2617,12 +2617,18 @@ class Alloc(gof.Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def do_constant_folding(self, node):
-        if python_any([isinstance(client[0].op, (IncSubtensor,
-                                                 AdvancedIncSubtensor1,
-                                                 AdvancedIncSubtensor,
-                                                 ))
-                       for client in node.outputs[0].clients]):
-            return False
+        for client in node.outputs[0].clients:
+            if client[0] == 'output':
+                # If the output is a constant, it will have to be deepcopied
+                # each time the function is called.  So we do not fold.
+                return False
+            elif (not isinstance(client[0], basestring)
+                    and isinstance(client[0].op, (
+                        IncSubtensor,
+                        AdvancedIncSubtensor1,
+                        AdvancedIncSubtensor,
+                        ))):
+                return False
         return True
 
 
