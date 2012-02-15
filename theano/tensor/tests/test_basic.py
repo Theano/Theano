@@ -1315,6 +1315,20 @@ class TestAlloc(unittest.TestCase):
             fobj(test_params)
             fgrad(test_params)
 
+    def test_alloc_output(self):
+        val = tensor.constant(self.rng.randn(1,1), dtype=self.dtype)
+        for alloc in self.allocs:
+            # The output is the result of the alloc operation,
+            # we do not want it to be constant-folded
+            out = alloc()(val, 50, 60)
+
+            f = theano.function([], out)
+            topo = f.maker.env.toposort()
+            assert numpy.sum([isinstance(node.op, alloc)
+                              for node in topo]) == 1
+            assert not isinstance(topo[0].op,
+                    theano.compile.function_module.DeepCopyOp)
+
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):
