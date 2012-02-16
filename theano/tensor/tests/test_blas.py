@@ -1,7 +1,8 @@
 #from nose.plugins.skip import SkipTest
 #import traceback
-import sys
+import itertools, sys
 import theano.tensor as T
+from theano import tensor
 #from theano.gof import Env
 from theano.printing import pp
 
@@ -1494,3 +1495,380 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
             borrow=True)
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))
+
+class TestBlasStrides(TestCase):
+    dtype = 'float64'
+    shared = staticmethod(tensor._shared)
+    mode = theano.compile.get_default_mode()
+    mode = mode.including('fast_run').excluding('gpu', 'c_blas', 'scipy_blas')
+    rng = numpy.random.RandomState(seed=unittest_tools.fetch_seed())
+
+    def rand(self, *shape):
+        return theano._asarray(self.rng.rand(*shape), dtype=self.dtype)
+
+    def cmp_dot22(self, b_shp, c_shp):
+        av = numpy.zeros((0, 0), dtype=self.dtype)
+        bv = self.rand(*b_shp)
+        cv = self.rand(*c_shp)
+
+        a = self.shared(av, 'a')
+        b = self.shared(bv, 'b')
+        c = self.shared(cv, 'c')
+
+        b_t = self.shared(bv.T, 'b.T')
+        c_t = self.shared(cv.T, 'c.T')
+
+        b_dev = b.get_value(borrow=False, return_internal_type=True)
+        c_dev = c.get_value(borrow=False, return_internal_type=True)
+        bt_dev = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nn = theano.function([], [], updates={a: tensor.dot(b, c)},
+                mode=self.mode)
+        print 'class name:', self.__class__.__name__
+        theano.printing.debugprint(f_nn)
+        f_nt = theano.function([], [], updates={a: tensor.dot(b, c_t.T)},
+                mode=self.mode)
+        f_tn = theano.function([], [], updates={a: tensor.dot(b_t.T, c)},
+                mode=self.mode)
+        f_tt = theano.function([], [], updates={a: tensor.dot(b_t.T, c_t.T)},
+                mode=self.mode)
+
+        # Try with all stride patterns, and all transposed pattern
+        for step_signs in itertools.product((-1, 1), repeat=4):
+            for step in (1, 2):
+                b_step1, b_step2, c_step1, c_step2 = (s * step
+                        for s in step_signs)
+
+                b.set_value(b_dev.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_dev.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_dev.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_dev.copy()[::c_step2, ::c_step1], borrow=True)
+
+                # Numpy result
+                a_n = numpy.dot(bv[::b_step1, ::b_step2],
+                                cv[::c_step1, ::c_step2])
+
+                f_nn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_nt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_tn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_tt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+    def test_dot22(self):
+        self.cmp_dot22((3, 4), (4, 5))
+        self.cmp_dot22((1, 4), (4, 5))
+        self.cmp_dot22((3, 4), (4, 1))
+        self.cmp_dot22((3, 1), (1, 1))
+        self.cmp_dot22((1, 4), (4, 1))
+        self.cmp_dot22((3, 1), (1, 5))
+        self.cmp_dot22((0, 4), (4, 5))
+        self.cmp_dot22((0, 4), (4, 1))
+        self.cmp_dot22((0, 1), (1, 5))
+        self.cmp_dot22((3, 4), (4, 0))
+        self.cmp_dot22((3, 0), (0, 5))
+        self.cmp_dot22((0, 4), (4, 0))
+        self.cmp_dot22((0, 0), (0, 0))
+
+    def cmp_dot22scalar(self, b_shp, c_shp):
+        av = numpy.zeros((0, 0), dtype=self.dtype)
+        bv = self.rand(*b_shp)
+        cv = self.rand(*c_shp)
+        l = numpy.float32(0.2)
+
+        a = self.shared(av, 'a')
+        b = self.shared(bv, 'b')
+        c = self.shared(cv, 'c')
+
+        b_t = self.shared(bv.T, 'b.T')
+        c_t = self.shared(cv.T, 'c.T')
+
+        b_dev = b.get_value(borrow=False, return_internal_type=True)
+        c_dev = c.get_value(borrow=False, return_internal_type=True)
+        bt_dev = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nn = theano.function([], [], updates={a: l * tensor.dot(b, c)},
+                mode=self.mode)
+        f_nt = theano.function([], [], updates={a: l * tensor.dot(b, c_t.T)},
+                mode=self.mode)
+        f_tn = theano.function([], [], updates={a: l * tensor.dot(b_t.T, c)},
+                mode=self.mode)
+        f_tt = theano.function([], [],
+                updates={a: l * tensor.dot(b_t.T, c_t.T)},
+                mode=self.mode)
+
+        # Try with all stride patterns, and all transposed pattern
+        for step_signs in itertools.product((-1, 1), repeat=4):
+            for step in (1, 2):
+                b_step1, b_step2, c_step1, c_step2 = (s * step
+                        for s in step_signs)
+
+                b.set_value(b_dev.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_dev.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_dev.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_dev.copy()[::c_step2, ::c_step1], borrow=True)
+
+                # Numpy result
+                a_n = l * numpy.dot(bv[::b_step1, ::b_step2],
+                                    cv[::c_step1, ::c_step2])
+
+                f_nn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_nt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_tn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                f_tt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+    def test_dot22scalar(self):
+        self.cmp_dot22scalar((3, 4), (4, 5))
+        self.cmp_dot22scalar((1, 4), (4, 5))
+        self.cmp_dot22scalar((3, 4), (4, 1))
+        self.cmp_dot22scalar((3, 1), (1, 1))
+        self.cmp_dot22scalar((1, 4), (4, 1))
+        self.cmp_dot22scalar((3, 1), (1, 5))
+        self.cmp_dot22scalar((0, 4), (4, 5))
+        self.cmp_dot22scalar((0, 4), (4, 1))
+        self.cmp_dot22scalar((0, 1), (1, 5))
+        self.cmp_dot22scalar((3, 4), (4, 0))
+        self.cmp_dot22scalar((3, 0), (0, 5))
+        self.cmp_dot22scalar((0, 4), (4, 0))
+        self.cmp_dot22scalar((0, 0), (0, 0))
+
+    def cmp_gemm(self, a_shp, b_shp, c_shp):
+        av = self.rand(*a_shp)
+        bv = self.rand(*b_shp)
+        cv = self.rand(*c_shp)
+        l = numpy.float32(0.2)
+
+        a = self.shared(av, 'a')
+        b = self.shared(bv, 'b')
+        c = self.shared(cv, 'c')
+
+        a_t = self.shared(av.T, 'a.T')
+        b_t = self.shared(bv.T, 'b.T')
+        c_t = self.shared(cv.T, 'c.T')
+
+        a_dev = a.get_value(borrow=False, return_internal_type=True)
+        b_dev = b.get_value(borrow=False, return_internal_type=True)
+        c_dev = c.get_value(borrow=False, return_internal_type=True)
+        bt_dev = b_t.get_value(borrow=False, return_internal_type=True)
+        ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
+
+        f_nnn = theano.function([], [],
+                updates={a: (l * a + tensor.dot(b, c))},
+                mode=self.mode)
+        f_nnt = theano.function([], [],
+                updates={a: (l * a + tensor.dot(b, c_t.T))},
+                mode=self.mode)
+        f_ntn = theano.function([], [],
+                updates={a: (l * a + tensor.dot(b_t.T, c))},
+                mode=self.mode)
+        f_ntt = theano.function([], [],
+                updates={a: (l * a + tensor.dot(b_t.T, c_t.T))},
+                mode=self.mode)
+        f_tnn = theano.function([], [],
+                updates={a_t: (l * a_t + tensor.dot(b, c).T)},
+                mode=self.mode)
+        f_tnt = theano.function([], [],
+                updates={a_t: (l * a_t + tensor.dot(b, c_t.T).T)},
+                mode=self.mode)
+        f_ttn = theano.function([], [],
+                updates={a_t: (l * a_t + tensor.dot(b_t.T, c).T)},
+                mode=self.mode)
+        f_ttt = theano.function([], [],
+                updates={a_t: (l * a_t + tensor.dot(b_t.T, c_t.T).T)},
+                mode=self.mode)
+
+        # Try with all stride patterns, and all transposed pattern
+        for step_signs in itertools.product((-1, 1), repeat=6):
+            for step in (1, 2):
+                a_step1, a_step2, b_step1, b_step2, c_step1, c_step2 = \
+                        (s * step for s in step_signs)
+
+                b.set_value(b_dev.copy()[::b_step1, ::b_step2], borrow=True)
+                c.set_value(c_dev.copy()[::c_step1, ::c_step2], borrow=True)
+                b_t.set_value(bt_dev.copy()[::b_step2, ::b_step1], borrow=True)
+                c_t.set_value(ct_dev.copy()[::c_step2, ::c_step1], borrow=True)
+
+                # Numpy results
+                a_n = (l * av[::a_step1, ::a_step2]
+                       + numpy.dot(bv[::b_step1, ::b_step2],
+                                   cv[::c_step1, ::c_step2]))
+                at_n = (l * av[::a_step1, ::a_step2].T
+                        + numpy.dot(bv[::b_step1, ::b_step2],
+                                    cv[::c_step1, ::c_step2]).T)
+
+                # a's value is updated, so we need to reinitialize it each time
+                a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
+                f_nnn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
+                f_nnt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
+                f_ntn()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
+                f_ntt()
+                assert numpy.allclose(a.get_value(), a_n)
+
+                a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_tnn()
+                assert numpy.allclose(a_t.get_value(), at_n)
+
+                a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_tnt()
+                assert numpy.allclose(a_t.get_value(), at_n)
+
+                a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_ttn()
+                assert numpy.allclose(a_t.get_value(), at_n)
+
+                a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
+                        borrow=True)
+                f_ttt()
+                assert numpy.allclose(a_t.get_value(), at_n)
+
+    def test_gemm(self):
+        self.cmp_gemm((3, 5), (3, 4), (4, 5))
+        self.cmp_gemm((1, 5), (1, 4), (4, 5))
+        self.cmp_gemm((3, 1), (3, 4), (4, 1))
+        self.cmp_gemm((3, 1), (3, 1), (1, 1))
+        self.cmp_gemm((1, 1), (1, 4), (4, 1))
+        self.cmp_gemm((3, 5), (3, 1), (1, 5))
+        self.cmp_gemm((0, 5), (0, 4), (4, 5))
+        self.cmp_gemm((0, 1), (0, 4), (4, 1))
+        self.cmp_gemm((0, 5), (0, 1), (1, 5))
+        self.cmp_gemm((3, 0), (3, 4), (4, 0))
+        self.cmp_gemm((3, 5), (3, 0), (0, 5))
+        self.cmp_gemm((0, 0), (0, 4), (4, 0))
+        self.cmp_gemm((0, 0), (0, 0), (0, 0))
+
+    def cmp_gemv(self, a_shp, b_shp, c_shp):
+        av = self.rand(a_shp)
+        bv = self.rand(*b_shp)
+        cv = self.rand(c_shp)
+        l = numpy.float32(0.2)
+
+        a = self.shared(av, 'a')
+        b = self.shared(bv, 'b')
+        c = self.shared(cv, 'c')
+        b_t = self.shared(bv.T, 'b.T')
+
+        a_dev = a.get_value(borrow=False, return_internal_type=True)
+        b_dev = b.get_value(borrow=False, return_internal_type=True)
+        c_dev = c.get_value(borrow=False, return_internal_type=True)
+
+        f_n = theano.function([], [], updates={a: (a + l * tensor.dot(b, c))},
+                mode=self.mode)
+
+        f_t = theano.function([], [],
+                updates={a: (a + l * tensor.dot(b_t.T, c))},
+                mode=self.mode)
+
+        # Try with all stride patterns, and all transposed pattern
+        for step_signs in itertools.product((1, -1), repeat=4):
+            for step in (1, 2):
+                a_step, b_step1, b_step2, c_step = (s * step
+                        for s in step_signs)
+
+                a.set_value(a_dev.copy()[::a_step], borrow=True)
+                b.set_value(b_dev.copy()[::b_step1, ::b_step2],
+                        borrow=True)
+                b_t.set_value(transpose(b_dev.copy())[::b_step2, ::b_step1],
+                        borrow=True)
+                c.set_value(c_dev.copy()[::c_step], borrow=True)
+
+                a_n = (av[::a_step]
+                        + l * numpy.dot(bv[::b_step1, ::b_step2], cv[::c_step]))
+                f_n()
+                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+
+                a.set_value(a_dev.copy()[::a_step], borrow=True)
+                f_t()
+                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+
+    def test_gemv(self):
+        self.cmp_gemv(3, (3, 5), 5)
+        self.cmp_gemv(1, (1, 5), 5)
+        self.cmp_gemv(3, (3, 1), 1)
+        self.cmp_gemv(0, (0, 5), 5)
+        self.cmp_gemv(3, (3, 0), 0)
+        self.cmp_gemv(0, (0, 1), 1)
+        self.cmp_gemv(1, (1, 0), 0)
+        self.cmp_gemv(0, (0, 0), 0)
+
+
+    def cmp_ger(self, a_shp, b_shp, c_shp):
+        av = self.rand(*a_shp)
+        bv = self.rand(b_shp)
+        cv = self.rand(c_shp)
+        l = numpy.float32(0.2)
+
+        a = self.shared(av, 'a')
+        b = self.shared(bv, 'b')
+        c = self.shared(cv, 'c')
+        a_t = self.shared(av.T, 'a.T')
+
+        a_dev = a.get_value(borrow=False, return_internal_type=True)
+        b_dev = b.get_value(borrow=False, return_internal_type=True)
+        c_dev = c.get_value(borrow=False, return_internal_type=True)
+
+        f_n = theano.function([], [],
+                updates={a: (a + l * tensor.outer(b, c))},
+                mode=self.mode)
+
+        f_t = theano.function([], [],
+                updates={a_t: (a_t + l * tensor.outer(b, c).T)},
+                mode=self.mode)
+
+        # Try with all stride patterns, and all transposed patterns
+        for step_signs in itertools.product((1, -1), repeat=4):
+            for step in (1, 2):
+                a_step1, a_step2, b_step, c_step = (s * step
+                        for s in step_signs)
+
+                a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
+                a_t.set_value(transpose(a_dev.copy())[::a_step1, ::a_step2],
+                        borrow=True)
+                b.set_value(b_dev.copy()[::b_step], borrow=True)
+                c.set_value(c_dev.copy()[::c_step], borrow=True)
+
+                f_n()
+                n_n = (av[::a_step1, ::a_step2]
+                        + l * numpy.outer(bv[::b_step], cv[::c_step]))
+                assert numpy.allclose(a.get_value(), n_n), (a.get_value(), n_n)
+
+                f_t()
+                n_t = (av.T[::a_step1, ::a_step2]
+                        + l * numpy.outer(bv[::b_step], cv[::c_step]).T)
+                assert numpy.allclose(a_t.get_value(), n_t),\
+                        (a_t.get_value(), n_t)
+
+    def test_ger_strides(self):
+        self.cmp_ger((3, 5), 3, 5)
+        self.cmp_ger((1, 5), 1, 5)
+        self.cmp_ger((3, 1), 3, 1)
+        self.cmp_ger((0, 5), 0, 5)
+        self.cmp_ger((3, 0), 3, 0)
+        self.cmp_ger((0, 1), 0, 1)
+        self.cmp_ger((1, 0), 1, 0)
+        self.cmp_ger((0, 0), 0, 0)

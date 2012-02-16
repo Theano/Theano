@@ -1,5 +1,7 @@
 import sys
 import numpy
+from unittest import TestCase
+
 import theano
 import theano.tensor as tensor
 
@@ -14,8 +16,7 @@ from theano.tensor.blas import Gemv
 from theano.tests import unittest_tools
 from theano.tests.unittest_tools import TestOptimizationMixin
 
-from test_blas import TestCase
-from test_blas import BaseGemv
+from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides
 
 mode_blas_opt = theano.compile.get_default_mode().including(
     'BlasOpt', 'specialize', 'InplaceBlasOpt', 'c_blas')
@@ -238,3 +239,6 @@ class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
     dtype = 'float64'
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
+
+class TestBlasStridesC(TestBlasStrides):
+    mode = mode_blas_opt

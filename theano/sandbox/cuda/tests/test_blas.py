@@ -18,7 +18,7 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
-from theano.tensor.tests.test_blas import BaseGemv, TestGer
+from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
@@ -166,6 +166,11 @@ def test_gemm_no_inplace():
     cmp((0,4),(4,0))
     cmp((0,0),(0,0))
 
+
+class TestBlasStridesGpu(TestBlasStrides):
+    dtype = 'float32'
+    shared = staticmethod(tcn.shared_constructor)
+    mode = mode_with_gpu
 
 def test_dot22_strides():
     def cmp(b_shp, c_shp):
