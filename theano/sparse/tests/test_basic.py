@@ -23,7 +23,8 @@ from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
 from theano.sparse import SparseType, StructuredDotCSC, CSMGrad
 from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
-from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
+from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
+        SparseFromDense)
 from theano.sparse import Dot, Usmm, UsmmCscDense
 #from theano.sparse import get_item_2d, get_item_scalar
 
@@ -422,6 +423,30 @@ class T_conversion(unittest.TestCase):
                 return
                 self.assertTrue(str(val.dtype) == s.dtype)
                 self.assertTrue(numpy.all(val[0] == [1, 0, 0, 0, 0]))
+
+    @staticmethod
+    def check_format_ndim(format, ndim):
+        x = tensor.tensor(
+                dtype=config.floatX,
+                broadcastable=([False] * ndim),
+                name='x')
+
+        s = SparseFromDense(format)(x)
+        s_m = - s
+        d = dense_from_sparse(s_m)
+        c = d.sum()
+        g = tensor.grad(c, x)
+        f = theano.function([x], [s, g])
+        f(numpy.array(0, ndmin=ndim))
+        f(numpy.array(7, ndmin=ndim))
+
+    def test_format_ndim(self):
+        for format in 'csc', 'csr':
+            for ndim in 0, 1, 2:
+                self.check_format_ndim(format, ndim)
+
+            self.assertRaises(TypeError, self.check_format_ndim, format, 3)
+            self.assertRaises(TypeError, self.check_format_ndim, format, 4)
 
 
 class test_structureddot(unittest.TestCase):
