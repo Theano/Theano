@@ -23,7 +23,8 @@ from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
 from theano.sparse import SparseType, StructuredDotCSC, CSMGrad
 from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
-from theano.sparse import csc_from_dense, csr_from_dense, dense_from_sparse
+from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
+        SparseFromDense)
 from theano.sparse import Dot, Usmm, UsmmCscDense
 #from theano.sparse import get_item_2d, get_item_scalar
 
@@ -430,7 +431,7 @@ class T_conversion(unittest.TestCase):
                 broadcastable=([False] * ndim),
                 name='x')
 
-        s = csc_from_dense(x)
+        s = SparseFromDense(format)(x)
         s_m = - s
         d = dense_from_sparse(s_m)
         c = d.sum()
