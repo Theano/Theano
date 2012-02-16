@@ -1,4 +1,8 @@
 import atexit, logging, os, shutil, stat, sys
+
+import numpy
+
+import theano
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
 from theano.configparser import config, AddConfigVar, StrParam
@@ -133,6 +137,9 @@ if cuda_available:
             os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
 
     try:
+        # This only test if the cuda driver is available and if there
+        # is at least one GPU that support cuda. This do not select a
+        # device.
         gpu_init()
         cuda_available = True
         cuda_initialization_error_message = ""
@@ -184,7 +191,8 @@ def use(device,
         force=False,
         default_to_move_computation_to_gpu=True,
         move_shared_float32_to_gpu=True,
-        enable_cuda=True):
+        enable_cuda=True,
+        test_driver=True):
     """
     Error and warning about CUDA should be displayed only when this
     function is called.  We need to be able to load this module only
@@ -246,10 +254,13 @@ def use(device,
         try:
             if device != 'gpu':
                 gpu_init(device)
+            use.device_number = device
+            if test_driver:
+                import theano.sandbox.cuda.tests.test_driver
+                theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
-            use.device_number = device
 
             if enable_cuda:
                 cuda_enabled = True
@@ -302,8 +313,10 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
+# We can't test the driver during import here as this cause circular
+# import dependency. So we also test it in the file theano/__init__.py
 if config.device.startswith('gpu'):
-    use(device=config.device, force=config.force_device)
+    use(device=config.device, force=config.force_device, test_driver=False)
 elif config.init_gpu_device:
     assert config.device == "cpu", (
         "We can use the Theano flag init_gpu_device"
@@ -318,4 +331,4 @@ elif config.init_gpu_device:
         force=config.force_device,
         default_to_move_computation_to_gpu=False,
         move_shared_float32_to_gpu=False,
-        enable_cuda=False)
+        enable_cuda=False, test_driver=False)
