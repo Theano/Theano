@@ -298,17 +298,15 @@ class Param(object):
         # mutable implies the output can be both aliased to the input and that
         # the input can be destroyed. borrow simply implies the output can be
         # aliased to the input. Thus mutable=True should require borrow=True.
-        # Raise warning when borrow is explicitly set to False with
-        # mutable=True.
-        if mutable:
-            if not self.borrow:
-                _logger.warning("Symbolic input for variable %s (name=%s) has "
-                        "flags mutable=True, borrow=False. This combination is "
-                        "incompatible since mutable=True implies that the "
-                        "input variable may be both aliased (borrow=True) and "
-                        "over-written. We set borrow=True and continue.",
-                        variable, name)
-            self.borrow = True
+        if self.mutable and not self.borrow:
+            raise AssertionError(
+                    "Symbolic input for variable %s (name=%s) has "
+                    "flags mutable=True, borrow=False. This combination is "
+                    "incompatible since mutable=True implies that the "
+                    "input variable may be both aliased (borrow=True) and "
+                    "overwritten.",
+                    variable, name)
+
         self.strict = strict
         self.allow_downcast = allow_downcast
         self.implicit = implicit
