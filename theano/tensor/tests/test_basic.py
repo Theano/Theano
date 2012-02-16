@@ -2753,10 +2753,6 @@ class T_subtensor(unittest.TestCase):
             for inplace in (False, True):
                 for data_shape in ((10,), (4, 5), (1, 2, 3), (4, 5, 6, 7)):
                     data_n_dims = len(data_shape)
-                    # Symbolic variable to be incremented.
-                    data_var = tensor.tensor(
-                            broadcastable=[False] * data_n_dims,
-                            dtype=self.dtype)
                     data_size = numpy.product(data_shape)
                     # Corresponding numeric variable.
                     data_num_init = numpy.arange(data_size, dtype=self.dtype)
@@ -2768,10 +2764,12 @@ class T_subtensor(unittest.TestCase):
                         # We copy the numeric value to be 100% sure there is no
                         # risk of accidentally sharing it.
                         data_num = data_num_init.copy()
-                        if inplace:
-                            # We need to copy `data_var` as we do not want
-                            # multiple in-place operations on it.
-                            data_var = deepcopy(data_var)
+                        # Symbolic variable to be incremented.
+                        # We create a new one every time in order not to
+                        # have duplicated variables in the function's inputs
+                        data_var = tensor.tensor(
+                                broadcastable=[False] * data_n_dims,
+                                dtype=self.dtype)
                         # Symbolic variable with rows to be incremented.
                         idx_var = theano.tensor.vector(dtype='int64')
                         n_to_inc = rng.randint(data_shape[0])
