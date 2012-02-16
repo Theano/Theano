@@ -2005,14 +2005,19 @@ class GpuAlloc(Op):
         return (3,)
 
     def do_constant_folding(self, node):
-        if any([isinstance(client[0].op, (
+        for client in node.outputs[0].clients:
+            if client[0] == 'output':
+                # If the output is a constant, it will have to be deepcopied
+                # each time the function is called.  So we do not fold.
+                return False
+            elif (not isinstance(client[0], basestring)
+                    and isinstance(client[0].op, (
                         tensor.IncSubtensor,
                         tensor.AdvancedIncSubtensor1,
                         GpuIncSubtensor,
                         GpuAdvancedIncSubtensor1
-                        ))
-                for client in node.outputs[0].clients]):
-            return False
+                        ))):
+                return False
         return True
 
 gpu_alloc = GpuAlloc()
