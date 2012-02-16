@@ -209,13 +209,13 @@ class In(SymbolicInput):
         # the input can be destroyed. borrow simply implies the output can be
         # aliased to the input. Thus mutable=True should require borrow=True.
         if mutable and not self.borrow:
-                raise AssertionError(
-                        "Symbolic input for variable %s (name=%s) has "
-                        "flags mutable=True, borrow=False. This combination is "
-                        "incompatible since mutable=True implies that the "
-                        "input variable may be both aliased (borrow=True) and "
-                        "overwritten.",
-                        variable, name)
+            raise AssertionError(
+                    "Symbolic input for variable %s (name=%s) has "
+                    "flags mutable=True, borrow=False. This combination is "
+                    "incompatible since mutable=True implies that the "
+                    "input variable may be both aliased (borrow=True) and "
+                    "overwritten.",
+                    variable, name)
 
         if implicit is None:
             implicit = (isinstance(value, gof.Container) or
