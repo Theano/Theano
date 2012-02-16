@@ -470,7 +470,8 @@ def test_diag():
     f = theano.function([m], d)
     f2 = theano.function([m], d.shape)
     for K in 1, 5:
-        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),dtype='float64')
+        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),
+                dtype=theano.config.floatX)
         diag = numpy.diagonal(np_matrix)
         sp_matrix = scipy.sparse.csc_matrix(np_matrix)
 
