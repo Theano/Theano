@@ -268,9 +268,9 @@ class Param(object):
 
         :param mutable: True -> function is allowed to modify this argument.
 
-        :param borrow: True -> function is allowed to alias some output to
-                       this input
-
+        :param borrow: Whether the function is allowed to alias some output to
+        this input. Using None (default) means we re-use the same value as the
+        `mutable` flag.
 
         False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
@@ -289,25 +289,27 @@ class Param(object):
         self.default = default
         self.name = name
         self.mutable = mutable
-        # mutable implies the output can be both aliased to the input and that the input can be
-        # destroyed. borrow simply implies the output can be aliased to the input. Thus
-        # mutable=True should require borrow=True. Raise warning when borrow is explicitely set
-        # to False with mutable=True.
-        if mutable:
-            # Do not compare with "if not borrow", because borrow can be None,
-            # and "not None" would be True.
-            if borrow is False:
-                _logger.warning("Symbolic input for variable %s (name=%s) has "
-                        "flags mutable=True, borrow=False. This combination is "
-                        "incompatible since mutable=True implies that the "
-                        "input variable may be both aliased (borrow=True) and "
-                        "over-written. We set borrow=True and continue.",
-                        variable, name)
-            borrow = True
+
+        if borrow is None:
+            self.borrow = self.mutable
+        else:
+            self.borrow = borrow
+
+        # mutable implies the output can be both aliased to the input and that
+        # the input can be destroyed. borrow simply implies the output can be
+        # aliased to the input. Thus mutable=True should require borrow=True.
+        if self.mutable and not self.borrow:
+            raise AssertionError(
+                    "Symbolic input for variable %s (name=%s) has "
+                    "flags mutable=True, borrow=False. This combination is "
+                    "incompatible since mutable=True implies that the "
+                    "input variable may be both aliased (borrow=True) and "
+                    "overwritten.",
+                    variable, name)
+
         self.strict = strict
         self.allow_downcast = allow_downcast
         self.implicit = implicit
-        self.borrow = borrow
 
 
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
