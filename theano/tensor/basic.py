@@ -4085,7 +4085,7 @@ class Rebroadcast(Op):
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__, ','.join(broadcast_pattern))
     def make_node(self, x):
-        if x.ndim <= numpy.max(self.axis.keys()):
+        if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast nonexistant dimension')
         t = x.type.__class__(dtype = x.type.dtype,
                        broadcastable = [self.axis.get(i, b)

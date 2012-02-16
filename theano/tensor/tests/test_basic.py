@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile)
+        tile, patternbroadcast)
 from theano.tests import unittest_tools as utt
 
 
@@ -5283,6 +5283,15 @@ class test_broadcast(unittest.TestCase):
         assert unbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
         assert addbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
         assert addbroadcast(unbroadcast(x,0),0) is x
+
+    def test_patternbroadcast(self):
+        # Test that patternbroadcast with an empty broadcasting pattern works
+        x = scalar('x')
+        m = tensor.matrix('m')
+        s = patternbroadcast(m, x.broadcastable)
+        assert s is m
+        x2 = patternbroadcast(x, x.broadcastable)
+        assert x2 is x
 
     def test_infer_shape(self):
         x = matrix()
