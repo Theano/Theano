@@ -183,8 +183,10 @@ def test_reshape():
     c = T.reshape(a, [2,3])
 
     #basic
-    f = theano.function([a], c, mode=mode_without_gpu)
+    f = theano.function([a], c, mode=mode_with_gpu)
     fv = f(cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32')))
+    topo = f.maker.env.toposort()
+    assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(fv == numpy.asarray([[0,1,2], [3,4,5]]))
 
     #test that it works without inplace operations
@@ -192,7 +194,9 @@ def test_reshape():
     a_val_copy = cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32'))
     b_val = cuda_ndarray.CudaNdarray(theano._asarray([[0,1,2],[3,4,5]],dtype='float32'))
 
-    f_sub = theano.function([a,b], c-b, mode=mode_without_gpu)
+    f_sub = theano.function([a,b], c-b, mode=mode_with_gpu)
+    topo = f_sub.maker.env.toposort()
+    assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
 
@@ -201,7 +205,9 @@ def test_reshape():
     a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float32')
     b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float32')
 
-    f_sub = theano.function([a,b], c-b, mode=mode_without_gpu)
+    f_sub = theano.function([a,b], c-b, mode=mode_with_gpu)
+    topo = f_sub.maker.env.toposort()
+    assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
 
