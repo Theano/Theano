@@ -371,7 +371,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                 dims[0] = Nx0;
                 dims[1] = Nx1;
 
-                PyArrayObject * xx_copy = PyArray_GETCONTIGUOUS(%(xx)s);
+                PyArrayObject * xx_copy = (PyArrayObject *) PyArray_Copy(%(xx)s);
                 if (!xx_copy)
                     %(fail)s
                 Py_XDECREF(%(xx)s);
@@ -475,7 +475,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
