@@ -5186,6 +5186,18 @@ class AdvancedIncSubtensor1(Op):
                 and self.inplace == other.inplace
                 and self.set_instead_of_inc == other.set_instead_of_inc)
 
+    def __str__(self):
+        if self.inplace:
+            msg = "inplace"
+        else:
+            msg = "no_inplace"
+        if self.set_instead_of_inc:
+            msg += ",set"
+        else:
+            msg += ",inc"
+
+        return self.__class__.__name__ + "{%s}" % msg
+
     def make_node(self, x, y, ilist):
         x_ = as_tensor_variable(x)
         y_ = as_tensor_variable(y)
