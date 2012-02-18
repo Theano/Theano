@@ -173,7 +173,7 @@ if cuda_available:
     shared_constructor = float32_shared_constructor
 
     import basic_ops
-    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
+    from basic_ops import (GpuOp, GpuFromHost, HostFromGpu, GpuElemwise,
                            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
                            GpuSubtensor, GpuIncSubtensor,
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,

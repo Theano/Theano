@@ -20,7 +20,10 @@ import multinomial
 
 from theano.sandbox.cuda import cuda_available, cuda_enabled
 if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType, float32_shared_constructor
+    from theano.sandbox.cuda import (CudaNdarrayType,
+                                     float32_shared_constructor,
+                                     GpuOp)
+
 
 def mulmod(a, b, c, m):
     r = numpy.int32((numpy.int64(a)*b + c) % m)
@@ -372,7 +375,7 @@ class mrg_uniform(mrg_uniform_base):
     def c_code_cache_version(self):
         return (1,)
 
-class GPU_mrg_uniform(mrg_uniform_base):
+class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     #GPU VERSION
 
     @classmethod

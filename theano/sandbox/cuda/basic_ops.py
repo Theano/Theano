@@ -33,7 +33,20 @@ def as_cuda_array(obj):
     else:
         raise TypeError("Don't know how to cast to a CudaNdarray object")
 
-class HostFromGpu(Op):
+
+class GpuOp(Op):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        if theano.sandbox.cuda.use.device_number is None:
+            theano.sandbox.cuda.use("gpu",
+                                    force=True,
+                                    default_to_move_computation_to_gpu=False,
+                                    move_shared_float32_to_gpu=False,
+                                    enable_cuda=False)
+        return super(GpuOp, self).make_thunk(node, storage_map,
+                                             compute_map, no_recycling)
+
+
+class HostFromGpu(GpuOp):
     """
     Implement the transfer from gpu to the cpu.
     """
@@ -65,7 +78,7 @@ class HostFromGpu(Op):
         return xshp
 host_from_gpu = HostFromGpu()
 
-class GpuFromHost(Op):
+class GpuFromHost(GpuOp):
     """
     Implement the transfer from cpu to the gpu.
     """
@@ -98,7 +111,8 @@ class GpuFromHost(Op):
         return xshp
 gpu_from_host = GpuFromHost()
 
-class GpuElemwise(Op):
+
+class GpuElemwise(GpuOp):
     """
     Implement a generic elemwise on the gpu.
     """
@@ -208,7 +222,7 @@ class GpuElemwise(Op):
     def c_code_cache_version(self):
         return self.src_generator.cache_version
 
-class GpuDimShuffle(Op):
+class GpuDimShuffle(GpuOp):
     """
     Implement DimShuffle on the gpu.
     """
@@ -397,7 +411,7 @@ class GpuDimShuffle(Op):
     def c_code_cache_version(self):
         return (1,0)
 
-class GpuSum(Op):
+class GpuSum(GpuOp):
     """GpuSum is a Reduction along some dimensions by summation.
 
     The dimensions along which to sum is specified by the `reduce_mask` that you pass to the
@@ -1717,7 +1731,7 @@ class GpuSum(Op):
             """ %locals()
         return sio.getvalue()
 
-class GpuReshape(tensor.Reshape):
+class GpuReshape(tensor.Reshape, GpuOp):
     """
     Implement Reshape on the gpu.
     """
@@ -1733,7 +1747,7 @@ class GpuReshape(tensor.Reshape):
                     ', should be %i' % (len(shp), self.ndim), shp)
         out[0] = x.reshape(tuple(shp))
 
-class GpuSubtensor(tensor.Subtensor):
+class GpuSubtensor(tensor.Subtensor, GpuOp):
     """
     Implement subtensor on the gpu.
     """
@@ -1764,7 +1778,7 @@ class GpuSubtensor(tensor.Subtensor):
             cdata = cdata[0]
         out[0] = x.__getitem__(cdata)
 
-class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
+class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
     """
@@ -1790,7 +1804,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1):
             o[j] = x[i]
         out[0] = o
 
-class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
+class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
     """
@@ -1818,7 +1832,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1):
         # CudaNdarray_Subscript() don't support Advanced slicing.
         # so we use the parent version that loop on each indices.
 
-class GpuIncSubtensor(tensor.IncSubtensor):
+class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
     """
@@ -1828,7 +1842,7 @@ class GpuIncSubtensor(tensor.IncSubtensor):
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x,y]+rval.inputs[2:], [x.type()])
 
-class GpuFlatten(tensor.Flatten):
+class GpuFlatten(tensor.Flatten, GpuOp):
     """
     Implement Flatten on the gpu.
     """
@@ -1839,7 +1853,7 @@ class GpuFlatten(tensor.Flatten):
         out_type = CudaNdarrayType(broadcastable=host_out_broadcastable)
         return Apply(self, [x], [out_type()])
 
-class GpuShape(tensor.Shape):
+class GpuShape(tensor.Shape, GpuOp):
     """
     Implement Shape on the gpu.
     """
@@ -1847,7 +1861,7 @@ class GpuShape(tensor.Shape):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
 
-class GpuJoin(tensor.Join):
+class GpuJoin(tensor.Join, GpuOp):
     """
     Implement Join on the gpu.
     """
@@ -1924,7 +1938,7 @@ class GpuJoin(tensor.Join):
 
 gpu_join = GpuJoin()
 
-class GpuAlloc(Op):
+class GpuAlloc(GpuOp):
     """
     Implement Alloc on the gpu.
     """
@@ -2023,7 +2037,7 @@ class GpuAlloc(Op):
 gpu_alloc = GpuAlloc()
 
 
-class GpuContiguous(Op):
+class GpuContiguous(GpuOp):
     """
     Always return a c contiguous output. Copy the input only if it is
     not already c contiguous.

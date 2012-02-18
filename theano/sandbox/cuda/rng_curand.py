@@ -10,7 +10,7 @@ __contact__ = "theano-dev@googlegroups.com"
 import sys
 import numpy
 import theano.gof
-from theano.sandbox.cuda import CudaNdarrayType
+from theano.sandbox.cuda import CudaNdarrayType, GpuOp
 from theano.tensor import (get_vector_length, cast, opt)
 from theano.compile import optdb
 from theano.gof import local_optimizer, Variable
@@ -19,7 +19,7 @@ from theano.gof import local_optimizer, Variable
 config = theano.config
 
 
-class CURAND_Base(theano.gof.Op):
+class CURAND_Base(GpuOp):
     """ Base class for a random number generator implemented in CURAND.
 
     The random number generator itself is an opaque reference managed by

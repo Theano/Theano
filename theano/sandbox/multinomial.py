@@ -5,7 +5,7 @@ from theano.gof import local_optimizer
 
 from theano.sandbox.cuda import cuda_available
 if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType
+    from theano.sandbox.cuda import CudaNdarrayType, GpuOp
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
 
@@ -120,7 +120,7 @@ class MultinomialFromUniform(Op):
         """ % locals()
 
 
-class GpuMultinomialFromUniform(MultinomialFromUniform):
+class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     """
     The output is transposed compared to MultinomialFromUniform.
     We must insert a Transpose op after it.

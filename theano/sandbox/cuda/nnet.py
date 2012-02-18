@@ -3,11 +3,12 @@ from theano import tensor, scalar
 import StringIO
 
 from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.sandbox.cuda import GpuOp
 
 from theano.sandbox.cuda.kernel_codegen import nvcc_kernel, inline_reduce_max, inline_reduce_sum, inline_softmax
 
 
-class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
+class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
     """
@@ -180,7 +181,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
-class GpuCrossentropySoftmax1HotWithBiasDx (Op):
+class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
     """
@@ -302,7 +303,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
 
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
-class GpuSoftmax (Op):
+class GpuSoftmax (GpuOp):
     """
     Implement Softmax on the gpu.
     """
@@ -400,7 +401,7 @@ class GpuSoftmax (Op):
 
 gpu_softmax = GpuSoftmax()
 
-class GpuSoftmaxWithBias (Op):
+class GpuSoftmaxWithBias (GpuOp):
     """
     Implement SoftmaxWithBias on the gpu.
     """
