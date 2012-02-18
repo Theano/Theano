@@ -1021,6 +1021,20 @@ test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
     op_by_matrix_ = True,
     name='test_shared_options')
 
+
+def speed_test_adv_sub1():
+    data = numpy.random.rand(50000, 21).astype("float32")
+    var = tcn.shared_constructor(data)
+    vec = tensor.lvector()
+    for batch_size in [100, 1000, 10000, 100000]:
+        idx = numpy.random.randint(0, 50000, batch_size)
+        mode_with_gpu = theano.compile.ProfileMode().including('gpu')
+        f = theano.function([vec], var[vec], mode=mode_with_gpu)
+        for i in range(100):
+            f(idx)
+        print "ProfileMode with batch size", batch_size
+        mode_with_gpu.print_summary()
+
 if __name__ == '__main__':
     test_many_arg_elemwise()
     test_gpujoin_twomatrices_joincolumns()
