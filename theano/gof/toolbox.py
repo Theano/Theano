@@ -71,7 +71,7 @@ class Validator:
             try:
                 env.validate()
                 return True
-            except:
+            except Exception:
                 return False
         env.consistent = consistent
 
@@ -118,7 +118,7 @@ class ReplaceValidate(History, Validator):
                 raise
         try:
             env.validate()
-        except:
+        except Exception, e:
             env.revert(chk)
             raise
 
@@ -155,7 +155,7 @@ class NodeFinder(dict, Bookkeeper):
             print >> sys.stderr, 'OFFENDING node', type(node), type(node.op)
             try:
                 print >> sys.stderr, 'OFFENDING node hash', hash(node.op)
-            except:
+            except Exception:
                 print >> sys.stderr, 'OFFENDING node not hashable'
             raise e
 
