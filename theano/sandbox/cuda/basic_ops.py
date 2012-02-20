@@ -5,6 +5,7 @@ import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar, config
 
+from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import filter as type_support_filter
 
