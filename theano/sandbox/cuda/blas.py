@@ -192,7 +192,7 @@ class GpuGemm(GpuOp):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -200,6 +200,7 @@ class GpuGemm(GpuOp):
         #not inplace version, we copy z_in to z_out.
         z_in, a, x, y, b = inputs
         z_out, = outputs
+        inplace = int(self.inplace)
         fail = sub['fail']
         sio = StringIO.StringIO()
 
@@ -215,39 +216,50 @@ class GpuGemm(GpuOp):
         : (REAL)(((double*)%(b)s->data)[0]);
         #undef REAL
 
-        """
-        if self.inplace:
-            print >> sio, """
+        if (%(inplace)s
+            && (CudaNdarray_HOST_STRIDES(%(z_in)s)[0] >= 0)
+            && (CudaNdarray_HOST_STRIDES(%(z_in)s)[1] >= 0)
+            && ((CudaNdarray_HOST_DIMS(%(z_in)s)[0] <= 1)
+                || (CudaNdarray_HOST_STRIDES(%(z_in)s)[0] == 1)
+                || (CudaNdarray_HOST_DIMS(%(z_in)s)[1] <= 1)
+                || (CudaNdarray_HOST_STRIDES(%(z_in)s)[1] == 1)))
+        {
+            // The input has an appropriate layout, we work inplace
             Py_XDECREF(%(z_out)s);
             %(z_out)s = %(z_in)s;
             Py_INCREF(%(z_out)s);
-            """
-        else:
-            print >> sio, """
-            if (!%(z_out)s
-                || (%(z_out)s->nd != 2)
-                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
-                || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1])
-                )
+        }
+        else if (%(z_out)s
+                && (%(z_out)s->nd == 2)
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[0]
+                    == CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[1]
+                    == CudaNdarray_HOST_DIMS(%(z_in)s)[1])
+                && (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] >= 0)
+                && (CudaNdarray_HOST_STRIDES(%(z_out)s)[1] >= 0)
+                && ((CudaNdarray_HOST_DIMS(%(z_out)s)[0] <= 1)
+                    || (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 1)
+                    || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] <= 1)
+                    || (CudaNdarray_HOST_STRIDES(%(z_out)s)[1] == 1)))
+        {
+            // The existing output has an appropriate layout,
+            // copy the input data into it, then work inplace
+            if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
             {
-                Py_XDECREF(%(z_out)s);
-                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
-                if (!%(z_out)s)
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            else
+        }
+        else
+        {
+            // Copy the input, use the copy as output
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+            if (!%(z_out)s)
             {
-                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            """
+        }
 
-
-        print >> sio, """
         if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_out)s))
         {
             %(fail)s;
@@ -294,7 +306,7 @@ class GpuGemv(GpuOp):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -302,44 +314,46 @@ class GpuGemv(GpuOp):
         #not inplace version, we copy z_in to z_out.
         z_in, a, x, y, b = inputs
         z_out, = outputs
+        inplace = int(self.inplace)
         fail = sub['fail']
         sio = StringIO.StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
         float %(name)s_beta = ((dtype_%(b)s*)(%(b)s->data))[0];
-        """
-        if self.inplace:
-            print >> sio, """
+
+        if (%(inplace)s
+            && ((CudaNdarray_HOST_STRIDES(%(z_in)s)[0] > 0)
+                || ((CudaNdarray_HOST_STRIDES(%(z_in)s)[0] == 0)
+                    && (CudaNdarray_HOST_DIMS(%(z_in)s)[0] == 1))))
+        {
+            // Work inplace on the input
             Py_XDECREF(%(z_out)s);
             %(z_out)s = %(z_in)s;
             Py_INCREF(%(z_out)s);
-            """
-        else:
-            print >> sio, """
-            if (!%(z_out)s
-                || (%(z_out)s->nd != 1)
-                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
-                )
+        }
+        else if (%(z_out)s
+                && ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] > 0)
+                    || ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 0)
+                        && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] == 1))))
+        {
+            // Work on the output
+            if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
             {
-                Py_XDECREF(%(z_out)s);
-                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
-                if (!%(z_out)s)
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            else
+        }
+        else
+        {
+            // Copy
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+            if (!%(z_out)s)
             {
-                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            """
+        }
 
-
-        print >> sio, """
         if (CudaNdarray_sgemv(%(name)s_alpha, %(x)s, %(y)s, %(name)s_beta, %(z_out)s))
         {
             %(fail)s;
@@ -385,7 +399,7 @@ class GpuGer(GpuOp):
         return Apply(self, [z, a, x, y], [z.type()])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -393,44 +407,57 @@ class GpuGer(GpuOp):
         #not inplace version, we copy z_in to z_out.
         z_in, a, x, y = inputs
         z_out, = outputs
+        inplace = int(self.inplace)
         fail = sub['fail']
         sio = StringIO.StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
-        """
-        if self.inplace:
-            print >> sio, """
+
+        if (%(inplace)s
+            && (CudaNdarray_HOST_STRIDES(%(z_in)s)[0] >= 0)
+            && (CudaNdarray_HOST_STRIDES(%(z_in)s)[1] >= 0)
+            && ((CudaNdarray_HOST_DIMS(%(z_in)s)[0] <= 1)
+                || (CudaNdarray_HOST_STRIDES(%(z_in)s)[0] == 1)
+                || (CudaNdarray_HOST_DIMS(%(z_in)s)[1] <= 1)
+                || (CudaNdarray_HOST_STRIDES(%(z_in)s)[1] == 1)))
+        {
+            // The input has an appropriate layout, we work inplace
             Py_XDECREF(%(z_out)s);
             %(z_out)s = %(z_in)s;
             Py_INCREF(%(z_out)s);
-            """
-        else:
-            print >> sio, """
-            if (!%(z_out)s
-                || (%(z_out)s->nd != 2)
-                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
-                || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1])
-                )
+        }
+        else if (%(z_out)s
+                && (%(z_out)s->nd == 2)
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[0]
+                    == CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[1]
+                    == CudaNdarray_HOST_DIMS(%(z_in)s)[1])
+                && (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] >= 0)
+                && (CudaNdarray_HOST_STRIDES(%(z_out)s)[1] >= 0)
+                && ((CudaNdarray_HOST_DIMS(%(z_out)s)[0] <= 1)
+                    || (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 1)
+                    || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] <= 1)
+                    || (CudaNdarray_HOST_STRIDES(%(z_out)s)[1] == 1)))
+        {
+            // The existing output has an appropriate layout,
+            // copy the input data into it, then work inplace
+            if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
             {
-                Py_XDECREF(%(z_out)s);
-                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
-                if (!%(z_out)s)
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            else
+        }
+        else
+        {
+            // Copy the input, use the copy as output
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+            if (!%(z_out)s)
             {
-                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
-                {
-                    %(fail)s;
-                }
+                %(fail)s;
             }
-            """
+        }
 
-
-        print >> sio, """
         if (CudaNdarray_sger(%(name)s_alpha, %(x)s, %(y)s, %(z_out)s))
         {
             %(fail)s;

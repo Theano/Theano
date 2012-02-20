@@ -1,3 +1,4 @@
+import itertools
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
@@ -17,7 +18,7 @@ import theano.sandbox.cuda as tcn
 from theano.tensor.signal.downsample import DownsampleFactorMax, DownsampleFactorMaxGrad
 
 import theano.compile.mode
-from theano.tensor.tests.test_blas import BaseGemv, TestGer
+from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
@@ -32,19 +33,30 @@ else:
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
 
+def transpose(cuda_mat):
+    # The easiest way to transpose a cuda matrix for now
+    return tcn.dimshuffle(cuda_mat, [1, 0])
+
 def test_dot22():
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
 
         b = tensor.fmatrix()
 
         f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
-        a0 = a.get_value() * 1.0
         bval = my_rand(*b_shp)
         f(bval)
 
         assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval)
 
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
@@ -90,7 +102,8 @@ def test_dot22scalar():
 
 def test_gemm():
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
 
         b = tensor.fmatrix('b')
         c = tensor.fmatrix('c')
@@ -98,12 +111,19 @@ def test_gemm():
         f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
         assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
-        a0 = a.get_value() * 1.0
         bval = my_rand(*b_shp)
         cval = my_rand(a_shp[0],b_shp[1])
         f(bval,cval)
 
         assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.get_value())
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval, cval)
+
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
     cmp((3,4),(4,0))
@@ -114,7 +134,8 @@ def test_gemm():
 def test_gemm_no_inplace():
 
     def cmp(a_shp, b_shp):
-        a = tcn.shared_constructor(my_rand(*a_shp), 'a')
+        a0 = my_rand(*a_shp)
+        a = tcn.shared_constructor(a0, 'a')
         cval = my_rand(a_shp[0], b_shp[1])
         c = tcn.shared_constructor(cval.copy(), 'c')
 
@@ -123,7 +144,6 @@ def test_gemm_no_inplace():
 
         f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
 
-        a0 = a.get_value() * 1.0
         assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
         bval = my_rand(*b_shp)
         bval2 = my_rand(*b_shp)
@@ -132,12 +152,26 @@ def test_gemm_no_inplace():
         assert numpy.allclose(numpy.dot(a0, bval)+cval, a.get_value())
         assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
 
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        f(bval, bval2)
+
     cmp((3,4),(4,5))
     cmp((0,4),(4,5))
     cmp((3,4),(4,0))
     cmp((3,0),(0,5))
     cmp((0,4),(4,0))
     cmp((0,0),(0,0))
+
+
+class TestBlasStridesGpu(TestBlasStrides):
+    dtype = 'float32'
+    shared = staticmethod(tcn.shared_constructor)
+    mode = mode_with_gpu
+
 
 def test_outer():
     x = tcn.shared_constructor(my_rand(8,), 'x')
@@ -260,6 +294,23 @@ class TestGpuGemv(TestCase, BaseGemv,
     gemv = gpu_gemv_inplace
     gemv_inplace = gpu_gemv_inplace
 
+class TestGpuGemvNoTransfer(TestCase, BaseGemv,
+                  unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+
+    # Mimic shared constructors registry
+    @staticmethod
+    def shared(val):
+        try:
+            return tcn.shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
+    # In this test, inputs are not always transfered to GPU
+    gemv = gpu_gemv_no_inplace
+    gemv_inplace = gpu_gemv_inplace
+
 
 class TestVectorMatrixDot(TestCase):
     ### Tolerance factor used in this tests
@@ -285,6 +336,14 @@ class TestVectorMatrixDot(TestCase):
                     gpu_f.maker.env.toposort() ]) == 1
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f2.maker.env.toposort() ]) == 1
+
+        # Check double-strided m
+        m.set_value(
+                m.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                borrow=True)
+        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+
 
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
@@ -363,6 +422,26 @@ class TestGpuGer(TestGer):
 
         # data on the gpu make the op always inplace
         self.ger = gpu_ger_inplace
+        self.gemm = tcn.blas.gpu_gemm_inplace
+
+class TestGpuGerNoTransfer(TestGer):
+    @staticmethod
+    def shared(val):
+        try:
+            return tcn.shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
+    def setUp(self):
+        self.mode = mode_with_gpu
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        # data on the gpu make the op always inplace
+        self.ger = gpu_ger_inplace
+        self.ger_destructive = gpu_ger_inplace
         self.gemm = tcn.blas.gpu_gemm_inplace
 
 
