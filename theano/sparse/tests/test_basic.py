@@ -895,13 +895,16 @@ class UsmmTests(unittest.TestCase):
                                       z - a * theano.sparse.dot(x, y),
                                       mode=mode)
                 # In DebugMode there is a strange difference with complex
-                # So we raise a little the threashold a little.
+                # So we raise a little the threshold a little.
                 try:
-                    orig = theano.tensor.basic.float64_rtol
-                    theano.tensor.basic.float64_rtol = 1e-5
+                    orig_atol = theano.tensor.basic.float64_atol
+                    orig_rtol = theano.tensor.basic.float64_rtol
+                    theano.tensor.basic.float64_atol = 1e-7
+                    theano.tensor.basic.float64_rtol = 1e-6
                     f_a_out = f_a(a_data, x_data, y_data)
                 finally:
-                    theano.tensor.basic.float64_rtol = orig
+                    theano.tensor.basic.float64_atol = orig_atol
+                    theano.tensor.basic.float64_rtol = orig_rtol
 
             assert _allclose(f_a_out, f_b_out, rtol=1e-5)
             topo = f_a.maker.env.toposort()
