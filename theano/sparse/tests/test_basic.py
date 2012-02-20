@@ -833,14 +833,13 @@ class UsmmTests(unittest.TestCase):
         y_size = (100, 200)
         z_size = (x_size[0], y_size[1])
 
-        self.x = numpy.asarray(numpy.random.binomial(1, 0.5, x_size),
-                               dtype=theano.config.floatX)
-        self.y = numpy.asarray(numpy.random.uniform(-1, 1, y_size),
-                               dtype=theano.config.floatX)
-        self.z = numpy.asarray(numpy.random.uniform(-1, 1, z_size),
-                               dtype=theano.config.floatX)
-        utt.seed_rng()
         self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        self.x = numpy.asarray(self.rng.binomial(1, 0.5, x_size),
+                               dtype=theano.config.floatX)
+        self.y = numpy.asarray(self.rng.uniform(-1, 1, y_size),
+                               dtype=theano.config.floatX)
+        self.z = numpy.asarray(self.rng.uniform(-1, 1, z_size),
+                               dtype=theano.config.floatX)
 
     def test(self):
         def mat(format, name, dtype):
@@ -896,13 +895,16 @@ class UsmmTests(unittest.TestCase):
                                       z - a * theano.sparse.dot(x, y),
                                       mode=mode)
                 # In DebugMode there is a strange difference with complex
-                # So we raise a little the threashold a little.
+                # So we raise a little the threshold a little.
                 try:
-                    orig = theano.tensor.basic.float64_rtol
-                    theano.tensor.basic.float64_rtol = 1e-5
+                    orig_atol = theano.tensor.basic.float64_atol
+                    orig_rtol = theano.tensor.basic.float64_rtol
+                    theano.tensor.basic.float64_atol = 1e-7
+                    theano.tensor.basic.float64_rtol = 1e-6
                     f_a_out = f_a(a_data, x_data, y_data)
                 finally:
-                    theano.tensor.basic.float64_rtol = orig
+                    theano.tensor.basic.float64_atol = orig_atol
+                    theano.tensor.basic.float64_rtol = orig_rtol
 
             assert _allclose(f_a_out, f_b_out, rtol=1e-5)
             topo = f_a.maker.env.toposort()
