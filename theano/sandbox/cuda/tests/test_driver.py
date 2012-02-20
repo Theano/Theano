@@ -28,8 +28,8 @@ def test_nvidia_driver1():
     assert len(topo) == 2
     assert sum(isinstance(node.op, B.GpuSum) for node in topo) == 1
     if not numpy.allclose(f(), a.sum()):
-        raise Exception("The nvidia driver version installed with the OS "
-                        "don't give good result for reduction."
+        raise Exception("The nvidia driver version installed with this OS "
+                        "does not give good results for reduction."
                         "Installing the nvidia driver available on the same "
                         "download page as the cuda package will fix the "
                         "problem: http://developer.nvidia.com/cuda-downloads")
