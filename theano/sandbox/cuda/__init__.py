@@ -154,14 +154,6 @@ if cuda_available:
         cuda_available = False
         cuda_initialization_error_message = e.message
 
-# We must do those import to be able to create the full doc when
-# nvcc is not available
-from theano.sandbox.cuda.var import (CudaNdarrayVariable,
-                                     CudaNdarrayConstant,
-                                     CudaNdarraySharedVariable,
-                                     float32_shared_constructor)
-from theano.sandbox.cuda.type import CudaNdarrayType
-
 
 class GpuOp(theano.gof.Op):
 
@@ -184,6 +176,15 @@ class GpuOp(theano.gof.Op):
                                     enable_cuda=False)
         return super(GpuOp, self).make_thunk(node, storage_map,
                                              compute_map, no_recycling)
+
+
+# We must do those import to be able to create the full doc when
+# nvcc is not available
+from theano.sandbox.cuda.var import (CudaNdarrayVariable,
+                                     CudaNdarrayConstant,
+                                     CudaNdarraySharedVariable,
+                                     float32_shared_constructor)
+from theano.sandbox.cuda.type import CudaNdarrayType
 
 
 if cuda_available:
