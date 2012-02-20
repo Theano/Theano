@@ -12,7 +12,7 @@ except ImportError:
 import theano
 from theano import compile, config
 from theano.sparse import enable_sparse
-from theano.gof.python25 import all, product
+from theano.gof.python25 import all, any, product
 
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
