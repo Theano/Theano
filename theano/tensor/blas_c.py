@@ -151,7 +151,6 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         int Sz0 = (Nz0 > 1) ? (%(Z)s->strides[0] / elemsize) : (Nz1 + 1);
         int Sz1 = (Nz1 > 1) ? (%(Z)s->strides[1] / elemsize) : (Nz0 + 1);
 
-        printf("Sz: %%i, %%i\\n", Sz0, Sz1);
         dtype_%(x)s* x_data = (dtype_%(x)s*) %(x)s->data;
         dtype_%(y)s* y_data = (dtype_%(y)s*) %(y)s->data;
         // gemv expects pointers to the beginning of memory arrays,
@@ -234,7 +233,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 @local_optimizer([ger, ger_destructive])
@@ -393,7 +392,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             // - if the copy is too long, maybe call vector/vector dot on
             //   each row instead
             if ((%(xx)s->strides[0] < 0)
-                || (%(xx)s->strides[0] < 0)
+                || (%(xx)s->strides[1] < 0)
                 || ((%(xx)s->strides[0] != elemsize)
                     && (%(xx)s->strides[1] != elemsize)))
             {
@@ -505,7 +504,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
