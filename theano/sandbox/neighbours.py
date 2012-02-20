@@ -5,7 +5,7 @@ from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available
 
 if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType
+    from theano.sandbox.cuda import CudaNdarrayType, GpuOp
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
@@ -292,7 +292,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
 
 
 # This is work in progress
-class GpuImages2Neibs(Images2Neibs):
+class GpuImages2Neibs(Images2Neibs, GpuOp):
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid and wrap_centered"

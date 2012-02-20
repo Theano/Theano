@@ -7,9 +7,9 @@ from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, host_from_gp
 from theano.misc import strutil
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.sandbox.cuda.opt import register_opt
-from theano.sandbox.cuda import CudaNdarrayType
+from theano.sandbox.cuda import CudaNdarrayType, GpuOp
 
-class GpuConv3D(theano.Op):
+class GpuConv3D(GpuOp):
     """ GPU implementation of Conv3D """
 
     def __eq__(self, other):
