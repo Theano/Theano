@@ -3,7 +3,7 @@
 import itertools, sys
 import theano.tensor as T
 from theano import tensor
-#from theano.gof import Env
+from theano.gof.python25 import product as itertools_product
 from theano.printing import pp
 
 import numpy
@@ -1535,7 +1535,7 @@ class TestBlasStrides(TestCase):
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
-        for step_signs in itertools.product((-1, 1), repeat=4):
+        for step_signs in itertools_product((-1, 1), repeat=4):
             for step in (1, 2):
                 b_step1, b_step2, c_step1, c_step2 = (s * step
                         for s in step_signs)
@@ -1605,7 +1605,7 @@ class TestBlasStrides(TestCase):
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
-        for step_signs in itertools.product((-1, 1), repeat=4):
+        for step_signs in itertools_product((-1, 1), repeat=4):
             for step in (1, 2):
                 b_step1, b_step2, c_step1, c_step2 = (s * step
                         for s in step_signs)
@@ -1692,7 +1692,7 @@ class TestBlasStrides(TestCase):
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
-        for step_signs in itertools.product((-1, 1), repeat=6):
+        for step_signs in itertools_product((-1, 1), repeat=6):
             for step in (1, 2):
                 a_step1, a_step2, b_step1, b_step2, c_step1, c_step2 = \
                         (s * step for s in step_signs)
@@ -1785,7 +1785,7 @@ class TestBlasStrides(TestCase):
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
-        for step_signs in itertools.product((1, -1), repeat=4):
+        for step_signs in itertools_product((1, -1), repeat=4):
             for step in (1, 2):
                 a_step, b_step1, b_step2, c_step = (s * step
                         for s in step_signs)
@@ -1841,7 +1841,7 @@ class TestBlasStrides(TestCase):
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed patterns
-        for step_signs in itertools.product((1, -1), repeat=4):
+        for step_signs in itertools_product((1, -1), repeat=4):
             for step in (1, 2):
                 a_step1, a_step2, b_step, c_step = (s * step
                         for s in step_signs)
