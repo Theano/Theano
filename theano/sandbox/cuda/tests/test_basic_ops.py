@@ -1022,7 +1022,7 @@ test_shared_options2 = theano.tensor.tests.test_sharedvar.makeSharedTester(
     name='test_shared_options')
 
 
-def speed_test_adv_sub1():
+def speed_adv_sub1():
     data = numpy.random.rand(50000, 21).astype("float32")
     var = tcn.shared_constructor(data)
     vec = tensor.lvector()
