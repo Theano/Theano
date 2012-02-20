@@ -437,8 +437,8 @@ class T_conversion(unittest.TestCase):
         c = d.sum()
         g = tensor.grad(c, x)
         f = theano.function([x], [s, g])
-        f(numpy.array(0, ndmin=ndim))
-        f(numpy.array(7, ndmin=ndim))
+        f(numpy.array(0, dtype=config.floatX, ndmin=ndim))
+        f(numpy.array(7, dtype=config.floatX, ndmin=ndim))
 
     def test_format_ndim(self):
         for format in 'csc', 'csr':
