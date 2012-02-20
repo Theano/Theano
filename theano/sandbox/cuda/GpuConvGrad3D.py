@@ -8,11 +8,12 @@ from theano.misc import strutil
 
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
 from theano.sandbox.cuda.opt import register_opt
-from theano.sandbox.cuda import CudaNdarrayType, HostFromGpu, host_from_gpu
+from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
+                                 host_from_gpu, GpuOp)
 
 
 
-class GpuConvGrad3D(theano.Op):
+class GpuConvGrad3D(GpuOp):
     """ GPU version of gradient of ConvGrad3D with respect to W """
 
     def make_node(self, V, d, WShape, dCdH):

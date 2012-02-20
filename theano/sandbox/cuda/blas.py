@@ -4,8 +4,9 @@ import StringIO, os
 
 import cuda_ndarray.cuda_ndarray as cuda
 from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.sandbox.cuda import GpuOp
 
-class GpuDot22(Op):
+class GpuDot22(GpuOp):
     """
     Implement dot(2d, 2d) on the gpu.
     """
@@ -76,7 +77,7 @@ class GpuDot22(Op):
         """ % locals()
 gpu_dot22 = GpuDot22()
 
-class GpuDot22Scalar(Op):
+class GpuDot22Scalar(GpuOp):
     """
     Implement dot(2d, 2d) * scalar on the gpu.
     """
@@ -155,7 +156,7 @@ class GpuDot22Scalar(Op):
         """ % locals()
 gpu_dot22scalar = GpuDot22Scalar()
 
-class GpuGemm(Op):
+class GpuGemm(GpuOp):
     """
     implement the gemm on the gpu.
 
@@ -257,7 +258,7 @@ class GpuGemm(Op):
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
-class GpuGemv(Op):
+class GpuGemv(GpuOp):
     """
     implement gemv on the gpu.
 
@@ -348,7 +349,7 @@ class GpuGemv(Op):
 gpu_gemv_no_inplace = GpuGemv(inplace=False)
 gpu_gemv_inplace = GpuGemv(inplace=True)
 
-class GpuGer(Op):
+class GpuGer(GpuOp):
     """
     implement ger on the gpu.
 
@@ -439,7 +440,7 @@ class GpuGer(Op):
 gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
-class GpuOuter(Op):
+class GpuOuter(GpuOp):
     """ Implement outer on the gpu."""
     def make_node(self, x, y):
         # we suppose type checking has been done, but make sure.
@@ -532,7 +533,7 @@ gpu_outer = GpuOuter()
 ##
 # Not really a BLAS operation, but whatever.
 #
-class GpuConv(Op):
+class GpuConv(GpuOp):
     """
     Implement the batched and stacked 2d convolution on the gpu.
     """
@@ -698,7 +699,7 @@ class GpuConv(Op):
 """%sub
 
 
-class GpuDownsampleFactorMax(Op):
+class GpuDownsampleFactorMax(GpuOp):
     """
     Implement downsample with max on the gpu.
     """
@@ -858,7 +859,7 @@ class GpuDownsampleFactorMax(Op):
         }
         """ % locals()
 
-class GpuDownsampleFactorMaxGrad(Op):
+class GpuDownsampleFactorMaxGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
     """

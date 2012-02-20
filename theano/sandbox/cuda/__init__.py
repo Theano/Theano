@@ -1,4 +1,8 @@
 import atexit, logging, os, shutil, stat, sys
+
+import numpy
+
+import theano
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
 from theano.configparser import config, AddConfigVar, StrParam
@@ -23,7 +27,8 @@ if config.cuda.root == "AUTO":
     # set nvcc_path correctly and get the version
     nvcc_compiler.set_cuda_root()
 
-#is_nvcc_available called here to initialize global vars in nvcc_compiler module
+#is_nvcc_available called here to initialize global vars in
+#nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
 
 # Compile cuda_ndarray.cu
@@ -31,8 +36,9 @@ nvcc_compiler.is_nvcc_available()
 # printed and this module will not be working properly (we set `cuda_available`
 # to False).
 
-# This variable is True by default, and set to False if nvcc is not available or
-# their is no cuda card or something goes wrong when trying to initialize cuda.
+# This variable is True by default, and set to False if nvcc is not
+# available or their is no cuda card or something goes wrong when
+# trying to initialize cuda.
 cuda_available = True
 
 # Global variable to avoid displaying the same warning multiple times.
@@ -40,6 +46,7 @@ cuda_warning_is_displayed = False
 
 #This variable is set to True when we enable cuda.(i.e. when use() is called)
 cuda_enabled = False
+
 
 # Code factorized within a function so that it may be called from multiple
 # places (which is not currently the case, but may be useful in the future).
@@ -72,17 +79,18 @@ libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'libcuda_ndarray.' + get_lib_extension())
 
 
-# Add the theano cache directory's cuda_ndarray subdirectory to the list of
-# places that are hard-coded into compiled modules' runtime library search
-# list.  This works in conjunction with nvcc_compiler.nvcc_module_compile_str
-# which adds this folder during compilation with -L and also adds -lcuda_ndarray
-# when compiling modules.
+# Add the theano cache directory's cuda_ndarray subdirectory to the
+# list of places that are hard-coded into compiled modules' runtime
+# library search list.  This works in conjunction with
+# nvcc_compiler.nvcc_module_compile_str which adds this folder during
+# compilation with -L and also adds -lcuda_ndarray when compiling
+# modules.
 nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
 
 compile_cuda_ndarray = True
 
 if os.path.exists(cuda_ndarray_so):
-    compile_cuda_ndarray = date>=os.stat(cuda_ndarray_so)[stat.ST_MTIME]
+    compile_cuda_ndarray = date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]
 if not compile_cuda_ndarray:
     try:
         # If we load a previously-compiled version, config.compiledir should
@@ -111,7 +119,7 @@ try:
                     include_dirs=[cuda_path], libs=['cublas'])
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
-    _logger.error( "Failed to compile cuda_ndarray.cu: %s", str(e))
+    _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
     set_cuda_disabled()
 
 if cuda_available:
@@ -129,10 +137,13 @@ if cuda_available:
             os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
 
     try:
+        # This only test if the cuda driver is available and if there
+        # is at least one GPU that support cuda. This do not select a
+        # device.
         gpu_init()
         cuda_available = True
         cuda_initialization_error_message = ""
-        # actively closing our gpu session presents segfault-on-exit on some systems
+# actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
     except EnvironmentError, e:
         cuda_available = False
@@ -162,7 +173,7 @@ if cuda_available:
     shared_constructor = float32_shared_constructor
 
     import basic_ops
-    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
+    from basic_ops import (GpuOp, GpuFromHost, HostFromGpu, GpuElemwise,
                            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
                            GpuSubtensor, GpuIncSubtensor,
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
@@ -180,18 +191,31 @@ def use(device,
         force=False,
         default_to_move_computation_to_gpu=True,
         move_shared_float32_to_gpu=True,
-        enable_cuda=True):
+        enable_cuda=True,
+        test_driver=True):
     """
-    Error and warning about CUDA should be displayed only when this function is called.
-    We need to be able to load this module only to check if it is available!
+    Error and warning about CUDA should be displayed only when this
+    function is called.  We need to be able to load this module only
+    to check if it is available!
+
+    :param device: string "cpu", "gpu", "gpuN" N is the device number to use
+    :param force: Will always raise an exception if we can't use the gpu.
+    :param default_to_move_computation_to_gpu: If gpu init succeeded, enable by
+                                               default optimization to move
+                                               computation to the gpu
+    :param move_shared_float32_to_gpu: If gpu init succeeded, put new shared
+                                       variable in float32 on the gpu.
+    :param enable_cuda: If the gpu is correctly enabled,
+                        set the the variable cuda_enabled to True.
     """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
         if not nvcc_compiler.is_nvcc_available():
-            raise EnvironmentError("You forced the use of gpu device '%s', but "
-                                   "nvcc was not found. Set it in your PATH "
+            raise EnvironmentError("You forced the use of gpu device '%s', but"
+                                   " nvcc was not found. Set it in your PATH "
                                    "environment variable or set the Theano "
-                                   "flags 'cuda.root' to its directory" % device)
+                                   "flags 'cuda.root' to its directory"
+                                   "" % device)
         else:
             raise EnvironmentError("You forced the use of gpu device %s, "
                                    "but CUDA initialization failed "
@@ -206,7 +230,8 @@ def use(device,
         try:
             if cuda_initialization_error_message:
                 error_addendum = " (error: %s)" % cuda_initialization_error_message
-        except NameError: # cuda_initialization_error_message is not available b/c compilation failed
+        except NameError:
+# cuda_initialization_error_message is not available b/c compilation failed
             pass
         _logger.warning('CUDA is installed, but device %s is not available %s',
                 device, error_addendum)
@@ -222,29 +247,33 @@ def use(device,
         raise ValueError("Invalid device identifier", device)
     if use.device_number is None:
         # No successful call to use() has been made yet
-        if device != 'gpu' and device<0:
+        if device != 'gpu' and device < 0:
             return
-        if device in [None,""]:
-            device=0
+        if device in [None, ""]:
+            device = 0
         try:
-            if device !='gpu':
+            if device != 'gpu':
                 gpu_init(device)
+            use.device_number = device
+            if test_driver:
+                import theano.sandbox.cuda.tests.test_driver
+                theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
-            use.device_number = device
 
             if enable_cuda:
                 cuda_enabled = True
-            print >> sys.stderr, "Using gpu device %d: %s" % (active_device_number(), active_device_name())
+            print >> sys.stderr, "Using gpu device %d: %s" % (
+                active_device_number(), active_device_name())
         except (EnvironmentError, ValueError), e:
             _logger.error(("ERROR: Not using GPU."
                 " Initialisation of device %i failed:\n%s"),
                 device, e)
             cuda_enabled = False
             if force:
-                e.args+=(("You asked to force this device and it failed."
-                        " No fallback to the cpu or other gpu device."),)
+                e.args += (("You asked to force this device and it failed."
+                            " No fallback to the cpu or other gpu device."),)
                 raise
 
     elif use.device_number != device:
@@ -264,17 +293,16 @@ def use(device,
         try:
             #in case the device if just gpu,
             # we check that the driver init it correctly.
-            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5,5))
+            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
         except (Exception, NameError), e:
             # NameError when no gpu present as cuda_ndarray is not loaded.
-            e.args+=("ERROR: GPU forced but failed. ",)
+            e.args += ("ERROR: GPU forced but failed. ",)
             raise
-
-
 use.device_number = None
 
+
 def handle_shared_float32(tf):
-    """Set the CudaNdarrayType as the default handler for shared float32 arrays.
+    """Set the default shared type for float32 tensor to CudaNdarrayType
 
     This function is intended to be called from use(gpu_index), not directly.
     """
@@ -285,11 +313,14 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
+# We can't test the driver during import here as this cause circular
+# import dependency. So we also test it in the file theano/__init__.py
 if config.device.startswith('gpu'):
-    use(device=config.device, force=config.force_device)
+    use(device=config.device, force=config.force_device, test_driver=False)
 elif config.init_gpu_device:
-    assert config.device=="cpu", ("We can use the Theano flag init_gpu_device"
-            " only when the Theano flag device=='cpu'")
+    assert config.device == "cpu", (
+        "We can use the Theano flag init_gpu_device"
+        " only when the Theano flag device=='cpu'")
     _logger.warning(("GPU device %s will be initialized, and used if a GPU is "
           "needed. "
           "However, no computation, nor shared variables, will be implicitly "
@@ -300,4 +331,4 @@ elif config.init_gpu_device:
         force=config.force_device,
         default_to_move_computation_to_gpu=False,
         move_shared_float32_to_gpu=False,
-        enable_cuda=False)
+        enable_cuda=False, test_driver=False)

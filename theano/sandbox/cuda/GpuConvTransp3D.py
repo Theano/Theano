@@ -9,10 +9,11 @@ from theano.gof import local_optimizer
 
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.sandbox.cuda.opt import register_opt
-from theano.sandbox.cuda import CudaNdarrayType, HostFromGpu, host_from_gpu
+from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
+                                 host_from_gpu, GpuOp)
 
 
-class GpuConvTransp3D(theano.Op):
+class GpuConvTransp3D(GpuOp):
     """ The gpu version of ConvTransp3D """
     def __eq__(self,other):
         return type(self) == type(other)
