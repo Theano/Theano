@@ -44,7 +44,12 @@ class ScipyGer(Ger):
             # N.B. some versions of scipy (e.g. mine) don't actually work
             # in-place on a, even when I tell it to.
             A = cA[0]
-            if A.flags['C_CONTIGUOUS']:
+            if A.size == 0:
+                # We don't have to do anything, A is empty.
+                # We need this special case because Numpy considers it
+                # C-contiguous, wich is confusing.
+                pass
+            elif A.flags['C_CONTIGUOUS']:
                 A = local_ger(calpha[0], cy[0], cx[0], a=A.T,
                         overwrite_a=int(self.destructive)).T
             else:
