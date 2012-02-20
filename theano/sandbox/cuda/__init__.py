@@ -162,6 +162,30 @@ from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      float32_shared_constructor)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
+
+class GpuOp(theano.gof.Op):
+
+    """
+    Parent class for all GPU Ops.
+
+    This class ensures we verify the GPU is working properly when a GPU Op is
+    used for the first time.
+
+    It is defined in __init__.py so that it exists even when `cuda_available`
+    is False (this is necessary to avoid breaking the test suite).
+    """
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        if theano.sandbox.cuda.use.device_number is None:
+            theano.sandbox.cuda.use("gpu",
+                                    force=True,
+                                    default_to_move_computation_to_gpu=False,
+                                    move_shared_float32_to_gpu=False,
+                                    enable_cuda=False)
+        return super(GpuOp, self).make_thunk(node, storage_map,
+                                             compute_map, no_recycling)
+
+
 if cuda_available:
     # check if their is an old cuda_ndarray that was loading instead of the one
     # we compiled!
@@ -178,7 +202,7 @@ if cuda_available:
     shared_constructor = float32_shared_constructor
 
     import basic_ops
-    from basic_ops import (GpuOp, GpuFromHost, HostFromGpu, GpuElemwise,
+    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
                            GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
                            GpuSubtensor, GpuIncSubtensor,
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,

@@ -18,11 +18,10 @@ from theano.gof.python25 import all
 
 import multinomial
 
-from theano.sandbox.cuda import cuda_available, cuda_enabled
+from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
 if cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
-                                     float32_shared_constructor,
-                                     GpuOp)
+                                     float32_shared_constructor)
 
 
 def mulmod(a, b, c, m):

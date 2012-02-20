@@ -34,18 +34,6 @@ def as_cuda_array(obj):
         raise TypeError("Don't know how to cast to a CudaNdarray object")
 
 
-class GpuOp(Op):
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        if theano.sandbox.cuda.use.device_number is None:
-            theano.sandbox.cuda.use("gpu",
-                                    force=True,
-                                    default_to_move_computation_to_gpu=False,
-                                    move_shared_float32_to_gpu=False,
-                                    enable_cuda=False)
-        return super(GpuOp, self).make_thunk(node, storage_map,
-                                             compute_map, no_recycling)
-
-
 class HostFromGpu(GpuOp):
     """
     Implement the transfer from gpu to the cpu.
