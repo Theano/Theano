@@ -1,4 +1,9 @@
-import atexit, logging, os, shutil, stat, sys
+import atexit
+import logging
+import os
+import shutil
+import stat
+import sys
 
 import numpy
 
@@ -179,7 +184,8 @@ if cuda_available:
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
                            GpuFlatten, GpuShape, GpuAlloc,
                            GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
-                           ftensor3, ftensor4, scalar, vector, matrix, row, col,
+                           ftensor3, ftensor4,
+                           scalar, vector, matrix, row, col,
                            tensor3, tensor4)
     from basic_ops import host_from_gpu, gpu_from_host, as_cuda_array
     import opt
@@ -198,15 +204,15 @@ def use(device,
     function is called.  We need to be able to load this module only
     to check if it is available!
 
-    :param device: string "cpu", "gpu", "gpuN" N is the device number to use
+    :param device: string "cpu", "gpu", "gpuN" (N is the device number to use)
     :param force: Will always raise an exception if we can't use the gpu.
     :param default_to_move_computation_to_gpu: If gpu init succeeded, enable by
-                                               default optimization to move
-                                               computation to the gpu
+                                               default optimizations to move
+                                               computations to the gpu
     :param move_shared_float32_to_gpu: If gpu init succeeded, put new shared
-                                       variable in float32 on the gpu.
+                                       variables in float32 on the gpu.
     :param enable_cuda: If the gpu is correctly enabled,
-                        set the the variable cuda_enabled to True.
+                        set the variable cuda_enabled to True.
     """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
@@ -229,7 +235,8 @@ def use(device,
         error_addendum = ""
         try:
             if cuda_initialization_error_message:
-                error_addendum = " (error: %s)" % cuda_initialization_error_message
+                error_addendum = (" (error: %s)" %
+                                  cuda_initialization_error_message)
         except NameError:
 # cuda_initialization_error_message is not available b/c compilation failed
             pass
