@@ -189,7 +189,7 @@ Crashes fixed:
  * "Interactive debugger" crash fix. (Ian, Frederic)
  * Do not call gemm with strides 0, some blas refuse it. (Pascal Lamblin)
  * Optimization crash with gemm and complex. (Frederic)
- * GPU crash with elemwise. (Frederic)
+ * GPU crash with elemwise. (Frederic, some reported by Chris Currivan)
  * Compilation crash with amdlibm and the GPU. (Frederic)
  * IfElse crash. (Frederic)
  * Execution crash fix in AdvancedSubtensor1 on 32 bit computers. (Pascal)
