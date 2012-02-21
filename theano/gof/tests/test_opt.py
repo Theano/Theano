@@ -406,4 +406,4 @@ class TestEquilibrium(object):
         finally:
             _logger.setLevel(oldlevel)
         print 'after', g
-        assert str(g) == '[Op4(x, y)]'
+        assert str(g) == '[Op1(x, y)]'
