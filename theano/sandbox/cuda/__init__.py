@@ -122,7 +122,8 @@ try:
                     'cuda_ndarray',
                     code,
                     location=cuda_ndarray_loc,
-                    include_dirs=[cuda_path], libs=['cublas'])
+                    include_dirs=[cuda_path], libs=['cublas'],
+                    preargs=compiler.compile_args())
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
     _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))

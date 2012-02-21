@@ -50,10 +50,10 @@ except ImportError:
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
                 os.mkdir(loc)
+            preargs = ['-pthread', '-fwrapv', '-O2', '-fno-strict-aliasing']
+            preargs += cmodule.GCC_compiler.compile_args()
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
-                                             preargs=['-pthread', '-fwrapv',
-                                                      '-O2',
-                                                      '-fno-strict-aliasing'])
+                                             preargs=preargs)
             # Save version into the __init__.py file.
             init_py = os.path.join(loc, '__init__.py')
             open(init_py, 'w').write('_version = %s\n' % version)
