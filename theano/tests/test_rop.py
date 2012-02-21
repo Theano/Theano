@@ -318,10 +318,10 @@ class test_RopLop(RopLop_checker):
         m_ = tensor.matrix('m_')
         v_ = tensor.vector('v_')
 
-        mval = self.rng.uniform(size=(3,7))
-        vval = self.rng.uniform(size=(7,))
-        m_val = self.rng.uniform(size=(3,7))
-        v_val = self.rng.uniform(size=(7,))
+        mval = self.rng.uniform(size=(3,7)).astype(theano.config.floatX)
+        vval = self.rng.uniform(size=(7,)).astype(theano.config.floatX)
+        m_val = self.rng.uniform(size=(3,7)).astype(theano.config.floatX)
+        v_val = self.rng.uniform(size=(7,)).astype(theano.config.floatX)
 
         rop_out1 = tensor.Rop([m, v, m+v], [m, v], [m_, v_])
         assert isinstance(rop_out1, list)
