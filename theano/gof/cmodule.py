@@ -1315,7 +1315,8 @@ def gcc_version():
 class GCC_compiler():
     @staticmethod
     def compile_args():
-        return []
+        cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+        return cxxflags
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
@@ -1408,9 +1409,6 @@ class GCC_compiler():
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
-        cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
-        #print >> sys.stderr, config.gcc.cxxflags.split(' ')
-        cmd.extend(cxxflags)
         cmd.extend('-I%s' % idir for idir in include_dirs)
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)

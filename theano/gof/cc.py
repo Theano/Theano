@@ -893,12 +893,6 @@ class CLinker(link.Linker):
         else:
             sig.append('md5: <omitted>')
 
-        # technically this should only be appended for gcc-compiled Ops
-        # and the flags of other compilers should be inserted here... but it's not clear how to
-        # do this.
-        if config.gcc.cxxflags:
-            sig.append(config.gcc.cxxflags)
-
         error_on_play = [False]
         def in_sig(i, topological_pos, i_idx):
             # assert that every input to every node is one of'
