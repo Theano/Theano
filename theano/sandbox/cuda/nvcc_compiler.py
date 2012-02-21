@@ -7,6 +7,7 @@ import subprocess
 import sys
 import warnings
 
+from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension, local_bitwidth)
 
@@ -83,11 +84,10 @@ class NVCC_compiler():
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
         if config.nvcc.fastmath:
             flags.append('-use_fast_math')
+        cuda_ndarray_cuh_hash = hash_from_file(
+            os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
+        flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
         return flags
-#        cuda_ndarray_cuh_hash = hash_from_file(
-#            os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
-#        cuda_macro = '-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash
-#        return [cuda_macro]
 
     @staticmethod
     def compile_str(
