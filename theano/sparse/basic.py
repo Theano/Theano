@@ -141,7 +141,7 @@ def as_sparse_or_tensor_variable(x, name=None):
         return theano.tensor.as_tensor_variable(x, name)
 
 
-def verify_grad_sparse(op, pt, *args, **kwargs):
+def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     """
     Wrapper for theano.test.unittest_tools.py:verify_grad
     Converts sparse variables back and forth.
@@ -160,11 +160,22 @@ def verify_grad_sparse(op, pt, *args, **kwargs):
 
     for p in pt:
         if _is_sparse(p):
-            dpt.append(p.data)
+            if structured:
+                dpt.append(p.data)
+            else:
+                dpt.append(p.toarray())
             if p.format == 'csr':
-                iconv.append(conv_csr(p.indices[:p.size], p.indptr, p.shape))
+                if structured:
+                    iconv.append(conv_csr(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csr_from_dense)
             elif p.format == 'csc':
-                iconv.append(conv_csc(p.indices[:p.size], p.indptr, p.shape))
+                if structured:
+                    iconv.append(conv_csc(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csc_from_dense)
             else:
                 raise NotImplementedError("No conv for %s" % (p.format,))
         else:
@@ -175,7 +186,7 @@ def verify_grad_sparse(op, pt, *args, **kwargs):
         raise NotImplementedError("verify_grad can't deal with "
                                   "multiple outputs")
     if _is_sparse_variable(output):
-        oconv = dense_from_sparse
+        oconv = DenseFromSparse(structured=False)
     else:
         oconv = conv_none
     def conv_op(*inputs):
@@ -740,13 +751,15 @@ class DenseFromSparse(gof.op.Op):
     """
     Convert a sparse matrix to an `ndarray`.
     """
-    sparse_grad = True
-    """WRITEME"""
+    def __init__(self, structured=True):
+        self.sparse_grad = structured
+
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return (type(self) == type(other)) and \
+            (self.sparse_grad == other.sparse_grad)
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self))+hash(self.sparse_grad)
 
     def make_node(self, x):
         x = as_sparse_variable(x)
