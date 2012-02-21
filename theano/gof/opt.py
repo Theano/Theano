@@ -1113,6 +1113,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         max_use_abort = False
         opt_name = None
         process_count = {}
+        max_nb_nodes = 0
 
         while changed and not max_use_abort:
             changed = False
@@ -1130,7 +1131,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             q = deque(graph.io_toposort(env.inputs, start_from))
 
-            max_use = len(q) * self.max_use_ratio
+            max_nb_nodes = max(max_nb_nodes, len(q))
+            max_use = max_nb_nodes * self.max_use_ratio
             def importer(node):
                 if node is not current_node:
                     q.append(node)
@@ -1148,17 +1150,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     current_node = node
                     for lopt in self.local_optimizers:
                         process_count.setdefault(lopt, 0)
-                        if process_count[lopt] > max_use:
-                            max_use_abort = True
-                            opt_name = (getattr(lopt, "name", None)
-                                        or getattr(lopt, "__name__", None) or "")
-                        else:
-                            lopt_change = self.process_node(env, node, lopt)
-                            if lopt_change:
-                                process_count[lopt] += 1
-                                changed = True
-                                if node not in env.nodes:
-                                    break # go to next node
+                        lopt_change = self.process_node(env, node, lopt)
+                        if lopt_change:
+                            process_count[lopt] += 1
+                            changed = True
+                            if process_count[lopt] > max_use:
+                                max_use_abort = True
+                                opt_name = (getattr(lopt, "name", None)
+                                            or getattr(lopt, "__name__", ""))
+                            if node not in env.nodes:
+                                break # go to next node
             finally:
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
