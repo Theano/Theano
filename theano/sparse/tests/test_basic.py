@@ -524,9 +524,9 @@ class test_structureddot(unittest.TestCase):
         verify_grad_sparse(structured_dot, [spmat, mat], structured=True)
 
         def buildgraph_T(spmat, mat):
-            rval = structured_dot(mat.T, spmat.T)
+            return structured_dot(mat.T, spmat.T)
 
-        verify_grad_sparse(buildgraph_T, [spmat.data, mat], structured=True)
+        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
     def test_infer_shape_csr_csc_grad(self):
         for sparsetype in ('csr', 'csc'):
