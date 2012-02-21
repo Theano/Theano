@@ -2,29 +2,38 @@
 
 Since 0.5rc2
 
- * Fixed a memory leak with shared variable (we kept a pointer to the original value)
- * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization)
-   at compile time if all their inputs are constant
- * The keys in our cache now store the hash of constants and not the constant values
-   themselves. This is significantly more efficient for big constant arrays.
- * 'theano-cache list' lists key files bigger than 1M
- * 'theano-cache list' prints an histogram of the number of keys per compiled module
- * 'theano-cache list' prints the number of compiled modules per op class
+Bug fixes (the result changed):
  * Fix a bug with Gemv and Ger on CPU, when used on vectors with negative
    strides. Data was read from incorrect (and possibly uninitialized)
-   memory space. This bug was probably introduced in 0.5rc1.
+   memory space. This bug was probably introduced in 0.5rc1. (Pascal L.)
+
+Crashes fixes:
+ * More cases supported in AdvancedIncSubtensor1. (Olivier D.)
+
+Interface change:
  * The Theano flag "nvcc.flags" is now included in the hard part of the key.
    This mean that now we recompile all modules for each value of "nvcc.flags".
    A change in "nvcc.flags" used to be ignored for module that were already
-   compiled.
+   compiled. (Frederic B.)
+ * When using a GPU, detect faulty nvidia drivers. This was detected
+   when running Theano tests. Now this is always tested. Faulty
+   drivers results in in wrong results for reduce operations. (Frederic B.)
+
+New features:
+ * Many infer_shape implemented on sparse matrices op. (David W.F.)
+ * The keys in our cache now store the hash of constants and not the constant values
+   themselves. This is significantly more efficient for big constant arrays. (Frederic B.)
+ * 'theano-cache list' lists key files bigger than 1M (Frederic B.)
+ * 'theano-cache list' prints an histogram of the number of keys per compiled module (Frederic B.)
+ * 'theano-cache list' prints the number of compiled modules per op class (Frederic B.)
  * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
  * Add the header_dirs to the hard part of the compilation key. This is
    currently used only by cuda, but if we use library that are only headers,
-   this can be useful.
- * More cases supported in AdvancedIncSubtensor1 (Olivier)
- * infer_shape mechanism now works on sparse matrices (DWF)
- * When using a GPU, detect faulty nvidia drivers (resulting in wrong results
-   for reduce operations)
+   this can be useful. (Frederic B.)
+ * Fixed a memory leak with shared variable (we kept a pointer to the original value) (Ian G.)
+ * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization)
+   at compile time if all their inputs are constant.
+   (Frederic B., Pascal L., reported by Sander Dieleman)
 
 =============
 Release Notes
