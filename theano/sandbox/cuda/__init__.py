@@ -87,7 +87,7 @@ libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
 # Add the theano cache directory's cuda_ndarray subdirectory to the
 # list of places that are hard-coded into compiled modules' runtime
 # library search list.  This works in conjunction with
-# nvcc_compiler.nvcc_module_compile_str which adds this folder during
+# nvcc_compiler.NVCC_compiler.compile_str which adds this folder during
 # compilation with -L and also adds -lcuda_ndarray when compiling
 # modules.
 nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
@@ -117,7 +117,8 @@ try:
             if not os.path.exists(cuda_ndarray_loc):
                 os.makedirs(cuda_ndarray_loc)
 
-            nvcc_compiler.nvcc_module_compile_str(
+            compiler = nvcc_compiler.NVCC_compiler()
+            compiler.compile_str(
                     'cuda_ndarray',
                     code,
                     location=cuda_ndarray_loc,
@@ -130,7 +131,7 @@ except Exception, e:
 if cuda_available:
     # If necessary,
     # create a symlink called libcuda_ndarray.so
-    # which nvcc_module_compile_str uses when linking
+    # which nvcc_compiler.NVCC_compiler uses when linking
     # any module except "cuda_ndarray" itself.
     try:
         open(libcuda_ndarray_so).close()

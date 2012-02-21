@@ -622,6 +622,10 @@ class CLinker(link.Linker):
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
             except utils.MethodNotDefined: pass
+
+        c_compiler = self.c_compiler()
+        ret += c_compiler.compile_args()
+
         ret=list(set(ret))#to remove duplicate
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try:
@@ -661,7 +665,7 @@ class CLinker(link.Linker):
                     raise Exception('Nodes have requested specific different compilers',
                             (c_compiler, x_compiler))
         if (c_compiler is None):
-            return cmodule.gcc_module_compile_str
+            return cmodule.GCC_compiler
         else: return c_compiler
 
     def header_dirs(self):
@@ -1007,7 +1011,7 @@ class CLinker(link.Linker):
         libs = self.libraries()
         preargs = self.compile_args()
         compiler_name = c_compiler.__name__
-        if compiler_name == 'nvcc_module_compile_str' and config.lib.amdlibm:
+        if compiler_name == 'NVCC_compiler' and config.lib.amdlibm:
             # This lib does not work correctly with nvcc in device code.
             # and newer version of g++ as 4.5.1.
             # example of errors: "/usr/lib/gcc/x86_64-redhat-linux/4.5.1/include/mmintrin.h(49): error: identifier "__builtin_ia32_emms" is undefined"
@@ -1024,7 +1028,7 @@ class CLinker(link.Linker):
         try:
             _logger.debug("LOCATION %s", str(location))
             try:
-                module = c_compiler(
+                module = c_compiler.compile_str(
                     module_name=mod.name,
                     src_code=src_code,
                     location=location,

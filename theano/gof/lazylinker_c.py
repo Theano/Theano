@@ -53,7 +53,7 @@ except ImportError:
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
                 os.mkdir(loc)
-            cmodule.gcc_module_compile_str(dirname, code, location=loc)
+            cmodule.GCC_compiler.compile_str(dirname, code, location=loc)
             # Save version into the __init__.py file.
             init_py = os.path.join(loc, '__init__.py')
             open(init_py, 'w').write('_version = %s\n' % version)

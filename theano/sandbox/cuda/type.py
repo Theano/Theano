@@ -12,7 +12,7 @@ try:
     # We must do those import to be able to create the full doc when nvcc
     # is not available
     import cuda_ndarray.cuda_ndarray as cuda
-    from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
+    from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
     import cuda_ndarray
 except ImportError:
     pass
@@ -370,7 +370,7 @@ class CudaNdarrayType(Type):
         return (2,) # with assertion about refcounts
 
     def c_compiler(self):
-        return nvcc_module_compile_str
+        return NVCC_compiler
 
     def c_compile_args(self):
         ret = []

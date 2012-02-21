@@ -1312,140 +1312,147 @@ def gcc_version():
     return gcc_version_str
 
 
-def gcc_module_compile_str(module_name, src_code, location=None,
-                           include_dirs=[], lib_dirs=[], libs=[], preargs=[]):
-    """
-    :param module_name: string (this has been embedded in the src_code
+class GCC_compiler():
+    @staticmethod
+    def compile_args():
+        return []
 
-    :param src_code: a complete c or c++ source listing for the module
+    @staticmethod
+    def compile_str(module_name, src_code, location=None,
+                    include_dirs=[], lib_dirs=[], libs=[], preargs=[]):
+        """
+        :param module_name: string (this has been embedded in the src_code
 
-    :param location: a pre-existing filesystem directory where the cpp file and
-    .so will be written
+        :param src_code: a complete c or c++ source listing for the module
 
-    :param include_dirs: a list of include directory names (each gets prefixed
-    with -I)
+        :param location: a pre-existing filesystem directory where the
+        cpp file and .so will be written
 
-    :param lib_dirs: a list of library search path directory names (each gets
-    prefixed with -L)
+        :param include_dirs: a list of include directory names (each
+        gets prefixed with -I)
 
-    :param libs: a list of libraries to link with (each gets prefixed with -l)
+        :param lib_dirs: a list of library search path directory names
+        (each gets prefixed with -L)
 
-    :param preargs: a list of extra compiler arguments
+        :param libs: a list of libraries to link with (each gets
+        prefixed with -l)
 
-    :returns: dynamically-imported python module of the compiled code.
-    """
-    #TODO: Do not do the dlimport in this function
+        :param preargs: a list of extra compiler arguments
 
-    if preargs is None:
-        preargs = []
-    else:
-        preargs = list(preargs)
+        :returns: dynamically-imported python module of the compiled code.
+        """
+        #TODO: Do not do the dlimport in this function
 
-    if sys.platform != 'win32':
-        # Under Windows it looks like fPIC is useless. Compiler warning:
-        # '-fPIC ignored for target (all code is position independent)'
-        preargs.append('-fPIC')
-    no_opt = False
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
 
-    include_dirs = include_dirs + std_include_dirs()
-    libs = std_libs() + libs
-    lib_dirs = std_lib_dirs() + lib_dirs
+        if sys.platform != 'win32':
+            # Under Windows it looks like fPIC is useless. Compiler warning:
+            # '-fPIC ignored for target (all code is position independent)'
+            preargs.append('-fPIC')
+        no_opt = False
 
-    #DSE Patch 1 for supporting OSX frameworks; add -framework Python
-    if sys.platform == 'darwin':
-        preargs.extend(['-undefined', 'dynamic_lookup'])
-        python_inc = distutils.sysconfig.get_python_inc()
-        # link with the framework library *if specifically requested*
-        # config.mac_framework_link is by default False, since on some mac
-        # installs linking with -framework causes a Bus Error
-        if (python_inc.count('Python.framework') > 0 and
-            config.cmodule.mac_framework_link):
-            preargs.extend(['-framework', 'Python'])
+        include_dirs = include_dirs + std_include_dirs()
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
 
-        # Figure out whether the current Python executable is 32 or 64 bit and
-        # compile accordingly.
-        n_bits = local_bitwidth()
-        preargs.extend(['-m%s' % n_bits])
-        _logger.debug("OS X: compiling for %s bit architecture", n_bits)
+        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
+        if sys.platform == 'darwin':
+            preargs.extend(['-undefined', 'dynamic_lookup'])
+            python_inc = distutils.sysconfig.get_python_inc()
+            # link with the framework library *if specifically requested*
+            # config.mac_framework_link is by default False, since on some mac
+            # installs linking with -framework causes a Bus Error
+            if (python_inc.count('Python.framework') > 0 and
+                config.cmodule.mac_framework_link):
+                preargs.extend(['-framework', 'Python'])
 
-    # sometimes, the linker cannot find -lpython so we need to tell it
-    # explicitly where it is located
-    # this returns somepath/lib/python2.x
-    python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                    standard_lib=1)
-    python_lib = os.path.dirname(python_lib)
-    if python_lib not in lib_dirs:
-        lib_dirs.append(python_lib)
+            # Figure out whether the current Python executable is 32
+            # or 64 bit and compile accordingly.
+            n_bits = local_bitwidth()
+            preargs.extend(['-m%s' % n_bits])
+            _logger.debug("OS X: compiling for %s bit architecture", n_bits)
 
-    workdir = location
+        # sometimes, the linker cannot find -lpython so we need to tell it
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
+                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
 
-    cppfilename = os.path.join(location, 'mod.cpp')
-    cppfile = file(cppfilename, 'w')
+        workdir = location
 
-    _logger.debug('Writing module C++ code to %s', cppfilename)
-    ofiles = []
-    rval = None
+        cppfilename = os.path.join(location, 'mod.cpp')
+        cppfile = file(cppfilename, 'w')
 
-    cppfile.write(src_code)
-    # Avoid gcc warning "no newline at end of file".
-    if not src_code.endswith('\n'):
-        cppfile.write('\n')
-    cppfile.close()
+        _logger.debug('Writing module C++ code to %s', cppfilename)
+        ofiles = []
+        rval = None
 
-    lib_filename = os.path.join(location, '%s.%s' %
-            (module_name, get_lib_extension()))
+        cppfile.write(src_code)
+        # Avoid gcc warning "no newline at end of file".
+        if not src_code.endswith('\n'):
+            cppfile.write('\n')
+        cppfile.close()
 
-    _logger.debug('Generating shared lib %s', lib_filename)
-    cmd = ['g++', get_gcc_shared_library_arg(), '-g']
-    if no_opt:
-        cmd.extend(p for p in preargs if not p.startswith('-O'))
-    else:
-        cmd.extend(preargs)
-    cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
-    #print >> sys.stderr, config.gcc.cxxflags.split(' ')
-    cmd.extend(cxxflags)
-    cmd.extend('-I%s' % idir for idir in include_dirs)
-    cmd.extend(['-o', lib_filename])
-    cmd.append(cppfilename)
-    cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
-    cmd.extend(['-l%s' % l for l in libs])
-    #print >> sys.stderr, 'COMPILING W CMD', cmd
-    _logger.debug('Running cmd: %s', ' '.join(cmd))
+        lib_filename = os.path.join(location, '%s.%s' %
+                (module_name, get_lib_extension()))
 
-    def print_command_line_error():
-        # Print command line when a problem occurred.
-        print >> sys.stderr, ("Problem occurred during compilation with the "
-                              "command line below:")
-        print >> sys.stderr, ' '.join(cmd)
+        _logger.debug('Generating shared lib %s', lib_filename)
+        cmd = ['g++', get_gcc_shared_library_arg(), '-g']
+        if no_opt:
+            cmd.extend(p for p in preargs if not p.startswith('-O'))
+        else:
+            cmd.extend(preargs)
+        cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+        #print >> sys.stderr, config.gcc.cxxflags.split(' ')
+        cmd.extend(cxxflags)
+        cmd.extend('-I%s' % idir for idir in include_dirs)
+        cmd.extend(['-o', lib_filename])
+        cmd.append(cppfilename)
+        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
+        cmd.extend(['-l%s' % l for l in libs])
+        #print >> sys.stderr, 'COMPILING W CMD', cmd
+        _logger.debug('Running cmd: %s', ' '.join(cmd))
 
-    try:
-        p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-        compile_stderr = p.communicate()[1]
-    except Exception:
-        # An exception can occur e.g. if `g++` is not found.
-        print_command_line_error()
-        raise
+        def print_command_line_error():
+            # Print command line when a problem occurred.
+            print >> sys.stderr, ("Problem occurred during compilation with the "
+                                  "command line below:")
+            print >> sys.stderr, ' '.join(cmd)
 
-    status = p.returncode
+        try:
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+            compile_stderr = p.communicate()[1]
+        except Exception:
+            # An exception can occur e.g. if `g++` is not found.
+            print_command_line_error()
+            raise
 
-    if status:
-        print '==============================='
-        for i, l in enumerate(src_code.split('\n')):
-            #gcc put its messages to stderr, so we add ours now
-            print >> sys.stderr, '%05i\t%s' % (i + 1, l)
-        print '==============================='
-        print_command_line_error()
-        # Print errors just below the command line.
-        print compile_stderr
-        # We replace '\n' by '. ' in the error message because when Python
-        # prints the exception, having '\n' in the text makes it more difficult
-        # to read.
-        raise Exception('Compilation failed (return status=%s): %s' %
-                        (status, compile_stderr.replace('\n', '. ')))
+        status = p.returncode
 
-    #touch the __init__ file
-    file(os.path.join(location, "__init__.py"), 'w').close()
-    return dlimport(lib_filename)
+        if status:
+            print '==============================='
+            for i, l in enumerate(src_code.split('\n')):
+                #gcc put its messages to stderr, so we add ours now
+                print >> sys.stderr, '%05i\t%s' % (i + 1, l)
+            print '==============================='
+            print_command_line_error()
+            # Print errors just below the command line.
+            print compile_stderr
+            # We replace '\n' by '. ' in the error message because when Python
+            # prints the exception, having '\n' in the text makes it more difficult
+            # to read.
+            raise Exception('Compilation failed (return status=%s): %s' %
+                            (status, compile_stderr.replace('\n', '. ')))
+
+        #touch the __init__ file
+        file(os.path.join(location, "__init__.py"), 'w').close()
+        return dlimport(lib_filename)
 
 
 def icc_module_compile_str(*args):
