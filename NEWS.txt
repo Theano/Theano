@@ -15,6 +15,7 @@ Since 0.5rc2
    This mean that now we recompile all modules for each value of "nvcc.flags".
    This do use change the default, but if you used this flags, it was ignored
    for module already compiled.
+ * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
 
 =============
 Release Notes

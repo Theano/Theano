@@ -81,6 +81,8 @@ class NVCC_compiler():
         They will also be included in the "hard" part of the key module.
         """
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
+        if config.nvcc.fastmath:
+            flags.append('-use_fast_math')
         return flags
 #        cuda_ndarray_cuh_hash = hash_from_file(
 #            os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))

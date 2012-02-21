@@ -373,10 +373,7 @@ class CudaNdarrayType(Type):
         return NVCC_compiler
 
     def c_compile_args(self):
-        ret = []
-        if config.nvcc.fastmath:
-            ret.append('-use_fast_math')
-        return ret
+        return []
 
 
 # Register CudaNdarrayType to the OutputGuard list of known types
