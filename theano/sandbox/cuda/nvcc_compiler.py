@@ -80,8 +80,8 @@ class NVCC_compiler():
         This args will be received by compile_str() in the preargs paramter.
         They will also be included in the "hard" part of the key module.
         """
-        return []
-#        flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
+        flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
+        return flags
 #        cuda_ndarray_cuh_hash = hash_from_file(
 #            os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
 #        cuda_macro = '-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash
@@ -205,7 +205,6 @@ class NVCC_compiler():
             # the -rpath option is not understood by the Microsoft linker
             for rpath in rpaths:
                 cmd.extend(['-Xlinker',','.join(['-rpath',rpath])])
-        cmd.extend([flag for flag in config.nvcc.flags.split(' ') if flag])
         cmd.extend('-I%s'%idir for idir in include_dirs)
         cmd.extend(['-o',lib_filename])
         cmd.append(os.path.split(cppfilename)[-1])
