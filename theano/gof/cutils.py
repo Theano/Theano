@@ -70,7 +70,9 @@ except ImportError:
             if not os.path.exists(loc):
                 os.mkdir(loc)
 
-            cmodule.gcc_module_compile_str('cutils_ext', code, location=loc)
+            args = cmodule.GCC_compiler.compile_args()
+            cmodule.GCC_compiler.compile_str('cutils_ext', code, location=loc,
+                                             preargs=args)
             from cutils_ext.cutils_ext import *
 
     finally:

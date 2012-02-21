@@ -11,6 +11,14 @@ Since 0.5rc2
  * Fix a bug with Gemv and Ger on CPU, when used on vectors with negative
    strides. Data was read from incorrect (and possibly uninitialized)
    memory space. This bug was probably introduced in 0.5rc1.
+ * The Theano flag "nvcc.flags" are now included in the hard part of the key.
+   This mean that now we recompile all modules for each value of "nvcc.flags".
+   This do use change the default, but if you used this flags, it was ignored
+   for module already compiled.
+ * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
+ * Add the header_dirs to the hard part of the compilation key. This is
+   currently used only by cuda, but if we use library that are only headers,
+   this can be useful.
 
 =============
 Release Notes
@@ -189,7 +197,7 @@ Crashes fixed:
  * "Interactive debugger" crash fix. (Ian, Frederic)
  * Do not call gemm with strides 0, some blas refuse it. (Pascal Lamblin)
  * Optimization crash with gemm and complex. (Frederic)
- * GPU crash with elemwise. (Frederic)
+ * GPU crash with elemwise. (Frederic, some reported by Chris Currivan)
  * Compilation crash with amdlibm and the GPU. (Frederic)
  * IfElse crash. (Frederic)
  * Execution crash fix in AdvancedSubtensor1 on 32 bit computers. (Pascal)
