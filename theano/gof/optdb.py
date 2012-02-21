@@ -15,13 +15,9 @@ AddConfigVar('optdb.position_cutoff',
              ' position of the optimizer where to stop.',
         FloatParam(numpy.inf),
         in_c_key=False)
-#upgraded to 20 to avoid EquibriumOptimizer error
-# to be max'ed out by constant folding (can
-# I increase the max ratio only for
-# constant folding somehow?
 AddConfigVar('optdb.max_use_ratio',
         'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-        FloatParam(20),
+        FloatParam(5),
         in_c_key=False)
 
 
