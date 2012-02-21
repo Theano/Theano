@@ -1150,17 +1150,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     current_node = node
                     for lopt in self.local_optimizers:
                         process_count.setdefault(lopt, 0)
-                        if process_count[lopt] > max_use:
-                            max_use_abort = True
-                            opt_name = (getattr(lopt, "name", None)
-                                        or getattr(lopt, "__name__", None) or "")
-                        else:
-                            lopt_change = self.process_node(env, node, lopt)
-                            if lopt_change:
-                                process_count[lopt] += 1
-                                changed = True
-                                if node not in env.nodes:
-                                    break # go to next node
+                        lopt_change = self.process_node(env, node, lopt)
+                        if lopt_change:
+                            process_count[lopt] += 1
+                            changed = True
+                            if process_count[lopt] > max_use:
+                                max_use_abort = True
+                                opt_name = (getattr(lopt, "name", None)
+                                            or getattr(lopt, "__name__", ""))
+                            if node not in env.nodes:
+                                break # go to next node
             finally:
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
