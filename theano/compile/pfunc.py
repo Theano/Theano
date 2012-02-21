@@ -150,7 +150,16 @@ def rebuild_collect_shared(outputs,
             raise TypeError('given keys must be Variable', v_orig)
         if not isinstance(v_repl, Variable):
             v_repl = shared(v_repl)
-        assert v_orig not in clone_d
+
+        if v_orig in clone_d:
+            raise AssertionError(
+                    "When using 'givens' or 'replace' with several "
+                    "(old_v, new_v) replacement pairs, you can not have a "
+                    "new_v variable depend on an old_v one. For instance, "
+                    "givens = {a:b, b:(a+1)} is not allowed. Here, the old_v "
+                    "%s is used to compute other new_v's, but it is scheduled "
+                    "to be replaced by %s." % (v_orig, v_repl))
+
         clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
                                                      copy_inputs_over)
 
