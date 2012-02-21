@@ -367,7 +367,7 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     a .dll, and on OS-X it might be either a .dylib or a .so.)
 
     This might be just a problem with the way Theano passes compilation
-    arguments to gcc, but the problem is not fixed yet.
+    arguments to g++, but the problem is not fixed yet.
 
 .. _gpu_linux:
 
