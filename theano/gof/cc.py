@@ -881,8 +881,19 @@ class CLinker(link.Linker):
         # First we put the header, compile_args, library names and config md5
         # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
-        if compile_args is not None: sig.append(tuple(compile_args))
-        if libraries is not None: sig.append(tuple(libraries))
+        if compile_args is not None:
+            # We must sort it as the order from a set are not guarantee.
+            # In  particular, 2 sets with the same content can give different
+            # order depending in the order you put data in it.
+            # Sets are used to remove duplicate elements.
+            args = sorted(compile_args)
+            args = tuple(args)
+            sig.append(args)
+        if libraries is not None:
+            # see comments for compile_args
+            args = sorted(libraries)
+            args = tuple(args)
+            sig.append(args)
 
         # IMPORTANT: The 'md5' prefix is used to isolate the compilation
         # parameters from the rest of the key. If you want to add more key
