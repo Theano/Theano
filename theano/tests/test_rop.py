@@ -311,3 +311,33 @@ class test_RopLop(RopLop_checker):
             pass
 
         assert not success
+
+    def test_multiple_outputs(self):
+        m = tensor.matrix('m')
+        v = tensor.vector('v')
+        m_ = tensor.matrix('m_')
+        v_ = tensor.vector('v_')
+
+        mval = self.rng.uniform(size=(3,7))
+        vval = self.rng.uniform(size=(7,))
+        m_val = self.rng.uniform(size=(3,7))
+        v_val = self.rng.uniform(size=(7,))
+
+        rop_out1 = tensor.Rop([m, v, m+v], [m, v], [m_, v_])
+        assert isinstance(rop_out1, list)
+        assert len(rop_out1) == 3
+        rop_out2 = tensor.Rop((m, v, m+v), [m, v], [m_, v_])
+        assert isinstance(rop_out2, tuple)
+        assert len(rop_out2) == 3
+        lop_out1 = tensor.Lop([m, v, m+v], (m, v), [m_, v_])
+        assert isinstance(lop_out1, tuple)
+        assert len(lop_out1) == 2
+        lop_out2 = tensor.Lop((m, v, m+v), [m, v], [m_, v_])
+        assert isinstance(lop_out2, list)
+        assert len(lop_out2) == 2
+
+        all_outs = []
+        for o in rop_out1, rop_out2, lop_out1, lop_out2:
+            all_outs.extend(o)
+        f = theano.function([m, v, m_, v_], all_outs)
+        f(mval, vval, m_val, v_val)
