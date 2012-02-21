@@ -1113,6 +1113,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         max_use_abort = False
         opt_name = None
         process_count = {}
+        max_nb_nodes = 0
 
         while changed and not max_use_abort:
             changed = False
@@ -1130,7 +1131,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             q = deque(graph.io_toposort(env.inputs, start_from))
 
-            max_use = len(q) * self.max_use_ratio
+            max_nb_nodes = max(max_nb_nodes, len(q))
+            max_use = max_nb_nodes * self.max_use_ratio
             def importer(node):
                 if node is not current_node:
                     q.append(node)
