@@ -801,7 +801,8 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries, config md5,
+            'CLinker.cmodule_key', compilation args, libraries,
+            header_dirs, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -861,11 +862,12 @@ class CLinker(link.Linker):
         """
         return self.cmodule_key_(self.env, self.no_recycling,
                           compile_args=self.compile_args(),
-                          libraries=self.libraries()
+                          libraries=self.libraries(),
+                          header_dirs=self.header_dirs(),
                           )
     @staticmethod
     def cmodule_key_(env, no_recycling, compile_args=[], libraries=[],
-            insert_config_md5=True):
+                     header_dirs=[], insert_config_md5=True):
         """
         Do the actual computation of cmodule_key in a static method
         to allow it to be reused in scalar.Composite.__eq__
@@ -892,6 +894,11 @@ class CLinker(link.Linker):
         if libraries is not None:
             # see comments for compile_args
             args = sorted(libraries)
+            args = tuple(args)
+            sig.append(args)
+
+        if header_dirs is not None:
+            args = sorted(header_dirs)
             args = tuple(args)
             sig.append(args)
 

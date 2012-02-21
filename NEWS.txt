@@ -16,6 +16,9 @@ Since 0.5rc2
    This do use change the default, but if you used this flags, it was ignored
    for module already compiled.
  * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
+ * Add the header_dirs to the hard part of the compilation key. This is
+   currently used only by cuda, but if we use library that are only headers,
+   this can be useful.
 
 =============
 Release Notes
