@@ -622,6 +622,10 @@ class CLinker(link.Linker):
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
             except utils.MethodNotDefined: pass
+
+        c_compiler = self.c_compiler()
+        ret += c_compiler.compile_args()
+
         ret=list(set(ret))#to remove duplicate
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try:
@@ -661,7 +665,7 @@ class CLinker(link.Linker):
                     raise Exception('Nodes have requested specific different compilers',
                             (c_compiler, x_compiler))
         if (c_compiler is None):
-            return cmodule.gcc_module_compile_str
+            return cmodule.GCC_compiler
         else: return c_compiler
 
     def header_dirs(self):
@@ -797,7 +801,8 @@ class CLinker(link.Linker):
         The key returned by this function is of the form (version, signature)
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key', compilation args, libraries, config md5,
+            'CLinker.cmodule_key', compilation args, libraries,
+            header_dirs, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -857,11 +862,12 @@ class CLinker(link.Linker):
         """
         return self.cmodule_key_(self.env, self.no_recycling,
                           compile_args=self.compile_args(),
-                          libraries=self.libraries()
+                          libraries=self.libraries(),
+                          header_dirs=self.header_dirs(),
                           )
     @staticmethod
     def cmodule_key_(env, no_recycling, compile_args=[], libraries=[],
-            insert_config_md5=True):
+                     header_dirs=[], insert_config_md5=True):
         """
         Do the actual computation of cmodule_key in a static method
         to allow it to be reused in scalar.Composite.__eq__
@@ -877,8 +883,24 @@ class CLinker(link.Linker):
         # First we put the header, compile_args, library names and config md5
         # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
-        if compile_args is not None: sig.append(tuple(compile_args))
-        if libraries is not None: sig.append(tuple(libraries))
+        if compile_args is not None:
+            # We must sort it as the order from a set are not guarantee.
+            # In  particular, 2 sets with the same content can give different
+            # order depending in the order you put data in it.
+            # Sets are used to remove duplicate elements.
+            args = sorted(compile_args)
+            args = tuple(args)
+            sig.append(args)
+        if libraries is not None:
+            # see comments for compile_args
+            args = sorted(libraries)
+            args = tuple(args)
+            sig.append(args)
+
+        if header_dirs is not None:
+            args = sorted(header_dirs)
+            args = tuple(args)
+            sig.append(args)
 
         # IMPORTANT: The 'md5' prefix is used to isolate the compilation
         # parameters from the rest of the key. If you want to add more key
@@ -888,12 +910,6 @@ class CLinker(link.Linker):
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:
             sig.append('md5: <omitted>')
-
-        # technically this should only be appended for gcc-compiled Ops
-        # and the flags of other compilers should be inserted here... but it's not clear how to
-        # do this.
-        if config.gcc.cxxflags:
-            sig.append(config.gcc.cxxflags)
 
         error_on_play = [False]
         def in_sig(i, topological_pos, i_idx):
@@ -1007,7 +1023,7 @@ class CLinker(link.Linker):
         libs = self.libraries()
         preargs = self.compile_args()
         compiler_name = c_compiler.__name__
-        if compiler_name == 'nvcc_module_compile_str' and config.lib.amdlibm:
+        if compiler_name == 'NVCC_compiler' and config.lib.amdlibm:
             # This lib does not work correctly with nvcc in device code.
             # and newer version of g++ as 4.5.1.
             # example of errors: "/usr/lib/gcc/x86_64-redhat-linux/4.5.1/include/mmintrin.h(49): error: identifier "__builtin_ia32_emms" is undefined"
@@ -1024,7 +1040,7 @@ class CLinker(link.Linker):
         try:
             _logger.debug("LOCATION %s", str(location))
             try:
-                module = c_compiler(
+                module = c_compiler.compile_str(
                     module_name=mod.name,
                     src_code=src_code,
                     location=location,

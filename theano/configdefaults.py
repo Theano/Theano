@@ -84,12 +84,12 @@ AddConfigVar('mode',
                 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
         in_c_key=False)
 
-# Test whether or not gcc is present: disable C code if it is not.
+# Test whether or not g++ is present: disable C code if it is not.
 # Using the dummy file descriptor below is a workaround for a crash experienced
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
 dummy_stdin = open(os.devnull)
 try:
-    subprocess.Popen('gcc', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    subprocess.Popen('g++', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                      stdin=dummy_stdin.fileno())
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
@@ -98,13 +98,13 @@ try:
                      'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 except OSError:
-    # gcc is not present, linker should default to python only
+    # g++ is not present, linker should default to python only
     AddConfigVar('linker',
                  "Default linker used if the theano flags mode is Mode or ProfileMode",
                  EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
-    _logger.warning('GCC not detected ! Theano will be unable to execute '
+    _logger.warning('g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded.')
