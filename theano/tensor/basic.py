@@ -5813,7 +5813,7 @@ def sort(a, axis=-1, kind='quicksort', order=None):
     Tensor to be sorted
 
     axis : Tensor
-        Axis along which to sort .None is not still supported.
+        Axis along which to sort. None is not still supported.
 
     kind : {'quicksort', 'mergesort', 'heapsort'}, optional
 
