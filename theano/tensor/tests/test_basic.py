@@ -5593,7 +5593,7 @@ def test_sort():
     a = theano.tensor.dmatrix()
     w = sort(a)
     f = theano.function([a],w)
-    assert f(testMatrix) == numpy.sort(testMatrix)
+    assert numpy.allclose(f(testMatrix), numpy.sort(testMatrix))
     print "------------------------------"
 
     print "Example 2: "
@@ -5601,14 +5601,14 @@ def test_sort():
     axis = theano.tensor.scalar()
     w = sort(a,axis)
     f = theano.function([a,axis],w)
-    print f(testMatrix,1)
+    assert numpy.allclose(f(testMatrix, 1), numpy.sort(testMatrix, 1))
     print "------------------------------"
 
     print "Example 3: "
     a = theano.tensor.dvector()
     w2 = sort(a)
     f = theano.function([a],w2)
-    print f(testVector)
+    assert numpy.allclose(f(testVector), numpy.sort(testVector))
     print "------------------------------"
 
     print "Example 4: "
@@ -5616,7 +5616,7 @@ def test_sort():
     axis = theano.tensor.scalar()
     l = sort(a,axis,"mergesort")
     f = theano.function([a,axis],l)
-    print f(testMatrix,1)
+    assert numpy.allclose(f(testMatrix, 1), numpy.sort(testMatrix, 1))
     print "------------------------------"
 
     print "Example 5: Check __eq__ function "
