@@ -1,10 +1,13 @@
 """Provide CudaNdarrayType
 """
-import sys, os, StringIO
+import os
+import StringIO
+import copy_reg
+
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
 
@@ -17,20 +20,22 @@ try:
 except ImportError:
     pass
 
+
 class CudaNdarrayType(Type):
 
-    typenum = 11 # Until hardware improves, this class deals with floats.
+    typenum = 11  # Until hardware improves, this class deals with floats.
 
     dtype = 'float32'
 
     Variable = None
     """ This will be set to the Variable type corresponding to this class.
 
-    That variable type is `CudaNdarrayVariable` defined in the ``var.py`` file beside this one.
+    That variable type is `CudaNdarrayVariable` defined in the
+    ``var.py`` file beside this one.
 
-    :note:
-    The var file depends on the file basic_ops.py, which depends on this file.
-    A cyclic dependency is avoided by not hardcoding ``Variable = CudaNdarrayVariable``.
+    :note: The var file depends on the file basic_ops.py, which
+    depends on this file.  A cyclic dependency is avoided by not
+    hardcoding ``Variable = CudaNdarrayVariable``.
     """
 
     Constant = None
@@ -56,21 +61,24 @@ class CudaNdarrayType(Type):
                             (self.__class__.__name__, dtype, name))
         self.broadcastable = tuple(broadcastable)
         self.name = name
-        self.dtype_specs() # error checking is done there
+        self.dtype_specs()  # error checking is done there
 
     def filter(self, data, strict=False, allow_downcast=None):
-        return self.filter_inplace(data, None, strict=strict, allow_downcast=allow_downcast)
+        return self.filter_inplace(data, None, strict=strict,
+                                   allow_downcast=allow_downcast)
 
-    def filter_inplace(self, data, old_data, strict=False, allow_downcast=None):
+    def filter_inplace(self, data, old_data, strict=False,
+                       allow_downcast=None):
         if strict or allow_downcast or isinstance(data, cuda.CudaNdarray):
             return cuda.filter(data, self.broadcastable, strict, old_data)
 
-        else: # (not strict) and (not allow_downcast)
+        else:  # (not strict) and (not allow_downcast)
             # Check if data.dtype can be accurately cast to self.dtype
             if isinstance(data, numpy.ndarray):
                 up_dtype = scal.upcast(self.dtype, data.dtype)
                 if up_dtype == self.dtype:
-                    return cuda.filter(data, self.broadcastable, strict, old_data)
+                    return cuda.filter(data, self.broadcastable,
+                                       strict, old_data)
                 else:
                     raise TypeError(
                         '%s, with dtype %s, cannot store a value of '
@@ -83,7 +91,7 @@ class CudaNdarrayType(Type):
 
                 if (allow_downcast is None and
                         type(data) is float and
-                        self.dtype==theano.config.floatX):
+                        self.dtype == theano.config.floatX):
                     return cuda.filter(converted_data, self.broadcastable,
                             strict, old_data)
                 elif numpy.all(data == converted_data):
@@ -118,7 +126,8 @@ class CudaNdarrayType(Type):
         if not isinstance(other.type, tensor.TensorType):
             raise TypeError('Incompatible type', (self, other.type))
         if (other.type.dtype != self.dtype):
-            raise TypeError('Incompatible dtype', (self.dtype, other.type.dtype))
+            raise TypeError('Incompatible dtype', (self.dtype,
+                                                   other.type.dtype))
         if (other.type.broadcastable != self.broadcastable):
             raise TypeError('Incompatible broadcastable', (self.broadcastable,
                 other.type.broadcastable))
@@ -131,17 +140,17 @@ class CudaNdarrayType(Type):
         #stride is in the number of element.
         #we must convert that to bytes in case we
         #will view the element as a different type.
-        elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
+        elem_size = numpy.zeros(0, dtype=a.dtype).dtype.itemsize
 
-        for stri, shp in zip(a._strides,a.shape):
-            if stri<0:
-                low += (stri*elem_size)*(shp-1)
+        for stri, shp in zip(a._strides, a.shape):
+            if stri < 0:
+                low += (stri * elem_size) * (shp - 1)
             else:
-                high += (stri*elem_size)*(shp-1)
+                high += (stri * elem_size) * (shp - 1)
         return low, high
 
     @staticmethod
-    def may_share_memory(a,b):
+    def may_share_memory(a, b):
         #when this is called with a an ndarray and b
         #a sparce matrix, numpy.may_share_memory fail.
         if a is b:
@@ -163,12 +172,13 @@ class CudaNdarrayType(Type):
     @staticmethod
     def values_eq_approx(a, b, allow_remove_inf=False):
         #TODO: make the comparaison without transfert.
-        return tensor.TensorType.values_eq_approx(numpy.asarray(a), numpy.asarray(b),
+        return tensor.TensorType.values_eq_approx(numpy.asarray(a),
+                                                  numpy.asarray(b),
                 allow_remove_inf=allow_remove_inf)
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that corresponds to
-        self.dtype.
+        """Return a tuple (python type, c type, numpy typenum) that
+        corresponds to self.dtype.
 
         This function is used internally as part of C code generation.
         """
@@ -185,36 +195,42 @@ class CudaNdarrayType(Type):
                     'int32': (int, 'npy_int32', 'NPY_INT32'),
                     'uint64': (int, 'npy_uint64', 'NPY_UINT64'),
                     'int64': (int, 'npy_int64', 'NPY_INT64'),
-                    'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
-                    'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')}[self.dtype]
+                    'complex128': (complex, 'theano_complex128',
+                                   'NPY_COMPLEX128'),
+                    'complex64': (complex, 'theano_complex64',
+                                  'NPY_COMPLEX64')}[self.dtype]
         except KeyError:
-            raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
+            raise TypeError("Unsupported dtype for %s: %s" % (
+                    self.__class__.__name__, self.dtype))
 
     def __eq__(self, other):
         """Compare True iff other is the same kind of CudaNdarrayType"""
-        return type(self) == type(other) and other.broadcastable == self.broadcastable
+        return (type(self) == type(other) and
+                other.broadcastable == self.broadcastable)
 
     def __hash__(self):
         """Hash equal for same kinds of CudaNdarrayType"""
         return hash(type(self)) ^ hash(self.broadcastable)
 
-    ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
+    ndim = property(lambda self: len(self.broadcastable),
+                    doc="number of dimensions")
     """Number of dimensions
 
-    This read-only property is the preferred way to get the number of dimensions
-    of a `CudaNdarrayType`.
+    This read-only property is the preferred way to get the number of
+    dimensions of a `CudaNdarrayType`.
 
     """
 
-    def make_variable(self, name = None):
+    def make_variable(self, name=None):
         """Return a `TensorVariable` of this type
 
         :Parameters:
          - `name`: str
-           A pretty name to identify this `Variable` when printing and debugging
+           A pretty name to identify this `Variable` when printing and
+           debugging
 
         """
-        return self.Variable(self, name = name)
+        return self.Variable(self, name=name)
 
     def __str__(self):
         if self.name:
@@ -223,8 +239,9 @@ class CudaNdarrayType(Type):
             b = self.broadcastable
             #bcast = str(self.broadcastable)
             if not numpy.any(b):
-                s="%iD" % len(b)
-            else: s=str(b)
+                s = "%iD" % len(b)
+            else:
+                s = str(b)
 
             bcast = {(): 'scalar',
                      (False,): 'vector',
@@ -238,9 +255,7 @@ class CudaNdarrayType(Type):
         #"CudaNdarrayType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
-        ndim = self.ndim
-        c_typename = self.dtype_specs()[1]
-        return """ CudaNdarray * %(name)s;""" %locals()
+        return """ CudaNdarray * %(name)s;""" % locals()
 
     def c_init(self, name, sub):
         return "%(name)s = NULL;" % locals()
@@ -265,7 +280,7 @@ class CudaNdarrayType(Type):
                 %(fail)s;
             }
             //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
-        """ %locals()
+        """ % locals()
         for i, b in enumerate(self.broadcastable):
             if b:
                 print >> sio, """
@@ -286,7 +301,7 @@ class CudaNdarrayType(Type):
                 %(fail)s;
             }
             //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
-                """ %locals()
+                """ % locals()
         print >> sio, """
             assert(%(name)s);
             Py_INCREF(py_%(name)s);
@@ -346,19 +361,19 @@ class CudaNdarrayType(Type):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
         cuda_root = config.cuda.root
         if cuda_root:
-            ret.append(os.path.join(cuda_root,'include'))
+            ret.append(os.path.join(cuda_root, 'include'))
         return ret
 
     def c_lib_dirs(self):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
         cuda_root = config.cuda.root
         if cuda_root:
-            ret.append(os.path.join(cuda_root,'lib'))
+            ret.append(os.path.join(cuda_root, 'lib'))
         return ret
 
     def c_libraries(self):
-        # returning cublas because the cuda_ndarray.cuh header includes calls to SetVector and
-        # cublasGetError
+        # returning cublas because the cuda_ndarray.cuh header
+        # includes calls to SetVector and cublasGetError
         return ['cudart', 'cublas']
 
     def c_support_code(cls):
@@ -366,8 +381,9 @@ class CudaNdarrayType(Type):
 
     def c_code_cache_version(self):
         #return ()
-        #no need to put nvcc.fastmath in the tuple as the c_compile_args is put in the key.
-        return (2,) # with assertion about refcounts
+        #no need to put nvcc.fastmath in the tuple as the
+        #c_compile_args is put in the key.
+        return (2,)  # with assertion about refcounts
 
     def c_compiler(self):
         return NVCC_compiler
@@ -394,20 +410,21 @@ theano.compile.function_module.register_DeepCopyOp_c_code(CudaNdarrayType, """
         """)
 
 
-# THIS WORKS
-# But CudaNdarray instances don't compare equal to one another, and what about __hash__ ?
-# So the unpickled version doesn't equal the pickled version, and the cmodule cache is not
-# happy with the situation.
-import copy_reg
+# THIS WORKS But CudaNdarray instances don't compare equal to one
+# another, and what about __hash__ ?  So the unpickled version doesn't
+# equal the pickled version, and the cmodule cache is not happy with
+# the situation.
 def CudaNdarray_unpickler(npa):
     return cuda.CudaNdarray(npa)
 copy_reg.constructor(CudaNdarray_unpickler)
+
 
 def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
 try:
     # In case cuda is not imported.
-    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
+                    CudaNdarray_unpickler)
 except NameError:
     pass
