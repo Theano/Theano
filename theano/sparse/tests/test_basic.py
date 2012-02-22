@@ -10,7 +10,7 @@ except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
 import theano
-from theano import compile, config
+from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
 
@@ -19,13 +19,14 @@ if enable_sparse == False:
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
+from theano.sparse.basic import verify_grad_sparse
 from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
 from theano.sparse import SparseType, StructuredDotCSC, CSMGrad
 from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
         SparseFromDense)
-from theano.sparse import Dot, Usmm, UsmmCscDense
+from theano.sparse import Dot, Usmm, UsmmCscDense, sp_ones_like
 #from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
@@ -60,6 +61,49 @@ def random_lil(shape, dtype, nnz):
                 idx,
                 value)
     return rval
+
+class T_verify_grad_sparse(unittest.TestCase):
+    class FailOp(gof.op.Op):
+        def __init__(self, structured):
+            self.structured = structured
+
+        def __eq__(self, other):
+            return (type(self) == type(other)) and \
+                self.structured == other.structured
+
+        def __hash__(self):
+            return hash(type(self)) ^ hash(self.structured)
+
+        def make_node(self, x):
+            x = as_sparse_variable(x)
+            return gof.Apply(self, [x], [x.type()])
+
+        def perform(self, node, (x, ), (out, )):
+            assert _is_sparse(x)
+            out[0] = -x
+
+        def grad(self, (x,), (gz,)):
+            assert _is_sparse_variable(x) and _is_sparse_variable(gz)
+            if self.structured:
+                return sp_ones_like(x)*dense_from_sparse(gz),
+            else:
+                return gz,
+
+        def infer_shape(self, node, shapes):
+            return [shapes[0]]
+
+    def test_grad_fail(self):
+        self.assertRaises(verify_grad_sparse.E_grad,
+                          verify_grad_sparse,
+                          self.FailOp(structured=False),
+                          [sp.csr_matrix(random_lil((10, 40),
+                                                    config.floatX, 3))])
+
+        self.assertRaises(verify_grad_sparse.E_grad,
+                          verify_grad_sparse,
+                          self.FailOp(structured=True),
+                          [sp.csr_matrix(random_lil((10, 40),
+                                                    config.floatX, 3))])
 
 
 class T_transpose(unittest.TestCase):
@@ -251,6 +295,7 @@ class T_AddMul(unittest.TestCase):
                 self.assertTrue(numpy.all(val.todense() == (a + b).todense()))
                 ans = numpy.array([[1., 2], [3, 4], [5, 6]])
                 self.assertTrue(numpy.all(val.todense() == ans))
+                verify_grad_sparse(op, [a, b], structured=False)
             elif op is mul:
                 self.assertTrue(numpy.all(val.todense()
                                           == (a.multiply(b)).todense()))
@@ -462,27 +507,12 @@ class test_structureddot(unittest.TestCase):
 
         mat = numpy.asarray(numpy.random.randn(3, 2), 'float32')
 
-        def buildgraphCSC(spdata, sym_mat):
-            csc = CSC(spdata, spmat.indices[:spmat.size],
-                    spmat.indptr, spmat.shape)
-            assert csc.type.dtype == 'float32'
-            rval = structured_dot(csc, sym_mat)
-            assert rval.type.dtype == 'float32'
-            return rval
+        verify_grad_sparse(structured_dot, [spmat, mat], structured=True)
+        
+        def buildgraph_T(spmat, mat):
+            return structured_dot(mat.T, spmat.T)
 
-        utt.verify_grad(buildgraphCSC,
-                    [spmat.data, mat])
-
-        def buildgraphCSC_T(spdata, sym_mat):
-            csc = CSC(spdata, spmat.indices[:spmat.size],
-                    spmat.indptr, spmat.shape)
-            assert csc.type.dtype == 'float32'
-            rval = structured_dot(sym_mat.T, csc.T)
-            assert rval.type.dtype == 'float32'
-            return rval
-
-        utt.verify_grad(buildgraphCSC_T,
-                    [spmat.data, mat])
+        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True) 
 
     def test_structureddot_csr_grad(self):
 
@@ -493,27 +523,12 @@ class test_structureddot(unittest.TestCase):
 
         mat = numpy.asarray(numpy.random.randn(3, 2), 'float64')
 
-        def buildgraph(spdata, sym_mat):
-            csr = CSR(spdata, spmat.indices[:spmat.size],
-                    spmat.indptr, spmat.shape)
-            assert csr.type.dtype == 'float64'
-            rval = structured_dot(csr, sym_mat)
-            assert rval.type.dtype == 'float64'
-            return rval
+        verify_grad_sparse(structured_dot, [spmat, mat], structured=True)
 
-        utt.verify_grad(buildgraph,
-                    [spmat.data, mat])
+        def buildgraph_T(spmat, mat):
+            return structured_dot(mat.T, spmat.T)
 
-        def buildgraph_T(spdata, sym_mat):
-            csr = CSR(spdata, spmat.indices[:spmat.size],
-                    spmat.indptr, spmat.shape)
-            assert csr.type.dtype == 'float64'
-            rval = structured_dot(sym_mat.T, csr.T)
-            assert rval.type.dtype == 'float64'
-            return rval
-
-        utt.verify_grad(buildgraph,
-                    [spmat.data, mat])
+        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
     def test_infer_shape_csr_csc_grad(self):
         for sparsetype in ('csr', 'csc'):
