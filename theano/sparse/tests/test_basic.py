@@ -64,6 +64,7 @@ def random_lil(shape, dtype, nnz):
                 value)
     return rval
 
+
 class T_verify_grad_sparse(unittest.TestCase):
     class FailOp(gof.op.Op):
         def __init__(self, structured):
@@ -87,7 +88,7 @@ class T_verify_grad_sparse(unittest.TestCase):
         def grad(self, (x,), (gz,)):
             assert _is_sparse_variable(x) and _is_sparse_variable(gz)
             if self.structured:
-                return sp_ones_like(x)*dense_from_sparse(gz),
+                return sp_ones_like(x) * dense_from_sparse(gz),
             else:
                 return gz,
 
@@ -590,11 +591,11 @@ class test_structureddot(unittest.TestCase):
         mat = numpy.asarray(numpy.random.randn(3, 2), 'float32')
 
         verify_grad_sparse(structured_dot, [spmat, mat], structured=True)
-        
+
         def buildgraph_T(spmat, mat):
             return structured_dot(mat.T, spmat.T)
 
-        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True) 
+        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
     def test_structureddot_csr_grad(self):
 
