@@ -1443,7 +1443,9 @@ def local_upcast_elemwise_constant_inputs(node):
                         # works only for scalars
                         cval_i = get_constant_value(i)
                         if all(i.broadcastable):
-                            new_inputs.append(T.cast(cval_i, output_dtype))
+                            new_inputs.append(T.shape_padleft(
+                                T.cast(cval_i, output_dtype),
+                                i.ndim))
                         else:
                             if shape_i is None:
                                 return

@@ -3532,6 +3532,12 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         assert str(g) == sg
 
 
+def test_local_upcast_elemwise_constant_inputs():
+    s = dvector("s")
+    x = tensor.sum(tensor.log(10**s))
+    f = function([s], [tensor.grad(x, s)])
+    f([-42, -2.1, -1, -0.5, 0, 0.2, 1, 2, 12])
+
 if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
