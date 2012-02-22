@@ -1151,6 +1151,13 @@ class _VariableEquivalenceTracker(object):
             for e in self.equiv[key]:
                 print '  ', e
 
+
+#List of default version of make thunk.
+#This is needed to know if the user overrided it.
+#The GpuOp will be added here when theano.sandbox.cuda is imported.
+default_make_thunk = [theano.gof.Op.make_thunk.im_func]
+
+
 class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
     def __init__(self, maker):
@@ -1239,7 +1246,7 @@ class _Linker(gof.link.LocalLinker):
                 thunks_py.append(None)
 
             # If the op define its own make_thunk, check it
-            if node.op.make_thunk.im_func != theano.gof.Op.make_thunk.im_func:
+            if node.op.make_thunk.im_func not in default_make_thunk:
                 compute_map = {}
                 for k in node.inputs:
                     compute_map[k] = [True]
