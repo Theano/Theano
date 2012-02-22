@@ -759,7 +759,7 @@ class DenseFromSparse(gof.op.Op):
             (self.sparse_grad == other.sparse_grad)
 
     def __hash__(self):
-        return hash(type(self))+hash(self.sparse_grad)
+        return hash(type(self))^hash(self.sparse_grad)
 
     def make_node(self, x):
         x = as_sparse_variable(x)

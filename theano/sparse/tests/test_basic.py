@@ -72,7 +72,7 @@ class T_verify_grad_sparse(unittest.TestCase):
                 self.structured == other.structured
 
         def __hash__(self):
-            return hash(type(self)) + hash(self.structured)
+            return hash(type(self)) ^ hash(self.structured)
 
         def make_node(self, x):
             x = as_sparse_variable(x)
