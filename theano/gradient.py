@@ -347,10 +347,6 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     if consider_constant is None:
         consider_constant = []
 
-    if not isinstance(f, Variable):
-        raise TypeError(('In Lop(), cost argument should be '
-                        'a Variable.'), f)
-
     if type(eval_points) not in (list, tuple):
         eval_points = [eval_points]
 
