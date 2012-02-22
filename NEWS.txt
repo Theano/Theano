@@ -9,6 +9,9 @@ Bug fixes (the result changed):
 
 Crashes fixes:
  * More cases supported in AdvancedIncSubtensor1. (Olivier D.)
+ * Fix crash when a broadcasted constant was used as input of an
+   elemwise Op and needed to be upcasted to match the op's output.
+   (Reported by John Salvatier, fixed by Pascal L.)
 
 Interface change:
  * The Theano flag "nvcc.flags" is now included in the hard part of the key.
