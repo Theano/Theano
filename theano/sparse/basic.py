@@ -186,7 +186,7 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
         raise NotImplementedError("verify_grad can't deal with "
                                   "multiple outputs")
     if _is_sparse_variable(output):
-        oconv = DenseFromSparse(structured=False)
+        oconv = DenseFromSparse(structured=structured)
     else:
         oconv = conv_none
     def conv_op(*inputs):

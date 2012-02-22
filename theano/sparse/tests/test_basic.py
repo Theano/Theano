@@ -26,7 +26,7 @@ from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
         SparseFromDense)
-from theano.sparse import Dot, Usmm, UsmmCscDense
+from theano.sparse import Dot, Usmm, UsmmCscDense, sp_ones_like
 #from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
@@ -64,44 +64,45 @@ def random_lil(shape, dtype, nnz):
 
 class T_verify_grad_sparse(unittest.TestCase):
     class FailOp(gof.op.Op):
-        def __eq__(self, other):
-            return (type(self) == type(other))
-        
-        def __hash__(self):
-            return hash(type(self))
-        
-        def make_node(self, x, y):
-            x, y = map(as_sparse_variable, [x, y])
-            if x.type.dtype != y.type.dtype:
-                raise NotImplementedError()
-            if x.type.format != y.type.format:
-                raise NotImplementedError()
-            return gof.Apply(self,
-                             [x, y],
-                             [SparseType(dtype=x.type.dtype,
-                                         format=x.type.format
-                                         ).make_variable()])
+        def __init__(self, structured):
+            self.structured = structured
 
-        def perform(self, node, (x, y), (out, )):
-            assert _is_sparse(x) and _is_sparse(y)
-            assert x.shape == y.shape
-            out[0] = x + y
-            
-        def grad(self, (x, y), (gz,)):
-            assert _is_sparse_variable(x) and _is_sparse_variable(y)
-            assert _is_sparse_variable(gz)
-            return 2*gz, gz
-        
+        def __eq__(self, other):
+            return (type(self) == type(other)) and \
+                self.structured == other.structured
+
+        def __hash__(self):
+            return hash(type(self)) + hash(self.structured)
+
+        def make_node(self, x):
+            x = as_sparse_variable(x)
+            return gof.Apply(self, [x], [x.type()])
+
+        def perform(self, node, (x, ), (out, )):
+            assert _is_sparse(x)
+            out[0] = -x
+
+        def grad(self, (x,), (gz,)):
+            assert _is_sparse_variable(x) and _is_sparse_variable(gz)
+            if self.structured:
+                return sp_ones_like(x)*dense_from_sparse(gz),
+            else:
+                return gz,
+
         def infer_shape(self, node, shapes):
             return [shapes[0]]
 
     def test_grad_fail(self):
         self.assertRaises(verify_grad_sparse.E_grad,
                           verify_grad_sparse,
-                          self.FailOp(),
+                          self.FailOp(structured=False),
                           [sp.csr_matrix(random_lil((10, 40),
-                                                    config.floatX, 3)),
-                           sp.csr_matrix(random_lil((10, 40),
+                                                    config.floatX, 3))])
+
+        self.assertRaises(verify_grad_sparse.E_grad,
+                          verify_grad_sparse,
+                          self.FailOp(structured=True),
+                          [sp.csr_matrix(random_lil((10, 40),
                                                     config.floatX, 3))])
 
 
@@ -294,6 +295,7 @@ class T_AddMul(unittest.TestCase):
                 self.assertTrue(numpy.all(val.todense() == (a + b).todense()))
                 ans = numpy.array([[1., 2], [3, 4], [5, 6]])
                 self.assertTrue(numpy.all(val.todense() == ans))
+                verify_grad_sparse(op, [a, b], structured=False)
             elif op is mul:
                 self.assertTrue(numpy.all(val.todense()
                                           == (a.multiply(b)).todense()))
