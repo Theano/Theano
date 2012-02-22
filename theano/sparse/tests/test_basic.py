@@ -21,12 +21,14 @@ from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse.basic import verify_grad_sparse
 from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
-from theano.sparse import SparseType, StructuredDotCSC, CSMGrad
+from theano.sparse import SparseType, CSMGrad
+from theano.sparse import StructuredDot, StructuredDotCSC
+from theano.sparse import StructuredDotGradCSC, StructuredDotGradCSR
 from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
         SparseFromDense)
-from theano.sparse import Dot, Usmm, UsmmCscDense, sp_ones_like
+from theano.sparse import Dot, Usmm, UsmmCscDense, sp_ones_like, GetItemScalar
 #from theano.sparse import get_item_2d, get_item_scalar
 
 from theano.tests import unittest_tools as utt
@@ -62,6 +64,7 @@ def random_lil(shape, dtype, nnz):
                 value)
     return rval
 
+
 class T_verify_grad_sparse(unittest.TestCase):
     class FailOp(gof.op.Op):
         def __init__(self, structured):
@@ -85,7 +88,7 @@ class T_verify_grad_sparse(unittest.TestCase):
         def grad(self, (x,), (gz,)):
             assert _is_sparse_variable(x) and _is_sparse_variable(gz)
             if self.structured:
-                return sp_ones_like(x)*dense_from_sparse(gz),
+                return sp_ones_like(x) * dense_from_sparse(gz),
             else:
                 return gz,
 
@@ -163,6 +166,14 @@ class SparseInferShapeTester(unittest.TestCase):
     def test_getitem_2d(self):
         raise SkipTest('infer_shape not implemented for GetItem2d yet')
 
+    def test_getitem_scalar(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [x[2, 2]],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                GetItemScalar)
+
     def test_csm_grad(self):
         for sparsetype in ('csr', 'csc'):
             x = tensor.vector()
@@ -239,6 +250,78 @@ class SparseInferShapeTester(unittest.TestCase):
                                config.floatX, 3)),
                  numpy.random.randn(10, 40).astype(config.floatX)],
                 MulSD)
+
+    def test_dot(self):
+        x = SparseType('csc', dtype=config.floatX)()
+        y = SparseType('csc', dtype=config.floatX)()
+        self._compile_and_check(
+                [x, y],
+                [Dot()(x, y)],
+                [sp.csc_matrix(random_lil((4, 5),
+                               config.floatX, 3)),
+                 sp.csc_matrix(random_lil((5, 3),
+                               config.floatX, 3))],
+                Dot)
+
+    def test_structured_dot(self):
+        x = SparseType('csc', dtype=config.floatX)()
+        y = SparseType('csc', dtype=config.floatX)()
+        self._compile_and_check(
+                [x, y],
+                [structured_dot(x, y)],
+                [sp.csc_matrix(random_lil((4, 5),
+                               config.floatX, 3)),
+                 sp.csc_matrix(random_lil((5, 3),
+                               config.floatX, 3))],
+                StructuredDot)
+
+    def test_csm(self):
+        # We also need the grad of CSM to be implemetned.
+        raise SkipTest('infer_shape not implemented for CSM')
+
+    def test_structured_dot_grad(self):
+        # We also need the grad of CSM to be implemetned.
+        raise SkipTest('infer_shape not implemented for the grad'
+                       ' of structured_dot')
+        for format, op in [('csc', StructuredDotGradCSC),
+                           ('csr', StructuredDotGradCSR)]:
+            x = SparseType(format, dtype=config.floatX)()
+            y = SparseType(format, dtype=config.floatX)()
+            grads = tensor.grad(dense_from_sparse(structured_dot(x, y)).sum(),
+                                [x, y])
+            self._compile_and_check(
+                    [x, y],
+                    [grads[0]],
+                    [as_sparse_format(random_lil((4, 5),
+                                   config.floatX, 3), format),
+                     as_sparse_format(random_lil((5, 3),
+                                   config.floatX, 3), format)],
+                    op)
+            self._compile_and_check(
+                    [x, y],
+                    [grads[1]],
+                    [as_sparse_format(random_lil((4, 5),
+                                   config.floatX, 3), format),
+                     as_sparse_format(random_lil((5, 3),
+                                   config.floatX, 3), format)],
+                    op)
+
+    def test_dense_from_sparse(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [dense_from_sparse(x)],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                dense_from_sparse.__class__)
+
+    def test_sparse_from_dense(self):
+        x = tensor.matrix()
+        self._compile_and_check([x],
+                                [csc_from_dense(x)],
+                                [numpy.random.randn(10, 40).astype(
+                    config.floatX)],
+
+                                csc_from_dense.__class__)
 
 
 class T_AddMul(unittest.TestCase):
@@ -508,11 +591,11 @@ class test_structureddot(unittest.TestCase):
         mat = numpy.asarray(numpy.random.randn(3, 2), 'float32')
 
         verify_grad_sparse(structured_dot, [spmat, mat], structured=True)
-        
+
         def buildgraph_T(spmat, mat):
             return structured_dot(mat.T, spmat.T)
 
-        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True) 
+        verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
     def test_structureddot_csr_grad(self):
 
@@ -529,22 +612,6 @@ class test_structureddot(unittest.TestCase):
             return structured_dot(mat.T, spmat.T)
 
         verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
-
-    def test_infer_shape_csr_csc_grad(self):
-        for sparsetype in ('csr', 'csc'):
-            a = SparseType(sparsetype, dtype=config.floatX)()
-            b = SparseType(sparsetype, dtype=config.floatX)()
-            grads = tensor.grad(dense_from_sparse(structured_dot(a, b)).sum(),
-                                [a, b])
-            f = theano.function([a, b], [g.shape for g in grads])
-            topo = f.maker.env.toposort()
-            assert not any(isinstance(t, self.__class__) for t in topo)
-            call = getattr(sp, sparsetype + '_matrix')
-            x = call(random_lil((500, 300), config.floatX, 10))
-            y = call(random_lil((300, 400), config.floatX, 5))
-            out1, out2 = f(x, y)
-            assert numpy.all(out1 == x.shape)
-            assert numpy.all(out2 == y.shape)
 
     def test_upcast(self):
 
@@ -735,16 +802,6 @@ class test_structureddot(unittest.TestCase):
             if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
-
-    def test_infer_shape(self):
-        a = SparseType('csc', dtype=config.floatX)()
-        b = SparseType('csc', dtype=config.floatX)()
-        f = theano.function([a, b], structured_dot(a, b).shape)
-        topo = f.maker.env.toposort()
-        assert not any(isinstance(t, self.__class__) for t in topo)
-        x = sp.csc_matrix((4, 5), dtype=config.floatX)
-        y = sp.csc_matrix((5, 3), dtype=config.floatX)
-        assert numpy.all(f(x, y) == numpy.array((4, 3)))
 
 
 class DotTests(unittest.TestCase):

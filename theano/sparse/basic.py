@@ -525,11 +525,13 @@ class CSMProperties(gof.Op):
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other):
-        return not (self == other)
-
     def __hash__(self):
         return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
+
+    def __str__(self):
+        return "%s{%s}" % (
+            self.__class__.__name__,
+            self.kmap)
 
     def make_node(self, csm):
         csm = as_sparse_variable(csm)
@@ -700,11 +702,13 @@ class CSMGrad(gof.op.Op):
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
 
-    def __ne__(self, other):
-        return not (self == other)
-
     def __hash__(self):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
+
+    def __str__(self):
+        return "%s{%s}" % (
+            self.__class__.__name__,
+            self.kmap)
 
     def make_node(self, data, gout_data, gout_indices):
         g_data = gout_data.type()
@@ -761,6 +765,11 @@ class DenseFromSparse(gof.op.Op):
     def __hash__(self):
         return hash(type(self))^hash(self.sparse_grad)
 
+    def __str__(self):
+        return "%s{structured_grad=%s}" % (
+            self.__class__.__name__,
+            self.sparse_grad)
+
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self,
@@ -801,11 +810,13 @@ class SparseFromDense(gof.op.Op):
     def __eq__(self, other):
         return type(self) == type(other) and self.format == other.format
 
-    def __ne__(self, other):
-        return not (self == other)
-
     def __hash__(self):
         return 982374 ^ hash(self.format) ^ hash(DenseFromSparse)
+
+    def __str__(self):
+        return "%s{%s}" % (
+            self.__class__.__name__,
+            self.format)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -1005,6 +1016,9 @@ class Transpose(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return "Sparse" + self.__class__.__name__
+
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self,
@@ -1034,6 +1048,9 @@ class Neg(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return "Sparse" + self.__class__.__name__
+
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self, [x], [x.type()])
@@ -1059,6 +1076,9 @@ class AddSS(gof.op.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
@@ -1095,6 +1115,9 @@ class AddSD(gof.op.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -1161,6 +1184,9 @@ class MulSS(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
         if x.type != y.type:
@@ -1194,6 +1220,9 @@ class MulSD(gof.op.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -1304,6 +1333,9 @@ class StructuredDot(gof.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, a, b):
         if not _is_sparse_variable(a):
             raise TypeError('First argument must be of type SparseVariable '
@@ -1404,6 +1436,9 @@ class StructuredDotCSC(gof.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
@@ -1576,6 +1611,9 @@ class StructuredDotCSR(gof.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
@@ -1759,6 +1797,9 @@ class StructuredDotGradCSC(gof.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
                                [tensor.tensor(g_ab.dtype, (False,))])
@@ -1877,6 +1918,9 @@ class StructuredDotGradCSR(gof.Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
@@ -2005,8 +2049,8 @@ class Dot(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
-    def __ne__(self, other):
-        return not (self == other)
+    def __str__(self):
+        return "Sparse" + self.__class__.__name__
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
@@ -2099,9 +2143,6 @@ class Usmm(gof.op.Op):
 
     def __hash__(self):
         return hash(type(self))
-
-    def __ne__(self, other):
-        return not (self == other)
 
     def __str__(self):
         return 'Usmm{no_inplace}'
