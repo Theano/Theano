@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast)
+        tile, patternbroadcast, sort, SortOp, )
 from theano.tests import unittest_tools as utt
 
 
@@ -5583,6 +5583,61 @@ def test_transpose():
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
 
+
+def test_sort():
+
+    testMatrix = [[4, 9, 1], [1, 3, 2]]
+    testVector = [1, 10, 0, 2]
+
+    print "Example 1: "
+    a = theano.tensor.dmatrix()
+    w = sort(a)
+    f = theano.function([a], w)
+    assert numpy.allclose(f(testMatrix), numpy.sort(testMatrix))
+    print "------------------------------"
+
+    print "Example 2: "
+    a = theano.tensor.dmatrix()
+    axis = theano.tensor.scalar()
+    w = sort(a, axis)
+    f = theano.function([a, axis], w)
+    assert numpy.allclose(f(testMatrix, 1), numpy.sort(testMatrix, 1))
+    print "------------------------------"
+
+    print "Example 3: "
+    a = theano.tensor.dvector()
+    w2 = sort(a)
+    f = theano.function([a], w2)
+    assert numpy.allclose(f(testVector), numpy.sort(testVector))
+    print "------------------------------"
+
+    print "Example 4: "
+    a = theano.tensor.dmatrix()
+    axis = theano.tensor.scalar()
+    l = sort(a, axis, "mergesort")
+    f = theano.function([a, axis], l)
+    assert numpy.allclose(f(testMatrix, 1), numpy.sort(testMatrix, 1))
+    print "------------------------------"
+
+    print "Example 5: Check __eq__ function "
+    a = theano.tensor.dmatrix()
+    axis = theano.tensor.scalar()
+    a1 = SortOp("mergesort", [])
+    a2 = SortOp("quicksort", [])
+
+    #All the below should give true
+    assert a1 != a2
+    assert a1 == SortOp("mergesort", [])
+    assert a2 == SortOp("quicksort", [])
+
+    print "Example 5: axis=None"
+    a = theano.tensor.dmatrix()
+    try:
+        l = sort(a, None)
+    except ValueError:
+        pass
+    else:
+        assert False
 
 if __name__ == '__main__':
     if 0:
