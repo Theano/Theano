@@ -45,10 +45,13 @@ class ScipyGer(Ger):
             # in-place on a, even when I tell it to.
             A = cA[0]
             if A.size == 0:
-                # We don't have to do anything, A is empty.
+                # We don't have to compute anything, A is empty.
                 # We need this special case because Numpy considers it
                 # C-contiguous, wich is confusing.
-                pass
+                if not self.destructive:
+                    # Sometimes numpy thinks empty matrices can share memory,
+                    # so here to stop DebugMode from complaining.
+                    A = A.copy()
             elif A.flags['C_CONTIGUOUS']:
                 A = local_ger(calpha[0], cy[0], cx[0], a=A.T,
                         overwrite_a=int(self.destructive)).T

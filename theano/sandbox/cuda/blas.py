@@ -306,7 +306,7 @@ class GpuGemv(GpuOp):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -333,6 +333,7 @@ class GpuGemv(GpuOp):
             Py_INCREF(%(z_out)s);
         }
         else if (%(z_out)s
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] == CudaNdarray_HOST_DIMS(%(z_in)s)[0])
                 && ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] > 0)
                     || ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 0)
                         && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] == 1))))
