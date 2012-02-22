@@ -17,6 +17,7 @@ from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.tensor import blas
 from theano.sparse.utils import hash_from_sparse
+import theano.tests.unittest_tools as utt
 
 sparse_formats = ['csc', 'csr']
 
@@ -138,6 +139,62 @@ def as_sparse_or_tensor_variable(x, name=None):
         return as_sparse_variable(x, name)
     except (ValueError, TypeError):
         return theano.tensor.as_tensor_variable(x, name)
+
+
+def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
+    """
+    Wrapper for theano.test.unittest_tools.py:verify_grad
+    Converts sparse variables back and forth.
+    """
+    conv_none = lambda x: x
+    def conv_csr(ind, indptr, shp):
+        def f(spdata):
+            return CSR(spdata, ind, indptr, shp)
+        return f
+    def conv_csc(ind, indptr, shp):
+        def f(spdata):
+            return CSC(spdata, ind, indptr, shp)
+        return f
+    iconv = []
+    dpt = []
+
+    for p in pt:
+        if _is_sparse(p):
+            if structured:
+                dpt.append(p.data)
+            else:
+                dpt.append(p.toarray())
+            if p.format == 'csr':
+                if structured:
+                    iconv.append(conv_csr(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csr_from_dense)
+            elif p.format == 'csc':
+                if structured:
+                    iconv.append(conv_csc(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csc_from_dense)
+            else:
+                raise NotImplementedError("No conv for %s" % (p.format,))
+        else:
+            dpt.append(p)
+            iconv.append(conv_none)
+    output = op(*[as_sparse_or_tensor_variable(p) for p in pt])
+    if isinstance(output, (list, tuple)):
+        raise NotImplementedError("verify_grad can't deal with "
+                                  "multiple outputs")
+    if _is_sparse_variable(output):
+        oconv = DenseFromSparse(structured=structured)
+    else:
+        oconv = conv_none
+    def conv_op(*inputs):
+         ipt = [conv(i) for i, conv in zip(inputs, iconv)]
+         out = op(*ipt)
+         return oconv(out)
+    return utt.verify_grad(conv_op, dpt, *args, **kwargs)
+verify_grad_sparse.E_grad = utt.verify_grad.E_grad
 
 
 def constant(x, name=None):
@@ -694,13 +751,15 @@ class DenseFromSparse(gof.op.Op):
     """
     Convert a sparse matrix to an `ndarray`.
     """
-    sparse_grad = True
-    """WRITEME"""
+    def __init__(self, structured=True):
+        self.sparse_grad = structured
+
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return (type(self) == type(other)) and \
+            (self.sparse_grad == other.sparse_grad)
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self))^hash(self.sparse_grad)
 
     def make_node(self, x):
         x = as_sparse_variable(x)
