@@ -496,7 +496,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(f.maker.env.toposort()) == 4
                 f(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -507,7 +507,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(g.maker.env.toposort()) == 4
                 g(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -525,7 +525,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
                 f(x_val, b_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -535,7 +535,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(g.maker.env.toposort()) == 4
                 g(x_val, b_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -553,7 +553,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(f.maker.env.toposort()) == 6
                 f(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -564,7 +564,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert len(g.maker.env.toposort()) in (6,7) #there's an extra dimshuffle in there
                 # but I can't think of a good rule to get rid of it
                 g(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -580,7 +580,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 theano.printing.debugprint(f)
             try:
                 assert len(f.maker.env.toposort()) == 4
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -590,7 +590,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(g.maker.env.toposort()) in (6,7)
                 g(x_val, b_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -624,7 +624,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(f.maker.env.toposort()) == 5
                 f(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -635,7 +635,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             try:
                 assert len(g.maker.env.toposort()) == 5
                 g(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -671,7 +671,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 prev, last = f.maker.env.toposort()[-2:]
                 assert len(f.maker.env.toposort()) == 5
                 f(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -684,7 +684,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert softmax in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -723,7 +723,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 prev, last = f.maker.env.toposort()[-2:]
                 assert len(f.maker.env.toposort()) == 3 # [big_op, sum, dim_shuffle]
                 f(x_val, b_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -742,7 +742,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert softmax_with_bias in ops
                 assert softmax_grad not in ops
                 g(x_val, b_val, y_val)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -831,7 +831,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert 5 <= len(f.maker.env.toposort()) <= 10
                 validate_fn_graph(f)
                 f(x_val, y_val, 0.1)
-            except:
+            except Exception:
                 theano.printing.debugprint(f)
                 raise
 
@@ -841,7 +841,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert 5 <= len(g.maker.env.toposort()) <= 12
                 validate_grad_graph(g)
                 g(x_val, y_val, 0.1)
-            except:
+            except Exception:
                 theano.printing.debugprint(g)
                 raise
 
@@ -851,7 +851,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 assert 8 <= len(h.maker.env.toposort()) <= 17
                 validate_grad_graph(h)
                 h(x_val, y_val, 0.1)
-            except:
+            except Exception:
                 theano.printing.debugprint(h)
                 raise
 

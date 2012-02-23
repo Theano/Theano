@@ -310,25 +310,12 @@ class TestConv2D(unittest.TestCase):
         """
         Make sure errors are raised when image and kernel are not 4D tensors
         """
-        try:
-            self.validate((3,2,8,8), (4,2,5,5), 'valid', input = T.dmatrix())
-            # should never reach here
-            self.fail()
-        except:
-            pass
-        try:
-            self.validate((3,2,8,8), (4,2,5,5), 'valid', filters = T.dvector())
-            # should never reach here
-            self.fail()
-        except:
-            pass
-        try:
-            self.validate((3,2,8,8), (4,2,5,5), 'valid', input = T.dtensor3())
-            # should never reach here
-            self.fail()
-        except:
-            pass
-
+        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
+                          'valid', input=T.dmatrix())
+        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
+                          'valid', filters=T.dvector())
+        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
+                          'valid', input=T.dtensor3())
 
     def test_gcc_crash(self):
         """
