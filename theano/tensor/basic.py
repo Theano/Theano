@@ -5807,10 +5807,16 @@ class SortOp(theano.Op):
         z[0] = numpy.sort(a, axis, self.kind, self.order)
 
     def infer_shape(self, node, inputs_shapes):
-        if inputs_shapes[1] is None:
-            # That probably means axis = None,
-            # so the array is flattened before being sorted
+        if (isinstance(node.inputs[1], Constant) and
+            node.inputs[1].data is None):
+            # That means axis = None,
+            # So the array is flattened before being sorted
             return [(mul(*inputs_shapes[0]),)]
+        # axis should not be None
+        # So there should be the same number of dimensions
+        # in the input and output
+        assert node.inputs[0].ndim == node.outputs[0].ndim
+        assert inputs_shapes[1] is ()
         return [inputs_shapes[0]]
 
     #**** It need the argsort, so we can't do it now.

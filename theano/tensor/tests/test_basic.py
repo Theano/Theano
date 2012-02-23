@@ -5641,6 +5641,22 @@ class test_sort(unittest.TestCase):
         assert numpy.allclose(f(self.m_val),
                 numpy.sort(self.m_val, None))
 
+
+class TensorInferShapeTester(utt.InferShapeTester):
+    def test_sort(self):
+        x = tensor.matrix()
+        self._compile_and_check(
+                [x],
+                [sort(x)],
+                [numpy.random.randn(10, 40).astype(config.floatX)],
+                SortOp)
+        self._compile_and_check(
+                [x],
+                [sort(x, axis=None)],
+                [numpy.random.randn(10, 40).astype(config.floatX)],
+                SortOp)
+
+
 if __name__ == '__main__':
     if 0:
         unittest.main()
