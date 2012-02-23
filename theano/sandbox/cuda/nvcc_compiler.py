@@ -74,7 +74,7 @@ def add_standard_rpath(rpath):
     rpath_defaults.append(rpath)
 
 
-class NVCC_compiler():
+class NVCC_compiler(object):
     @staticmethod
     def compile_args():
         """
