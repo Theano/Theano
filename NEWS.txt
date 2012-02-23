@@ -39,6 +39,7 @@ New features:
  * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization)
    at compile time if all their inputs are constant.
    (Frederic B., Pascal L., reported by Sander Dieleman)
+ * New Op tensor.sort(), wrapping numpy.sort (Hani Almousli)
 
 =============
 Release Notes
