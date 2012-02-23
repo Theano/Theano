@@ -1312,7 +1312,7 @@ def gcc_version():
     return gcc_version_str
 
 
-class GCC_compiler():
+class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
