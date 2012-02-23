@@ -87,16 +87,8 @@ class TestSignalConv2D(unittest.TestCase):
         """
         Test that conv2d fails for dimensions other than 2 or 3.
         """
-        try:
-            conv.conv2d(T.dtensor4(), T.dtensor3())
-            self.fail()
-        except:
-            pass
-        try:
-            conv.conv2d(T.dtensor3(), T.dvector())
-            self.fail()
-        except:
-            pass
+        self.assertRaises(Exception, conv.conv2d, T.dtensor4(), T.dtensor3())
+        self.assertRaises(Exception, conv.conv2d, T.dtensor3(), T.dvector())
 
     def test_bug_josh_reported(self):
         """
