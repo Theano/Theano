@@ -1,8 +1,10 @@
 from copy import copy, deepcopy
 import sys
+import unittest
 
 import numpy
 
+import theano
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
 try:
@@ -148,3 +150,27 @@ class T_OpContractMixin(object):
         for op in self.ops:
             s = str(op)    # show that str works
             assert s       # names should not be empty
+
+
+class InferShapeTester(unittest.TestCase):
+    def setUp(self):
+        seed_rng()
+        # This mode seems to be the minimal one including the shape_i
+        # optimizations, if we don't want to enumerate them explicitly.
+        self.mode = theano.compile.get_default_mode().including("canonicalize")
+
+    def _compile_and_check(self, inputs, outputs, numeric_inputs, cls):
+        outputs_function = theano.function(inputs, outputs, mode=self.mode)
+        shapes_function = theano.function(inputs, [o.shape for o in outputs],
+                mode=self.mode)
+        theano.printing.debugprint(shapes_function)
+        # Check that the Op is removed from the compiled function.
+        topo_shape = shapes_function.maker.env.toposort()
+        assert not any(isinstance(t.op, cls) for t in topo_shape)
+        topo_out = outputs_function.maker.env.toposort()
+        assert any(isinstance(t.op, cls) for t in topo_out)
+        # Check that the shape produced agrees with the actual shape.
+        numeric_outputs = outputs_function(*numeric_inputs)
+        numeric_shapes = shapes_function(*numeric_inputs)
+        for out, shape in zip(numeric_outputs, numeric_shapes):
+            assert numpy.all(out.shape == shape)
