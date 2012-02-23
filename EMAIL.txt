@@ -1,6 +1,25 @@
 ===========================
- Announcing Theano 0.5rc2
+ Announcing Theano 0.5
 ===========================
+
+## You can select and adapt one of the following templates.
+
+## Basic text for major version release:
+
+This is a release for a major version, with lots of new
+features, bug fixes, and some interface changes (deprecated or
+potentially misleading features were removed).
+
+Upgrading to Theano 0.5 is recommended for everyone, but you should first make
+sure that your code does not raise deprecation warnings with Theano 0.4.1.
+Otherwise, in one case the results can change. In other cases, the warnings are
+turned into errors (see below for details).
+
+For those using the bleeding edge version in the
+git repository, we encourage you to update to the `0.5` tag.
+
+
+## Basic text for major version release candidate:
 
 This is a release candidate for a major version, with lots of new
 features, bug fixes, and some interface changes (deprecated or
@@ -8,14 +27,20 @@ potentially misleading features were removed).
 
 The upgrade is recommended for developpers who want to help test and
 report bugs, or want to use new features now.  If you have updated
-to 0.5rc1, you are highly encouraged to update to 0.5rc2. There are
-more bug fixes and speed uptimization! But there is also a small new
-interface change about sum of [u]int* dtype.  Otherwise, users should
-wait for the 0.5 release.
+to 0.5rc1, you are highly encouraged to update to 0.5rc2.
 
 For those using the bleeding edge version in the
 git repository, we encourage you to update to the `0.5rc2` tag.
 
+
+## Basic text for minor version release:
+
+TODO
+
+
+## Basic text for minor version release candidate:
+
+TODO
 
 What's New
 ----------
@@ -83,16 +108,16 @@ Acknowledgments
 
 I would like to thank all contributors of Theano. For this particular
 release, many people have helped, notably (in alphabetical order):
-Frédéric Bastien, Justin Bayer, Arnaud Bergerond, James Bergstra,
-Valentin Bisson, Josh Bleecher Snyder, Yann Dauphin, Olivier Delalleau,
-Guillaume Desjardins, Sander Dieleman, Xavier Glorot, Ian Goodfellow,
-Philippe Hamel, Pascal Lamblin, Eric Laufer, Razvan Pascanu, Matthew
-Rocklin, Graham Taylor, Sebastian Urban, David Warde-Farley, and Yao Li.
+Hani Almousli, Frédéric Bastien, Justin Bayer, Arnaud Bergeron, James
+Bergstra, Valentin Bisson, Josh Bleecher Snyder, Yann Dauphin, Olivier
+Delalleau, Guillaume Desjardins, Sander Dieleman, Xavier Glorot, Ian
+Goodfellow, Philippe Hamel, Pascal Lamblin, Eric Laufer, Grégoire
+Mesnil, Razvan Pascanu, Matthew Rocklin, Graham Taylor, Sebastian Urban,
+David Warde-Farley, and Yao Li.
 
-I would also like to thank users who submitted bug reports, notably
-(this list is incomplete, please let us know if someone should be
-added):  Nicolas Boulanger-Lewandowski, Olivier Chapelle, Michael
-Forbes, and Timothy Lillicrap.
+I would also like to thank users who submitted bug reports, notably:
+Nicolas Boulanger-Lewandowski, Olivier Chapelle, Michael Forbes, Timothy
+Lillicrap, and John Salvatier.
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
 their strengths.
