@@ -285,20 +285,11 @@ def comm_guard(type1, type2):
                      and (type2 is ANY_TYPE or isinstance(arg1, type2)):
                 arg1, arg2 = arg2, arg1
             else:
-                try:
-                    return old_f(arg1, arg2, *rest)
-                except:
-                    raise
+                return old_f(arg1, arg2, *rest)
 
-            try:
-                variable = f(arg1, arg2, *rest)
-            except:
-                raise
+            variable = f(arg1, arg2, *rest)
             if variable is FALL_THROUGH:
-                try:
-                    return old_f(arg1, arg2, *rest)
-                except:
-                    raise
+                return old_f(arg1, arg2, *rest)
             else:
                 return variable
 

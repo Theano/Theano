@@ -443,7 +443,7 @@ class Env(utils.object2):
         """
         try:
             self._features.remove(feature)
-        except:
+        except Exception:
             return
         detach = getattr(feature, 'on_detach', None)
         if detach is not None:

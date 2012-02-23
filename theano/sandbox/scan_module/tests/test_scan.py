@@ -299,13 +299,13 @@ class TestScan(unittest.TestCase):
                 for th_out, num_out in zip(theano_outs, numpy_outs):
                     try:
                         assert numpy.allclose(th_out, num_out)
-                    except:
+                    except Exception:
                         #import ipdb; ipdb.set_trace()
                         raise
                 for th_out, num_out in zip(shared_vars, numpy_shared):
                     try:
                         assert numpy.allclose(th_out.get_value(), num_out)
-                    except:
+                    except Exception:
                         #import ipdb; ipdb.set_trace()
                         raise
                 # Scenario 2 : Loose fit (sequences longer then required)
