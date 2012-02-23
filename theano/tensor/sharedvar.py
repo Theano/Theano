@@ -61,7 +61,7 @@ def scalar_constructor(value, name=None, strict=False, allow_downcast=None):
         raise TypeError()
     try:
         dtype=value.dtype
-    except:
+    except Exception:
         dtype=numpy.asarray(value).dtype
 
     dtype=str(dtype)
@@ -75,6 +75,6 @@ def scalar_constructor(value, name=None, strict=False, allow_downcast=None):
                 value=numpy.array(value, copy=True),
                 name=name, strict=strict, allow_downcast=allow_downcast)
         return rval
-    except:
+    except Exception:
         traceback.print_exc()
         raise

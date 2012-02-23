@@ -23,7 +23,7 @@ class Test_DB(TestCase):
                 pass
             else:
                 raise
-        except:
+        except Exception:
             self.fail()
 
         try:
@@ -34,7 +34,7 @@ class Test_DB(TestCase):
                 pass
             else:
                 raise
-        except:
+        except Exception:
             self.fail()
 
         try:
@@ -45,7 +45,7 @@ class Test_DB(TestCase):
                 pass
             else:
                 raise
-        except:
+        except Exception:
             self.fail()
 
 
