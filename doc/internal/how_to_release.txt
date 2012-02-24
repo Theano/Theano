@@ -57,6 +57,7 @@ following::
 
     git commit -m "Modifications for 0.X.Y release" setup.py doc/conf.py NEWS.txt HISTORY.txt theano/configdefaults.py doc/library/config.txt
     git tag -a rel-0.X.Y
+    git push
     git push --tags
 
 The documentation will be automatically regenerated in the next few hours.
@@ -137,6 +138,7 @@ from ``NEWS.txt``, and send it to the following mailing lists:
 * scipy-user@scipy.org
 
 For release candidates, only e-mail:
+
 * theano-announce
 * theano-dev
 * theano-users
