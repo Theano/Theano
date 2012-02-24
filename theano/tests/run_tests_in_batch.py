@@ -36,7 +36,7 @@ import cPickle, os, subprocess, sys
 import theano
 
 
-def main(stdout=None, stderr=None, argv=None, call_nose=None):
+def main(stdout=None, stderr=None, argv=None, theano_nose=None):
     """
     Run tests with optional output redirection.
 
@@ -46,8 +46,8 @@ def main(stdout=None, stderr=None, argv=None, call_nose=None):
     If argv is None, then we use arguments from sys.argv, otherwise we use the
     provided arguments instead.
 
-    If call_nose is None, then we use the call_nose.py script found in
-    theano/tests to call nosetests. Otherwise we call the provided script.
+    If theano_nose is None, then we use the theano-nose script found in
+    Theano/bin to call nosetests. Otherwise we call the provided script.
     """
     if stdout is None:
         stdout = sys.stdout
@@ -55,24 +55,25 @@ def main(stdout=None, stderr=None, argv=None, call_nose=None):
         stderr = sys.stderr
     if argv is None:
         argv = sys.argv
-    if call_nose is None:
-        call_nose = os.path.join(theano.__path__[0], 'tests', 'call_nose.py')
+    if theano_nose is None:
+        theano_nose = os.path.join(theano.__path__[0], '..', 'bin', 'theano-nose')
     stdout_backup = sys.stdout
     stderr_backup = sys.stderr
     try:
         sys.stdout = stdout
         sys.stderr = stderr
-        run(stdout, stderr, argv, call_nose)
+        run(stdout, stderr, argv, theano_nose)
     finally:
         sys.stdout = stdout_backup
         sys.stderr = stderr_backup
 
-def run(stdout, stderr, argv, call_nose):
+def run(stdout, stderr, argv, theano_nose):
     if len(argv) == 1:
         tests_dir = theano.__path__[0]
     else:
-        assert len(argv) == 2
-        tests_dir = argv[1]
+        # tests_dir should be at the end of argv, there can be other arguments
+        tests_dir = argv[-1]
+        other_args = argv[1:-1]
         assert os.path.isdir(tests_dir)
     os.chdir(tests_dir)
     # It seems safer to fully regenerate the list of tests on each call.
@@ -86,9 +87,11 @@ def run(stdout, stderr, argv, call_nose):
     stdout.flush()
     stderr.flush()
     dummy_in = open(os.devnull)
-    rval = subprocess.call(['python', call_nose, '--collect-only', '--with-id'],
-                           stdin=dummy_in.fileno(), stdout=stdout.fileno(),
-                           stderr=stderr.fileno())
+    rval = subprocess.call(
+            [theano_nose, '--collect-only', '--with-id'] + other_args,
+            stdin=dummy_in.fileno(),
+            stdout=stdout.fileno(),
+            stderr=stderr.fileno())
     stdout.flush()
     stderr.flush()
     assert rval == 0
@@ -111,10 +114,13 @@ def run(stdout, stderr, argv, call_nose):
         # We suppress all output because we want the user to focus only on the
         # failed tests, which are re-run (with output) below.
         dummy_out = open(os.devnull, 'w')
-        rval = subprocess.call(['python', call_nose, '-q', '--with-id'] +
-                               map(str, test_range), stdout=dummy_out.fileno(),
-                               stderr=dummy_out.fileno(),
-                               stdin=dummy_in.fileno())
+        rval = subprocess.call(
+                ([theano_nose, '-q', '--with-id']
+                    + map(str, test_range)
+                    + other_args),
+                stdout=dummy_out.fileno(),
+                stderr=dummy_out.fileno(),
+                stdin=dummy_in.fileno())
         # Recover failed test indices from the 'failed' field of the '.noseids'
         # file. We need to do it after each batch because otherwise this field
         # may get erased. We use a set because it seems like it is not
@@ -132,9 +138,11 @@ def run(stdout, stderr, argv, call_nose):
 ################################"""
         stdout.flush()
         stderr.flush()
-        subprocess.call(['python', call_nose, '-v', '--with-id'] + failed,
-                        stdin=dummy_in.fileno(), stdout=stdout.fileno(),
-                        stderr=stderr.fileno())
+        subprocess.call(
+                [theano_nose, '-v', '--with-id'] + failed + other_args,
+                stdin=dummy_in.fileno(),
+                stdout=stdout.fileno(),
+                stderr=stderr.fileno())
         stdout.flush()
         stderr.flush()
         return 0

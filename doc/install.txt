@@ -742,7 +742,7 @@ command``. As a workaround, you can instead run:
 
     .. code-block:: bash
 
-        python theano/tests/run_tests_in_batch.py
+        ./bin/theano-nose --batch
 
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
