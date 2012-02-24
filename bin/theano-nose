@@ -24,6 +24,7 @@ _logger = logging.getLogger('theano.bin.theano-nose')
 _logger.setLevel(logging.WARN)
 
 import nose
+import textwrap
 import sys
 
 
@@ -42,13 +43,40 @@ def main():
             addplugins.append(KnownFailure())
         except ImportError:
             _logger.warn(
-                'KnownFailure plugin from NumPy could not be imported')
+                'KnownFailure plugin from NumPy could not be imported. '
+                'Use --without-knownfailure to disable this warning.')
     else:
         sys.argv.remove('--without-knownfailure')
 
     return nose.main(addplugins=addplugins)
 
+def help():
+    help_msg = """
+        This script behaves mostly the same as the `nosetests` command.
+
+        The main difference is that it loads automatically the
+        KnownFailure plugin, in order to hide KnownFailureTests error
+        messages. It also supports executing tests by batches.
+
+        Options:
+
+            --batch[=n]: Do not run all the tests in one run, but split
+                         the execution in batches of `n` tests each.
+                         Default n is 100.
+
+            --help, -h: Displays this help.
+
+            --without-knownfailure: Do not load the KnownFailure plugin.
+
+        The other options will be passed to nosetests, see ``nosetests -h``.
+        """
+
+    print textwrap.dedent(help_msg)
+
 
 if __name__ == '__main__':
-    result = main()
-    sys.exit(result)
+    if '--help' in sys.argv or '-h' in sys.argv:
+        help()
+    else:
+        result = main()
+        sys.exit(result)
