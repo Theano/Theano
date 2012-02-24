@@ -2,7 +2,6 @@
 #we set the compiledir to the /Tmp dir to make the test faster by bypassing the nfs network.
 date
 START=`date +%s`
-NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
 RELEASE=""
@@ -20,8 +19,10 @@ if [ "$1" == "--buildbot" ]; then
     cd ..
     ARGS="Theano"
     PROFILING="--with-coverage --cover-package=theano"
+    NOSETESTS=${ROOT_CWD}/bin/theano-nose
 else
     COMPILEDIR=`python -c "import theano;print theano.config.compiledir"`
+    NOSETESTS=`python -c "import theano; print theano.__path__[0]"`/../bin/theano-nose
 fi
 
 echo "Number of elements in the compiledir:"
