@@ -7,6 +7,7 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
+from theano.gof.python25 import any
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:
