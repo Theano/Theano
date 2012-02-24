@@ -17,7 +17,7 @@ Theano has been powering large-scale computationally intensive scientific invest
 since 2007.  But it is also approachable enough to be used in the classroom
 (IFT6266 at the University of Montreal).
 
-.. image:: images/talk2010.gif
+.. image:: images/talk2010.png
     :scale: 75%
     :align: left
 

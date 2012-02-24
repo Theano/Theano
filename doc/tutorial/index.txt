@@ -38,5 +38,6 @@ you out.
     gpu_data_convert
     shape_info
     remarks
+    extending_theano
     debug_faq
     faq
