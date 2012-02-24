@@ -3,7 +3,7 @@
 Update in the Trunk since the last release:
 
 * Added in the tutorial documentation on how to extend Theano.
-  This explain how to make a Theano Op from a python function.
+  This explains how to make a Theano Op from a Python function.
   http://deeplearning.net/software/theano/tutorial/extending_theano.html
 
 

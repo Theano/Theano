@@ -215,7 +215,7 @@ GPU Op
 ------
 
 Op that execute on the GPU should inherit from the
-``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allow Theano
+``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows Theano
 to make the distinction between both. Currently, we use this to test
-if the NVIDIA driver work correctly with our sum reduction code on the
+if the NVIDIA driver works correctly with our sum reduction code on the
 gpu.
