@@ -884,9 +884,9 @@ class CLinker(link.Linker):
         # into the signature.
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None:
-            # We must sort it as the order from a set are not guarantee.
+            # We must sort it as the order from a set is not guaranteed.
             # In  particular, 2 sets with the same content can give different
-            # order depending in the order you put data in it.
+            # order depending on the order you put data in it.
             # Sets are used to remove duplicate elements.
             args = sorted(compile_args)
             args = tuple(args)

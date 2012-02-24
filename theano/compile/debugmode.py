@@ -52,8 +52,8 @@ AddConfigVar('DebugMode.check_strides',
         in_c_key=False)
 
 AddConfigVar('DebugMode.warn_input_not_reused',
-        ("Generate a warning when the destroy_map or view_map tell that an"
-         " op work inplace, but the op did not reuse the input for its output."
+        ("Generate a warning when destroy_map or view_map says that an "
+         "op works inplace, but the op did not reuse the input for its output."
          ),
         BoolParam(True),
         in_c_key=False)
