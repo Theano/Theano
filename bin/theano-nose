@@ -29,11 +29,29 @@ import sys
 
 
 def main():
-    if '--batch' in sys.argv:
-        from theano.tests import run_tests_in_batch
-        sys.argv.remove('--batch')
-        return run_tests_in_batch.main()
+    # Handle --batch[=n] arguments
+    batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
+    for arg in batch_args:
+        sys.argv.remove(arg)
 
+    if len(batch_args):
+        if len(batch_args) > 1:
+            _logger.warn(
+                'Multiple --batch arguments detected, using the last one '
+                'and ignoring the first ones.')
+
+        batch_arg = batch_args[-1]
+        elems = batch_arg.split('=', 1)
+        if len(elems) == 2:
+            batch_size = int(elems[1])
+        else:
+            # Use run_tests_in_batch's default
+            batch_size = None
+
+        from theano.tests import run_tests_in_batch
+        return run_tests_in_batch.main(batch_size=batch_size)
+
+    # Non-batch mode.
     addplugins = []
     # We include KnownFailure plugin by default, unless
     # it is disabled by the "--without-knownfailure" arg.
