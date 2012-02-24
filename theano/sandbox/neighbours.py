@@ -2,10 +2,10 @@ import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gof import local_optimizer
-from theano.sandbox.cuda import cuda_available
+from theano.sandbox.cuda import cuda_available, GpuOp
 
 if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType, GpuOp
+    from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
