@@ -77,8 +77,8 @@ from compile import \
 
 from misc.safe_asarray import _asarray
 
-import numpy.testing
-test = numpy.testing.Tester().test
+import theano.tests
+test = theano.tests.TheanoNoseTester().test
 
 FancyModule = Module
 
