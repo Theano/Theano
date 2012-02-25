@@ -5840,7 +5840,7 @@ def sort(a, axis=-1, kind='quicksort', order=None):
     Tensor to be sorted
 
     axis : Tensor
-        Axis along which to sort. None is not still supported.
+        Axis along which to sort. If None, the array is flattened before sorting.
 
     kind : {'quicksort', 'mergesort', 'heapsort'}, optional
 
@@ -5848,7 +5848,7 @@ def sort(a, axis=-1, kind='quicksort', order=None):
 
     order : list, optional
 
-        When a is a structured array, this argument specifies which
+        When `a` is a structured array, this argument specifies which
         fields to compare first, second, and so on. This list does not
         need to include all of the fields.
 
