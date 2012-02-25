@@ -66,7 +66,12 @@ def mysend(subject, file):
         elif token.startswith("SKIP="):
             skip+=int(token[5:])
         elif token == "KnownFailureTest:":
+            # This means that KnownFailure plugin is off,
+            # so knownfails are also counted as errors
             knownfail+=1
+            errors-=1
+        elif token.startswith("KNOWNFAIL="):
+            knownfail += int(token.split('=')[1])
         elif token.startswith("speed_failure_"):
             speed_failure+=int(token.split('=')[1])
             show_speed_failure=True
@@ -98,11 +103,10 @@ def mysend(subject, file):
                     float64_time = start
                     start = ""
     
-    s="KnownFailure are removed from Error. \n Resume of the output:\n"+filter_output(open(file))+"Full output:\n"+s
+    s="Resume of the output:\n\n"+filter_output(open(file))+"\n\nFull output:\n\n"+s
     img = MIMEText(s)
     fp.close()
     msg.attach(img)
-    errors-=knownfail
     
 # Send the email via our own SMTP server.
     if show_speed_failure:
