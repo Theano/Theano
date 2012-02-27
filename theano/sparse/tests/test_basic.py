@@ -784,8 +784,8 @@ class test_structureddot(unittest.TestCase):
 
 class DotTests(unittest.TestCase):
     def setUp(self):
-        x_size = (10, 1000)
-        y_size = (1000, 10000)
+        x_size = (10, 100)
+        y_size = (100, 1000)
 
         self.x_csr = scipy.sparse.csr_matrix(
             numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
