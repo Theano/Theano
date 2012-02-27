@@ -194,7 +194,7 @@ To verify the Rop method of the DoubleOp, you can use this:
            self.check_rop_lop(DoubleOp()(self.x), self.in_shape)
 	   assert False
 
-You can use `nosetests` to run it as all other test in Theano or you can run it like that in a python shell:
+You can use `theano-nose` to run it as all other test in Theano or you can run it like that in a python shell:
 
 .. code-block:: python
 
