@@ -322,14 +322,18 @@ You can also run them in-place from the Git checkout directory by typing
 
 .. code-block:: bash
 
-    nosetests
+    theano-nose
+
+You should be able to execute it if you followed the instructions above.
+If ``theano-nose`` is not found by your shell, you will need to add
+``Theano/bin`` to your ``PATH`` environment variable.
 
 .. note::
 
     The tests should be run with the configuration option :attr:`~config.device`
     set to ``cpu`` (default). If you need to change this value,
     you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
-    by prefixing the ``nosetests`` command with ``THEANO_FLAGS=device=cpu``.
+    by prefixing the ``theano-nose`` command with ``THEANO_FLAGS=device=cpu``.
     If you have a GPU, it will automatically be used to run GPU-related tests.
 
     If you want GPU-related tests to run on a specific GPU device, and not
@@ -339,9 +343,9 @@ You can also run them in-place from the Git checkout directory by typing
     See :ref:`libdoc_config` for more information on how to change these
     configuration options.
 
-All tests should pass except those marked as ``KnownFailureTest``. If some
-test fails on your machine, you are encouraged to tell us what went wrong on
-the ``theano-users@googlegroups.com`` mailing list.
+All tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.
 
 
 Troubleshooting: Make sure you have a BLAS library
@@ -1003,14 +1007,14 @@ Testing your installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently, due to memory fragmentation issue in Windows, the
-test-suite breaks at some point when using ``nosetests``, with many error
+test-suite breaks at some point when using ``theano-nose``, with many error
 messages looking
 like: ``DLL load failed: Not enough storage is available to process this
 command``. As a workaround, you can instead run:
 
     .. code-block:: bash
 
-        python theano/tests/run_tests_in_batch.py
+        theano-nose --batch
 
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
