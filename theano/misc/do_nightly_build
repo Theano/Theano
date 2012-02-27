@@ -1,17 +1,18 @@
 #!/bin/bash
-#we set the compiledir to the /Tmp dir to make the test faster by bypassing the nfs network.
 date
 START=`date +%s`
-NOSETESTS=nosetests
 ARGS=$@
 PROFILING=""
 RELEASE=""
+
 if [ "$1" == "--release" ]; then
     RELEASE="True"
     shift
     ARGS=$@
 fi
+
 if [ "$1" == "--buildbot" ]; then
+    #we set the compiledir to the /Tmp dir to make the test faster by bypassing the nfs network.
     COMPILEDIR=/Tmp/lisa_theano_compile_dir_theano
     ROOT_CWD=/Tmp/nightly_build
     FLAGS=compiledir=$COMPILEDIR
@@ -20,24 +21,30 @@ if [ "$1" == "--buildbot" ]; then
     cd ..
     ARGS="Theano"
     PROFILING="--with-coverage --cover-package=theano"
+    NOSETESTS=${ROOT_CWD}/bin/theano-nose
+    export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 else
-    COMPILEDIR=`python -c "import theano;print theano.config.compiledir"`
+    COMPILEDIR=`python -c "import theano; print theano.config.compiledir"`
+    NOSETESTS=`python -c "import theano; print theano.__path__[0]"`/../bin/theano-nose
 fi
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
 # We don't want warnings in the buildbot for errors already fixed.
 FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,warn.subtensor_merge_bug=False,$FLAGS
+
 # We want to see correctly optimization/shape errors, so make make them raise an
 # error.
 FLAGS=on_opt_error=raise,$FLAGS
 FLAGS=on_shape_error=raise,$FLAGS
+
 # Ignore user device and floatX config, because:
 #   1. Tests are intended to be run with device=cpu.
 #   2. We explicitly add 'floatX=float32' in one run of the test suite below,
 #      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
-export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
+
 
 if [ "$RELEASE" ]; then
     echo "Executing nosetests with default mode and compute_test_value"

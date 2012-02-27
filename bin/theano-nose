@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+
+__authors__   = "Olivier Delalleau, Pascal Lamblin"
+__contact__   = "delallea@iro"
+
+"""
+This script should behave the same as the `nosetests` command.
+
+The reason for its existence is that on some systems, it may not be obvious to
+find where nosetests is installed in order to run it in a different process.
+
+It is also used to load the KnownFailure plugin, in order to hide
+KnownFailureTests error messages. Use --without-knownfailure to
+disable that plugin.
+
+If the --batch option is used, it will call `run_tests_in_batch.py`,
+in order to run the tests by batches, not all at the same time.
+`run_tests_in_batch.py` will in turn call back this script in another
+process.
+"""
+
+import logging
+_logger = logging.getLogger('theano.bin.theano-nose')
+_logger.setLevel(logging.WARN)
+
+import nose
+import textwrap
+import sys
+
+
+def main():
+    # Handle --batch[=n] arguments
+    batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
+    for arg in batch_args:
+        sys.argv.remove(arg)
+
+    if len(batch_args):
+        if len(batch_args) > 1:
+            _logger.warn(
+                'Multiple --batch arguments detected, using the last one '
+                'and ignoring the first ones.')
+
+        batch_arg = batch_args[-1]
+        elems = batch_arg.split('=', 1)
+        if len(elems) == 2:
+            batch_size = int(elems[1])
+        else:
+            # Use run_tests_in_batch's default
+            batch_size = None
+
+        from theano.tests import run_tests_in_batch
+        return run_tests_in_batch.main(batch_size=batch_size)
+
+    # Non-batch mode.
+    addplugins = []
+    # We include KnownFailure plugin by default, unless
+    # it is disabled by the "--without-knownfailure" arg.
+    if '--without-knownfailure' not in sys.argv:
+        try:
+            from numpy.testing.noseclasses import KnownFailure
+            addplugins.append(KnownFailure())
+        except ImportError:
+            _logger.warn(
+                'KnownFailure plugin from NumPy could not be imported. '
+                'Use --without-knownfailure to disable this warning.')
+    else:
+        sys.argv.remove('--without-knownfailure')
+
+    return nose.main(addplugins=addplugins)
+
+def help():
+    help_msg = """
+        This script behaves mostly the same as the `nosetests` command.
+
+        The main difference is that it loads automatically the
+        KnownFailure plugin, in order to hide KnownFailureTests error
+        messages. It also supports executing tests by batches.
+
+        Options:
+
+            --batch[=n]: Do not run all the tests in one run, but split
+                         the execution in batches of `n` tests each.
+                         Default n is 100.
+
+            --help, -h: Displays this help.
+
+            --without-knownfailure: Do not load the KnownFailure plugin.
+
+        The other options will be passed to nosetests, see ``nosetests -h``.
+        """
+
+    print textwrap.dedent(help_msg)
+
+
+if __name__ == '__main__':
+    if '--help' in sys.argv or '-h' in sys.argv:
+        help()
+    else:
+        result = main()
+        sys.exit(result)
