@@ -271,7 +271,12 @@ You can also run them in-place from the Git checkout directory by typing
 
 You should be able to execute it if you followed the instructions above.
 If ``theano-nose`` is not found by your shell, you will need to add
-``Theano/bin`` to your ``PATH`` environment variable.
+``Theano/bin`` to your ``PATH`` environment variable.  If you cannot do that,
+or if you are on Windows, you can also call it by:
+
+.. code-block:: bash
+
+    python /path/to/Theano/bin/theano-nose
 
 .. note::
 
@@ -746,7 +751,7 @@ command``. As a workaround, you can instead run:
 
     .. code-block:: bash
 
-        theano-nose --batch
+        python Theano/bin/theano-nose --batch
 
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
