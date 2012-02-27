@@ -92,7 +92,8 @@ def run(stdout, stderr, argv, theano_nose, batch_size):
     stderr.flush()
     dummy_in = open(os.devnull)
     rval = subprocess.call(
-            [theano_nose, '--collect-only', '--with-id'] + other_args,
+            (['python', theano_nose, '--collect-only', '--with-id']
+                + other_args),
             stdin=dummy_in.fileno(),
             stdout=stdout.fileno(),
             stderr=stderr.fileno())
@@ -118,7 +119,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size):
         # failed tests, which are re-run (with output) below.
         dummy_out = open(os.devnull, 'w')
         rval = subprocess.call(
-                ([theano_nose, '-q', '--with-id']
+                (['python', theano_nose, '-q', '--with-id']
                     + map(str, test_range)
                     + other_args),
                 stdout=dummy_out.fileno(),
@@ -142,7 +143,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size):
         stdout.flush()
         stderr.flush()
         subprocess.call(
-                [theano_nose, '-v', '--with-id'] + failed + other_args,
+                (['python', theano_nose, '-v', '--with-id']
+                    + failed
+                    + other_args),
                 stdin=dummy_in.fileno(),
                 stdout=stdout.fileno(),
                 stderr=stderr.fileno())
