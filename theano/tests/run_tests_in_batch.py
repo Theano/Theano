@@ -74,6 +74,7 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None, batch_size=None)
 def run(stdout, stderr, argv, theano_nose, batch_size):
     if len(argv) == 1:
         tests_dir = theano.__path__[0]
+        other_args = []
     else:
         # tests_dir should be at the end of argv, there can be other arguments
         tests_dir = argv[-1]
