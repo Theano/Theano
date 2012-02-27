@@ -422,7 +422,17 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     inputs = [_pfunc_param_to_in(p, allow_downcast=allow_input_downcast)
               for p in params]
 
+    # Check if some variable is present more than once in inputs
     in_variables = [input.variable for input in inputs]
+    for i, v in enumerate(in_variables):
+        if v in in_variables[(i + 1):]:
+            dup_v_i = in_variables.index(v, (i + 1))
+            raise ValueError(
+                    ("Variable %s is used twice in inputs to theano.function, "
+                     "at indices %i and %i.  This would result in values "
+                     "provided for it being ignored. Please do not duplicate "
+                     "variables in the inputs list." % (v, i, dup_v_i)))
+
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
                                          replace=givens,

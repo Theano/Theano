@@ -616,7 +616,9 @@ class Test_pfunc(unittest.TestCase):
         assert f() == 21
         assert f() == 34
 
-
+    def test_duplicate_inputs(self):
+        x = theano.tensor.lscalar('x')
+        self.assertRaises(ValueError, theano.function, [x, x, x], x)
 
 
 
