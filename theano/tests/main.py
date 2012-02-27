@@ -5,6 +5,9 @@ from numpy.testing.nosetester import import_nose, NoseTester
 from numpy.testing.noseclasses import KnownFailure, NumpyTestProgram
 
 
+# This class contains code adapted from NumPy,
+# numpy/testing/nosetester.py,
+# Copyright (c) 2005-2011, NumPy Developers
 class TheanoNoseTester(NoseTester):
     """
     Nose test runner.
