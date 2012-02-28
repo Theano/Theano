@@ -6,6 +6,11 @@ Update in the Trunk since the last release:
   This explains how to make a Theano Op from a Python function.
   http://deeplearning.net/software/theano/tutorial/extending_theano.html
 
+Miscellaneous:
+ * New theano-nose executable, to run the unit tests without displaying
+   known failures (and possibly in several batches). theano.test() was
+   also updated. (Pascal L.)
+
 
 =============
 Release Notes
