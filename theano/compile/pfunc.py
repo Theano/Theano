@@ -324,7 +324,7 @@ class Param(object):
 def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
-        profile=None):
+        profile=None, on_unused_input='raise'):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -371,6 +371,10 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     used.  If argument is a string, a new ProfileStats instance will be created
     with that string as its `message` attribute.  This profiling object will be
     available via self.profile.
+
+    :type profile: str
+    :param profile: What to do if a variable in the 'inputs' list is not used
+    in the graph. Possible values are 'raise', 'warn', and 'ignore.
 
 
     :rtype: theano.compile.Function
@@ -460,7 +464,8 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         inputs.append(si)
 
     return orig_function(inputs, cloned_outputs, mode,
-            accept_inplace=accept_inplace, name=name, profile=profile)
+            accept_inplace=accept_inplace, name=name, profile=profile,
+            on_unused_input=on_unused_input)
 
 
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
