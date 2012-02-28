@@ -17,6 +17,14 @@ Interface change
    ``on_unused_input={'raise', 'warn', 'ignore'}`` to control this.
    (Pascal L.)
 
+New Feature
+ * debugprint new param ids=["CHAR","id","int",""]
+   This make the identifier printed to be the python id, a uniq char, a
+   unit int, or not have it printed. We changed the default to be "CHAR"
+   as this is more readable.
+ * debugprint new param stop_on_name=[False,True]. If True, we don't print
+   anything bellow an intermediate variable that have a name. Default to False.
+
 =============
 Release Notes
 =============
