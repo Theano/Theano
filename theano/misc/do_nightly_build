@@ -21,7 +21,7 @@ if [ "$1" == "--buildbot" ]; then
     cd ..
     ARGS="Theano"
     PROFILING="--with-coverage --cover-package=theano"
-    NOSETESTS=${ROOT_CWD}/bin/theano-nose
+    NOSETESTS=${ROOT_CWD}/Theano/bin/theano-nose
     export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 else
     COMPILEDIR=`python -c "import theano; print theano.config.compiledir"`
