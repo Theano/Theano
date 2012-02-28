@@ -502,7 +502,7 @@ def char_from_number(number):
 
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[], ids='id'):
+               order=[], ids='CHAR'):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
