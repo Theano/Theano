@@ -106,12 +106,12 @@ class RopLop_checker(unittest.TestCase):
         vv = numpy.asarray(self.rng.uniform(size=self.mat_in_shape),
                            theano.config.floatX)
         yv = tensor.Rop(y, self.mx, self.mv)
-        rop_f = function([self.mx, self.mv], yv)
+        rop_f = function([self.mx, self.mv], yv, on_unused_input='ignore')
         sy, _ = theano.scan(lambda i, y, x, v: \
                                 (tensor.grad(y[i], x) * v).sum(),
                            sequences=tensor.arange(y.shape[0]),
                            non_sequences=[y, self.mx, self.mv])
-        scan_f = function([self.mx, self.mv], sy)
+        scan_f = function([self.mx, self.mv], sy, on_unused_input='ignore')
 
         v1 = rop_f(vx, vv)
         v2 = scan_f(vx, vv)
@@ -146,13 +146,13 @@ class RopLop_checker(unittest.TestCase):
                            theano.config.floatX)
 
         yv = tensor.Rop(y, self.x, self.v)
-        rop_f = function([self.x, self.v], yv)
+        rop_f = function([self.x, self.v], yv, on_unused_input='ignore')
         J, _ = theano.scan(lambda i, y, x: tensor.grad(y[i], x),
                            sequences=tensor.arange(y.shape[0]),
                            non_sequences=[y, self.x])
         sy = tensor.dot(J, self.v)
 
-        scan_f = function([self.x, self.v], sy)
+        scan_f = function([self.x, self.v], sy, on_unused_input='ignore')
 
         v1 = rop_f(vx, vv)
         v2 = scan_f(vx, vv)
@@ -168,7 +168,7 @@ class RopLop_checker(unittest.TestCase):
                            theano.config.floatX)
 
         yv = tensor.Lop(y, self.x, self.v)
-        lop_f = function([self.x, self.v], yv)
+        lop_f = function([self.x, self.v], yv, on_unused_input='ignore')
         J, _ = theano.scan(lambda i, y, x: tensor.grad(y[i], x),
                            sequences=tensor.arange(y.shape[0]),
                            non_sequences=[y, self.x])

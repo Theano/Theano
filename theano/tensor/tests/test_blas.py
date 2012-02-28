@@ -399,7 +399,8 @@ def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()], max_graphlen=0):
         f = inplace_func(
                 [Param(ii, mutable=True, allow_downcast=True) for ii in i],
                 o,
-                mode='FAST_RUN')
+                mode='FAST_RUN',
+                on_unused_input='ignore')
         at_least_one_gemm = False
         for node in f.maker.env.nodes:
             if node.op == T.dot:
@@ -410,7 +411,7 @@ def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()], max_graphlen=0):
                 at_least_one_gemm = True
         assert at_least_one_gemm
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
-                allow_input_downcast=True)
+                allow_input_downcast=True, on_unused_input='ignore')
         for node in g.maker.env.nodes:
             if node.op == gemm_inplace:
                 raise Exception('gemm_inplace in original graph')
@@ -475,11 +476,12 @@ def test_gemm_opt_double_gemm():
         + gemm_inplace(Z, b, S.T, R.T, T.constant(1.0).astype('float64')))]
     try:
         f = inplace_func([Param(ii, mutable=True) for ii in i],o,
-                mode='FAST_RUN')
+                mode='FAST_RUN', on_unused_input='ignore')
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Failure('dot in graph')
             if node.op == _dot22: raise Failure('_dot22 in graph')
-        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
+                on_unused_input='ignore')
         #for node in g.maker.env.nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 

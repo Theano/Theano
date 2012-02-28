@@ -54,6 +54,7 @@ class T_function(unittest.TestCase):
     def test_missing_inputs(self):
 
         MissingInputException = TypeError
+        UnusedInputException = ValueError
 
         def fn():
             x,s = T.scalars('xs')
@@ -62,18 +63,36 @@ class T_function(unittest.TestCase):
 
         def fn():
             x,s = T.scalars('xs')
+            # Ignore unused input s, as it hides the other error
+            fn = function([s], [x], on_unused_input='ignore')
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
             fn = function([s], [x])
+        checkfor(self, fn, UnusedInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            # Ignore unused input s, as it hides the other error
+            fn = function([s], x, on_unused_input='ignore')
         checkfor(self, fn, MissingInputException)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([s], x)
+        checkfor(self, fn, UnusedInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            # Ignore unused input s, as it hides the other error
+            fn = function([s], Out(x), on_unused_input='ignore')
         checkfor(self, fn, MissingInputException)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([s], Out(x))
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, UnusedInputException)
 
         def fn():
             x,s = T.scalars('xs')
@@ -124,7 +143,8 @@ class T_function(unittest.TestCase):
         x,s = T.scalars('xs')
 
         #x's name is ignored because it is followed by anonymous parameter a.
-        f = function([x, a, s], a/s)
+        # Ignore unused input x, as it hides the other error
+        f = function([x, a, s], a/s, on_unused_input='ignore')
         self.assertTrue(f(9,1,2) == 0.5)
         self.assertTrue(f(9,2,1) == 2.0)
         self.assertTrue(f(9,2, s=1) == 2.0)
@@ -354,6 +374,20 @@ class T_function(unittest.TestCase):
         assert numpy.all(four==4)
         f(o+.1) #should clobber the memory used to store four
         assert not numpy.all(four==4)
+
+    def test_disconnected_input(self):
+        a = T.scalar('a')
+        v = T.vector('v')
+        self.assertRaises(ValueError, function, [a, v], v*2)
+        f = function([a, v], v*2, on_unused_input='ignore')
+
+    def test_masked_input(self):
+        m = T.matrix('m')
+        mt = m.T
+        mt.name = 'm.T'
+        self.assertRaises(ValueError, function, [m, mt], mt*2)
+        f = function([m, mt], mt*2, on_unused_input='ignore')
+
 
 class T_picklefunction(unittest.TestCase):
 
@@ -629,7 +663,6 @@ class T_picklefunction(unittest.TestCase):
 
         blah.f2(5)
         assert blah.f1[blah.s] != blah2.f1[blah2.s]
-
 
 
 class SomethingToPickle(object):

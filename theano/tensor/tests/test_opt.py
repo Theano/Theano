@@ -3256,7 +3256,8 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         try:
             for i, s in enumerate(sums):
                 print i
-                f = theano.function([a, b, c, d], s, mode=self.mode)
+                f = theano.function([a, b, c, d], s, mode=self.mode,
+                        on_unused_input='ignore')
                 theano.printing.debugprint(f)
                 g = f.maker.env.toposort()
                 #print 'g =', g
@@ -3294,7 +3295,7 @@ def test_make_vector():
                             ]:
         mv = opt.MakeVector(dtype=dtype)(*inputs)
         assert mv.dtype == dtype
-        f = theano.function([b, i, d], mv)
+        f = theano.function([b, i, d], mv, on_unused_input='ignore')
         f_val = f(val[b], val[i], val[d])
         #print 'f_val =', f_val
 

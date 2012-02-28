@@ -57,13 +57,15 @@ else:
 utt.seed_rng()
 
 
-def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False):
+def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
+        on_unused_input='raise'):
     if mode is None:
         mode = get_default_mode()
     return function(inputs, outputs,
             mode=mode,
             allow_input_downcast=allow_input_downcast,
-            accept_inplace=True)
+            accept_inplace=True,
+            on_unused_input=on_unused_input)
 
 
 def eval_outputs(outputs):
