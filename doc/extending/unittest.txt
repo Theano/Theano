@@ -81,6 +81,12 @@ able to execute it if you installed Theano using pip, or if you ran
 not found by your shell, you will need to add ``Theano/bin`` to your
 ``PATH`` environment variable.
 
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose`` in all the examples below.
+
 Running all unit tests ::
 
     cd Theano/theano
