@@ -330,6 +330,14 @@ If ``theano-nose`` is not found by your shell, you will need to add
 
 .. note::
 
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose``. In that case, some tests will fail by raising
+    the KnownFailureTest Exception, and will be considered as errors,
+    but they are nothing to worry about.
+
+.. note::
+
     The tests should be run with the configuration option :attr:`~config.device`
     set to ``cpu`` (default). If you need to change this value,
     you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
@@ -1019,6 +1027,15 @@ command``. As a workaround, you can instead run:
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
 within an MSYS shell if you installed Nose manually as described above.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call this command instead:
+
+    .. code-block:: bash
+
+        python theano/tests/run_tests_in_batch.py
 
 Editing code in Visual Studio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
