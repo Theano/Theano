@@ -480,31 +480,72 @@ class InvalidValueError(DebugModeError):
 ########################
 
 
+def char_from_number(number):
+    """ Converts number to string by rendering it in base 26 using
+    capital letters as digits """
+
+    base = 26
+
+    rval = ""
+
+    if number == 0:
+        rval = 'A'
+
+    while number != 0:
+        remainder = number % base
+        new_char = chr(ord('A') + remainder)
+        rval = new_char + rval
+        number /= base
+
+    return rval
+
+
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[]):
+               order=[], ids='id'):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
     :param prefix: prefix to each line (typically some number of spaces)
     :param depth: maximum recursion depth (Default -1 for unlimited).
-    :param done: set of Apply instances that have already been printed
+    :param done: dict of Apply instances that have already been printed
+                 and there associated printed ids
     :param print_type: wether to print the Variable type after the other infos
     :param file: file-like object to which to print
     :param print_destroy_map: wether to print the op destroy_map after ofther info
     :param print_view_map: wether to print the op view_map after ofther info
     :param order: If not empty will print the index in the toposort.
+    :param ids: How do we print the identifier of the variable
+                id - print the python id value
+                int - print integer character
+                CHAR - print capital character
+                "" - don't print an identifier
+
     """
     if depth == 0:
         return
 
     if done is None:
-        done = set()
+        done = dict()
 
     if print_type:
         type_str = ' <%s>' % r.type
     else:
         type_str = ''
+
+    def get_id_str(obj):
+        if obj in done:
+            id_str = "[@%s]" % done[obj]
+        elif ids == "id":
+            id_str = "[@%s]" % str(id(r))
+        elif ids == "int":
+            id_str = "[@%s]" % str(len(done))
+        elif ids == "CHAR":
+            id_str = "[@%s]" % char_from_number(len(done))
+        elif ids == "":
+            id_str = ""
+        done[obj] = id_str
+        return id_str
 
     if hasattr(r.owner, 'op'):
         # this variable is the output of computation,
@@ -534,29 +575,33 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         o = ''
         if order:
             o = str(order.index(r.owner))
+        already_printed = a in done  # get_id_str put it in the dict
+        id_str = get_id_str(a)
+
         if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                             id(r),
+            print >> file, '%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
+                                                             id_str,
                                                              type_str, r_name,
                                                              destroy_map_str,
                                                              view_map_str,
                                                              o)
         else:
-            print >> file, '%s%s.%i [@%i]%s \'%s\' %s %s %s' % (prefix, a.op,
+            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
                                                             a.outputs.index(r),
-                                                            id(r), type_str,
+                                                            id_str, type_str,
                                                             r_name,
                                                             destroy_map_str,
                                                             view_map_str,
                                                             o)
-        if id(a) not in done:
-            done.add(id(a))
+        if not already_printed:
             for i in a.inputs:
-                debugprint(i, prefix + ' |', depth=depth-1, done=done,
-                           print_type=print_type, file=file, order=order)
+                debugprint(i, prefix + ' |', depth=depth - 1, done=done,
+                           print_type=print_type, file=file, order=order,
+                           ids=ids)
     else:
-        #this is a variable
-        print >> file, '%s%s [@%i]%s' % (prefix, r, id(r), type_str)
+        #this is an input variable
+        id_str = get_id_str(r)
+        print >> file, '%s%s %s%s' % (prefix, r, id_str, type_str)
 
     return file
 

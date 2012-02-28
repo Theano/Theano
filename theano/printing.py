@@ -28,7 +28,8 @@ from theano.compile.profilemode import ProfileMode
 _logger = logging.getLogger("theano.printing")
 
 
-def debugprint(obj, depth=-1, print_type=False, file=None):
+def debugprint(obj, depth=-1, print_type=False,
+               file=None, ids='id'):
     """Print a computation graph to file
 
     :type obj: Variable, Apply, or Function instance
@@ -39,6 +40,12 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
     :param print_type: wether to print the type of printed objects
     :type file: None, 'str', or file-like object
     :param file: print to this file ('str' means to return a string)
+    :type ids: str
+    :param ids: How do we print the identifier of the variable
+                id - print the python id value
+                CHAR - print capital character
+                CHAR - print capital character
+                "" - don't print an identifier
 
     :returns: string if `file` == 'str', else file arg
 
@@ -64,7 +71,7 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         _file = sys.stdout
     else:
         _file = file
-    done = set()
+    done = dict()
     results_to_print = []
     order = []
     if isinstance(obj, gof.Variable):
@@ -83,7 +90,7 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
-                             file=_file, order=order)
+                             file=_file, order=order, ids=ids)
     if file is _file:
         return file
     elif file == 'str':
@@ -904,28 +911,9 @@ class _TagGenerator:
         self.cur_tag_number = 0
 
     def get_tag(self):
-        rval = self.from_number(self.cur_tag_number)
+        rval = debugmode.char_from_number(self.cur_tag_number)
 
         self.cur_tag_number += 1
-
-        return rval
-
-    def from_number(self, number):
-        """ Converts number to string by rendering it in base 26 using
-            capital letters as digits """
-
-        base = 26
-
-        rval = ""
-
-        if number == 0:
-            rval = 'A'
-
-        while number != 0:
-            remainder = number % base
-            new_char = chr(ord('A') + remainder)
-            rval = new_char + rval
-            number /= base
 
         return rval
 
