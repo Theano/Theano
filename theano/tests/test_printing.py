@@ -143,6 +143,25 @@ def test_debugprint():
     assert s == reference
 
 
+    # test ids=CHAR, stop_on_name=True
+    s = StringIO.StringIO()
+    debugprint(G, file=s, ids='CHAR', stop_on_name=True)
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = """Elemwise{add,no_inplace} [@A] ''   
+ |Elemwise{add,no_inplace} [@B] 'C'   
+ |Elemwise{add,no_inplace} [@C] ''   
+ | |D [@D]
+ | |E [@E]
+"""
+
+    if s != reference:
+        print '--'+s+'--'
+        print '--'+reference+'--'
+
+    assert s == reference
+
+
     # test ids=
     s = StringIO.StringIO()
     debugprint(G, file=s, ids='')

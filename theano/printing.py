@@ -29,7 +29,7 @@ _logger = logging.getLogger("theano.printing")
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR'):
+               file=None, ids='CHAR', stop_on_name=False):
     """Print a computation graph to file
 
     :type obj: Variable, Apply, or Function instance
@@ -46,6 +46,8 @@ def debugprint(obj, depth=-1, print_type=False,
                 CHAR - print capital character
                 CHAR - print capital character
                 "" - don't print an identifier
+    :param stop_on_name: When True, if a node in the graph have a name,
+                         we don't print anything below it.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -90,7 +92,8 @@ def debugprint(obj, depth=-1, print_type=False,
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
-                             file=_file, order=order, ids=ids)
+                             file=_file, order=order, ids=ids,
+                             stop_on_name=stop_on_name)
     if file is _file:
         return file
     elif file == 'str':

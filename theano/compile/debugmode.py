@@ -502,7 +502,7 @@ def char_from_number(number):
 
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[], ids='CHAR'):
+               order=[], ids='CHAR', stop_on_name=False):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -520,6 +520,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 int - print integer character
                 CHAR - print capital character
                 "" - don't print an identifier
+    :param stop_on_name: When True, if a node in the graph have a name,
+                         we don't print anything below it.
 
     """
     if depth == 0:
@@ -594,10 +596,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                                             view_map_str,
                                                             o)
         if not already_printed:
-            for i in a.inputs:
-                debugprint(i, prefix + ' |', depth=depth - 1, done=done,
-                           print_type=print_type, file=file, order=order,
-                           ids=ids)
+            if (not stop_on_name or
+                not (hasattr(r, 'name') and r.name is not None)):
+                for i in a.inputs:
+                    debugprint(i, prefix + ' |', depth=depth - 1, done=done,
+                               print_type=print_type, file=file, order=order,
+                               ids=ids, stop_on_name=stop_on_name)
     else:
         #this is an input variable
         id_str = get_id_str(r)
