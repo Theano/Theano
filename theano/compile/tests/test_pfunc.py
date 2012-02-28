@@ -872,15 +872,12 @@ class Test_aliasing_rules(unittest.TestCase):
         orig_b = numpy.zeros((2,2))-.5
         A = self.shared(orig_a)
         B = self.shared(orig_b)
-        C = tensor.dmatrix()
-
-        z = numpy.zeros((2,2))
 
         data_of_a = data_of(A)
         data_of_b = data_of(B)
 
-        f = pfunc([C], [], updates=[(A,B),(B,A)])
-        f(z)
+        f = pfunc([], [], updates=[(A,B),(B,A)])
+        f()
         # correctness
         assert numpy.all(data_of(A) == -.5)
         assert numpy.all(data_of(B) == +.5)
@@ -902,16 +899,13 @@ class Test_aliasing_rules(unittest.TestCase):
         orig_b = numpy.zeros((2,2))-.5
         A = self.shared(orig_a)
         B = self.shared(orig_b)
-        C = tensor.dmatrix()
-
-        z = numpy.zeros((2,2))
 
         data_of_a = data_of(A)
         data_of_b = data_of(B)
 
-        f = pfunc([C], [], updates=[(A,B[:,::-1]),(B,A.T)])
+        f = pfunc([], [], updates=[(A,B[:,::-1]),(B,A.T)])
         theano.printing.debugprint(f)
-        f(z)
+        f()
         # correctness (doesn't actually test the view...)
         assert numpy.all(data_of(A) == -.5)
         assert numpy.all(data_of(B) == +.5)

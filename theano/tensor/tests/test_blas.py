@@ -660,7 +660,7 @@ def test_inplace0():
     X,Y,Z,a,b = T.dmatrix('X'), T.dmatrix('Y'), T.dmatrix('Z'), T.dscalar('a'), T.dscalar('b')
     R, S, c = T.dmatrix('R'), T.dmatrix('S'), T.dscalar('c')
 
-    f = inplace_func([X,Y,Z,a,b, R, S, c],
+    f = inplace_func([Z, b, R, S],
             [Z * (Z + b * T.dot(R,S).T)], mode='FAST_RUN')
     if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
         print pp(f.maker.env.outputs[0])
@@ -678,7 +678,7 @@ def test_inplace0():
 def test_inplace1():
     X,Y,Z,a,b = XYZab()
     # with > 2 terms in the overall addition
-    f = inplace_func([X,Y,Z,a,b],
+    f = inplace_func([X, Y, Z],
             [Z + Z + T.dot(X,Y)], mode='FAST_RUN')
     theano.printing.debugprint(f)
     # it doesn't work inplace because we didn't mark Z as mutable input

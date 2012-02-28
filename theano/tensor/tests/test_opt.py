@@ -713,14 +713,14 @@ def test_local_merge_abs():
     mode = theano.compile.mode.get_mode(mode).excluding(
                                                     "local_elemwise_fusion")
 
-    f = theano.function([x, y, z], (abs(y * z * -2)), mode=mode)
-    f(x_val, y_val, z_val)
+    f = theano.function([y, z], (abs(y * z * -2)), mode=mode)
+    f(y_val, z_val)
     theano.printing.debugprint(f)
     assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
     assert len(f.maker.env.toposort()) == 2
 
-    f = theano.function([x, y, z],abs(x / y), mode=mode)
-    f(x_val, y_val, z_val)
+    f = theano.function([x, y],abs(x / y), mode=mode)
+    f(x_val, y_val)
     theano.printing.debugprint(f)
     assert isinstance(f.maker.env.toposort()[1].op.scalar_op, scal.Abs)
     assert len(f.maker.env.toposort())==2
@@ -2214,8 +2214,7 @@ class test_shapeoptimizer(unittest.TestCase):
             mode = 'FAST_RUN'
 
         v = T.vector()
-        m = T.matrix()
-        f = function([v,m], v.dimshuffle('x','x',0).shape[1], mode=mode)
+        f = function([v], v.dimshuffle('x','x',0).shape[1], mode=mode)
         topo = f.maker.env.toposort()
         assert len(topo) == 1
         assert topo[0].op == theano.compile.function_module.deep_copy_op
@@ -2371,34 +2370,34 @@ def test_local_mul_specialize():
     v = T.vector()
     m = T.vector()
 
-    f = function([v,m], v*1, mode=mode)
+    f = function([v], v*1, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     nodes == [theano.compile.function_module.deep_copy_op]
 
-    f = function([v,m], v*0, mode=mode)
+    f = function([v], v*0, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     assert nodes == [Shape_i(0), T.alloc]
 
-    f = function([v,m], v*(-1), mode=mode)
+    f = function([v], v*(-1), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     assert nodes == [T.neg]
 
-    f = function([v,m], v*1*(-m), mode=mode)
+    f = function([v, m], v*1*(-m), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     theano.printing.debugprint(f)
     assert nodes == [T.mul, inplace.neg_inplace]
 
-    f = function([v,m], v*0*(-m), mode=mode)
+    f = function([v, m], v*0*(-m), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     theano.printing.debugprint(f)
     assert nodes == [Shape_i(0), T.alloc]
 
-    f = function([v,m], v*(-1)*(-m), mode=mode)
+    f = function([v, m], v*(-1)*(-m), mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     print nodes
     theano.printing.debugprint(f)
