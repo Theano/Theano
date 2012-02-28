@@ -59,9 +59,12 @@ class OpFromGraph(gof.Op):
                 if g is None:
                     self.grad_ops.append(lambda *args: None)
                 else:
+                    # It is normal if some inputs are not needed in order
+                    # to compute the gradient, so we ignore them.
                     self.grad_ops.append(OpFromGraph(inputs + output_grads,
                                                      [g],
-                                                     grad_depth = grad_depth - 1))
+                                                     grad_depth = grad_depth - 1,
+                                                     on_unused_input='ignore'))
     def __eq__(self, other):
         #TODO: recognize a copy
         return self is other

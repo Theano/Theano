@@ -480,7 +480,8 @@ class Scan(PureOp):
                            wrapped_outputs,
                            mode=self.mode_instance,
                            name=self.name,
-                           profile=profile)
+                           profile=profile,
+                           on_unused_input='ignore')
 
         try:
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
