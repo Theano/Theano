@@ -33,10 +33,6 @@ else:
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
 
-def transpose(cuda_mat):
-    # The easiest way to transpose a cuda matrix for now
-    return tcn.dimshuffle(cuda_mat, [1, 0])
-
 def test_dot22():
     def cmp(a_shp, b_shp):
         a0 = my_rand(*a_shp)
