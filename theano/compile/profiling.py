@@ -373,6 +373,9 @@ class ProfileStats(object):
             if local_time > 0:
                 print >> file, '  Time in thunks: %es (%.3f%%)' %(
                         local_time, 100*local_time / self.fct_call_time)
+        print >> file, '  Total compile time: %es' % self.compile_time
+        print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
+        print >> file, '    Theano Linker time(include c, cuda code generation/compiling): %es' % self.linker_time
         print >> file, ''
 
 
