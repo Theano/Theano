@@ -1735,7 +1735,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
     def __init__(self, inputs, outputs, optimizer, mode,
             accept_inplace = False,
             function_builder = Function,
-            profile=None):
+            profile=None,
+            on_unused_input='raise'):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -1747,6 +1748,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         :param accept_inplace: True iff it is acceptable to have
                     inplace operations in the graph from the inputs to
                     the outputs
+
+        :param on_unused_input: What to do if a variable in the 'inputs' list is
+        not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
 
         :note: this function sets TensorType.filter_checks_isfinite
         when `mode.check_isfinite` is True
@@ -1771,6 +1775,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         _inputs = gof.graph.inputs([o.variable for o in outputs] +
                                    [i.update for i in inputs
                                     if getattr(i, 'update', False)])
+
+        # Check if some input variables are unused
+        self._check_unused_inputs(inputs, outputs, on_unused_input)
 
 #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]

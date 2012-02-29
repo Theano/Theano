@@ -793,7 +793,8 @@ def scan(fn,
                        dummy_outs,
                        updates=updates,
                        mode=compile.mode.Mode(linker='py',
-                                              optimizer=None))
+                                              optimizer=None),
+                       on_unused_input='ignore')
 
     ##
     ### Step 5. Re-arange inputs of scan into a more strict order

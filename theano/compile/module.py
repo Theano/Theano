@@ -473,9 +473,9 @@ class Method(Component):
         else:
             effective_mode = self.mode
 
-        #backport
-        #effective_mode = mode if self.mode is None else self.mode
-        rval = F.orig_function(inputs, outputs, effective_mode)
+        # We ignore unused inputs, since all the inputs are passed
+        rval = F.orig_function(inputs, outputs, effective_mode,
+                on_unused_input='ignore')
         memo[self] = rval
         return rval
 

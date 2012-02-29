@@ -2222,7 +2222,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x])
 
-        f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x], [sx, sy], mode=mode_with_opt)
         topo = f.maker.env.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2231,7 +2231,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], mode='FAST_COMPILE')
 
-        f = theano.function([x, y], [sx, sy],
+        f = theano.function([x], [sx, sy],
                             mode=mode_with_opt)
         topo = f.maker.env.toposort()
         scans = filter(lambda n:
@@ -2241,7 +2241,7 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
 
-        f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x], [sx, sy], mode=mode_with_opt)
         topo = f.maker.env.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)

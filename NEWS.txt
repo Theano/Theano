@@ -2,10 +2,20 @@
 
 Update in the Trunk since the last release:
 
-* Added in the tutorial documentation on how to extend Theano.
-  This explains how to make a Theano Op from a Python function.
-  http://deeplearning.net/software/theano/tutorial/extending_theano.html
+Documentation
+ * Added in the tutorial documentation on how to extend Theano.
+   This explains how to make a Theano Op from a Python function.
+   http://deeplearning.net/software/theano/tutorial/extending_theano.html
+   (Frédéric B.)
 
+Interface change
+ * theano.function does not accept duplicate inputs, so function([x, x], ...)
+   does not work anymore. (Pascal L.)
+ * theano.function now raises an error if some of the provided inputs are
+   not part of the computational graph needed to compute the output, for
+   instance, function([x, y], [y]). You can use the kwarg
+   ``on_unused_input={'raise', 'warn', 'ignore'}`` to control this.
+   (Pascal L.)
 
 =============
 Release Notes

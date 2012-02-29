@@ -50,7 +50,7 @@ def test_givens():
     data = numpy.float32([1,2,3,4])
     x = f32sc(data)
     y = x**2
-    f = theano.function([x], y, givens={x:x+1})
+    f = theano.function([], y, givens={x:x+1})
 
 class T_updates(unittest.TestCase):
     # Test that you can use a TensorType expression to update a

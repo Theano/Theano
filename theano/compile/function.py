@@ -13,7 +13,8 @@ from numpy import any #for to work in python 2.4
 
 def function(inputs, outputs=None, mode=None, updates=[], givens=[],
              no_default_updates=False, accept_inplace=False, name=None,
-             rebuild_strict=True, allow_input_downcast=None, profile=None):
+             rebuild_strict=True, allow_input_downcast=None, profile=None,
+             on_unused_input='raise'):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -68,6 +69,9 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     instance. If argument is `True` then a new ProfileStats instance will be
     used.  This profiling object will be available via self.profile.
 
+    :param on_unused_input: What to do if a variable in the 'inputs' list is
+    not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
+
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
     another expression is undefined.  Replacements specified with givens are different from
@@ -111,6 +115,7 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
                 accept_inplace=accept_inplace,name=name,
                 rebuild_strict=rebuild_strict,
                 allow_input_downcast=allow_input_downcast,
+                on_unused_input=on_unused_input,
                 profile=profile)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs

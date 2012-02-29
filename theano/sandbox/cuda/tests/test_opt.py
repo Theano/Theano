@@ -165,7 +165,7 @@ def test_huge_elemwise_fusion():
     """
     shape = (2,3,4,5,6)
     ttype = tensor.tensor(dtype='float32',broadcastable=(False,)*len(shape))
-    vars = [tensor.tanh(ttype) for x in range(10)]
+    vars = [tensor.tanh(ttype) for x in range(7)]
     f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     #theano.printing.debugprint(f)
@@ -177,14 +177,14 @@ def test_huge_elemwise_fusion():
     assert isinstance(topo[8].op.scalar_op,theano.scalar.basic.Composite)
     #let debugmode catch errors
     gen = lambda : theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    f(gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen(),gen())
+    f(gen(),gen(),gen(),gen(),gen(),gen(),gen())
 
     # Test the case where we can't put the computation on the gpu! their is too many
     # dimensions to the input to have 2 inputs to the op!
 
     shape = (1,2,3,4,5,6,7,2,2,3,2,1,2,2,2,)
     ttype = tensor.tensor(dtype='float32',broadcastable=(False,)*len(shape))
-    vars = [tensor.tanh(ttype) for x in range(10)]
+    vars = [tensor.tanh(ttype) for x in range(7)]
     f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     #theano.printing.debugprint(f)
@@ -193,7 +193,7 @@ def test_huge_elemwise_fusion():
     assert sum([isinstance(node.op, tensor.Elemwise) for node in topo]) == 1
     #let debugmode catch errors
     gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    f(gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen(), gen())
+    f(gen(), gen(), gen(), gen(), gen(), gen(), gen())
 
     def gen(shape):
         return theano._asarray(numpy.random.rand(*shape), dtype='float32')
