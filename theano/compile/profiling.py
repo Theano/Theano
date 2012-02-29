@@ -612,7 +612,6 @@ if 0: # old code still to be ported from ProfileMode
                     if s_op.__class__ in scalar_op_amdlibm_speed_up:
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
-                        import pdb;pdb.set_trace()
                         print "We don't know if amdlibm will accelerate this scalar op.", s_op
                 return False
         def exp_float32_op(op):
