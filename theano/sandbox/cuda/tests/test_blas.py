@@ -257,7 +257,8 @@ def test_downsample():
         for ds in (2, 2), (3,2), (1,1):
             if ds[0] > shp[2]: continue
             if ds[1] > shp[3]: continue
-            #GpuDownsampleFactorMax don't having more then 512 columns in the output tensor
+            # GpuDownsampleFactorMax doesn't like having more than 512 columns
+            # in the output tensor.
             if float(shp[3])/ds[1]>512: continue
             for ignore_border in (True, False):
                 print 'test_downsample', shp, ds, ignore_border

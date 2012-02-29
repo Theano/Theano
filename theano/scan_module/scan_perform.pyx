@@ -125,7 +125,7 @@ def perform(
         each has. For sit_sot this will always be 1.
     vector_seqs: int32 ndarray (can be replaced by a list of bools if better)
         For each sequence the corresponding entry is either a 1, is the
-        sequence is a vector or 0 if it has more then 1 dimension
+        sequence is a vector or 0 if it has more than 1 dimension
     vector_outs: int32 ndarray( can be replaced by list of bools if better)
         For each output ( mit_mot, mit_sot, sit_sot, nit_sot in this order)
         the entry is 1 if the corresponding argument is a 1 dimensional
