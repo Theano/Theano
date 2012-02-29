@@ -24,6 +24,7 @@ New Feature
    as this is more readable.
  * debugprint new param stop_on_name=[False,True]. If True, we don't print
    anything bellow an intermediate variable that have a name. Default to False.
+ * debugprint now stop printing the "|" symbol in a columns after the last input.
 
 =============
 Release Notes

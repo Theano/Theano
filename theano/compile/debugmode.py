@@ -502,7 +502,8 @@ def char_from_number(number):
 
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[], ids='CHAR', stop_on_name=False):
+               order=[], ids='CHAR', stop_on_name=False,
+               prefix_child=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -534,6 +535,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         type_str = ' <%s>' % r.type
     else:
         type_str = ''
+
+    if prefix_child is None:
+        prefix_child = prefix
 
     def get_id_str(obj):
         if obj in done:
@@ -598,10 +602,16 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         if not already_printed:
             if (not stop_on_name or
                 not (hasattr(r, 'name') and r.name is not None)):
-                for i in a.inputs:
-                    debugprint(i, prefix + ' |', depth=depth - 1, done=done,
+                new_prefix = prefix_child + ' |'
+                new_prefix_child = prefix_child + ' |'
+                for idx, i in enumerate(a.inputs):
+                    if idx == len(a.inputs) - 1:
+                        new_prefix_child = prefix_child + '  '
+
+                    debugprint(i, new_prefix, depth=depth - 1, done=done,
                                print_type=print_type, file=file, order=order,
-                               ids=ids, stop_on_name=stop_on_name)
+                               ids=ids, stop_on_name=stop_on_name,
+                               prefix_child=new_prefix_child)
     else:
         #this is an input variable
         id_str = get_id_str(r)

@@ -112,8 +112,8 @@ def test_debugprint():
  | |A [@2]
  | |B [@3]
  |Elemwise{add,no_inplace} [@4] ''   
- | |D [@5]
- | |E [@6]
+   |D [@5]
+   |E [@6]
 """
 
     if s != reference:
@@ -132,8 +132,8 @@ def test_debugprint():
  | |A [@C]
  | |B [@D]
  |Elemwise{add,no_inplace} [@E] ''   
- | |D [@F]
- | |E [@G]
+   |D [@F]
+   |E [@G]
 """
 
     if s != reference:
@@ -151,8 +151,8 @@ def test_debugprint():
     reference = """Elemwise{add,no_inplace} [@A] ''   
  |Elemwise{add,no_inplace} [@B] 'C'   
  |Elemwise{add,no_inplace} [@C] ''   
- | |D [@D]
- | |E [@E]
+   |D [@D]
+   |E [@E]
 """
 
     if s != reference:
@@ -172,8 +172,8 @@ def test_debugprint():
  | |A 
  | |B 
  |Elemwise{add,no_inplace}  ''   
- | |D 
- | |E 
+   |D 
+   |E 
 """
     if s != reference:
         print '--'+s+'--'
