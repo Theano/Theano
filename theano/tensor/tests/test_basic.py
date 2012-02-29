@@ -3563,6 +3563,10 @@ class T_divimpl(unittest.TestCase):
                 (5. / 3.))
         assert numpy.allclose(function([i, ii], true_div(ii, i))(5, 3),
                 (3. / 5.))
+        assert numpy.allclose(function([i, c], i / c)(5, numpy.complex(5, 3)),
+                (5. / (5 + 3j)))
+        assert numpy.allclose(function([i, c], c / i)(5, numpy.complex(5, 3)),
+                ((5 + 3j) / 5.))
 
 
 class T_mean(unittest.TestCase):
