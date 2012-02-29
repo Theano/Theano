@@ -91,7 +91,7 @@ Naming conventions
 * ``input_state`` will stand for a state :math:`\mathbf{x}`, when it is
   provided as an input to the recurrent formula (the inner function) that 
   will generate the new value of the state
-* ``output_state`` will stand for a state :math:`\math{x}` when it refers 
+* ``output_state`` will stand for a state :math:`\mathbf{x}` when it refers 
   to the result of the recurrent formula (the output of the inner function)
 * ``output`` will stand for an output :math:`\mathbf{y}`
 * ``input`` will be an input :math:`\mathbf{u}`

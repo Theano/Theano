@@ -1,4 +1,4 @@
-.. sandbox_randnb:
+.. _sandbox_randnb:
 
 ==============
 Random Numbers
