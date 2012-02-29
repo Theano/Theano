@@ -372,9 +372,10 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     with that string as its `message` attribute.  This profiling object will be
     available via self.profile.
 
-    :type profile: str
-    :param profile: What to do if a variable in the 'inputs' list is not used
-    in the graph. Possible values are 'raise', 'warn', and 'ignore.
+    :type on_unused_input: str
+    :param on_unused_input: What to do if a variable in the 'inputs' list
+        is not used in the graph. Possible values are 'raise', 'warn', and
+        'ignore.
 
 
     :rtype: theano.compile.Function
