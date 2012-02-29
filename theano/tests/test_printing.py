@@ -11,7 +11,7 @@ from nose.plugins.skip import SkipTest
 import theano
 import theano.tensor as tensor
 
-from theano.printing import min_informative_str
+from theano.printing import min_informative_str, debugprint
 
 
 def test_pydotprint_cond_highlight():
@@ -86,3 +86,97 @@ def test_min_informative_str():
         print '--' + reference + '--'
 
     assert mis == reference
+
+
+def test_debugprint():
+    A = tensor.matrix(name='A')
+    B = tensor.matrix(name='B')
+    C = A + B
+    C.name = 'C'
+    D = tensor.matrix(name='D')
+    E = tensor.matrix(name='E')
+
+    F = D + E
+    G = C + F
+
+    # just test that it work
+    debugprint(G)
+
+    # test ids=int
+    s = StringIO.StringIO()
+    debugprint(G, file=s, ids='int')
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = """Elemwise{add,no_inplace} [@0] ''   
+ |Elemwise{add,no_inplace} [@1] 'C'   
+ | |A [@2]
+ | |B [@3]
+ |Elemwise{add,no_inplace} [@4] ''   
+   |D [@5]
+   |E [@6]
+"""
+
+    if s != reference:
+        print '--'+s+'--'
+        print '--'+reference+'--'
+
+    assert s == reference
+
+    # test ids=CHAR
+    s = StringIO.StringIO()
+    debugprint(G, file=s, ids='CHAR')
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = """Elemwise{add,no_inplace} [@A] ''   
+ |Elemwise{add,no_inplace} [@B] 'C'   
+ | |A [@C]
+ | |B [@D]
+ |Elemwise{add,no_inplace} [@E] ''   
+   |D [@F]
+   |E [@G]
+"""
+
+    if s != reference:
+        print '--'+s+'--'
+        print '--'+reference+'--'
+
+    assert s == reference
+
+
+    # test ids=CHAR, stop_on_name=True
+    s = StringIO.StringIO()
+    debugprint(G, file=s, ids='CHAR', stop_on_name=True)
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = """Elemwise{add,no_inplace} [@A] ''   
+ |Elemwise{add,no_inplace} [@B] 'C'   
+ |Elemwise{add,no_inplace} [@C] ''   
+   |D [@D]
+   |E [@E]
+"""
+
+    if s != reference:
+        print '--'+s+'--'
+        print '--'+reference+'--'
+
+    assert s == reference
+
+
+    # test ids=
+    s = StringIO.StringIO()
+    debugprint(G, file=s, ids='')
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = """Elemwise{add,no_inplace}  ''   
+ |Elemwise{add,no_inplace}  'C'   
+ | |A 
+ | |B 
+ |Elemwise{add,no_inplace}  ''   
+   |D 
+   |E 
+"""
+    if s != reference:
+        print '--'+s+'--'
+        print '--'+reference+'--'
+
+    assert s == reference

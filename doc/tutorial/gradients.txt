@@ -200,6 +200,7 @@ you need to do something similar to this:
 >>> f([[1,1],[1,1]], [[2,2,],[2,2]], [0,1])
 array([ 2.,  2.])
 
+:ref:`List <R_op_list>` of Op that implement Rop.
 
 L-operator
 ----------

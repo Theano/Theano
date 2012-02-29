@@ -1187,12 +1187,14 @@ Gradient / Differentiation
     :returns: gradients of the cost with respect to each of the `wrt` terms
 
 
-
-R op
-====
+.. _R_op_list:
 
 
-See the tutorial for the R op documentation.
+List of Implemented R op
+========================
+
+
+See the :ref:`gradient tutorial <tutcomputinggrads>` for the R op documentation.
 
 list of ops that support R-op:
  * with test [Most is tensor/tests/test_rop.py]
