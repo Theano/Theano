@@ -15,11 +15,15 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 import atexit
+import copy
 import sys
+import time
+
+import numpy
+
 import theano
 from theano.configparser import AddConfigVar, StrParam, BoolParam
-import time
-import numpy
+
 import_time = time.time()
 config = theano.config
 
@@ -39,6 +43,23 @@ def _atexit_print_fn():
             ps.summary(file=_atexit_print_file)
         else:
             print 'Skipping empty Profile'
+    if len(_atexit_print_list) > 1:
+    # Make a global profile
+        cum = copy.copy(_atexit_print_list[0])
+        cum.message = "Sum of all Theano function"
+        for ps in _atexit_print_list[1:]:
+            for attr in ["compile_time", "fct_call_time", "fct_callcount",
+                         "vm_call_time", "optimizer_time", "linker_time"]:
+                setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+            for attr in ["apply_time", "apply_callcount",
+                         "apply_cimpl", "outputs_size"]:
+                cum_attr = getattr(cum, attr)
+                for key, val in getattr(ps, attr).iteritems():
+                    assert key not in cum_attr
+                    cum_attr[key] = val
+        cum.summary(file=_atexit_print_file)
+
+
 atexit.register(_atexit_print_fn)
 
 class ProfileStats(object):
@@ -352,6 +373,9 @@ class ProfileStats(object):
             if local_time > 0:
                 print >> file, '  Time in thunks: %es (%.3f%%)' %(
                         local_time, 100*local_time / self.fct_call_time)
+        print >> file, '  Total compile time: %es' % self.compile_time
+        print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
+        print >> file, '    Theano Linker time(include c, cuda code generation/compiling): %es' % self.linker_time
         print >> file, ''
 
 
@@ -588,7 +612,6 @@ if 0: # old code still to be ported from ProfileMode
                     if s_op.__class__ in scalar_op_amdlibm_speed_up:
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
-                        import pdb;pdb.set_trace()
                         print "We don't know if amdlibm will accelerate this scalar op.", s_op
                 return False
         def exp_float32_op(op):
