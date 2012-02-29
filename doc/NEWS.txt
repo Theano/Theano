@@ -54,8 +54,7 @@ Interface Features Removed (most were deprecated):
       to return has been removed. Instead, apply a subtensor to the output
       returned by scan to select a certain slice.
     * The inner function (that scan receives) should return its outputs and
-      updates following this order:
-        [outputs], [updates], [condition].
+      updates following this order: [outputs], [updates], [condition].
       One can skip any of the three if not used, but the order has to stay unchanged.
 
 Interface bug fix:
@@ -74,8 +73,10 @@ Bug fixes (incorrect results):
    Dieleman)
  * Theoretical bug: in some case we could have GPUSum return bad value.
    We were not able to reproduce this problem
-     * patterns affected ({0,1}*nb dim, 0 no reduction on this dim, 1 reduction on this dim):
-       01, 011, 0111, 010, 10, 001, 0011, 0101 (Frederic)
+
+   * patterns affected ({0,1}*nb dim, 0 no reduction on this dim, 1 reduction on this dim):
+     01, 011, 0111, 010, 10, 001, 0011, 0101 (Frederic)
+
  * div by zero in verify_grad. This hid a bug in the grad of Images2Neibs. (James)
  * theano.sandbox.neighbors.Images2Neibs grad was returning a wrong value.
    The grad is now disabled and returns an error. (Frederic)
@@ -98,12 +99,13 @@ Scan fixes:
    before : most of the time crash, but could be wrong value with bad number of dimensions (so a visible bug)
    now : do the right thing.
  * gradient with respect to outputs using multiple taps (reported by Timothy, fix by Razvan)
-   before : it used to return wrong values
-   now : do the right thing.
-   Note: The reported case of this bug was happening in conjunction with the
-         save optimization of scan that give run time errors. So if you didn't
-         manually disable the same memory optimization (number in the list4),
-         you are fine if you didn't manually request multiple taps.
+
+   * before : it used to return wrong values
+   * now : do the right thing.
+   * Note: The reported case of this bug was happening in conjunction with the
+     save optimization of scan that give run time errors. So if you didn't
+     manually disable the same memory optimization (number in the list4),
+     you are fine if you didn't manually request multiple taps.
  * Rop of gradient of scan (reported by Timothy and Justin Bayer, fix by Razvan)
    before : compilation error when computing R-op
    now : do the right thing.
