@@ -13,7 +13,8 @@ Interface change
    does not work anymore. (Pascal L.)
  * theano.function now raises an error if some of the provided inputs are
    not part of the computational graph needed to compute the output, for
-   instance, function([x, y], [y]). A kwarg to function controls this.
+   instance, function([x, y], [y]). You can use the kwarg
+   ``on_unused_input={'raise', 'warn', 'ignore'}`` to control this.
    (Pascal L.)
 
 =============
