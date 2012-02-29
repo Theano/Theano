@@ -958,7 +958,7 @@ class FunctionMaker(object):
 
     def __init__(self, inputs, outputs,
             mode = None, accept_inplace = False, function_builder = Function,
-            profile=None):
+            profile=None, on_unused_input='raise'):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -972,6 +972,12 @@ class FunctionMaker(object):
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
+
+        :param on_unused_input: What to do if a variable in the 'inputs' list
+                is not used in the graph. Possible values are:
+                - 'raise' (default): raise an error
+                - 'warn': log a warning
+                - 'ignore': do not do anything
         """
         mode = mode_module.get_mode(mode)
 
@@ -1004,6 +1010,10 @@ class FunctionMaker(object):
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
         _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update
             for i in inputs if getattr(i, 'update', False)])
+
+
+        # Check if some input variables are unused
+        self._check_unused_inputs(inputs, outputs, on_unused_input)
 
         #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
@@ -1071,6 +1081,41 @@ class FunctionMaker(object):
         self.refeed = [
                 (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
                     for i in self.inputs]
+
+    def _check_unused_inputs(self, inputs, outputs, on_unused_input):
+        if on_unused_input == 'ignore':
+            return
+
+        # There should be two categories of variables in inputs:
+        #  - variables that have to be provided (used_inputs)
+        #  - shared variables that will be updated
+        used_inputs = gof.graph.ancestors(
+                ([o.variable for o in outputs]
+                 + [i.update for i in inputs if getattr(i, 'update', False)]),
+                blockers=[i.variable for i in inputs])
+
+        msg = ("theano.function was asked to create a function computing "
+                "outputs given certain inputs, but one of the provided "
+                "input variables is not part of the computational graph "
+                "needed to compute the outputs: %s.\n%s")
+        warn_msg = ("To make this warning into an error, you can pass the "
+                "parameter on_unused_input='raise' to theano.function. "
+                "To disable it completely, use on_unused_input='ignore'.")
+        err_msg = ("To make this error into a warning, you can pass the "
+                "parameter on_unused_input='warn' to theano.function. "
+                "To disable it completely, use on_unused_input='ignore'.")
+
+        for i in inputs:
+            if ((i.variable not in used_inputs) and (i.update is None)):
+                if on_unused_input == 'warn':
+                    warnings.warn(msg % (i.variable, warn_msg), stacklevel=5)
+                elif on_unused_input == 'raise':
+                    raise ValueError(msg % (i.variable, err_msg))
+                else:
+                    raise ValueError(("Invalid value for keyword "
+                        "on_unused_input of theano.function: '%s'. "
+                        "valid values are 'raise', 'warn', and 'ignore'."
+                        % on_unused_input))
 
     def create(self, input_storage=None, trustme=False):
         """
@@ -1202,7 +1247,8 @@ def check_equal(x, y):
 def register_checker(checker):
     __checkers.insert(0, checker)
 
-def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None, profile=None):
+def orig_function(inputs, outputs, mode=None, accept_inplace = False,
+        name=None, profile=None, on_unused_input='raise'):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1232,6 +1278,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None,
 
     :param profile: None or ProfileStats instance
 
+    :param on_unused_input: What to do if a variable in the 'inputs' list is
+    not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
     """
 
     #Every element of the input list will be upgraded to an `In` instance if necessary,
@@ -1262,7 +1310,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None,
                     outputs,
                     mode[0],
                     accept_inplace = accept_inplace,
-                    profile=profile).create(
+                    profile=profile,
+                    on_unused_input=on_unused_input).create(
                             defaults)
         else:
             if profile:
@@ -1292,7 +1341,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None,
                 outputs,
                 mode,
                 accept_inplace = accept_inplace,
-                profile=profile).create(
+                profile=profile,
+                on_unused_input=on_unused_input).create(
                         defaults)
 
     t2 = time.time()

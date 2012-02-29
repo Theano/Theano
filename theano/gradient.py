@@ -765,10 +765,11 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
     def function(inputs, output):
         if mode is None:
             f = compile.function(inputs, output, accept_inplace=True,
-                    allow_input_downcast=True)
+                    allow_input_downcast=True, on_unused_input='ignore')
         else:
             f = compile.function(inputs, output, accept_inplace=True,
-                    allow_input_downcast=True, mode=mode)
+                    allow_input_downcast=True, mode=mode,
+                    on_unused_input='ignore')
         return f
 
     tensor_pt = [TensorType(
