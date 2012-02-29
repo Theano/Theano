@@ -43,7 +43,7 @@ def debugprint(obj, depth=-1, print_type=False,
     :type ids: str
     :param ids: How do we print the identifier of the variable
                 id - print the python id value
-                CHAR - print capital character
+                int - print integer character
                 CHAR - print capital character
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph have a name,
