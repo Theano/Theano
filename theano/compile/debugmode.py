@@ -16,6 +16,7 @@ from theano import gof
 from theano.gof import Env, graph, utils, link
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
+from theano.gof.python25 import product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
         StrParam)
 from theano.compile.function_module import (FunctionMaker,
@@ -64,7 +65,7 @@ def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, basestring):
         return False
     valid = ["previous", "c_contiguous", "f_contiguous",
-             "neg_strides", "ALL", ""]
+             "strided", "wrong_size", "ALL", ""]
     for p in param.split(":"):
         if p not in valid:
             return False
@@ -75,7 +76,8 @@ AddConfigVar('DebugMode.check_preallocated_output',
          'This is a list of strings separated by ":". Valid values are: '
          '"previous" (previously-returned memory), '
          '"c_contiguous", "f_contiguous", '
-         '"neg_strides" (negative strides), and '
+         '"strided" (positive and negative strides), '
+         '"wrong_size" (larger and smaller dimensions), and '
          '"ALL" (all of the above).'),
         StrParam('ALL', is_valid=is_valid_check_preallocated_output_param),
         in_c_key=False)
@@ -987,19 +989,17 @@ def _find_bad_optimizations2(order, reasons, r_vals):
 
 _find_bad_optimizations = _find_bad_optimizations0
 
-
-def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
+def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         storage_map, r_vals, dr_vals, perform, active_order_set):
-    '''Try to apply thunk() on different output storages'''
+    '''Preallocate outputs in different memory layouts'''
 
     # To avoid circular imports
     from theano.tensor import TensorType
     from theano.sandbox.cuda import cuda_available, CudaNdarrayType
     if cuda_available:
         from theano.sandbox.cuda import CudaNdarray
+        from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
-    # List of (name, map) pairs of the settings to test
-    prealloc_maps = []
     # TODO: Sparse, Scalar
     # TODO: wrong shape, more stride patterns
 
@@ -1015,7 +1015,9 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             reuse_outputs[r] = r_vals[r]
             r_vals[r] = new_r
 
-        prealloc_maps.append(('previous', reuse_outputs))
+        yield ('previous', reuse_outputs)
+        # clear memory that is not needed any more
+        del reuse_outputs
 
     # c_cont_output: use a c-continuous array
     # (for TensorType and CudaNdarray, else None)
@@ -1034,29 +1036,115 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                 c_cont_outputs[r] = new_buf
 
         if len(c_cont_outputs):
-            prealloc_maps.append(('c_contiguous', c_cont_outputs))
+            yield ('c_contiguous', c_cont_outputs)
+            del c_cont_outputs
 
     # f_cont_output: use a fortran-continuous ndarray
     # (for TensorType, only)
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
         for r in node.outputs:
-            if isinstance(r.type, TensorType):
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 new_buf = numpy.zeros(
                         shape=r_vals[r].shape,
                         dtype=r_vals[r].dtype,
                         order='F')
                 new_buf += def_val
+                if isinstance(r.type, CudaNdarrayType):
+                    # When the CudaNdarray is built, the underlying memory
+                    # is c-contiguous, so we transpose it before and after.
+                    new_buf = CudaNdarray(new_buf.T)
+                    new_buf = cuda_dimshuffle(new_buf,
+                            range(new_buf.ndim)[::-1])
+
                 f_cont_outputs[r] = new_buf
 
         if len(f_cont_outputs):
-            prealloc_maps.append(('f_contiguous', f_cont_outputs))
+            yield ('f_contiguous', f_cont_outputs)
+            del f_cont_outputs
 
-    if 'neg_strides' in prealloc_maps:
-        raise NotImplementedError('Negative strides in'
-                                  ' check_preallocated_output')
+    # We assume that the different outputs of a same Op will behave
+    # independantly, and there is no need to test over all combinations
+    # of outputs (the time taken is prohibitive).
+    max_ndim = 0
+    for r in node.outputs:
+        if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            max_ndim = max(max_ndim, r.ndim)
 
-    for (name, out_map) in prealloc_maps:
+    if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
+        # Initial allocation
+        init_strided = {}
+        for r in node.outputs:
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                # Create a buffer twice as large in every dimension
+                new_buf = numpy.zeros(
+                        shape=[(s * 2) for s in r_vals[r].shape],
+                        dtype=r_vals[r].dtype)
+
+                if isinstance(r.type, CudaNdarrayType):
+                    new_buf = CudaNdarray(new_buf)
+                init_strided[r] = new_buf
+
+        for step_signs in itertools_product((-1, 1), repeat=max_ndim):
+            for step_size in (1, 2):
+                strided = {}
+                steps = [s * step_size for s in step_signs]
+                name = 'strided%s' % str(tuple(steps))
+                for r in node.outputs:
+                    if r in init_strided:
+                        # Build lists of slices, for strides and shapes
+                        strides = []
+                        shapes = []
+                        for i, size in enumerate(r_vals[r].shape):
+                            strides.append(slice(None, None, steps[i]))
+                            shapes.append(slice(None, size, None))
+
+                        r_buf = init_strided[r]
+                        if r_buf.ndim > 0:
+                            r_buf = r_buf[tuple(strides)][tuple(shapes)]
+                        assert r_buf.shape == r_vals[r].shape
+
+                        if isinstance(r.type, CudaNdarrayType):
+                            # It seems stupid, but we need to allocate a
+                            # new ndarray and copy it into the GPU one.
+                            new_rbuf = numpy.zeros(r_vals[r].shape, dtype=r.dtype)
+                            new_rbuf += def_val
+                            r_buf[...] = CudaNdarray(new_rbuf)
+                        else:
+                            r_buf[...] = def_val
+
+                        strided[r] = r_buf
+
+                yield (name, strided)
+                del strided
+
+    if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
+        # For each dimension, try size-1, size, size+1
+        for shape_diff in itertools_product((-1, 0, 1), repeat=max_ndim):
+            wrong_size = {}
+            name='wrong_size%s' % str(tuple(shape_diff))
+
+            for r in node.outputs:
+                if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                    r_shape_diff = shape_diff[:r.ndim]
+                    out_shape = [max((s + sd), 0)
+                            for s, sd in zip(r_vals[r].shape, r_shape_diff)]
+                    new_buf = numpy.zeros(
+                            shape=out_shape,
+                            dtype=r.dtype)
+                    if isinstance(r.type, CudaNdarrayType):
+                        new_buf = CudaNdarray(new_buf)
+                    wrong_size[r] = new_buf
+
+            yield (name, wrong_size)
+            del wrong_size
+
+
+def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
+        storage_map, r_vals, dr_vals, perform, active_order_set):
+    '''Try to apply thunk() on different output storages'''
+    for (name, out_map) in _get_preallocated_maps(node, thunk, prealloc_modes,
+            def_val, storage_map, r_vals, dr_vals, perform, active_order_set):
         # _logger.debug('name = %s, perform = %s', name, perform)
         # Copy the inputs over again
         for r in node.inputs:
