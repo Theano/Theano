@@ -861,9 +861,9 @@ class GetItem2d(gof.op.Op):
     class GetItemScalar that return a tensor scalar.
 
     :note: that subtensor selection always returns a matrix so
-    indexing with [a:b, c:d] is forced.  If one index is a scalar,
-    e.g. x[a:b, c] and x[a, b:c], generate an error. Use instead
-    x[a:b, c:c+1] and x[a:a+1, b:c].
+        indexing with [a:b, c:d] is forced.  If one index is a scalar,
+        e.g. x[a:b, c] and x[a, b:c], generate an error. Use instead
+        x[a:b, c:c+1] and x[a:a+1, b:c].
 
     The above indexing methods are not supported because the rval
     would be a sparse matrix rather than a sparse vector, which is a
@@ -2136,7 +2136,7 @@ class Usmm(gof.op.Op):
     alpha is a scalar
 
     :note: We don't implement the infer_shape as it is inserted by optimization
-    only
+        only
     """
     def __eq__(self, other):
         return type(self) == type(other)
@@ -2204,7 +2204,7 @@ class UsmmCscDense(gof.Op):
     alpha is a scalar
 
     :note: We don't implement the infer_shape as it is inserted by optimization
-    only
+        only
     """
     def __init__(self, inplace):
         self.inplace = inplace

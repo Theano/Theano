@@ -480,8 +480,8 @@ class MatrixPinv(Op):
 
     The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
     defined as: "the matrix that 'solves' [the least-squares problem]
-    :math:`Ax = b`," i.e., if :math:`\bar{x}` is said solution, then
-    :math:`A^+` is that matrix such that :math:`\bar{x} = A^+b`.
+    :math:`Ax = b`," i.e., if :math:`\\bar{x}` is said solution, then
+    :math:`A^+` is that matrix such that :math:`\\bar{x} = A^+b`.
 
     Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
     This method is not faster then `matrix_inverse`. Its strength comes from

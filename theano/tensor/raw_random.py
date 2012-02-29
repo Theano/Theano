@@ -563,7 +563,7 @@ def permutation(random_state, size=None, n=1, ndim=None, dtype='int64'):
     the size argument and the shape of n, but you may always specify it
     with the `ndim` parameter.
 
-    .. note::
+    :note:
         Note that the output will then be of dimension ndim+1.
     """
     ndim, size, bcast = _infer_ndim_bcast(ndim, size)

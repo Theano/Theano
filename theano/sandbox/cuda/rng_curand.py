@@ -311,7 +311,7 @@ class CURAND_RandomStreams(object):
         Return symbolic tensor of normally-distributed numbers.
 
         :param: size: Can be a list of integer or Theano variable(ex: the shape
-        of other Theano Variable)
+            of other Theano Variable)
         """
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
