@@ -204,7 +204,7 @@ __device__ void store_or_accumulate(float& dst,const float value ){
  * nkern: the number of kernel, used to compute the output image to store the result
  * nstack: the size of the stack, used to compute the image to load.
  * template flipped_kern: if true, we "flip" the kernel as in a real convolution, else we don't
- * template split: if true, each thread compute more then 1 output pixel
+ * template split: if true, each thread computes more than 1 output pixel
  *                 When true, allow for output image bigger then 512 pixel.
  *                 Use more registers.
  */
@@ -273,7 +273,7 @@ conv_patch( float* img, float* kern, float* out,
  * As conv_patch, but implement the stack in the kernel.
  * I keep it separated from conv_patch as we take more registers and this could lower the occupency.
  * Implementation of the valid convolution that keep the full image and the full kernel in shared memory
- * each thread compute only one value for the output if split==false else it compute more then 1 values
+ * each thread compute only one value for the output if split==false else it compute more than 1 values
  * thread block size=out_wid, out_len/X (X is any number, optimized value is ceil(out_len/N)
  * grid block size=batch_id, nkern
  * dynamic shared memory: img_len*img_wid+(preload_full_kern?KERNEL_LEN:1)*kern_wid
@@ -287,7 +287,7 @@ conv_patch( float* img, float* kern, float* out,
  * template KERN_WIDTH: if 0, will work for any kern_wid, else it specialyse to this kern_wid as an optimization
  * template img_c_contiguous_2d: if true, the img have are collon and row contiguous
  * template kern_c_contiguous_2d: if true, the kernel have are collon and row contiguous
- * template split: if true, each thread generate more then 1 output pixel, but use more registers.
+ * template split: if true, each thread generate more than 1 output pixel, but use more registers.
  * template preload_full_kern: if true, we load the full kernel in shared memory, else, we load 1 row at a time.
  * template subsample: if false, remove some computation needed when dx or dy!=1.
  */

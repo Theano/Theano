@@ -1000,7 +1000,7 @@ class Scan(PureOp):
                 if i < n_steps:
                     # The reason I don't use out[idx][0][:i] is because for
                     # certain outputs (those with multiple taps),
-                    # outs[idx][0] has more then n_steps entries, with the
+                    # outs[idx][0] has more than n_steps entries, with the
                     # initial state  at the begining. When indexing in it I
                     # usually have to do something like
                     # outs[idx][0][i+offset]. To do something similar here,

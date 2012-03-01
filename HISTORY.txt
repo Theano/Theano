@@ -110,7 +110,7 @@ Deprecation (will be removed in Theano 0.5, warning generated if you use them):
    (list/tuple/TensorVariable).
 
    * Currently tensor.grad return a type list when the wrt is a list/tuple of 
-     more then 1 element.
+     more than 1 element.
 
 Decrecated in 0.4.0(Reminder, warning generated if you use them):
 

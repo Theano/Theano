@@ -180,7 +180,7 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
   * Example of use: Determine if we should move computation to the
     GPU or not depending on the input size.
   * Possible implementation note: allow Theano Variable in the env to
-    have more then 1 owner.
+    have more than 1 owner.
 
 * We have a CUDA backend for tensors of type `float32` only.
 * Efforts have begun towards a generic GPU ndarray (GPU tensor) (started in the

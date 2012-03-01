@@ -183,7 +183,7 @@ conv_full_patch_stack( float* img, float* kern, float* out,
 
 /**
  * As conv_patch_stack, but used for the full convolution by padding the image in shared memory.
- * I keep it separated from conv_patch as we take 19-20 register which is more then the 10/16 max for each thread and thus this could lower the occupency.
+ * I keep it separated from conv_patch as we take 19-20 register which is more than the 10/16 max for each thread and thus this could lower the occupency.
  * Implementation of the valid convolution that keep the full image and the full kernel in shared memory
  * each thread compute only one value for the output if split is true. Otherwise compute ceil((float)out_len/N) pixel.
  * thread block size=out_wid, nb_rows (optimized value is ceil(out_len/N))
@@ -195,7 +195,7 @@ conv_full_patch_stack( float* img, float* kern, float* out,
  * nstack: the size of the stack, used to compute the image to load.
  * template flipped_kern: if true, we "flip" the kernel as in a real convolution, else we don't
  * template c_contiguous: if true, the image and kernel have are c_contiguous.(use less registers)
- * template split: if true, each thread compute more then 1 output pixel.
+ * template split: if true, each thread compute more than 1 output pixel.
  * template low_mem: if true, as split but with use less dynamic shared memory but use more registers.
  *          if you set split and low_mem to true, we will use the low_mem version!
  */
