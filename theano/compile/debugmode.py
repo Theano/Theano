@@ -510,7 +510,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     :param prefix: prefix to each line (typically some number of spaces)
     :param depth: maximum recursion depth (Default -1 for unlimited).
     :param done: dict of Apply instances that have already been printed
-                 and there associated printed ids
+                 and their associated printed ids
     :param print_type: wether to print the Variable type after the other infos
     :param file: file-like object to which to print
     :param print_destroy_map: wether to print the op destroy_map after ofther info
@@ -521,7 +521,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 int - print integer character
                 CHAR - print capital character
                 "" - don't print an identifier
-    :param stop_on_name: When True, if a node in the graph have a name,
+    :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
 
     """
