@@ -6,6 +6,7 @@
 __docformat__ = "restructuredtext en"
 
 import time, copy, sys, copy_reg, gc, os
+from itertools import izip
 from StringIO import StringIO
 
 import numpy
@@ -1931,35 +1932,39 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         """
         Create a function.
 
-        defaults -> a list matching the inputs list and providing default values
-                    if the default for an input is None, then that input is a
-                    required input. For an input with an update, the default
-                    acts as initialization.
+        defaults -> a list matching the inputs list and providing default
+                    values if the default for an input is None, then that input
+                    is a required input. For an input with an update, the
+                    default acts as initialization.
         trustme -> disables some exceptions, used internally
         """
         if defaults is None:
             defaults = [None] * len(self.inputs)
-        input_storage = [] # list of independent one-element lists, will be passed to the linker
+        # List of independent one-element lists, will be passed to the linker.
+        input_storage = []
         _defaults = []
 
-        # The following loop is to fill in the input_storage and _defaults lists.
-        for (input, indices, subinputs), default in zip(self.indices, defaults):
+        # The following loop is to fill in the input_storage and _defaults
+        # lists.
+        for (input, indices, subinputs), default in izip(self.indices,
+                                                         defaults):
             __default = default
 
             if isinstance(default, gof.Container):
-                # If the default is a gof.Container, this means we want to share
-                # the same storage. This is done by appending default.storage
-                # to input_storage
+                # If the default is a gof.Container, this means we want to
+                # share the same storage. This is done by appending
+                # default.storage to input_storage.
                 if indices is not None:
-                    raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
+                    raise TypeError("Cannot take a Container instance as "
+                                    "default for a SymbolicInputKit.")
                 input_storage.append(default.storage)
                 default = None
                 required = False
             elif isinstance(input, SymbolicInputKit):
                 # If the input is a SymbolicInputKit, it represents more than
-                # one storage unit. The indices and subinputs lists represent which
-                # of the kit's inputs are active in this graph, so we make as many
-                # storage units as needed
+                # one storage unit. The indices and subinputs lists represent
+                # which of the kit's inputs are active in this graph, so we
+                # make as many storage units as needed
                 if isinstance(default, (list, tuple)) \
                         and all(isinstance(x, gof.Container) for x in default):
                     if len(default) == len(indices):
@@ -1967,7 +1972,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                     elif len(default) > len(indices):
                         input_storage += [default[i].storage for i in indices]
                     else:
-                        raise ValueError('Not enough storage for SymbolicInputKit', input, indices, default)
+                        raise ValueError(
+                                'Not enough storage for SymbolicInputKit',
+                                input, indices, default)
                     default = _NODEFAULT
                 else:
                     input_storage += [[None] for i in indices]
@@ -1977,8 +1984,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
             # Filling _defaults. Each entry is a tuple of three elements:
             # (required, refeed, value)
-            # - required means that the user must provide a value when calling the function
-            # - refeed means that we want to put the default back in the storage after each function call
+            # - required means that the user must provide a value when calling
+            #   the function
+            # - refeed means that we want to put the default back in the
+            #   storage after each function call
             # - value is the value that will be put in the storage initially
 
             # Even though a SymbolicInputKit represents more than one input,
@@ -2001,7 +2010,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                         _defaults.append((False, False, None))
                     else:
                         # This might catch some bugs early
-                        raise ValueError("A default (initial) value is required for an input which can update itself.", input)
+                        raise ValueError(
+                                "A default (initial) value is required for an "
+                                "input which can update itself.", input)
                 else:
                     _defaults.append((False, False, default))
             else:
@@ -2066,8 +2077,8 @@ class DebugMode(Mode):
     If there are internal errors, this mode will raise an
     `DebugModeError` exception.
 
-    :remark: The work of debugging is implemented by the `_Maker`, `_Linker`, and
-    `_VariableEquivalenceTracker` classes.
+    :remark: The work of debugging is implemented by the `_Maker`, `_Linker`,
+    and `_VariableEquivalenceTracker` classes.
 
     """
 
@@ -2084,7 +2095,8 @@ class DebugMode(Mode):
 
     check_py_code = config.DebugMode.check_py
     """
-    Should we evaluate (and check) the `perform` implementations? Always checked if no `c_code`.
+    Should we evaluate (and check) the `perform` implementations?
+    Always checked if no `c_code`.
     """
 
     check_isfinite = config.DebugMode.check_finite
@@ -2102,7 +2114,9 @@ class DebugMode(Mode):
     # This function will be used to create a FunctionMaker in
     # function_module.function
     def function_maker(self, i, o, m, *args, **kwargs):
-        """Return an instance of `_Maker` which handles much of the debugging work"""
+        """
+        Return an instance of `_Maker` which handles much of the debugging work
+        """
         assert m is self
         return _Maker(i, o, self.optimizer, self, *args, **kwargs)
 
@@ -2114,13 +2128,18 @@ class DebugMode(Mode):
             check_isfinite=None,
             require_matching_strides=None,
             linker=None):
+
         """Initialize member variables.
 
-        If any of these arguments (except optimizer) is not None, it overrides the class default.
-        The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
+        If any of these arguments (except optimizer) is not None, it overrides
+        the class default.
+        The linker argument is not used. It is set there to allow
+        Mode.requiring() and some other fct to work with DebugMode too.
         """
+
         if linker is not None and not issubclass(linker, _Linker):
-            raise Exception("DebugMode can use only its own linker! Don't give him one to use it.", linker)
+            raise Exception("DebugMode can only use its own linker! You "
+                            "should not provide one.", linker)
 
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
@@ -2142,6 +2161,7 @@ class DebugMode(Mode):
             self.require_matching_strides = require_matching_strides
 
         if not (self.check_c_code or self.check_py_code):
-            raise ValueError('DebugMode has to check at least one of c and py code')
+            raise ValueError('DebugMode has to check at least one of c and py '
+                             'code')
 
 register_mode('DEBUG_MODE', DebugMode(optimizer='fast_run'))
