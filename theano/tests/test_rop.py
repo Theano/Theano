@@ -91,14 +91,14 @@ class RopLop_checker(unittest.TestCase):
                           (i.e. the tensor with which you multiply the
                           Jacobian). It should be a tuple of ints.
 
-        If the Op have more then 1 input, one of them must be mx, the
-        other must be shared variable/constant. We will test only
-        again the input self.mx, so you must call
-        check_mat_rop_lop/check_rop_lop for the others input.
+        If the Op has more than 1 input, one of them must be mx, while
+        others must be shared variables / constants. We will test only
+        against the input self.mx, so you must call
+        check_mat_rop_lop/check_rop_lop for the other inputs.
 
         We expect all inputs/outputs have dtype floatX.
 
-        If you want to test an out with an output matrix, add a sum
+        If you want to test an Op with an output matrix, add a sum
         after the Op you want to test.
         """
         vx = numpy.asarray(self.rng.uniform(size=self.mat_in_shape),

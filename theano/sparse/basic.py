@@ -959,7 +959,7 @@ class GetItemScalar(gof.op.Op):
     Implement a subtensor of a sparse variable that take two scalar as
     index and return a scalar
 
-    :see: GetItem2d to return more then one element.
+    :see: GetItem2d to return more than one element.
     """
     def __eq__(self, other):
         return (type(self) == type(other))

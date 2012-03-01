@@ -56,13 +56,13 @@ for val in keys.values():
 
 nbs_mod = {} # nb seen -> how many key
 nbs_mod_to_key = {} #nb seen -> keys
-more_then_one = 0
+more_than_one = 0
 for mod,kk in mods.iteritems():
     val = len(kk)
     nbs_mod.setdefault(val, 0)
     nbs_mod[val]+=1
     if val>1:
-        more_then_one += 1
+        more_than_one += 1
     nbs_mod_to_key[val] = kk
 
 if DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE:
@@ -87,7 +87,7 @@ uniq = len(mods)
 useless = total - uniq
 print "mod.{cpp,cu} total:", total
 print "mod.{cpp,cu} uniq:", uniq
-print "mod.{cpp,cu} with more then 1 copy:", more_then_one
+print "mod.{cpp,cu} with more than 1 copy:", more_than_one
 print "mod.{cpp,cu} useless:", useless, float(useless)/total*100,"%"
 
 print "nb directory", len(dirs)

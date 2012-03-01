@@ -103,7 +103,8 @@ def mysend(subject, file):
                     float64_time = start
                     start = ""
     
-    s="Resume of the output:\n\n"+filter_output(open(file))+"\n\nFull output:\n\n"+s
+    s = ("Summary of the output:\n\n" + filter_output(open(file)) +
+         "\n\nFull output:\n\n" + s)
     img = MIMEText(s)
     fp.close()
     msg.attach(img)

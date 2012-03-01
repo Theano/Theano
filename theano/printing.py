@@ -46,7 +46,7 @@ def debugprint(obj, depth=-1, print_type=False,
                 int - print integer character
                 CHAR - print capital character
                 "" - don't print an identifier
-    :param stop_on_name: When True, if a node in the graph have a name,
+    :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
 
     :returns: string if `file` == 'str', else file arg

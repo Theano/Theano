@@ -846,7 +846,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
 	if(version==-1 && nb_split>1) version=4;
 	else if(version==-1) version=3;
-	else if(version==3 && nb_split!=1) version=4;//we force version 4 when we need more then 1 split as to be always execute.
+	else if(version==3 && nb_split!=1) version=4;//we force version 4 when we need more than 1 split as to be always execute.
 
 	assert(version!=3 || nb_split==1);
 	assert(version!=5 || kern_len>1);
