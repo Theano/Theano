@@ -750,9 +750,14 @@ class Elemwise(Op):
                 shape = [max(values)
                         for values in zip(*[input.shape for input in inputs])]
                 if odat is not None:
-                    # reuse storage if we can
-                    odat.resize(shape, refcheck=0)
-                else:
+                    if odat.shape != shape:
+                        try:
+                            # reuse storage if we can
+                            odat.resize(shape)
+                        except ValueError:
+                            # odat cannot be resized, we have to allocate one
+                            odat = None
+                if odat is None:
                     odat = numpy.ndarray(shape, dtype=output.type.dtype)
                 storage[0] = odat
         else:
@@ -767,8 +772,12 @@ class Elemwise(Op):
                              for values in zip(*[input.shape
                                  for input in inputs])]
                     if odat is not None:
-                        odat.resize(shape, refcheck=0)
-                    else:
+                        if odat.shape != shape:
+                            try:
+                                odat.resize(shape)
+                            except ValueError:
+                                odat = None
+                    if odat is None:
                         odat = numpy.ndarray(shape, dtype=output.type.dtype)
                 storage[0] = odat
 
