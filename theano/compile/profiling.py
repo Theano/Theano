@@ -724,12 +724,12 @@ if 0: # old code still to be ported from ProfileMode
 
 class ScanProfileStats(ProfileStats):
     callcount = 0.0
-    nbsteps   = 0.0
+    nbsteps = 0.0
     call_time = 0.0
-    def __init__(self, atexit_print = True, name = None,  **kwargs):
+
+    def __init__(self, atexit_print=True, name=None, **kwargs):
         super(ScanProfileStats, self).__init__(atexit_print, **kwargs)
         self.name = name
-
 
     def summary_function(self, file):
         # RP: everytime we compile a function a ProfileStats is created for
@@ -748,20 +748,20 @@ class ScanProfileStats(ProfileStats):
         else:
             print >> file, 'Scan Op profiling'
         print >> file, '=================='
-        print >> file, '  Message: %s'%self.message
+        print >> file, '  Message: %s' % self.message
 
-        print >> file, '  Time in %i calls of the op (for a total of %i steps) %es' % (
-                self.callcount, self.nbsteps, self.call_time)
+        print >> file, ('  Time in %i calls of the op (for a total of %i '
+                        'steps) %es' %
+                        (self.callcount, self.nbsteps, self.call_time))
         print >> file, ''
         val = 0
         if self.call_time > 0:
-            val = self.vm_call_time*100/self.call_time
-        print >> file, '  Total time spent in calling the VM %es (%.3f%%)'%(
+            val = self.vm_call_time * 100 / self.call_time
+        print >> file, '  Total time spent in calling the VM %es (%.3f%%)' % (
             self.vm_call_time, val)
         val = 100
         if self.call_time > 0:
-            val = 100.-self.vm_call_time*100/self.call_time
-        print >> file, '  Total overhead (computing slices ..) %es (%.3f%%)'%(
+            val = 100. - self.vm_call_time * 100 / self.call_time
+        print >> file, '  Total overhead (computing slices..) %es (%.3f%%)' % (
             self.call_time - self.vm_call_time, val)
         print >> file, ''
-
