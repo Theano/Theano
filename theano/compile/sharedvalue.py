@@ -139,6 +139,19 @@ class SharedVariable(Variable):
                 "The generic 'SharedVariable' object is not subscriptable. "
                 "This shared variable contains %s" % msg)
 
+    def _value_get(self):
+        raise Exception("sharedvar.value don't exist anymore. Use "
+                        "sharedvar.get_value() or sharedvar.get_value()"
+                        " instead.")
+
+    def _value_set(self, new_value):
+        raise Exception("sharedvar.value don't exist anymore. Use "
+                        "sharedvar.get_value() or sharedvar.get_value()"
+                        " instead.")
+
+    # We keep this just to raise an error
+    value = property(_value_get, _value_set),
+
 
 def shared_constructor(ctor):
     shared.constructors.append(ctor)
