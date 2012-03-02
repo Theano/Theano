@@ -264,7 +264,10 @@ def test_stochasticoptimization():
     try:
         theano.function([a, b],
                 theano.tensor.add(a, b),
-                mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
+                mode=debugmode.DebugMode(
+                    optimizer=opt,
+                    check_c_code=True,
+                    stability_patience=max(2, config.DebugMode.patience)))
     except debugmode.StochasticOrder:
         return  # TEST PASS
     assert False
