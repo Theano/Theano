@@ -46,7 +46,7 @@ def _atexit_print_fn():
     if len(_atexit_print_list) > 1:
     # Make a global profile
         cum = copy.copy(_atexit_print_list[0])
-        cum.message = "Sum of all Theano function"
+        cum.message = "Sum of all Theano functions"
         for ps in _atexit_print_list[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time"]:
@@ -375,7 +375,7 @@ class ProfileStats(object):
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
-        print >> file, '    Theano Linker time(include c, cuda code generation/compiling): %es' % self.linker_time
+        print >> file, '    Theano Linker time (includes C, CUDA code generation/compiling): %es' % self.linker_time
         print >> file, ''
 
 
