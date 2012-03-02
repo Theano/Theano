@@ -520,7 +520,7 @@ class MakeVector(T.Op):
     def perform(self, node, inputs, out_):
         out, = out_
         # not calling theano._asarray as optimization
-        if out[0] is None:
+        if (out[0] is None) or (out[0].size != len(inputs)):
             out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
         else:
             # assume that out has correct dtype. there is no cheap way to check
