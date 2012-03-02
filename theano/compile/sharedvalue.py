@@ -153,9 +153,13 @@ class SharedVariable(Variable):
     value = property(_value_get, _value_set),
 
 
-def shared_constructor(ctor):
-    shared.constructors.append(ctor)
+def shared_constructor(ctor, remove=False):
+    if remove:
+        shared.constructors.remove(ctor)
+    else:
+        shared.constructors.append(ctor)
     return ctor
+
 
 def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
