@@ -4,16 +4,11 @@ __docformat__ = 'restructuredtext en'
 # Standard imports
 import copy
 import logging
-import traceback
-import warnings
 
 # Third-party imports
 import numpy
 
 # Theano imports
-from theano import config
-from theano.configparser import (TheanoConfigParser, AddConfigVar, EnumStr,
-        StrParam, IntParam, FloatParam, BoolParam)
 from theano.gof import Container, Variable, generic
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
