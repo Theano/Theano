@@ -9,6 +9,8 @@ Documentation
    (Frédéric B.)
 
 Interface changes
+ * In 0.5, we removed the deprecated sharedvar.value property.
+   Now we raise an error if you access it.
  * theano.function does not accept duplicate inputs, so function([x, x], ...)
    does not work anymore. (Pascal L.)
  * theano.function now raises an error if some of the provided inputs are
