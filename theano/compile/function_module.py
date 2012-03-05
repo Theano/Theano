@@ -21,6 +21,12 @@ import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
 
+class UnusedInputError(Exception):
+    """
+    A symbolic input passed to function is not needed
+    """
+    pass
+
 def alias_root(v):
     """Return the variable to which v is aliased by view_maps and destroy_maps"""
     if v.owner is None: return v
@@ -1110,7 +1116,7 @@ class FunctionMaker(object):
                 if on_unused_input == 'warn':
                     warnings.warn(msg % (i.variable, warn_msg), stacklevel=5)
                 elif on_unused_input == 'raise':
-                    raise ValueError(msg % (i.variable, err_msg))
+                    raise UnusedInputError(msg % (i.variable, err_msg))
                 else:
                     raise ValueError(("Invalid value for keyword "
                         "on_unused_input of theano.function: '%s'. "

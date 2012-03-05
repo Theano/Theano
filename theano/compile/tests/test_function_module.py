@@ -8,6 +8,8 @@ from theano import gof,config
 from theano.scalar import mul
 from theano.compile.io import In, Out
 from theano.compile import function
+from theano.compile import UnusedInputError
+from theano.gof import MissingInputError
 from theano.gof.python25 import all, any
 
 from theano import tensor
@@ -53,56 +55,53 @@ class T_function(unittest.TestCase):
 
     def test_missing_inputs(self):
 
-        MissingInputException = TypeError
-        UnusedInputException = ValueError
-
         def fn():
             x,s = T.scalars('xs')
             fn = function([], [x])
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
         def fn():
             x,s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], [x], on_unused_input='ignore')
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([s], [x])
-        checkfor(self, fn, UnusedInputException)
+        checkfor(self, fn, UnusedInputError)
 
         def fn():
             x,s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], x, on_unused_input='ignore')
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([s], x)
-        checkfor(self, fn, UnusedInputException)
+        checkfor(self, fn, UnusedInputError)
 
         def fn():
             x,s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], Out(x), on_unused_input='ignore')
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([s], Out(x))
-        checkfor(self, fn, UnusedInputException)
+        checkfor(self, fn, UnusedInputError)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([In(x, update=s+x)], x)
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
         def fn():
             x,s = T.scalars('xs')
             fn = function([In(x, update=mul(s,s)+x)], x)
-        checkfor(self, fn, MissingInputException)
+        checkfor(self, fn, MissingInputError)
 
     def test_input_anon_singleton(self):
         x,s = T.scalars('xs')
@@ -378,14 +377,14 @@ class T_function(unittest.TestCase):
     def test_disconnected_input(self):
         a = T.scalar('a')
         v = T.vector('v')
-        self.assertRaises(ValueError, function, [a, v], v*2)
+        self.assertRaises(UnusedInputError, function, [a, v], v*2)
         f = function([a, v], v*2, on_unused_input='ignore')
 
     def test_masked_input(self):
         m = T.matrix('m')
         mt = m.T
         mt.name = 'm.T'
-        self.assertRaises(ValueError, function, [m, mt], mt*2)
+        self.assertRaises(UnusedInputError, function, [m, mt], mt*2)
         f = function([m, mt], mt*2, on_unused_input='ignore')
 
 

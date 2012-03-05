@@ -6,7 +6,7 @@ from cc import \
 import compiledir # adds config vars
 
 from env import \
-    InconsistencyError, Env
+    InconsistencyError, MissingInputError, Env
 
 from destroyhandler import \
     DestroyHandler 

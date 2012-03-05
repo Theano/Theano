@@ -15,6 +15,12 @@ class InconsistencyError(Exception):
     """
     pass
 
+class MissingInputError(Exception):
+    """
+    A symbolic input needed to compute the outputs is missing.
+    """
+    pass
+
 
 
 class Env(utils.object2):
@@ -213,7 +219,7 @@ class Env(utils.object2):
                 self.__import__(node)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
-                raise TypeError("Undeclared input", r)
+                raise MissingInputError("Undeclared input", r)
             if not getattr(r, 'env', None) is self:
                 self.__setup_r__(r)
             self.variables.add(r)
@@ -285,12 +291,19 @@ class Env(utils.object2):
                             #handler code in the first place
                             assert path is not None
 
-                            raise TypeError('A variable that is an input to the graph was neither provided as an '
-                                    'input to the function nor given a value. A chain of variables leading from '
-                                    'this input to an output is '+str(path)+'. This chain may not be unique')
+                            raise MissingInputError((
+                                'A variable that is an input to the graph was '
+                                'neither provided as an input to the function '
+                                'nor given a value. A chain of variables '
+                                'leading from this input to an output is %s. '
+                                'This chain may not be unique' % str(path)))
 
                         #Standard error message
-                        raise TypeError("An input of the graph, used to compute "+str(node)+", was not provided and not given a value", r)
+                        raise MissingInputError((
+                            "An input of the graph, used to compute %s, "
+                            "was not provided and not given a value"
+                            % str(node)),
+                            r)
 
         for node in new_nodes:
             assert node not in self.nodes
