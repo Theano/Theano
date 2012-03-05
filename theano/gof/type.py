@@ -340,7 +340,8 @@ class Type(object2, PureType, CLinkerType):
 
     The following following code illustrates the use of a Type instance, here tensor.fvector:
 
-    .. python::
+    .. code-block:: python
+
         # Declare a symbolic floating-point vector using __call__
         b = tensor.fvector()
 

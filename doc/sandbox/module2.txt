@@ -1,4 +1,4 @@
-.. _module:
+.. _module2:
 
 ######
 Module
