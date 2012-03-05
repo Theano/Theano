@@ -4,8 +4,7 @@ import numpy
 import unittest
 
 
-from theano import gof,config
-from theano.scalar import mul
+from theano import config, gof
 from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError
