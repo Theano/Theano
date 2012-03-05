@@ -7,6 +7,7 @@ from profiling import ProfileStats
 
 from theano import config
 from theano.compile import orig_function, In, Out
+from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
 from theano.gof import Container, Variable, generic, graph, Constant, Value
 from theano.gof.python25 import any
@@ -432,7 +433,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     for i, v in enumerate(in_variables):
         if v in in_variables[(i + 1):]:
             dup_v_i = in_variables.index(v, (i + 1))
-            raise ValueError(
+            raise UnusedInputError(
                     ("Variable %s is used twice in inputs to theano.function, "
                      "at indices %i and %i.  This would result in values "
                      "provided for it being ignored. Please do not duplicate "
