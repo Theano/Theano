@@ -100,7 +100,7 @@ class T_function(unittest.TestCase):
 
         def fn():
             x,s = T.scalars('xs')
-            fn = function([In(x, update=mul(s,s)+x)], x)
+            fn = function([In(x, update=((s * s) + x))], x)
         checkfor(self, fn, MissingInputError)
 
     def test_input_anon_singleton(self):
