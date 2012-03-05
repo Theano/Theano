@@ -223,10 +223,9 @@ class Variable(utils.object2):
 
     A Variable which is the output of a symbolic computation will have an owner != None.
 
-    Code Example
-    ============
+    **Code Example**
 
-    .. python::
+    .. code-block:: python
 
         import theano
         from theano import tensor

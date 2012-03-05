@@ -1,0 +1,17 @@
+.. _libdoc_gof_type:
+
+================================================
+:mod:`type` -- Interface for types of variables
+================================================
+
+.. module:: env
+   :platform: Unix, Windows
+   :synopsis: Interface for types of symbolic variables
+.. moduleauthor:: LISA
+
+---------
+Reference
+---------
+
+.. automodule:: theano.gof.type
+    :members:

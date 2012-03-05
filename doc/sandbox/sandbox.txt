@@ -62,7 +62,7 @@ What is staticmethod, st_impl?
 implicitly take the class instance as a first argument. Hence, st_impl
 can be used for Op implementations when no information from the Op
 instance is needed. This can be useful for testing an implementation.
-See :api:`XlogX` for an example.
+See the ``XlogX`` class below for an example.
 
 **This documentation is useful when we show users how to write Ops.
 Olivier says this behavior should be discouraged but I feel that st_impl
@@ -72,7 +72,7 @@ should be encouraged where possible.**
 how do we write scalar ops and upgrade them to tensor ops?
 ============================================================
 
-**Olivier says that :api:`XlogX` gives a good example. In fact, I would
+**Olivier says that** :class:`~theano.tensor.xlogx.XlogX` **gives a good example. In fact, I would
 like to beef xlogx up into our running example for demonstrating how to
 write an Op:**
 

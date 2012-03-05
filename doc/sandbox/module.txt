@@ -133,7 +133,7 @@ analogous to a function.
 
 A Module is meant to contain Components.
 Attributes which are not Components themselves must at least be transform-able
-into Components by :api:`compile.module.wrap`.  If a Module contains something
+into Components by :func:`.compile.module.wrap`.  If a Module contains something
 that is not convertible into a Component, then it is not possible to compile
 that Module with ``make``.
 

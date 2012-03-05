@@ -343,10 +343,10 @@ class Method(Component):
         """Compile a function for this Method.
 
         :param allocate_all: if True, storage will be
-        allocated for all needed Variables even if there is no
-        associated storage for them in the memo. If allocate_all is
-        False, storage will only be allocated for Variables that are
-        reachable from the inputs list.
+            allocated for all needed Variables even if there is no
+            associated storage for them in the memo. If allocate_all is
+            False, storage will only be allocated for Variables that are
+            reachable from the inputs list.
 
         :returns: a function that implements this method
         :rtype: `Function` instance
@@ -593,7 +593,8 @@ class Composite(Component):
         """
         Generator that yields (path, component) pairs in a flattened
         hierarchy of composites and components, where path is a
-        sequence of keys such that
+        sequence of keys such that::
+
           component is self[path[0]][path[1]]...
 
         If include_self is True, the list will include the Composite
@@ -865,12 +866,13 @@ def register_wrapper(condition, wrapper):
     """
     :type condition: function x -> bool
 
-    :param condition: this function should return True iff `wrapper` can sensibly turn x into a
-    Component.
+    :param condition: this function should return True iff `wrapper` can
+        sensibly turn x into a Component.
 
     :type wrapper: function x -> Component
 
-    :param wrapper: this function should convert `x` into an instance of a Component subclass.
+    :param wrapper: this function should convert `x` into an instance of
+        a Component subclass.
     """
     __autowrappers.append((condition, wrapper))
 
@@ -947,8 +949,8 @@ class ModuleInstance(ComponentDictInstanceNoInit):
     WRITEME
 
     :note: ModuleInstance is meant to be instantiated by Module. This differs
-    from ComponentDictInstance on a key point, which is that getattr
-    does a similar thing to getitem.
+        from ComponentDictInstance on a key point, which is that getattr
+        does a similar thing to getitem.
 
     :note: ModuleInstance is compatible for use as ComponentDict.InstanceType.
     """
@@ -1169,7 +1171,8 @@ FancyModuleInstance = ModuleInstance
 def func_to_mod(f):
     """
     Creates a dummy module, with external member variables for  the input
-    parameters required by the function f, and a member output defined as:
+    parameters required by the function f, and a member output defined as::
+
         output <= f(**kwinit)
     """
     def make(**kwinit):

@@ -112,8 +112,8 @@ Misc
 ----
 The sparse equivalent of dmatrix is csc_matrix and csr_matrix.
 
-:api:`Dot` vs. :api:`StructuredDot`
-----------------------------------------
+:class:`~theano.sparse.basic.Dot` vs. :class:`~theano.sparse.basic.StructuredDot`
+---------------------------------------------------------------------------------
 
 Often when you use a sparse matrix it is because there is a meaning to the
 structure of non-zeros. The gradient on terms outside that structure

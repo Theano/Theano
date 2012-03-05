@@ -73,19 +73,9 @@ if __name__ == '__main__':
         print '  --help: this help'
         sys.exit(0)
 
-    options['--all'] = not (bool(options['--epydoc']) ^ bool(options['--rst']))
-
-    if 0:
-        import gen_oplist
-        print 'Generating oplist...'
-        gen_oplist.print_file(open('%s/doc/indexes/oplist.txt' % throot, 'w'))
-        print 'oplist done!'
-
-    if 0:
-        import gen_typelist
-        print 'Generating typelist...'
-        gen_typelist.print_file(open('%s/doc/indexes/typelist.txt' % throot, 'w'))
-        print 'typelist done!'
+    if not (options['--epydoc'] or options['--rst']):
+        # Default is now rst
+        options['--rst'] = True
 
     def mkdir(path):
         try:
@@ -96,8 +86,6 @@ if __name__ == '__main__':
     outdir = options['-o'] or (throot + '/html')
     mkdir(outdir)
     os.chdir(outdir)
-    mkdir("doc")
-    mkdir("api")
 
     # Make sure the appropriate 'theano' directory is in the PYTHONPATH
     pythonpath = os.environ.get('PYTHONPATH', '')
@@ -105,6 +93,7 @@ if __name__ == '__main__':
     os.environ['PYTHONPATH'] = pythonpath
 
     if options['--all'] or options['--epydoc']:
+        mkdir("api")
         from epydoc.cli import cli
         sys.path[0:0] = [throot]
 
@@ -120,6 +109,7 @@ if __name__ == '__main__':
         # TODO
 
     if options['--all'] or options['--rst']:
+        mkdir("doc")
         import sphinx
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         sphinx.main(['', '-E', os.path.join(throot, 'doc'), '.'])

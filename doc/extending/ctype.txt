@@ -44,7 +44,7 @@ What needs to be defined
 
 In order to be C-compatible, a Type must define several additional
 methods, which all start with the ``c_`` prefix. The complete list can
-be found in the documentation for :api:`gof.type.Type`. Here, we'll focus on
+be found in the documentation for :class:`.gof.type.Type`. Here, we'll focus on
 the most important ones:
 
 
