@@ -1,16 +1,17 @@
 """Defines Updates object for storing a (SharedVariable, new_value) mapping.
 
 """
-__authors__   = "theano-dev"
+__authors__ = "theano-dev"
 __copyright__ = "(c) 2010, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-from theano.compile.sharedvalue  import SharedVariable
+from theano.compile.sharedvalue import SharedVariable
 import logging
 logger = logging.getLogger('theano.updates')
+
 
 class Updates(dict):
     """
@@ -30,14 +31,16 @@ class Updates(dict):
 
             return super(Updates, self).__setitem__(key, value)
         else:
-            raise TypeError('Updates keys must inherit from SharedVariable', key)
+            raise TypeError('Updates keys must inherit from SharedVariable',
+                    key)
+
     def update(self, other):
         for key, val in dict(other).iteritems():
             if key in self:
                 if self[key] == val:
                     continue
                 raise KeyError('Collision', key)
-            self[key] = val # __setitem__ does type-checking
+            self[key] = val  # __setitem__ does type-checking
 
     def __add__(self, other):
         rval = Updates()
@@ -50,4 +53,3 @@ class Updates(dict):
         rval.update(other)
         rval.update(self)
         return rval
-

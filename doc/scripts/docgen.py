@@ -4,16 +4,14 @@ import os
 import shutil
 import inspect
 
-from epydoc import docintrospecter 
+from epydoc import docintrospecter
 from epydoc.apidoc import RoutineDoc
+
 
 def Op_to_RoutineDoc(op, routine_doc, module_name=None):
     routine_doc.specialize_to(RoutineDoc)
 
-    #NB: this code is lifted from
-    # /u/bergstrj/pub/prefix/x86_64-unknown-linux-gnu-Fedora_release_7__Moonshine_/lib/python2.5/site-packages/epydoc
-    # /u/bergstrj/pub/prefix/x86_64-unknown-linux-gnu-Fedora_release_7__Moonshine_/lib/python2.5/site-packages/epydoc/docintrospecter.py
-
+    #NB: this code is lifted from epydoc/docintrospecter.py
 
     # op should be an op instance
     assert hasattr(op, 'perform')
@@ -32,7 +30,7 @@ def Op_to_RoutineDoc(op, routine_doc, module_name=None):
         routine_doc.kwarg = kwarg
 
         # Set default values for positional arguments.
-        routine_doc.posarg_defaults = [None]*len(args)
+        routine_doc.posarg_defaults = [None] * len(args)
 
         # Set the routine's line number.
         if hasattr(func, 'func_code'):
@@ -50,8 +48,8 @@ def Op_to_RoutineDoc(op, routine_doc, module_name=None):
     return routine_doc
 
 docintrospecter.register_introspecter(
-    lambda value: getattr(value, '__epydoc_asRoutine', False), 
-    Op_to_RoutineDoc, 
+    lambda value: getattr(value, '__epydoc_asRoutine', False),
+    Op_to_RoutineDoc,
     priority=-1)
 
 
@@ -63,13 +61,17 @@ if __name__ == '__main__':
     throot = "/".join(sys.path[0].split("/")[:-2])
 
     options = defaultdict(bool)
-    options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['epydoc', 'rst', 'help', 'nopdf'])[0]))
+    options.update(dict([x, y or True] for x, y in
+        getopt.getopt(sys.argv[1:],
+                      'o:',
+                      ['epydoc', 'rst', 'help', 'nopdf'])[0]))
     if options['--help']:
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
         print '  --rst: only compile the doc (requires sphinx)'
         print '  --nopdf: do not produce a PDF file from the doc, only HTML'
-        print '  --epydoc: only compile the api documentation (requires epydoc)'
+        print '  --epydoc: only compile the api documentation',
+        print '(requires epydoc)'
         print '  --help: this help'
         sys.exit(0)
 
@@ -94,13 +96,14 @@ if __name__ == '__main__':
 
     if options['--all'] or options['--epydoc']:
         mkdir("api")
-        from epydoc.cli import cli
         sys.path[0:0] = [throot]
 
         #Generate HTML doc
 
         ## This causes problems with the subsequent generation of sphinx doc
-        #sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot, '-o', 'api']
+        #from epydoc.cli import cli
+        #sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot,
+        #               '-o', 'api']
         #cli()
         ## So we use this instead
         os.system("epydoc --config %s/doc/api/epydoc.conf -o api" % throot)
@@ -131,6 +134,3 @@ if __name__ == '__main__':
                 print 'OSError:', e
             except IOError, e:
                 print 'IOError:', e
-
-
-

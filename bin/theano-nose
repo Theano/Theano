@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-__authors__   = "Olivier Delalleau, Pascal Lamblin"
-__contact__   = "delallea@iro"
+__authors__ = "Olivier Delalleau, Pascal Lamblin"
+__contact__ = "delallea@iro"
 
 """
 This script should behave the same as the `nosetests` command.
@@ -67,6 +67,7 @@ def main():
         sys.argv.remove('--without-knownfailure')
 
     return nose.main(addplugins=addplugins)
+
 
 def help():
     help_msg = """

@@ -95,7 +95,6 @@ import scalar
 #import sparse
 import gradient
 from gradient import Rop, Lop, grad
-import gof
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
