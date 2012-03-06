@@ -10,7 +10,7 @@ Making the double type
 Type's contract
 ===============
 
-In Theano's framework, a ``Type`` (:api:`gof.type.Type`)
+In Theano's framework, a ``Type`` (:class:`.gof.type.Type`)
 is any object which defines the following
 methods. To obtain the default methods described below, the Type should
 be an instance of ``Type`` or should be an instance of a

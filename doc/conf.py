@@ -23,7 +23,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'ext']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo']
 
 todo_include_todos = True
 
@@ -175,7 +175,7 @@ latex_documents = [
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
 #latex_logo = 'images/snake_theta2-trans.png'
-latex_logo = None
+latex_logo = 'images/theano_logo_allblue_200x46.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.

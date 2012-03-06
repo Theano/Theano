@@ -252,3 +252,10 @@ to both.
 
 As you read through examples of Theano code, you will probably see many
 instances of Modules being nested in this way.
+
+===================================================================
+:mod:`module` --  API documentation
+===================================================================
+
+.. automodule:: theano.compile.module
+    :members:
