@@ -53,6 +53,7 @@ ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
 
+
 def git_version():
     """
     Return the sha1 of local git HEAD as a string.
@@ -86,13 +87,15 @@ def git_version():
         git_revision = "unknown-git"
     return git_revision
 
+
 def write_version_py(filename=os.path.join('theano', 'generated_version.py')):
     cnt = """
 # THIS FILE IS GENERATED FROM THEANO SETUP.PY
 short_version = '%(version)s'
 version = '%(version)s'
 git_revision = '%(git_revision)s'
-full_version = '%(version)s.dev-%%(git_revision)s' %% {'git_revision': git_revision}
+full_version = '%(version)s.dev-%%(git_revision)s' %% {
+        'git_revision': git_revision}
 release = %(isrelease)s
 
 if not release:

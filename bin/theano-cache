@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-import logging, os, sys
+import logging
+import os
+import sys
+
 import theano
 from theano import config
 from theano.gof.cc import get_module_cache
@@ -41,4 +44,3 @@ else:
     print 'Type "theano-cache unlock" to unlock the cache directory'
     print 'Type "theano-cache cleanup" to delete keys in the old format'
     sys.exit(1)
-
