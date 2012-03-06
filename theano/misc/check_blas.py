@@ -61,15 +61,21 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
                                  order=order))
     c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
                                  order=order))
-    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
+    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)},
+                        mode=theano.compile.ProfileMode())
 
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
             f.maker.env.toposort()]):
-        impl = 'cpu'
+        c_impl = f.profile.apply_cimpl.values()
+        assert len(c_impl) == 1
+        if c_impl[0]:
+            impl = 'CPU (with direct Theano binding to blas)'
+        else:
+            impl = 'CPU (without direct Theano binding to blas but with numpy/scipy binding to blas)'
     elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
               f.maker.env.toposort()]):
-        impl = 'gpu'
+        impl = 'GPU'
     else:
         impl = 'ERROR, unable to tell if Theano used the cpu or the gpu:\n'
         impl += str(f.maker.env.toposort())
