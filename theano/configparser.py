@@ -1,15 +1,18 @@
-# For flag of bool type, we consider the string 'False','false' and '0' as False
-# and the string 'True', 'true', '1' as true.
+# For flag of bool type, we consider the strings 'False', 'false' and '0'
+# as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
 
-import os, StringIO, sys
-import ConfigParser
 import logging
+import os
+import sys
 import warnings
+import ConfigParser
+import StringIO
 
 import theano
 
 _logger = logging.getLogger('theano.configparser')
+
 
 class TheanoConfigWarning(Warning):
 
@@ -21,16 +24,18 @@ class TheanoConfigWarning(Warning):
 for key in os.environ:
     if key.startswith("THEANO"):
         if key not in ("THEANO_FLAGS", "THEANORC"):
-            TheanoConfigWarning.warn("Ignoring deprecated environment variable %s" % key)
+            TheanoConfigWarning.warn(
+                    "Ignoring deprecated environment variable %s" % key)
 
 THEANO_FLAGS = os.getenv("THEANO_FLAGS", "")
 # The THEANO_FLAGS environment variable should be a list of comma-separated
-# [section.]option=value entries. If the section part is omitted, their should be only one
-# section that contains the given option.
+# [section.]option=value entries. If the section part is omitted, there should
+# be only one section that contains the given option.
+
 
 def parse_config_string(config_string, issue_warnings=True):
     """
-    Parses a config string composed of comma-separated key=value components into a dict.
+    Parses a config string (comma-separated key=value components) into a dict.
     """
     config_dict = {}
     for kv_pair in THEANO_FLAGS.split(','):
@@ -40,7 +45,10 @@ def parse_config_string(config_string, issue_warnings=True):
         kv_tuple = kv_pair.split('=', 1)
         if len(kv_tuple) == 1:
             if issue_warnings:
-                TheanoConfigWarning.warn("Config key '%s' has no value, ignoring it" % kv_tuple[0], stacklevel=1)
+                TheanoConfigWarning.warn(
+                        ("Config key '%s' has no value, ignoring it"
+                            % kv_tuple[0]),
+                        stacklevel=1)
         else:
             k, v = kv_tuple
             # subsequent values for k will override earlier ones
@@ -49,12 +57,14 @@ def parse_config_string(config_string, issue_warnings=True):
 
 THEANO_FLAGS_DICT = parse_config_string(THEANO_FLAGS, issue_warnings=True)
 
+
 # THEANORC can contain a colon-delimited list of config files, like
 # THEANORC=~lisa/.theanorc:~/.theanorc
 # In that case, definitions in files on the right (here, ~/.theanorc) have
 # precedence over those in files on the left.
 def config_files_from_theanorc():
-    rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(os.pathsep)]
+    rval = [os.path.expanduser(s) for s in
+            os.getenv('THEANORC', '~/.theanorc').split(os.pathsep)]
     if os.getenv('THEANORC') is None and sys.platform == "win32":
         # to don't need to change the filename and make it open easily
         rval.append(os.path.expanduser('~/.theanorc.txt'))
@@ -62,7 +72,9 @@ def config_files_from_theanorc():
 
 
 config_files = config_files_from_theanorc()
-theano_cfg = ConfigParser.SafeConfigParser({'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])})
+theano_cfg = ConfigParser.SafeConfigParser(
+        {'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])}
+        )
 theano_cfg.read(config_files)
 # Having a raw version of the config around as well enables us to pass
 # through config values that contain format strings.
@@ -109,6 +121,7 @@ def fetch_val_for_key(key):
 
 _config_var_list = []
 
+
 def _config_print(thing, buf):
     for cv in _config_var_list:
         print >> buf, cv
@@ -134,6 +147,7 @@ def get_config_md5():
 class TheanoConfigParser(object):
     #properties are installed by AddConfigVar
     _i_am_a_config_class = True
+
     def __str__(self):
         sio = StringIO.StringIO()
         _config_print(self.__class__, sio)
@@ -142,16 +156,19 @@ class TheanoConfigParser(object):
 # N.B. all instances of TheanoConfigParser give access to the same properties.
 config = TheanoConfigParser()
 
-#
-# The data structure at work here is a tree of CLASSES with CLASS ATTRIBUTES/PROPERTIES that
-# are either a) INSTANTIATED dynamically-generated CLASSES, or b) ConfigParam instances.
-# The root of this tree is the TheanoConfigParser CLASS, and the internal nodes are the SubObj
-# classes created inside of AddConfigVar().
+
+# The data structure at work here is a tree of CLASSES with
+# CLASS ATTRIBUTES/PROPERTIES that are either a) INSTANTIATED
+# dynamically-generated CLASSES, or b) ConfigParam instances.  The root
+# of this tree is the TheanoConfigParser CLASS, and the internal nodes
+# are the SubObj classes created inside of AddConfigVar().
 # Why this design ?
-# - The config object is a true singleton.  Every instance of TheanoConfigParser is an empty
-#   instance that looks up attributes/properties in the [single] TheanoConfigParser.__dict__
+# - The config object is a true singleton.  Every instance of
+#   TheanoConfigParser is an empty instance that looks up attributes/properties
+#   in the [single] TheanoConfigParser.__dict__
 # - The subtrees provide the same interface as the root
-# - ConfigParser subclasses control get/set of config properties to guard against craziness.
+# - ConfigParser subclasses control get/set of config properties to guard
+#   against craziness.
 
 def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     """Add a new variable to theano.config
@@ -163,10 +180,12 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     :param doc: What does this variable specify?
 
     :type configparam: ConfigParam instance
-    :param configparam: an object for getting and setting this configuration parameter
+    :param configparam: an object for getting and setting this configuration
+        parameter
 
     :type root: object
-    :param root: used for recusive calls -- do not provide an argument for this parameter.
+    :param root: used for recusive calls -- do not provide an argument for
+        this parameter.
 
     :type in_c_key: boolean
     :param in_c_key: If True, then whenever this config option changes, the
@@ -178,7 +197,8 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     :returns: None
     """
 
-    # this method also performs some of the work of initializing ConfigParam instances
+    # This method also performs some of the work of initializing ConfigParam
+    # instances
 
     if root is config:
         #only set the name in the first call, not the recursive ones
@@ -187,31 +207,37 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     if len(sections) > 1:
         # set up a subobject
         if not hasattr(root, sections[0]):
-            # every internal node in the config tree is an instance of its own unique class
+            # every internal node in the config tree is an instance of its own
+            # unique class
             class SubObj(object):
                 _i_am_a_config_class = True
             setattr(root.__class__, sections[0], SubObj())
         newroot = getattr(root, sections[0])
-        if not getattr(newroot, '_i_am_a_config_class', False) or isinstance(newroot, type):
-            raise TypeError('Internal config nodes must be config class instances', newroot)
+        if (not getattr(newroot, '_i_am_a_config_class', False)
+                or isinstance(newroot, type)):
+            raise TypeError(
+                    'Internal config nodes must be config class instances',
+                    newroot)
         return AddConfigVar('.'.join(sections[1:]), doc, configparam,
                             root=newroot, in_c_key=in_c_key)
     else:
         if hasattr(root, name):
-            raise AttributeError('This name is already taken', configparam.fullname)
+            raise AttributeError('This name is already taken',
+                                 configparam.fullname)
         configparam.doc = doc
         configparam.in_c_key = in_c_key
-        configparam.__get__() # trigger a read of the value from config files and env vars
+        # trigger a read of the value from config files and env vars
+        configparam.__get__()
         setattr(root.__class__, sections[0], configparam)
         _config_var_list.append(configparam)
 
 
 class ConfigParam(object):
 
-    def __init__(self, default, filter=None,  allow_override=True):
+    def __init__(self, default, filter=None, allow_override=True):
         """
-        If allow_override is False, we can't change the value after the import of Theano.
-        So the value should be the same during all the execution
+        If allow_override is False, we can't change the value after the import
+        of Theano. So the value should be the same during all the execution.
         """
         self.default = default
         self.filter = filter
@@ -239,7 +265,9 @@ class ConfigParam(object):
 
     def __set__(self, cls, val):
         if not self.allow_override and hasattr(self, 'val'):
-            raise Exception("Can't change the value of this config parameter after initialization!")
+            raise Exception(
+                    "Can't change the value of this config parameter "
+                    "after initialization!")
         #print "SETTING PARAM", self.fullname,(cls), val
         if self.filter:
             self.val = self.filter(val)
@@ -262,42 +290,59 @@ class EnumStr(ConfigParam):
             if val in self.all:
                 return val
             else:
-                raise ValueError('Invalid value ("%s") for configuration variable "%s". Legal options are %s'
-                        % (val, self.fullname, self.all))
+                raise ValueError((
+                    'Invalid value ("%s") for configuration variable "%s". '
+                    'Valid options are %s'
+                    % (val, self.fullname, self.all)))
         over = kwargs.get("allow_override", True)
         super(EnumStr, self).__init__(default, filter, over)
 
     def __str__(self):
         return '%s (%s) ' % (self.fullname, self.all)
 
+
 class TypedParam(ConfigParam):
     def __init__(self, default, mytype, is_valid=None, allow_override=True):
         self.mytype = mytype
+
         def filter(val):
             cast_val = mytype(val)
             if callable(is_valid):
                 if is_valid(cast_val):
                     return cast_val
                 else:
-                    raise ValueError('Invalid value (%s) for configuration variable "%s".'
+                    raise ValueError(
+                            'Invalid value (%s) for configuration variable '
+                            '"%s".'
                             % (val, self.fullname), val)
             return cast_val
-        super(TypedParam, self).__init__(default, filter,  allow_override=allow_override)
+
+        super(TypedParam, self).__init__(default, filter,
+                allow_override=allow_override)
+
     def __str__(self):
         return '%s (%s) ' % (self.fullname, self.mytype)
 
+
 def StrParam(default, is_valid=None, allow_override=True):
     return TypedParam(default, str, is_valid, allow_override=allow_override)
+
+
 def IntParam(default, is_valid=None, allow_override=True):
     return TypedParam(default, int, is_valid, allow_override=allow_override)
+
+
 def FloatParam(default, is_valid=None, allow_override=True):
     return TypedParam(default, float, is_valid, allow_override=allow_override)
+
+
 def BoolParam(default, is_valid=None, allow_override=True):
-#see comment at the beggining of this file.
+    #see comment at the beginning of this file.
+
     def booltype(s):
-        if s in ['False','false','0', False]:
+        if s in ['False', 'false', '0', False]:
             return False
-        elif s in ['True','true','1', True]:
+        elif s in ['True', 'true', '1', True]:
             return True
 
     def is_valid_bool(s):
@@ -305,6 +350,9 @@ def BoolParam(default, is_valid=None, allow_override=True):
             return True
         else:
             return False
+
     if is_valid is None:
         is_valid = is_valid_bool
-    return TypedParam(default, booltype, is_valid, allow_override=allow_override)
+
+    return TypedParam(default, booltype, is_valid,
+            allow_override=allow_override)
