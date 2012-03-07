@@ -432,10 +432,10 @@ class SamplingDotCsr(gof.Op):
 
         if dot_out == "float32":
             conv_type = "float"
-            cdot = "sdot_sub_"
+            cdot = "sdot_"
         else:
             conv_type = "double"
-            cdot = "ddot_sub_"
+            cdot = "ddot_"
         
         typenum_x = node.inputs[0].type.dtype_specs()[-1] # retrieve dtype number
         typenum_y = node.inputs[1].type.dtype_specs()[-1] # retrieve dtype number
@@ -525,9 +525,7 @@ class SamplingDotCsr(gof.Op):
                     
                     const dtype_%(y)s* y_col = (dtype_%(y)s*)(%(y)s->data + %(y)s->strides[0] * n);
                     
-                    %(cdot)s((int*)&K, (const %(conv_type)s*)x_row, (int*)&Sdx, (const %(conv_type)s*)y_col, (int*)&Sdy, &Dzd[n_idx * Sdzd]);
-                    
-                    Dzd[n_idx * Sdzd] *= Dpd[n_idx * Sdpd];
+                    Dzd[n_idx * Sdzd] = Dpd[n_idx * Sdpd] * %(cdot)s((int*)&K, (const %(conv_type)s*)x_row, (int*)&Sdx, (const %(conv_type)s*)y_col, (int*)&Sdy);
                 }
             }            
         }
