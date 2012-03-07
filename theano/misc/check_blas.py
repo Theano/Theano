@@ -37,14 +37,6 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
                       str that represents the implementation used)
     """
 
-    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
-                                 order=order))
-    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX,
-                                 order=order))
-    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
-                                 order=order))
-    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)})
-
     if verbose:
         print 'Some Theano flags:'
         print '    blas.ldflags=', theano.config.blas.ldflags
@@ -62,18 +54,34 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print 'Numpy location:', numpy.__file__
         print 'Numpy version:', numpy.__version__
         print
-    t0 = 0
-    t1 = -1
+
+    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
+                                 order=order))
+    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX,
+                                 order=order))
+    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
+                                 order=order))
+    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)},
+                        mode=theano.compile.ProfileMode())
+
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
             f.maker.env.toposort()]):
-        impl = 'cpu'
+        c_impl = f.profile.apply_cimpl.values()
+        assert len(c_impl) == 1
+        if c_impl[0]:
+            impl = 'CPU (with direct Theano binding to blas)'
+        else:
+            impl = 'CPU (without direct Theano binding to blas but with numpy/scipy binding to blas)'
     elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
               f.maker.env.toposort()]):
-        impl = 'gpu'
+        impl = 'GPU'
     else:
         impl = 'ERROR, unable to tell if Theano used the cpu or the gpu:\n'
         impl += str(f.maker.env.toposort())
+
+    t0 = 0
+    t1 = -1
 
     if execute:
         t0 = time.time()
