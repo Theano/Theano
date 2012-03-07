@@ -28,6 +28,14 @@ New Features
    anything below an intermediate variable that has a name. Defaults to False.
  * debugprint does not print anymore the "|" symbol in a column after the last input.
 
+Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
+ * They are all in the theano.sparse.sandbox.sp2 module
+ * Op class: Cast, Poisson, Multinomial, EliminateZeros, Sum, Binomial
+ * Op class: SamplingDot, SamplingDotCsr(inserted automatically)
+ * Op function: structured_sigmoid, structured_exp, structured_pow, structured_minimum,
+ * Op class: StructuredAddSV, StrucutedAddSVCSR(inserted automatically)
+ * opt: local_sampling_dot_csr, local_structured_add_s_v
+
 Internal changes
  * Define new exceptions MissingInputError and UnusedInputError, and use them
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
