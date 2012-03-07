@@ -582,7 +582,7 @@ class Test_pfunc(unittest.TestCase):
         assert y.get_value() == 2
 
         # a is needed as input if y.default_update is used
-        self.assertRaises(TypeError, pfunc, [], x)
+        self.assertRaises(theano.gof.MissingInputError, pfunc, [], x)
 
     def test_default_updates_partial_graph(self):
         a = shared(0)
@@ -618,7 +618,8 @@ class Test_pfunc(unittest.TestCase):
 
     def test_duplicate_inputs(self):
         x = theano.tensor.lscalar('x')
-        self.assertRaises(ValueError, theano.function, [x, x, x], x)
+        self.assertRaises(theano.compile.UnusedInputError,
+                theano.function, [x, x, x], x)
 
 
 
