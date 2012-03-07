@@ -776,7 +776,7 @@ compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
 GotoBLAS2 can be downloaded
-`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2/downloads>`__
+`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2>`__
 (we tested v1.13).
 To compile it, you will also need MSYS and Perl (installation steps are
 described below).
