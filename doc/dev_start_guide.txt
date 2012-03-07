@@ -317,10 +317,10 @@ bindings to work only on Python files.
 Emacs
 ~~~~~
 
-There is an **execellent** system to configure emacs for python:
+There is an **excellent** system to configure emacs for python:
 `emacs-for-python
-<https://github.com/gabrielelanaro/emacs-for-python>`_. It gatter many
-emacs config into one and modify them to behave together nicely. You
+<https://github.com/gabrielelanaro/emacs-for-python>`_. It gathers many
+emacs config into one, and modifies them to behave together nicely. You
 can use it to check for pep8 compliance and for python syntax errors.
 
 To install it on linux, you can do like this:
@@ -333,31 +333,31 @@ To install it on linux, you can do like this:
 
 Then in your ``~/.emacs`` file, add this:
 
-.. code-block:: bash
+.. code-block:: common-lisp
 
    ;; Mandatory
    (load-file "~/.emacs.d/emacs-for-python/epy-init.el")
    (add-to-list 'load-path "~/.emacs.d/emacs-for-python/") ;; tell where to load the various files
 
-   ;; Each of them enable different part of the system
-   ;; only the 2 first are needed for pep8, syntax check.
+   ;; Each of them enables different parts of the system.
+   ;; Only the first two are needed for pep8, syntax check.
    (require 'epy-setup) ;; It will setup other loads, it is required!
    (require 'epy-python) ;; If you want the python facilities [optional]
    (require 'epy-completion) ;; If you want the autocompletion settings [optional]
    (require 'epy-editing) ;; For configurations related to editing [optional]
 
-   ;; define f10 to previous error
-   ;; define f11 to next error
+   ;; Define f10 to previous error
+   ;; Define f11 to next error
    (require 'epy-bindings) ;; For my suggested keybindings [optional]
 
-   ;; some shortcut that don't collide with gnome-terminal
+   ;; Some shortcut that do not collide with gnome-terminal,
    ;; otherwise, "epy-bindings" define f10 and f11 for them.
    (global-set-key [f2] 'flymake-goto-prev-error)
    (global-set-key [f3] 'flymake-goto-next-error)
 
-   ;; next two lines are the checks to do. You can add more if you wish
-   (epy-setup-checker "pyflakes %f") ;; for python syntax check
-   (epy-setup-checker "pep8 %f") ;; for pep8 check
+   ;; Next two lines are the checks to do. You can add more if you wish.
+   (epy-setup-checker "pyflakes %f") ;; For python syntax check
+   (epy-setup-checker "pep8 %f") ;; For pep8 check
 
 
 
