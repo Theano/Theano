@@ -46,7 +46,7 @@ def _atexit_print_fn():
     if len(_atexit_print_list) > 1:
     # Make a global profile
         cum = copy.copy(_atexit_print_list[0])
-        cum.message = "Sum of all Theano functions"
+        cum.message = "Sum of all printed profile at exit"
         for ps in _atexit_print_list[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time"]:
