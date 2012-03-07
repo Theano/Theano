@@ -5,14 +5,12 @@ import logging
 import sys
 import time
 import link
-import traceback
 from theano.gof.python25 import all
 
 import theano
 config = theano.config
 
 from theano.configparser import config, AddConfigVar, BoolParam
-from theano import config
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +31,13 @@ class VM(object):
         number of times thunks[i] was called in the course of computations
         performed by call_with_timers().
 
-    call_times - list of floats, one for each thunk. call_times[i] is the amount
-        of runtime spent on thunks[i] in the course of computations performed by
-        call_with_timers().
+    call_times - list of floats, one for each thunk. call_times[i] is
+        the amount of runtime spent on thunks[i] in the course of
+        computations performed by call_with_timers().
 
-    need_update_inputs - bool. True indicates that Function.__call__ must
-        implement the feedback from output storage  to input storage. False means
-        it *must not* repeat that feedback.
+    need_update_inputs - bool. True indicates that Function.__call__
+        must implement the feedback from output storage to input
+        storage. False means it *must not* repeat that feedback.
 
     """
     def __init__(self, nodes, thunks, pre_call_clear):
@@ -58,8 +56,8 @@ class VM(object):
         self.nodes = nodes
         self.thunks = thunks
         self.pre_call_clear = pre_call_clear
-        self.call_counts = [0]*len(nodes)
-        self.call_times = [0]*len(nodes)
+        self.call_counts = [0] * len(nodes)
+        self.call_times = [0] * len(nodes)
         self.time_thunks = False
 
         # This variable (self.need_update_inputs) is overshadowed by
@@ -88,14 +86,15 @@ class VM(object):
 
     def update_profile(self, profile):
         # accumulate into the profile object
-        for node, thunk, t, c in zip(self.nodes, self.thunks, self.call_times, self.call_counts):
-            profile.apply_time.setdefault(node,0.0)
+        for node, thunk, t, c in zip(self.nodes, self.thunks,
+                                     self.call_times, self.call_counts):
+            profile.apply_time.setdefault(node, 0.0)
             profile.apply_time[node] += t
 
-            profile.apply_callcount.setdefault(node,0)
+            profile.apply_callcount.setdefault(node, 0)
             profile.apply_callcount[node] += c
 
-            profile.apply_cimpl[node] = hasattr(thunk,'cthunk')
+            profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
@@ -113,7 +112,8 @@ class Loop(VM):
             for cont in self.pre_call_clear:
                 cont[0] = None
             try:
-                for i, (thunk, node) in enumerate(zip(self.thunks, self.nodes)):
+                for i, (thunk, node) in enumerate(zip(self.thunks,
+                                                      self.nodes)):
                     t0 = time.time()
                     thunk()
                     t1 = time.time()
@@ -141,13 +141,16 @@ class LoopGC(VM):
         self.post_thunk_clear = post_thunk_clear
         if not (len(nodes) == len(thunks) == len(post_thunk_clear)):
             raise ValueError()
+
     def __call__(self):
         if self.time_thunks:
             for cont in self.pre_call_clear:
                 cont[0] = None
             try:
                 i = 0
-                for thunk, node, old_storage in zip(self.thunks, self.nodes, self.post_thunk_clear):
+                for thunk, node, old_storage in zip(self.thunks,
+                                                    self.nodes,
+                                                    self.post_thunk_clear):
                     t0 = time.time()
                     thunk()
                     t1 = time.time()
@@ -162,7 +165,8 @@ class LoopGC(VM):
             for cont in self.pre_call_clear:
                 cont[0] = None
             try:
-                for thunk, node, old_storage in zip(self.thunks, self.nodes, self.post_thunk_clear):
+                for thunk, node, old_storage in zip(self.thunks, self.nodes,
+                                                    self.post_thunk_clear):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
@@ -200,8 +204,8 @@ class Stack(VM):
 
         for i, node in enumerate(self.nodes):
             node_idx[node] = i
-            self.apply_time[node]     = 0
-            self.outputs_size[node]   = []
+            self.apply_time[node] = 0
+            self.outputs_size[node] = []
             node.destroy_dependencies = []
             if node in ords:
                 for prereq in ords[node]:
@@ -217,9 +221,9 @@ class Stack(VM):
                     if cl[0] is not 'output':
                         ls += cl[0].outputs
                 dependencies[k] += ls
-
         if config.profile:
-            self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4, "t64": 8, "128": 16}
+            self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
+                                    "t64": 8, "128": 16}
             atexit.register(self.atexit_print_all)
 
     def run_thunk_of_node(self, node):
@@ -257,11 +261,13 @@ class Stack(VM):
         last_apply_stack_len = -1
         ls = []
         while apply_stack:
-            # Make sure something happened last time round.
-            # This is just a safety check to make sure the op is written correctly
-            # apply_stack should either decrease in length by one (a thunk successfully applied), or
-            # increase in length (added dependencies over and above the original).
-            # NB: this doesn't catch cycles (would be too expensive/slow), just stalls.
+            # Make sure something happened last time round.  This is
+            # just a safety check to make sure the op is written
+            # correctly apply_stack should either decrease in length
+            # by one (a thunk successfully applied), or increase in
+            # length (added dependencies over and above the original).
+            # NB: this doesn't catch cycles (would be too expensive/slow),
+            #     just stalls.
             apply_stack_len = len(apply_stack)
             assert apply_stack_len != last_apply_stack_len
             last_apply_stack_len = apply_stack_len
@@ -289,8 +295,8 @@ class Stack(VM):
             if not thunks[self.node_idx[current_apply]].lazy:
                 # Check if all inputs are in place
                 # If so compute thunk and remove it from the apply_stack
-                # If not leave it in, and add to the apply_stack those that will
-                # produce you those inputs
+                # If not leave it in, and add to the apply_stack those
+                # that will produce you those inputs
 
                 if computed_ins and not computed_outs:
                     try:
@@ -302,22 +308,26 @@ class Stack(VM):
                             # ?? What about inplace .. if the op is inplace
                             # you don't actually ask for more memory!
                             size = []
-                            for (idx,o) in enumerate(
-                                    thunks[self.node_idx[current_apply]].outputs):
-                                if not hasattr(o[0],'size'):
+                            for (idx, o) in enumerate(
+                                    thunks[self.node_idx[
+                                        current_apply]].outputs):
+                                if not hasattr(o[0], 'size'):
                                     size.append(-1)
                                     continue
-                                s=o[0].size
+                                s = o[0].size
                                 dtype = str(o[0].dtype)
                                 dtype2 = dtype[-3:]
-                                s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                                # KeyError here: couldn't determine
+                                # the dtype memory size
+                                s *= self.memory_size_map[dtype2]
                                 size.append(s)
                             self.outputs_size[current_apply] = size
                     except Exception:
                         raise_with_op(current_apply)
                     for o in current_apply.outputs:
                         compute_map[o][0] = 1
-                    # Garbage Collection -> check if anybody else uses this input
+                    # Garbage Collection -> check if anybody else uses
+                    # this input
                     if self.allow_gc:
                         for i in current_apply.inputs:
                             if (dependencies[i] and i.owner
@@ -332,8 +342,11 @@ class Stack(VM):
                 elif not computed_ins:
 
                     apply_stack.append(current_apply)
-                    apply_stack.extend(inp.owner for inp in current_apply.inputs if inp.owner)
-                    apply_stack.extend(inp.owner for inp in current_apply.destroy_dependencies if inp.owner)
+                    apply_stack.extend(inp.owner for inp
+                                       in current_apply.inputs if inp.owner)
+                    apply_stack.extend(inp.owner for inp
+                                       in current_apply.destroy_dependencies
+                                       if inp.owner)
 
             elif not computed_outs:
                 # Try and run it to see if it works
@@ -346,22 +359,26 @@ class Stack(VM):
 
                 if requires:
                     for r in requires:
-                        # We are not done with this op ..
-                        # so we added back and see to get the inputs we are missing
+                        # We are not done with this op ..  so we added
+                        # back and see to get the inputs we are
+                        # missing
                         apply_stack.append(current_apply)
                         if current_apply.inputs[r].owner:
                             apply_stack.append(current_apply.inputs[r].owner)
                 else:
                     if config.profile:
                         size = []
-                        for (idx,o) in enumerate(thunks[self.node_idx[current_apply]].outputs):
+                        for (idx, o) in enumerate(thunks[
+                                self.node_idx[current_apply]].outputs):
                             if not hasattr(o[0], 'size'):
                                 size.append(-1)
                                 continue
                             s=o[0].size
                             dtype = str(o[0].dtype)
                             dtype2 = dtype[-2:]
-                            s *= self.memory_size_map[dtype2] # KeyError here: couldn't determine the dtype memory size
+                            # KeyError here: couldn't determine the
+                            # dtype memory size
+                            s *= self.memory_size_map[dtype2]
                             size.append(s)
                         self.outputs_size[current_apply] = size
                     if self.allow_gc:
@@ -379,6 +396,7 @@ class Stack(VM):
 
 try:
     import lazylinker_c
+
     class CVM(lazylinker_c.CLazyLinker, VM):
         def __init__(self, *args, **kwargs):
             lazylinker_c.CLazyLinker.__init__(self, *args, **kwargs)
@@ -394,9 +412,9 @@ class VM_Linker(link.LocalLinker):
 
     def __init__(self, allow_gc=True, use_cloop=False, callback=None):
         """
-        allow_gc - force the virtual machine to clean up unnecessary references,
-            in order to allow garbage collection on intermediate values during
-            computation of a function.
+        allow_gc - force the virtual machine to clean up unnecessary
+            references, in order to allow garbage collection on
+            intermediate values during computation of a function.
 
         use_cloop - use the C-based virtual machine if possible
 
@@ -411,9 +429,10 @@ class VM_Linker(link.LocalLinker):
         self.callback = callback
         self.updated_vars = {}
 
-    def accept(self, env, no_recycling = []):
+    def accept(self, env, no_recycling=[]):
         """
-        :param env: a PerformLinker can have accepted one Env instance at a time.
+        :param env: a PerformLinker can have accepted one Env instance
+            at a time.
 
         :param no_recycling: WRITEME
 
@@ -464,9 +483,9 @@ class VM_Linker(link.LocalLinker):
 
             nodes_idx_inv = {}
             vars_idx_inv = {}
-            for (node,i) in nodes_idx.items():
+            for (node, i) in nodes_idx.items():
                 nodes_idx_inv[i] = node
-            for (var,i) in vars_idx.items():
+            for (var, i) in vars_idx.items():
                 vars_idx_inv[i] = var
 
             # put storage_map and compute_map into a int-based scheme
@@ -496,8 +515,8 @@ class VM_Linker(link.LocalLinker):
                 base_input_output_list.extend(outputs_idx)
 
             # build the var owner array
-            var_owner = [None]*len(vars_idx)
-            for (var,i) in vars_idx.items():
+            var_owner = [None] * len(vars_idx)
+            for (var, i) in vars_idx.items():
                 if var.owner:
                     var_owner[i] = nodes_idx[var.owner]
 
@@ -511,18 +530,18 @@ class VM_Linker(link.LocalLinker):
             for i, node in enumerate(nodes):
                 node_output_size.append(0)
                 prereq_var_idxs = []
-                for prereq_node in ords.get(node,[]):
+                for prereq_node in ords.get(node, []):
                     prereq_var_idxs.extend(
                             [vars_idx[v] for v in prereq_node.outputs])
                 prereq_var_idxs = list(set(prereq_var_idxs))
-                prereq_var_idxs.sort() # TODO: why sort?
+                prereq_var_idxs.sort()  # TODO: why sort?
                 node_prereqs.append(prereq_var_idxs)
 
             update_storage = []
             for (ivar, ovar) in updated_vars.items():
                 if ivar != ovar:
-                    update_storage.append(vars_idx[ivar]) #dst
-                    update_storage.append(vars_idx[ovar]) #src
+                    update_storage.append(vars_idx[ivar])  # dst
+                    update_storage.append(vars_idx[ovar])  # src
 
             c0 = sys.getrefcount(node_n_inputs)
             vm = CVM(
@@ -530,8 +549,8 @@ class VM_Linker(link.LocalLinker):
                     thunks,
                     pre_call_clear,
                     allow_gc=self.allow_gc,
-                    call_counts=[0]*len(nodes),
-                    call_times=[0.0]*len(nodes),
+                    call_counts=[0] * len(nodes),
+                    call_times=[0.0] * len(nodes),
                     compute_map_list=compute_map_list,
                     storage_map_list=storage_map_list,
                     base_input_output_list=base_input_output_list,
@@ -569,7 +588,7 @@ class VM_Linker(link.LocalLinker):
                         )
         return vm
 
-    def make_all(self, profiler = None, input_storage = None,
+    def make_all(self, profiler=None, input_storage=None,
             output_storage = None,
             ):
         env = self.env
@@ -617,4 +636,3 @@ class VM_Linker(link.LocalLinker):
                     for output, storage in zip(env.outputs, output_storage)],
                 thunks,
                 order)
-
