@@ -123,7 +123,7 @@ optimization is `local_gemm_to_gemv`.
 
 """
 
-import logging, copy, os
+import logging, copy, os, sys
 
 import numpy
 import numpy.distutils
@@ -301,6 +301,11 @@ ger_destructive = Ger(destructive=True)
 
 def default_blas_ldflags():
     try:
+        # If we are in a EPD installation, mkl is available
+        if "EPD" in sys.version:
+            return ' '.join(
+                ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                ['-l%s' % l for l in numpy.distutils.__config__.blas_opt_info['libraries']])
         #if numpy was linked with library that are not installed, we can't reuse them.
         if all(not os.path.exists(dir) for dir in numpy.distutils.__config__.blas_opt_info['library_dirs']):
             return "-lblas"
