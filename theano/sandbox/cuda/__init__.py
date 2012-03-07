@@ -346,7 +346,9 @@ def handle_shared_float32(tf):
         theano.compile.shared_constructor(float32_shared_constructor)
 
     else:
-        raise NotImplementedError('removing our handler')
+        theano.compile.shared_constructor(float32_shared_constructor, True)
+        assert (float32_shared_constructor not in
+                theano.compile.shared.constructors)
 
 # We can't test the driver during import here as this cause circular
 # import dependency. So we also test it in the file theano/__init__.py
