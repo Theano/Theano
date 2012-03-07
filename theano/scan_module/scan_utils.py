@@ -222,9 +222,9 @@ def get_updates_and_outputs(ls):
                 'The return value of your scan lambda expression may only be '
                 'made of lists, tuples, or dictionaries containing Theano '
                 'variables (or `theano.scan_module.until` objects for '
-                'conditions). In particular if you need to use constant values, '
-                'you can use `tensor.constant` to turn them into Theano '
-                'variables.')
+                'conditions). In particular if you need to use constant '
+                'values, you can use `tensor.constant` to turn them into '
+                'Theano variables.')
 
     if is_outputs(ls):
         return None, _list(ls), {}
