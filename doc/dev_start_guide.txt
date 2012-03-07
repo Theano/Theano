@@ -207,7 +207,7 @@ In Theano, we use the same coding style as the `Pylearn
 <http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
 project, except that we don't use the numpy docstring standard.
 The principal thing to know is that we follow the
-`pep8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
+`PEP 8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
 
 We use git hooks provided in the project `pygithooks
 <https://github.com/lumberlabs/pygithooks>`_ to validate that commits
@@ -221,6 +221,103 @@ We decided to fix everything incrementally. So not all files respect it
 now. So we strongly suggest that you use the "increment" pygithooks
 config option to have a good workflow. See the pygithooks main page
 for how to set it up for Theano and how to enable this option.
+
+
+Setting up your Editor for PEP8
+-------------------------------
+
+Here are instructions for :ref:`Vim <vim_pep8>` and :ref:`Emacs
+<emacs_pep8>`. If you have similar instructions for other text editors
+or IDE, please let us know and we will update this documentation.
+
+.. _vim_pep8:
+
+Vim
+~~~
+
+Detection of warnings and errors is done by the `pep8`_ script
+(or `flake8`_, that also checks for other things, like syntax
+errors). Syntax highlighting and general integration into Vim is done by
+the `Syntastic`_ plugin for Vim.
+
+To install flake8, simply run::
+
+    pip install flake8
+
+You can use ``easy_install`` instead of ``pip``, and ``pep8`` instead of
+``flake8`` if you prefer. The important thing is that the ``flake8`` or
+``pep8`` executable ends up in your ``$PATH``.
+
+To install Syntastic, according to its documentation, the easiest way is
+to install `pathogen.vim`_ first.
+
+Here's a relevant extract of pathogen.vim's installation instructions:
+
+    Install to ``~/.vim/autoload/pathogen.vim``. Or copy and paste::
+
+        mkdir -p ~/.vim/autoload ~/.vim/bundle; \
+        curl -so ~/.vim/autoload/pathogen.vim \
+            https://raw.github.com/tpope/vim-pathogen/HEAD/autoload/pathogen.vim
+
+    If you don't have ``curl``, use ``wget -O`` instead.
+
+    By the way, if you're using Windows, change all occurrences of ``~/.vim``
+    to ``~\vimfiles``.
+
+    Add this to your vimrc::
+
+        call pathogen#infect()
+
+    Now any plugins you wish to install can be extracted to a subdirectory
+    under ``~/.vim/bundle``, and they will be added to the ``'runtimepath'``.
+
+Now, we can install Syntastic. From the installation instructions:
+
+    .. code-block:: bash
+
+        cd ~/.vim/bundle
+        git clone https://github.com/scrooloose/syntastic.git
+
+    Then reload vim, run ``:Helptags``, and check out ``:help syntastic.txt``.
+
+From now on, when you save into a Python file, a syntax check will be
+run, and results will be displayed using Vim's `quickfix`_ mechanism
+(more precisely, a location-list). A few useful commands are:
+
+* Open the list of errors: ``:lopen``, that can be abbreviated in ``:lop``
+  (denoted ``:lop[en]``).
+* Close that list: ``:lcl[ose]``.
+* Next error: ``:lne[xt]``.
+* Previous error: ``:lp[revious]``.
+
+Once you fix errors, messages and highlighting will still appear in the
+fixed file until you save it again.
+
+We can also configure the ``~/.vimrc`` to make it easier to work with Syntastic.
+For instance, to add a summary in the status bar, you can add::
+
+    set statusline+=%{SyntasticStatuslineFlag()}
+
+To bind F2 and F3 to navigate to previous and next error, you can add::
+
+    map <F2> :lprevious<CR>
+    map <F3> :lnext<CR>
+
+You can prefix those by ``autocmd FileType python`` if you want these
+bindings to work only on Python files.
+
+.. _pep8: http://pypi.python.org/pypi/pep8
+.. _flake8: http://pypi.python.org/pypi/flake8
+.. _Syntastic: https://github.com/scrooloose/syntastic/
+.. _pathogen.vim: https://github.com/tpope/vim-pathogen
+.. _quickfix: http://vimdoc.sourceforge.net/htmldoc/quickfix.html#quickfix
+
+.. _emacs_pep8:
+
+Emacs
+~~~~~
+
+WRITEME
 
 
 Unit tests
