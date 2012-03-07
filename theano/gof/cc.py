@@ -4,7 +4,7 @@ Defines Linkers that deal with C implementations.
 
 # Python imports
 from copy import copy
-import re  #for set_compiledir
+import re  # for set_compiledir
 import os
 import StringIO
 import sys
@@ -340,14 +340,19 @@ def apply_policy(policy, r, name, sub):
 def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     """WRITEME
     variable -> a Variable
-    policies -> a pair of tuples ((declare_policy, behavior_policy, cleanup_policy), -- at construction
-                                  (declare_policy, behavior_policy, cleanup_policy)) -- at execution
-                the first list will produce an element of the 'struct_builders' argument in struct_gen
-                the second list will produce an element of the 'blocks' argument in struct_gen
+    policies -> a pair of tuples ((declare_policy, behavior_policy,
+                                   cleanup_policy), -- at construction
+                                  (declare_policy, behavior_policy,
+                                   cleanup_policy)) -- at execution
+                the first list will produce an element of the
+                'struct_builders' argument in struct_gen the second
+                list will produce an element of the 'blocks' argument
+                in struct_gen
+
     id -> the id assigned to this variable's task in the computation
-    symbol_table -> a dict that maps variables to variable names. It is not read
-        by this function but a variable name for the variable is computed and added
-        to the table.
+    symbol_table -> a dict that maps variables to variable names. It
+        is not read by this function but a variable name for the
+        variable is computed and added to the table.
     sub -> dictionary for use by L{CodeBlock}.
     """
 
@@ -361,14 +366,14 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     sub['stor_ptr'] = "storage_%s" % name
     # struct_declare, struct_behavior, struct_cleanup, sub)
     struct_builder = CodeBlock(*[apply_policy(policy, variable, name, sub)
-                                 for policy in policies[0]]+[sub])
+                                 for policy in policies[0]] + [sub])
     sub['id'] = id + 1
     sub['fail'] = failure_code(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
     # run_declare, run_behavior, run_cleanup, sub)
     block = CodeBlock(*[apply_policy(policy, variable, name, sub)
-                        for policy in policies[1]]+[sub])
+                        for policy in policies[1]] + [sub])
 
     return struct_builder, block
 
@@ -392,7 +397,8 @@ class CLinker(link.Linker):
         """WRITEME"""
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            #raise Exception("Cannot accept from a Linker that is already"
+            #                " tied to another Env.")
         self.env = env
         self.fetch_variables()
         self.no_recycling = no_recycling
@@ -437,8 +443,6 @@ class CLinker(link.Linker):
 
         no_recycling = self.no_recycling
 
-        env = self.env
-
         self.consts = []
 
         c_support_code_apply = []
@@ -464,21 +468,28 @@ class CLinker(link.Linker):
 
             # it might be possible to inline constant variables as C literals
 ##            if getattr(variable, 'constant', False):
-            # policy = [[what to declare in the struct, what to do at construction, what to do at destruction],
-            #           [what to declare in each run, what to do at the beginning of each run, what to do at the end of each run]]
+            # policy = [[what to declare in the struct,
+            #            what to do at construction,
+            #            what to do at destruction],
+            #           [what to declare in each run,
+            #            what to do at the beginning of each run,
+            #            what to do at the end of each run]]
             if variable in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
 #                 if isinstance(variable, Constant):
-#                     raise TypeError("Inputs to CLinker cannot be Constant.", variable)
+#                     raise TypeError("Inputs to CLinker cannot be Constant.",
+#                                     variable)
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
                 if not isinstance(variable, graph.Value):
-                    raise TypeError("All orphans to CLinker must be Value instances.", variable)
+                    raise TypeError("All orphans to CLinker must be Value"
+                                    " instances.", variable)
                 if isinstance(variable, graph.Constant):
                     try:
-                        symbol[variable] = "(" + variable.type.c_literal(variable.data) + ")"
+                        symbol[variable] = ("(" + variable.type.c_literal(
+                                variable.data) + ")")
                         self.consts.append(variable)
                         self.orphans.remove(variable)
                         continue
@@ -542,8 +553,9 @@ class CLinker(link.Linker):
             # specified by the op's c_var_names method to the actual
             # variable names that we will use.
 ##            ivnames, ovnames = op.c_var_names()
-            sub = dict(failure_var = failure_var)
-##            for variable, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
+            sub = dict(failure_var=failure_var)
+##            for variable, vname in zip(op.inputs + op.outputs,
+##                                       ivnames + ovnames):
 ##                sub[vname] = symbol[variable]
 
             name = "node_%i" % node_num
@@ -624,7 +636,7 @@ class CLinker(link.Linker):
         self.init_tasks = init_tasks
         self.blocks = blocks
         self.tasks = tasks
-        all = self.inputs + self.outputs + self.orphans
+        all_info = self.inputs + self.outputs + self.orphans
         self.c_support_code_apply = c_support_code_apply
 
         if (self.init_tasks, self.tasks) != self.get_init_tasks():
@@ -636,8 +648,8 @@ class CLinker(link.Linker):
 
         # List of indices that should be ignored when passing the arguments
         # (basically, everything that the previous call to uniq eliminated)
-        self.dupidx = [i for i, x in enumerate(all)
-                       if all.count(x) > 1 and all.index(x) != i]
+        self.dupidx = [i for i, x in enumerate(all_info)
+                       if all_info.count(x) > 1 and all_info.index(x) != i]
         return self.struct_code
 
     def support_code(self):
@@ -919,10 +931,13 @@ class CLinker(link.Linker):
         type of the node input, and the nature of that input in the
         graph.
 
-        The nature of a typical variable is encoded by integer pairs ``((a,b),c)``:
-        ``a`` is the topological position of the input's owner (-1 for graph inputs),
+        The nature of a typical variable is encoded by integer pairs
+        ``((a,b),c)``:
+        ``a`` is the topological position of the input's owner
+              (-1 for graph inputs),
         ``b`` is the index of the variable in the owner's output list.
-        ``c`` is a flag indicating whether the variable is in the no_recycling set.
+        ``c`` is a flag indicating whether the variable is in the
+              no_recycling set.
 
         If a variable is also a graph output, then its position in the
         outputs list is also bundled with this tuple (after the b).
@@ -1201,7 +1216,6 @@ class CLinker(link.Linker):
             mod.add_include(header)
 
         return mod
-
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
                        keep_lock=False):
