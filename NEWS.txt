@@ -27,6 +27,8 @@ New Features
  * debugprint new param stop_on_name=[False, True]. If True, we don't print
    anything below an intermediate variable that has a name. Defaults to False.
  * debugprint does not print anymore the "|" symbol in a column after the last input.
+ * If you use Enthought Python Distribution (EPD) now we use its blas
+   implementation by default.
 
 Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module

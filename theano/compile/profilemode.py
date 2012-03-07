@@ -471,7 +471,7 @@ class ProfileMode(Mode):
                 ftot=tot*100/local_time
                 if nb_call==0:
                     continue
-                if a[1] in apply_cimpl:
+                if apply_cimpl.get(a[1], False):
                     msg = '*'
                 else:
                     msg = ' '
