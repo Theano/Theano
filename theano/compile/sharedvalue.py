@@ -145,12 +145,12 @@ class SharedVariable(Variable):
 
     def _value_get(self):
         raise Exception("sharedvar.value does not exist anymore. Use "
-                        "sharedvar.get_value() or sharedvar.get_value()"
+                        "sharedvar.get_value() or sharedvar.set_value()"
                         " instead.")
 
     def _value_set(self, new_value):
         raise Exception("sharedvar.value does not exist anymore. Use "
-                        "sharedvar.get_value() or sharedvar.get_value()"
+                        "sharedvar.get_value() or sharedvar.set_value()"
                         " instead.")
 
     # We keep this just to raise an error
