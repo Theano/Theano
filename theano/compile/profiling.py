@@ -7,11 +7,11 @@
 # TODO: ensure field width for string fields makes columns line up
 # TODO: what to do about 'diff summary'? (ask Fred?)
 #
-__authors__   = "James Bergstra"
-__reviewer__  = "Razvan Pascanu"
+__authors__ = "James Bergstra"
+__reviewer__ = "Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 import atexit
@@ -22,7 +22,7 @@ import time
 import numpy
 
 import theano
-from theano.configparser import AddConfigVar, StrParam, BoolParam
+from theano.configparser import AddConfigVar, BoolParam
 
 import_time = time.time()
 config = theano.config
@@ -48,6 +48,8 @@ def _atexit_print_fn():
         cum = copy.copy(_atexit_print_list[0])
         cum.message = "Sum of all printed profile at exit"
         for ps in _atexit_print_list[1:]:
+#        for ps in [ps for ps in _atexit_print_list[1:]
+#                   if not isinstance(ps, ScanProfileStats)]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time"]:
                 setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
@@ -61,6 +63,7 @@ def _atexit_print_fn():
 
 
 atexit.register(_atexit_print_fn)
+
 
 class ProfileStats(object):
     """
@@ -119,6 +122,7 @@ class ProfileStats(object):
     # time spent linking graph (FunctionMaker.create)
 
     line_width = 140
+
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
@@ -185,20 +189,27 @@ class ProfileStats(object):
         """dict op -> total number of flops"""
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
-        return rval #TODO: continue here
+        return rval  # TODO: continue here
         for node, count in self.apply_callcount.items():
             rval.setdefault(node.op, 0)
             rval[node.op] += 1
         return rval
-        for a,t in op_time.items():
-            if hasattr(a,'flops'):
-                op_flops[a]=a.flops*op_call[a]/t/1e6
+        for a, t in self.op_time.items():
+            if hasattr(a, 'flops'):
+                op_flops[a] = a.flops * op_call[a] / t / 1e6
 
-        flops_msg=''
+        flops_msg = ''
         if op_flops:
-            flops_msg=' <MFlops/s>'
-            print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
+            flops_msg = ' <MFlops/s>'
+            print ('\nHACK WARNING: we print the flops for some OP, but the'
+                   ' logic don\' always work. You need to know the internal'
+                   ' of Theano to make it work correctly.'
+                   ' Otherwise don\'t use!')
+        print ('\nOp-wise summary:'
+               ' <%% of local_time spent on this kind of Op>'
+               ' <cumulative %%> <self seconds> <cumulative seconds>'
+               ' <time per call> %s <nb_call> <nb apply> <Op name>' % (
+                flops_msg))
 
     def summary_ops(self, file=sys.stderr, N=None):
         if self.apply_time:
@@ -216,19 +227,21 @@ class ProfileStats(object):
         op_impl = self.op_impl()
         if N is None:
             N = len(self.op_flops)
-        otimes = [(t*100/local_time,
+        otimes = [(t * 100 / local_time,
                     t,
                     op,
                     op_impl.get(op, '  '),
                     op_call.get(op, 0),
-                    op_apply.get(op,0))
+                    op_apply.get(op, 0))
                 for op, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
-        tot=0
+        tot = 0
         print >> file, 'Ops'
         print >> file, '---'
-        #print >> file, '<% time> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Op name>'
+        #print >> file, '<% time> <cumulative %%> <apply time>,'
+        #print >>file, '<cumulative seconds> <time per call> <nb_call>'
+        #print >>file, '<Op name>'
         hs = []
         # formatting string
         es = []
@@ -263,14 +276,15 @@ class ProfileStats(object):
 
         print >> file, header_str
 
-        for f,t,a,impl,nb_call,nb_apply in otimes[:N]:
+        for f, t, a, impl, nb_call, nb_apply in otimes[:N]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
-            print >> file, format_str%(f,ftot,t,t/nb_call, impl, nb_call,
-                                       nb_apply, str(a)[:maxlen])
+            tot += t
+            ftot = tot * 100 / local_time
+            print >> file, format_str % (f, ftot, t, t / nb_call,
+                                         impl, nb_call,
+                                         nb_apply, str(a)[:maxlen])
             # While this carries over less information, it is arranged such
             # that it way more readeable that the previous output of the
             # profiler
@@ -281,7 +295,7 @@ class ProfileStats(object):
             #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
             #            f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
         print >>file, '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(otimes)-N),
+                % (max(0, len(otimes) - N),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[N:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[N:]))
         print >> file, ''
@@ -333,7 +347,7 @@ class ProfileStats(object):
         print >> file, header_str
 
         atimes = [(
-                t*100/local_time,
+                t * 100 / local_time,
                 t,
                 a,
                 a.env.toposort().index(a),
@@ -341,13 +355,13 @@ class ProfileStats(object):
             for a, t in self.apply_time.items()]
         atimes.sort()
         atimes.reverse()
-        tot=0
+        tot = 0
         for (f, t, a, nd_id, nb_call) in atimes[:N]:
-            tot+=t
-            ftot=tot*100/local_time
-            if nb_call==0:
+            tot += t
+            ftot = tot * 100 / local_time
+            if nb_call == 0:
                 continue
-            print >> file, format_str %(f,ftot, t, t/nb_call, nb_call,
+            print >> file, format_str %(f, ftot, t, t / nb_call, nb_call,
                                         nd_id,
                                         str(a)[:maxlen])
             # Same as before, this I've sacrificied some information making
@@ -355,7 +369,7 @@ class ProfileStats(object):
             #print >> file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %s'%(
             #        f, ftot, t, tot, t/nb_call,nb_call, str(a))
         print >> file, '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(atimes)-N),
+                % (max(0, len(atimes) - N),
                   sum(f for f, t, a, nd_id, nb_call in atimes[N:]),
                   sum(t for f, t, a, nd_id, nb_call in atimes[N:]))
         print >> file, ''
@@ -363,31 +377,34 @@ class ProfileStats(object):
     def summary_function(self, file):
         print >> file, 'Function profiling'
         print >> file, '=================='
-        print >> file, '  Message: %s'%self.message
+        print >> file, '  Message: %s' % self.message
         print >> file, '  Time in %i calls to Function.__call__: %es' % (
                 self.fct_callcount, self.fct_call_time)
-        if self.fct_call_time>0:
-            print >> file, '  Time in Function.fn.__call__: %es (%.3f%%)' %(
-                    self.vm_call_time, 100*self.vm_call_time / self.fct_call_time)
+        if self.fct_call_time > 0:
+            print >> file, '  Time in Function.fn.__call__: %es (%.3f%%)' % (
+                    self.vm_call_time,
+                    100 * self.vm_call_time / self.fct_call_time)
             local_time = sum(self.apply_time.values())
             if local_time > 0:
-                print >> file, '  Time in thunks: %es (%.3f%%)' %(
+                print >> file, '  Time in thunks: %es (%.3f%%)' % (
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
-        print >> file, '    Theano Linker time (includes C, CUDA code generation/compiling): %es' % self.linker_time
+        print >> file, ('    Theano Linker time (includes C,'
+                        ' CUDA code generation/compiling): %es' %
+                        self.linker_time)
         print >> file, ''
 
-
-    def summary(self, file=sys.stderr, n_ops_to_print=20, n_applies_to_print=20):
+    def summary(self, file=sys.stderr, n_ops_to_print=20,
+                n_applies_to_print=20):
         self.summary_function(file)
         local_time = sum(self.apply_time.values())
         if local_time > 0:
             self.summary_ops(file, n_ops_to_print)
             self.summary_nodes(file, n_applies_to_print)
         else:
-            print >> file, "  No node time accumulated (hint: try config profiling.time_thunks=1)"
-
+            print >> file, ("  No node time accumulated "
+                            "(hint: try config profiling.time_thunks=1)")
 
 
 if 0: # old code still to be ported from ProfileMode
@@ -404,47 +421,50 @@ if 0: # old code still to be ported from ProfileMode
 
         print ''
         print 'ProfileMode.long_print()'
-        print 'name = %s'%fct_name
-        print 'msg = %s'%message
+        print 'name = %s' % fct_name
+        print 'msg = %s' % message
         print '---------------------------'
         print ''
 
-        print 'Total time spent running thunks: %.3fs'% local_time
+        print 'Total time spent running thunks: %.3fs' % local_time
 
-        sop_time={}
-        sop_call={}
+        sop_time = {}
+        sop_call = {}
         sop_op = {}
-        sop_c={} #map each op class to Bool. True iff all applies were done in c.
-        for a,t in op_time.items():
+        #map each op class to Bool. True iff all applies were done in c.
+        sop_c = {}
+        for a, t in op_time.items():
             typ = type(a)
-            sop_time.setdefault(typ,0)
-            sop_time[typ]+=t
-            sop_op.setdefault(typ,0)
-            sop_op[typ]+=1
-            sop_c.setdefault(typ,True)
-            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
+            sop_time.setdefault(typ, 0)
+            sop_time[typ] += t
+            sop_op.setdefault(typ, 0)
+            sop_op[typ] += 1
+            sop_c.setdefault(typ, True)
+            sop_c[typ] = sop_c[typ] and op_cimpl.get(a, False)
+            sop_call[typ] = sop_call.get(typ, 0) + op_call[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
-        sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
+        sotimes = [(t * 100 / local_time, t, a, sop_c[a],
+                    sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
-        tot=0
-        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
+        tot = 0
+        for f, t, a, ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
+            tot += t
+            ftot = tot * 100 / local_time
             if ci:
                 msg = '*'
             else:
                 msg = ' '
             print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(sotimes)-n_ops_to_print),
-                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]),
-                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
-
+                % (max(0, len(sotimes) - n_ops_to_print),
+                  sum(f for f, t, a, ci, nb_call, nb_op in
+                      sotimes[n_ops_to_print:]),
+                  sum(t for f, t, a, ci, nb_call, nb_op in
+                      sotimes[n_ops_to_print:]))
 
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
@@ -453,24 +473,32 @@ if 0: # old code still to be ported from ProfileMode
         print
         print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
-            if fct_call[key]>0:
-                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
-                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
+            if fct_call[key] > 0:
+                print '   %4.1f%% %.3fs %.2es %d %s'%(
+                    fct_call_time[key] / total_fct_time * 100,
+                    fct_call_time[key],
+                    fct_call_time[key] / fct_call[key],
+                    fct_call[key], key.name)
             else:
                 print '   NOT CALLED',key.name
 
-        if total_fct_time>0:
-            time_pr_in_fct=local_time/total_fct_time*100
-            time_per_call=total_fct_time/total_fct_call
+        if total_fct_time > 0:
+            time_pr_in_fct = local_time / total_fct_time * 100
+            time_per_call = total_fct_time / total_fct_call
         else:
-            time_pr_in_fct=0
-            time_per_call=0
+            time_pr_in_fct = 0
+            time_per_call = 0
 
         print
-        print 'Time since import %.3fs'%(total_time)
-        print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
-        print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
+        print 'Time since import %.3fs' % (total_time)
+        print 'Compile time: %.3fs %.1f%%' % (compile_time,
+                                              compile_time / total_time * 100)
+        print 'Theano fct call %.3fs %.1f%%' % (total_fct_time,
+                                                total_fct_time / total_time *
+                                                100)
+        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)' % (local_time,
+                                                                                                                                  local_time / total_time * 100,
+                                                                                                                                  time_pr_in_fct)
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
 
@@ -479,13 +507,13 @@ if 0: # old code still to be ported from ProfileMode
         print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
         for fct in fct_call.keys():
             for idx, node in enumerate(fct.maker.env.toposort()):
-                if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
+                if any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.outputs) and not any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.inputs):
                     print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
 
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
-            cpu=[]
-            gpu=[]
-            trans=[]
+            cpu = []
+            gpu = []
+            trans = []
             for so in sotimes:
                 if so[2].__name__ in ["HostFromGpu", "GpuFromHost"]:
                     trans.append(so)
@@ -493,9 +521,9 @@ if 0: # old code still to be ported from ProfileMode
                     gpu.append(so)
                 else:
                     cpu.append(so)
-            sum_cpu=sum(so[1] for so in cpu)
-            sum_gpu=sum(so[1] for so in gpu)
-            sum_trans=sum(so[1] for so in trans)
+            sum_cpu = sum(so[1] for so in cpu)
+            sum_gpu = sum(so[1] for so in gpu)
+            sum_trans = sum(so[1] for so in trans)
             print
 
             print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
@@ -505,7 +533,7 @@ if 0: # old code still to be ported from ProfileMode
             print "<fct name> <input name> <input type> <str input>"
             for fct in fct_call.keys():
                 for i in fct.input_storage:
-                    if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
+                    if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
                         print fct.name, i.name, i.type, i
 
         if outputs_size:
