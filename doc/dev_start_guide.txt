@@ -259,7 +259,7 @@ Here's a relevant extract of pathogen.vim's installation instructions:
         curl -so ~/.vim/autoload/pathogen.vim \
             https://raw.github.com/tpope/vim-pathogen/HEAD/autoload/pathogen.vim
 
-    If you don't have ``curl``, use ``wget -O -`` instead.
+    If you don't have ``curl``, use ``wget -O`` instead.
 
     By the way, if you're using Windows, change all occurrences of ``~/.vim``
     to ``~\vimfiles``.
