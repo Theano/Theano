@@ -604,6 +604,7 @@ def blas_header_text():
         void sswap_( const int*, float *, const int*, float *, const int*);
         void scopy_( const int*, const float *, const int*, float *, const int*);
         void saxpy_( const int*, const float *, const float *, const int*, float *, const int*);
+        float sdot_(const int*, const float *, const int*, const float *, const int*);
         void sdot_sub_(const int*, const float *, const int*, const float *, const int*, float *);
         void sdsdot_sub_( const int*, const float *, const float *, const int*, const float *, const int*, float *);
         void sscal_( const int*, const float *, float *, const int*);
@@ -621,6 +622,7 @@ def blas_header_text():
         void dcopy_( const int*, const double *, const int*, double *, const int*);
         void daxpy_( const int*, const double *, const double *, const int*, double *, const int*);
         void dswap_( const int*, double *, const int*, double *, const int*);
+        double ddot_(const int*, const double *, const int*, const double *, const int*);
         void dsdot_sub_(const int*, const float *, const int*, const float *, const int*, double *);
         void ddot_sub_( const int*, const double *, const int*, const double *, const int*, double *);
         void dscal_( const int*, const double *, double *, const int*);
