@@ -3310,3 +3310,26 @@ if __name__ == '__main__':
     print 37
     scan_tst.test_save_mem_store_steps()
     #'''
+
+
+def test_compute_test_value():
+    """
+    Verify that test values can be used with scan.
+    """
+    backup = theano.config.compute_test_value
+    theano.config.compute_test_value = 'raise'
+    try:
+        x = tensor.vector()
+        xv = numpy.ones(3, dtype=theano.config.floatX)
+        x.tag.test_value = xv
+        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX))
+        z, _ = theano.scan(
+                fn=lambda u, v: u + v,
+                sequences=[x, y])
+        assert not _
+        # The gradient computation used to crash before 6af465e.
+        g = tensor.grad(z.sum(), x)
+        #f = theano.function([x], g)
+        #print f(xv)
+    finally:
+        theano.config.compute_test_value = backup
