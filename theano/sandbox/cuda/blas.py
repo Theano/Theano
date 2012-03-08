@@ -677,7 +677,7 @@ class GpuConv(GpuOp):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0, 16) # raise this whenever modifying any of the support_code_files
+        return (0, 17) # raise this whenever modifying any of the support_code_files
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of these files

@@ -41,8 +41,10 @@ for (int iter_m=0; iter_m < Os[0]; iter_m++) {
 #endif
 */
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b) )
+#define MAX(a, b) ((a) < (b) ? (b) : (a) )
+
 const unsigned long int COALESCED_ALIGN = 0xFFFFFFFFFFFFFF00; // zero-out the trailing bits of pointers
-#define MASKED_OFFSET(src) (((int)((unsigned long int)src - (((unsigned long int)src) & COALESCED_ALIGN))) / sizeof(float))
 
 __device__ void load_to_shared(float * dst, const float * src, const int thread_id, int nb_thread, const int N, const bool flipped=false){
   if (nb_thread < 64)
@@ -54,30 +56,41 @@ __device__ void load_to_shared(float * dst, const float * src, const int thread_
           dst[i]=src[N - 1 - i];
         //dst[N-1-i]=src[i];
       else
-        for(int i=thread_id;i<N;i+=nb_thread)
-          dst[i]=src[i];
+      {
+        for(int i = thread_id; i < N; i += nb_thread)
+        {
+            dst[i] = src[i];
+        }
+      }
     }
   else
     {
       nb_thread = nb_thread & 0xFFFFFFE0; //make nb_thread a multiple of 32
       // Global memory:
       //  <-------------------------------------->
-      //      A      A      A      A      A   // points of 128-bit alignment
+      //      A      A      A      A      A   // points of 256-byte alignment
       //         dddddddddddddddddddddd       // layout of src in global memory
-      //      |--|                            // masked_src_offset
-      // 
       if (thread_id < nb_thread)
         {
-          const int masked_src_offset = MASKED_OFFSET(src);
-          for(int masked_i=thread_id; masked_i<N + masked_src_offset; masked_i+=nb_thread)
-            {
-              int i = masked_i - masked_src_offset;
-              if (i >= 0)
-                if (flipped)
-                  dst[N-1-i] = src[i];
-                else
-                  dst[i]=src[i];
-            }
+          const float * my_src_ptr = (const float *)(
+                  ((unsigned long int)src) & COALESCED_ALIGN);
+          my_src_ptr += thread_id;
+          while (my_src_ptr < src + N)
+          {
+              if (my_src_ptr >= src)
+              {
+                  int i = my_src_ptr - src;
+                  if (flipped)
+                  {
+                      dst[N - 1 - i] = *my_src_ptr;
+                  }
+                  else
+                  {
+                      dst[i] = *my_src_ptr;
+                  }
+              }
+              my_src_ptr += nb_thread;
+          }
         }
     }
 }
@@ -89,40 +102,35 @@ __device__ void load_to_shared(float * dst, const float * src, const int thread_
 			       int nb_thread, const int nb_col, const int nb_row,
 			       const int stride_col, const int stride_row,
 			       const bool flipped=false, const bool c_contiguous=true){
-  if(flipped && ! c_contiguous){
-    for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
-      dst[nb_row*nb_col-1-i]=src[(i/nb_col)*stride_row+(i%nb_col)*stride_col];
-  }else if(c_contiguous){
-    load_to_shared(dst, src, thread_id, nb_thread, nb_col*nb_row, flipped);
-  }else if(flipped){//c_contiguous==true
-    //TODO very slow on device before 1.3. make access to kern sequential and access to d_kern flipped.
-    int N=nb_col*nb_row;
-    for(int i=thread_id;i<N;i+=nb_thread)
-      dst[i]=src[N - 1 - i];
-    //dst[N-1-i]=src[i];
-  }else if(c_contiguous){//flipped==false
-    for(int i=thread_id;i<nb_col*nb_row;i+=nb_thread)
-      dst[i]=src[i];
-  }else{ // !flipped && !c_contiguous
-    /*
-    for(int i=thread_id;i<nb_row;i+=nb_thread){
-      float* s=&src[i*stride_row];
-      float* d=&dst[i*nb_col];
-      for(int j=thread_id;j<nb_col;i+=nb_thread)
-	//	dst[i*nb_col+j]=src[i*stride_row+j*stride_col];//dst[i]=src[i];
-	d[j]=s[j*stride_col];
-	}*/
-    /* We don't do this if as nvcc 2.3 take 2 more registers when we add the if
-       Why it do this?
-    if(stride_col==1 && stride_row==nb_col)
-      for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
-	dst[i]=src[i];
-	else*/
-      for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
-	dst[i]=src[i/nb_col*stride_row+i%nb_col*stride_col];
-
-  }
-
+    if (c_contiguous)
+    {
+        load_to_shared(dst, src, thread_id, nb_thread, nb_col*nb_row, flipped);
+    }
+    else
+    {
+        if (flipped)
+        {
+            int LAST = nb_row * nb_col - 1;
+            for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
+            {
+                // XXX
+                // THIS IS SLOW - use whatever blocks are in the the
+                // threads to avoid division and modulo
+                dst[LAST - i] \
+                    = src[(i/nb_col)*stride_row+(i%nb_col)*stride_col];
+            }
+        }
+        else
+        {
+            for(int i=thread_id;i<nb_row*nb_col;i+=nb_thread)
+            {
+                // XXX
+                // THIS IS SLOW - use whatever blocks are in the the
+                // threads to avoid division and modulo
+                dst[i]=src[i/nb_col*stride_row+i%nb_col*stride_col];
+            }
+        }
+    }
 }
 
 __device__ void fill(float * dst, int N, float value, int thread_id, int nb_thread){
@@ -639,6 +647,19 @@ conv_rows_stack( float* img, float* kern, float* out,
   kern_id = blockIdx.y%nkern;
   nb_rows = blockDim.y;
 
+  int rows_to_read = MIN(
+          kern_len + nb_rows - 1,
+          img_len - blockIdx.x * nb_rows);
+
+  /**
+   * Every thread ultimately computes one value in the output, at coordinates
+   *   out[ batch_id, kern_id, out_row, out_col]
+   *
+   * The batch_id and kern_id are packed into blockIdx.y. out_row and out_col
+   * are the threadIdx.x and threadIdx.y.
+   *
+   * Every thread block deals only with one image, and one filter kernel.
+   */
   extern __shared__ float s_data[];
 
     const int out_col = threadIdx.x;//output col
@@ -646,31 +667,49 @@ conv_rows_stack( float* img, float* kern, float* out,
     const int shared_row = threadIdx.y;
     const int thread_id = threadIdx.y*blockDim.x+threadIdx.x;
 
+  /*
+   * The kernel works by looping over channels (aka colours, aka the stack).
+   * On each iteration, a thread block loads one channel of all the image rows that
+   * it needs to use, and one channel slice of one kernel.
+   */
     d_img=&s_data[0];//size of [(KERN_LEN+block_len-1) * IMAGE_WID];
     d_kern=&s_data[(kern_len+nb_rows-1) * img_wid];//size of [KERNEL_LEN * KERNEL_WID];
-    
-    float sum = 0.0f;
-    for (int stack = 0;stack<nstack;stack++){
 
-      int _idx=img_stride_batch*batch_id+img_stride_stack*stack;//selection the good image from the batch
-      _idx+=(blockIdx.x*nb_rows)*img_stride_row;//select the good top row for the block of threads
-    
-      load_to_shared(d_img,img+_idx,thread_id,nb_thread_id,img_wid,kern_len+nb_rows-1,
-		     img_stride_col, img_stride_row, false, c_contiguous);
-      _idx=kern_stride_nkern*kern_id+kern_stride_stack*stack;
-      load_to_shared(d_kern, kern+_idx, thread_id, nb_thread_id, kern_wid,kern_len,
+    float sum = 0.0f;
+    for (int stack = 0; stack < nstack; stack++){
+
+      int offset =
+          img_stride_batch * batch_id
+          + img_stride_stack * stack
+          //blockIdx.x is which chunk of nb_rows this thread block deals with
+          + img_stride_row * (blockIdx.x * nb_rows);
+
+      load_to_shared(
+              d_img,              // dst
+              img+_idx,           // src
+              thread_id,          // linear position in block
+              nb_thread_id,       // number of threads
+              img_wid,            // cols in image to read
+              rows_to_read,       // number of rows to read
+              img_stride_col,     // img[i, j, k, l] to img[i, j, k, l + 1]
+              img_stride_row,     // img[i, j, k, l] to img[i, j, k + 1, l]
+              false,              // flip while reading
+              c_contiguous);
+
+      offset = kern_stride_nkern * kern_id + kern_stride_stack * stack;
+      load_to_shared(d_kern, kern+offset, thread_id, nb_thread_id, kern_wid,kern_len,
 		     kern_stride_col, kern_stride_row, true, c_contiguous);
-    
+
       __syncthreads();
 
-      for (int row=0; row < kern_len && out_row<out_len; row++) {//loop over row
+      for (int row=0; row < kern_len; row++) {//loop over row
 	const float* idx_kern=&d_kern[row*kern_wid];
 	const float* idx_in=&d_img[(row+shared_row)*img_wid+out_col];
 	convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
       }
       __syncthreads();//to be sure all thread have finished before we modif the shared memory.
     }
-    if(out_row<out_len)
+    if (out_row < out_len)
       out[batch_id*out_wid*out_len*nkern+//the good batch
 	  kern_id*out_wid*out_len+//the output image
 	  out_row*out_wid+out_col] = sum;
