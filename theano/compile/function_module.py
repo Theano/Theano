@@ -8,6 +8,7 @@ import copy_reg
 import cPickle
 import itertools
 import time
+import warnings
 
 import numpy
 
@@ -1114,7 +1115,7 @@ class FunctionMaker(object):
         for i in inputs:
             if ((i.variable not in used_inputs) and (i.update is None)):
                 if on_unused_input == 'warn':
-                    warnings.warn(msg % (i.variable, warn_msg), stacklevel=5)
+                    warnings.warn(msg % (i.variable, warn_msg), stacklevel=6)
                 elif on_unused_input == 'raise':
                     raise UnusedInputError(msg % (i.variable, err_msg))
                 else:
