@@ -128,9 +128,15 @@ class CudaNdarrayType(Type):
         if (other.type.dtype != self.dtype):
             raise TypeError('Incompatible dtype', (self.dtype,
                                                    other.type.dtype))
-        if (other.type.broadcastable != self.broadcastable):
+        if any(bi and not obi
+                for obi, bi in zip(
+                    other.type.broadcastable,
+                    self.broadcastable)):
             raise TypeError('Incompatible broadcastable', (self.broadcastable,
                 other.type.broadcastable))
+        if other.type.broadcastable != self.broadcastable:
+            rebroadcast = tensor.Rebroadcast(*enumerate(self.broadcastable))
+            other = rebroadcast(other)
         return theano.sandbox.cuda.basic_ops.GpuFromHost()(other)
 
     @staticmethod

@@ -75,6 +75,19 @@ class T_updates(unittest.TestCase):
                 updates=output_updates, givens=output_givens)
         output_func()
 
+    def test_3(self):
+        # Test that broadcastable dimensions don't screw up
+        # update expressions.
+        data = numpy.random.rand(10,10).astype('float32')
+        output_var = f32sc(name="output",
+                value=numpy.zeros((10,10), 'float32'))
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should be allowed.
+        output_func = theano.function(inputs=[], outputs=[],
+                updates={output_var:output_var.sum().dimshuffle('x', 'x')})
+        output_func()
+
 class T_ifelse(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
