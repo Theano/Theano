@@ -42,6 +42,9 @@ Internal changes
  * Define new exceptions MissingInputError and UnusedInputError, and use them
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
 
+Crash Fix
+ * Don't try to use blas library when told to don't use them(Frederic B.)
+
 =============
 Release Notes
 =============
