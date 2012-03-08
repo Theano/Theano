@@ -686,7 +686,7 @@ conv_rows_stack( float* img, float* kern, float* out,
 
       load_to_shared(
               d_img,              // dst
-              img+_idx,           // src
+              img+offset,         // src
               thread_id,          // linear position in block
               nb_thread_id,       // number of threads
               img_wid,            // cols in image to read
