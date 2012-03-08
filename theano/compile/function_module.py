@@ -975,13 +975,13 @@ class FunctionMaker(object):
                     their output value directly
 
         :param mode: a Mode instance telling FunctionMaker how to optimize and link.  None
-        means to use the `config.mode`.
+            means to use the `config.mode`.
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
-                    in the graph from the inputs to the outputs
+            in the graph from the inputs to the outputs
 
         :param on_unused_input: What to do if a variable in the 'inputs' list
-                is not used in the graph. Possible values are:
+            is not used in the graph. Possible values are:
                 - 'raise' (default): raise an error
                 - 'warn': log a warning
                 - 'ignore': do not do anything
@@ -1263,15 +1263,15 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     :param inputs: list of `SymbolicInput` or `In` instances
 
     :param outputs: a SymbolicOutput or a list of `SymbolicOutput` or `Out`
-    instances. The return value of the returned function will match the
-    format of this argument (either the value itself or a list of one or more
-    return values)
+        instances. The return value of the returned function will match the
+        format of this argument (either the value itself or a list of one or more
+        return values)
 
     :param mode: a descriptive string or a Mode instance. (Default of None
-    means to use `config.mode` (See below for descriptive string list).
+        means to use `config.mode` (See below for descriptive string list).
 
     :param name: an optional name for this fct. If used, the profile mode will
-    print the time spent in this fct.
+        print the time spent in this fct.
 
     Currently, the library provides the following mode strings:
 
@@ -1285,12 +1285,12 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
        (slow)
 
     :param accept_inplace: True iff the graph can contain inplace operations
-    prior to the optimization phase (default is False)
+        prior to the optimization phase (default is False)
 
     :param profile: None or ProfileStats instance
 
     :param on_unused_input: What to do if a variable in the 'inputs' list is
-    not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
+        not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
     """
 
     # Every element of the input list will be upgraded to an `In` instance if
