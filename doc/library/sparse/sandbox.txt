@@ -17,5 +17,7 @@ API
 
 .. automodule:: theano.sparse.sandbox.sp
     :members:
+.. automodule:: theano.sparse.sandbox.sp2
+    :members:
 .. automodule:: theano.sparse.sandbox.truedot
     :members:
