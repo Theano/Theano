@@ -278,8 +278,8 @@ class Scan(PureOp):
                                            str(outer_mitsot),
                                            argoffset + idx,
                                            outer_mitsot.type.dtype,
-                                           otuer_mitsot.type.ndim,
-                                           str(inner_mitsot[ipos + k]),
+                                           outer_mitsot.type.ndim,
+                                           str(inner_mitsots[ipos + k]),
                                            inner_mitsots[ipos + k].type.dtype,
                                            inner_mitsots[ipos + k].type.ndim))
             ipos += len(itaps)
