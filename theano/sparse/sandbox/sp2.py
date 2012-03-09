@@ -745,7 +745,6 @@ class SamplingDotCsr(gof.Op):
         return blas.blas_header_text()
 
     def c_libraries(self):
-        import pdb; pdb.set_trace()
         return blas.ldflags()
 
     def c_compile_args(self):
