@@ -33,19 +33,21 @@ def local_add_s_s(node):
     """
     If two matrices are known to have the same sparsity pattern,
     optimize  the addition by only adding their data vector.
-    
+
     Very special case optimization. Activate when for add(x, y),
     y is an expression like sp_ones_like(x) * another_matrix.
-    
+
     This is useful for sparse weight updates.
 
-    Work also for add(x, neg(y)) in the same case. 
-    As of this writting sub is only implemented as x + neg(y) for sparse matrix.
+    Work also for add(x, neg(y)) in the same case.
+
+    As of this writting sub is only implemented as x + neg(y) for
+    sparse matrix.
     """
     if node.op == add_s_s:
         x, y = node.inputs
-        
-        # In case addition was transformed to subtraction        
+
+        # In case addition was transformed to subtraction
         if hasattr(y.owner, 'op') and y.owner.op == neg:
             y_ = y.owner.inputs[0]
         else:
@@ -54,38 +56,46 @@ def local_add_s_s(node):
             return False
         if hasattr(y_.owner, 'op') and y_.owner.op not in [mul_s_s, mul_s_d]:
             return False
-        
+
         def same_pattern(node):
             """Check node has same sparsity as x."""
-            # In case the sparse matrix is multiplied by a scalar (ex: learning rate)
+            # In case the sparse matrix is multiplied by a scalar (ex:
+            # learning rate)
             if hasattr(node.owner, 'op') and node.owner.op == mul_scalar:
                 node = node.owner.inputs[1]
-            
+
             # Check node creates a matrix
-            if not hasattr(node.owner, 'op') or not isinstance(node.owner.op, CSM):
-              return False
-            
+            if not hasattr(node.owner, 'op') or not isinstance(node.owner.op,
+                                                               CSM):
+                return False
+
             # Check matrix is creates from CSMProperties
-            if filter(lambda i: not hasattr(i.owner, 'op') or not isinstance(i.owner.op, CSMProperties), node.owner.inputs[1:]):
-              return False
-            
+            if filter(lambda i: not hasattr(i.owner, 'op') or
+                      not isinstance(i.owner.op, CSMProperties),
+                      node.owner.inputs[1:]):
+                return False
+
             # Verify indices, indptr and shape are the same as x
             if filter(lambda i: i.owner.inputs[0] != x, node.owner.inputs[1:]):
-              return False
-                                
+                return False
+
             return True
-        
+
         if filter(same_pattern, y_.owner.inputs):
             return [add_s_s_data(x, y)]
     return False
 register_specialize(local_add_s_s)
 
+
 class AddSSData(gof.op.Op):
-    '''Add two sparse matrices assuming they have the same sparsity pattern. '''
+    '''Add two sparse matrices assuming they have the same sparsity
+    pattern. '''
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
         if x.type.dtype != y.type.dtype:
@@ -94,46 +104,50 @@ class AddSSData(gof.op.Op):
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
-                         [SparseType(dtype = x.type.dtype,
-                                 format = x.type.format).make_variable()])
-    def perform(self, node, (x, y), (out, )): 
+                         [SparseType(dtype=x.type.dtype,
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         out[0] = x.copy()
         out[0].data += y.data
 add_s_s_data = AddSSData()
 
+
 # register a specialization to replace MulSD -> MulSDCSX
 @gof.local_optimizer([mul_s_d])
 def local_mul_s_d(node):
     if node.op == mul_s_d:
         x, y = node.inputs
-        
+
         x_is_sparse_variable = _is_sparse_variable(x)
-        y_is_sparse_variable = _is_sparse_variable(y)
-        
+        # y_is_sparse_variable = _is_sparse_variable(y)
+
         if x_is_sparse_variable:
-          svar = x
-          dvar = y
+            svar = x
+            dvar = y
         else:
-          svar = y
-          dvar = x
-        
+            svar = y
+            dvar = x
+
         if dvar.type.ndim != 2:
             return False
         if svar.type.format == 'csc':
-          CSx = CSC
-          mul_s_d_csx = mul_s_d_csc
+            CSx = CSC
+            mul_s_d_csx = mul_s_d_csc
         elif svar.type.format == 'csr':
-          CSx = CSR
-          mul_s_d_csx = mul_s_d_csr
+            CSx = CSR
+            mul_s_d_csx = mul_s_d_csr
         else:
             raise NotImplemented()
-        
-        c_data = mul_s_d_csx(csm_data(svar), csm_indices(svar), csm_indptr(svar), dvar)
-        
-        return [CSx(c_data, csm_indices(svar), csm_indptr(svar), csm_shape(svar))]
-    
+
+        c_data = mul_s_d_csx(csm_data(svar), csm_indices(svar),
+                             csm_indptr(svar), dvar)
+
+        return [CSx(c_data, csm_indices(svar), csm_indptr(svar),
+                    csm_shape(svar))]
+
     return False
 register_specialize(local_mul_s_d)
 
@@ -141,15 +155,19 @@ register_specialize(local_mul_s_d)
 class MulSDCSC(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a_data, a_indices, a_indptr, b):
         assert b.type.ndim == 2
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
-    def c_code(self, node, name, (_data, _indices, _indptr, _b,), (_zout, ), sub):
+    def c_code(self, node, name, (_data, _indices, _indptr, _b,),
+               (_zout, ), sub):
 
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a')
@@ -209,22 +227,26 @@ class MulSDCSC(gof.Op):
             }
         }
 
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 mul_s_d_csc = MulSDCSC()
 
 
 class MulSDCSR(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other))
+
     def __hash__(self):
         return hash(type(self))
+
     def make_node(self, a_data, a_indices, a_indptr, b):
         assert b.type.ndim == 2
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
-    def c_code(self, node, name, (_data, _indices, _indptr, _b,), (_zout, ), sub):
+    def c_code(self, node, name, (_data, _indices, _indptr, _b,),
+               (_zout, ), sub):
 
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a')
@@ -284,8 +306,9 @@ class MulSDCSR(gof.Op):
             }
         }
 
-        """% dict(locals(), **sub)
+        """ % dict(locals(), **sub)
 mul_s_d_csr = MulSDCSR()
+
 
 class Poisson(gof.op.Op):
     def __eq__(self, other):
@@ -305,6 +328,7 @@ class Poisson(gof.op.Op):
                                     dtype=x.dtype)
         out[0].eliminate_zeros()
 poisson = Poisson()
+
 
 class Multinomial(gof.op.Op):
     def __eq__(self, other):
