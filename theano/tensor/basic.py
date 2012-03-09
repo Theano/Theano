@@ -3295,7 +3295,7 @@ class Subtensor(Op):
 
         #infer the broadcasting pattern
         padded = (idx_list
-                + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list)))
+                + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
                 if isinstance(p, slice)]
 
@@ -3851,7 +3851,7 @@ class IncSubtensor(Op):
 
         #infer the broadcasting pattern
         padded = (idx_list
-                + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list)))
+                + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
                 if isinstance(p, slice)]
 
