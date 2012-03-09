@@ -797,10 +797,10 @@ class TensorType(Type):
     @staticmethod
     def values_eq_approx(a, b, allow_remove_inf = False, allow_remove_nan = False):
         """
-        :param allow_remove_inf: If True, when their is an inf in a,
+        :param allow_remove_inf: If True, when there is an inf in a,
                                  we allow any value in b in that position.
                                  Event -inf
-        :param allow_remove_nan: If True, when their is a nan in a,
+        :param allow_remove_nan: If True, when there is a nan in a,
                                  we allow any value in b in that position.
                                  Event +-inf
         """
@@ -4557,13 +4557,13 @@ def stack(*tensors):
     # And DebugMode can't detect error in this code as it is not in an optimization.
     # See ticket #660
     if numpy.all([
-                  # in case their is direct int in tensors.
+                  # in case there is direct int in tensors.
                   isinstance(t, (numpy.number, float, int, python_complex)) or
                   (isinstance(t, Variable) and
                    isinstance(t.type, TensorType) and
                    t.ndim==0)
                   for t in tensors]):
-#in case their is direct int
+        # in case there is direct int
         tensors = map(as_tensor_variable, tensors)
         dtype = scal.upcast(*[i.dtype for i in tensors])
         return theano.tensor.opt.MakeVector(dtype)(*tensors)
