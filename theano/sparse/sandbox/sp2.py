@@ -1,7 +1,15 @@
-from theano.sparse.basic import * # To facilitate later merge into sparse module
+import numpy
+
+from theano import gof, tensor, scalar
+from theano.tensor import blas
+
 from theano.sparse.basic import (
-    _is_sparse, _is_sparse_variable, _is_dense_variable,
-    _is_sparse, _is_dense, _kmap_eq, _kmap_hash)
+    as_sparse_variable, SparseType, add_s_s, neg,
+    mul_s_s, mul_s_d,
+    CSMProperties, CSM, register_specialize,
+    _is_sparse_variable, CSC, CSR,
+    csm_data, csm_indices, csm_indptr, csm_shape,
+    _is_sparse)
 
 
 class Cast(gof.op.Op):
