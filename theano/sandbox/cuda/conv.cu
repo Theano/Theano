@@ -344,10 +344,19 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 		  int, int, int, int,
 		  int, int);
 
-#define CONV_ROWS_STACK_SPECIAL(kern_wid) \
-	if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack<kern_wid, false>;\
-	else f = conv_rows_stack<kern_wid, true>;
-	CONV_ROWS_STACK_SPECIAL(THEANO_KERN_WID);
+        if (0)
+          fprintf(stderr, "IMG CONTIG %i KERN_CONTIG %i (%i %i %i) (%i %i %i)\n",
+                img_contiguous_2d, kern_contiguous_2d,
+                threads.x, threads.y, threads.z,
+                grid.x, grid.y, grid.z);
+
+	if(!img_contiguous_2d || !kern_contiguous_2d) {
+            //fprintf(stderr, "using false version\n");
+            f = conv_rows_stack<THEANO_KERN_WID, false>;
+        } else {
+            //fprintf(stderr, "using true version\n");
+            f = conv_rows_stack<THEANO_KERN_WID, true>;
+        }
 
 	f<<< grid, threads, shared_size >>>
 	  (img->devdata,
