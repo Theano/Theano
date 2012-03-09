@@ -128,10 +128,10 @@ class CudaNdarrayType(Type):
         if (other.type.dtype != self.dtype):
             raise TypeError('Incompatible dtype', (self.dtype,
                                                    other.type.dtype))
-        if any(bi and not obi
+        if numpy.any([bi and not obi
                 for obi, bi in zip(
                     other.type.broadcastable,
-                    self.broadcastable)):
+                    self.broadcastable)]):
             raise TypeError('Incompatible broadcastable', (self.broadcastable,
                 other.type.broadcastable))
         if other.type.broadcastable != self.broadcastable:
