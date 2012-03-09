@@ -1676,6 +1676,11 @@ class Scan(PureOp):
         return final_outs
 
 
+# Since Scan is an op that contains a Theano compiled function, it is
+# useful to let DebugMode know about it.
+compile.debugmode.ops_with_inner_function[Scan] = 'fn'
+
+
 @theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, apply_cimpl, message, outputs_size,
