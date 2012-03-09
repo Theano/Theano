@@ -104,6 +104,20 @@ class NoDuplicateOptWarningFilter(logging.Filter):
 _logger.addFilter(NoDuplicateOptWarningFilter())
 
 
+"""
+Registry of Ops that have an inner compiled Theano function.
+
+The keys are Ops, and values are the name of the attribute that
+contains the function. For instance, if the function is self.fn,
+the value will be 'fn'.
+
+We need that to be able not to run debug checks a number of times that is
+exponential in the nesting level of those ops.
+For instance, Scan will be registered here.
+"""
+ops_with_inner_function = {}
+
+
 ########################
 #
 # Exceptions
@@ -1107,7 +1121,8 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         if isinstance(r.type, CudaNdarrayType):
                             # It seems stupid, but we need to allocate a
                             # new ndarray and copy it into the GPU one.
-                            new_rbuf = numpy.zeros(r_vals[r].shape, dtype=r.dtype)
+                            new_rbuf = numpy.zeros(r_vals[r].shape,
+                                    dtype=r.dtype)
                             new_rbuf += def_val
                             r_buf[...] = CudaNdarray(new_rbuf)
                         else:
@@ -1122,7 +1137,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # For each dimension, try size-1, size, size+1
         for shape_diff in itertools_product((-1, 0, 1), repeat=max_ndim):
             wrong_size = {}
-            name='wrong_size%s' % str(tuple(shape_diff))
+            name = 'wrong_size%s' % str(tuple(shape_diff))
 
             for r in node.outputs:
                 if isinstance(r.type, (TensorType, CudaNdarrayType)):
@@ -1143,44 +1158,79 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         storage_map, r_vals, dr_vals, perform, active_order_set):
     '''Try to apply thunk() on different output storages'''
-    for (name, out_map) in _get_preallocated_maps(node, thunk, prealloc_modes,
-            def_val, storage_map, r_vals, dr_vals, perform, active_order_set):
-        # _logger.debug('name = %s, perform = %s', name, perform)
-        # Copy the inputs over again
-        for r in node.inputs:
-            storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
-        # Get the appropriate output storages
-        # (no copy)
-        for r in node.outputs:
-            storage_map[r][0] = out_map.get(r, None)
+    # If node has an inner compiled Theano function with mode DebugMode,
+    # disable memory checks in that mode, since they were already run.
+    try:
+        changed_inner_mode = False
+        if type(getattr(node, 'op', None)) in ops_with_inner_function:
+            fn_attr_name = ops_with_inner_function[type(node.op)]
+            fn = getattr(node.op, fn_attr_name, None)
+            if (not fn
+                    or not hasattr(fn, 'maker')
+                    or not hasattr(fn.maker, 'mode')):
+                _logger.warn('Expected theano function not found in %s.%s',
+                        node.op, fn_attr_name)
+            else:
+                if isinstance(fn.maker.mode, DebugMode):
+                    backup_mode = fn.maker.mode
+                    new_mode = copy.copy(backup_mode)
+                    # Disactivate as many checks as possible
+                    new_mode.check_py_code = False
+                    new_mode.check_isfinite = False
+                    new_mode.require_matching_strides = 0
+                    new_mode.check_preallocated_output = []
+                    new_mode.stability_patience = 1
+                    fn.maker.mode = new_mode
+                    changed_inner_mode = True
+                    _logger.info('changing inner mode')
 
-        thunk()
+        _logger.debug('starting preallocated output checking')
+        for (name, out_map) in _get_preallocated_maps(
+                node, thunk, prealloc_modes, def_val, storage_map, r_vals,
+                dr_vals, perform, active_order_set):
+            _logger.debug('  name = %s', name)
+            # Copy the inputs over again
+            for r in node.inputs:
+                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
-        # Check outputs
-        for r in node.outputs:
-            if not r.type.is_valid_value(storage_map[r][0]):
-                raise InvalidValueError(r, storage_map[r][0],
-                        hint='%s with %s output' % (perform, name),
-                        specific_hint=r.type.value_validity_msg(
-                        storage_map[r][0]))
+            # Get the appropriate output storages
+            # (no copy)
+            for r in node.outputs:
+                storage_map[r][0] = out_map.get(r, None)
 
-        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                      clobber_dr_vals=False,
-                      perform='%s with output %s' % (perform, name),
-                      warn_input_not_reused=False)
+            thunk()
 
-        _check_viewmap(node, storage_map)
+            # Check outputs
+            for r in node.outputs:
+                if not r.type.is_valid_value(storage_map[r][0]):
+                    raise InvalidValueError(r, storage_map[r][0],
+                            hint='%s with %s output' % (perform, name),
+                            specific_hint=r.type.value_validity_msg(
+                            storage_map[r][0]))
 
-        for r in node.outputs:
-            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                # TODO: indicate it is not a C/Py problem
-                raise BadCLinkerOutput(r, val_py=r_vals[r],
-                                       val_c=storage_map[r][0])
+            _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                          clobber_dr_vals=False,
+                          perform='%s with output %s' % (perform, name),
+                          warn_input_not_reused=False)
 
-        # Clear storage_map
-        for r in node.outputs:
-            storage_map[r][0] = None
+            _check_viewmap(node, storage_map)
+
+            for r in node.outputs:
+                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                    # TODO: indicate it is not a C/Py problem
+                    raise BadCLinkerOutput(r, val_py=r_vals[r],
+                                           val_c=storage_map[r][0])
+
+            # Clear storage_map
+            for r in node.outputs:
+                storage_map[r][0] = None
+
+        _logger.debug('finished preallocated output checking')
+    finally:
+        if changed_inner_mode:
+            _logger.info('changing mode back')
+            fn.maker.mode = backup_mode
 
 
 class _EnvEvent(object):
@@ -1538,6 +1588,8 @@ class _Linker(gof.link.LocalLinker):
             # for now.
             #####
             _logger.debug("starting a DebugMode call")
+            _logger.debug("self.maker.mode.check_preallocated_output: %s",
+                    self.maker.mode.check_preallocated_output)
             for x in no_recycling:
                 x[0] = None
 
