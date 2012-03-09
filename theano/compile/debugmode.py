@@ -989,6 +989,7 @@ def _find_bad_optimizations2(order, reasons, r_vals):
 
 _find_bad_optimizations = _find_bad_optimizations0
 
+
 def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         storage_map, r_vals, dr_vals, perform, active_order_set):
     '''Preallocate outputs in different memory layouts'''
@@ -1001,7 +1002,6 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
     # TODO: Sparse, Scalar
-    # TODO: wrong shape, more stride patterns
 
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
@@ -1523,7 +1523,6 @@ class _Linker(gof.link.LocalLinker):
                             if r not in env.inputs]
 
         # Precompute some things for storage pre-allocation
-        prealloc_modes = config.DebugMode.check_preallocated_output.split(':')
         try:
             def_val = int(config.unittests.rseed)
         except ValueError:
@@ -1656,7 +1655,9 @@ class _Linker(gof.link.LocalLinker):
                             # clear the storage_map of outputs for the thunk_c
                             storage_map[r][0] = None
 
-                        if config.DebugMode.check_preallocated_output:
+                        if self.maker.mode.check_preallocated_output:
+                            prealloc_modes = \
+                                    self.maker.mode.check_preallocated_output
                             _logger.debug(
                                     '%i - calling _check_preallocated_output '
                                     'with thunk_py', i)
@@ -1743,7 +1744,9 @@ class _Linker(gof.link.LocalLinker):
                                 r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
-                        if config.DebugMode.check_preallocated_output:
+                        if self.maker.mode.check_preallocated_output:
+                            prealloc_modes = \
+                                    self.maker.mode.check_preallocated_output
                             def thunk():
                                 try:
                                     thunk_c()
@@ -2199,6 +2202,16 @@ class DebugMode(Mode):
     but is generally overly strict.) 0 no check, 1 warn, 2 err.
     """
 
+    check_preallocated_output = config.DebugMode.check_preallocated_output
+    check_preallocated_output = check_preallocated_output.split(':')
+    """
+    List of strings representing ways to pre-allocate output memory in
+    tests.  Valid values are: "previous" (previously-returned memory),
+    "c_contiguous", "f_contiguous", "strided" (positive and negative
+    strides), "wrong_size" (larger and smaller dimensions), and "ALL"
+    (all of the above).
+    """
+
     # This function will be used to create a FunctionMaker in
     # function_module.function
     def function_maker(self, i, o, m, *args, **kwargs):
@@ -2214,6 +2227,7 @@ class DebugMode(Mode):
             check_c_code=None,
             check_py_code=None,
             check_isfinite=None,
+            check_preallocated_output=None,
             require_matching_strides=None,
             linker=None):
 
@@ -2245,11 +2259,19 @@ class DebugMode(Mode):
         if check_isfinite is not None:
             self.check_isfinite = check_isfinite
 
+        if check_preallocated_output is not None:
+            # Copy to avoid sharing the same list across different instances
+            self.check_preallocated_output = check_preallocated_output[:]
+
         if require_matching_strides is not None:
             self.require_matching_strides = require_matching_strides
 
         if not (self.check_c_code or self.check_py_code):
             raise ValueError('DebugMode has to check at least one of c and py '
                              'code')
+
+    def __str__(self):
+        return "DebugMode(linker=%s, optimizer=%s)" % (
+                self.provided_linker, self.provided_optimizer)
 
 register_mode('DEBUG_MODE', DebugMode(optimizer='fast_run'))
