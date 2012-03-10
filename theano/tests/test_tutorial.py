@@ -583,8 +583,8 @@ class T_examples(unittest.TestCase):
 
     def test_examples_8(self):
         from theano import shared
-        # Force the dtype to int64 to work correctly on 32 bits computer.
-        # Otherwise, it create by default a int32 on 32 bits computer.
+        # Force the dtype to int64 to work correctly on 32 bit computer.
+        # Otherwise, it create by default a int32 on 32 bit computer.
         state = shared(numpy.int64(0))
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
