@@ -43,7 +43,8 @@ Internal changes
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
 
 Crash Fix
- * Don't try to use blas library when told to don't use them(Frederic B.)
+ * Do not try to use the BLAS library when blas.ldflags is manually set to an
+   empty string (Frederic B.)
  * When importing theano on a computer without without gpu with the Theano
    flags device or init_gpu_device to gpu* (Frederic B., Reported Luo Heng)
 
