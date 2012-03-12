@@ -1513,6 +1513,8 @@ class Scan(PureOp):
             rop_self_outputs = self_outputs[:-1]
         else:
             rop_self_outputs = self_outputs
+        if self.info['n_shared_outs'] > 0:
+            rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
         rop_outs = tensor.Rop(rop_self_outputs, self_inputs, inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
@@ -1532,7 +1534,7 @@ class Scan(PureOp):
         info['n_sit_sot'] = self.n_sit_sot * 2
         info['n_mit_mot'] = self.n_mit_mot * 2
         info['n_nit_sot'] = self.n_nit_sot * 2
-        info['n_shared_outs'] = self.n_shared_outs * 2
+        info['n_shared_outs'] = self.n_shared_outs
         info['gpu'] = False
         info['as_while'] = self.as_while
         info['profile'] = self.profile
@@ -1596,8 +1598,8 @@ class Scan(PureOp):
         e = e + self.n_shared_outs
         ib = ie
         ie = ie + self.n_shared_outs
-        scan_shared = inputs[b:e] + eval_points[b:e]
-        inner_shared = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+        scan_shared = inputs[b:e]
+        inner_shared = self_inputs[ib:ie]
 
         # NIT_SOT sequences
         b = e
@@ -1626,7 +1628,7 @@ class Scan(PureOp):
         inner_out_nit_sot = self_outputs[b:e] + rop_outs[b:e]
         b = e
         e = e + self.n_shared_outs
-        inner_out_shared = self_outputs[b:e] + rop_outs[b:e]
+        inner_out_shared = self_outputs[b:e]
 
         inner_ins = (inner_seqs +
                      inner_mit_mot +
@@ -1669,9 +1671,7 @@ class Scan(PureOp):
         b = e + self.n_nit_sot
         e = e + self.n_nit_sot * 2
         final_outs += outputs[b:e]
-        b = e + self.n_shared_outs
-        e = e + self.n_shared_outs * 2
-        final_outs += outputs[b:e]
+        final_outs += [None]*self.n_shared_outs
 
         return final_outs
 
