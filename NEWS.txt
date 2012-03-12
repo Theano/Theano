@@ -45,8 +45,8 @@ Internal changes
 Crash Fix
  * Do not try to use the BLAS library when blas.ldflags is manually set to an
    empty string (Frederic B.)
- * When importing theano on a computer without without gpu with the Theano
-   flags device or init_gpu_device to gpu* (Frederic B., Reported Luo Heng)
+ * When importing theano on a computer without GPU with the Theano
+   flags 'device' or 'init_gpu_device' set to gpu* (Frederic B., reported by  Luo Heng)
 
 
 =============
