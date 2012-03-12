@@ -46,7 +46,7 @@ def _atexit_print_fn():
     if len(_atexit_print_list) > 1:
     # Make a global profile
         cum = copy.copy(_atexit_print_list[0])
-        cum.message = "Sum of all printed profile at exit"
+        cum.message = "Sum of all printed profiles at exit"
         for ps in _atexit_print_list[1:]:
 #        for ps in [ps for ps in _atexit_print_list[1:]
 #                   if not isinstance(ps, ScanProfileStats)]:
@@ -202,7 +202,7 @@ class ProfileStats(object):
         if op_flops:
             flops_msg = ' <MFlops/s>'
             print ('\nHACK WARNING: we print the flops for some OP, but the'
-                   ' logic don\' always work. You need to know the internal'
+                   ' logic does not always work. You need to know the internal'
                    ' of Theano to make it work correctly.'
                    ' Otherwise don\'t use!')
         print ('\nOp-wise summary:'

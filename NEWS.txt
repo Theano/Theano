@@ -33,9 +33,9 @@ New Features
 Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module
  * Op class: Cast, Poisson, Multinomial, EliminateZeros, Sum, Binomial
- * Op class: SamplingDot, SamplingDotCsr(inserted automatically)
- * Op function: structured_sigmoid, structured_exp, structured_pow, structured_minimum,
- * Op class: StructuredAddSV, StrucutedAddSVCSR(inserted automatically)
+ * Op class: SamplingDot, SamplingDotCsr (inserted automatically)
+ * Op function: structured_sigmoid, structured_exp, structured_pow, structured_minimum
+ * Op class: StructuredAddSV, StrucutedAddSVCSR (inserted automatically)
  * opt: local_sampling_dot_csr, local_structured_add_s_v
 
 Internal changes

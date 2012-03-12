@@ -317,13 +317,13 @@ bindings to work only on Python files.
 Emacs
 ~~~~~
 
-There is an **excellent** system to configure emacs for python:
+There is an **excellent** system to configure emacs for Python:
 `emacs-for-python
 <https://github.com/gabrielelanaro/emacs-for-python>`_. It gathers many
 emacs config into one, and modifies them to behave together nicely. You
-can use it to check for pep8 compliance and for python syntax errors.
+can use it to check for pep8 compliance and for Python syntax errors.
 
-To install it on linux, you can do like this:
+To install it on Linux, you can do like this:
 
 .. code-block:: bash
 

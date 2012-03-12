@@ -415,7 +415,7 @@ class CLinker(link.Linker):
         # list(env.variables)
         self.variables = graph.variables(self.inputs, self.outputs)
         # The orphans field is listified to ensure a consistent order.
- #list(env.orphans.difference(self.outputs))
+        #list(env.orphans.difference(self.outputs))
         self.orphans = list(r for r in self.variables
                             if isinstance(r, graph.Value) and
                             r not in self.inputs)
