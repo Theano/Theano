@@ -240,9 +240,9 @@ class CGer(BaseBLAS, Ger):
 
 @local_optimizer([ger, ger_destructive])
 def use_c_ger(node):
-    # Only float32 and float64 are supported for now.
     if not config.blas.ldflags:
         return
+    # Only float32 and float64 are supported for now.
     if (node.op == ger and
             node.outputs[0].dtype in ['float32', 'float64']):
         return [CGer(False)(*node.inputs)]
@@ -513,9 +513,9 @@ class CGemv(BaseBLAS, Gemv):
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
 def use_c_gemv(node):
-    # Only float32 and float64 are supported for now.
     if not config.blas.ldflags:
         return
+    # Only float32 and float64 are supported for now.
     if (node.op == gemv_no_inplace and
             node.outputs[0].dtype in ['float32', 'float64']):
         return [CGemv(inplace=False)(*node.inputs)]
