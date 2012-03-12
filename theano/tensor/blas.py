@@ -303,6 +303,14 @@ def default_blas_ldflags():
     try:
         # If we are in a EPD installation, mkl is available
         if "EPD" in sys.version:
+            if sys.platform == 'win32':
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in
+                    # numpy.distutils.__config__.blas_opt_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
             return ' '.join(
                 ['-L%s' % os.path.join(sys.prefix, "lib")] +
                 ['-l%s' % l for l in numpy.distutils.__config__.blas_opt_info['libraries']])
