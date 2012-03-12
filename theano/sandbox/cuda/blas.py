@@ -1,10 +1,12 @@
+import os
+import StringIO
+
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
-import StringIO, os
-
 import cuda_ndarray.cuda_ndarray as cuda
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
+
 
 class GpuDot22(GpuOp):
     """
@@ -12,6 +14,7 @@ class GpuDot22(GpuOp):
     """
     def __str__(self):
         return 'GpuDot22'
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -25,10 +28,10 @@ class GpuDot22(GpuOp):
             raise TypeError(y)
         otype = CudaNdarrayType(
                 (x.type.broadcastable[0], y.type.broadcastable[1]))
-        return Apply(self, [x,y], [otype()])
+        return Apply(self, [x, y], [otype()])
 
     def c_code_cache_version(self):
-        return (1,1)
+        return (1, 1)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         x, y = inputs
@@ -77,12 +80,14 @@ class GpuDot22(GpuOp):
         """ % locals()
 gpu_dot22 = GpuDot22()
 
+
 class GpuDot22Scalar(GpuOp):
     """
     Implement dot(2d, 2d) * scalar on the gpu.
     """
     def __str__(self):
         return 'GpuDot22Scalar'
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -98,10 +103,10 @@ class GpuDot22Scalar(GpuOp):
             raise TypeError(a)
         otype = CudaNdarrayType(
                 (x.type.broadcastable[0], y.type.broadcastable[1]))
-        return Apply(self, [x,y,a], [otype()])
+        return Apply(self, [x, y, a], [otype()])
 
     def c_code_cache_version(self):
-        return (1,1)
+        return (1, 1)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, y, a = inputs
@@ -156,13 +161,14 @@ class GpuDot22Scalar(GpuOp):
         """ % locals()
 gpu_dot22scalar = GpuDot22Scalar()
 
+
 class GpuGemm(GpuOp):
     """
     implement the gemm on the gpu.
 
     """
     def __init__(self, inplace):
-        self.__setstate__({'inplace':inplace})
+        self.__setstate__({'inplace': inplace})
 
     def __str__(self):
         if self.inplace:
@@ -187,8 +193,8 @@ class GpuGemm(GpuOp):
         return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y, b):
-        # the more complicated error checking performed by tensor.gemm is assumed to already
-        # have been done
+        # the more complicated error checking performed by tensor.gemm
+        # is assumed to already have been done
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
@@ -270,13 +276,14 @@ class GpuGemm(GpuOp):
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
+
 class GpuGemv(GpuOp):
     """
     implement gemv on the gpu.
 
     """
     def __init__(self, inplace):
-        self.__setstate__({'inplace':inplace})
+        self.__setstate__({'inplace': inplace})
 
     def __str__(self):
         if self.inplace:
@@ -301,8 +308,8 @@ class GpuGemv(GpuOp):
         return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y, b):
-        # the more complicated error checking performed by tensor.gemv is assumed to already
-        # have been done
+        # the more complicated error checking performed by tensor.gemv
+        # is assumed to already have been done
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
@@ -364,13 +371,14 @@ class GpuGemv(GpuOp):
 gpu_gemv_no_inplace = GpuGemv(inplace=False)
 gpu_gemv_inplace = GpuGemv(inplace=True)
 
+
 class GpuGer(GpuOp):
     """
     implement ger on the gpu.
 
     """
     def __init__(self, inplace):
-        self.__setstate__({'inplace':inplace})
+        self.__setstate__({'inplace': inplace})
 
     def __str__(self):
         if self.inplace:
@@ -468,6 +476,7 @@ class GpuGer(GpuOp):
 gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
+
 class GpuOuter(GpuOp):
     """ Implement outer on the gpu."""
     def make_node(self, x, y):
@@ -554,9 +563,10 @@ class GpuOuter(GpuOp):
         if (%(name)sres) {
             %(fail)s;
         }
-        """%dict(x=x,y=y,A=A,fail=fail,name=name)
+        """ % dict(x=x, y=y, A=A, fail=fail, name=name)
 
 gpu_outer = GpuOuter()
+
 
 ##
 # Not really a BLAS operation, but whatever.
@@ -574,7 +584,7 @@ class GpuConv(GpuOp):
         raise ValueError(mode)
 
     def __init__(self, border_mode,
-            subsample=(1,1),
+            subsample=(1, 1),
             logical_img_hw=None,
             logical_kern_hw=None,
             logical_kern_align_top=True,
@@ -591,30 +601,32 @@ class GpuConv(GpuOp):
                         the execution of the convolution. Mostly used for
                         optimization or debugging.
         :param kshp:    The size of the kernel. If provided, can genera
-                        faster code. If the GpuConv op is automatically inserted,
+                        faster code. If the GpuConv op is automatically
+                        inserted,
                         we take its value automatically from the Conv op.
         :param imshp:   The size of the image. Not used for code generation but
-                        allow to select an experimental new version in another repo.
+                        allow to select an experimental new version in another
+                        repo.
         """
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
-            h,w = logical_img_hw
-            #TODO: reconsider this... since shapes are not given in constructor,
-            # maybe a multiplier + offset is a more appropriate way of passing this logical
-            # grid
+            h, w = logical_img_hw
+            #TODO: reconsider this... since shapes are not given in
+            # constructor, maybe a multiplier + offset is a more
+            # appropriate way of passing this logical grid
             logical_img_hw = tuple(logical_img_hw)
         self.logical_img_hw = logical_img_hw
         if logical_kern_hw is not None:
-            h,w = logical_kern_hw
-            #TODO: reconsider this... since shapes are not given in constructor,
-            # maybe a multiplier + offset is a more appropriate way of passing this logical
-            # grid
+            h, w = logical_kern_hw
+            #TODO: reconsider this... since shapes are not given in
+            # constructor, maybe a multiplier + offset is a more
+            # appropriate way of passing this logical grid
             logical_kern_hw = tuple(logical_kern_hw)
         self.logical_kern_hw = logical_kern_hw
         self.logical_kern_align_top = logical_kern_align_top
-        self.version=version
-        self.verbose=verbose
+        self.version = version
+        self.verbose = verbose
         self.kshp = kshp
         self.imshp = imshp
 
@@ -632,11 +644,12 @@ class GpuConv(GpuOp):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if not hasattr(self,"imshp"):
+        if not hasattr(self, "imshp"):
             self.imshp = None
 
     def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and hash(-2)==-2 in python!
+        # don't use hash(self.version) as hash(-1)==-2 and
+        # hash(-2)==-2 in python!
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
@@ -649,14 +662,15 @@ class GpuConv(GpuOp):
             ^ hash(self.imshp)
 
     def __str__(self):
-        return '%s{%s, %s, %s, %s, %s, %s, %s}' %(self.__class__.__name__,
-                self.border_mode,
-                str(self.subsample),
-                str(self.logical_img_hw),
-                str(self.logical_kern_hw),
-                str(self.logical_kern_align_top),
-                str(self.imshp),
-                str(self.kshp))
+        return '%s{%s, %s, %s, %s, %s, %s, %s}' % (
+            self.__class__.__name__,
+            self.border_mode,
+            str(self.subsample),
+            str(self.logical_img_hw),
+            str(self.logical_kern_hw),
+            str(self.logical_kern_align_top),
+            str(self.imshp),
+            str(self.kshp))
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
@@ -664,26 +678,30 @@ class GpuConv(GpuOp):
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
 
-        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0], False, False]
+        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
+                         False, False]
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def c_compile_args(self):
         nb = 0
         if self.kshp is not None:
             nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID='+str(nb)]#,'-g','-G']
+        return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
 
     def c_headers(self):
-        return ['cuda_ndarray.cuh','<stdio.h>']
+        return ['cuda_ndarray.cuh', '<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0, 17) # raise this whenever modifying any of the support_code_files
+        # raise this whenever modifying any of the support_code_files
+        return (0, 17)
 
     def c_support_code_apply(self, node, nodename):
-        # REMEMBER TO RAISE c_code_cache_version when changing any of these files
-        return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\
-            open(os.path.join(os.path.split(__file__)[0],'conv_full_kernel.cu')).read()+\
-            open(os.path.join(os.path.split(__file__)[0],'conv.cu')).read()
+        # REMEMBER TO RAISE c_code_cache_version when changing any of
+        # these files
+        files = ['conv_kernel.cu', 'conv_full_kernel.cu', 'conv.cu']
+        codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
+                for f in files]
+        return reduce(str.__add__, codes)
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp
@@ -724,7 +742,7 @@ class GpuConv(GpuOp):
                      mode, dx, dy, version, verbose);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
-"""%sub
+""" % sub
 
 
 class GpuDownsampleFactorMax(GpuOp):
@@ -736,13 +754,17 @@ class GpuDownsampleFactorMax(GpuOp):
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+        return (type(self) == type(other) and
+                self.ds == other.ds and
+                self.ignore_border == other.ignore_border)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+        return '%s{%s,%s}' % (self.__class__.__name__,
+                              self.ds,
+                              self.ignore_border)
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
@@ -750,10 +772,12 @@ class GpuDownsampleFactorMax(GpuOp):
         if not x.type.ndim == 4:
             raise TypeError()
         return Apply(self, [x], [x.type()])
+
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
         return (3)
+
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -887,6 +911,7 @@ class GpuDownsampleFactorMax(GpuOp):
         }
         """ % locals()
 
+
 class GpuDownsampleFactorMaxGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
@@ -896,16 +921,21 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+        return (type(self) == type(other) and
+                self.ds == other.ds and
+                self.ignore_border == other.ignore_border)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+        return '%s{%s,%s}' % (self.__class__.__name__,
+                              self.ds,
+                              self.ignore_border)
 
     def make_node(self, x, z, gz):
         return Apply(self, [x, z, gz], [x.type()])
+
     def c_code_cache_version(self):
         #return ()
         return (5,)
@@ -988,12 +1018,14 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        # This code considers every position in the output z, andthen computes the gradient for the
-        # input pixels that were downsampled to that z-position. It does so by running along every
-        # z row (sometimes plus one, to make sure every gx row gets totally filled), and by
-        # running along every x col. This code is not sensitive to the ignore_border flag along
-        # the row dimension (since it runs for every position in the output z), but it is sensitive
-        # along the col dimension.
+        # This code considers every position in the output z, andthen
+        # computes the gradient for the input pixels that were
+        # downsampled to that z-position. It does so by running along
+        # every z row (sometimes plus one, to make sure every gx row
+        # gets totally filled), and by running along every x col. This
+        # code is not sensitive to the ignore_border flag along the
+        # row dimension (since it runs for every position in the
+        # output z), but it is sensitive along the col dimension.
         ignore_border = int(self.ignore_border)
 
         return """
