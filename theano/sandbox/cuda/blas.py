@@ -1,9 +1,8 @@
 import os
 import StringIO
 
-from theano import Op, Type, Apply, Variable, Constant
-from theano import tensor, scalar
-import cuda_ndarray.cuda_ndarray as cuda
+from theano import Apply
+from theano import tensor
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 
@@ -129,9 +128,11 @@ class GpuDot22Scalar(GpuOp):
             %(fail)s;
         }
 
-        if ((NULL == %(z)s)
-            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(y)s)[1]))
+        if ((NULL == %(z)s) ||
+            (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
+              CudaNdarray_HOST_DIMS(%(x)s)[0]) ||
+            (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
+              CudaNdarray_HOST_DIMS(%(y)s)[1]))
         {
             //if (%(z)s) Py_DECREF(%(z)s);
             Py_XDECREF(%(z)s);
@@ -139,7 +140,8 @@ class GpuDot22Scalar(GpuOp):
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
             %(z)s = (CudaNdarray*)CudaNdarray_New();
-            if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
+            if ((NULL == %(z)s) ||
+                CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
                 if (%(z)s)
                 {
@@ -340,7 +342,8 @@ class GpuGemv(GpuOp):
             Py_INCREF(%(z_out)s);
         }
         else if (%(z_out)s
-                && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] == CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] ==
+                    CudaNdarray_HOST_DIMS(%(z_in)s)[0])
                 && ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] > 0)
                     || ((CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 0)
                         && (CudaNdarray_HOST_DIMS(%(z_out)s)[0] == 1))))
@@ -362,7 +365,8 @@ class GpuGemv(GpuOp):
             }
         }
 
-        if (CudaNdarray_sgemv(%(name)s_alpha, %(x)s, %(y)s, %(name)s_beta, %(z_out)s))
+        if (CudaNdarray_sgemv(%(name)s_alpha, %(x)s, %(y)s,
+                              %(name)s_beta, %(z_out)s))
         {
             %(fail)s;
         }
@@ -528,8 +532,10 @@ class GpuOuter(GpuOp):
             Py_INCREF(%(name)sy);
         }
         if (!(%(A)s &&
-              CudaNdarray_HOST_DIMS(%(A)s)[0] == CudaNdarray_HOST_DIMS(%(x)s)[0] &&
-              CudaNdarray_HOST_DIMS(%(A)s)[1] == CudaNdarray_HOST_DIMS(%(y)s)[0] &&
+              CudaNdarray_HOST_DIMS(%(A)s)[0] ==
+                CudaNdarray_HOST_DIMS(%(x)s)[0] &&
+              CudaNdarray_HOST_DIMS(%(A)s)[1] ==
+                CudaNdarray_HOST_DIMS(%(y)s)[0] &&
               CudaNdarray_is_c_contiguous(%(A)s))) {
             Py_XDECREF(%(A)s);
             int dims[2];
@@ -550,7 +556,9 @@ class GpuOuter(GpuOp):
                                 CudaNdarray_HOST_DIMS(%(A)s)[1]);
             if (cudaSuccess != cudaMemset(%(A)s->devdata, 0, total_size))
             {
-                PyErr_Format(PyExc_MemoryError, "GpuOuter: Error memsetting %%d bytes of device memory.", total_size);
+                PyErr_Format(PyExc_MemoryError,
+                      "GpuOuter: Error memsetting %%d bytes of device memory.",
+                      total_size);
                 Py_DECREF(%(name)sy);
                 Py_DECREF(%(name)sx);
                 %(fail)s;
@@ -734,12 +742,15 @@ class GpuConv(GpuOp):
     }
     else
     {
-        PyErr_SetString(PyExc_ValueError, "mode must be one of 'full' or 'valid'");
+        PyErr_SetString(PyExc_ValueError,
+                        "mode must be one of 'full' or 'valid'");
         return NULL;
     }
 
-    CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s, %(out)s,
-                     mode, dx, dy, version, verbose);
+    CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
+                                                         %(out)s, mode,
+                                                         dx, dy,
+                                                         version, verbose);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
 """ % sub
@@ -803,7 +814,10 @@ class GpuDownsampleFactorMax(GpuOp):
             dims[3] += (xdim3%%(%(ds1)s)?1:0);
         }
         if(dims[3]>512){
-            PyErr_Format(PyExc_ValueError, "GpuDownsampleFactorMax: last dimention size of %%d is bigger then 512. This case is not implemented.", dims[3]);
+            PyErr_Format(PyExc_ValueError,
+                         "GpuDownsampleFactorMax: last dimention size of %%d"
+                         " is bigger then 512. This case is not implemented.",
+                         dims[3]);
             %(fail)s;
         }
 
@@ -820,17 +834,19 @@ class GpuDownsampleFactorMax(GpuOp):
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
-                PyErr_SetString(PyExc_ValueError, "Was not able to allocate output!");
+                PyErr_SetString(PyExc_ValueError,
+                                "Was not able to allocate output!");
                 %(fail)s;
             }
         }
         {
             dim3 grid(dims[0] * dims[1], dims[2]);
-            //dim3 block(std::min(dims[3], 512)); //TODO: implement this by supporting more
-            //outputs than threads
+            //dim3 block(std::min(dims[3], 512));
+            //TODO: implement this by supporting more outputs than threads
             dim3 block(dims[3]);
             if ((grid.x*grid.y) && dims[3])
-            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, xdim3*sizeof(float)>>>(
+            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block,
+                                                       xdim3*sizeof(float)>>>(
                 dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
                 CudaNdarray_DEV_DATA(%(x)s),
                 CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -842,7 +858,9 @@ class GpuDownsampleFactorMax(GpuOp):
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: %%s: %%s. (grid: %%i x %%i;"
+                    " block: %%i x %%i x %%i)\\n",
                     "kMaxPool_%(nodename)s",
                     cudaGetErrorString(err),
                     grid.x,
@@ -871,7 +889,9 @@ class GpuDownsampleFactorMax(GpuOp):
 
             extern __shared__ float xbuf[]; //size [xD3]
 
-            for (int r2 = 0; (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2)); ++r2)
+            for (int r2 = 0;
+                 (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
+                 ++r2)
             {
                 __syncthreads();
                 // load the current row of the image into shared memory
@@ -884,7 +904,9 @@ class GpuDownsampleFactorMax(GpuOp):
                 // initialize our max if this is the first row we're loading
                 cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
 
-                // do a mini-reduction over the pf3 relevant elements in the current row
+                // do a mini-reduction over the pf3 relevant elements
+                // in the current row
+
                 if (%(ignore_border)s)
                 {
                     for (int k = 0; k < pf3; ++k)
@@ -963,7 +985,8 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             Py_XDECREF(%(gx)s);
             %(gx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(gx)s)
-                || CudaNdarray_alloc_contiguous(%(gx)s, 4, CudaNdarray_HOST_DIMS(%(x)s)))
+                || CudaNdarray_alloc_contiguous(%(gx)s, 4,
+                                                CudaNdarray_HOST_DIMS(%(x)s)))
             {
                 Py_XDECREF(%(gx)s);
                 %(gx)s = NULL;
@@ -1004,7 +1027,8 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                PyErr_Format(PyExc_RuntimeError,
+    "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
                     "kDownsampleMaxGrad_%(nodename)s",
                     cudaGetErrorString(err),
                     grid.x,
