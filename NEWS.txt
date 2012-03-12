@@ -33,9 +33,9 @@ New Features
 Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module
  * Op class: Cast, Poisson, Multinomial, EliminateZeros, Sum, Binomial
- * Op class: SamplingDot, SamplingDotCsr(inserted automatically)
- * Op function: structured_sigmoid, structured_exp, structured_pow, structured_minimum,
- * Op class: StructuredAddSV, StrucutedAddSVCSR(inserted automatically)
+ * Op class: SamplingDot, SamplingDotCsr (inserted automatically)
+ * Op function: structured_sigmoid, structured_exp, structured_pow, structured_minimum
+ * Op class: StructuredAddSV, StrucutedAddSVCSR (inserted automatically)
  * opt: local_sampling_dot_csr, local_structured_add_s_v
 
 Internal changes
@@ -43,9 +43,10 @@ Internal changes
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
 
 Crash Fix
- * Don't try to use blas library when told to don't use them(Frederic B.)
- * When importing theano on a computer without without gpu with the Theano
-   flags device or init_gpu_device to gpu* (Frederic B., Reported Luo Heng)
+ * Do not try to use the BLAS library when blas.ldflags is manually set to an
+   empty string (Frederic B.)
+ * When importing theano on a computer without GPU with the Theano
+   flags 'device' or 'init_gpu_device' set to gpu* (Frederic B., reported by  Luo Heng)
 
 
 =============
