@@ -44,6 +44,9 @@ Internal changes
 
 Crash Fix
  * Don't try to use blas library when told to don't use them(Frederic B.)
+ * When importing theano on a computer without without gpu with the Theano
+   flags device or init_gpu_device to gpu* (Frederic B., Reported Luo Heng)
+
 
 =============
 Release Notes
