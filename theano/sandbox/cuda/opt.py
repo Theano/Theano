@@ -238,6 +238,28 @@ def local_gpu_dimshuffle_0(node):
 
 @register_opt()
 @local_optimizer([])
+def local_gpu_specifyShape_0(node):
+    """
+    specify_shape(host_from_gpu()) -> host_from_gpu(specify_shape)
+    gpu_from_host(specify_shape) -> specifyshape(gpu_from_host)
+    """
+    if isinstance(node.op, tensor.SpecifyShape):
+        input = node.inputs[0]
+        if input.owner and isinstance(input.owner.op, HostFromGpu):
+            return [host_from_gpu(tensor.specify_shape(gpu_from_host(input),
+                                                      *node.inputs[1:]))]
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           tensor.SpecifyShape):
+            specifyshape_node = host_input.owner
+            return [tensor.specify_shape(
+                gpu_from_host(specifyshape_node.inputs[0]),
+                *specifyshape_node.inputs[1:])]
+    return False
+
+@register_opt()
+@local_optimizer([])
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
