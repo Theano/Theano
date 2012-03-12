@@ -1262,13 +1262,13 @@ class CLinker(link.Linker):
         struct_name = self.struct_name
         print >> code, "static PyObject * instantiate(PyObject * self, PyObject *argtuple) {"
         print >> code, '  assert(PyTuple_Check(argtuple));'
-        print >> code, '  if (%(n_args)i != PyTuple_Size(argtuple)){ ' %locals()
-        print >> code, '     PyErr_Format(PyExc_TypeError, "Wrong number of arguments, expected %(n_args)i, got %%i", (int)PyTuple_Size(argtuple));' %locals()
+        print >> code, '  if (%(n_args)i != PyTuple_Size(argtuple)){ ' % locals()
+        print >> code, '     PyErr_Format(PyExc_TypeError, "Wrong number of arguments, expected %(n_args)i, got %%i", (int)PyTuple_Size(argtuple));' % locals()
         print >> code, '     return NULL;'
         print >> code, '  }'
-        print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' %locals()
-        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)'%n for n in xrange(n_args)), ');'
-        print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' %locals()
+        print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
+        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ');'
+        print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' % locals()
         print >> code, "  return thunk; }"
         return code.getvalue()
 

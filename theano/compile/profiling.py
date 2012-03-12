@@ -679,17 +679,33 @@ if 0: # old code still to be ported from ProfileMode
     def print_summary(self,
                       n_apply_to_print=config.ProfileMode.n_apply_to_print,
                       n_ops_to_print=config.ProfileMode.n_ops_to_print):
-        """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
+        """
+        Print 3 summaries that show where the time is spent. The first shows an
+        Apply-wise summary, the second shows an Op-wise summary, the third
+        shows an type-Op-wise summary.
 
-        The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there).
-        The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them). If two Op have different hash value, they will be separate.
-        The type-Op-wise summary group the result by type of op. So event if two Op have different hash value, they will be merged.
+        The Apply-wise summary print the timing information for the worst
+        offending Apply nodes. This corresponds to individual Op applications
+        within your graph which take the longest to execute (so if you use dot
+        twice, you will see two entries there).
 
-        Their is an hack with the Op-wise summary. Go see it if you want to know more.
+        The Op-wise summary print the execution time of all Apply nodes
+        executing the same Op are grouped together and the total execution time
+        per Op is shown (so if you use dot twice, you will see only one entry
+        there corresponding to the sum of the time spent in each of them). If
+        two Op have different hash value, they will be separate.
 
-        :param n_apply_to_print: the number of apply to print. Default 15, or n_ops_to_print flag.
+        The type-Op-wise summary group the result by type of op. So event if
+        two Op have different hash value, they will be merged.
 
-        :param n_ops_to_print: the number of ops to print. Default 20, or n_apply_to_print flag.
+        There is a hack with the Op-wise summary. Go see it if you want to know
+        more.
+
+        :param n_apply_to_print: the number of apply to print. Default 15, or
+            n_ops_to_print flag.
+
+        :param n_ops_to_print: the number of ops to print. Default 20, or
+            n_apply_to_print flag.
         """
         fct_call_time = self.mode.fct_call_time
         fct_call = self.mode.fct_call
@@ -709,45 +725,51 @@ if 0: # old code still to be ported from ProfileMode
                 n_apply_to_print,
                 n_ops_to_print)
 
+    def print_diff_summary(self, other, n_apply_to_print=15,
+                           n_ops_to_print=20):
+        """
+        As print_summary, but print the difference on two different profile
+        mode.
 
-    def print_diff_summary(self, other, n_apply_to_print=15, n_ops_to_print=20):
-        """ As print_summary, but print the difference on two different profile mode.
-        TODO: Also we don't print the Apply-wise summary as it don't work for now.
+        TODO: Also we don't print the Apply-wise summary as it doesn't work for
+        now.
         TODO: make comparaison with gpu code.
 
-        :param other: the other instance of ProfileMode that we want to be compared to.
+        :param other: the other instance of ProfileMode that we want to be
+            compared to.
 
         :param n_apply_to_print: the number of apply to print. Default 15.
 
         :param n_ops_to_print: the number of ops to print. Default 20.
         """
 
-        def diff_dict(a_time,b_time_):
+        def diff_dict(a_time, b_time_):
             r = {}
             b_time = copy.copy(b_time_)
-            for a,ta in a_time.items():
-                r.setdefault(a,0)
-                tb = b_time.pop(a,0)
-                r[a]+=ta-tb
+            for a, ta in a_time.items():
+                r.setdefault(a, 0)
+                tb = b_time.pop(a, 0)
+                r[a] += ta - tb
 
             #they are missing in a
-            for a,t in b_time.items():
-                r.setdefault(a,0)
-                r[a]+=t
+            for a, t in b_time.items():
+                r.setdefault(a, 0)
+                r[a] += t
             return r
 
-        compile_time = self.compile_time-other.compile_time
-        fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
-        fct_call = diff_dict(self.fct_call,other.fct_call)
+        compile_time = self.compile_time - other.compile_time
+        fct_call_time = diff_dict(self.fct_call_time, other.fct_call_time)
+        fct_call = diff_dict(self.fct_call, other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
         op_cimpl = self.op_cimpl and other.op_cimpl
         message = self.message
-        outputs_size = diff_dict(self.outputs_size,other.outputs_size)
+        outputs_size = diff_dict(self.outputs_size, other.outputs_size)
 
-        self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
-                            apply_time, op_cimpl, message, outputs_size,
-                            n_apply_to_print=n_apply_to_print,
-                            n_ops_to_print=n_ops_to_print, print_apply=False)
+        self.print_summary_(
+                "print_diff_summary", compile_time, fct_call_time, fct_call,
+                apply_time, op_cimpl, message, outputs_size,
+                n_apply_to_print=n_apply_to_print,
+                n_ops_to_print=n_ops_to_print, print_apply=False)
 
 
 class ScanProfileStats(ProfileStats):
