@@ -1142,7 +1142,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                                             x_col*xS3]) ? my_gz : 0.0f;
                         }
                     //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                         x_row*xD3 + x_col] = -999;
+                    //   x_row*xD3 + x_col] = -999;
 }
 
                 }
