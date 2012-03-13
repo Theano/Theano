@@ -1188,7 +1188,8 @@ def test_remove0():
         f = theano.function([theano.In(x, borrow=True, mutable=True)],
                             Remove0()(x))
 
-        # assert optimization is applied in modes with optimization
+        # assert optimization local_inplace_remove0 is applied in
+        # modes with optimization
         if theano.config.mode not in ['FAST_COMPILE']:
             # list of apply nodes in the optimized graph.
             nodes = f.maker.env.toposort()

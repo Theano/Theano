@@ -23,7 +23,7 @@ theano.compile.optdb.register('local_inplace_remove0',
 
 
 @gof.local_optimizer([csm_properties])
-def skip_pack_csc01(node):
+def local_csm_properties_csm(node):
     """if we find csm_properties(CSM(*args)), then we can replace that with the
     *args directly"""
     if node.op == csm_properties:
@@ -36,4 +36,4 @@ def skip_pack_csc01(node):
             return ret_var
 
     return False
-register_specialize(skip_pack_csc01)
+register_specialize(local_csm_properties_csm)
