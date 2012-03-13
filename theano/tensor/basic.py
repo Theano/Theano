@@ -1413,10 +1413,6 @@ class _tensor_py_operators:
         return cast(self, dtype)
 
     #SLICING
-#     def __getitem__(self, args): return Subtensor.from_idxs(self,
-#             args).outputs[0]
-#     def __getslice__(self, *args): return Subtensor.from_idxs(self,
-#             (slice(*args),)).outputs[0]
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,
@@ -1444,10 +1440,6 @@ class _tensor_py_operators:
                 return AdvancedSubtensor()(self, *args)
         else:
             return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Variable)))
-
-    def __getslice__(self, *args):
-        args = slice(*args),
-        return self.__getitem__(args)
 
     #COPYING
     def copy(self):
