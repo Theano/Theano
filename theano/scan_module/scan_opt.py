@@ -309,11 +309,18 @@ scan_seqopt.register('scanOp_pushout_nonseqs_ops',
 @gof.local_optimizer([None])
 def scan_make_inplace(node):
     op = node.op
+
     if (isinstance(op, scan_op.Scan) and
-        (not op.info['inplace']) and
+        (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
+                                   op.info['n_mit_sot'] +
+                                   op.info['n_sit_sot'])) and
         (not op.info['gpu'])):
         info = op.info.copy()
-        info['inplace'] = True
+        pos = op.info['inplace'] + 1
+        info['inplace'] = pos
+        if not 'destroy_map' in info:
+            info['destroy_map'] = {}
+        info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
         # inputs corresponding to sequences and n_steps
         ls_begin = node.inputs[:1 + op.n_seqs]
         ls = op.outer_mitmot(node.inputs)
