@@ -164,7 +164,7 @@ class InferShapeTester(unittest.TestCase):
         outputs_function = theano.function(inputs, outputs, mode=self.mode)
         shapes_function = theano.function(inputs, [o.shape for o in outputs],
                 mode=self.mode)
-        theano.printing.debugprint(shapes_function)
+        #theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
         topo_shape = shapes_function.maker.env.toposort()
         assert not any(isinstance(t.op, cls) for t in topo_shape)

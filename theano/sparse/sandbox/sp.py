@@ -750,10 +750,10 @@ def max_pool(images, imgshp, maxpoolshp):
             convolution_indices.conv_eval(imgshp, maxpoolshp,
                                           maxpoolshp, mode='valid')
 
-    print 'XXXXXXXXXXXXXXXX MAX POOLING LAYER XXXXXXXXXXXXXXXXXXXX'
-    print 'imgshp = ', imgshp
-    print 'maxpoolshp = ', maxpoolshp
-    print 'outshp = ', outshp
+#    print 'XXXXXXXXXXXXXXXX MAX POOLING LAYER XXXXXXXXXXXXXXXXXXXX'
+#    print 'imgshp = ', imgshp
+#    print 'maxpoolshp = ', maxpoolshp
+#    print 'outshp = ', outshp
 
     # build sparse matrix, then generate stack of image patches
     csc = theano.sparse.CSM(sptype)(N.ones(indices.size), indices,
