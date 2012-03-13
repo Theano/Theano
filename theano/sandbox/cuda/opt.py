@@ -1357,10 +1357,45 @@ def gpu_scan_make_inplace(node):
         (op.info['gpu'])):
         info = op.info.copy()
         pos = op.info['inplace'] + 1
-        info['inplace'] = pos
         if not 'destroy_map' in info:
             info['destroy_map'] = {}
         info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
+        # inputs corresponding to sequences and n_steps
+        ls_begin = node.inputs[:1+op.n_seqs]
+        ls  = op.outer_mitmot(node)
+        ls += op.outer_mitsot(node)
+        ls += op.outer_sitsot(node)
+        ls_end  = op.outer_shared(node)
+        ls_end += op.outer_nitsot(node)
+        ls_end += op.outer_non_seqs(node)
+        n_outs = len(ls)
+        for idx in xrange(n_outs):
+            if ls[idx] in ls[:idx]:
+                ls[idx] = compile.function_module.deep_copy_op(ls[idx])
+
+        inputs = ls_begin + ls + ls_end
+
+        typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
+                broadcastable = broadcastable)
+        new_op = scan_op.Scan( op.inputs
+                              , op.outputs
+                              , info
+                              , typeConstructor = typeConstructor
+                             )
+        return new_op.make_node(*inputs).outputs
+    return False
+
+@gof.local_optimizer([None])
+def gpu_scan_make_inplace_inc_out(node):
+    op = node.op
+    if ( isinstance(op, scan_op.Scan) and
+        (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
+                                   op.info['n_mit_sot'] +
+                                   op.info['n_sit_sot'])) and
+        (op.info['gpu'])):
+        info = op.info.copy()
+        pos = op.info['inplace'] + 1
+        info['inplace'] = pos
         # inputs corresponding to sequences and n_steps
         ls_begin = node.inputs[:1+op.n_seqs]
         ls  = op.outer_mitmot(node)
@@ -1390,8 +1425,17 @@ def gpu_scan_make_inplace(node):
 gpu_scan_inplace_eq = theano.gof.EquilibriumDB()
 
 gpu_scan_inplace_eq.register('gpu_scanOp_make_inplace',
-               opt.in2out(scan_make_inplace, ignore_newtrees=True),
+               theano.tensor.opt.in2out(gpu_scan_make_inplace, ignore_newtrees=True),
                1,
+               'gpu',
+               'fast_run',
+               'inplace',
+               'scan')
+
+gpu_scan_inplace_eq.register('gpu_scanOp_make_inplace_inc_out',
+               theano.tensor.opt.in2out(gpu_scan_make_inplace_inc_out,
+                                        ignore_newtrees=True),
+               2,
                'gpu',
                'fast_run',
                'inplace',

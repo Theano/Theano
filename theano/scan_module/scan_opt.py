@@ -317,7 +317,6 @@ def scan_make_inplace(node):
         (not op.info['gpu'])):
         info = op.info.copy()
         pos = op.info['inplace'] + 1
-        info['inplace'] = pos
         if not 'destroy_map' in info:
             info['destroy_map'] = {}
         info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
@@ -340,11 +339,53 @@ def scan_make_inplace(node):
                               info)
         return new_op.make_node(*inputs).outputs
     return False
+
+
+@gof.local_optimizer([None])
+def scan_make_inplace_inc_output(node):
+    op = node.op
+
+    if (isinstance(op, scan_op.Scan) and
+        (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
+                                   op.info['n_mit_sot'] +
+                                   op.info['n_sit_sot'])) and
+        (not op.info['gpu'])):
+        info = op.info.copy()
+        pos = op.info['inplace'] + 1
+        info['inplace'] = pos
+        # inputs corresponding to sequences and n_steps
+        ls_begin = node.inputs[:1 + op.n_seqs]
+        ls = op.outer_mitmot(node.inputs)
+        ls += op.outer_mitsot(node.inputs)
+        ls += op.outer_sitsot(node.inputs)
+        ls_end = op.outer_shared(node.inputs)
+        ls_end += op.outer_nitsot(node.inputs)
+        ls_end += op.outer_non_seqs(node.inputs)
+        n_outs = len(ls)
+        for idx in xrange(n_outs):
+            if ls[idx] in ls[:idx]:
+                ls[idx] = deep_copy_op(ls[idx])
+
+        inputs = ls_begin + ls + ls_end
+        new_op = scan_op.Scan(op.inputs,
+                              op.outputs,
+                              info)
+        return new_op.make_node(*inputs).outputs
+    return False
+
+
 scan_inplace_eq = theano.gof.EquilibriumDB()
 
 scan_inplace_eq.register('scanOp_make_inplace',
                opt.in2out(scan_make_inplace, ignore_newtrees=True),
                1,
+               'fast_run',
+               'inplace',
+               'scan')
+
+scan_inplace_eq.register('scanOp_make_inplace_inc_output',
+               opt.in2out(scan_make_inplace_inc_output, ignore_newtrees=True),
+               2,
                'fast_run',
                'inplace',
                'scan')
