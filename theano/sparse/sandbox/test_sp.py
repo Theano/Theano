@@ -427,42 +427,6 @@ class TestSP(unittest.TestCase):
                 #utt.verify_grad(SpSum(axis=None), [x_val])
                 print 'ok'
 
-def test_remove0():
-    print
-    print 'test_remove0()'
-    configs=[
-        # structure type, numpy matching class
-        ('csc',scipy.sparse.csc_matrix),
-        ('csr',scipy.sparse.csr_matrix),
-        ]
-    for format,matrix_class in configs:
-        print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
-        # real
-        origin = (numpy.arange(9) + 1).reshape((3, 3)).astype(theano.config.floatX)
-        mat = matrix_class(origin).astype(theano.config.floatX)
-
-        mat[0,1] = mat[1,0] = mat[2,2] = 0
-
-        assert mat.size == 9
-
-        # symbolic
-        x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
-        # the In thingy has to be there because theano has as rule not to optimize inputs
-        f = theano.function([theano.In(x, borrow=True, mutable=True)], sp.Remove0()(x))
-
-        # assert optimization is applied in modes with optimization
-        if theano.config.mode not in ['FAST_COMPILE']:
-            # list of apply nodes in the optimized graph.
-            nodes = f.maker.env.toposort()
-            v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
-            assert len(v), 'Inplacing optimization should have been applied.'
-
-        # checking
-        # makes sense to change its name
-        target = mat
-        result = f(mat)
-        mat.eliminate_zeros()
-        assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
 
 def test_diag():
     m = theano.sparse.csc_matrix()

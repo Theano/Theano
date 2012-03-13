@@ -30,6 +30,9 @@ New Features
  * If you use Enthought Python Distribution (EPD) now we use its blas
    implementation by default.
 
+Sparse Sandbox graduate
+ * Remove0 op: it remove store element with value 0.
+
 Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module
  * Op class: Cast, Poisson, Multinomial, EliminateZeros, Sum, Binomial

@@ -16,6 +16,6 @@ except ImportError:
 
 if enable_sparse:
     from basic import *
+    import opt
     import sharedvar
     from sharedvar import sparse_constructor as shared
-

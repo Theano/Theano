@@ -1316,6 +1316,48 @@ def mul(x, y):
         raise NotImplementedError()
 
 
+class Remove0(gof.Op):
+    """
+    Remove explicit zeros from a sparse matrix, and resort indices
+    """
+
+    def __init__(self, inplace=False, *args, **kwargs):
+        gof.Op.__init__(self, *args, **kwargs)
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return 64153 ^ hash(type(self)) ^ hash(self.inplace)
+
+    def __str__(self):
+        l = []
+        if self.inplace:
+            l.append('inplace')
+        return self.__class__.__name__ + '{%s}' % ', '.join(l)
+
+    def make_node(self, x):
+        return gof.Apply(self, [x], [x.type()])
+
+    def perform(self, node, (x,), (z,)):
+        if self.inplace:
+            c = x
+        else:
+            c = x.copy()
+        c.eliminate_zeros()
+        z[0] = c
+
+    def grad(self, (x,), (gz,)):
+        return [gz]
+
+    def infer_shape(self, node, i0_shapes):
+        return i0_shapes
+remove0 = Remove0()
+
+
 ###############
 #
 # StructuredDot
