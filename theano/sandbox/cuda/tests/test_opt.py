@@ -68,6 +68,15 @@ def test_gpualloc():
     assert numpy.any(ininstance(x.op, cuda.GpuAlloc) for x in l )
 
 
+def test_gpuspecifyshape():
+    x = cuda.shared_constructor(numpy.ones(3,dtype='float32'), 'x')
+    m = theano.tensor.specify_shape(x + numpy.float32(1), (3,))
+    f = theano.function([], updates={x:m * numpy.float32(2)},
+                        mode=mode_with_gpu)
+    l = f.maker.env.toposort()
+    assert not numpy.any([isinstance(x.op, cuda.HostFromGpu) for x in l])
+
+
 
 def test_softmax():
     x = tensor.fmatrix()
