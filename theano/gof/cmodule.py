@@ -5,6 +5,7 @@ import cPickle
 import logging
 import operator
 import os
+import platform
 import shutil
 import stat
 import StringIO
@@ -30,12 +31,10 @@ AddConfigVar('cmodule.mac_framework_link',
 def local_bitwidth():
     """Return 32 for 32bit arch, 64 for 64bit arch"""
     # Note - it seems from an informal survey of machines at scipy2010
-    # that platform.architecture is also a reliable way to get the bitwidth
-    try:
-        maxint = sys.maxint
-    except AttributeError: # python 3 compatibility
-        maxint = sys.maxsize
-    return len('%x' % maxint) * 4
+    # that platform.architecture is a reliable way to get the bitwidth
+    arch = platform.architecture()
+    bit_width = arch[0][:-3]
+    return int(bit_width)
 
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
