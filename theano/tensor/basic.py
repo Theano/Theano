@@ -3,7 +3,7 @@
 __docformat__ = "restructuredtext en"
 
 import __builtin__
-import sys  # for sys.maxint
+import sys  # for sys.maxsize
 from theano.configparser import config
 import warnings
 from itertools import izip
@@ -3116,7 +3116,7 @@ def get_canonical_form_slice(theslice, length):
             start = switch(ge(start,length)
                            , switch(lt(step,0),length-1,length)
                            , start)
-        if stop in [None, sys.maxint]:
+        if stop in [None, sys.maxsize]:
             stop = defstop
         else:
             stop = switch(lt(stop,0), stop + length, stop)
@@ -3238,7 +3238,7 @@ class Subtensor(Op):
             else:
                 slice_a = None
 
-            if b is not None:
+            if b is not None and b != sys.maxsize:
                 slice_b = Subtensor.convert(b, False)
             else:
                 slice_b = None
@@ -3248,11 +3248,7 @@ class Subtensor(Op):
             else:
                 slice_c = None
 
-            return slice(slice_a,slice_b,slice_c)
-                #backport
-                #return slice(Subtensor.convert(a, False) if a is not None else None,
-            #             Subtensor.convert(b, False) if b is not None else None,
-            #             Subtensor.convert(c, False) if c is not None else None)
+            return slice(slice_a, slice_b, slice_c)
 
         elif isinstance(entry, int):
             return entry
@@ -3340,7 +3336,7 @@ class Subtensor(Op):
                 # If it is the default (None, None, None) slice, or a variant,
                 # the shape will be xl
                 if ( (idx.start in [None, 0])
-                    and (idx.stop in [None, sys.maxint])
+                    and (idx.stop in [None, sys.maxsize])
                     and (idx.step is None or idx.step == 1) ):
                     outshp.append(xl)
                 else:
@@ -3412,6 +3408,7 @@ class Subtensor(Op):
         fail = sub['fail']
         init_cmds = [] # initialization for subtensor_spec
         is_slice = []
+        #TODO: change that, there can be more than sys.maxint elements
         NONE_CODE = sys.maxint - 1
 
         pos = [0,1] #annoying version of global variable for init_entry
@@ -3686,7 +3683,7 @@ class SubtensorPrinter:
                     else:
                         msg1 =  entry.start
 
-                    if entry.stop is None or entry.stop == sys.maxint:
+                    if entry.stop is None or entry.stop == sys.maxsize:
                         msg2 = ""
                     else:
                         msg2 =  entry.stop
@@ -3697,10 +3694,6 @@ class SubtensorPrinter:
                         msg3 =  ":%s" % entry.step
 
                     sidxs.append("%s:%s%s"  % (msg1, msg2, msg3))
-                    #backport
-                    #sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
-                    #                          "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
-                    #                          "" if entry.step is None else ":%s" % entry.step))
             return "%s[%s]" % (pstate.pprinter.process(input, pstate.clone(precedence = 1000)), ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
