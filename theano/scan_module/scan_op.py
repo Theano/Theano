@@ -94,12 +94,6 @@ class Scan(PureOp):
 
         if self.as_while:
             self.output_types = self.output_types[:-1]
-        self.destroy_map = {}
-
-        if hasattr(self, 'inplace') and self.inplace:
-            for idx in xrange(self.n_mit_mot + self.n_mit_sot +
-                              self.n_sit_sot):
-                self.destroy_map[idx] = [idx + 1 + self.n_seqs]
 
         mode_instance = compile.mode.get_mode(self.mode)
         # if the default mode is used, and that mode is ProfileMode
@@ -411,12 +405,22 @@ class Scan(PureOp):
             name = 'do_while'
         else:
             name = 'for'
-
-        if self.inplace:
-            aux_txt = '%s{inplace,%s,%s}' % (name, gpu_str, str(self.name))
+        aux_txt = '%s'
+        if len(self.destroy_map.keys()) > 0:
+            # Check if all outputs are inplace
+            if (sorted(self.destroy_map.keys()) == \
+               sorted(range(self.n_mit_mot +
+                            self.n_mit_sot +
+                            self.n_sit_sot))):
+                aux_txt += 'all_inplace,%s,%s}'
+            else:
+                aux_txt += '{inplace{'
+                for k in self.destroy_map.keys():
+                    aux_txt += str(k) + ','
+                aux_txt += '},%s,%s}'
         else:
-            aux_txt = '%s{%s,%s}' % (name, gpu_str, str(self.name))
-
+            aux_txt +='{%s,%s}'
+        aux_txt = aux_txt % (name, gpu_str, str(self.name))
         return aux_txt
 
     def __hash__(self):
