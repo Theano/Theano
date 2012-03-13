@@ -24,7 +24,7 @@ from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
 from theano.sparse import SparseType, CSMGrad
 from theano.sparse import StructuredDot, StructuredDotCSC
 from theano.sparse import StructuredDotGradCSC, StructuredDotGradCSR
-from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg
+from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0
 from theano.sparse import add, mul, structured_dot, transpose
 from theano.sparse import (csc_from_dense, csr_from_dense, dense_from_sparse,
         SparseFromDense)
@@ -228,6 +228,14 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                config.floatX, 3)),
                  numpy.random.randn(10, 40).astype(config.floatX)],
                 MulSD)
+
+    def test_remove0(self):
+        x = SparseType('csr', dtype=config.floatX)()
+        self._compile_and_check([x],
+                                [Remove0()(x)],
+                                [sp.csr_matrix(random_lil((10, 40),
+                                               config.floatX, 3))],
+                                Remove0)
 
     def test_dot(self):
         x = SparseType('csc', dtype=config.floatX)()
@@ -616,11 +624,11 @@ class test_structureddot(unittest.TestCase):
                 spmat.dtype = numpy.dtype(sparse_dtype)
                 mat = numpy.asarray(numpy.random.randn(N, K) * 9,
                                     dtype=dense_dtype)
-                print 'DTYPES', sparse_dtype, dense_dtype
-                print 'sym types', a.type, b.type
-                print 'dtype strings', spmat.dtype, mat.dtype
-                print 'numpy dtype num', mat.dtype.num
-                print 'scipy dtype num', spmat.data.dtype.num
+                #print 'DTYPES', sparse_dtype, dense_dtype
+                #print 'sym types', a.type, b.type
+                #print 'dtype strings', spmat.dtype, mat.dtype
+                #print 'numpy dtype num', mat.dtype.num
+                #print 'scipy dtype num', spmat.data.dtype.num
                 theano_result = f(spmat, mat)
                 scipy_result = spmat * mat
                 assert theano_result.shape == scipy_result.shape
@@ -657,7 +665,7 @@ class test_structureddot(unittest.TestCase):
 
         sdcscpresent = False
         for node in f.maker.env.toposort():
-            print node.op
+            #print node.op
             assert not isinstance(node.op, CSM)
             assert not isinstance(node.op, CSMProperties)
             if isinstance(f.maker.env.toposort()[1].op, StructuredDotCSC):
@@ -672,7 +680,7 @@ class test_structureddot(unittest.TestCase):
         imvals = 1.0 * numpy.array(numpy.arange(bsize * spmat.shape[1]).\
                 reshape(bsize, spmat.shape[1]), dtype='float32')
         outvals = f(kernvals, imvals)
-        print outvals
+        #print outvals
 
     def test_dot_sparse_sparse(self):
         #test dot for 2 input sparse matrix
@@ -730,10 +738,10 @@ class test_structureddot(unittest.TestCase):
             scipy_time = numpy.min(scipy_times)
 
             speedup = scipy_time / theano_time
-            print scipy_times
-            print theano_times
-            print ('M=%(M)s N=%(N)s K=%(K)s nnz=%(nnz)s theano_time'
-                   '=%(theano_time)s speedup=%(speedup)s') % locals()
+            #print scipy_times
+            #print theano_times
+            #print ('M=%(M)s N=%(N)s K=%(K)s nnz=%(nnz)s theano_time'
+            #       '=%(theano_time)s speedup=%(speedup)s') % locals()
 
             # fail if Theano is slower than scipy by more than a certain amount
             overhead_tol = 0.003  # seconds overall
@@ -770,10 +778,8 @@ class test_structureddot(unittest.TestCase):
 
             theano_time = t1 - t0
             scipy_time = t2 - t1
-            #print theano_result
-            #print scipy_result
-            print 'theano took', theano_time,
-            print 'scipy took', scipy_time
+            #print 'theano took', theano_time,
+            #print 'scipy took', scipy_time
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
             self.assertTrue(numpy.allclose(theano_result, scipy_result))
@@ -1158,6 +1164,46 @@ def test_size():
         check()
         y[0, 1] = 0
         check()
+
+
+def test_remove0():
+    configs = [
+        # structure type, numpy matching class
+        ('csc', scipy.sparse.csc_matrix),
+        ('csr', scipy.sparse.csr_matrix),
+        ]
+    for format, matrix_class in configs:
+        # real
+        origin = (numpy.arange(9) + 1).reshape((3, 3)).astype(config.floatX)
+        mat = matrix_class(origin).astype(theano.config.floatX)
+
+        mat[0, 1] = mat[1, 0] = mat[2, 2] = 0
+
+        assert mat.size == 9
+
+        # symbolic
+        x = theano.sparse.SparseType(format=format, dtype=config.floatX)()
+        # the In thingy has to be there because theano has as rule not
+        # to optimize inputs
+        f = theano.function([theano.In(x, borrow=True, mutable=True)],
+                            Remove0()(x))
+
+        # assert optimization local_inplace_remove0 is applied in
+        # modes with optimization
+        if theano.config.mode not in ['FAST_COMPILE']:
+            # list of apply nodes in the optimized graph.
+            nodes = f.maker.env.toposort()
+            v = [True for node in nodes
+                 if isinstance(node.op, Remove0) and node.op.inplace]
+            assert len(v), 'Inplacing optimization should have been applied.'
+
+        # checking
+        # makes sense to change its name
+        target = mat
+        result = f(mat)
+        mat.eliminate_zeros()
+        msg = 'Matrices sizes differ. Have zeros been removed ?'
+        assert result.size == target.size, msg
 
 
 class Test_getitem(unittest.TestCase):
