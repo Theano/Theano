@@ -775,8 +775,11 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              mode=mode,
                              allow_input_downcast=True)
-
-       # compute output in numpy
+        scan_node = [x for x in f9.maker.env.toposort()
+                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert 0 in scan_node[0].op.destroy_map.keys()
+        assert 1 in scan_node[0].op.destroy_map.keys()
+        # compute output in numpy
         numpy_x0 = numpy.zeros((3,))
         numpy_x1 = numpy.zeros((3,))
         numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu2[0]
@@ -852,6 +855,10 @@ class T_Scan(unittest.TestCase):
                              mode=mode,
                              allow_input_downcast=True)
 
+        scan_node = [x for x in f9.maker.env.toposort()
+                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert 0 in scan_node[0].op.destroy_map.keys()
+        assert 1 in scan_node[0].op.destroy_map.keys()
        # compute output in numpy
         numpy_x0 = numpy.zeros((3,))
         numpy_x1 = numpy.zeros((3,))
