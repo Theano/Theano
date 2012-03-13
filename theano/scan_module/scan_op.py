@@ -418,7 +418,8 @@ class Scan(PureOp):
                 for k in self.destroy_map.keys():
                     aux_txt += str(k) + ','
                 aux_txt += '},%s,%s}'
-
+        else:
+            aux_txt +='{%s,%s}'
         aux_txt = aux_txt % (name, gpu_str, str(self.name))
         return aux_txt
 
