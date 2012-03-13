@@ -1386,10 +1386,21 @@ def gpu_scan_make_inplace(node):
         return new_op.make_node(*inputs).outputs
     return False
 
-optdb.register( 'gpu_scanOp_make_inplace'
-               , theano.tensor.opt.in2out(gpu_scan_make_inplace,ignore_newtrees=True)
-               , 75
-               , 'gpu'
-               , 'fast_run'
-               , 'inplace'
-               , 'scan')
+
+gpu_scan_inplace_eq = theano.gof.EquilibriumDB()
+
+gpu_scan_inplace_eq.register('gpu_scanOp_make_inplace',
+               opt.in2out(scan_make_inplace, ignore_newtrees=True),
+               1,
+               'gpu',
+               'fast_run',
+               'inplace',
+               'scan')
+
+optdb.register('gpu_scanOp_make_inplace',
+               gpu_scan_inplace_eq,
+               75,
+               'gpu',
+               'fast_run',
+               'inplace',
+               'scan')

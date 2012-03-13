@@ -340,9 +340,17 @@ def scan_make_inplace(node):
                               info)
         return new_op.make_node(*inputs).outputs
     return False
+scan_inplace_eq = theano.gof.EquilibriumDB()
+
+scan_inplace_eq.register('scanOp_make_inplace',
+               opt.in2out(scan_make_inplace, ignore_newtrees=True),
+               1,
+               'fast_run',
+               'inplace',
+               'scan')
 
 optdb.register('scanOp_make_inplace',
-               opt.in2out(scan_make_inplace, ignore_newtrees=True),
+               scan_inplace_eq,
                75,
                'fast_run',
                'inplace',
