@@ -1354,7 +1354,6 @@ def gpu_scan_make_inplace(node):
         (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
                                    op.info['n_mit_sot'] +
                                    op.info['n_sit_sot'])) and
-        (not op.info['inplace']) and
         (op.info['gpu'])):
         info = op.info.copy()
         pos = op.info['inplace'] + 1
