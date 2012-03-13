@@ -10,7 +10,7 @@ from theano import config, tensor
 from theano.sparse import (enable_sparse, CSM, CSMProperties, csm_properties,
                            CSC, CSR)
 from theano.sparse.tests.test_basic import random_lil
-#from theano.gof.python25 import all, any, product
+from theano.gof.python25 import any
 
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
