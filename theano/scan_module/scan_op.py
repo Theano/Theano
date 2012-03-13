@@ -407,10 +407,17 @@ class Scan(PureOp):
             name = 'for'
         aux_txt = '%s'
         if len(self.destroy_map.keys()) > 0:
-            aux_txt += '{inplace{'
-            for k in self.destroy_map.keys():
-                aux_txt += str(k) + ','
-            aux_txt += '},%s,%s}'
+            # Check if all outputs are inplace
+            if (sorted(self.destroy_map.keys()) == \
+               sorted(range(self.n_mit_mot +
+                            self.n_mit_sot +
+                            self.n_sit_sot))):
+                aux_txt += 'all_inplace,%s,%s}'
+            else:
+                aux_txt += '{inplace{'
+                for k in self.destroy_map.keys():
+                    aux_txt += str(k) + ','
+                aux_txt += '},%s,%s}'
 
         aux_txt = aux_txt % (name, gpu_str, str(self.name))
         return aux_txt
