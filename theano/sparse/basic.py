@@ -731,23 +731,6 @@ class CSMGrad(gof.op.Op):
 csm_grad = CSMGrad
 
 
-@gof.local_optimizer([csm_properties])
-def skip_pack_csc01(node):
-    """if we find csm_properties(CSM(*args)), then we can replace that with the
-    *args directly"""
-    if node.op == csm_properties:
-        csm, = node.inputs
-        if csm.owner and (csm.owner.op == CSC or csm.owner.op == CSR):
-            # csm.owner.inputs could be broadcastable. In that case, we have
-            # to adjust the broadcasting flag here.
-            ret_var = [tensor.patternbroadcast(i, o.broadcastable)
-                    for i, o in izip(csm.owner.inputs, node.outputs)]
-            return ret_var
-
-    return False
-register_specialize(skip_pack_csc01)
-
-
 #
 # Conversion
 #
