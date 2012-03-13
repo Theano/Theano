@@ -33,9 +33,6 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
-# Remove0 is lazily imported to avoid circular imports.
-Remove0 = None
-
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -1973,24 +1970,6 @@ compile.optdb.register('local_inplace_incsubtensor1',
         local_inplace_incsubtensor1,
         failure_callback=TopoOptimizer.warn_inplace),
                        60, 'fast_run', 'inplace')  # DEBUG
-
-@gof.local_optimizer([None])
-def local_inplace_remove0(node):
-    """
-    Optimization to insert inplace versions of Remove0.
-    """
-    global Remove0
-    if Remove0 is None:
-        from theano.sparse.sandbox.sp import Remove0
-    if isinstance(node.op, Remove0) and not node.op.inplace:
-        new_op = node.op.__class__(inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
-compile.optdb.register('local_inplace_remove0',
-                       TopoOptimizer(local_inplace_remove0,
-    failure_callback=TopoOptimizer.warn_inplace), 60,
-                       'fast_run', 'inplace')
 
 
 @register_canonicalize

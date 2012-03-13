@@ -21,9 +21,9 @@ from theano.tests import unittest_tools as utt
 
 class TestSP(unittest.TestCase):
     def test_convolution(self):
-        print '\n\n*************************************************'
-        print '           TEST CONVOLUTION'
-        print '*************************************************'
+#        print '\n\n*************************************************'
+#        print '           TEST CONVOLUTION'
+#        print '*************************************************'
 
         # fixed parameters
         bsize = 10     # batch size
@@ -118,18 +118,18 @@ class TestSP(unittest.TestCase):
                     #assert numpy.all(visref==visval)
 
 
-            print '**** Convolution Profiling Results (',mode,') ****'
-            print 'Numpy processing time: ', ntot
-            print 'Theano processing time: ', ttot
+#            print '**** Convolution Profiling Results (',mode,') ****'
+#            print 'Numpy processing time: ', ntot
+#            print 'Theano processing time: ', ttot
 
         #profmode.print_summary()
 
 
     def test_sparse(self):
 
-        print '\n\n*************************************************'
-        print '           TEST SPARSE'
-        print '*************************************************'
+#        print '\n\n*************************************************'
+#        print '           TEST SPARSE'
+#        print '*************************************************'
 
         # fixed parameters
         bsize = 10     # batch size
@@ -209,9 +209,9 @@ class TestSP(unittest.TestCase):
                     visref = numpy.dot(out1,spmat.todense())
                     assert numpy.all(visref==visval), (visref, visval)
 
-            print '**** Sparse Profiling Results (',mode,') ****'
-            print 'Numpy processing time: ', ntot
-            print 'Theano processing time: ', ttot
+#            print '**** Sparse Profiling Results (',mode,') ****'
+#            print 'Numpy processing time: ', ntot
+#            print 'Theano processing time: ', ttot
         #profmode.print_summary()
 
 
@@ -409,7 +409,7 @@ class TestSP(unittest.TestCase):
             # Sparse gradient on Sum on all axis
             # unfinished, and suspended until verify_grad get fixed
             if False:
-                print 'grad on sum on all axis...'
+#                print 'grad on sum on all axis...'
                 def fun(x):
                     ## verify_grad does not handle sparse data, so here's some casting as a workaround.
                     # x is a dense matrix: make it sparse
@@ -421,48 +421,12 @@ class TestSP(unittest.TestCase):
                     dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)
                     return dense_sum
                 x_val = x_data.copy()
-                print type(x_val)
+#                print type(x_val)
                 import pdb;pdb.set_trace()
                 tensor.verify_grad(fun, [x_val], rng=rng)
                 #utt.verify_grad(SpSum(axis=None), [x_val])
-                print 'ok'
+#                print 'ok'
 
-def test_remove0():
-    print
-    print 'test_remove0()'
-    configs=[
-        # structure type, numpy matching class
-        ('csc',scipy.sparse.csc_matrix),
-        ('csr',scipy.sparse.csr_matrix),
-        ]
-    for format,matrix_class in configs:
-        print 'config: format=\'%(format)s\', matrix_class=%(matrix_class)s'%locals()
-        # real
-        origin = (numpy.arange(9) + 1).reshape((3, 3)).astype(theano.config.floatX)
-        mat = matrix_class(origin).astype(theano.config.floatX)
-
-        mat[0,1] = mat[1,0] = mat[2,2] = 0
-
-        assert mat.size == 9
-
-        # symbolic
-        x = theano.sparse.SparseType(format=format, dtype=theano.config.floatX)()
-        # the In thingy has to be there because theano has as rule not to optimize inputs
-        f = theano.function([theano.In(x, borrow=True, mutable=True)], sp.Remove0()(x))
-
-        # assert optimization is applied in modes with optimization
-        if theano.config.mode not in ['FAST_COMPILE']:
-            # list of apply nodes in the optimized graph.
-            nodes = f.maker.env.toposort()
-            v = [True for node in nodes if isinstance(node.op, sp.Remove0) and node.op.inplace]
-            assert len(v), 'Inplacing optimization should have been applied.'
-
-        # checking
-        # makes sense to change its name
-        target = mat
-        result = f(mat)
-        mat.eliminate_zeros()
-        assert result.size == target.size, 'Matrices sizes differ. Have zeros been removed ?'
 
 def test_diag():
     m = theano.sparse.csc_matrix()
@@ -549,8 +513,8 @@ def test_row_scale():
 
     f = theano.function([x, s], sp.row_scale(x, s))
 
-    print 'A', f(x_val, s_val).toarray()
-    print 'B', (x_val_dense.T * s_val).T
+#    print 'A', f(x_val, s_val).toarray()
+#    print 'B', (x_val_dense.T * s_val).T
 
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
 
@@ -580,8 +544,8 @@ def test_col_scale():
 
     f = theano.function([x, s], sp.col_scale(x, s))
 
-    print 'A', f(x_val, s_val).toarray()
-    print 'B', (x_val_dense * s_val)
+#    print 'A', f(x_val, s_val).toarray()
+#    print 'B', (x_val_dense * s_val)
 
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
 
