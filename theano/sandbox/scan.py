@@ -443,7 +443,7 @@ def scan(fn,
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
-    fake_outputs = scan_utils.clone(outputs,
+    fake_outputs = scan_utils.clone(outputs + updates.values(),
                                     replace=dict(zip(non_seqs,
                                                      fake_nonseqs)))
     all_inputs = itertools.ifilter(
