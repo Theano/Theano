@@ -638,21 +638,6 @@ def scan(fn,
 
     update_map = Updates()
 
-    def remove_dimensions(outs, steps_return, offsets=None):
-        out_ls = []
-        for idx, out in enumerate(outs):
-            if idx in steps_return:
-                if steps_return[idx] > 1:
-                    out_ls.append(out[-steps_return[idx]:])
-                else:
-                    out_ls.append(out[-1])
-            else:
-                if offsets is None:
-                    out_ls.append(out)
-                else:
-                    out_ls.append(out[offsets[idx]:])
-        return out_ls
-
     offset = n_mit_mot
     offsets = [abs(numpy.min(x)) for x in mit_sot_tap_array]
     mit_sot_outs = scan_outs[offset:offset + n_mit_sot]
