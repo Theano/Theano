@@ -380,7 +380,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.DebugMode.check_preallocated_output
 
-    Default: ``'ALL'``
+    Default: ``''``
 
     A list of kinds of preallocated memory to use as output buffers for
     each Op's computations, separated by ``:``. Implemented modes are:
@@ -388,6 +388,8 @@ import theano and print the config variable, as in:
     * ``"previous"``: reuse previously-returned memory,
     * ``"c_contiguous"``: newly-allocated C-contiguous memory,
     * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
+    * ``"strided"``: non-contiguous memory with various stride patterns,
+    * ``"wrong_size"``: memory with bigger or smaller dimensions,
     * ``"ALL"``: placeholder for all of the above.
 
     In order not to test with preallocated memory, use an empty string, ``""``.

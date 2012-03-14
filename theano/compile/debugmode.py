@@ -79,7 +79,7 @@ AddConfigVar('DebugMode.check_preallocated_output',
          '"strided" (positive and negative strides), '
          '"wrong_size" (larger and smaller dimensions), and '
          '"ALL" (all of the above).'),
-        StrParam('ALL', is_valid=is_valid_check_preallocated_output_param),
+        StrParam('', is_valid=is_valid_check_preallocated_output_param),
         in_c_key=False)
 
 import logging
