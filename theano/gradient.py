@@ -250,21 +250,27 @@ def Rop(f, wrt, eval_points):
     for pack in enumerate(zip(wrt, eval_points)):
         i = pack[0]
         wrt_elem, eval_point = pack[1]
+        if not isinstance(wrt_elem, gof.Variable):
+            wrt_elem = as_tensor_variable(wrt_elem)
+        if not isinstance(eval_point, gof.Variable):
+            eval_point = as_tensor_variable(eval_point)
 
-        wrt_elem = as_tensor_variable(wrt_elem)
-        eval_point = as_tensor_variable(eval_point)
+        try:
+            wrt_dim = len(wrt_elem.type.broadcastable)
+            eval_dim = len(eval_point.type.broadcastable)
 
-        wrt_dim = len(wrt_elem.type.broadcastable)
-        eval_dim = len(eval_point.type.broadcastable)
-
-        if wrt_dim != eval_dim:
-            raise ValueError('Element ' +
-                             str(i) +
-                             ' of wrt/eval_point have mismatched ' +
-                             'dimensionality: ' +
-                             str(wrt_dim) +
-                             ' versus ' +
-                             str(eval_dim))
+            if wrt_dim != eval_dim:
+                raise ValueError('Element ' +
+                                 str(i) +
+                                 ' of wrt/eval_point have mismatched ' +
+                                 'dimensionality: ' +
+                                 str(wrt_dim) +
+                                 ' versus ' +
+                                 str(eval_dim))
+        except:
+            # wrt_elem and eval_point can be non-tensor variable which do
+            # not have broadcastable flags
+            pass
 
     seen_nodes = {}
 
