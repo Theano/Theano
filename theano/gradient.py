@@ -308,8 +308,12 @@ def Rop(f, wrt, eval_points):
                         seen_nodes[inp.owner][inp.owner.outputs.index(inp)])
             for x, y in zip(inputs, local_eval_points):
                 if y is not None:
-                    assert (as_tensor_variable(x).type ==
-                            as_tensor_variable(y).type)
+                    if not isinstance(x, gof.Variable):
+                        x = as_tensor_variable(x)
+                    if not isinstance(y, gof.Variable):
+                        y = as_tensor_variable(y)
+
+                    assert x.type == y.type
 
             seen_nodes[node] = op.R_op(node.inputs, local_eval_points)
             return None
