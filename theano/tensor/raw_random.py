@@ -238,6 +238,9 @@ class RandomFunction(gof.Op):
     def grad(self, inputs, outputs):
         return [None for i in inputs]
 
+    def R_op(self, inputs, eval_points):
+        return [None for i in eval_points]
+
 
 def _infer_ndim_bcast(ndim, shape, *args):
     """
