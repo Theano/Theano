@@ -625,12 +625,8 @@ def scan(fn,
 
     scan_inputs = []
     for arg in [actual_n_steps] + _scan_inputs:
-        try:
+        if not isinstance(arg, gof.Variable):
             arg = tensor.as_tensor_variable(arg)
-        except TypeError:
-            # This happens for Random States for e.g. but it is a good way
-            # to make sure no input is a cuda ndarrays
-            pass
         scan_inputs += [arg]
     scan_outs = local_op(*scan_inputs)
     if type(scan_outs) not in (list, tuple):
