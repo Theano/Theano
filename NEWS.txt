@@ -52,9 +52,9 @@ Crash Fix
    empty string (Frederic B.)
  * When importing theano on a computer without GPU with the Theano
    flags 'device' or 'init_gpu_device' set to gpu* (Frederic B., reported by  Luo Heng)
- * Optimization print useless error when scipy is not available. (Frederic B.)
- * Gpu conv crash/slowdown on newer hardware? (James B.)
- * Better error handling in gpu conv (Frederic B.)
+ * Optimization printed a useless error when scipy was not available. (Frederic B.)
+ * GPU conv crash/slowdown on newer hardware (James B.)
+ * Better error handling in GPU conv (Frederic B.)
  * GPU optimization that move element-wise op to the gpu. It happen in
    a particular execution order of this optimization and the
    element-wise fusion optimization when upcasting some inputs to
