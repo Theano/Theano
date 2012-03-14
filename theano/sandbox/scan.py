@@ -578,12 +578,7 @@ def scan(fn,
                   shared_inner_outputs)
     if condition is not None:
         inner_outs.append(condition)
-    # Cuda is imported here, instead of being imported on top of the file
-    # because forces on the user some dependencies that we might do not want
-    # to. Currently we are working on removing the dependencies on sandbox
-    # code completeley.
     new_givens = {}
-
     for w, w_copy in givens.iteritems():
         new_givens[w] = w.type.filter_variable(w_copy)
 
