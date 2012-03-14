@@ -25,7 +25,7 @@ from theano.updates import Updates
 
 from theano.scan_module import scan_op
 from theano.scan_module import  scan_utils
-from theano.scan_module.scan_utils import safe_new, traverse
+from theano.scan_module.scan_utils import safe_new
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
