@@ -44,8 +44,8 @@ Op contract
             pass
 
         # C implementation: [see theano web site for other functions]
-	def c_code(...):
-	# ...
+        def c_code(...):
+            # ...
             pass
 
         # others implementation (pycuda, ...):
@@ -59,7 +59,7 @@ Op contract
         def grad(self, inputs, g):
             pass
 
-	def R_op(self, inputs, eval_points):
+        def R_op(self, inputs, eval_points):
             pass
 
         def infer_shape(node, (i0_shapes, ...))
@@ -133,7 +133,7 @@ Op example
         def grad(self, inputs, output_grads):
             return [output_grads[0] * 2]
 
-	def R_op(self, inputs, eval_points):
+        def R_op(self, inputs, eval_points):
             # R_op can receive None as eval_points.
             # That mean there is no diferientiable path through that input
             # If this imply that you cannot compute some outputs,
@@ -192,9 +192,9 @@ To verify the Rop method of the DoubleOp, you can use this:
            super(test_Double, self).setUp()
        def test_double_rop(self):
            self.check_rop_lop(DoubleOp()(self.x), self.in_shape)
-	   assert False
+           assert False
 
-You can use `nosetests` to run it as all other test in Theano or you can run it like that in a python shell:
+You can use `theano-nose` to run it as all other test in Theano or you can run it like that in a python shell:
 
 .. code-block:: python
 

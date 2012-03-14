@@ -51,6 +51,11 @@ Crash Fix
  * When importing theano on a computer without GPU with the Theano
    flags 'device' or 'init_gpu_device' set to gpu* (Frederic B., reported by  Luo Heng)
 
+Miscellaneous:
+ * New theano-nose executable, to run the unit tests without displaying
+   known failures (and possibly in several batches). theano.test() was
+   also updated. (Pascal L.)
+
 
 =============
 Release Notes
