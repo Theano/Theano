@@ -51,10 +51,21 @@ def test_003():
     assert numpy.all(fn(val_sq, val_x0)[-1] == val_x0 +15)
     assert numpy.all(fn(val_sq, val_x0)[0] == val_x0)
 
+def test_004():
+    sq = theano.tensor.fvector('sq')
+    nst = theano.tensor.iscalar('nst')
+    out, _ = scan.scan(lambda s:s+numpy.float32(1),
+                           sequences=sq,
+                           states = [],
+                           n_steps = nst)
+    fn = theano.function([sq,nst], out)
+    val_sq = numpy.float32([1,2,3,4,5])
+    assert numpy.all(fn(val_sq, 5) == val_sq +1)
+
 
 if __name__=='__main__':
     test_001()
     test_002()
     test_003()
-
+    test_004()
 
