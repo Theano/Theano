@@ -172,8 +172,8 @@ def scan(fn,
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
-            # with an empty dict() to simplify handling
-            outs_info[i] = dict()
+            # with an dict(steps=n_steps) to simplify handling
+            outs_info[i] = dict(steps=n_steps)
 
     ##
     ###   Step 2. Generate inputs and outputs of the inner functions
@@ -481,7 +481,7 @@ def scan(fn,
         n_outs = len(dummy_f.maker.outputs)
         if as_while:
             n_outs = n_outs - 1
-        outs_info = [dict() for x in xrange(n_outs)]
+            outs_info = [dict('steps':n_steps) for x in xrange(n_outs)]
 
     ## Step 5.1 Outputs with taps different then -1
 
