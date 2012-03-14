@@ -516,7 +516,8 @@ class ScanSaveMem(gof.Optimizer):
                         if isinstance(stop, tensor.Variable):
                             global_nsteps['sym'] += [stop]
                         # not if it is maxsize
-                        elif (type(stop) is int and stop == sys.maxsize):
+                        elif (type(stop) in (int, long) and
+                              stop == sys.maxsize):
                             global_nsteps = None
                         # yes if it is a int k, 0 < k < maxsize
                         elif (type(stop) in (int, long) and
