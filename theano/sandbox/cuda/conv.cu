@@ -32,14 +32,29 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     
     if (verbose>1)
     {
-        fprintf(stderr, "INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
-        fprintf(stderr, "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
-        fprintf(stderr, "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
-        fprintf(stderr, "INFO:   subsample_rows=%d, subsample_cols=%d\n", subsample_rows, subsample_cols);
+        fprintf(stderr,
+		"INFO: Running conv_valid version=%d,"
+		" MACRO kern_width=%d with inputs:\n",
+		version, THEANO_KERN_WID);
+        fprintf(stderr,
+		"INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n",
+                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],
+		CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
+                CudaNdarray_HOST_STRIDES(img)[0],
+		CudaNdarray_HOST_STRIDES(img)[1],
+		CudaNdarray_HOST_STRIDES(img)[2],
+		CudaNdarray_HOST_STRIDES(img)[3]);
+        fprintf(stderr,
+		"INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
+                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],
+		CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
+                CudaNdarray_HOST_STRIDES(kern)[0],
+		CudaNdarray_HOST_STRIDES(kern)[1],
+		CudaNdarray_HOST_STRIDES(kern)[2],
+		CudaNdarray_HOST_STRIDES(kern)[3]);
+        fprintf(stderr,
+		"INFO:   subsample_rows=%d, subsample_cols=%d\n",
+		subsample_rows, subsample_cols);
     }
 
     //Check the output size is valid
@@ -98,9 +113,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     bool img_contiguous_2d = (img_stride_col == 1) && (img_stride_row==img_wid);
     bool kern_contiguous_2d = (kern_stride_col == 1) && (kern_stride_row==kern_wid);
 
-    //if the lower 2 dims are c_contiguous but flipped, unflipping the stride and not flipping the kernel in shared memroy
+    //if the lower 2 dims are c_contiguous but flipped, unflipping the
+    // stride and not flipping the kernel in shared memroy
     //allow to use a version that use less registers(so is faster)
-    //the unflipped version of variable haev the original value when we don't need to unflip it, but have the new value when we unflip it.
+    //the unflipped version of variable have the original value when
+    //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
     float * kern_data_unflipped = kern->devdata;
@@ -115,8 +132,12 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       kern_data_unflipped=&(kern->devdata[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
-    //if we remove the restriction img_size_byte+kern_size_byte>8*1024, we can enter in condition where we will lower the occupency due to shared memory and/or registers.
-    if ((version == -1) && (out_size<64 || img_size_byte+kern_size_byte>8*1024) && out_size<=256){
+    //if we remove the restriction
+    //img_size_byte+kern_size_byte>8*1024, we can enter in condition where
+    //we will lower the occupency due to shared memory and/or registers.
+    if ((version == -1) &&
+	(out_size<64 || img_size_byte+kern_size_byte>8*1024) &&
+	out_size<=256){
       //condition for exec 
       if(!subsample &&
 	out_contiguous &&
@@ -158,14 +179,25 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
-            if (verbose) fprintf(stderr, "INFO: used 'conv_patch' version %s nb_split=%d\n",threads.y==out_len?"no split": "split",nb_split);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: used 'conv_patch' version %s nb_split=%d\n",
+		      threads.y==out_len ? "no split": "split", nb_split);
             work_complete = true;
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i, nb_split=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, nb_split);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_patch' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i, nb_split=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y, nb_split);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_patch' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
     if (out_contiguous &&
@@ -246,31 +278,48 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         {
             if (verbose>1)
 	      fprintf(stderr,
-                     "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
-		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
-		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i,",
-		     " subsample_rows=%i, subsample_cols=%i\n",
-		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
-		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-		     nb_split, preload_full_kernel, subsample_rows, subsample_cols);
-            if (verbose) fprintf(stderr,
-                    "INFO: used 'conv_patch_stack' version with nb_split=%i and preload_full_kernel=%i,"
-				 " subsample_rows=%i, subsample_cols=%i\n",
-				 nb_split,preload_full_kernel, subsample_rows, subsample_cols);
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i,"
+		      " kern_flipped=true, accumulate=false, kern_width=%i,"
+		      " img_c_contiguous_2d=%i,"
+		      " kern_c_contiguous_2d=%i, nb_split=%i,"
+		      " preload_full_kernel=%i,",
+		      " subsample_rows=%i, subsample_cols=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y,
+		      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
+		      nb_split, preload_full_kernel,
+		      subsample_rows, subsample_cols);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: used 'conv_patch_stack' version with nb_split=%i"
+		      " and preload_full_kernel=%i,"
+		      " subsample_rows=%i, subsample_cols=%i\n",
+		      nb_split, preload_full_kernel,
+		      subsample_rows, subsample_cols);
             work_complete = true;
         }
         else
         {
             if (verbose)
-	      fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
-		     " kern_flipped=true, accumulate=false, kern_width=%i, img_c_contiguous_2d=%i,"
-		     " kern_c_contiguous_2d=%i, nb_split=%i, preload_full_kernel=%i,",
-		     " subsample_rows=%i, subsample_cols=%i\n",
-		     threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,
-		     THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-		     nb_split, preload_full_kernel, subsample_rows, subsample_cols);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_patch_stack' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i,"
+		      " kern_flipped=true, accumulate=false,"
+		      " kern_width=%i, img_c_contiguous_2d=%i,"
+		      " kern_c_contiguous_2d=%i, nb_split=%i,"
+		      " preload_full_kernel=%i,"
+		      " subsample_rows=%i, subsample_cols=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y,
+		      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
+		      nb_split, preload_full_kernel,
+		      subsample_rows, subsample_cols);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_patch_stack' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
 
@@ -309,13 +358,22 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (cudaSuccess == sts)
         {
             work_complete = true;
-            if (verbose) fprintf(stderr, "INFO: used 'conv_rows' version\n");
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_rows' version\n");
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_rows' failed (%s), trying next implementation\n",
-                    cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_rows' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
     if (!subsample && out_contiguous &&
@@ -327,7 +385,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     {
 	int nb_row=1;
 	int max_threads=512;
-	//TODO:if not c_contiguous, lower max_thread as we use 22 registers by thread and we won't execute 2 block in one MP.
+	//TODO:if not c_contiguous, lower max_thread as we use 22
+	//registers by thread and we won't execute 2 block in one MP.
 	for(int i=2;i<=out_len;i++){
 	  if((i)*out_wid<max_threads && ((kern_len+i)*img_wid + kern_size)*sizeof(float)<shared_avail)
 	    nb_row=i;
@@ -345,10 +404,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 		  int, int);
 
         if (0)
-          fprintf(stderr, "IMG CONTIG %i KERN_CONTIG %i (%i %i %i) (%i %i %i)\n",
-                img_contiguous_2d, kern_contiguous_2d,
-                threads.x, threads.y, threads.z,
-                grid.x, grid.y, grid.z);
+          fprintf(stderr,
+		  "IMG CONTIG %i KERN_CONTIG %i (%i %i %i) (%i %i %i)\n",
+		  img_contiguous_2d, kern_contiguous_2d,
+		  threads.x, threads.y, threads.z,
+		  grid.x, grid.y, grid.z);
 
 	if(!img_contiguous_2d || !kern_contiguous_2d) {
             //fprintf(stderr, "using false version\n");
@@ -373,14 +433,28 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (cudaSuccess == sts)
         {
             work_complete = true;
-	    if (verbose>1) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: used 'conv_rows_stack' version\n");
+	    if (verbose>1)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_rows_stack' version\n");
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_rows_stack' failed (%s), trying next implementation\n",
-		     cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_rows_stack' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
 
@@ -448,16 +522,32 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (cudaSuccess == sts) 
         {
             work_complete = true;
-	    if (verbose>1) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n",
-				  threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: used 'conv_rows_stack2' version %s with %d row(s).\n",(version==9?"'load full kernel'":"'load 1 kern row at a time'"),nb_row);
+	    if (verbose>1)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: used 'conv_rows_stack2' version %s with"
+		      " %d row(s).\n",
+		      (version==9?"'load full kernel'":
+		       "'load 1 kern row at a time'"),nb_row);
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i version=%d\n",
-				threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y,(version==9?2:3));
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_rows_stack2' failed (%s), trying next implementation\n",
-		     cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i version=%d\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y,(version==9?2:3));
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_rows_stack2' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
 
@@ -556,11 +646,18 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                 else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
             CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-            if (verbose) fprintf(stderr, "INFO: using 'conv_patch_stack_reduce' version kern_flipped=%i ccontig=%i nb_split=%d, preload_full_kern=%d\n",
-                                kern_flipped,ccontig,nb_split,full_kern);
-            if (verbose>1) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n",
-                                  threads.x, threads.y, threads.z, grid.x, grid.y,
-                                  shared_size, threads.x * threads.y * threads.z);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: using 'conv_patch_stack_reduce' version"
+		      " kern_flipped=%i ccontig=%i nb_split=%d,"
+		      " preload_full_kern=%d\n",
+		      kern_flipped, ccontig, nb_split, full_kern);
+            if (verbose>1)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i,"
+		      " grid.y=%i, shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, threads.z, grid.x, grid.y,
+		      shared_size, threads.x * threads.y * threads.z);
             f<<< grid, threads, shared_size>>>(img->devdata, kern_data_unflipped, out->devdata,
                                                img_len, img_wid, kern_len, kern_wid,
                                                nkern, nstack,
@@ -575,9 +672,19 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             }
             else
             {
-                if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z);
-                if (verbose) fprintf(stderr, "INFO: impl 'conv_patch_stack_reduce' failed (%s), trying next implementation\n",
-                                    cudaGetErrorString(sts));
+                if (verbose)
+		  fprintf(stderr,
+			  "threads.x=%i, threads.y=%i, threads.z=%i,"
+			  " grid.x=%i, grid.y=%i,shared_size=%i,"
+			  " nb_threads=%i\n",
+			  threads.x, threads.y, threads.z,
+			  grid.x, grid.y, shared_size,
+			  threads.x * threads.y * threads.z);
+                if (verbose)
+		  fprintf(stderr,
+			  "INFO: impl 'conv_patch_stack_reduce' failed (%s),"
+			  " trying next implementation\n",
+			  cudaGetErrorString(sts));
             }
         } // else no good nb_splits was found
     }
@@ -651,13 +758,22 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (cudaSuccess == sts) 
         {
             work_complete = true;
-            if (verbose) fprintf(stderr, "INFO: used 'conv_valid_row_reduce' version\n");
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_valid_row_reduce' version\n");
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, shared_size=%i, nb_threads=%i\n", n_threads.x, n_threads.y, n_blocks, n_reduce_buf, n_threads.x * n_threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_valid_row_reduce' failed (%s), trying next implementation\n",
-                    cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      n_threads.x, n_threads.y, n_blocks,
+		      n_reduce_buf, n_threads.x * n_threads.y);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_valid_row_reduce' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }
     }
 
@@ -665,32 +781,61 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     {
         int outsize = CudaNdarray_SIZE(out);
         int n_blocks = std::min(outsize, NUM_VECTOR_OP_BLOCKS);
-        int n_threads = std::min(ceil_intdiv(outsize, n_blocks), NUM_VECTOR_OP_THREADS_PER_BLOCK);
+        int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
+				 NUM_VECTOR_OP_THREADS_PER_BLOCK);
         if (1)
         {
-            if (verbose) fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose>1) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                    nbatch, CudaNdarray_HOST_DIMS(img)[1], img_len, img_wid,
-                    img->devdata,
-                    CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3]);
-            if (verbose>1) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
-                    nkern, nstack, kern_len, kern_wid,
-                    kern->devdata,
-                    CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3]
-                        );
-            if (verbose>1) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                    CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1], out_len, out_wid,
-                    out->devdata,
-                    CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3]);
-            if (verbose>1) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
+            if (verbose)
+	      fprintf(stderr, "INFO: launching conv_reference_valid\n");
+            if (verbose>1)
+	      fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
+		      nbatch, CudaNdarray_HOST_DIMS(img)[1], img_len, img_wid,
+		      img->devdata,
+		      CudaNdarray_HOST_STRIDES(img)[0],
+		      CudaNdarray_HOST_STRIDES(img)[1],
+		      CudaNdarray_HOST_STRIDES(img)[2],
+		      CudaNdarray_HOST_STRIDES(img)[3]);
+            if (verbose>1)
+	      fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
+		      nkern, nstack, kern_len, kern_wid,
+		      kern->devdata,
+		      CudaNdarray_HOST_STRIDES(kern)[0],
+		      CudaNdarray_HOST_STRIDES(kern)[1],
+		      CudaNdarray_HOST_STRIDES(kern)[2],
+		      CudaNdarray_HOST_STRIDES(kern)[3]);
+            if (verbose>1)
+	      fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
+		      CudaNdarray_HOST_DIMS(out)[0],
+		      CudaNdarray_HOST_DIMS(out)[1], out_len, out_wid,
+		      out->devdata,
+		      CudaNdarray_HOST_STRIDES(out)[0],
+		      CudaNdarray_HOST_STRIDES(out)[1],
+		      CudaNdarray_HOST_STRIDES(out)[2],
+		      CudaNdarray_HOST_STRIDES(out)[3]);
+            if (verbose>1)
+	      fprintf(stderr, "   launch params: %i %i %i\n",
+		      outsize, n_blocks, n_threads);
         }
-        conv_reference_valid<<<n_blocks, n_threads>>>( nbatch, nkern, CudaNdarray_HOST_DIMS(img)[1],
+        conv_reference_valid<<<n_blocks, n_threads>>>(nbatch, nkern,
+		CudaNdarray_HOST_DIMS(img)[1],
                 img_len, img_wid,
                 kern_len, kern_wid,
                 out_len, out_wid,
-                img->devdata, CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3],
-                kern->devdata, CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3],
-                out->devdata, CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3],
+                img->devdata,
+		CudaNdarray_HOST_STRIDES(img)[0],
+                CudaNdarray_HOST_STRIDES(img)[1],
+                CudaNdarray_HOST_STRIDES(img)[2],
+                CudaNdarray_HOST_STRIDES(img)[3],
+                kern->devdata,
+                CudaNdarray_HOST_STRIDES(kern)[0],
+                CudaNdarray_HOST_STRIDES(kern)[1],
+                CudaNdarray_HOST_STRIDES(kern)[2],
+                CudaNdarray_HOST_STRIDES(kern)[3],
+                out->devdata,
+                CudaNdarray_HOST_STRIDES(out)[0],
+                CudaNdarray_HOST_STRIDES(out)[1],
+		CudaNdarray_HOST_STRIDES(out)[2],
+                CudaNdarray_HOST_STRIDES(out)[3],
                 subsample_rows, subsample_cols);
         CNDA_THREAD_SYNC;
 
@@ -698,26 +843,29 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         if (cudaSuccess == sts)
         {
             work_complete = true;
-            if (verbose) fprintf(stderr, "INFO: used 'conv_reference_valid' version\n");
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_reference_valid' version\n");
         }
         else
         {
-            PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed for CudaNdarray_conv_valid! (%s)",
-                    cudaGetErrorString(sts));
+            PyErr_Format(PyExc_RuntimeError,
+			 "ERROR: all implementations failed for"
+			 " CudaNdarray_conv_valid! (%s)",
+			 cudaGetErrorString(sts));
             return -1;
         }
     }
     assert (work_complete);
     return 0;
-
-            //PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "kExp", cudaGetErrorString(err));
-            //return -1;
 }
 
 int
-CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdarray * out, int subsample_rows, int subsample_cols, int version = -1, int verbose=0)
+CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
+		      CudaNdarray * out, int subsample_rows,
+		      int subsample_cols, int version = -1, int verbose=0)
 {
-    const int shared_avail = SHARED_SIZE-150;//144 is the biggest static shared size used with compiling this file.
+  //144 is the biggest static shared size used with compiling this file.
+    const int shared_avail = SHARED_SIZE - 150;
 
     int work_complete = 0;
     if (img->nd != 4)
@@ -775,9 +923,12 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
     
     //const int out_size_byte = out_size*sizeof(float); // unused 
 
-    if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
-      PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-		   " %d kernel columns, but the kernel we received had %d columns!",
+    if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) ||
+	  (THEANO_KERN_WID == 0))){
+      PyErr_Format(PyExc_ValueError,
+		   "ERROR: This GpuConv code was compiled for"
+		   " %d kernel columns, but the kernel we received"
+		   " had %d columns!",
 		   THEANO_KERN_WID, CudaNdarray_HOST_DIMS(kern)[3]);
       return -1;
     }
@@ -793,9 +944,11 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
     bool img_batch_stack_contiguous = (img_stride_stack==img_stride_row*img_len) && (img_stride_batch==img_stride_stack*nstack);//don't support stride for nbatch and nstack
 
-    //if the lower 2 dims are c_contiguous but flipped, unflipping the stride and not flipping the kernel in shared memroy
+    //if the lower 2 dims are c_contiguous but flipped, unflipping the
+    //stride and not flipping the kernel in shared memroy
     //allow to use a version that use less registers(so is faster)
-    //the unflipped version of variable have the original value when we don't need to unflip it, but have the new value when we unflip it.
+    //the unflipped version of variable have the original value when
+    //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
     float * kern_data_unflipped = kern->devdata;
@@ -812,13 +965,22 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
     if (verbose>1)
     {
-        printf("INFO: Running conv_full version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
+        printf("INFO: Running conv_full version=%d,"
+	       " MACRO kern_width=%d with inputs:\n", version, THEANO_KERN_WID);
         printf("INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
+	       CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],
+	       CudaNdarray_HOST_DIMS(img)[2], CudaNdarray_HOST_DIMS(img)[3],
+	       CudaNdarray_HOST_STRIDES(img)[0],
+	       CudaNdarray_HOST_STRIDES(img)[1],
+	       CudaNdarray_HOST_STRIDES(img)[2],
+	       CudaNdarray_HOST_STRIDES(img)[3]);
         printf("INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],CudaNdarray_HOST_DIMS(kern)[2],CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],CudaNdarray_HOST_STRIDES(kern)[2],CudaNdarray_HOST_STRIDES(kern)[3]);
+	       CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],
+	       CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
+	       CudaNdarray_HOST_STRIDES(kern)[0],
+	       CudaNdarray_HOST_STRIDES(kern)[1],
+	       CudaNdarray_HOST_STRIDES(kern)[2],
+	       CudaNdarray_HOST_STRIDES(kern)[3]);
     }
 
     if (!subsample &&
@@ -840,13 +1002,16 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 	}
 	if(img_size_padded_byte+kern_size_byte>shared_avail) version=5;
 
-	//we pass by ceil_intdiv in case the out_len is not a multiple of nb_split, we want nb_split the number of iteration.
+	//we pass by ceil_intdiv in case the out_len is not a multiple
+	//of nb_split, we want nb_split the number of iteration.
 	//Max of 16k of shared memory
 	if(version==5)
 	  while ((((kern_len+ceil_intdiv(out_len,nb_split)-1)+2*kern_len-2)*img_wid_padded*sizeof(float) + kern_size_byte)>shared_avail) nb_split++;
 	
 	//327 as we use 25 register
-	//version 5 will have only 1 block running at a time, so we can use 32 registers per threads, but their is some other stuff that for the limit to bu lower then 512.
+	//version 5 will have only 1 block running at a time, so we
+	//can use 32 registers per threads, but their is some other stuff that
+	//for the limit to bu lower then 512.
 	int max_thread = (version!=5?327:450);
 	while (ceil_intdiv(out_len,nb_split)*out_wid>max_thread) nb_split++;
 	if(version==-1 && out_size>512)version=4;
@@ -855,7 +1020,8 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
 	if(version==-1 && nb_split>1) version=4;
 	else if(version==-1) version=3;
-	else if(version==3 && nb_split!=1) version=4;//we force version 4 when we need more than 1 split as to be always execute.
+	//force version 4 when more than 1 split are needed to always execute.
+	else if(version==3 && nb_split!=1) version=4;
 
 	assert(version!=3 || nb_split==1);
 	assert(version!=5 || kern_len>1);
@@ -901,16 +1067,40 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
-	  if (verbose>1) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z, out_len, nb_split, version);
-            if (verbose) fprintf(stderr, "INFO: used 'conv_full_patch_stack_padded' nb_split=%d low_mem=%s\n",nb_split,(version==5?"true":"false"));
+	  if (verbose>1)
+	    fprintf(stderr,
+		    "threads.x=%i, threads.y=%i, threads.z=%i,"
+		    " grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
+		    " out_len=%i, nb_split=%i, version=%i\n",
+		    threads.x, threads.y, threads.z,
+		    grid.x, grid.y, shared_size,
+		    threads.x * threads.y * threads.z,
+		    out_len, nb_split, version);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: used 'conv_full_patch_stack_padded'"
+		      " nb_split=%d low_mem=%s\n",
+		      nb_split, (version==5?"true":"false"));
             work_complete = true;
         }
         else
         {
-	  if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z, out_len, nb_split, version);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_full_patch_stack_padded' %s %s failed (%s), trying next implementation\n",
-				version==3?"no split": "split",(version==5?"low_mem":"not_low_mem"),
-                                cudaGetErrorString(sts));
+	  if (verbose)
+	    fprintf(stderr,
+		    "threads.x=%i, threads.y=%i, threads.z=%i,"
+		    " grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i,"
+		    " out_len=%i, nb_split=%i, version=%i\n",
+		    threads.x, threads.y, threads.z,
+		    grid.x, grid.y, shared_size,
+		    threads.x * threads.y * threads.z,
+		    out_len, nb_split, version);
+	  if (verbose)
+	    fprintf(stderr,
+		    "INFO: impl 'conv_full_patch_stack_padded' %s %s"
+		    " failed (%s), trying next implementation\n",
+		    version==3?"no split": "split",
+		    (version==5?"low_mem":"not_low_mem"),
+		    cudaGetErrorString(sts));
         }                         
     }
 
@@ -943,9 +1133,17 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_full_patch' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y, shared_size,
+		      threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr,
+		      "INFO: impl 'conv_full_patch' failed (%s),"
+		      " trying next implementation\n",
+		      cudaGetErrorString(sts));
         }                         
     }
     if (false && !subsample && //disabled as test fail for this kernel
@@ -993,10 +1191,17 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_full_load_everything' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
-        }                         
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y, shared_size,
+		      threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr, "INFO: impl 'conv_full_load_everything'"
+		      " failed (%s), trying next implementation\n",
+		      cudaGetErrorString(sts));
+        }
     }
 
     if (!subsample &&
@@ -1034,14 +1239,21 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
-            if (verbose) fprintf(stderr, "INFO: used 'conv_full_patch_stack' version\n");
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_full_patch_stack' version\n");
             work_complete = true;
         }
         else
         {
-            if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y);
-            if (verbose) fprintf(stderr, "INFO: impl 'conv_full_patch_stack' failed (%s), trying next implementation\n",
-                                cudaGetErrorString(sts));
+            if (verbose)
+	      fprintf(stderr,
+		      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		      " shared_size=%i, nb_threads=%i\n",
+		      threads.x, threads.y, grid.x, grid.y,
+		      shared_size, threads.x * threads.y);
+            if (verbose)
+	      fprintf(stderr, "INFO: impl 'conv_full_patch_stack' failed (%s), trying next implementation\n",
+		      cudaGetErrorString(sts));
         }                         
     }
     if (1 && !work_complete) //conv_reference_full
@@ -1050,52 +1262,100 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
         int outsize = CudaNdarray_SIZE(out);
         int n_blocks = std::min(outsize, NUM_VECTOR_OP_BLOCKS);
-        int n_threads = std::min(ceil_intdiv(outsize, n_blocks), NUM_VECTOR_OP_THREADS_PER_BLOCK);
+        int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
+				 NUM_VECTOR_OP_THREADS_PER_BLOCK);
         if (0)
         {
-            if (verbose) fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose) fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                    CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1], CudaNdarray_HOST_DIMS(img)[2], CudaNdarray_HOST_DIMS(img)[3],
-                    img->devdata,
-                    CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3]);
-            if (verbose) fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n", 
-                    CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1], CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
-                    kern->devdata,
-                    CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3]
+            if (verbose)
+	      fprintf(stderr, "INFO: launching conv_reference_valid\n");
+            if (verbose)
+	      fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
+		      CudaNdarray_HOST_DIMS(img)[0],
+		      CudaNdarray_HOST_DIMS(img)[1],
+		      CudaNdarray_HOST_DIMS(img)[2],
+		      CudaNdarray_HOST_DIMS(img)[3],
+		      img->devdata,
+		      CudaNdarray_HOST_STRIDES(img)[0],
+		      CudaNdarray_HOST_STRIDES(img)[1],
+		      CudaNdarray_HOST_STRIDES(img)[2],
+		      CudaNdarray_HOST_STRIDES(img)[3]);
+            if (verbose)
+	      fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
+		      CudaNdarray_HOST_DIMS(kern)[0],
+		      CudaNdarray_HOST_DIMS(kern)[1],
+		      CudaNdarray_HOST_DIMS(kern)[2],
+		      CudaNdarray_HOST_DIMS(kern)[3],
+		      kern->devdata,
+		      CudaNdarray_HOST_STRIDES(kern)[0],
+		      CudaNdarray_HOST_STRIDES(kern)[1],
+		      CudaNdarray_HOST_STRIDES(kern)[2],
+		      CudaNdarray_HOST_STRIDES(kern)[3]
                         );
-            if (verbose) fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                    CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1], CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
-                    out->devdata,
-                    CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3]);
-            if (verbose) fprintf(stderr, "   launch params: %i %i %i\n", outsize, n_blocks, n_threads);
-            if (verbose) fprintf(stderr, "   subsample params: %i %i\n", subsample_rows, subsample_cols);
+            if (verbose)
+	      fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
+		      CudaNdarray_HOST_DIMS(out)[0],
+		      CudaNdarray_HOST_DIMS(out)[1],
+		      CudaNdarray_HOST_DIMS(out)[2],
+		      CudaNdarray_HOST_DIMS(out)[3],
+		      out->devdata,
+		      CudaNdarray_HOST_STRIDES(out)[0],
+		      CudaNdarray_HOST_STRIDES(out)[1],
+		      CudaNdarray_HOST_STRIDES(out)[2],
+		      CudaNdarray_HOST_STRIDES(out)[3]);
+            if (verbose)
+	      fprintf(stderr, "   launch params: %i %i %i\n",
+		      outsize, n_blocks, n_threads);
+            if (verbose)
+	      fprintf(stderr, "   subsample params: %i %i\n",
+		      subsample_rows, subsample_cols);
         }
-        conv_reference_full<<<n_blocks, n_threads>>>(CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(img)[1],
+        conv_reference_full<<<n_blocks, n_threads>>>(
+                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(kern)[0],
+		CudaNdarray_HOST_DIMS(img)[1],
                 CudaNdarray_HOST_DIMS(img)[2], CudaNdarray_HOST_DIMS(img)[3],
                 CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
                 CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
-                img->devdata, CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], CudaNdarray_HOST_STRIDES(img)[2], CudaNdarray_HOST_STRIDES(img)[3],
-                kern->devdata, CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1], CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3],
-                out->devdata, CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1], CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3],
+                img->devdata, CudaNdarray_HOST_STRIDES(img)[0],
+		CudaNdarray_HOST_STRIDES(img)[1],
+                CudaNdarray_HOST_STRIDES(img)[2],
+                CudaNdarray_HOST_STRIDES(img)[3],
+                kern->devdata, CudaNdarray_HOST_STRIDES(kern)[0],
+                CudaNdarray_HOST_STRIDES(kern)[1],
+                CudaNdarray_HOST_STRIDES(kern)[2],
+                CudaNdarray_HOST_STRIDES(kern)[3],
+                out->devdata, CudaNdarray_HOST_STRIDES(out)[0],
+                CudaNdarray_HOST_STRIDES(out)[1],
+                CudaNdarray_HOST_STRIDES(out)[2],
+                CudaNdarray_HOST_STRIDES(out)[3],
                 subsample_rows, subsample_cols);
         CNDA_THREAD_SYNC;
 
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
-            if (verbose) fprintf(stderr, "INFO: used 'conv_reference_full' version ishp(%d, %d) kshp(%d, %d) oshp(%d, %d) nbatch=%d nkern=%d nstack=%d subsample=%d\n",
-				img_len,img_wid, kern_len, kern_wid,
-				out_len, out_wid, nbatch, nkern, nstack, subsample);
+            if (verbose)
+	      fprintf(stderr, "INFO: used 'conv_reference_full' version"
+		      " ishp(%d, %d) kshp(%d, %d) oshp(%d, %d) nbatch=%d"
+		      " nkern=%d nstack=%d subsample=%d\n",
+		      img_len,img_wid, kern_len, kern_wid,
+		      out_len, out_wid, nbatch, nkern, nstack, subsample);
             work_complete = true;
         }
         else
         {
-	  if (verbose) fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", n_threads, 1, n_blocks, 1, 0, n_threads);
-	  if (verbose) fprintf(stderr, "INFO: impl 'conv_reference_full' failed (%s), trying next implementation\n",
-			      cudaGetErrorString(sts));
-	  PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed for CudaNdarray_conv_full! (%s)",
+	  if (verbose)
+	    fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
+		    " shared_size=%i, nb_threads=%i\n",
+		    n_threads, 1, n_blocks, 1, 0, n_threads);
+	  if (verbose)
+	    fprintf(stderr, "INFO: impl 'conv_reference_full' failed (%s),"
+		    " trying next implementation\n",
+		    cudaGetErrorString(sts));
+	  PyErr_Format(PyExc_RuntimeError,
+		       "ERROR: all implementations failed for"
+		       " CudaNdarray_conv_full! (%s)",
 		       cudaGetErrorString(sts));
-            return -1;
+	  return -1;
         }
     }
     return 0;
@@ -1110,8 +1370,16 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     // Re-use the out object if possible.  If the out object it not used, then its refcount is not modified.
     //  If the out object is re-used then it is returned, and its refcount is incremented by 1.
     //
-    if (img->nd != 4) { PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required"); return NULL;}
-    if (kern->nd != 4) { PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required"); return NULL;}
+    if (img->nd != 4)
+    {
+      PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required");
+      return NULL;
+    }
+    if (kern->nd != 4)
+    {
+      PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required");
+      return NULL;
+    }
 
     int out_dim[4];
     out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
@@ -1145,7 +1413,10 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     }
     else
     {
-      if (out && verbose) fprintf(stderr, "INFO: Conv is ignoring 'out' argument with wrong structure.\n");
+      if (out && verbose)
+	fprintf(stderr,
+		"INFO: Conv is ignoring 'out' argument with wrong"
+		" structure.\n");
       rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
       //rval might be null
     }
