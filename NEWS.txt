@@ -33,9 +33,9 @@ New Features
    (Frederic B., Simon McGregor)
 
 Sparse Sandbox graduate
- * Remove0 op: it remove store element with value 0. (Frederic B.)
+ * Remove0 op: it removes stored elements with value 0. (Frederic B.)
 
-Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
+Sparse Sandbox Additions (not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module
  * Op class: Cast, Poisson, Multinomial, EliminateZeros, Sum, Binomial
  * Op class: SamplingDot, SamplingDotCsr (inserted automatically)
