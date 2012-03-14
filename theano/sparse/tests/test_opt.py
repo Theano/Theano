@@ -12,7 +12,7 @@ from theano.sparse import (enable_sparse, CSM, CSMProperties, csm_properties,
 from theano.sparse.tests.test_basic import random_lil
 from theano.gof.python25 import any
 
-if enable_sparse == False:
+if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
 
