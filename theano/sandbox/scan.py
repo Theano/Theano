@@ -492,7 +492,7 @@ def scan(fn,
         n_outs = len(dummy_f.maker.outputs)
         if as_while:
             n_outs = n_outs - 1
-            outs_info = [dict('steps':n_steps) for x in xrange(n_outs)]
+        outs_info = [dict(steps=n_steps) for x in xrange(n_outs)]
 
     ## Step 5.1 Outputs with taps different then -1
 
