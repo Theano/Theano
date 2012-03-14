@@ -442,3 +442,13 @@ conv_full_load_everything( float* img, float* kern, float* out,
         __syncthreads(); //don't start loading another kernel until we're done here
     }
 }
+/*
+  Local Variables:
+  mode:c++
+  c-basic-offset:4
+  c-file-style:"stroustrup"
+  indent-tabs-mode:nil
+  fill-column:79
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=79 :
