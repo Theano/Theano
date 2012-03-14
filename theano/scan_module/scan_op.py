@@ -1565,7 +1565,14 @@ class Scan(PureOp):
         ib = 0
         e = 1 + self.n_seqs
         ie = self.n_seqs
-        scan_seqs = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_seqs = inputs[b:e] + clean_eval_points
         inner_seqs = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         # MIT_MOT sequences ...
@@ -1574,7 +1581,14 @@ class Scan(PureOp):
         ib = ie
         ie = ie + int(numpy.sum([len(x) for x in
                                  self.tap_array[:self.n_mit_mot]]))
-        scan_mit_mot = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_mit_mot = inputs[b:e] + clean_eval_points
         inner_mit_mot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         # MIT_SOT sequences ...
@@ -1584,6 +1598,13 @@ class Scan(PureOp):
         ie = ie + int(numpy.sum([len(x) for x in
                          self.tap_array[self.n_mit_mot:\
                                         self.n_mit_mot + self.n_mit_sot]]))
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
@@ -1592,7 +1613,14 @@ class Scan(PureOp):
         e = e + self.n_sit_sot
         ib = ie
         ie = ie + self.n_sit_sot
-        scan_sit_sot = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_sit_sot = inputs[b:e] + clean_eval_points
         inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         #Shared outs ...
@@ -1609,8 +1637,15 @@ class Scan(PureOp):
         scan_nit_sot = inputs[b:e] * 2
 
         # All other arguments
-        scan_other = inputs[e:] + eval_points[e:]
-        inner_other = self_inputs[ie:] + inner_eval_points[ie:]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[e:], eval_points[e:]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+        scan_other = inputs[e:] + clean_eval_points
+        # inner_eval_points do not have entries for shared variables
+        inner_other = self_inputs[ie:] + inner_eval_points[ib:]
 
         # Outputs
         n_mit_mot_outs = int(numpy.sum([len(x) for x in
