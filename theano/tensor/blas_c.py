@@ -1,4 +1,3 @@
-from theano.gof import Op
 from theano import config
 
 
@@ -494,7 +493,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                 if (%(xx)s->descr->type_num == PyArray_FLOAT)
                 {
                     //fprintf(stderr, "B %%i %%i %%i %%i\\n",
-                              Nz0, Nz1, Sz0, Sz1);
+                    //        Nz0, Nz1, Sz0, Sz1);
                     float alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
                     //fprintf(stderr, "alpha=%%f\\n", alpha);
                     //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
