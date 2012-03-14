@@ -289,7 +289,12 @@ def Rop(f, wrt, eval_points):
                 if inp in wrt:
                     local_eval_points.append(eval_points[wrt.index(inp)])
                 elif inp.owner is None:
-                    local_eval_points.append(inp.zeros_like())
+                    try:
+                        local_eval_points.append(inp.zeros_like())
+                    except:
+                        # None should be used for non-differentiable
+                        # arguments, like for example random states
+                        local_eval_points.append(None)
                 elif inp.owner in seen_nodes:
 
                     local_eval_points.append(
