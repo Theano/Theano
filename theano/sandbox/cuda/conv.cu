@@ -855,7 +855,15 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             return -1;
         }
     }
-    assert (work_complete);
+    if (!work_complete)
+    {
+      PyErr_Format(PyExc_RuntimeError,
+		   "ERROR: no implementation(s) worked for"
+		   " CudaNdarray_conv_valid!"
+		   " Version asked(%d) (-1 mean use an heuristic)",
+		   version);
+	return -1;
+    }
     return 0;
 }
 
