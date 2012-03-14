@@ -348,7 +348,8 @@ def scan(fn,
                 mit_sot_inner_inputs.append(nw_slice)
                 mit_sot_inner_slices.append(actual_nw_slice)
         else:
-            nit_sot_steps.append(init_out['steps'])
+            pass
+
 
     # Re-order args
     max_mit_sot = numpy.max([-1] + mit_sot_rightOrder) + 1
@@ -532,6 +533,7 @@ def scan(fn,
             if i in return_steps:
                 nit_sot_return_steps[n_nit_sot] = return_steps[i]
             nit_sot_rightOrder.append(i)
+            nit_sot_steps.append(out['steps'])
             n_nit_sot += 1
 
     ## Step 5.5 all other arguments including extra inputs
