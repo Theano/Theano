@@ -215,13 +215,10 @@ def scan(fn,
         scan_seqs.append(_seq_val)
         inner_seqs.append(nw_slice)
         inner_slices.append(actual_slice)
+
         n_seqs += 1
 
     actual_n_steps = tensor.as_tensor(n_steps)
-    # Add names -- it helps a lot when debugging
-    for (nw_seq, seq) in zip(scan_seqs, seqs):
-        if getattr(seq['input'], 'name', None) is not None:
-            nw_seq.name = seq['input'].name
 
     # Conventions :
     #   mit_mot = multiple input taps, multiple output taps ( only provided
