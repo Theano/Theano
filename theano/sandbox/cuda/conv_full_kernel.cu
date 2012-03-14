@@ -37,20 +37,20 @@ conv_full_patch_split( float* img, float* kern, float* out, int img_len, int img
       int img_row = out_row;
 
       for (int row=0; row < kern_len; row++) {//loop over row
-	int inverse_row = (img_row-row);
-	if(inverse_row<0 ||inverse_row>=(img_len))continue;//row outside the image
+        int inverse_row = (img_row-row);
+        if(inverse_row<0 ||inverse_row>=(img_len))continue;//row outside the image
 
-	const float* idx_in=&d_img[inverse_row*img_wid];
-	const float* idx_kern=&d_kern[row*kern_wid];
-	int img_col = out_col;
-	int col=0,last=0;
-	for (col=0,last=img_col; col < kern_wid; col++,last--) {//loop over col
-	  if(last<0 ||last>=(img_wid))continue;//col outside the image	
-	  sum+=idx_in[last]*idx_kern[col];
-	}
+        const float* idx_in=&d_img[inverse_row*img_wid];
+        const float* idx_kern=&d_kern[row*kern_wid];
+        int img_col = out_col;
+        int col=0,last=0;
+        for (col=0,last=img_col; col < kern_wid; col++,last--) {//loop over col
+          if(last<0 ||last>=(img_wid))continue;//col outside the image        
+          sum+=idx_in[last]*idx_kern[col];
+        }
       }
       out[batch_id*out_len*out_wid+//the output image
-	  out_row*out_wid+out_col] = sum;
+          out_row*out_wid+out_col] = sum;
     }
 }
 
@@ -61,8 +61,8 @@ conv_full_patch_split( float* img, float* kern, float* out, int img_len, int img
 //dynamic shared memory: img_len*img_wid+kern_len*kern_wid
 __global__ void
 conv_full_patch( float* img, float* kern, float* out,
-		 int img_len, int img_wid,
-		 int kern_len, int kern_wid, int nkern, int nstack)
+                 int img_len, int img_wid,
+                 int kern_len, int kern_wid, int nkern, int nstack)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
   out_len = img_len + kern_len - 1;
@@ -105,12 +105,12 @@ conv_full_patch( float* img, float* kern, float* out,
       
       if(img_col<0){col=-img_col;img_col+=col;}
       for (; col < max_col; col++, img_col++) {//loop over col
-	sum+=idx_in[col]*idx_kern[col];
+        sum+=idx_in[col]*idx_kern[col];
       }
     }
     out[batch_id*out_wid*out_len*nkern+//the good batch
-	out_wid*out_len*blockIdx.y+//the output image
-	out_row*out_wid+out_col] = sum;
+        out_wid*out_len*blockIdx.y+//the output image
+        out_row*out_wid+out_col] = sum;
 }
 
 //we store the full image and the full kernel in the shared memory
@@ -123,11 +123,11 @@ conv_full_patch( float* img, float* kern, float* out,
 template<bool img_c_contiguous_2d, bool kern_c_contiguous_2d>
 __global__ void
 conv_full_patch_stack( float* img, float* kern, float* out,
-		       int img_len, int img_wid,
-		       int kern_len, int kern_wid, int nkern, int nstack,
-		       int img_stride_col, int img_stride_row,
-		       int kern_stride_col, int kern_stride_row, 
-		       int kern_stride_stack, int kern_stride_nkern)
+                       int img_len, int img_wid,
+                       int kern_len, int kern_wid, int nkern, int nstack,
+                       int img_stride_col, int img_stride_row,
+                       int kern_stride_col, int kern_stride_row, 
+                       int kern_stride_stack, int kern_stride_nkern)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
   out_len = img_len + kern_len - 1;
@@ -159,26 +159,26 @@ conv_full_patch_stack( float* img, float* kern, float* out,
 
 
       for (int row=0; row < kern_len; row++) {//loop over row
-	if(row+out_row-kern_len+1<0 || row+out_row-kern_len+1>=img_len)continue;
-	const float* idx_in=&d_img[(row+out_row-kern_len+1)*img_wid+out_col-kern_wid+1];
-	const float* idx_kern=&d_kern[row*kern_wid];
-	int col=0;
-	int max_col=kern_wid;
-	int img_col=out_col-kern_wid+1;
-	max_col=min(max_col,img_wid-img_col);
+        if(row+out_row-kern_len+1<0 || row+out_row-kern_len+1>=img_len)continue;
+        const float* idx_in=&d_img[(row+out_row-kern_len+1)*img_wid+out_col-kern_wid+1];
+        const float* idx_kern=&d_kern[row*kern_wid];
+        int col=0;
+        int max_col=kern_wid;
+        int img_col=out_col-kern_wid+1;
+        max_col=min(max_col,img_wid-img_col);
 
-	if(img_col<0){col=-img_col;img_col+=col;}
-	for (; col < max_col; col++, img_col++) {//loop over col
-	  sum+=idx_in[col]*idx_kern[col];
-	}
+        if(img_col<0){col=-img_col;img_col+=col;}
+        for (; col < max_col; col++, img_col++) {//loop over col
+          sum+=idx_in[col]*idx_kern[col];
+        }
       }
       //Needed as not all thread finish at the same time the loop
       //And we don't want to overwrite the shared memory.
       __syncthreads();
     }
     out[batch_id*out_wid*out_len*nkern+//the good batch
-	out_wid*out_len*blockIdx.y+//the output image
-	out_row*out_wid+out_col] = sum;
+        out_wid*out_len*blockIdx.y+//the output image
+        out_row*out_wid+out_col] = sum;
 }
 
 /**
@@ -202,13 +202,13 @@ conv_full_patch_stack( float* img, float* kern, float* out,
 template<bool flipped_kern, int KERN_WIDTH, bool c_contiguous, bool split, bool low_mem >
 __global__ void
 conv_full_patch_stack_padded( float* img, float* kern, float* out,
-		  const int img_len, const int img_wid,
-		  const int kern_len, const int kern_wid,
-		  const int nkern, const int nstack,
-		  const int img_stride_col, const int img_stride_row,
-		  const int img_stride_stack, const int img_stride_batch,
-		  const int kern_stride_col, const int kern_stride_row,
-		  const int kern_stride_stack, const int kern_stride_nkern)
+                  const int img_len, const int img_wid,
+                  const int kern_len, const int kern_wid,
+                  const int nkern, const int nstack,
+                  const int img_stride_col, const int img_stride_row,
+                  const int img_stride_stack, const int img_stride_batch,
+                  const int kern_stride_col, const int kern_stride_row,
+                  const int kern_stride_stack, const int kern_stride_nkern)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
   out_len = img_len + kern_len - 1;
@@ -242,26 +242,26 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
       const int out_row = ty;//output row
       float sum = 0.0f;
       for (int stack = 0;stack<nstack;stack++,kern+=kern_stride_stack,
-	     img+=img_stride_stack){
-	  __syncthreads();
-	load_padded_col_to_shared(d_img+img_wid_valid*(kern_len-1),img,
-				  thread_id,nb_thread_id,img_wid,img_len,
-				  img_stride_col, img_stride_row, kern_wid-1,
-				  c_contiguous);
-	load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid,kern_len,
-		       kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
-	__syncthreads();
+             img+=img_stride_stack){
+          __syncthreads();
+        load_padded_col_to_shared(d_img+img_wid_valid*(kern_len-1),img,
+                                  thread_id,nb_thread_id,img_wid,img_len,
+                                  img_stride_col, img_stride_row, kern_wid-1,
+                                  c_contiguous);
+        load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid,kern_len,
+                       kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
+        __syncthreads();
 
-	for (int row=0; row < kern_len; row++) {//loop over row
-	  const float* idx_kern=&d_kern[row*kern_wid];
-	  const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
-	  
-	  convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
-	}
+        for (int row=0; row < kern_len; row++) {//loop over row
+          const float* idx_kern=&d_kern[row*kern_wid];
+          const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
+          
+          convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
+        }
       }
       out[batch_id*out_wid*out_len*nkern+//the good batch
-	  kern_id*out_wid*out_len+//the output image
-	  out_row*out_wid+out_col] = sum;
+          kern_id*out_wid*out_len+//the output image
+          out_row*out_wid+out_col] = sum;
     }else if(split && !low_mem){
       fill(d_img,img_wid_valid*(img_len+2*kern_len-2), 0, thread_id, nb_thread_id);
       //out_len_max must by higher then out_len as we need all thread when we load the image as the nb_rows is not always a multiple of out_len.
@@ -269,35 +269,35 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
       //TODO pass a parameter nb_split
       out_len_max = (out_len/blockDim.y+(out_len%blockDim.y==0?0:1))*blockDim.y;
       for(int out_row = ty;out_row<out_len_max;out_row+=nb_rows){
-	float sum = 0.0f;
-	for (int stack = 0;stack<nstack;stack++){
-	  __syncthreads();
-	  //TODO: load only the part of the image needed or put the partial result in shared memory
-	  load_padded_col_to_shared(d_img+img_wid_valid*(kern_len-1),
-				    img+img_stride_stack*stack,
-				    thread_id,nb_thread_id,img_wid,img_len,
-				    img_stride_col, img_stride_row, kern_wid-1,
-				    c_contiguous);
-	  load_to_shared(d_kern, kern+kern_stride_stack*stack,
-			 thread_id, nb_thread_id, kern_wid,kern_len,
-			 kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
-	  __syncthreads();
-	  //The if is needed as on Fermi as reading out of bound index from shared memory generate an error.
-	  //Not needed on generation before as they worked anyway. Removing the if generate the good code
-	  //as we store the result of only the good thread.
-	  //This was with nvcc 3.0 on an GTX470 card.
-	  if(out_row<out_len)
-	    for (int row=0; row < kern_len; row++) {//loop over row
-	      const float* idx_kern=&d_kern[row*kern_wid];
-	      const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
-	      
-	      convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
-	    }
-	  if(out_row<out_len)
-	    out[batch_id*out_wid*out_len*nkern+//the good batch
-		out_wid*out_len*kern_id+//the output image
-		out_row*out_wid+out_col] = sum;
-	}
+        float sum = 0.0f;
+        for (int stack = 0;stack<nstack;stack++){
+          __syncthreads();
+          //TODO: load only the part of the image needed or put the partial result in shared memory
+          load_padded_col_to_shared(d_img+img_wid_valid*(kern_len-1),
+                                    img+img_stride_stack*stack,
+                                    thread_id,nb_thread_id,img_wid,img_len,
+                                    img_stride_col, img_stride_row, kern_wid-1,
+                                    c_contiguous);
+          load_to_shared(d_kern, kern+kern_stride_stack*stack,
+                         thread_id, nb_thread_id, kern_wid,kern_len,
+                         kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
+          __syncthreads();
+          //The if is needed as on Fermi as reading out of bound index from shared memory generate an error.
+          //Not needed on generation before as they worked anyway. Removing the if generate the good code
+          //as we store the result of only the good thread.
+          //This was with nvcc 3.0 on an GTX470 card.
+          if(out_row<out_len)
+            for (int row=0; row < kern_len; row++) {//loop over row
+              const float* idx_kern=&d_kern[row*kern_wid];
+              const float* idx_in=&d_img[(row+out_row)*img_wid_valid+out_col];
+              
+              convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
+            }
+          if(out_row<out_len)
+            out[batch_id*out_wid*out_len*nkern+//the good batch
+                out_wid*out_len*kern_id+//the output image
+                out_row*out_wid+out_col] = sum;
+        }
       }
     }else{//low_mem version
       //don't need to fill the last rows padding as this is done later.
@@ -306,46 +306,46 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
       __shared__ int out_len_max;
       //TODO pass a parameter nb_split
       if(thread_id==0)
-	out_len_max = (out_len/nb_rows+(out_len%nb_rows==0?0:1))*nb_rows;
+        out_len_max = (out_len/nb_rows+(out_len%nb_rows==0?0:1))*nb_rows;
       __syncthreads();
       for(int out_row = ty, out_row_iter=0;out_row<out_len_max;
-	  out_row+=nb_rows, out_row_iter++){
-	float sum = 0.0f;
-	for (int stack = 0;stack<nstack;stack++){
-	  __syncthreads();
-	  const int len_to_load=min(kern_len+nb_rows,img_len-out_row_iter*nb_rows);//nb rows to load, min(nb_rows for this iter, nb rows left in the image)
-	  const int empty_row = max(kern_len-1-out_row_iter*nb_rows,0);//number of empty row at the start
-	  //we need to reload some row as when we change of out_row we lost the last load du to the stack.
-	  const int previous_row = min(out_row_iter*nb_rows,kern_len-1);//number of row from last out_row iteration to reload
-	  load_padded_col_to_shared(d_img+(kern_len-1-previous_row)*img_wid_valid,
-				    img+img_stride_stack*stack//the good stack image
-				    +(out_row_iter*nb_rows-previous_row)*img_stride_row,//the good split top row.
-				    thread_id,nb_thread_id,img_wid,
-				    len_to_load+previous_row,
-				    img_stride_col, img_stride_row, kern_wid-1,
-				    c_contiguous);
-	  //TODO: fill the last row padding only when needed.
-	  //We always fill the last rows padding event when not needed.
-	  int row_to_fill = 2*kern_len-2+nb_rows- empty_row - previous_row - len_to_load;
-	  row_to_fill = min(row_to_fill,kern_len-1);
-	  fill(d_img+(kern_len-1+len_to_load)*img_wid_valid,
-	       img_wid_valid*row_to_fill, 0, thread_id, nb_thread_id);
-	  load_to_shared(d_kern, kern+kern_stride_stack*stack,
-			 thread_id, nb_thread_id, kern_wid,kern_len,
-			 kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
-	  __syncthreads();
+          out_row+=nb_rows, out_row_iter++){
+        float sum = 0.0f;
+        for (int stack = 0;stack<nstack;stack++){
+          __syncthreads();
+          const int len_to_load=min(kern_len+nb_rows,img_len-out_row_iter*nb_rows);//nb rows to load, min(nb_rows for this iter, nb rows left in the image)
+          const int empty_row = max(kern_len-1-out_row_iter*nb_rows,0);//number of empty row at the start
+          //we need to reload some row as when we change of out_row we lost the last load du to the stack.
+          const int previous_row = min(out_row_iter*nb_rows,kern_len-1);//number of row from last out_row iteration to reload
+          load_padded_col_to_shared(d_img+(kern_len-1-previous_row)*img_wid_valid,
+                                    img+img_stride_stack*stack//the good stack image
+                                    +(out_row_iter*nb_rows-previous_row)*img_stride_row,//the good split top row.
+                                    thread_id,nb_thread_id,img_wid,
+                                    len_to_load+previous_row,
+                                    img_stride_col, img_stride_row, kern_wid-1,
+                                    c_contiguous);
+          //TODO: fill the last row padding only when needed.
+          //We always fill the last rows padding event when not needed.
+          int row_to_fill = 2*kern_len-2+nb_rows- empty_row - previous_row - len_to_load;
+          row_to_fill = min(row_to_fill,kern_len-1);
+          fill(d_img+(kern_len-1+len_to_load)*img_wid_valid,
+               img_wid_valid*row_to_fill, 0, thread_id, nb_thread_id);
+          load_to_shared(d_kern, kern+kern_stride_stack*stack,
+                         thread_id, nb_thread_id, kern_wid,kern_len,
+                         kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
+          __syncthreads();
 
-	  for (int row=0; row < kern_len; row++) {//loop over row
-	    const float* idx_kern=&d_kern[row*kern_wid];
-	    const float* idx_in=&d_img[(row+out_row-out_row_iter*nb_rows)*img_wid_valid+out_col];
-	    
-	    convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
-	  }
-	}
-	if(out_row<out_len)
-	  out[batch_id*out_wid*out_len*nkern+//the good batch
-	      out_wid*out_len*kern_id+//the output image
-	      out_row*out_wid+out_col] = sum;
+          for (int row=0; row < kern_len; row++) {//loop over row
+            const float* idx_kern=&d_kern[row*kern_wid];
+            const float* idx_in=&d_img[(row+out_row-out_row_iter*nb_rows)*img_wid_valid+out_col];
+            
+            convolutionRowNoFlip<KERN_WIDTH>(sum, idx_kern, idx_in, kern_wid);
+          }
+        }
+        if(out_row<out_len)
+          out[batch_id*out_wid*out_len*nkern+//the good batch
+              out_wid*out_len*kern_id+//the output image
+              out_row*out_wid+out_col] = sum;
       }
     }
 }
@@ -366,8 +366,8 @@ template <> __device__ float everything_dot<1>(const float * x, const int sx, co
 template<int NSTACK>
 __global__ void
 conv_full_load_everything( float* img, float* kern, float* out,
-		 int img_len, int img_wid,
-		 int kern_len, int kern_wid, int nkern, int nstack,
+                 int img_len, int img_wid,
+                 int kern_len, int kern_wid, int nkern, int nstack,
                  int img_stride_col, int img_stride_row,
                  int img_stride_stack, int img_stride_batch,
                  int kern_stride_col, int kern_stride_row, 
@@ -442,3 +442,13 @@ conv_full_load_everything( float* img, float* kern, float* out,
         __syncthreads(); //don't start loading another kernel until we're done here
     }
 }
+/*
+  Local Variables:
+  mode:c++
+  c-basic-offset:4
+  c-file-style:"stroustrup"
+  indent-tabs-mode:nil
+  fill-column:79
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=79 :

@@ -10,7 +10,7 @@ Documentation
 
 Interface changes
  * In 0.5, we removed the deprecated sharedvar.value property.
-   Now we raise an error if you access it.
+   Now we raise an error if you access it. (Frederic B.)
  * theano.function does not accept duplicate inputs, so function([x, x], ...)
    does not work anymore. (Pascal L.)
  * theano.function now raises an error if some of the provided inputs are
@@ -23,15 +23,16 @@ New Features
  * debugprint new param ids=["CHAR", "id", "int", ""]
    This makes the identifier printed to be the python id, a unique char, a
    unique int, or not have it printed. We changed the default to be "CHAR"
-   as this is more readable.
+   as this is more readable. (Frederic B.)
  * debugprint new param stop_on_name=[False, True]. If True, we don't print
    anything below an intermediate variable that has a name. Defaults to False.
- * debugprint does not print anymore the "|" symbol in a column after the last input.
+   (Frederic B.)
+ * debugprint does not print anymore the "|" symbol in a column after the last input. (Frederic B.)
  * If you use Enthought Python Distribution (EPD) now we use its blas
-   implementation by default.
+   implementation by default. (Frederic B.)
 
 Sparse Sandbox graduate
- * Remove0 op: it remove store element with value 0.
+ * Remove0 op: it remove store element with value 0. (Frederic B.)
 
 Sparse Sandbox Addition (Not reviewed/documented/tested, but used by some people)
  * They are all in the theano.sparse.sandbox.sp2 module
@@ -50,7 +51,9 @@ Crash Fix
    empty string (Frederic B.)
  * When importing theano on a computer without GPU with the Theano
    flags 'device' or 'init_gpu_device' set to gpu* (Frederic B., reported by  Luo Heng)
-
+ * Optimization print useless error when scipy is not available. (Frederic B.)
+ * Gpu conv crash/slowdown on newer hardware? (James B.)
+ * Better error handling in gpu conv (Frederic B.)
 
 =============
 Release Notes
