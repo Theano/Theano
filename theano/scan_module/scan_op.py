@@ -1505,17 +1505,19 @@ class Scan(PureOp):
         rval = scan_utils.reconstruct_graph(self.inputs,
                                             self.outputs, '_rop')
         self_inputs = rval[0]
+        rop_of_inputs = rval[0][:self.n_seqs + self.n_outs] + \
+                rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
         self_outputs = rval[1]
         # Step 1. Compute the R_op of the inner function
         inner_eval_points = [scan_utils.safe_new(x, '_evalpoint')
-                             for x in self_inputs]
+                             for x in rop_of_inputs]
         if self.as_while:
             rop_self_outputs = self_outputs[:-1]
         else:
             rop_self_outputs = self_outputs
         if self.info['n_shared_outs'] > 0:
             rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
-        rop_outs = tensor.Rop(rop_self_outputs, self_inputs, inner_eval_points)
+        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs, inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
         # Step 2. Figure out what corresponds to what in the scan
