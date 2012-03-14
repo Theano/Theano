@@ -24,12 +24,13 @@ if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 #needed as the gpu conv don't have a perform implementation.
-if theano.config.mode=='FAST_COMPILE':
+if theano.config.mode == 'FAST_COMPILE':
     theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
 else:
     theano_mode = theano.compile.mode.get_default_mode().including('gpu')
 
-cuda_tensor4 = cuda_ndarray.CudaNdarrayType([False]*4)
+cuda_tensor4 = cuda_ndarray.CudaNdarrayType([False] * 4)
+
 
 def py_conv_valid_numpy(img, kern):
     assert img.shape[1] == kern.shape[1]
@@ -42,18 +43,26 @@ def py_conv_valid_numpy(img, kern):
             for rr in xrange(out.shape[2]):
                 for cc in xrange(out.shape[3]):
                     #rr, cc is the upper-left corner of img patches
-                    imgpatch = img[b,:,rr:rr+kern.shape[2], cc:cc+kern.shape[3]]
+                    imgpatch = img[b, :, rr:rr + kern.shape[2],
+                                   cc:cc + kern.shape[3]]
                     #print img.shape, kern.shape, imgpatch.shape, rr+kern.shape[2]-1, rr-1, -1
-                    innerprod = (imgpatch[:,::-1,::-1] * kern[k,:,:,:]).sum()
+                    innerprod = (imgpatch[:, ::-1, ::-1] *
+                                 kern[k, :, :, :]).sum()
                     out[b, k, rr, cc] = innerprod
     return out
+
+
 def py_conv_full_numpy(img, kern):
-    # manually pad the img with zeros all around, and then run it through py_conv_valid
-    pad_rows = 2*(kern.shape[2]-1) + img.shape[2]
-    pad_cols = 2*(kern.shape[3]-1) + img.shape[3]
-    padded_img = numpy.zeros((img.shape[0], img.shape[1], pad_rows, pad_cols), dtype=img.dtype)
-    padded_img[:,:,kern.shape[2]-1:kern.shape[2]-1+img.shape[2],kern.shape[3]-1:kern.shape[3]-1+img.shape[3]] = img
+    # manually pad the img with zeros all around, and then run it
+    # through py_conv_valid
+    pad_rows = 2 * (kern.shape[2] - 1) + img.shape[2]
+    pad_cols = 2 * (kern.shape[3] - 1) + img.shape[3]
+    padded_img = numpy.zeros((img.shape[0], img.shape[1], pad_rows, pad_cols),
+                             dtype=img.dtype)
+    padded_img[:, :, kern.shape[2] - 1: kern.shape[2] - 1 + img.shape[2],
+                     kern.shape[3] - 1: kern.shape[3] - 1 + img.shape[3]] = img
     return py_conv_valid_numpy(padded_img, kern)
+
 
 def py_conv(img, kern, mode, subsample):
     """
@@ -62,12 +71,15 @@ def py_conv(img, kern, mode, subsample):
     """
     if imported_scipy_convolve2d:
         return py_conv_scipy(img, kern, mode, subsample)
-    elif mode=='valid':
-        return py_conv_valid_numpy(img,kern)[:,:,::subsample[0],::subsample[1]]
-    elif mode=='full':
-        return py_conv_full_numpy(img,kern)[:,:,::subsample[0],::subsample[1]]
+    elif mode == 'valid':
+        return py_conv_valid_numpy(img, kern)[:, :, ::subsample[0],
+                                                      ::subsample[1]]
+    elif mode == 'full':
+        return py_conv_full_numpy(img, kern)[:, :, ::subsample[0],
+                                                     ::subsample[1]]
     else:
         raise Exception("Can't execute this kernel.")
+
 
 def py_conv_scipy(img, kern, mode, subsample):
     assert img.shape[1] == kern.shape[1]
@@ -83,17 +95,20 @@ def py_conv_scipy(img, kern, mode, subsample):
     for b in xrange(out.shape[0]):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
-                out[b,k,:,:] += convolve2d(img[b,s,:,:]
-                        , kern[k,s,:,:]
-                        , mode)
-    return out[:,:,::subsample[0], ::subsample[1]]
+                out[b, k, :, :] += convolve2d(img[b, s, :, :],
+                                              kern[k, s, :, :],
+                                              mode)
+    return out[:, :, ::subsample[0], ::subsample[1]]
+
 
 def _params_allgood_header():
     print "ishape kshape #Mflops CPU Mflops GPU Mflops Speedup"
 
-def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
-        kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None,
-        id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False, compile_kshp=None):
+
+def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
+                    kern_stride=(1, 1), version=-1, verbose=0, random=True,
+                    print_=None, id=None, rtol=1e-5, atol=1e-8,
+                    nb_iter=0, ones=False, compile_kshp=None):
     #
     # This function is the core of several of the big unit-test drivers,
     # but it can also be used very directly on its own to test a specific
@@ -111,22 +126,27 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
         npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
     elif random:
-        npy_img = theano._asarray(numpy.random.rand(*ishape)+1, dtype='float32')
-        npy_kern = theano._asarray(numpy.random.rand(*kshape)-2, dtype='float32')
+        npy_img = theano._asarray(numpy.random.rand(*ishape) + 1,
+                                  dtype='float32')
+        npy_kern = theano._asarray(numpy.random.rand(*kshape) - 2,
+                                   dtype='float32')
     else:
-        npy_img = theano._asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
-        npy_kern = -(theano._asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
+        npy_img = theano._asarray(numpy.arange(
+                numpy.prod(ishape)).reshape(ishape), dtype='float32') + 1
+        npy_kern = -(theano._asarray(numpy.arange(
+                    numpy.prod(kshape)).reshape(kshape), dtype='float32') + 1)
 
     img = cuda_ndarray.CudaNdarray(npy_img)
     kern = cuda_ndarray.CudaNdarray(npy_kern)
 
-    #we take the stride after the transfert as we make c_contiguous data on the GPU.
-    if img_stride!=(1,1):
-        img=img[:,:,::img_stride[0],::img_stride[1]]
-        npy_img = npy_img[:,:,::img_stride[0],::img_stride[1]]
-    if kern_stride!=(1,1):
-        kern=kern[:,:,::kern_stride[0],::kern_stride[1]]
-        npy_kern = npy_kern[:,:,::kern_stride[0],::kern_stride[1]]
+    #we take the stride after the transfert as we make c_contiguous
+    #data on the GPU.
+    if img_stride != (1, 1):
+        img = img[:, :, ::img_stride[0], ::img_stride[1]]
+        npy_img = npy_img[:, :, ::img_stride[0], ::img_stride[1]]
+    if kern_stride != (1, 1):
+        kern = kern[:, :, ::kern_stride[0], ::kern_stride[1]]
+        npy_kern = npy_kern[:, :, ::kern_stride[0], ::kern_stride[1]]
 
     t2 = None
     rval = True
@@ -139,20 +159,23 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
                                               subsample=subsample,
                                               version=version,
-                                              verbose=verbose, kshp=compile_kshp)(i,k)
-        f=theano.function([i,k],op, mode=theano_mode)
-        gpuval = f(img,kern)
+                                              verbose=verbose,
+                                              kshp=compile_kshp)(i, k)
+        f = theano.function([i, k], op, mode=theano_mode)
+        gpuval = f(img, kern)
         t2 = time.time()
         for i in range(nb_iter):
-            gpuval2 = f(img,kern)
-            assert numpy.allclose(numpy.asarray(gpuval),numpy.asarray(gpuval2))
-            assert (numpy.asarray(gpuval)==numpy.asarray(gpuval2)).all()
+            gpuval2 = f(img, kern)
+            assert numpy.allclose(numpy.asarray(gpuval),
+                                  numpy.asarray(gpuval2))
+            assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
         gpuval = numpy.asarray(gpuval)
         if gpuval.shape != cpuval.shape:
-            print >> sys.stdout, "ERROR: shape mismatch", gpuval.shape, cpuval.shape
+            print >> sys.stdout, "ERROR: shape mismatch",
+            print >> sys.stdout, gpuval.shape, cpuval.shape
             rval = False
         if rval:
-            rval = numpy.allclose(cpuval, gpuval, rtol = rtol)
+            rval = numpy.allclose(cpuval, gpuval, rtol=rtol)
             assert numpy.all(numpy.isfinite(gpuval))
     except NotImplementedError, e:
         print >> sys.stdout, '_params_allgood Failed allclose', e
@@ -164,49 +187,52 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1),
         else:
             approx_fp = ishape[0] * kshape[0] * kshape[1] * kshape[2] * kshape[3] * ishape[2] * ishape[3] * 2
         approx_fp /= 1e6
-        cpu_mflops = approx_fp / (t1-t0)
-        gpu_mflops = approx_fp / (t2-t1)
-        if verbose>0:
-            print >> sys.stdout, '%15s'% str(ishape), '%15s'% str(kshape),
+        cpu_mflops = approx_fp / (t1 - t0)
+        gpu_mflops = approx_fp / (t2 - t1)
+        if verbose > 0:
+            print >> sys.stdout, '%15s' % str(ishape), '%15s' % str(kshape),
             print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
-                    cpu_mflops, gpu_mflops,(t1-t0)/(t2-t1))
+                    cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1))
     if not rval:
         print >> sys.stdout, 'test_'+mode+' id='+str(id)+' FAILED for ishape, kshape, mode, subsample, img_stride, kern_stride, version', ishape, kshape, mode, subsample, img_stride, kern_stride, version
-        diff=cpuval-gpuval
-        diffabs=numpy.absolute(diff)
-        pr_diff=diffabs/numpy.absolute(cpuval)
-        nb_close=(diffabs <= (atol + rtol * numpy.absolute(gpuval))).sum()
+        diff = cpuval - gpuval
+        diffabs = numpy.absolute(diff)
+        pr_diff = diffabs / numpy.absolute(cpuval)
+        nb_close = (diffabs <= (atol + rtol * numpy.absolute(gpuval))).sum()
         print "max absolute diff:",diffabs.max(),"avg abs diff:",numpy.average(diffabs)
         print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
         print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
-    if not rval and print_!=False:
-        if npy_img.shape[0]>5:
-            print "img",npy_img[0]
-            print "kern",npy_kern[0]
-            print "gpu",gpuval[0][0]
-            print "cpu",cpuval[0][0]
-            print "diff",diff[0][0]
+    if not rval and print_ != False:
+        if npy_img.shape[0] > 5:
+            print "img", npy_img[0]
+            print "kern", npy_kern[0]
+            print "gpu", gpuval[0][0]
+            print "cpu", cpuval[0][0]
+            print "diff", diff[0][0]
         else:
-            print "img",npy_img
-            print "kern",npy_kern
-            print "gpu",gpuval
-            print "cpu",cpuval
-            print "diff",diff
+            print "img", npy_img
+            print "kern", npy_kern
+            print "gpu", gpuval
+            print "cpu", cpuval
+            print "diff", diff
 
     return rval
 
+
 def exec_conv(version, shapes, verbose, random, mode,
               print_=None, rtol=1e-5, ones=False):
-    if verbose>0:
+    if verbose > 0:
         _params_allgood_header()
     nb_failed = 0
     nb_tests = 0
 
-    failed_version=set()
-    failed_id=[]
-    for ver in version:# I put -1 in case we forget to add version in the test to.
-        for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-            ret=False
+    failed_version = set()
+    failed_id = []
+    # I put -1 in case we forget to add version in the test to.
+    for ver in version:
+        for id, (ishape, kshape, subshape,
+                 istride, kstride) in enumerate(shapes):
+            ret = False
             try:
                 ret = _params_allgood(ishape,
                         kshape,
@@ -222,19 +248,21 @@ def exec_conv(version, shapes, verbose, random, mode,
                         rtol=rtol,
                         ones=ones)
             except Exception, e:
-                print ver, id,(ishape, kshape, subshape, istride, kstride)
+                print ver, id, (ishape, kshape, subshape, istride, kstride)
                 print e
                 pass
             if not ret:
                 failed_version.add(ver)
                 failed_id.append(id)
-                nb_failed+=1
-            nb_tests+=1
-    if nb_failed>0:
-        print "nb_failed",nb_failed,"on",nb_tests, "failed_version",failed_version, "failed_id",failed_id
-        assert nb_failed==0, nb_failed
+                nb_failed += 1
+            nb_tests += 1
+    if nb_failed > 0:
+        print "nb_failed", nb_failed, "on", nb_tests,
+        print "failed_version", failed_version, "failed_id", failed_id
+        assert nb_failed == 0, nb_failed
     else:
-        print 'Executed',nb_tests,'different shapes'
+        print 'Executed', nb_tests, 'different shapes'
+
 
 def get_basic_shapes():
     return [
@@ -249,8 +277,12 @@ def get_basic_shapes():
             , ((1, 1, 4, 4), (1, 1, 3, 2), (1,1), (1,1), (1,1))
             , ((1, 1, 4, 4), (1, 1, 2, 3), (1,1), (1,1), (1,1))]
 
-def get_shapes(imshp=(1,1), kshp=(1,1), subsample=(1,1), img_stride=(1,1), kern_stride=(1,1)):
-    """ all possible case if we one or more of stack size, batch size, nkern. We use the gived image shape, kernel shape and subsmaple shape."""
+
+def get_shapes(imshp=(1, 1), kshp=(1, 1), subsample=(1, 1),
+               img_stride=(1, 1), kern_stride=(1, 1)):
+    """ all possible case if we one or more of stack size, batch size,
+    nkern. We use the gived image shape, kernel shape and subsmaple
+    shape."""
     return [  ((1, 2)+imshp, (1, 2)+kshp,subsample, img_stride, kern_stride)#stack only
             , ((3, 1)+imshp, (1, 1)+kshp,subsample, img_stride, kern_stride)#batch only
             , ((1, 1)+imshp, (2, 1)+kshp,subsample, img_stride, kern_stride)#nkern only
@@ -260,7 +292,10 @@ def get_shapes(imshp=(1,1), kshp=(1,1), subsample=(1,1), img_stride=(1,1), kern_
             , ((2, 2)+imshp, (2, 2)+kshp,subsample, img_stride, kern_stride)#batch, nkern and stack
             , ((3, 2)+imshp, (4, 2)+kshp,subsample, img_stride, kern_stride)#batch, nkern and stack
             ]
-def get_shapes2(scales_img=(1,1), scales_kern=(1,1), subsample=(1,1), img_stride=(1,1), kern_stride=(1,1)):
+
+
+def get_shapes2(scales_img=(1, 1), scales_kern=(1, 1), subsample=(1, 1),
+                img_stride=(1, 1), kern_stride=(1, 1)):
     #basic test of stack, batch and nkern paramter
     shapes =get_shapes((1*scales_img[0],1*scales_img[1]),
                        (1*scales_kern[0],1*scales_kern[1]),subsample, img_stride, kern_stride)
@@ -284,19 +319,20 @@ def get_shapes2(scales_img=(1,1), scales_kern=(1,1), subsample=(1,1), img_stride
                         (2*scales_kern[0],3*scales_kern[1]),subsample, img_stride, kern_stride)
     return shapes
 
+
 def get_valid_shapes():
 
     #          img shape,     kern shape, subsample shape
 
     shapes = get_basic_shapes()
-    shapes +=get_shapes2()
+    shapes += get_shapes2()
 
     #test image stride
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(1,2))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(2,1))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(2,2))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(-1,-1))
-    shapes += get_shapes2(scales_img=(2,2),kern_stride=(-1,-1))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(1, 2))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 1))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(-1, -1))
+    shapes += get_shapes2(scales_img=(2, 2), kern_stride=(-1, -1))
 
     #test subsample done in a separate fct
 
@@ -333,161 +369,192 @@ def get_valid_shapes():
             ]
     return shapes
 
+
 def test_valid_0_2():
     shapes = get_valid_shapes()
-    version=[0,2]
-    verbose=0
+    version = [0, 2]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[3]> 512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[3] > 512:
             continue
-        if ishape[1]>1:
+        if ishape[1] > 1:
             continue
-        if (numpy.prod(ishape[2:])+numpy.prod(kshape[2:]))*4>(16*1024-150):
+        if ((numpy.prod(ishape[2:]) + numpy.prod(kshape[2:])) * 4 >
+            (16 * 1024 - 150)):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid_1_3_11_12():
     shapes = get_valid_shapes()
-    version=[1,3,11,12]
-    verbose=0
+    version = [1, 3, 11, 12]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[3]> 512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[3] > 512:
             continue
-        if (numpy.prod(ishape[2:])+numpy.prod(kshape[2:]))*4>(16*1024-150):
+        if ((numpy.prod(ishape[2:]) + numpy.prod(kshape[2:])) * 4 >
+            (16 * 1024 - 150)):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid_4():
     shapes = get_valid_shapes()
-    version=[4]
-    verbose=0
+    version = [4]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[3]> 512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[3] > 512:
             continue
-        if ishape[1]>1:
+        if ishape[1] > 1:
             continue
-        if (kshape[2]*ishape[3]*4+numpy.prod(kshape[2:])*4)>(16*1024-150):
+        if ((kshape[2] * ishape[3] * 4 + numpy.prod(kshape[2:]) * 4) >
+            (16 * 1024 - 150)):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid_5():
     shapes = get_valid_shapes()
-    version=[5]
-    verbose=0
+    version = [5]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
     print len(shapes)
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[3]> 512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[3] > 512:
             continue
-        if (kshape[2]*ishape[3]*4+numpy.prod(kshape[2:])*4)>(16*1024-150):
+        if ((kshape[2] * ishape[3] * 4 + numpy.prod(kshape[2:]) * 4) >
+            (16 * 1024 - 150)):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
     print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid_7_8_13():
     shapes = get_valid_shapes()
     # This is to test the "new" lower shared memory usage.
-    shapes.append(((10,30,60,60),(20,30,40,40), (1,1), (1,1), (1,1)))
-    version=[7,8,13]
-    verbose=0
+    shapes.append(((10, 30, 60, 60), (20, 30, 40, 40),
+                   (1, 1), (1, 1), (1, 1)))
+    version = [7, 8, 13]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
     print len(shapes)
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[2]*oshape[3]>512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[2] * oshape[3] > 512:
             continue
-        if max(numpy.prod(ishape[2:])*4+2*kshape[3]*4, oshape[2]*oshape[3]*4*2)>(16*1024-150):
+        if max(numpy.prod(ishape[2:]) * 4 + 2 * kshape[3] * 4,
+               oshape[2] * oshape[3] * 4 * 2) > (16 * 1024 - 150):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
     print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid_9_10():
     shapes = get_valid_shapes()
-    version=[9,10]
-    verbose=0
+    version = [9, 10]
+    verbose = 0
 
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    shapes2=[]
+    shapes2 = []
 
     print len(shapes)
-    for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape=[ishape[0]]+[kshape[0]]+list(numpy.asarray(ishape[2:])-numpy.asarray(kshape[2:])+numpy.asarray([1,1]))
-        if oshape[3]> 512:
+    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
+        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
+                                                  numpy.asarray(kshape[2:]) +
+                                                  numpy.asarray([1, 1]))
+        if oshape[3] > 512:
             continue
-        if (kshape[3]*4+ishape[3])>(16*1024-150):
+        if (kshape[3] * 4 + ishape[3]) > (16 * 1024 - 150):
             continue
-        if subshape==(1,1):
+        if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
     print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_valid():
     shapes = get_valid_shapes()
@@ -495,8 +562,8 @@ def test_valid():
     #shapes=shapes[400:426]
     # I put -1 in case we forget to add version in the test to.
     # I put -2 to test the reference version.
-    version=[-2,-1,6]
-    verbose=0
+    version = [-2, -1, 6]
+    verbose = 0
 #    version=[1]
 
     random = True
@@ -505,17 +572,19 @@ def test_valid():
     if ones:
         random = False
 
-    exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
+    exec_conv(version, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones, rtol=1.1e-5)
+
 
 def test_full():
     shapes = get_basic_shapes()
-    shapes +=get_shapes2()
+    shapes += get_shapes2()
     #test image stride
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(1,2))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(2,1))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(2,2))
-    shapes += get_shapes2(scales_img=(2,2),img_stride=(-1,-1))
-    shapes += get_shapes2(scales_img=(2,2),kern_stride=(-1,-1))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(1, 2))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 1))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(-1, -1))
+    shapes += get_shapes2(scales_img=(2, 2), kern_stride=(-1, -1))
 
     #test subsample done in a separate fct
 
@@ -557,12 +626,13 @@ def test_full():
             ]
 
 #    shapes=shapes[:277]
-    version=[-2,-1,0,1,2,3,4,5]
-    verbose=0
+    version = [-2, -1, 0, 1, 2, 3, 4, 5]
+    verbose = 0
 #    version=[4]
-    random=True
+    random = True
 
     exec_conv(version, shapes, verbose, random, 'full')
+
 
 def test_subsample():
     # implement when
@@ -573,14 +643,14 @@ def test_subsample():
             , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 3), (1,1), (1,1))
             , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 1), (1,1), (1,1))
             ]
-    shapes += get_shapes2(scales_img=(2,2),subsample=(1,1))
-    shapes += get_shapes2(scales_img=(2,2),subsample=(1,2))
-    shapes += get_shapes2(scales_img=(2,2),subsample=(2,1))
-    shapes += get_shapes2(scales_img=(2,2),subsample=(2,2))
+    shapes += get_shapes2(scales_img=(2, 2), subsample=(1, 1))
+    shapes += get_shapes2(scales_img=(2, 2), subsample=(1, 2))
+    shapes += get_shapes2(scales_img=(2, 2), subsample=(2, 1))
+    shapes += get_shapes2(scales_img=(2, 2), subsample=(2, 2))
 
 #We put only the version that implement the subsample to make the test faster.
-    version_valid = [-2,-1,1,3,11,12]
-    version_full = [-2,-1]
+    version_valid = [-2, -1, 1, 3, 11, 12]
+    version_full = [-2, -1]
     verbose = 0
     random = True
     print_ = False
@@ -588,8 +658,10 @@ def test_subsample():
     if ones:
         random = False
 
-    exec_conv(version_valid, shapes, verbose, random, 'valid', print_=print_, ones=ones)
-    exec_conv(version_full, shapes, verbose, random, 'full', print_=print_, ones=ones)
+    exec_conv(version_valid, shapes, verbose, random, 'valid',
+              print_=print_, ones=ones)
+    exec_conv(version_full, shapes, verbose, random, 'full',
+              print_=print_, ones=ones)
 
 ## See #616
 #def test_logical_shapes():
@@ -614,7 +686,8 @@ class TestConv2DGPU(unittest.TestCase):
         theano_mode_orig = theano_mode
         try:
             if theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
-                theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+                theano_mode = theano.compile.mode.get_mode(
+                    'FAST_RUN').including('gpu')
                 for mode in ['valid', 'full']:
                     for shapes in [((3, 2, 8, 8), (4, 2, 5, 5), (8, 8)),
                                    ((3, 2, 8, 8), (4, 2, 5, 5), (5, 8)),
@@ -622,16 +695,21 @@ class TestConv2DGPU(unittest.TestCase):
                                    # We use only the number of columns.
                                    ]:
 
-                        self.assertRaises(ValueError, _params_allgood, shapes[0], shapes[1],
-                                          verbose=verbose, random=random, mode=mode,
-                                          print_=print_, ones=ones, compile_kshp=shapes[2])
+                        self.assertRaises(ValueError, _params_allgood,
+                                          shapes[0], shapes[1],
+                                          verbose=verbose, random=random,
+                                          mode=mode,
+                                          print_=print_, ones=ones,
+                                          compile_kshp=shapes[2])
         finally:
             theano_mode = theano_mode_orig
+
+
 def _test_dummy():
     ishape = (1, 1, 5, 5)
     kshape = (1, 1, 3, 3)
     mode = 'valid'
-    subsample = (1,1)
+    subsample = (1, 1)
 
     npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
     npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
@@ -696,14 +774,14 @@ def benchmark():
          ,((2, 30,116,116), (20, 30, 9,9), (1,1), (1,1), (1,1))#full conv_reference_full
             ]
 
-
 #    shapes_valid=shapes_valid[-1:]
 #    shapes_full=shapes_full[-1:]
-    version=[-1]
-    verbose=1
-    random=True
+    version = [-1]
+    verbose = 1
+    random = True
 
-    exec_conv(version, shapes_valid, verbose, random, 'valid', print_=None, rtol=1e-3)
+    exec_conv(version, shapes_valid, verbose, random, 'valid',
+              print_=None, rtol=1e-3)
     exec_conv(version, shapes_full, verbose, random, 'full')
 
 
@@ -719,5 +797,3 @@ def test_stack_rows_segfault_070312():
             nkern=1, bsize=1)
     f = theano.function([], [], updates={out: op(img, kern)})
     f()
-
-

@@ -347,7 +347,6 @@ static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
   mode:c++
   c-basic-offset:4
   c-file-style:"stroustrup"
-  c-file-offsets:((innamespace . 0)(inline-open . 0))
   indent-tabs-mode:nil
   fill-column:79
   End:
