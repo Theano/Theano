@@ -196,6 +196,19 @@ def scan(fn,
         actual_slice = seq[0]
         _seq_val = tensor.as_tensor_variable(seq)
         _seq_val_slice = _seq_val[0]
+        # Try to transfer test_value to the new variable
+        if config.compute_test_value != 'off':
+            try:
+                nw_slice.tag.test_value = gof.Op._get_test_value(
+                    _seq_val_slice)
+            except AttributeError, e:
+                if config.compute_test_value != 'ignore':
+                    # No need to print a warning or raise an error now,
+                    # it will be done when fn will be called.
+                    _logger.info(('Cannot compute test value for '
+                        'the inner function of scan, input value '
+                        'missing %s'), e)
+
         nw_slice = _seq_val_slice.type()
         if seq.name:
             nw_slice.name=seq.name + '[t]'
