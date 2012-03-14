@@ -358,7 +358,7 @@ def scan(fn,
     offset = 0
     for idx in xrange(n_mit_sot):
         n_inputs = len(mit_sot_tap_array[idx])
-        if n_fixed_steps in [1, -1]:
+        if n_fixed_steps == 1:
             _ordered_args[mit_sot_rightOrder[idx]] = \
                             mit_sot_inner_slices[offset:offset + n_inputs]
         else:
@@ -367,7 +367,7 @@ def scan(fn,
         offset += n_inputs
 
     for idx in xrange(n_sit_sot):
-        if n_fixed_steps in [1, -1]:
+        if n_fixed_steps == 1:
             _ordered_args[sit_sot_rightOrder[idx]] = \
                                         [sit_sot_inner_slices[idx]]
         else:
@@ -377,7 +377,7 @@ def scan(fn,
     ordered_args = []
     for ls in _ordered_args:
         ordered_args += ls
-    if n_fixed_steps in [1, -1]:
+    if n_fixed_steps == 1:
         args = (inner_slices +
                 ordered_args +
                 non_seqs)
@@ -404,7 +404,7 @@ def scan(fn,
     ###   Step 3. Check if we actually need scan and remove it if we don't
     ##
 
-    if n_fixed_steps in [1, -1]:
+    if n_fixed_steps == 1:
         # We do not need to use the scan op anymore, so we can just return
         # the outputs and updates we have
         if condition is not None:
