@@ -2472,7 +2472,8 @@ class T_Scan(unittest.TestCase):
         nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
         nwo_W = theano.tensor.Rop(o, _W, eW)
         fn_rop = theano.function([u, h0, W, eu, eh0, eW],
-                                 [nwo_u, nwo_h0, nwo_W])
+                                 [nwo_u, nwo_h0, nwo_W],
+                                 on_unused_input='ignore')
 
         n2o_u, _ = theano.scan(lambda i, o, u, h0, W, eu: \
                                 (theano.tensor.grad(o[i], u) * eu).sum(),
@@ -2493,7 +2494,8 @@ class T_Scan(unittest.TestCase):
                              name='jacobW')
 
         fn_test = theano.function([u, h0, W, eu, eh0, eW],
-                                  [n2o_u, n2o_h0, n2o_W])
+                                  [n2o_u, n2o_h0, n2o_W],
+                                  on_unused_input='ignore')
 
         vnu, vnh0, vnW = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu, tnh0, tnW = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
