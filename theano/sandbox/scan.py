@@ -262,7 +262,7 @@ def scan(fn,
         # makes code much cleaner for those who do not use taps. Otherwise
         # they would always had to shape_padleft the initial state ..
         # which is ugly
-        if init_out.get('taps', None) == [-1]:
+        if init_out['taps'] == [-1]:
 
             actual_arg = init_out['membuf']
             arg = safe_new(init_out['membuf'][0])
