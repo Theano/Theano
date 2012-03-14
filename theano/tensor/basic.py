@@ -3422,8 +3422,9 @@ class Subtensor(Op):
         fail = sub['fail']
         init_cmds = [] # initialization for subtensor_spec
         is_slice = []
-        #TODO: change that, there can be more than sys.maxint elements
-        NONE_CODE = sys.maxint - 1
+        #TODO: change that, it might lead to unexpected results,
+        # see assembla-#767
+        NONE_CODE = sys.maxsize - 1
 
         pos = [0,1] #annoying version of global variable for init_entry
         def inc_spec_pos(amt): pos[0] += amt
@@ -3640,7 +3641,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub): #DEBUG
         part0 = self.helper_c_code(node, name, inputs, outputs, sub,
