@@ -278,8 +278,8 @@ class Scan(PureOp):
                                            str(outer_mitsot),
                                            argoffset + idx,
                                            outer_mitsot.type.dtype,
-                                           otuer_mitsot.type.ndim,
-                                           str(inner_mitsot[ipos + k]),
+                                           outer_mitsot.type.ndim,
+                                           str(inner_mitsots[ipos + k]),
                                            inner_mitsots[ipos + k].type.dtype,
                                            inner_mitsots[ipos + k].type.ndim))
             ipos += len(itaps)
@@ -1674,6 +1674,11 @@ class Scan(PureOp):
         final_outs += outputs[b:e]
 
         return final_outs
+
+
+# Since Scan is an op that contains a Theano compiled function, it is
+# useful to let DebugMode know about it.
+compile.debugmode.ops_with_inner_function[Scan] = 'fn'
 
 
 @theano.compile.profilemode.register_profiler_printer
