@@ -42,7 +42,7 @@ def rebuild_collect_shared(outputs,
                     inputs of the computational graph (or None)
     :type replace: dict
     :param replace: dictionary describing which subgraphs should be
-                    replaced by what
+                    replaced by what. orig_value => new_value
 
     :type updates: dict
     :param updates: dictionary describing updates expressions for shared

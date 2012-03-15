@@ -241,6 +241,43 @@ def test_huge_elemwise_fusion():
                 f()
 
 
+def test_local_gpu_elemwise_0():
+    """
+    Test the test_local_gpu_elemwise_0 when there is dtype upcastable
+    to float32
+    """
+    a = tensor.bmatrix()
+    b = tensor.fmatrix()
+    c = tensor.fmatrix()
+
+    a_v = (numpy.random.rand(4, 5) * 10).astype("int8")
+    b_v = (numpy.random.rand(4, 5) * 10).astype("float32")
+    c_v = (numpy.random.rand(4, 5) * 10).astype("float32")
+
+    # Due to order of optimization, this the composite is created when all
+    # the op are on the gpu.
+    f = theano.function([a, b, c], [a + b + c], mode=mode_with_gpu)
+    #theano.printing.debugprint(f)
+    topo = f.maker.env.toposort()
+    assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
+    assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
+    f(a_v, b_v, c_v)
+
+    # Not test with the composite already on the cpu before we move it
+    # to the gpu
+    a_s = theano.scalar.int8()
+    b_s = theano.scalar.float32()
+    c_s = theano.scalar.float32()
+    out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s + c_s])
+    out_op = tensor.Elemwise(out_s)
+    f = theano.function([a, b, c], [out_op(a, b, c)], mode=mode_with_gpu)
+    #theano.printing.debugprint(f)
+    topo = f.maker.env.toposort()
+    assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
+    assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
+    f(a_v, b_v, c_v)
+
+
 def test_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly"""
     shape = (3,4)
