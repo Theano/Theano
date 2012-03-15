@@ -14,12 +14,12 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
 import numpy
-import sys
 
 import theano
 from theano import tensor
 from theano.tensor import opt, get_constant_value
 from theano import gof
+from theano.gof.python25 import maxsize
 from theano.compile import optdb
 from theano import config
 from theano.compile.function_module import deep_copy_op
@@ -497,7 +497,7 @@ class ScanSaveMem(gof.Optimizer):
                         stop = tensor.basic.extract_constant(cf_slice[0].stop)
                     else:
                         stop = tensor.basic.extract_constant(cf_slice[0]) + 1
-                    if stop == sys.maxsize or stop == length:
+                    if stop == maxsize or stop == length:
                         stop = None
                     else:
                         # there is a **gotcha** here ! Namely, scan returns an
@@ -517,7 +517,7 @@ class ScanSaveMem(gof.Optimizer):
                             global_nsteps['sym'] += [stop]
                         # not if it is maxsize
                         elif (type(stop) in (int, long) and
-                              stop == sys.maxsize):
+                              stop == maxsize):
                             global_nsteps = None
                         # yes if it is a int k, 0 < k < maxsize
                         elif (type(stop) in (int, long) and
@@ -756,7 +756,7 @@ class ScanSaveMem(gof.Optimizer):
                             start = (cnf_slice[0].start - nw_steps -
                                      init_l[pos] + store_steps[pos])
                             if (cnf_slice[0].stop is not None and
-                                cnf_slice[0].stop != sys.maxsize):
+                                cnf_slice[0].stop != maxsize):
                                 stop = (cnf_slice[0].stop - nw_steps -
                                         init_l[pos] + store_steps[pos])
                             else:

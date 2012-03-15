@@ -130,5 +130,22 @@ if sys.version_info[:2] < (2,6):
         for prod in result:
             yield tuple(prod)
 
+    # For maxsize
+    class __Dummy(object):
+        """
+        Dummy class used to know what is the max index of a slice.
+
+        This way, we do not have to rely on guesses for untested
+        architectures.
+        """
+        def __getslice__(self, *args):
+            return args
+
+    # This "slice" should be a (1, maxsize) tuple
+    __dummy_slice = __Dummy()[1:]
+    maxsize = __dummy_slice[1]
+    del __dummy_slice, __Dummy
+
 else:
     from itertools import combinations, product
+    from sys import maxsize

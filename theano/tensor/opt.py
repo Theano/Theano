@@ -20,6 +20,7 @@ import theano
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
+from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from elemwise import Elemwise, DimShuffle
@@ -1507,7 +1508,7 @@ def local_useless_subtensor(node):
                 # is not a useless subtensor
                 return False
 
-            length_pos_data = sys.maxsize
+            length_pos_data = maxsize
 
             length_pos = shape_of[node.inputs[0]][pos]
             try:
