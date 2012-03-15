@@ -166,35 +166,38 @@ def test_print_op():
     assert topo[3].op == cuda.host_from_gpu
     f(numpy.random.random((5,5)).astype('float32'))
 
+
 def test_huge_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly
         We check that we fuse one node with part of its input
         in case their is too many inputs and that would make it bust the 256
         bytes limits.
     """
-    shape = (2,3,4,5,6)
-    ttype = tensor.tensor(dtype='float32',broadcastable=(False,)*len(shape))
+    shape = (2, 3, 4, 5, 6)
+    ttype = tensor.tensor(dtype='float32', broadcastable=(False,) * len(shape))
     vars = [tensor.tanh(ttype) for x in range(7)]
-    f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
+    f = pfunc(vars, [vars[0] - vars[1] - vars[2] - vars[3] - vars[4] -
+                     vars[5] - vars[6]], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     #theano.printing.debugprint(f)
     #for i, node in enumerate(topo):
     #    print >> sys.stdout, i, node
-    assert len(topo)==10
-    assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo])==2
-    assert isinstance(topo[7].op.scalar_op,theano.scalar.basic.Sub)
-    assert isinstance(topo[8].op.scalar_op,theano.scalar.basic.Composite)
+    assert len(topo) == 10
+    assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo]) == 2
+    assert isinstance(topo[7].op.scalar_op, theano.scalar.basic.Sub)
+    assert isinstance(topo[8].op.scalar_op, theano.scalar.basic.Composite)
     #let debugmode catch errors
-    gen = lambda : theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    f(gen(),gen(),gen(),gen(),gen(),gen(),gen())
+    gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    f(gen(), gen(), gen(), gen(), gen(), gen(), gen())
 
-    # Test the case where we can't put the computation on the gpu! their is too many
-    # dimensions to the input to have 2 inputs to the op!
+    # Test the case where we can't put the computation on the gpu! their is too
+    # many dimensions to the input to have 2 inputs to the op!
 
-    shape = (1,2,3,4,5,6,7,2,2,3,2,1,2,2,2,)
-    ttype = tensor.tensor(dtype='float32',broadcastable=(False,)*len(shape))
+    shape = (1, 2, 3, 4, 5, 6, 7, 2, 2, 3, 2, 1, 2, 2, 2,)
+    ttype = tensor.tensor(dtype='float32', broadcastable=(False,) * len(shape))
     vars = [tensor.tanh(ttype) for x in range(7)]
-    f = pfunc(vars, [vars[0]-vars[1]-vars[2]-vars[3]-vars[4]-vars[5]-vars[6]], mode=mode_with_gpu)
+    f = pfunc(vars, [vars[0] - vars[1] - vars[2] - vars[3] - vars[4] -
+                     vars[5] - vars[6]], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     #theano.printing.debugprint(f)
     assert len(topo) == 1
@@ -243,8 +246,7 @@ def test_huge_elemwise_fusion():
 
 def test_local_gpu_elemwise_0():
     """
-    Test the test_local_gpu_elemwise_0 when there is dtype upcastable
-    to float32
+    Test local_gpu_elemwise_0 when there is a dtype upcastable to float32
     """
     a = tensor.bmatrix()
     b = tensor.fmatrix()
@@ -254,7 +256,7 @@ def test_local_gpu_elemwise_0():
     b_v = (numpy.random.rand(4, 5) * 10).astype("float32")
     c_v = (numpy.random.rand(4, 5) * 10).astype("float32")
 
-    # Due to order of optimization, this the composite is created when all
+    # Due to optimization order, this composite is created when all
     # the op are on the gpu.
     f = theano.function([a, b, c], [a + b + c], mode=mode_with_gpu)
     #theano.printing.debugprint(f)
@@ -263,7 +265,7 @@ def test_local_gpu_elemwise_0():
     assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
     f(a_v, b_v, c_v)
 
-    # Not test with the composite already on the cpu before we move it
+    # Now test with the composite already on the cpu before we move it
     # to the gpu
     a_s = theano.scalar.int8()
     b_s = theano.scalar.float32()
@@ -280,18 +282,20 @@ def test_local_gpu_elemwise_0():
 
 def test_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly"""
-    shape = (3,4)
-    a = cuda.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32'), 'a')
+    shape = (3, 4)
+    a = cuda.shared_constructor(theano._asarray(numpy.random.rand(*shape),
+                                                dtype='float32'), 'a')
     b = tensor.fmatrix()
     c = tensor.fmatrix()
-    f = pfunc([b,c], [a+b+c], mode=mode_with_gpu)
+    f = pfunc([b, c], [a + b + c], mode=mode_with_gpu)
     topo = f.maker.env.toposort()
     for i, node in enumerate(topo):
         print >> sys.stdout, i, node
-    assert len(topo)==4
-    assert isinstance(topo[2].op.scalar_op,theano.scalar.basic.Composite)
+    assert len(topo) == 4
+    assert isinstance(topo[2].op.scalar_op, theano.scalar.basic.Composite)
     #let debugmode catch errors
-    f(theano._asarray(numpy.random.rand(*shape), dtype='float32'), theano._asarray(numpy.random.rand(*shape), dtype='float32'))
+    f(theano._asarray(numpy.random.rand(*shape), dtype='float32'),
+      theano._asarray(numpy.random.rand(*shape), dtype='float32'))
 
 
 class test_local_gpu_tensordot(unittest.TestCase):
