@@ -2371,6 +2371,19 @@ class Composite(ScalarOp):
                             % (self.inputs_type, tuple(input_types)))
         return self.outputs_type
 
+    def make_node(self, *inputs):
+        if (tuple([i.type for i in self.inputs]) ==
+            tuple([i.type for i in inputs])):
+            return super(Composite, self).make_node(*inputs)
+        else:
+            # Make a new op with the right input type.
+            res = theano.compile.rebuild_collect_shared(
+                self.outputs,
+                replace=dict(zip(self.inputs, inputs)),
+                rebuild_strict=False)
+            node = Composite(inputs, res[1]).make_node(*inputs)
+            return node
+
     def perform(self, node, inputs, output_storage):
         for storage, impl in zip(output_storage, self._impls):
             storage[0] = impl(inputs)

@@ -165,6 +165,7 @@ class Apply(utils.object2):
         :returns: an Apply instance with the same op but different outputs.
 
         """
+        assert isinstance(inputs, (list, tuple))
         remake_node = False
         new_inputs = inputs[:]
         for i, (curr, new) in enumerate(zip(self.inputs, new_inputs)):
