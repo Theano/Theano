@@ -5,7 +5,6 @@ import cPickle
 import logging
 import operator
 import os
-import platform
 import shutil
 import stat
 import StringIO
@@ -17,17 +16,20 @@ import time
 
 import distutils.sysconfig
 
-import numpy.distutils #TODO: TensorType should handle this
-import theano
+import numpy.distutils  # TODO: TensorType should handle this
 
 from theano.configparser import config
-from theano.gof.cc import hash_from_code, hash_from_file
-import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
+from theano.gof.cc import hash_from_code
 
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+# we will abuse the lockfile mechanism when reading and writing the registry
+import compilelock
+
+from theano.configparser import AddConfigVar, BoolParam
 AddConfigVar('cmodule.mac_framework_link',
-        "If set to true, breaks certain mac installations with the infamous Bus Error",
+        ("If set to true, breaks certain mac installations with the infamous "
+         "Bus Error"),
         BoolParam(False))
+
 
 def local_bitwidth():
     """
@@ -42,6 +44,7 @@ def local_bitwidth():
     # 'P' denotes a void*, and the size is expressed in bytes.
     return struct.calcsize('P') * 8
 
+
 def python_int_bitwidth():
     """
     Return the bit width of Python int (C long int).
@@ -51,11 +54,12 @@ def python_int_bitwidth():
     # 'l' denotes a C long int, and the size is expressed in bytes.
     return struct.calcsize('l') * 8
 
-_logger=logging.getLogger("theano.gof.cmodule")
+_logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
 
-METH_VARARGS="METH_VARARGS"
-METH_NOARGS="METH_NOARGS"
+METH_VARARGS = "METH_VARARGS"
+METH_NOARGS = "METH_NOARGS"
+
 
 def debug_counter(name, every=1):
     """Debug counter to know how often we go through some piece of code.
@@ -68,6 +72,7 @@ def debug_counter(name, every=1):
     if n % every == 0:
         print >>sys.stderr, "debug_counter [%s]: %s" % (name, n)
 
+
 class ExtFunction(object):
     """A C function to put into a DynamicModule """
 
@@ -75,14 +80,18 @@ class ExtFunction(object):
     """string - function's name"""
 
     code_block = ""
-    """string - the entire code for the function.  Has the form ``static PyObject*
-    <name>([...]){ ... }
+    """string - the entire code for the function.
 
-    See Python's C API Reference for how to write c functions for python modules.
+    Has the form ``static PyObject* <name>([...]){ ... }
+
+    See Python's C API Reference for how to write c functions for python
+    modules.
     """
 
     method = ""
-    """str - calling method for this function (i.e. 'METH_VARARGS', 'METH_NOARGS')"""
+    """
+    str - calling method for this function (i.e. 'METH_VARARGS', 'METH_NOARGS')
+    """
 
     doc = ""
     """str - documentation string for this function"""
@@ -94,8 +103,14 @@ class ExtFunction(object):
         self.doc = doc
 
     def method_decl(self):
-        """Returns the signature for this function that goes into the DynamicModule's method table"""
-        return '\t{"%s", %s, %s, "%s"}' %(self.name, self.name, self.method, self.doc)
+        """
+        Returns the signature for this function.
+
+        It goes into the DynamicModule's method table.
+        """
+        return '\t{"%s", %s, %s, "%s"}' % (
+                self.name, self.name, self.method, self.doc)
+
 
 class DynamicModule(object):
     def __init__(self, name):
@@ -103,8 +118,12 @@ class DynamicModule(object):
         self.support_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>"]
-        self.includes.append('<numpy/arrayobject.h>') #TODO: this should come from TensorType
-        self.init_blocks = ['import_array();'] #TODO: from TensorType
+
+        #TODO: this should come from TensorType
+        self.includes.append('<numpy/arrayobject.h>')
+
+        #TODO: from TensorType
+        self.init_blocks = ['import_array();']
 
     def print_methoddef(self, stream):
         print >> stream, "static PyMethodDef MyMethods[] = {"
@@ -117,21 +136,22 @@ class DynamicModule(object):
         print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
         for b in self.init_blocks:
             print >> stream, '  ', b
-        print >> stream, '  ', '(void) Py_InitModule("%s", MyMethods);' % self.name
+        print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
+                % self.name)
         print >> stream, "}"
-
 
     def add_include(self, str):
         self.includes.append(str)
+
     def add_init_code(self, code):
         self.init_blocks.append(code)
+
     def add_support_code(self, code):
-        if code not in self.support_code: #TODO: KLUDGE
+        if code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
         self.functions.append(fn)
-
 
     def code(self):
         sio = StringIO.StringIO()
@@ -141,23 +161,23 @@ class DynamicModule(object):
             if inc[0] == '<' or inc[0] == '"':
                 print >> sio, "#include", inc
             else:
-                print >> sio, '#include "%s"'%inc
+                print >> sio, '#include "%s"' % inc
 
-        print  >> sio, "//////////////////////"
-        print  >> sio, "////  Support Code"
-        print  >> sio, "//////////////////////"
+        print >> sio, "//////////////////////"
+        print >> sio, "////  Support Code"
+        print >> sio, "//////////////////////"
         for sc in self.support_code:
             print >> sio, sc
 
-        print  >> sio, "//////////////////////"
-        print  >> sio, "////  Functions"
-        print  >> sio, "//////////////////////"
+        print >> sio, "//////////////////////"
+        print >> sio, "////  Functions"
+        print >> sio, "//////////////////////"
         for f in self.functions:
             print >> sio, f.code_block
 
-        print  >> sio, "//////////////////////"
-        print  >> sio, "////  Module init"
-        print  >> sio, "//////////////////////"
+        print >> sio, "//////////////////////"
+        print >> sio, "////  Module init"
+        print >> sio, "//////////////////////"
         self.print_methoddef(sio)
         self.print_init(sio)
 
@@ -166,17 +186,19 @@ class DynamicModule(object):
     def list_code(self, ofile=sys.stdout):
         """Print out the code with line numbers to `ofile` """
         for i, line in enumerate(self.code().split('\n')):
-            print >> ofile, '%4i'%(i+1), line
+            print >> ofile, ('%4i' % (i + 1)), line
         ofile.flush()
 
     #TODO: add_type
+
 
 def dlimport(fullpath, suffix=None):
     """Dynamically load a .so, .pyd, .dll, or .py file
 
     :type fullpath: string
     :param fullpath: a fully-qualified path do a compiled python module
-    :param suffix: a suffix to strip from the end of fullpath to get the import name
+    :param suffix: a suffix to strip from the end of fullpath to get the
+        import name
     :type suffix: string
 
     :returns: the dynamically loaded module (from __import__)
@@ -200,12 +222,12 @@ def dlimport(fullpath, suffix=None):
         module_name = '.'.join(fullpath.split(os.path.sep)[-2:])[:-len(suffix)]
     else:
         raise ValueError('path has wrong suffix', (fullpath, suffix))
-    workdir = fullpath[:-len(module_name)- 1 - len(suffix)]
+    workdir = fullpath[:-len(module_name) - 1 - len(suffix)]
 
     _logger.debug("WORKDIR %s", workdir)
     _logger.debug("module_name %s", module_name)
 
-    sys.path[0:0] = [workdir] #insert workdir at beginning (temporarily)
+    sys.path[0:0] = [workdir]  # insert workdir at beginning (temporarily)
     try:
         rval = __import__(module_name, {}, {}, [module_name])
         if not rval:
@@ -216,20 +238,32 @@ def dlimport(fullpath, suffix=None):
     assert fullpath.startswith(rval.__file__)
     return rval
 
+
 def dlimport_workdir(basedir):
-    """Return a directory where you should put your .so file for dlimport to be able to load
-    it, given a basedir which should normally be config.compiledir"""
+    """
+    Return a directory where you should put your .so file for dlimport
+    to be able to load it, given a basedir which should normally be
+    config.compiledir
+    """
     return tempfile.mkdtemp(dir=basedir)
 
+
 def last_access_time(path):
-    """Return the number of seconds since the epoch of the last access of a given file"""
+    """
+    Return the number of seconds since the epoch of the last access of a
+    given file.
+    """
     return os.stat(path)[stat.ST_ATIME]
 
+
 def module_name_from_dir(dirname):
-    """Scan the contents of a cache directory and return full path of the dynamic lib in it.
+    """
+    Scan the contents of a cache directory and return full path of the
+    dynamic lib in it.
     """
     files = os.listdir(dirname)
-    name, = [file for file in files if file.endswith('.so') or file.endswith('.pyd')]
+    name, = [file for file in files
+             if file.endswith('.so') or file.endswith('.pyd')]
     return os.path.join(dirname, name)
 
 
@@ -322,7 +356,8 @@ def get_safe_part(key):
     # Find the md5 hash part.
     c_link_key = key[1]
     for key_element in c_link_key[1:]:
-        if isinstance(key_element, basestring) and key_element.startswith('md5:'):
+        if (isinstance(key_element, basestring)
+                and key_element.startswith('md5:')):
             md5 = key_element[4:]
             break
 
@@ -375,7 +410,8 @@ class KeyData(object):
             cPickle.dump(self, open(self.key_pkl, 'wb'),
                          protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
-            _logger.warning("Cache leak due to unpickle-able key data %s", self.keys)
+            _logger.warning("Cache leak due to unpickle-able key data %s",
+                    self.keys)
             os.remove(self.key_pkl)
             raise
 
@@ -411,9 +447,9 @@ class KeyData(object):
 class ModuleCache(object):
     """Interface to the cache of dynamically compiled modules on disk
 
-    Note that this interface does not assume exclusive use of the cache directory.
-    It is built to handle the case where multiple programs are also using instances of this
-    class to manage the same directory.
+    Note that this interface does not assume exclusive use of the cache
+    directory. It is built to handle the case where multiple programs are also
+    using instances of this class to manage the same directory.
 
     The cache works on the basis of keys. Each key is mapped to only one
     dynamic module, but multiple keys may be mapped to the same module (see
@@ -475,7 +511,9 @@ class ModuleCache(object):
     """Maps a module hash to its corresponding KeyData object."""
 
     stats = []
-    """A list with counters for the number of hits, loads, compiles issued by module_from_key()
+    """
+    A list with counters for the number of hits, loads, compiles issued by
+    module_from_key()
     """
 
     loaded_key_pkl = set()
@@ -504,7 +542,7 @@ class ModuleCache(object):
         if do_refresh:
             self.refresh()
 
-    age_thresh_use = 60*60*24*24    # 24 days
+    age_thresh_use = 60 * 60 * 24 * 24    # 24 days
     """
     The default age threshold (in seconds) for cache files we want to use.
 
@@ -552,10 +590,11 @@ class ModuleCache(object):
                 elif 'key.pkl' in files:
                     try:
                         entry = module_name_from_dir(root)
-                    except ValueError: # there is a key but no dll!
+                    except ValueError:  # there is a key but no dll!
                         if not root.startswith("/tmp"):
-                            # Under /tmp, file are removed periodically by the os.
-                            # So it is normal that this happens from time to time.
+                            # Under /tmp, file are removed periodically by the
+                            # os. So it is normal that this happens from time
+                            # to time.
                             _logger.warning("ModuleCache.refresh() Found key "
                                     "without dll in cache, deleting it. %s",
                                     key_pkl)
@@ -564,9 +603,11 @@ class ModuleCache(object):
                         continue
                     if (time_now - last_access_time(entry)) < age_thresh_use:
                         _logger.debug('refresh adding %s', key_pkl)
+
                         def unpickle_failure():
                             _logger.info("ModuleCache.refresh() Failed to "
                                     "unpickle cache file %s", key_pkl)
+
                         try:
                             key_data = cPickle.load(open(key_pkl, 'rb'))
                         except EOFError:
@@ -632,12 +673,14 @@ class ModuleCache(object):
                         # TODO: check if this can happen at all
                         to_del = [key for key in key_data.keys if not key[0]]
                         if to_del:
-                            _logger.warning("ModuleCache.refresh() Found unversioned "
+                            _logger.warning(
+                                    "ModuleCache.refresh() Found unversioned "
                                     "key in cache, removing it. %s", key_pkl)
                             # Since the version is in the module hash, all
                             # keys should be unversioned.
                             if len(to_del) != len(key_data.keys):
-                                _logger.warning('Found a mix of unversioned and '
+                                _logger.warning(
+                                        'Found a mix of unversioned and '
                                         'versioned keys for the same '
                                         'module %s', key_pkl)
                             _rmtree(root, ignore_nocleanup=True,
@@ -726,14 +769,15 @@ class ModuleCache(object):
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
                     if key[0]:
-                        # this is a versioned entry, so should have been on disk
-                        # Something weird happened to cause this, so we are responding by
-                        # printing a warning, removing evidence that we ever saw this mystery
-                        # key.
+                        # this is a versioned entry, so should have been on
+                        # disk. Something weird happened to cause this, so we
+                        # are responding by printing a warning, removing
+                        # evidence that we ever saw this mystery key.
                         pkl_file_to_remove = key_data.key_pkl
                         if not root.startswith("/tmp"):
-                            # Under /tmp, file are removed periodically by the os.
-                            # So it is normal that this happen from time to time.
+                            # Under /tmp, file are removed periodically by the
+                            # os. So it is normal that this happen from time to
+                            # time.
                             _logger.warning("Removing key file %s because the "
                                     "corresponding module is gone from the "
                                     "file system.",
@@ -813,8 +857,8 @@ class ModuleCache(object):
                 try:
                     compile_steps = fn(location=location).__iter__()
 
-                    # Check if we already know a module with the same hash. If we
-                    # do, then there is no need to even compile it.
+                    # Check if we already know a module with the same hash.
+                    # If we do, then there is no need to even compile it.
                     duplicated_module = False
                     # The first compilation step is to yield the source code.
                     src_code = compile_steps.next()
@@ -828,11 +872,12 @@ class ModuleCache(object):
                         # Note that we do not pass the `fn` argument, since it
                         # should not be used considering that the module should
                         # already be compiled.
-                        module = self.module_from_key(key=None, key_data=key_data)
+                        module = self.module_from_key(key=None,
+                                key_data=key_data)
                         name = module.__file__
-                        # Add current key to the set of keys associated to the same
-                        # module. We only save the KeyData object of versioned
-                        # modules.
+                        # Add current key to the set of keys associated to the
+                        # same module. We only save the KeyData object of
+                        # versioned modules.
                         try:
                             key_data.add_key(key, save_pkl=bool(_version))
                             key_broken = False
@@ -840,8 +885,8 @@ class ModuleCache(object):
                             # This should only happen if we tried to save the
                             # pickled file.
                             assert _version
-                            # The key we are trying to add is broken: we will not
-                            # add it after all.
+                            # The key we are trying to add is broken: we will
+                            # not add it after all.
                             key_data.remove_key(key)
                             key_broken = True
 
@@ -868,12 +913,13 @@ class ModuleCache(object):
                         # Obtain path to the '.so' module file.
                         name = module.__file__
 
-                        _logger.debug("Adding module to cache %s %s", key, name)
+                        _logger.debug("Adding module to cache %s %s",
+                                key, name)
                         assert name.startswith(location)
                         assert name not in self.module_from_name
                         # Changing the hash of the key is not allowed during
-                        # compilation. That is the only cause found that makes the
-                        # following assert fail.
+                        # compilation. That is the only cause found that makes
+                        # the following assert fail.
                         assert hash(key) == hash_key
                         assert key not in self.entry_from_key
 
@@ -896,10 +942,11 @@ class ModuleCache(object):
                                 key_broken = False
                             except cPickle.PicklingError:
                                 key_broken = True
-                                # Remove key from the KeyData object, to make sure
-                                # we never try to save it again.
-                                # We still keep the KeyData object and save it so
-                                # that the module can be re-used in the future.
+                                # Remove key from the KeyData object, to make
+                                # sure we never try to save it again.
+                                # We still keep the KeyData object and save it
+                                # so that the module can be re-used in the
+                                # future.
                                 key_data.keys = set()
                                 key_data.save_pkl()
 
@@ -910,20 +957,21 @@ class ModuleCache(object):
                             # versioned module.
                             self.loaded_key_pkl.add(key_pkl)
 
-                        # Map the new module to its KeyData object. Note that we
-                        # need to do it regardless of whether the key is versioned
-                        # or not if we want to be able to re-use this module inside
-                        # the same process.
+                        # Map the new module to its KeyData object. Note that
+                        # we need to do it regardless of whether the key is
+                        # versioned or not if we want to be able to re-use this
+                        # module inside the same process.
                         self.module_hash_to_key_data[module_hash] = key_data
 
                 except Exception:
-                    # This may happen e.g. when an Op has no C implementation. In
-                    # any case, we do not want to keep around the temporary work
-                    # directory, as it may cause trouble if we create too many of
-                    # these. The 'ignore_if_missing' flag is set just in case this
-                    # directory would have already been deleted.
+                    # This may happen e.g. when an Op has no C implementation.
+                    # In any case, we do not want to keep around the temporary
+                    # work directory, as it may cause trouble if we create too
+                    # many of these. The 'ignore_if_missing' flag is set just
+                    # in case this directory would have already been deleted.
                     _rmtree(location, ignore_if_missing=True,
-                            msg='exception -- typically means no C implementation')
+                            msg=('exception -- '
+                                 'typically means no C implementation'))
                     raise
 
             finally:
@@ -982,8 +1030,9 @@ class ModuleCache(object):
             if key_data.keys:
                 # This is to make debugging in pdb easier, by providing
                 # the offending keys in the local context.
-                key_data_keys = list(key_data.keys)
+                # key_data_keys = list(key_data.keys)
                 ## import pdb; pdb.set_trace()
+                pass
         elif found > 1:
             msg = 'Multiple equal keys found in unpickled KeyData file'
         if msg:
@@ -1005,8 +1054,8 @@ class ModuleCache(object):
 
         self.time_spent_in_check_key += time.time() - start_time
 
-    age_thresh_del = 60*60*24*31 # 31 days
-    age_thresh_del_unversioned = 60*60*24*7 # 7 days
+    age_thresh_del = 60 * 60 * 24 * 31  # 31 days
+    age_thresh_del_unversioned = 60 * 60 * 24 * 7  # 7 days
 
     """The default age threshold for `clear_old` (in seconds)
     """
@@ -1090,7 +1139,8 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Remove base directories 'cuda_ndarray', 'cutils_ext', 'lazylinker_ext' and 'scan_perform' if present.
+        Remove base directories 'cuda_ndarray', 'cutils_ext', 'lazylinker_ext'
+        and 'scan_perform' if present.
 
         Note that we do not delete them outright because it may not work on
         some systems due to these modules being currently in use. Instead we
@@ -1099,7 +1149,8 @@ class ModuleCache(object):
         """
         compilelock.get_lock()
         try:
-            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext', 'scan_perform'):
+            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
+                    'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
@@ -1174,18 +1225,20 @@ class ModuleCache(object):
             for filename in os.listdir(self.dirname):
                 if filename.startswith('tmp'):
                     try:
-                        open(os.path.join(self.dirname, filename, 'key.pkl')).close()
+                        open(os.path.join(self.dirname, filename, 'key.pkl')
+                                ).close()
                         has_key = True
                     except IOError:
                         has_key = False
                     if not has_key:
-                        age = time_now - last_access_time(os.path.join(self.dirname, filename))
-                        # In normal case, the processus that created this directory
-                        # will delete it. However, if this processus crashes, it
-                        # will not be cleaned up.
-                        # As we don't know if this directory is still used, we wait
-                        # one week and suppose that the processus crashed, and we
-                        # take care of the clean-up.
+                        age = time_now - last_access_time(
+                                os.path.join(self.dirname, filename))
+                        # In normal case, the processus that created this
+                        # directory will delete it. However, if this processus
+                        # crashes, it will not be cleaned up.
+                        # As we don't know if this directory is still used,
+                        # we wait one week and suppose that the processus
+                        # crashed, and we take care of the clean-up.
                         if age > min_age:
                             _rmtree(os.path.join(self.dirname, filename),
                                     msg='old unversioned', level=logging.INFO,
@@ -1203,6 +1256,7 @@ class ModuleCache(object):
             compilelock.release_lock()
         _logger.debug('Time spent checking keys: %s',
                 self.time_spent_in_check_key)
+
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             ignore_if_missing=False):
@@ -1226,12 +1280,14 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
         if os.path.exists(parent):
             try:
                 _logger.info('placing "delete.me" in %s', parent)
-                open(os.path.join(parent,'delete.me'), 'w').close()
+                open(os.path.join(parent, 'delete.me'), 'w').close()
             except Exception, ee:
                 _logger.warning("Failed to remove or mark cache directory %s "
                         "for removal %s", parent, ee)
 
 _module_cache = None
+
+
 def get_module_cache(dirname, init_args=None):
     """
     :param init_args: If not None, the (k, v) pairs in this dictionary will
@@ -1252,12 +1308,14 @@ def get_module_cache(dirname, init_args=None):
                 _module_cache.dirname, dirname)
     return _module_cache
 
+
 def get_lib_extension():
     """Return the platform-dependent extension for compiled modules."""
     if sys.platform == 'win32':
         return 'pyd'
     else:
         return 'so'
+
 
 def get_gcc_shared_library_arg():
     """Return the platform-dependent GCC argument for shared libraries."""
@@ -1266,29 +1324,33 @@ def get_gcc_shared_library_arg():
     else:
         return '-shared'
 
+
 def std_include_dirs():
-    return numpy.distutils.misc_util.get_numpy_include_dirs() + [distutils.sysconfig.get_python_inc()]
+    return (numpy.distutils.misc_util.get_numpy_include_dirs()
+            + [distutils.sysconfig.get_python_inc()])
+
 
 def std_lib_dirs_and_libs():
     python_inc = distutils.sysconfig.get_python_inc()
     if sys.platform == 'win32':
         # Obtain the library name from the Python version instead of the
-        # installation directory, in case the user defined a custom installation
-        # directory.
+        # installation directory, in case the user defined a custom
+        # installation directory.
         python_version = distutils.sysconfig.get_python_version()
         libname = 'python' + python_version.replace('.', '')
         # Also add directory containing the Python library to the library
         # directories.
         python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
-        lib_dirs = [python_lib_dir]
         return [libname], [python_lib_dir]
-    #DSE Patch 2 for supporting OSX frameworks. Suppress -lpython2.x when frameworks are present
-    elif sys.platform=='darwin' :
-        if python_inc.count('Python.framework') :
-            return [],[]
-        else :
-            libname=os.path.basename(python_inc)
-            return [libname],[]
+
+    # DSE Patch 2 for supporting OSX frameworks.
+    # Suppress -lpython2.x when frameworks are present
+    elif sys.platform == 'darwin':
+        if python_inc.count('Python.framework'):
+            return [], []
+        else:
+            libname = os.path.basename(python_inc)
+            return [libname], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
@@ -1399,14 +1461,10 @@ class GCC_compiler(object):
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
 
-        workdir = location
-
         cppfilename = os.path.join(location, 'mod.cpp')
         cppfile = file(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
-        ofiles = []
-        rval = None
 
         cppfile.write(src_code)
         # Avoid gcc warning "no newline at end of file".
@@ -1433,8 +1491,9 @@ class GCC_compiler(object):
 
         def print_command_line_error():
             # Print command line when a problem occurred.
-            print >> sys.stderr, ("Problem occurred during compilation with the "
-                                  "command line below:")
+            print >> sys.stderr, (
+                    "Problem occurred during compilation with the "
+                    "command line below:")
             print >> sys.stderr, ' '.join(cmd)
 
         try:
@@ -1457,8 +1516,8 @@ class GCC_compiler(object):
             # Print errors just below the command line.
             print compile_stderr
             # We replace '\n' by '. ' in the error message because when Python
-            # prints the exception, having '\n' in the text makes it more difficult
-            # to read.
+            # prints the exception, having '\n' in the text makes it more
+            # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
                             (status, compile_stderr.replace('\n', '. ')))
 
