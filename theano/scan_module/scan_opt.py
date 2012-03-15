@@ -497,7 +497,7 @@ class ScanSaveMem(gof.Optimizer):
                         stop = tensor.basic.extract_constant(cf_slice[0].stop)
                     else:
                         stop = tensor.basic.extract_constant(cf_slice[0]) + 1
-                    if stop == sys.maxint or stop == length:
+                    if stop == sys.maxsize or stop == length:
                         stop = None
                     else:
                         # there is a **gotcha** here ! Namely, scan returns an
@@ -515,15 +515,16 @@ class ScanSaveMem(gof.Optimizer):
                         # yes if it is a tensor
                         if isinstance(stop, tensor.Variable):
                             global_nsteps['sym'] += [stop]
-                        # not if it is maxint
-                        elif (type(stop) is int and stop == sys.maxint):
+                        # not if it is maxsize
+                        elif (type(stop) in (int, long) and
+                              stop == sys.maxsize):
                             global_nsteps = None
-                        # yes if it is a int k, 0 < k < maxint
-                        elif (type(stop) is int and
+                        # yes if it is a int k, 0 < k < maxsize
+                        elif (type(stop) in (int, long) and
                               global_nsteps['real'] < stop):
                             global_nsteps['real'] = stop
-                        # yes if it is a int k, 0 < k < maxint
-                        elif (type(stop) is int and stop > 0):
+                        # yes if it is a int k, 0 < k < maxsize
+                        elif (type(stop) in (int, long) and stop > 0):
                             pass
                         # not otherwise
                         else:
@@ -755,7 +756,7 @@ class ScanSaveMem(gof.Optimizer):
                             start = (cnf_slice[0].start - nw_steps -
                                      init_l[pos] + store_steps[pos])
                             if (cnf_slice[0].stop is not None and
-                                cnf_slice[0].stop != sys.maxint):
+                                cnf_slice[0].stop != sys.maxsize):
                                 stop = (cnf_slice[0].stop - nw_steps -
                                         init_l[pos] + store_steps[pos])
                             else:

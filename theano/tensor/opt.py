@@ -1507,7 +1507,7 @@ def local_useless_subtensor(node):
                 # is not a useless subtensor
                 return False
 
-            length_pos_data = sys.maxint
+            length_pos_data = sys.maxsize
 
             length_pos = shape_of[node.inputs[0]][pos]
             try:
