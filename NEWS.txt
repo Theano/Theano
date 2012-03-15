@@ -60,6 +60,8 @@ Crash Fix
    element-wise fusion optimization when upcasting some inputs to
    float32 (to compute them on the GPU).
    (Frederic B., reported by Sander Dieleman)
+ * GpuSoftmaxWithBias with shape (0, N) with N > 1.
+   (Frédéric B., reported by Razvan P.)
 
 =============
 Release Notes
