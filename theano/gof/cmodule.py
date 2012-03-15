@@ -9,6 +9,7 @@ import platform
 import shutil
 import stat
 import StringIO
+import struct
 import subprocess
 import sys
 import tempfile
@@ -37,8 +38,9 @@ def local_bitwidth():
     """
     # Note that according to Python documentation, `platform.architecture()` is
     # not reliable on OS X with universal binaries.
-    maxsize = sys.maxsize
-    return len('%x' % maxsize) * 4
+    # Also, sys.maxsize does not exist in Python < 2.6.
+    # 'P' denotes a void*, and the size is expressed in bytes.
+    return struct.calcsize('P') * 8
 
 def python_int_bitwidth():
     """
@@ -46,8 +48,8 @@ def python_int_bitwidth():
 
     Note that it can be different from the size of a memory pointer.
     """
-    maxint = sys.maxint
-    return len('%x' % maxint) * 4
+    # 'l' denotes a C long int, and the size is expressed in bytes.
+    return struct.calcsize('l') * 8
 
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
