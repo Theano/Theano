@@ -1,12 +1,14 @@
 """
-Helper functions to make gof backwards compatible (tested on python 2.4 and 2.5)
+Helper functions to make gof backwards compatible
+
+(tested on python 2.4 and 2.5)
 """
 
 import collections
 import sys
 
 
-if sys.version_info[:2] < (2,5):
+if sys.version_info[:2] < (2, 5):
 
     def all(iterable):
         for element in iterable:
@@ -55,16 +57,19 @@ if sys.version_info[:2] < (2,5):
                 raise TypeError('first argument must be callable')
             dict.__init__(self, *a, **kw)
             self.default_factory = default_factory
+
         def __getitem__(self, key):
             try:
                 return dict.__getitem__(self, key)
             except KeyError:
                 return self.__missing__(key)
+
         def __missing__(self, key):
             if self.default_factory is None:
                 raise KeyError(key)
             self[key] = value = self.default_factory()
             return value
+
         def __reduce__(self):
             if self.default_factory is None:
                 args = tuple()
@@ -72,14 +77,18 @@ if sys.version_info[:2] < (2,5):
                 args = self.default_factory,
             # consider replacing items() with iteritems()
             return type(self), args, None, None, self.items()
+
         def copy(self):
             return self.__copy__()
+
         def __copy__(self):
             return type(self)(self.default_factory, self)
+
         def __deepcopy__(self, memo):
             import copy
             return type(self)(self.default_factory,
                               copy.deepcopy(self.items()))
+
         def __repr__(self):
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
@@ -90,14 +99,15 @@ else:
     import __builtin__
     all = __builtin__.all
     any = __builtin__.any
-    import functools, collections
+    import collections
+    import functools
     partial = functools.partial
     defaultdict = collections.defaultdict
     deque = collections.deque
 
 __all__ = ['all', 'any']
 
-if sys.version_info[:2] < (2,6):
+if sys.version_info[:2] < (2, 6):
     # Borrowed from Python docs
     def combinations(iterable, r):
         # combinations('ABCD', 2) --> AB AC AD BC BD CD
@@ -115,10 +125,9 @@ if sys.version_info[:2] < (2,6):
             else:
                 return
             indices[i] += 1
-            for j in range(i+1, r):
-                indices[j] = indices[j-1] + 1
+            for j in range(i + 1, r):
+                indices[j] = indices[j - 1] + 1
             yield tuple(pool[i] for i in indices)
-
 
     def product(*args, **kwds):
         # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
@@ -126,7 +135,7 @@ if sys.version_info[:2] < (2,6):
         pools = map(tuple, args) * kwds.get('repeat', 1)
         result = [[]]
         for pool in pools:
-            result = [x+[y] for x in result for y in pool]
+            result = [x + [y] for x in result for y in pool]
         for prod in result:
             yield tuple(prod)
 

@@ -21,7 +21,6 @@ from theano.tensor import opt, get_constant_value
 from theano import gof
 from theano.gof.python25 import maxsize
 from theano.compile import optdb
-from theano import config
 from theano.compile.function_module import deep_copy_op
 
 import scan_op
@@ -97,7 +96,6 @@ def remove_constants_and_unused_inputs_scan(node):
             try:
                 # This works if input is a constant that has all entries
                 # equal
-                val = tensor.get_constant_value(node.inputs[idx + 1])
                 givens[op_ins[idx]] = node.inputs[idx + 1].clone()[0]
             except TypeError:
                 pass
@@ -729,7 +727,6 @@ class ScanSaveMem(gof.Optimizer):
 
                         nw_slice = (fslice,) + tuple(old_slices[1:])
                         nw_pos = inv_compress_map[idx]
-                        nw_out = new_outs[nw_pos]
 
                         subtens = tensor.basic.Subtensor(nw_slice)
                         # slice inputs
@@ -748,7 +745,6 @@ class ScanSaveMem(gof.Optimizer):
             for pos, old_outs in old_outputs:
                 if len(old_outs) > 0:
                     nw_pos = compress_map[pos]
-                    nw_out = new_outs[nw_pos]
                     for k, old in enumerate(old_outs):
                         # Get the correct slice
                         cnf_slice, old_slices = slices[pos][k]
@@ -1066,7 +1062,6 @@ def scan_merge_inouts(node):
         else:
             a_inner_outs = a.inner_outputs
         inner_outputs = scan_utils.clone(a_inner_outs, replace=inp_equiv)
-        orig_outputs = a.outer_outputs
 
         op = scan_op.Scan(inner_inputs, inner_outputs, info)
         outputs = op(*outer_inputs)
