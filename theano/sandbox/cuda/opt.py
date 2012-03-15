@@ -1,6 +1,7 @@
 import logging
 _logger = logging.getLogger('theano.sandbox.cuda.opt')
 
+import copy
 import sys
 import theano
 import numpy
@@ -1254,7 +1255,7 @@ def gpuScanOptimization(node):
             # merged or implement this optimization as a global
             # optimization
             thescan = host_input.owner.op
-            info = thescan.info.copy()
+            info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = host_input.owner.inputs
             nw_ins = [ inputs[0]]
@@ -1300,7 +1301,7 @@ def gpuScanOptimization(node):
                       for i in node.inputs]):
 
             thescan = node.op
-            info = thescan.info.copy()
+            info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = node.inputs
             nw_ins = [ inputs[0]]
@@ -1355,7 +1356,7 @@ def gpu_scan_make_inplace(node):
                                    op.info['n_mit_sot'] +
                                    op.info['n_sit_sot'])) and
         (op.info['gpu'])):
-        info = op.info.copy()
+        info = copy.deepcopy(op.info)
         pos = op.info['inplace'] + 1
         if not 'destroy_map' in info:
             info['destroy_map'] = {}
@@ -1393,7 +1394,7 @@ def gpu_scan_make_inplace_inc_out(node):
                                    op.info['n_mit_sot'] +
                                    op.info['n_sit_sot'])) and
         (op.info['gpu'])):
-        info = op.info.copy()
+        info = copy.deepcopy(op.info)
         pos = op.info['inplace'] + 1
         info['inplace'] = pos
         # inputs corresponding to sequences and n_steps

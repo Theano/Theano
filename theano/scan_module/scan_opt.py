@@ -13,6 +13,7 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
+import copy
 import numpy
 import sys
 
@@ -119,7 +120,7 @@ def remove_constants_and_unused_inputs_scan(node):
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
-        nw_info = op.info.copy()
+        nw_info = copy.deepcopy(op.info)
         nw_info['n_seqs'] = nw_n_seqs
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
@@ -315,7 +316,7 @@ def scan_make_inplace(node):
                                    op.info['n_mit_sot'] +
                                    op.info['n_sit_sot'])) and
         (not op.info['gpu'])):
-        info = op.info.copy()
+        info = copy.deepcopy(op.info)
         pos = op.info['inplace'] + 1
         if not 'destroy_map' in info:
             info['destroy_map'] = {}
@@ -350,7 +351,7 @@ def scan_make_inplace_inc_output(node):
                                    op.info['n_mit_sot'] +
                                    op.info['n_sit_sot'])) and
         (not op.info['gpu'])):
-        info = op.info.copy()
+        info = copy.deepcopy(op.info)
         pos = op.info['inplace'] + 1
         info['inplace'] = pos
         # inputs corresponding to sequences and n_steps
