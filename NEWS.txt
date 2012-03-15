@@ -54,6 +54,11 @@ Crash Fix
  * Optimization print useless error when scipy is not available. (Frederic B.)
  * Gpu conv crash/slowdown on newer hardware? (James B.)
  * Better error handling in gpu conv (Frederic B.)
+ * GPU optimization that move element-wise op to the gpu. It happen in
+   a particular execution order of this optimization and the
+   element-wise fusion optimization when upcasting some inputs to
+   float32 (to compute them on the gpu).
+   (Frederic B., reported by Sander Dieleman)
 
 =============
 Release Notes
