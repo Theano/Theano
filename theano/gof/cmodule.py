@@ -35,7 +35,8 @@ def local_bitwidth():
     By "architecture", we mean the size of memory pointers (size_t in C),
     *not* the size of long int, as it can be different.
     """
-    # Platform.architecture is not reliable on OS X with universal binaries
+    # Note that according to Python documentation, `platform.architecture()` is
+    # not reliable on OS X with universal binaries.
     maxsize = sys.maxsize
     return len('%x' % maxsize) * 4
 
