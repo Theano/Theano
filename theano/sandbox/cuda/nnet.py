@@ -419,7 +419,7 @@ class GpuSoftmaxWithBias (GpuOp):
         return  [shape[0]]
     def c_code_cache_version(self):
         #return ()
-        return (4,) + inline_softmax.code_version
+        return (5,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -461,14 +461,16 @@ class GpuSoftmaxWithBias (GpuOp):
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 1024);
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
-
-            kSoftmaxWithBias_%(nodename)s
-                <<<
-                // todo: cap these at the card limits, implement loops in kernel
-                    n_blocks,
-                    n_threads,
-                    n_shared_bytes
-                >>>(
+            if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
+            {
+                kSoftmaxWithBias_%(nodename)s
+                    <<<
+                    // todo: cap these at the card limits,
+                    //       implement loops in kernel
+                        n_blocks,
+                        n_threads,
+                        n_shared_bytes
+                    >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
                         CudaNdarray_HOST_DIMS(%(x)s)[1],
 
@@ -480,13 +482,17 @@ class GpuSoftmaxWithBias (GpuOp):
                         CudaNdarray_HOST_STRIDES(%(b)s)[0],
 
                         CudaNdarray_DEV_DATA(%(z)s)  //guarantee c contig
-                );
-            CNDA_THREAD_SYNC;
-            cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err)
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
-                %(fail)s;
+                    );
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %%s: %%s.\\n",
+                                 "kSoftmaxWithBias_%(nodename)s",
+                                 cudaGetErrorString(err));
+                    %(fail)s;
+                }
             }
         }
         assert(%(z)s);
