@@ -600,7 +600,51 @@ Windows
 Installing Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If neither Python nor MinGW is installed on your computer, the easiest way to
+In academia: EPD
+################
+
+If you are working in academia, the easiest way to install most of the
+dependencies is to install `Enthought Python Distribution (EPD) <epd>`_.
+If you are affiliated to a university (as student or employee), you can
+download the installation for free.
+
+EPD installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+necessary for it to work), g++, and the MKL
+implementation of blas.
+
+If you want to use the iPython shell, you should first try to import numpy
+in it::
+
+    C:\Users\user>ipython
+    [...]
+    In [1]: import numpy
+
+If you see an error message telling you that ``DLL load failed``, that is
+probably due to a bug in the script launching ipython. If ``C:\Python27``
+is the directory where you installed EPD, edit
+``C:\Python27\Scripts\ipython.bat``, there should be a line saying::
+
+    set path="C:\Python27";%path%
+
+Remove the quotes around ``Python27``, leading to::
+
+    set path=C:\Python27;%path%
+
+Then, it should work in all new terminals.
+
+pip is not included in EPD, but you can simply install it with::
+
+    easy_install pip
+
+.. _epd: http://enthought.com/products/epd.php
+.. _Graphviz: http://www.graphviz.org/Download_windows.php
+
+Alternative: Python(x,y)
+########################
+
+If you are not eligible to a free download of EPD, and
+neither Python nor MinGW is installed on your computer, the easiest way to
 install most dependencies is to install
 `Python(x,y) <http://www.pythonxy.com>`__.
 It is a single installation
@@ -664,19 +708,27 @@ components as in Python(x,y) that are required by Theano, follow these steps:
 
 At this point, whether you installed Python(x,y) or individual components, you
 should have MinGW, Python, Numpy, Scipy and Nose installed.
-In order to download Theano you will also need Git, which you can get
-`here <http://git-scm.com/download>`__ (download the latest version of the
-"Full installer for official Git" from the ``msysgit`` download page).
+
 
 Installing Theano
 ~~~~~~~~~~~~~~~~~
 
-It should be possible to install Theano with ``pip`` as described in
-:ref:`linux_basic`, but this has not been tested yet under Windows. We describe
+It is possible to install Theano with ``pip`` as described in
+:ref:`linux_basic`. However, if you want to get the latest development version,
+or edit the code, you should follow the instructions below.
+
+Bleeding-edge installation
+##########################
+
+We describe
 here instructions to use the latest code repository version (bleeding-edge).
 Command lines listed below are assumed to be run in a Windows prompt
 (click ``Start`` and type the ``cmd`` command), and may need to be adapted if
 used within a MinGW Shell (not available if you only installed Python(x,y)).
+
+You will need Git, which you can get
+`here <http://git-scm.com/download>`__ (download the latest version of the
+"Full installer for official Git" from the ``msysgit`` download page).
 
 - Navigate into the directory you want Theano to be installed in, and download
   it with
@@ -694,6 +746,13 @@ used within a MinGW Shell (not available if you only installed Python(x,y)).
 
         C:\Users\login>echo %PYTHONPATH%
         C:\Users\login\Theano
+
+Configure Theano
+################
+
+If you installed Python through EPD, you should be all set by now. Otherwise,
+whether you installed Theano through pip or git, you should follow these
+steps.
 
 - Create a new ``.theanorc`` text file (or ``.theanorc.txt``, whichever is easier
   for you to create under Windows) in your user profile directory (the directory you
@@ -761,6 +820,9 @@ the Visual Studio editor.
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+If you installed Python through EPD, Theano will automatically link with the
+MKL library included in EPD, so you should not need to compile your own BLAS.
 
 .. note::
 
