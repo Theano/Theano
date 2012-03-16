@@ -98,6 +98,7 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
 "recycle") the storage).
 
 .. note::
+
     Compiled libraries are stored within a specific compilation directory,
     which by default is set to ``$HOME/.theano/compiledir_xxx``, where
     ``xxx`` identifies the platform (under Windows the default location

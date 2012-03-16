@@ -289,6 +289,7 @@ node representing the application of Op ``mul`` to inputs ``x`` and
 ``y``, giving a Variable instance of type ``double`` as the output.
 
 .. note::
+
    Theano relies on the fact that if you call the ``make_node`` method
    of Apply's first argument on the inputs passed as the Apply's
    second argument, the call will not fail and the returned Apply
@@ -315,6 +316,7 @@ contain a single storage cell for the multiplication's variable.
 Here, ``z`` is a list of one element. By default, ``z == [None]``.
 
 .. note::
+
    It is possible that ``z`` does not contain ``None``. If it contains
    anything else, Theano guarantees that whatever it contains is what
    ``perform`` put there the last time it was called with this
@@ -324,6 +326,7 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
    :ref:`op` documentation.
 
 .. warning::
+
    We gave ``z`` the Theano type ``double`` in ``make_node``, which means
    that a Python ``float`` must be put there. You should not put, say, an
    ``int`` in ``z[0]`` because Theano assumes Ops handle typing properly.

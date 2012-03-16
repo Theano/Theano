@@ -1429,6 +1429,13 @@ class GCC_compiler(object):
             # Under Windows it looks like fPIC is useless. Compiler warning:
             # '-fPIC ignored for target (all code is position independent)'
             preargs.append('-fPIC')
+
+        if sys.platform == 'win32' and local_bitwidth() == 64:
+            # Under 64-bits windows installation, sys.platform is 'win32'.
+            # We need to define MS_WIN64 for the preprocessor to be able to
+            # link with libpython.
+            preargs.append('-DMS_WIN64')
+
         no_opt = False
 
         include_dirs = include_dirs + std_include_dirs()
