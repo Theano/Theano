@@ -232,6 +232,7 @@ arithmetics that your Ops implement. Theano might provide facilities
 for this somewhere in the future.
 
 .. note::
+
    :class:`Env` is a Theano structure intended for the optimization
    phase. It is used internally by function and Module and is rarely
    exposed to the end user. You can use it to test out optimizations,
