@@ -7,6 +7,7 @@ Documentation
    This explains how to make a Theano Op from a Python function.
    http://deeplearning.net/software/theano/tutorial/extending_theano.html
    (Frédéric B.)
+ * New installation instructions for Windows using EPD (Pascal L.)
 
 Interface changes
  * In 0.5, we removed the deprecated sharedvar.value property.
@@ -46,6 +47,8 @@ Sparse Sandbox Additions (not reviewed/documented/tested, but used by some peopl
 Internal changes
  * Define new exceptions MissingInputError and UnusedInputError, and use them
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
+ * Better handling of bitwidth and max values of integers and pointers
+   across platforms (Pascal L.)
 
 Crash Fix
  * Do not try to use the BLAS library when blas.ldflags is manually set to an
@@ -62,6 +65,8 @@ Crash Fix
    (Frederic B., reported by Sander Dieleman)
  * GpuSoftmaxWithBias with shape (0, N) with N > 1.
    (Frédéric B., reported by Razvan P.)
+ * Fix crash under 64-bit Windows, when taking subtensors of the form a[n:]
+   (Pascal L., reported by Simon McGregor)
 
 =============
 Release Notes
