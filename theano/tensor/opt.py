@@ -721,14 +721,14 @@ class ShapeFeature(object):
 
     def shape_ir(self, i, r):
         """Return symbolic r.shape[i] for tensor variable r, int i"""
-        if hasattr(r.type,"broadcastable") and r.type.broadcastable[i]:
+        if hasattr(r.type, "broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
         else:
             return Shape_i(i).make_node(r).outputs[0]
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
-        return tuple([self.shape_ir(i,r) for i in xrange(r.ndim)])
+        return tuple([self.shape_ir(i, r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
         """Return a list of shape tuple or None for the outputs of node.
@@ -861,7 +861,7 @@ class ShapeFeature(object):
         if r not in self.shape_of:
             try:
                 self.set_shape(r, self.shape_tuple(r))
-            except AttributeError: #XXX: where would this come from?
+            except AttributeError:  # XXX: where would this come from?
                 self.set_shape(r, None)
 
     def make_vector_shape(self, r):
@@ -949,17 +949,18 @@ class ShapeFeature(object):
             if sh is None:
                 continue
             for i, d in enumerate(sh):
-                # Note: we ignore any shape element that is not typed (i.e. does
-                # not have a 'dtype' attribute). This means there may still
-                # remain int elements that are int32 on 32-bit platforms, but
-                # this works with `local_useless_subtensor`, so for now we
+                # Note: we ignore any shape element that is not typed (i.e.,
+                # does not have a 'dtype' attribute). This means there may
+                # still remain int elements that are int32 on 32-bit platforms,
+                # but this works with `local_useless_subtensor`, so for now we
                 # keep it this way. See #266 for a better long-term fix.
                 if getattr(d, 'dtype', 'int64') != 'int64':
                     assert d.dtype in theano.tensor.int_dtypes
                     new_shape += sh[len(new_shape):i + 1]
                     new_shape[i] = theano.tensor.cast(d, 'int64')
             if new_shape:
-                # We replace the shape with wrong dtype by the one with 'int64'.
+                # We replace the shape with wrong dtype by the one with
+                # 'int64'.
                 new_shape += sh[len(new_shape):]
                 o_shapes[sh_idx] = tuple(new_shape)
                 new_shape = []
@@ -990,8 +991,8 @@ class ShapeFeature(object):
         for (shpnode, idx) in (r.clients + [(node, i)]):
             if isinstance(getattr(shpnode, 'op', None), Shape_i):
                 self.scheduled[shpnode] = new_r
-        # In case 2, if r is a variable that we've scheduled for shape update, then we
-        # should cancel it.
+        # In case 2, if r is a variable that we've scheduled for shape update,
+        # then we should cancel it.
         unscheduled = [k for k, v in self.scheduled.items() if v == r]
         for k in unscheduled:
             del self.scheduled[k]
@@ -1212,9 +1213,10 @@ def local_alloc_unary(node):
 class Assert(T.Op):
     """
     Implements assertion in a computational graph.
+
     Notes:
-    This Op can be removed from the graph because of optimizations, and can hide
-    some possible optimizations to the optimizer.
+    This Op can be removed from the graph because of optimizations, and can
+    hide some possible optimizations to the optimizer.
     Also, the output of the Op must be returned by the function computing the
     graph, otherwise it will not be used.
     """
@@ -2773,7 +2775,6 @@ class Canonizer(gof.LocalOptimizer):
         if op not in [self.main, self.inverse, self.reciprocal]:
             return False
 
-        inputs = node.inputs
         out = node.outputs[0]
         assert len(node.outputs) == 1
 
@@ -2934,7 +2935,6 @@ def local_sum_div_dimshuffle(node):
             axis = range(node.inputs[0].ndim)
         #print 'axis =', axis
         thing_summed = node.inputs[0]
-        dimshuffled = None
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
 
@@ -3035,11 +3035,13 @@ def local_sum_sum(node):
 
                 if summed.owner.op.axis is None:
                     # special case of local_cut_useless_reduce
-                    return [T.Sum(None, dtype=out_dtype)(summed.owner.inputs[0])]
+                    return [T.Sum(None, dtype=out_dtype)(
+                        summed.owner.inputs[0])]
                 if node.op.axis is None:
                     # we're summing up everything anyway so lets
                     # do it all at once
-                    return [T.Sum(None, dtype=out_dtype)(summed.owner.inputs[0])]
+                    return [T.Sum(None, dtype=out_dtype)(
+                        summed.owner.inputs[0])]
 
                 newaxis = list(tuple(summed.owner.op.axis))
                 # figure out which dimensions of the original input
@@ -3113,7 +3115,7 @@ def local_sum_alloc(node):
                     assert val.size == 1
                     val = val.reshape(1)[0] * T.mul(*shapes)
                     return [T.cast(val, dtype=node.outputs[0].dtype)]
-                except TypeError, e:
+                except TypeError:
                     pass
             else:
                 try:
@@ -3127,7 +3129,7 @@ def local_sum_alloc(node):
                     return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
                                     *[shapes[i] for i in xrange(len(shapes))
                                       if i not in node.op.axis])]
-                except TypeError, e:
+                except TypeError:
                     pass
 
 
@@ -4433,7 +4435,6 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
 fusion optimization. We skip this optimization. You can ignore this message,
 your code will run correctly, but may be slower.""")
 
-        otype = node.outputs[0].type
         s_new_out = node.op.scalar_op(*s_g)
         try:
             s_new_out.owner.op.c_code(s_new_out.owner,
@@ -4509,7 +4510,7 @@ class FusionOptimizer(Optimizer):
                                 zip(node.outputs, new_outputs),
                                 reason=self.__class__.__name__)
                             did_something = True
-                        except InconsistencyError, e:
+                        except InconsistencyError:
                             pass
 
 if config.tensor.local_elemwise_fusion:
