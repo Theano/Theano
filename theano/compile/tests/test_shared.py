@@ -250,7 +250,7 @@ class Test_SharedVariable(unittest.TestCase):
         f(b, 8)
         assert b.get_value() == 8
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'), allow_downcast=True)
+        b = shared(numpy.zeros((5, 5), dtype='float32'))
         self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
 
     def test_tensor_floatX(self):
@@ -303,6 +303,5 @@ class Test_SharedVariable(unittest.TestCase):
         f(b, [8])
         assert b.get_value() == 8
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'),
-                allow_downcast=True)
+        b = shared(numpy.zeros((5, 5), dtype='float32'))
         self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))

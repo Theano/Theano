@@ -341,10 +341,13 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         elif rtype is TensorConstant and isinstance(x, float):
             x_ = autocast_float(x)
         elif rtype is TensorConstant and isinstance(x, long):
-            # It is not clear what would happen if one was to use a `long`
-            # number as a constant in a Theano graph. As a result, we throw
-            # an exception in this situation.
-            raise NotImplementedError('Constants of type `long` not supported')
+            # We need to address the case where a long number is used in a
+            # Theano graph, because on Windows 64, all shapes are expressed
+            # with longs.
+            # If a long fits in int64, we convert it into an int64, like
+            # numpy.asarray() does.
+            # If x is too big, an OverflowError will be raised by numpy.
+            x_ = theano._asarray(x, dtype='int64')
         elif isinstance(x, numpy.ndarray):
             x_ = x
             # Currently we do not have a bool dtype in Theano.

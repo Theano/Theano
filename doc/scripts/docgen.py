@@ -57,8 +57,9 @@ import getopt
 from collections import defaultdict
 
 if __name__ == '__main__':
-
-    throot = "/".join(sys.path[0].split("/")[:-2])
+    # Equivalent of sys.path[0]/../..
+    throot = os.path.abspath(
+        os.path.join(sys.path[0], os.pardir, os.pardir))
 
     options = defaultdict(bool)
     options.update(dict([x, y or True] for x, y in
@@ -91,7 +92,7 @@ if __name__ == '__main__':
 
     # Make sure the appropriate 'theano' directory is in the PYTHONPATH
     pythonpath = os.environ.get('PYTHONPATH', '')
-    pythonpath = throot + ':' + pythonpath
+    pythonpath = os.pathsep.join([throot, pythonpath])
     os.environ['PYTHONPATH'] = pythonpath
 
     if options['--all'] or options['--epydoc']:
