@@ -134,15 +134,30 @@ if cuda_available:
     # create a symlink called libcuda_ndarray.so
     # which nvcc_compiler.NVCC_compiler uses when linking
     # any module except "cuda_ndarray" itself.
-    try:
-        open(libcuda_ndarray_so).close()
-    except IOError:
+    def ok():
+        """
+        Check if an existing library exists and can be read.
+        """
+        try:
+            open(libcuda_ndarray_so).close()
+            return True
+        except IOError:
+            return False
+    if not ok():
         if sys.platform == "win32":
             # The Python `os` module does not support symlinks on win32.
             shutil.copyfile(cuda_ndarray_so, libcuda_ndarray_so)
         else:
-            os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
-
+            try:
+                os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
+            except OSError, e:
+                # This may happen for instance when running multiple
+                # concurrent jobs, if two of them try to create the
+                # symlink simultaneously.
+                # If that happens, we verify that the existing symlink is
+                # indeed working.
+                if e.errno != errno.EEXIST or not ok():
+                    raise
     try:
         # This only test if the cuda driver is available and if there
         # is at least one GPU that support cuda. This do not select a
