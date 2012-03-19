@@ -107,9 +107,9 @@ _logger.addFilter(NoDuplicateOptWarningFilter())
 """
 Registry of Ops that have an inner compiled Theano function.
 
-The keys are Ops, and values are the name of the attribute that
-contains the function. For instance, if the function is self.fn,
-the value will be 'fn'.
+The keys are Op classes (not instances), and values are the name of the
+attribute that contains the function. For instance, if the function is
+self.fn, the value will be 'fn'.
 
 We need that to be able not to run debug checks a number of times that is
 exponential in the nesting level of those ops.
