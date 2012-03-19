@@ -1139,24 +1139,29 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
         # For each dimension, try size-1, size, size+1
-        for shape_diff in itertools_product((-1, 0, 1), repeat=max_ndim):
-            wrong_size = {}
-            name = 'wrong_size%s' % str(tuple(shape_diff))
+        for dim in xrange(max_ndim):
+            shape_diff = [0] * max_ndim
+            for diff in (-1, 1):
+                shape_diff[dim] = diff
 
-            for r in node.outputs:
-                if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                    r_shape_diff = shape_diff[:r.ndim]
-                    out_shape = [max((s + sd), 0)
-                            for s, sd in zip(r_vals[r].shape, r_shape_diff)]
-                    new_buf = numpy.zeros(
-                            shape=out_shape,
-                            dtype=r.dtype)
-                    if isinstance(r.type, CudaNdarrayType):
-                        new_buf = CudaNdarray(new_buf)
-                    wrong_size[r] = new_buf
+                wrong_size = {}
+                name = 'wrong_size%s' % str(tuple(shape_diff))
 
-            yield (name, wrong_size)
-            del wrong_size
+                for r in node.outputs:
+                    if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                        r_shape_diff = shape_diff[:r.ndim]
+                        out_shape = [max((s + sd), 0)
+                                for s, sd in zip(r_vals[r].shape,
+                                                 r_shape_diff)]
+                        new_buf = numpy.zeros(
+                                shape=out_shape,
+                                dtype=r.dtype)
+                        if isinstance(r.type, CudaNdarrayType):
+                            new_buf = CudaNdarray(new_buf)
+                        wrong_size[r] = new_buf
+
+                yield (name, wrong_size)
+                del wrong_size
 
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
