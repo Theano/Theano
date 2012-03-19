@@ -597,3 +597,20 @@ def test_multinomial():
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
         numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
+
+
+class T_MRG(unittest.TestCase):
+    def test_bad_size(self):
+
+        R = MRG_RandomStreams(234, use_cuda=False)
+
+        for size in [
+                (0, 100),
+                (-1, 100),
+                (1, 0),
+                ]:
+
+            self.assertRaises(ValueError, R.uniform, size)
+            self.assertRaises(ValueError, R.binomial, size)
+            self.assertRaises(ValueError, R.multinomial, size, 1, [])
+            self.assertRaises(ValueError, R.normal, size)
