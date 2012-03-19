@@ -23,6 +23,8 @@ static int g_gpu_context_active = 0;
 
 PyObject *
 CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args);
+static PyObject *CudaNdarray_get_shape(CudaNdarray *self, void *closure);
+
 
 /**
  *
@@ -701,7 +703,22 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     if( cudaSuccess != err)
     {
         Py_DECREF(rval);
-        PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_copy_reshape_rowmajor", cudaGetErrorString(err));
+        PyObject * shape_inp = CudaNdarray_get_shape(self, NULL);
+        PyObject * shape_inp2 = PyObject_Str(shape_inp);
+        PyObject * shape_dest = PyObject_Str(shape);
+        PyErr_Format(PyExc_RuntimeError,
+                     "Cuda error in CudaNdarray_Reshape"
+                     "()n_blocks=%d, n_threads=%d, input_shape=%s,"
+                     " dest_shape=%s): %s: %s.\n",
+                     n_blocks, threads_per_block,
+                     PyString_AsString(shape_inp2),
+                     PyString_AsString(shape_dest),
+                     "k_copy_reshape_rowmajor",
+                     cudaGetErrorString(err)
+                     );
+        Py_DECREF(shape_dest);
+        Py_DECREF(shape_inp);
+        Py_DECREF(shape_inp2);
         free(rval_dims);
         return NULL;
     }

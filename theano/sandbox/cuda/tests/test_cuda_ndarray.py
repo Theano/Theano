@@ -380,6 +380,22 @@ def test_reshape():
 
         assert numpy.all(aa == n_bb)
 
+        # Test the not contiguous case
+        shape_1_2x = (shape_1[0] * 2,) + shape_1[1:]
+        a = theano._asarray(rng.randn(*shape_1_2x), dtype='float32')
+        b = cuda_ndarray.CudaNdarray(a)
+        a = a[::2]
+        b = b[::2]
+
+        aa = a.reshape(shape_2)
+        bb = b.reshape(shape_2)
+
+        n_bb = numpy.asarray(bb)
+
+        #print n_bb
+
+        assert numpy.all(aa == n_bb)
+
     def bad_subtest(shape_1, shape_2, rng):
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
