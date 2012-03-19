@@ -357,7 +357,7 @@ Then in your ``~/.emacs`` file, add this:
 
    ;; Next two lines are the checks to do. You can add more if you wish.
    (epy-setup-checker "pyflakes %f") ;; For python syntax check
-   (epy-setup-checker "pep8 %f") ;; For pep8 check
+   (epy-setup-checker "pep8 -r %f") ;; For pep8 check
 
 
 
