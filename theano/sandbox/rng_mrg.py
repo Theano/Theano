@@ -14,7 +14,7 @@ from theano.tensor import (raw_random, TensorType, as_tensor_variable,
 from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
-from theano.gof.python25 import all
+from theano.gof.python25 import all, any
 
 import multinomial
 
@@ -730,6 +730,11 @@ class MRG_RandomStreams(object):
             msg = "size must be a tuple of int or a Theano variable"
             assert all([isinstance(i,int) or isinstance(i,Variable)
                 for i in size]), msg
+            if len([i for i in size if isinstance(i, int) and i <= 0]) > 0:
+                raise ValueError(
+                    "The specified size contain a dimension with value <= 0",
+                    size)
+
         else:
             msg = "size must be a tuple of int or a Theano variable"
             assert isinstance(size, Variable) and size.ndim==1, msg
@@ -786,8 +791,8 @@ class MRG_RandomStreams(object):
         Sample `n` (currently `n` needs to be 1) times from a multinomial
         distribution defined by probabilities pvals.
 
-        Example : pvals = [[.98,.01, .01], [.01, .98 .01]] will probably result
-        in [[1,0,0],[0,1,0]].
+        Example : pvals = [[.98, .01, .01], [.01, .98, .01]] will
+        probably result in [[1,0,0],[0,1,0]].
 
         .. note::
             `size` and `ndim` are only there keep the same signature as other
@@ -797,6 +802,12 @@ class MRG_RandomStreams(object):
         if pvals is None:
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
+        if size is not None:
+            if any([i for i in size if not (isinstance(i, int) and i <= 0)]):
+                raise ValueError(
+                    "The specified size contain a dimension with value <= 0",
+                    size)
+
         if n == 1 and pvals.ndim == 2:
             ndim, size, bcast = raw_random._infer_ndim_bcast(
                     ndim, size, pvals[:,0])
