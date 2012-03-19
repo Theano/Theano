@@ -604,10 +604,10 @@ class T_MRG(unittest.TestCase):
 
         R = MRG_RandomStreams(234, use_cuda=False)
 
-        for size, var_input in [
-                ((0, 100), []),
-                ((-1, 100), []),
-                ((1, 0), []),
+        for size in [
+                (0, 100),
+                (-1, 100),
+                (1, 0),
                 ]:
 
             self.assertRaises(ValueError, R.uniform, size)

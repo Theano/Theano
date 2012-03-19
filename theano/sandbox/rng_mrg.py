@@ -730,9 +730,9 @@ class MRG_RandomStreams(object):
             msg = "size must be a tuple of int or a Theano variable"
             assert all([isinstance(i,int) or isinstance(i,Variable)
                 for i in size]), msg
-            if len([i for i in size if isinstance(i, int) and i <= 0]) > 0:
+            if any([isinstance(i, int) and i <= 0 for i in size]):
                 raise ValueError(
-                    "The specified size contain a dimension with value <= 0",
+                    "The specified size contains a dimension with value <= 0",
                     size)
 
         else:
@@ -803,9 +803,9 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
         if size is not None:
-            if any([i for i in size if not (isinstance(i, int) and i <= 0)]):
+            if any([isinstance(i, int) and i <= 0 for i in size]):
                 raise ValueError(
-                    "The specified size contain a dimension with value <= 0",
+                    "The specified size contains a dimension with value <= 0",
                     size)
 
         if n == 1 and pvals.ndim == 2:
