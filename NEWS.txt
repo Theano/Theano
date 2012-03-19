@@ -32,6 +32,8 @@ New Features
  * If you use Enthought Python Distribution (EPD) now we use its blas
    implementation by default (tested on Linux and Windows)
    (Frederic B., Simon McGregor)
+ * MRG random now raises an error with a clear message when the passed shape
+   contains dimensions with bad value like 0. (Frédéric B. reported by Ian G.)
 
 Sparse Sandbox graduate
  * Remove0 op: it removes stored elements with value 0. (Frederic B.)
