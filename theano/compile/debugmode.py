@@ -1089,14 +1089,16 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # Initial allocation
         init_strided = {}
         for r in node.outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, TensorType):
                 # Create a buffer twice as large in every dimension
                 new_buf = numpy.zeros(
                         shape=[(s * 2) for s in r_vals[r].shape],
                         dtype=r_vals[r].dtype)
+                init_strided[r] = new_buf
 
-                if isinstance(r.type, CudaNdarrayType):
-                    new_buf = CudaNdarray(new_buf)
+            elif isinstance(r.type, CudaNdarrayType):
+                new_buf = CudaNdarray.zeros(
+                        [(s * 2) for s in r_vals[r].shape])
                 init_strided[r] = new_buf
 
         for step_signs in itertools_product((-1, 1), repeat=max_ndim):
@@ -1121,6 +1123,8 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         if isinstance(r.type, CudaNdarrayType):
                             # It seems stupid, but we need to allocate a
                             # new ndarray and copy it into the GPU one.
+                            # TODO: When it is possible to simply do
+                            # r_buff[...] = def_val, do so.
                             new_rbuf = numpy.zeros(r_vals[r].shape,
                                     dtype=r.dtype)
                             new_rbuf += def_val
