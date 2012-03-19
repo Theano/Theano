@@ -1435,6 +1435,8 @@ class GCC_compiler(object):
             # We need to define MS_WIN64 for the preprocessor to be able to
             # link with libpython.
             preargs.append('-DMS_WIN64')
+            # We also add "-m64", in case the installed gcc is 32-bit
+            preargs.append('-m64')
 
         no_opt = False
 
