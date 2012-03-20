@@ -20,10 +20,12 @@ def test_local_csm_properties_csm():
     data = tensor.vector()
     indices, indptr, shape = (tensor.ivector(), tensor.ivector(),
                               tensor.ivector())
-
+    mode = theano.compile.mode.get_default_mode()
+    mode = mode.including("specialize", "local_csm_properties_csm")
     for CS, cast in [(CSC, sp.csc_matrix), (CSR, sp.csr_matrix)]:
         f = theano.function([data, indices, indptr, shape],
-                            csm_properties(CS(data, indices, indptr, shape)))
+                            csm_properties(CS(data, indices, indptr, shape)),
+                            mode=mode)
         #theano.printing.debugprint(f)
         assert not any(isinstance(node.op, (CSM, CSMProperties)) for node
                        in f.maker.env.toposort())
