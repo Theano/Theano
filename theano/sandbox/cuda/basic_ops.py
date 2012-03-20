@@ -1756,7 +1756,17 @@ class GpuSubtensor(tensor.Subtensor, GpuOp):
 
         def convert(entry):
             if isinstance(entry, Type):
-                return indices.pop()
+                rval = indices.pop()
+                if sys.version_info < (2, 5):
+                    # Before Python 2.5, PySlice_GetIndicesEx requires
+                    # Python int to be passed.
+                    rval_ = int(rval)
+                    if rval_ != rval:
+                        raise IndexError((
+                            "Invalid value for indexing: %s. "
+                            "That value may be too big.") % rval)
+                    return rval_
+                return rval
             elif isinstance(entry, slice):
                 return slice(convert(entry.start),
                              convert(entry.stop),

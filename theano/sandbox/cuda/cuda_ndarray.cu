@@ -1521,6 +1521,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     }
     if (PySlice_Check(key)) //INDEXING BY SLICE
     {
+        if (verbose) fprintf(stderr, "by slice\n");
         if (self->nd == 0)
         {
             PyErr_SetString(PyExc_ValueError, "cannot slice a 0-d array");
@@ -1531,6 +1532,8 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         Py_ssize_t start, stop, step, slen;
         if (PySlice_GetIndicesEx((PySliceObject*)key, d_dim, &start, &stop, &step, &slen))
         {
+            if (verbose)
+                fprintf(stderr, "PySlice_GetIndicesEx failed\n");
             return NULL;
         }
         if (verbose)
@@ -1569,6 +1572,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     }
     if (PyTuple_Check(key)) //INDEXING BY TUPLE
     {
+        if (verbose) fprintf(stderr, "by tuple\n");
         //elements of the tuple can be either integers or slices
         //the dimensionality of the view we will return is diminished for each slice in the tuple
 
