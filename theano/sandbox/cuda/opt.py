@@ -2,16 +2,18 @@ import logging
 _logger = logging.getLogger('theano.sandbox.cuda.opt')
 
 import sys
-import theano
+
 import numpy
-from theano.scan_module import scan_utils, scan_op
+
+import theano
 from theano import scalar as scal
 from theano import tensor, compile, gof
 
+from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
                         EquilibriumOptimizer)
-
+from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
@@ -27,7 +29,7 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.sandbox.cuda.elemwise import SupportCodeError
-from theano.compile import optdb
+from theano.scan_module import scan_utils, scan_op
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 
 #optdb.print_summary()  # shows what is currently registered

@@ -1521,6 +1521,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     }
     if (PySlice_Check(key)) //INDEXING BY SLICE
     {
+        if (verbose) fprintf(stderr, "by slice\n");
         if (self->nd == 0)
         {
             PyErr_SetString(PyExc_ValueError, "cannot slice a 0-d array");
@@ -1531,6 +1532,8 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         Py_ssize_t start, stop, step, slen;
         if (PySlice_GetIndicesEx((PySliceObject*)key, d_dim, &start, &stop, &step, &slen))
         {
+            if (verbose)
+                fprintf(stderr, "PySlice_GetIndicesEx failed\n");
             return NULL;
         }
         if (verbose)
@@ -1569,6 +1572,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     }
     if (PyTuple_Check(key)) //INDEXING BY TUPLE
     {
+        if (verbose) fprintf(stderr, "by tuple\n");
         //elements of the tuple can be either integers or slices
         //the dimensionality of the view we will return is diminished for each slice in the tuple
 
@@ -2047,7 +2051,9 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 
     cudaError_t err = cudaMemGetInfo(&free, &total);
     if (err != cudaSuccess){
-        PyErr_Format(PyExc_RuntimeError, "Error while getting memory info about the gpu %d");
+        PyErr_Format(PyExc_RuntimeError,
+                     "Error while getting memory info about the gpu: %s",
+                     cudaGetErrorString(err));
         return NULL;
     }
     return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
@@ -2932,6 +2938,8 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
 
     // If matrix A or B has non-unit size and non-unit stride in both
     // dimensions, we can make a copy.
+    CudaNdarray * A_new = NULL;
+    CudaNdarray * B_new = NULL;
     if (((CudaNdarray_HOST_DIMS(A)[0] > 1)
          && (CudaNdarray_HOST_STRIDES(A)[0] != 1)
          && (CudaNdarray_HOST_DIMS(A)[1] > 1)
@@ -2939,17 +2947,10 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         || (CudaNdarray_HOST_STRIDES(A)[0] < 0)
         || (CudaNdarray_HOST_STRIDES(A)[1] < 0))
     {
-        const CudaNdarray* A_new = (CudaNdarray*) CudaNdarray_Copy(A);
+        A_new = (CudaNdarray*) CudaNdarray_Copy(A);
         if (!A_new)
             return -1;
         A = A_new;
-    }
-    else
-    {
-        // In the case above, we will need to decref A_new at the end.
-        // To make things simpler, we incref A here, so we can always
-        // decref A.
-        Py_INCREF(A);
     }
 
     if (((CudaNdarray_HOST_DIMS(B)[0] > 1)
@@ -2959,20 +2960,14 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         || (CudaNdarray_HOST_STRIDES(B)[0] < 0)
         || (CudaNdarray_HOST_STRIDES(B)[1] < 0))
     {
-        const CudaNdarray* B_new = (CudaNdarray*) CudaNdarray_Copy(B);
+        B_new = (CudaNdarray*) CudaNdarray_Copy(B);
         if (!B_new)
         {
-            Py_XDECREF(A);
+            // If A_new is NULL, meaning A was not copied nothing happens
+            Py_XDECREF(A_new);
             return -1;
         }
         B = B_new;
-    }
-    else
-    {
-        // In the case above, we will need to decref B_new at the end.
-        // To make things simpler, we incref B here, so we can always
-        // decref B.
-        Py_INCREF(B);
     }
 
     // If matrix C has non-unit size and non-unit stride in both
@@ -2992,8 +2987,8 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
                      CudaNdarray_HOST_STRIDES(C)[1],
                      CudaNdarray_HOST_DIMS(C)[0],
                      CudaNdarray_HOST_DIMS(C)[1]);
-        Py_XDECREF(A);
-        Py_XDECREF(B);
+        Py_XDECREF(A_new);
+        Py_XDECREF(B_new);
         return -1;
     }
 
@@ -3057,8 +3052,8 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         cublasSgemm(T0, T1, D0, D1, D2, a, x, sx, y, sy, b, z, sz); \
     } else { \
         PyErr_SetString(PyExc_AssertionError, "negative stride to sGemm");\
-        Py_XDECREF(A);\
-        Py_XDECREF(B);\
+        Py_XDECREF(A_new);\
+        Py_XDECREF(B_new);\
         return -1; \
     }
 
@@ -3076,8 +3071,8 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
                  return -1;
     };
     CNDA_THREAD_SYNC;
-    Py_XDECREF(A);
-    Py_XDECREF(B);
+    Py_XDECREF(A_new);
+    Py_XDECREF(B_new);
 
     cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)
@@ -3117,6 +3112,8 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     // If matrix A has non-unit size and non-unit stride in both
     // dimensions, or negative strides, we cannot operate, but we can
     // make a copy.
+    CudaNdarray * A_new = NULL;
+    CudaNdarray * B_new = NULL;
     if (((CudaNdarray_HOST_DIMS(A)[0] > 1)
          && (CudaNdarray_HOST_STRIDES(A)[0] != 1)
          && (CudaNdarray_HOST_DIMS(A)[1] > 1)
@@ -3124,32 +3121,24 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
         || (CudaNdarray_HOST_STRIDES(A)[0] < 0)
         || (CudaNdarray_HOST_STRIDES(A)[1] < 0))
     {
-        const CudaNdarray* A_new = (CudaNdarray*) CudaNdarray_Copy(A);
+        A_new = (CudaNdarray*) CudaNdarray_Copy(A);
         if (!A_new)
             return -1;
         A = A_new;
-    }
-    else
-    {
-        // Incref A, so we can decref it at the end in all cases
-        Py_INCREF(A);
     }
 
     // If vector B as a negative stride, we also have to make a copy.
     if (CudaNdarray_HOST_STRIDES(B)[0] < 0)
     {
-        const CudaNdarray* B_new = (CudaNdarray*) CudaNdarray_Copy(B);
+        B_new = (CudaNdarray*) CudaNdarray_Copy(B);
         if (!B_new)
         {
-            Py_XDECREF(A);
+            // If A was not copied, A_new is NULL, and Py_XDECREF does not
+            // do anything
+            Py_XDECREF(A_new);
             return -1;
         }
         B = B_new;
-    }
-    else
-    {
-        // Incref B, so we can decref it at the end in all cases
-        Py_INCREF(B);
     }
 
     // cudablas does not handle negative strides as expected
@@ -3159,8 +3148,8 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
         PyErr_Format(PyExc_ValueError, "illegal strides in args to gemv (%i,%i)",
                 CudaNdarray_HOST_STRIDES(A)[0],
                 CudaNdarray_HOST_STRIDES(A)[1]);
-        Py_XDECREF(A);
-        Py_XDECREF(B);
+        Py_XDECREF(A_new);
+        Py_XDECREF(B_new);
         return -1;
     }
 
@@ -3215,15 +3204,15 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
                          CudaNdarray_HOST_DIMS(A)[1],
                          CudaNdarray_HOST_DIMS(B)[0],
                          CudaNdarray_HOST_DIMS(C)[0]);
-            Py_XDECREF(A);
-            Py_XDECREF(B);
+            Py_XDECREF(A_new);
+            Py_XDECREF(B_new);
             return -1;
         }
     }
 
     CNDA_THREAD_SYNC;
-    Py_XDECREF(A);
-    Py_XDECREF(B);
+    Py_XDECREF(A_new);
+    Py_XDECREF(B_new);
 
     cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)
@@ -3253,7 +3242,7 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
     }
 
     int x_strides = CudaNdarray_HOST_STRIDES(x)[0];
-    const CudaNdarray * x_ = x;
+    CudaNdarray * x_new = NULL;
     if(x_strides == 0){
         if(CudaNdarray_HOST_DIMS(x)[0] != 1){
             PyErr_Format(PyExc_RuntimeError,
@@ -3264,24 +3253,27 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
         }
         x_strides = 1;
     } else if(x_strides < 0){
-        x_ = (CudaNdarray*)CudaNdarray_Copy(x);
-        x_strides = CudaNdarray_HOST_STRIDES(x_)[0];
+        x_new = (CudaNdarray*) CudaNdarray_Copy(x);
+        x = x_new;
+        x_strides = CudaNdarray_HOST_STRIDES(x)[0];
     }
 
     int y_strides = CudaNdarray_HOST_STRIDES(y)[0];
-    const CudaNdarray * y_ = y;
+    CudaNdarray * y_new = NULL;
     if(y_strides == 0){
         if(CudaNdarray_HOST_DIMS(y)[0] != 1){
             PyErr_Format(PyExc_RuntimeError,
                          "CudaNdarray_sger: Invalid input y (should not happen)."
                          " We received a CudaNdarray vector with a stride of 0"
                          " that has more than 1 elements!");
+            Py_XDECREF(x_new);
             return -1;
         }
         y_strides = 1;
     } else if(y_strides < 0){
-        y_ = (CudaNdarray*)CudaNdarray_Copy(y);
-        y_strides = CudaNdarray_HOST_STRIDES(y_)[0];
+        y_new = (CudaNdarray*) CudaNdarray_Copy(y);
+        y = y_new;
+        y_strides = CudaNdarray_HOST_STRIDES(y)[0];
     }
 
     // Create appropriate strides if A is a row or column vector
@@ -3297,8 +3289,8 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
                 && (CudaNdarray_HOST_STRIDES(A)[1] > 0)))
         {
             cublasSger(CudaNdarray_HOST_DIMS(x)[0], CudaNdarray_HOST_DIMS(y)[0], alpha,
-                       CudaNdarray_DEV_DATA(x_), x_strides,
-                       CudaNdarray_DEV_DATA(y_), y_strides,
+                       CudaNdarray_DEV_DATA(x), x_strides,
+                       CudaNdarray_DEV_DATA(y), y_strides,
                        CudaNdarray_DEV_DATA(A), sa_1);
         }
         // Since Sger expects A in col-major, we invert x and y to fake this.
@@ -3307,8 +3299,8 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
                     && (CudaNdarray_HOST_STRIDES(A)[0] > 0)))
         {
             cublasSger(CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
-                       CudaNdarray_DEV_DATA(y_), y_strides,
-                       CudaNdarray_DEV_DATA(x_), x_strides,
+                       CudaNdarray_DEV_DATA(y), y_strides,
+                       CudaNdarray_DEV_DATA(x), x_strides,
                        CudaNdarray_DEV_DATA(A), sa_0);
         }
         // A has to be either c- or f-contiguous, with no negative strides
@@ -3316,14 +3308,14 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
         {
             PyErr_SetString(PyExc_NotImplementedError,
                             "non-contiguous A, or negative strides, in sger");
+            Py_XDECREF(x_new);
+            Py_XDECREF(y_new);
             return -1;
         }
     }
     CNDA_THREAD_SYNC;
-    if(x_ != x)
-        Py_DECREF(x_);
-    if(y_ != y)
-        Py_DECREF(y_);
+    Py_XDECREF(x_new);
+    Py_XDECREF(y_new);
 
     cublasStatus err = cublasGetError();
     if (CUBLAS_STATUS_SUCCESS != err)

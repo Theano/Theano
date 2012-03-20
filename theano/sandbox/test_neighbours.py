@@ -7,6 +7,7 @@ from neighbours import (images2neibs, neibs2images,
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda
+from theano.gof.python25 import any
 
 from theano.tests import unittest_tools
 
