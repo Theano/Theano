@@ -512,3 +512,26 @@ import theano and print the config variable, as in:
         A. Elemwise{add_no_inplace}
               B. log_likelihood_v_given_h
               C. log_likelihood_h
+
+.. attribute:: config.time_seq_optimizer
+
+    Bool value, default: False
+
+    Should all SeqOptimizer object print the time taked by each of its
+    optimizer. Each SeqOptimizer print something like this:
+
+    SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
+    [(0.0004410743713378906, ('InputToGpuOptimizer',
+    'InputToGpuOptimizer')), (0.0013730525970458984,
+    ('gpu_cut_transfers', 'EquilibriumOptimizer')),
+    (0.012573957443237305, ('gpu_local_optimizations',
+    'EquilibriumOptimizer'))]
+
+    This print the name of the SeqOptimizer (gpu_opt), the number of
+    Apply node in the graph before (8) and after (9)
+    optimizations. Then a list of tuple with 1 tuple by optimization
+    in this SeqOptimizer. The first element of the tuple is the time
+    by this optimization and then it is a tuple with the name of the
+    optimization and this class. This list is sorted from the sub
+    optimization that take the most time to the optimization that take
+    the less time.
