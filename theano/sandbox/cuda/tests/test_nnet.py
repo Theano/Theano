@@ -193,7 +193,8 @@ def test_softmax_with_bias():
             if not catch:
                 raise
             assert (e.args[0] ==
-              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n')
+              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n'
+            ), e.args[0]
     cmp(2, 5)
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2 << 15, 5)
