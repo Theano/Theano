@@ -2047,7 +2047,9 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 
     cudaError_t err = cudaMemGetInfo(&free, &total);
     if (err != cudaSuccess){
-        PyErr_Format(PyExc_RuntimeError, "Error while getting memory info about the gpu %d");
+        PyErr_Format(PyExc_RuntimeError,
+                     "Error while getting memory info about the gpu: %s",
+                     cudaGetErrorString(err));
         return NULL;
     }
     return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
