@@ -1199,9 +1199,12 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                 node, thunk, prealloc_modes, def_val, storage_map, r_vals,
                 dr_vals, perform, active_order_set):
             _logger.debug('  name = %s', name)
-            # Copy the inputs over again
-            for r in node.inputs:
-                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+            # Copy the inputs over, if they were marked as destroyed
+            dmap = getattr(node.op, 'destroy_map', {})
+            for i, r in enumerate(node.inputs):
+                if any(i in v for v in dmap.values()):
+                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
             # Get the appropriate output storages
             # (no copy)
@@ -1742,7 +1745,8 @@ class _Linker(gof.link.LocalLinker):
 
                         clobber = True
                         if thunk_py:
-                            for r in node.inputs:
+                            dmap = getattr(node.op, 'destroy_map', {})
+                            for i, r in enumerate(node.inputs):
                                 # if thunk_py ran, and we still got this far,
                                 # it means that the destroy_map of the Op (and view_map) are
                                 # accurate
@@ -1750,15 +1754,8 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-
-                                #TODO: The following was tried on revision 6c613932a63c,
-                                # and made lots of tests fail, some complaining about
-                                # AttributeError: 'Env' object has no attribute 'destroyers'
-                                # some giving plain wrong numerical results.
-                                #if env.destroyers(r):
-                                #    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-
-                                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+                                if any(i in v for v in dmap.values()):
+                                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                             clobber = False
 
