@@ -118,7 +118,8 @@ def test_sum():
                 theano.tensor.basic.float32_rtol = 2e-5
                 assert _allclose(f2(val), f(val)), ('shape', shape,
                                                     'pattern', pattern,
-                                                    sum([shape[i] for i in pattern]))
+                                                    sum([shape[i] for i in pattern]),
+                                                    f2(val), f(val), val)
             finally:
                 theano.tensor.basic.float32_rtol = orig_rtol
 
