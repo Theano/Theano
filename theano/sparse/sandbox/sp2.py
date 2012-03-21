@@ -806,9 +806,8 @@ class SamplingDotCsr(gof.Op):
             raise NotImplementedError(
                 'Complex types are not supported for pattern')
 
-        # TODO: why 2 times the same inputs?
         dot_out = scalar.upcast(node.inputs[0].type.dtype,
-                                node.inputs[0].type.dtype)
+                                node.inputs[1].type.dtype)
 
         if dot_out == "float32":
             conv_type = "float"

@@ -18,7 +18,7 @@ import numpy
 
 import theano
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
-from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType
+from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, gpu_contiguous
 from theano.sandbox.cuda.opt import gpu_seqopt
 
@@ -71,7 +71,7 @@ class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
             self.func.prepared_call(_grid, *invocation_args)
 
 
-class PycudaElemwiseSourceModuleOp(Op):
+class PycudaElemwiseSourceModuleOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -145,7 +145,7 @@ class PycudaElemwiseSourceModuleOp(Op):
         self.pycuda_fct(inputs[0], inputs[1], z[0], numpy.intc(inputs[1].size), block=block, grid=grid)
 
 
-class PycudaElemwiseKernelOp(Op):
+class PycudaElemwiseKernelOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 

@@ -1180,12 +1180,9 @@ class MulSS(gof.op.Op):
         assert _is_sparse(x) and _is_sparse(y)
         assert len(x.shape) == 2
         assert y.shape == x.shape
-        if (numpy.all(y.indptr == x.indptr) and
-            numpy.all(y.indices == x.indices)):
-            out[0] = y.copy()
-            out[0].data *= x.data
-        else:
-            raise NotImplementedError()  # RowScale / ColScale
+        # This call the element-wise multiple
+        # x * y call dot...
+        out[0] = x.multiply(y)
 
     def grad(self, (x, y), (gz,)):
         return y * gz, x * gz

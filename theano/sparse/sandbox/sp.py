@@ -263,7 +263,7 @@ class RowScaleCSC(Op):
         z[0] = scipy_sparse.csc_matrix((y_data, indices, indptr), (M, N))
 
     def grad(self, (x, s), (gz,)):
-        return [row_scale(gz, s), sp_sum(x * gz, axis=0)]
+        return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
 
 
 def col_scale(x, s):
