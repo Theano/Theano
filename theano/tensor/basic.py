@@ -2187,14 +2187,19 @@ class MaxAndArgmax(Op):
             axis = _as_tensor_variable(axis)
 
         # Verify that the axis is valid.
+        all_axes = set()
         for ax in axis.data:
             if ax < 0 or ax >= x.type.ndim:
                 raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (axis, x.type.ndim))
+            all_axes.add(ax)
 
         inputs = [x, axis]
-        broadcastable = [False] * (x.type.ndim - len(axis.data))
+        # We keep the original broadcastable flags for dimensions on which
+        # we do not perform the max / argmax.
+        broadcastable = [b for i, b in enumerate(x.type.broadcastable)
+                         if i not in all_axes]
         outputs = [tensor(x.type.dtype, broadcastable, name='max'),
                    tensor('int64', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
