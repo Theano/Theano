@@ -1014,6 +1014,13 @@ class TensorType(Type):
         else:
             return ()
 
+    def value_zeros(self, shape):
+        """
+        Create an numpy ndarray full of 0 values.
+        """
+        return numpy.zeros(shape, dtype=self.dtype)
+
+
 # Register CudaNdarrayType to the OutputGuard list of known types
 # to have OutputGuard generate C code for this type.
 theano.compile.mode.register_OutputGuard_c_code(TensorType)

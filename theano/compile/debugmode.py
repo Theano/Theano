@@ -1089,15 +1089,9 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # Initial allocation
         init_strided = {}
         for r in node.outputs:
-            if isinstance(r.type, TensorType):
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Create a buffer twice as large in every dimension
-                new_buf = numpy.zeros(
-                        shape=[(s * 2) for s in r_vals[r].shape],
-                        dtype=r_vals[r].dtype)
-                init_strided[r] = new_buf
-
-            elif isinstance(r.type, CudaNdarrayType):
-                new_buf = CudaNdarray.zeros(
+                new_buf = r.type.value_zeros(
                         [(s * 2) for s in r_vals[r].shape])
                 init_strided[r] = new_buf
 
