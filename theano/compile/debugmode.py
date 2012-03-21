@@ -1156,6 +1156,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         new_buf = numpy.zeros(
                                 shape=out_shape,
                                 dtype=r.dtype)
+                        new_buf += def_val
                         if isinstance(r.type, CudaNdarrayType):
                             new_buf = CudaNdarray(new_buf)
                         wrong_size[r] = new_buf
