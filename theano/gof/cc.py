@@ -276,7 +276,7 @@ def get_nothing(r, name, sub):
 
 
 def get_c_declare(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_declare that declares py_name"""
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
@@ -284,7 +284,7 @@ def get_c_declare(r, name, sub):
 
 
 def get_c_init(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_init that initializes py_name to Py_None"""
     pre = "" """
     py_%(name)s = Py_None;
     {Py_XINCREF(py_%(name)s);}
@@ -293,7 +293,7 @@ def get_c_init(r, name, sub):
 
 
 def get_c_extract(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_extract that initializes py_name from storage."""
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
@@ -302,7 +302,7 @@ def get_c_extract(r, name, sub):
 
 
 def get_c_extract_out(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_extract_out that initializes py_name from storage."""
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
@@ -311,7 +311,7 @@ def get_c_extract_out(r, name, sub):
 
 
 def get_c_cleanup(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_cleanup that decrefs py_name"""
     post = """
     {Py_XDECREF(py_%(name)s);}
     """ % locals()
@@ -319,7 +319,7 @@ def get_c_cleanup(r, name, sub):
 
 
 def get_c_sync(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_sync that syncs py_name with storage."""
     return """
     if (!%(failure_var)s) {
       %(sync)s
