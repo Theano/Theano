@@ -1720,6 +1720,14 @@ class T_max_and_argmax(unittest.TestCase):
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
 
+    def test_preserve_broadcastable(self):
+        """
+        Ensure the original broadcastable flags are preserved by Max/Argmax.
+        """
+        x = tensor.matrix().dimshuffle('x', 0, 'x', 1, 'x')
+        y = x.max(axis=1)
+        assert y.type.broadcastable == (True, True, False, True)
+
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
