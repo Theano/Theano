@@ -542,7 +542,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
     def get_id_str(obj):
         if obj in done:
-            id_str = "[@%s]" % done[obj]
+            id_str = done[obj]
         elif ids == "id":
             id_str = "[@%s]" % str(id(r))
         elif ids == "int":

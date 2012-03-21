@@ -17,6 +17,7 @@ import theano
 from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
+from theano.sparse import verify_grad_sparse
 
 
 class TestSP(unittest.TestCase):
@@ -493,19 +494,17 @@ def test_diag_grad():
     utt.verify_grad(d, [diag_mat],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
+
 def test_row_scale():
     x = theano.sparse.csc_dmatrix()
     s = theano.tensor.dvector()
-
-    def d(x,s):
-        return sp.sp_sum(sp.row_scale(x, s), sparse_grad=True)
 
     rng = numpy.random.RandomState(8723)
     R = 5
     C = 8
 
-    x_val_dense = numpy.zeros((R, C),dtype='d')
-    for idx in [(0,0), (4, 1), (2,1), (3, 3), (4, 4), (3, 7), (2, 7)]:
+    x_val_dense = numpy.zeros((R, C), dtype='d')
+    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
         x_val_dense.__setitem__(idx, rng.randn())
     x_val = scipy.sparse.csc_matrix(x_val_dense)
 
@@ -518,25 +517,19 @@ def test_row_scale():
 
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
 
-    if 0:
-        tensor.verify_grad(None, d, [x_val, s_val],
-                mode=theano.Mode(linker='py', optimizer='fast_compile'))
-    else:
-        print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
+    verify_grad_sparse(sp.row_scale, [x_val, s_val], structured=False)
+
 
 def test_col_scale():
     x = theano.sparse.csc_dmatrix()
     s = theano.tensor.dvector()
 
-    def d(x,s):
-        return sp.sp_sum(sp.col_scale(x, s), sparse_grad=True)
-
     rng = numpy.random.RandomState(8723)
     R = 5
     C = 8
 
-    x_val_dense = numpy.zeros((R, C),dtype='d')
-    for idx in [(0,0), (4, 1), (2,1), (3, 3), (4, 4), (3, 7), (2, 7)]:
+    x_val_dense = numpy.zeros((R, C), dtype='d')
+    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
         x_val_dense.__setitem__(idx, rng.randn())
     x_val = scipy.sparse.csc_matrix(x_val_dense)
 
@@ -549,11 +542,7 @@ def test_col_scale():
 
     assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
 
-    if 0:
-        tensor.verify_grad(None, d, [x_val, s_val],
-                mode=theano.Mode(linker='py', optimizer='fast_compile'))
-    else:
-        print >> sys.stderr, "WARNING: skipping gradient test because verify_grad doesn't support sparse arguments"
+    verify_grad_sparse(sp.col_scale, [x_val, s_val], structured=False)
 
 if __name__ == '__main__':
     if 0:

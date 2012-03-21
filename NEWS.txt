@@ -2,6 +2,10 @@
 
 Updates in the Trunk since the last release:
 
+Sparse Sandbox bugfix
+ * Fix the grad of theano.sparse.sandbox.sp.row_scale. It didn't
+   returned the right number of element. (Frederic B.)
+
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
    This explains how to make a Theano Op from a Python function.
@@ -34,6 +38,10 @@ New Features
    (Frederic B., Simon McGregor)
  * MRG random now raises an error with a clear message when the passed shape
    contains dimensions with bad value like 0. (Frédéric B. reported by Ian G.)
+
+Sparse
+ * Implement theano.sparse.mul(sparse1, sparse2) when both input don't
+   have the same sparsity pattern. (Frederic B.)
 
 Sparse Sandbox graduate
  * Remove0 op: it removes stored elements with value 0. (Frederic B.)

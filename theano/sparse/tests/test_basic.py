@@ -323,17 +323,17 @@ class T_AddMul(unittest.TestCase):
     def testMulSS(self):
         self._testSS(mul,
                      numpy.array([[1., 0], [3, 0], [0, 6]]),
-                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+                     numpy.array([[1., 2], [3, 0], [0, 6]]))
 
     def testMulSD(self):
         self._testSD(mul,
                      numpy.array([[1., 0], [3, 0], [0, 6]]),
-                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+                     numpy.array([[1., 2], [3, 0], [0, 6]]))
 
     def testMulDS(self):
         self._testDS(mul,
                      numpy.array([[1., 0], [3, 0], [0, 6]]),
-                     numpy.array([[1., 0], [3, 0], [0, 6]]))
+                     numpy.array([[1., 2], [3, 0], [0, 6]]))
 
     def _testSS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
@@ -361,15 +361,12 @@ class T_AddMul(unittest.TestCase):
             val = eval_outputs([apb])
             self.assertTrue(val.shape == (3, 2))
             if op is add:
-                self.assertTrue(numpy.all(val.todense() == (a + b).todense()))
-                ans = numpy.array([[1., 2], [3, 4], [5, 6]])
-                self.assertTrue(numpy.all(val.todense() == ans))
+                self.assertTrue(numpy.all(val.todense() == (array1 + array2)))
                 verify_grad_sparse(op, [a, b], structured=False)
             elif op is mul:
                 self.assertTrue(numpy.all(val.todense()
-                                          == (a.multiply(b)).todense()))
-                ans = numpy.array([[1, 0], [9, 0], [0, 36]])
-                self.assertTrue(numpy.all(val.todense() == ans))
+                                          == (array1 * array2)))
+                verify_grad_sparse(op, [a, b], structured=False)
 
     def _testSD(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
