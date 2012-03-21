@@ -868,11 +868,15 @@ nd_collapse_[i]=0;
 
         #check that all inputs have valid dimensions
         emitted_inames = {}
-        for id,iname in enumerate(inputs):
+        for id, iname in enumerate(inputs):
             if iname in emitted_inames:
                 assert emitted_inames[iname] is node.inputs[id]
                 continue
-            broadcasts = ', '.join(map(str,map(int,node.inputs[id].broadcastable)))
+
+            # with python 2.4 (at least), if a broadcastable pattern is made of
+            # numpy.bool_ instead of bool, calling int() once is not enough.
+            broadcasts = map(int, map(int, node.inputs[id].broadcastable))
+            broadcasts = ', '.join(map(str, broadcasts))
             nd = node.inputs[id].ndim
             if nd > 0:
                 print >> sio, """
@@ -883,9 +887,10 @@ nd_collapse_[i]=0;
                 int *broadcasts_%(iname)s = NULL;
                 """ % locals()
             emitted_inames[iname] = node.inputs[id]
+
         #check that all inputs have valid dimensions
         emitted_inames = {}
-        for id,iname in enumerate(inputs):
+        for id, iname in enumerate(inputs):
             if iname in emitted_inames:
                 continue
             print >> sio, """

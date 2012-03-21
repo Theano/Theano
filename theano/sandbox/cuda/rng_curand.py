@@ -7,9 +7,9 @@ __copyright__ = "(c) 2011, University of Montreal"
 __license__ = "3-clause BSD License"
 __contact__ = "theano-dev@googlegroups.com"
 
-import sys
 import numpy
 import theano.gof
+from theano.gof.python25 import all
 from theano.sandbox.cuda import CudaNdarrayType, GpuOp
 from theano.tensor import (get_vector_length, cast, opt)
 from theano.compile import optdb
