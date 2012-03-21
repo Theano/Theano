@@ -69,6 +69,8 @@ Crash Fix
    (Frédéric B., reported by Razvan P.)
  * Fix crash under 64-bit Windows, when taking subtensors of the form a[n:]
    (Pascal L., reported by Simon McGregor)
+ * Fixed issue with the MaxAndArgmax Op not properly preserving broadcastable
+   dimensions, which could typically result in optimization crashes (Olivier D.)
 
 =============
 Release Notes
