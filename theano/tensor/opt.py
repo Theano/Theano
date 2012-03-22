@@ -2078,7 +2078,11 @@ def local_rebroadcast_lift(node):
     input = node.inputs[0]
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and len(inode.inputs) == 1:
-        if len(input.clients) == 1:
+        # It may happen that `input` has no client because this optimization
+        # is called from `apply_rebroadcast_opt`, which in particular is used
+        # by the `unbroadcast` function before we are in the actual function
+        # compilation phase.
+        if hasattr(input, 'clients') and len(input.clients) == 1:
             rval = inode.op.make_node(T.Rebroadcast(*op.axis.items())(
                     inode.inputs[0])).outputs
             return rval
@@ -2098,7 +2102,7 @@ def apply_rebroadcast_opt(rval):
     and local_rebroadcast_lift.
 
     :param rval: a Variable
-    :retrun: a Variable. The same if not optimisation can be applied.
+    :return: a Variable (the same if no optimization can be applied)
     """
 
     changed = True
