@@ -2880,8 +2880,10 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                 assert (cudaSuccess == cudaGetLastError());
                 if (verbose) fprintf(stderr, "Copying with default version unbroadcast=%d\n", unbroadcast);
                 // call worker routine
-                unsigned int n_blocks = std::min(size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                unsigned int threads_per_block = std::min(ceil_intdiv(size, n_blocks), (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                unsigned int threads_per_block = std::min(size,
+                                                          (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                unsigned int n_blocks = std::min(ceil_intdiv(size, threads_per_block),
+                                                 (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 const CudaNdarray * cuda_dims = other;
                 if(unbroadcast)
                     cuda_dims = self;
