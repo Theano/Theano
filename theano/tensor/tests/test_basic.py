@@ -3387,6 +3387,15 @@ class T_Join_and_Split(unittest.TestCase):
         else:
             f(get_mat(3, 4), get_mat(3, 4), get_mat(2, 5))
 
+    def test_rebroadcast(self):
+        """
+        Regression test for a crash that used to happen when rebroadcasting.
+        """
+        x = tensor.TensorType(floatX, [False, False, True])()
+        u = tensor.TensorType(floatX, [False, False, True])()
+        # This line used to crash.
+        z = tensor.concatenate([x, -u], axis=2)
+
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):

@@ -79,6 +79,8 @@ Crash Fix
    (Pascal L., reported by Simon McGregor)
  * Fixed issue with the MaxAndArgmax Op not properly preserving broadcastable
    dimensions, which could typically result in optimization crashes (Olivier D.)
+ * Fixed crash when concatenating some arrays with specific broadcasting
+   patterns (Olivier D.)
 
 =============
 Release Notes
