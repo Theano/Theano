@@ -2837,6 +2837,9 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
     }
     if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && size == size_source)
     {
+        if (verbose)
+            fprintf(stderr, "Copying contiguous vector with cublasScopy\n");
+
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
         CNDA_THREAD_SYNC;
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
@@ -2891,6 +2894,9 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                         CudaNdarray_DEV_DATA(self),  (const int *)CudaNdarray_DEV_STRIDES(self));
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
+                if(verbose>1)
+                    fprintf(stderr, "INFO k_elemwise_unary_rowmaj (n_blocks=%i, n_threads_per_block=%i)\n",
+                            n_blocks, threads_per_block);
                 if( cudaSuccess != err)
                 {
                     //fprint_CudaNdarray(stderr, self);
