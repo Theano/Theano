@@ -107,8 +107,8 @@ int device_free(void *ptr)
 
             break;
         }
-    if(i==TABLE_SIZE)
-        printf("Unallocated unknow size!\n");
+    //if(i==TABLE_SIZE)
+    //    printf("Unallocated unknow size!\n");
     //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
 #endif
     return 0;
