@@ -742,34 +742,45 @@ class Elemwise(Op):
                     raise ValueError('\n'.join(msg_chunks))
                 else:
                     raise ValueError(base_exc_str)
-                # Other mismatches will be caught by the ufunc
+
+        # Determine the shape of outputs
+        out_shape = []
+        for values in zip(*[input.shape for input in inputs]):
+            if numpy.prod(values) == 0:
+                # All non-broadcasted dimensions should be zero
+                assert max(values) <= 1
+                out_shape.append(0)
+            else:
+                out_shape.append(max(values))
+        out_shape = tuple(out_shape)
 
         if not self.inplace_pattern:
             for output, storage in zip(node.outputs, output_storage):
                 odat = storage[0]
-                shape = [max(values)
-                        for values in zip(*[input.shape for input in inputs])]
                 if odat is not None:
-                    # reuse storage if we can
-                    odat.resize(shape, refcheck=0)
-                else:
-                    odat = numpy.ndarray(shape, dtype=output.type.dtype)
+                    if odat.shape != out_shape:
+                        # It is unsafe to try to resize odat,
+                        # we have to allocate output storage.
+                        odat = None
+                if odat is None:
+                    odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
                 storage[0] = odat
         else:
-            for i, (output, storage) in enumerate(zip(node.outputs,
-                    output_storage)):
+            for i, (output, storage) in enumerate(
+                    zip(node.outputs, output_storage)):
                 #i is an output idx
                 if i in self.inplace_pattern:
                     odat = inputs[self.inplace_pattern[i]]
                 else:
                     odat = storage[0]
-                    shape = [max(values)
-                             for values in zip(*[input.shape
-                                 for input in inputs])]
                     if odat is not None:
-                        odat.resize(shape, refcheck=0)
-                    else:
-                        odat = numpy.ndarray(shape, dtype=output.type.dtype)
+                        if odat.shape != out_shape:
+                            # It is unsafe to try to resize odat,
+                            # we have to allocate output storage.
+                            odat = None
+                    if odat is None:
+                        odat = numpy.ndarray(out_shape,
+                                dtype=output.type.dtype)
                 storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
@@ -825,21 +836,16 @@ class Elemwise(Op):
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
 
-            if (hasattr(variable, 'shape')
-                    and storage[0].shape != variable.shape):
-                if numpy.prod(variable.shape) == 0:
-                    # numpy don't resize from a shape (1,5) to (0,5)
-                    # This bypass the inplace...
-                    # But I it is important in this case.
-                    storage[0] = variable
-                    continue
-                storage[0].resize(variable.shape)
-
-            if storage[0].shape:
-                storage[0][:] = variable
+            # The storage has been resized earlier.
+            if hasattr(variable, 'shape'):
+                assert storage[0].shape == variable.shape
             else:
-                storage[0].itemset(variable)
+                # If variable has not shape, then it is a scalar.
+                assert numpy.prod(storage[0].shape) == 1
+
+            storage[0][...] = variable
             assert str(storage[0].dtype) != 'object'
+
         # the following should be used instead of the previous loop,
         # unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))

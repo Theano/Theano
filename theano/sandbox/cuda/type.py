@@ -54,6 +54,11 @@ class CudaNdarrayType(Type):
     A cyclic dependency is avoided by not hardcoding this class.
     """
 
+    value_zeros = staticmethod(cuda.CudaNdarray.zeros)
+    """
+    Create an CudaNdarray full of 0 values
+    """
+
     def __init__(self, broadcastable, name=None, dtype=None):
         if dtype != None and dtype != 'float32':
             raise TypeError('%s only supports dtype float32 for now. Tried '
