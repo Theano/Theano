@@ -743,9 +743,14 @@ class ScalarOp(Op):
         if hasattr(self, 'name') and self.name:
             return self.name
         else:
-            return "%s{%s}" % (self.__class__.__name__,
-                               ", ".join("%s=%s" % (k, v) for k, v in
-                                         self.__dict__.items() if k != "name"))
+            param = [(k, v) for k, v in self.__dict__.items()
+                     if k not in ["name", "_op_use_c_code"]]
+            if param:
+                return "%s{%s}" % (self.__class__.__name__,
+                                   ", ".join("%s=%s" % (k, v)
+                                             for k, v in param))
+            else:
+                return self.__class__.__name__
 
     def c_code_cache_version(self):
         return (3,)

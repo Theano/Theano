@@ -2801,6 +2801,10 @@ class Alloc(gof.Op):
         v = as_tensor_variable(value)
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
+        if v.ndim > len(sh):
+            raise TypeError("Alloc value to use have more dimensions"
+                            " then the specified dimensions",
+                            v.ndim, len(sh))
         for i, s in enumerate(sh):
             if s.type.dtype[:3] not in ('int', 'uin'):
                 if config.exception_verbosity == 'high':

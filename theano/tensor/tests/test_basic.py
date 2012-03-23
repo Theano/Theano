@@ -1239,11 +1239,17 @@ AllocTester = makeBroadcastTester(
             correct23 = (rand(4,7), numpy.int32(2), numpy.int32(4), numpy.int32(7)),
             ),
         bad_runtime = dict(
-            bad_shape12 = (rand(7), numpy.int32(7), numpy.int32(5)),
-            too_big32 = (rand(6,2,4), numpy.int32(6), numpy.int32(2)),
-            too_big32b = (rand(6,2,4), numpy.int32(2), numpy.int32(4)),
-            ),
-        )
+                    bad_shape12 = (rand(7), numpy.int32(7), numpy.int32(5)),
+                    ),
+        bad_build = dict(
+                    too_big32 = (rand(6,2,4), numpy.int32(6), numpy.int32(2)),
+                    too_big32b = (rand(6,2,4), numpy.int32(6), numpy.int32(4)),
+                    too_big32c = (rand(6,2,4), numpy.int32(2), numpy.int32(4)),
+                    too_big32d = (rand(6,2,4), numpy.int32(2), numpy.int32(6)),
+                    too_big32e = (rand(6,2,4), numpy.int32(4), numpy.int32(6)),
+                    too_big32f = (rand(6,2,4), numpy.int32(4), numpy.int32(2)),
+        ),
+)
 
 # Since not all inputs of Alloc are differentiable, we need different testers
 s1, s2, s3 = randint_ranged(1, 13, (3,))
