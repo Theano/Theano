@@ -1304,7 +1304,7 @@ def local_alloc_elemwise(node):
       -> elemwise(x, y.TensorType(no broadcast flag))
 
     BROADCAST CONDITION: the condition is that the one input that are
-    not to be optimized to have the same braodcast pattern as the
+    not to be optimized to have the same broadcast pattern as the
     output
 
          We can change the alloc by a dimshuffle as the elemwise
