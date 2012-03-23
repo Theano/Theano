@@ -1678,7 +1678,7 @@ class Scan(PureOp):
 
 # Since Scan is an op that contains a Theano compiled function, it is
 # useful to let DebugMode know about it.
-compile.debugmode.ops_with_inner_function[Scan] = 'fn'
+gof.ops_with_inner_function[Scan] = 'fn'
 
 
 @theano.compile.profilemode.register_profiler_printer

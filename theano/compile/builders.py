@@ -1,6 +1,7 @@
 from theano import gof
 from theano import gradient as G
-from function_module import orig_function
+from theano.compile.function_module import orig_function
+from theano.gof import ops_with_inner_function
 
 
 class OpFromGraph(gof.Op):
@@ -69,13 +70,6 @@ class OpFromGraph(gof.Op):
                                                      grad_depth=grad_depth - 1,
                                                      on_unused_input='ignore'))
 
-        # Since OpFromGraph contains a Theano compiled function, we should let
-        # DebugMode know about it
-        # We do that here to avoid circular import problems
-        from theano.compile.debugmode import ops_with_inner_function
-        if type(self) not in ops_with_inner_function:
-            ops_with_inner_function[type(self)] = 'fn'
-
     def __eq__(self, other):
         #TODO: recognize a copy
         return self is other
@@ -106,3 +100,7 @@ class OpFromGraph(gof.Op):
             return [go(*(inputs + output_grads)) for go in self.grad_ops]
         else:
             raise NotImplementedError
+
+# Since OpFromGraph contains a Theano compiled function, we should let
+# DebugMode know about it
+ops_with_inner_function[OpFromGraph] = 'fn'

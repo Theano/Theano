@@ -13,7 +13,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Env, graph, utils, link
+from theano.gof import Env, graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
 from theano.gof.python25 import product as itertools_product
@@ -102,20 +102,6 @@ class NoDuplicateOptWarningFilter(logging.Filter):
         return True
 
 _logger.addFilter(NoDuplicateOptWarningFilter())
-
-
-"""
-Registry of Ops that have an inner compiled Theano function.
-
-The keys are Op classes (not instances), and values are the name of the
-attribute that contains the function. For instance, if the function is
-self.fn, the value will be 'fn'.
-
-We need that to be able not to run debug checks a number of times that is
-exponential in the nesting level of those ops.
-For instance, Scan will be registered here.
-"""
-ops_with_inner_function = {}
 
 
 ########################
