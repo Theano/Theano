@@ -18,7 +18,8 @@ try:
     from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
     import cuda_ndarray
 except ImportError:
-    pass
+    # Used to know that `cuda` could not be properly imported.
+    cuda = None
 
 
 class CudaNdarrayType(Type):
@@ -54,7 +55,8 @@ class CudaNdarrayType(Type):
     A cyclic dependency is avoided by not hardcoding this class.
     """
 
-    value_zeros = staticmethod(cuda.CudaNdarray.zeros)
+    if cuda is not None:
+        value_zeros = staticmethod(cuda.CudaNdarray.zeros)
     """
     Create an CudaNdarray full of 0 values
     """
@@ -433,9 +435,7 @@ copy_reg.constructor(CudaNdarray_unpickler)
 def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
-try:
-    # In case cuda is not imported.
+# In case cuda is not imported.
+if cuda is not None:
     copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
                     CudaNdarray_unpickler)
-except NameError:
-    pass
