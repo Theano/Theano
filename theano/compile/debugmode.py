@@ -16,7 +16,7 @@ from theano import gof
 from theano.gof import Env, graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.gof.python25 import product as itertools_product
+from theano.gof.python25 import any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
         StrParam)
 from theano.compile.function_module import (FunctionMaker,
