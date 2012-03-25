@@ -2,9 +2,13 @@
 
 Updates in the Trunk since the last release:
 
-Sparse Sandbox bugfix
- * Fix the grad of theano.sparse.sandbox.sp.row_scale. It didn't
-   returned the right number of element. (Frederic B.)
+Bug fixes
+ * Outputs of Scan nodes could contain corrupted values: some parts of the
+   output would be repeated a second time, instead of the correct values.
+   It happened randomly, and quite infrequently, but the bug has been present
+   (both in Python and Cython) since April 2011. (Pascal L.)
+ * In Sparse sandbox, fix the grad of theano.sparse.sandbox.sp.row_scale.
+   It did not return the right number of elements. (Frederic B.)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
