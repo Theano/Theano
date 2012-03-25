@@ -809,7 +809,6 @@ class Scan(PureOp):
         ############## THE MAIN LOOP #########################
         #for i in xrange(n_steps):
         while (i < n_steps) and cond:
-
             # sequences over which scan iterates
             # 3. collect input slices
             for idx in xrange(self.n_seqs):
@@ -955,12 +954,17 @@ class Scan(PureOp):
         begin = self.n_mit_mot
         end = self.n_outs + self.n_nit_sot
         for idx in xrange(begin, end):
-            min_tap = self.mintaps[idx]
             if (store_steps[idx] < i - self.mintaps[idx] and
                 pos[idx] < store_steps[idx]):
 
                 pdx = pos[idx]
-                if pdx < store_steps[idx] // 2:
+                if pdx >= store_steps[idx] // 2:
+                    # It seems inefficient to copy the bigger part of the
+                    # array over, and back, but it is the only way that
+                    # there is no overlap in the areas of out[idx][0] that
+                    # are read and written.
+                    # This way, there will be no information overwritten
+                    # before it is read (as it used to happen).
                     shape = (pdx,) + outs[idx][0].shape[1:]
                     if cuda.cuda_available and isinstance(outs[idx][0],
                                                           cuda.CudaNdarray):

@@ -63,7 +63,7 @@ from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.265
+    return 0.266
 
 @cython.boundscheck(False)
 def perform(
@@ -418,7 +418,13 @@ def perform(
             pos[idx] < store_steps[idx] ):
 
             pdx = pos[idx]
-            if pdx < store_steps[idx]//2 :
+            if pdx >= store_steps[idx]//2 :
+                # It seems inefficient to copy the bigger part of the
+                # array over, and back, but it is the only way that
+                # there is no overlap in the areas of out[idx][0] that
+                # are read and written.
+                # This way, there will be no information overwritten
+                # before it is read (as it used to happen).
                 shape = (pdx,)+ outs[idx][0].shape[1:]
 
                 if cuda.cuda_available and isinstance( outs[idx][0],
