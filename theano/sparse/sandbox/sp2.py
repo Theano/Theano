@@ -36,66 +36,6 @@ fcast = Cast('float32')
 dcast = Cast('float64')
 
 
-# register a specialization to replace AddSS -> AddSSData
-@gof.local_optimizer([add_s_s])
-def local_add_s_s(node):
-    """
-    If two matrices are known to have the same sparsity pattern,
-    optimize  the addition by only adding their data vector.
-
-    Very special case optimization. Activate when for add(x, y),
-    y is an expression like sp_ones_like(x) * another_matrix.
-
-    This is useful for sparse weight updates.
-
-    Work also for add(x, neg(y)) in the same case.
-
-    As of this writting sub is only implemented as x + neg(y) for
-    sparse matrix.
-    """
-    if node.op == add_s_s:
-        x, y = node.inputs
-
-        # In case addition was transformed to subtraction
-        if hasattr(y.owner, 'op') and y.owner.op == neg:
-            y_ = y.owner.inputs[0]
-        else:
-            y_ = y
-        if y_.owner is None:
-            return False
-        if hasattr(y_.owner, 'op') and y_.owner.op not in [mul_s_s, mul_s_d]:
-            return False
-
-        def same_pattern(node):
-            """Check node has same sparsity as x."""
-            # In case the sparse matrix is multiplied by a scalar (ex:
-            # learning rate)
-            if hasattr(node.owner, 'op') and node.owner.op == mul_scalar:
-                node = node.owner.inputs[1]
-
-            # Check node creates a matrix
-            if not hasattr(node.owner, 'op') or not isinstance(node.owner.op,
-                                                               CSM):
-                return False
-
-            # Check matrix is creates from CSMProperties
-            if filter(lambda i: not hasattr(i.owner, 'op') or
-                      not isinstance(i.owner.op, CSMProperties),
-                      node.owner.inputs[1:]):
-                return False
-
-            # Verify indices, indptr and shape are the same as x
-            if filter(lambda i: i.owner.inputs[0] != x, node.owner.inputs[1:]):
-                return False
-
-            return True
-
-        if filter(same_pattern, y_.owner.inputs):
-            return [add_s_s_data(x, y)]
-    return False
-register_specialize(local_add_s_s)
-
-
 class AddSSData(gof.op.Op):
     '''Add two sparse matrices assuming they have the same sparsity
     pattern. '''
