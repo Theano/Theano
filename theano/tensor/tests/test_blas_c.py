@@ -2,6 +2,8 @@ import sys
 import numpy
 from unittest import TestCase
 
+from nose.plugins.skip import SkipTest
+
 import theano
 import theano.tensor as tensor
 
@@ -25,6 +27,10 @@ mode_blas_opt = theano.compile.get_default_mode().including(
 class TestCGer(TestCase, TestOptimizationMixin):
 
     def setUp(self, dtype='float64'):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
+
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
@@ -105,6 +111,9 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
     """
     def setUp(self, dtype='float64'):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         # matrix
@@ -234,12 +243,22 @@ class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
 
+    def setUp(self):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
+
 
 class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
     mode = mode_blas_opt
     dtype = 'float64'
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
+
+    def setUp(self):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
 
 
 class TestBlasStridesC(TestBlasStrides):
