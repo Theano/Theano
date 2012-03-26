@@ -2,6 +2,8 @@ import sys
 import numpy
 from unittest import TestCase
 
+from nose.plugins.skip import SkipTest
+
 import theano
 import theano.tensor as tensor
 
@@ -25,15 +27,19 @@ mode_blas_opt = theano.compile.get_default_mode().including(
 class TestCGer(TestCase, TestOptimizationMixin):
 
     def setUp(self, dtype='float64'):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
+
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.Aval = numpy.ones((2,3), dtype=dtype)
-        self.xval = numpy.asarray([1,2], dtype=dtype)
-        self.yval = numpy.asarray([1.5,2.7,3.9], dtype=dtype)
+        self.Aval = numpy.ones((2, 3), dtype=dtype)
+        self.xval = numpy.asarray([1, 2], dtype=dtype)
+        self.yval = numpy.asarray([1.5, 2.7, 3.9], dtype=dtype)
 
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs,
@@ -70,13 +76,13 @@ class TestCGer(TestCase, TestOptimizationMixin):
     def test_optimization_pipeline(self):
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
-        f(self.xval, self.yval)  #DebugMode tests correctness
+        f(self.xval, self.yval)  # DebugMode tests correctness
 
     def test_optimization_pipeline_float(self):
         self.setUp('float32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
-        f(self.xval, self.yval)  #DebugMode tests correctness
+        f(self.xval, self.yval)  # DebugMode tests correctness
 
     def test_int_fails(self):
         self.setUp('int32')
@@ -88,34 +94,37 @@ class TestCGer(TestCase, TestOptimizationMixin):
         f = self.function([self.A, self.x, self.y],
                 self.A + tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
 
 class TestCGemv(TestCase, TestOptimizationMixin):
-    """
-    Tests of CGemv specifically.
+    """Tests of CGemv specifically.
 
-    Generic tests of Gemv-compatibility, including both dtypes are done below in
-    TestCGemvFloat32 and TestCGemvFloat64
+    Generic tests of Gemv-compatibility, including both dtypes are
+    done below in TestCGemvFloat32 and TestCGemvFloat64
+
     """
     def setUp(self, dtype='float64'):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         # matrix
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
-        self.Aval = numpy.ones((2,3), dtype=dtype)
+        self.Aval = numpy.ones((2, 3), dtype=dtype)
 
         # vector
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.xval = numpy.asarray([1,2], dtype=dtype)
-        self.yval = numpy.asarray([1.5,2.7,3.9], dtype=dtype)
+        self.xval = numpy.asarray([1, 2], dtype=dtype)
+        self.yval = numpy.asarray([1.5, 2.7, 3.9], dtype=dtype)
 
         # scalar
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
@@ -155,14 +164,15 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         assert numpy.allclose(f(self.Aval[::-1, ::-1], self.yval),
                 numpy.dot(self.Aval[::-1, ::-1], self.yval))
 
-
     def t_gemv1(self, m_shp):
         ''' test vector2 + dot(matrix, vector1) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)), dtype='float32'))
+        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)),
+                                       dtype='float32'))
         v2_orig = numpy.array(rng.uniform(size=(m_shp[0],)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m  = theano.shared(numpy.array(rng.uniform(size=m_shp), dtype='float32'))
+        m = theano.shared(numpy.array(rng.uniform(size=m_shp),
+                                      dtype='float32'))
 
         f = theano.function([], v2 + tensor.dot(m, v1),
                 mode=self.mode)
@@ -175,7 +185,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
         #test the inplace version
         g = theano.function([], [],
-                updates={v2:v2+theano.dot(m,v1)},
+                updates={v2: v2 + theano.dot(m, v1)},
                 mode=self.mode)
 
         # Assert they produce the same output
@@ -197,10 +207,10 @@ class TestCGemv(TestCase, TestOptimizationMixin):
             numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     def test_gemv1(self):
-        self.t_gemv1((3,2))
-        self.t_gemv1((0,2))
-        self.t_gemv1((3,0))
-        self.t_gemv1((0,0))
+        self.t_gemv1((3, 2))
+        self.t_gemv1((0, 2))
+        self.t_gemv1((3, 0))
+        self.t_gemv1((0, 0))
 
     def test_gemv_dimensions(self, dtype='float32'):
         alpha = theano.shared(theano._asarray(1.0, dtype=dtype),
@@ -213,7 +223,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
                 mode=self.mode)
 
         # Matrix value
-        A_val = numpy.ones((5,3), dtype=dtype)
+        A_val = numpy.ones((5, 3), dtype=dtype)
         # Different vector length
         ones_3 = numpy.ones(3, dtype=dtype)
         ones_4 = numpy.ones(4, dtype=dtype)
@@ -233,12 +243,23 @@ class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
 
+    def setUp(self):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
+
 
 class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
     mode = mode_blas_opt
     dtype = 'float64'
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
+
+    def setUp(self):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest("This test is useful only when Theano"
+                           " is directly linked to blas.")
+
 
 class TestBlasStridesC(TestBlasStrides):
     mode = mode_blas_opt
