@@ -848,6 +848,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         }
         else
         {
+            if (verbose)
+              fprintf(stderr, "INFO: 'conv_reference_valid' failed\n");
             PyErr_Format(PyExc_RuntimeError,
                          "ERROR: all implementations failed for"
                          " CudaNdarray_conv_valid! (%s)",
@@ -1418,6 +1420,10 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     {
       rval = out;
       Py_INCREF(rval);
+      if (verbose)
+        fprintf(stderr,
+                "INFO: Conv is reusing the 'out' argument"
+                " structure.\n");
     }
     else
     {
@@ -1425,6 +1431,11 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
         fprintf(stderr,
                 "INFO: Conv is ignoring 'out' argument with wrong"
                 " structure.\n");
+      else if(verbose)
+        fprintf(stderr,
+                "INFO: Conv don't have an 'out' argument"
+                " structure.\n");
+
       rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
       //rval might be null
     }
