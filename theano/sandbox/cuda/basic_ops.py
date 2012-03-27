@@ -738,7 +738,9 @@ class GpuSum(GpuOp):
         """
 
     def _k_reduce_buf(self, z_pos):
-        return """
+        # Work with all nvidia driver
+        # But only for power or multiple of 2!
+        new_version = """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = mysum;
         __syncthreads();
@@ -1334,7 +1336,6 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return
         return (22,)
 
     def c_support_code_apply(self, node, nodename):
