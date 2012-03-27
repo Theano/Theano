@@ -515,8 +515,8 @@ def get_constant_value(v):
             # TODO: implement the case where we take a scalar in a matrix
             assert len(v.owner.op.idx_list) == v.owner.inputs[0].ndim
 
-            #Needed to make better graph in this test.
-            #theano/tensor/tests/test_sharedvar.py:test_shared_options.test_specify_shape_partial
+            # Needed to make better graph in this test in theano/tensor/tests:
+            # test_sharedvar.py:test_shared_options.test_specify_shape_partial
             if (v.owner.inputs[0].owner and
                 isinstance(v.owner.inputs[0].owner.op, Join) and
                 # Ensure the Join is joining only scalar variables (so that
@@ -956,9 +956,9 @@ class TensorType(Type):
         return """
         %(name)s = NULL;
         if (py_%(name)s == Py_None) {
-            // We can either fail here or set %(name)s to NULL and rely on Ops using
-            // tensors to handle the NULL case, but if they fail to do so they'll end up
-            // with nasty segfaults, so this is public service.
+            // We can either fail here or set %(name)s to NULL and rely on Ops
+            // using tensors to handle the NULL case, but if they fail to do so
+            // they'll end up with nasty segfaults, so this is public service.
             PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
             %(fail)s
         }
@@ -966,15 +966,19 @@ class TensorType(Type):
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
             %(fail)s
         }
-        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
+        // We expect %(type_num)s
+        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num;
         if (!PyArray_ISALIGNED(py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
-                         "expected an aligned array of type %%d (%(type_num)s), got non-aligned array of type %%d",
+                         "expected an aligned array of type %%d "
+                         "(%(type_num)s), got non-aligned array of type %%d",
                          %(type_num)s, type_num_%(name)s);
             %(fail)s
         }
         if (type_num_%(name)s != %(type_num)s) {
-            PyErr_Format(PyExc_ValueError, "expected type_num %%d (%(type_num)s) got %%d", %(type_num)s, type_num_%(name)s);
+            PyErr_Format(PyExc_ValueError,
+                         "expected type_num %%d (%(type_num)s) got %%d",
+                         %(type_num)s, type_num_%(name)s);
             %(fail)s
         }
         %(name)s = (PyArrayObject*)(py_%(name)s);
@@ -2713,12 +2717,12 @@ if 0:
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
     class Filler(gof.Op):
         """WRITEME"""
-        def __init__(self, value, ndim, dtype = 'float64'):
+        def __init__(self, value, ndim, dtype='float64'):
             self.value = value
             self.ndim = ndim
             self.dtype = dtype
-            self.type = TensorType(dtype = dtype,
-                               broadcastable = (False,)*ndim)
+            self.type = TensorType(dtype=dtype,
+                                   broadcastable=(False,) * ndim)
 
         def make_node(self, dims):
             dims = as_tensor_variable(dims)
@@ -2728,21 +2732,22 @@ if 0:
             dims, = inp
             out, = out_
             if out[0] is not None:
-                out[0].resize(dims, refcheck = 0)
+                out[0].resize(dims, refcheck=0)
                 out[0].fill(self.value)
             else:
                 if self.value == 0:
-                    out[0] = numpy.zeros(dims, dtype = self.dtype)
+                    out[0] = numpy.zeros(dims, dtype=self.dtype)
                 elif self.value == 1:
-                    out[0] = numpy.ones(dims, dtype = self.dtype)
+                    out[0] = numpy.ones(dims, dtype=self.dtype)
                 else:
-                    out[0] = numpy.ones(dims, dtype = self.dtype) * self.value
+                    out[0] = numpy.ones(dims, dtype=self.dtype) * self.value
 
         def grad(self, inp, grads):
             return None,
 
         def __eq__(self, other):
-            return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+            return (type(self) == type(other) and self.ndim == other.ndim and
+                    self.dtype == other.dtype)
 
         def __hash__(self):
             return hash(self.ndim) ^ hash(self.dtype)
@@ -2765,8 +2770,14 @@ if 0:
         """WRITEME"""
         return Ones(0)([])
 
-    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
-    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
+    pprint.assign(lambda pstate, r: r.owner and
+                                    isinstance(r.owner.op, Filler) and
+                                    r.owner.op.value == 0,
+                  printing.FunctionPrinter('zeros'))
+    pprint.assign(lambda pstate, r: r.owner and
+                                    isinstance(r.owner.op, Filler) and
+                                    r.owner.op.value == 1,
+                  printing.FunctionPrinter('ones'))
 
 
 class Alloc(gof.Op):
@@ -3106,17 +3117,19 @@ if 0:
             assert repeats.type == iscalar
             assert axis.type == iscalar
             broadcastable = []
-            for i,x in enumerate(input.broadcastable):
-                if i==axis:
+            for i, x in enumerate(input.broadcastable):
+                if i == axis:
                     broadcastable += [False]
                 else:
                     broadcastable += [x]
 
-            type = TensorType(dtype = input.type.dtype, broadcastable = \
-                              broadcastable)
+            type = TensorType(dtype=input.type.dtype,
+                              broadcastable=broadcastable)
             #backport
-            #type = TensorType(dtype = input.type.dtype,
-            #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
+            #type = TensorType(dtype=input.type.dtype,
+            #                  broadcastable=[
+            #                      False if i==axis else x
+            #                      for i, x in enumerate(input.broadcastable)])
             return gof.Apply(self, [inputs, repeats, axis], [type()])
 
         def perform(self, node, inp, out_):
@@ -3807,7 +3820,8 @@ class Subtensor(Op):
                 if (!step)
                 {
                     Py_DECREF(xview);
-                    PyErr_Format(PyExc_ValueError, "slice step cannot be zero");
+                    PyErr_Format(PyExc_ValueError,
+                                 "slice step cannot be zero");
                     %(fail)s;
                 }
 
@@ -4209,7 +4223,8 @@ class IncSubtensor(Op):
         else
         {
             if (%(z)s) Py_DECREF(%(z)s);
-            %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0, NPY_ENSURECOPY, NULL);
+            %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
+                                                    NPY_ENSURECOPY, NULL);
         }
         """ % locals()
 
@@ -5532,8 +5547,8 @@ def inverse_permutation(perm):
 # Advanced indexing
 #########################
 #
-# Should reproduce numpy's behaviour:
-# http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing
+# Should reproduce numpy's behaviour, see url:
+# docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing
 
 
 class AdvancedSubtensor1(Op):
