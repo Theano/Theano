@@ -664,26 +664,19 @@ class Test_preallocated_output(unittest.TestCase):
         a_val = rng.randn(7, 7).astype('float32')
         b_val = rng.randn(7, 7).astype('float32')
 
-        init_conf_val = config.DebugMode.check_preallocated_output
-        try:
-            # Should work
-            config.DebugMode.check_preallocated_output = 'c_contiguous'
+        # Should work
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['c_contiguous'])
 
-            f = theano.function([a, b], out, mode='DEBUG_MODE')
-            out_val = f(a_val, b_val)
-            #print 'out_val =', out_val
-            #print out_val.strides
+        f = theano.function([a, b], out, mode=mode)
+        out_val = f(a_val, b_val)
+        #print 'out_val =', out_val
+        #print out_val.strides
 
-            # Should work for now (0.4.0), because the C thunk does not care
-            # at all of what is in storage_map initially.
-            # When it changes, the call to f should raise an Exception,
-            # since the output buffer is used incorrectly.
-            config.DebugMode.check_preallocated_output = 'f_contiguous'
+        # Should raise an Exception, since the output buffer is
+        # used incorrectly.
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['f_contiguous'])
 
-            f = theano.function([a, b], out, mode='DEBUG_MODE')
-            out_val = f(a_val, b_val)
-            #print 'out_val =', out_val
-            #print out_val.strides
-
-        finally:
-            config.DebugMode.check_preallocated_output = init_conf_val
+        f = theano.function([a, b], out, mode=mode)
+        self.assertRaises(debugmode.BadCLinkerOutput, f, a_val, b_val)
