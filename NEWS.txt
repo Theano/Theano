@@ -27,9 +27,9 @@ Interface changes
    instance, function([x, y], [y]). You can use the kwarg
    ``on_unused_input={'raise', 'warn', 'ignore'}`` to control this.
    (Pascal L.)
- * tensor.alloc() now raise an error during graph build time
-   when we try to create less dimensions then the number of dimensions
-   the provieded value have. In the past, the error was at run time.
+ * tensor.alloc() now raises an error during graph build time
+   when we try to create less dimensions than the number of dimensions
+   the provided value have. In the past, the error was at run time.
    (Frederic B.)
 
 New Features
