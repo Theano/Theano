@@ -323,7 +323,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                                                                        zv),
                                     (f(xv), zv))
                 else:
-                    self.assertTrue(numpy.allclose(f(xv), zv), (f(xv), zv))
+                    f_xv = f(xv)
+                    self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                    self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
