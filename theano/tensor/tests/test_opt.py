@@ -2194,6 +2194,28 @@ def test_local_fill_useless():
     f(m_, x_)
 
 
+class Test_local_useless_alloc(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test0(self):
+        x = shared(self.rng.randn(3, 7))
+        a = tensor.alloc(x, 6, 7)
+
+        # It is a bad idea to have tensor.alloc return x directly,
+        # because the shape mismatch cannot be caught.
+        assert a.owner and isinstance(a.owner.op, tensor.Alloc)
+
+        f = function([], a)
+        # The optimization should then be applied, and remove Alloc
+        assert ([node.op for node in f.maker.env.toposort()]
+                == [compile.deep_copy_op])
+
+        # In DebugMode, the shape mismatch should be detected
+        if isinstance(mode_opt, compile.DebugMode):
+            self.assertRaises(ValueError, f)
+
+
 class test_shapeoptimizer(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

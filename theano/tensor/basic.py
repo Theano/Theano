@@ -2883,22 +2883,6 @@ class Alloc(gof.Op):
         gx = gz.sum(axis=range(n_axes_to_sum))
         return [gx] + [None for i in inputs[1:]]
 
-    def __call__(self, val, *shapes):
-        """
-        If the alloc would be useless, this function returns val.
-        If you always want an Alloc node, call make_node.
-        """
-        ret = super(Alloc, self).__call__(val, *shapes)
-        try:
-            # It makes optimization difficult when useless allocs are thrown
-            # into the graph at every stage of optimization.  This little logic
-            # tries to help at least in some cases.
-            if val.type == ret.type:
-                return val
-        except AttributeError:
-            pass
-        return ret
-
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]

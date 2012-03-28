@@ -1073,6 +1073,7 @@ def local_fill_to_alloc(node):
 
 
 @register_specialize
+@register_stabilize
 @register_canonicalize
 @gof.local_optimizer([T.alloc])
 def local_useless_alloc(node):
