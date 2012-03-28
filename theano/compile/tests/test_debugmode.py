@@ -1,3 +1,6 @@
+from nose.plugins.skip import SkipTest
+import unittest
+
 import numpy
 
 from theano import config
@@ -7,7 +10,6 @@ import theano.tensor
 from theano.compile import debugmode
 import theano.compile
 from theano.tests import unittest_tools as utt
-import unittest
 
 
 def test0():
@@ -651,7 +653,48 @@ class BrokenCImplementationAdd(gof.Op):
         """ % dict(locals(), **sub)
 
 
+class VecAsRowAndCol(gof.Op):
+    """
+    Transforms a vector into a row and a column.
+
+    This Op exists to check everything is correct when an Op has
+    two outputs with different broadcasting patterns.
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, v):
+        if not isinstance(v, gof.Variable):
+            v = theano.tensor.as_tensor_variable(v)
+        assert v.type.ndim == 1
+        type_class = type(v.type)
+        out_r_type = type_class(dtype=v.dtype, broadcastable=(True, False))
+        out_c_type = type_class(dtype=v.dtype, broadcastable=(False, True))
+        return gof.Apply(self, [v], [out_r_type(), out_c_type()])
+
+    def perform(self, node, inp, out):
+        v, = inp
+        r, c = out
+        lv = v.shape[0]
+        if (r[0] is None) or (r[0].shape != (1, lv)):
+            r[0] = node.outputs[0].type.value_zeros((1, lv))
+
+        if (c[0] is None) or (c[0].shape != (lv, 1)):
+            c[0] = node.outputs[1].type.value_zeros((lv, 1))
+
+        # Python loop because CudaNdarrays do not support newaxis
+        for i in range(lv):
+            r[0][0, i] = v[i]
+            c[0][i, 0] = v[i]
+
+
 class Test_preallocated_output(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
     def test_f_contiguous(self):
         a = theano.tensor.fmatrix('a')
@@ -660,9 +703,8 @@ class Test_preallocated_output(unittest.TestCase):
         # Needed so that z is not the output of the graph
         out = theano.tensor.dot(z, numpy.eye(7))
 
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.randn(7, 7).astype('float32')
-        b_val = rng.randn(7, 7).astype('float32')
+        a_val = self.rng.randn(7, 7).astype('float32')
+        b_val = self.rng.randn(7, 7).astype('float32')
 
         # Should work
         mode = debugmode.DebugMode(
@@ -680,3 +722,23 @@ class Test_preallocated_output(unittest.TestCase):
 
         f = theano.function([a, b], out, mode=mode)
         self.assertRaises(debugmode.BadCLinkerOutput, f, a_val, b_val)
+
+    def test_output_broadcast_tensor(self):
+        v = theano.tensor.fvector('v')
+        c, r = VecAsRowAndCol()(v)
+        f = theano.function([v], [c, r])
+
+        v_val = self.rng.randn(5).astype('float32')
+        f(v_val)
+
+    def test_output_broadcast_cuda(self):
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest("Optional package Cuda disabled")
+
+        v = cuda.fvector('v')
+        c, r = VecAsRowAndCol()(v)
+        f = theano.function([v], [c, r])
+
+        v_val = cuda.CudaNdarray(self.rng.randn(5).astype('float32'))
+        f(v_val)
