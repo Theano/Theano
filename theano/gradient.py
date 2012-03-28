@@ -250,21 +250,27 @@ def Rop(f, wrt, eval_points):
     for pack in enumerate(zip(wrt, eval_points)):
         i = pack[0]
         wrt_elem, eval_point = pack[1]
+        if not isinstance(wrt_elem, gof.Variable):
+            wrt_elem = as_tensor_variable(wrt_elem)
+        if not isinstance(eval_point, gof.Variable):
+            eval_point = as_tensor_variable(eval_point)
 
-        wrt_elem = as_tensor_variable(wrt_elem)
-        eval_point = as_tensor_variable(eval_point)
+        try:
+            wrt_dim = len(wrt_elem.type.broadcastable)
+            eval_dim = len(eval_point.type.broadcastable)
 
-        wrt_dim = len(wrt_elem.type.broadcastable)
-        eval_dim = len(eval_point.type.broadcastable)
-
-        if wrt_dim != eval_dim:
-            raise ValueError('Element ' +
-                             str(i) +
-                             ' of wrt/eval_point have mismatched ' +
-                             'dimensionality: ' +
-                             str(wrt_dim) +
-                             ' versus ' +
-                             str(eval_dim))
+            if wrt_dim != eval_dim:
+                raise ValueError('Element ' +
+                                 str(i) +
+                                 ' of wrt/eval_point have mismatched ' +
+                                 'dimensionality: ' +
+                                 str(wrt_dim) +
+                                 ' versus ' +
+                                 str(eval_dim))
+        except:
+            # wrt_elem and eval_point can be non-tensor variable which do
+            # not have broadcastable flags
+            pass
 
     seen_nodes = {}
 
@@ -283,7 +289,12 @@ def Rop(f, wrt, eval_points):
                 if inp in wrt:
                     local_eval_points.append(eval_points[wrt.index(inp)])
                 elif inp.owner is None:
-                    local_eval_points.append(inp.zeros_like())
+                    try:
+                        local_eval_points.append(inp.zeros_like())
+                    except:
+                        # None should be used for non-differentiable
+                        # arguments, like for example random states
+                        local_eval_points.append(None)
                 elif inp.owner in seen_nodes:
 
                     local_eval_points.append(
@@ -297,8 +308,12 @@ def Rop(f, wrt, eval_points):
                         seen_nodes[inp.owner][inp.owner.outputs.index(inp)])
             for x, y in zip(inputs, local_eval_points):
                 if y is not None:
-                    assert (as_tensor_variable(x).type ==
-                            as_tensor_variable(y).type)
+                    if not isinstance(x, gof.Variable):
+                        x = as_tensor_variable(x)
+                    if not isinstance(y, gof.Variable):
+                        y = as_tensor_variable(y)
+
+                    assert x.type == y.type
 
             seen_nodes[node] = op.R_op(node.inputs, local_eval_points)
             return None
