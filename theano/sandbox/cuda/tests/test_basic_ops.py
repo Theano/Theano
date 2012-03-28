@@ -888,6 +888,8 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     dtype = 'float32'
     ignore_topo = (B.HostFromGpu, B.GpuFromHost)
     fast_compile = theano.config.mode == 'FAST_COMPILE'
+    ops = (cuda.GpuSubtensor, cuda.GpuIncSubtensor,
+           cuda.GpuAdvancedSubtensor1, cuda.GpuAdvancedIncSubtensor1)
 
     def __init__(self, name):
         return super(theano.tensor.tests.test_basic.T_subtensor,

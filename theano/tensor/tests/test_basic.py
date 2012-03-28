@@ -2072,7 +2072,7 @@ class T_min_max(unittest.TestCase):
         #axis=1)[0], n)),axis=1)
 
 
-class T_subtensor(unittest.TestCase):
+class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     """
     This is build in a way that allow to reuse it to test the
     equivalent gpu op.
@@ -2096,7 +2096,31 @@ class T_subtensor(unittest.TestCase):
         self.dtype = dtype
         self.ignore_topo = ignore_topo
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
+        self.ops = (sub, inc_sub, adv_sub1, adv_incsub1)
         return super(T_subtensor, self).__init__(name)
+
+    def function(self, inputs, outputs, accept_inplace=False,
+                 op=None, mode=None, N=1):
+        """ wrapper around theano.function that also check the output
+
+        :param N: the number of op expected in the toposort
+                  if tuple of length 2, (expected if fast_compile,
+                                         if not fast_compile)
+        """
+        if isinstance(N, tuple):
+            assert len(N) == 2
+            if self.fast_compile:
+                N = N[0]
+            else:
+                N = N[1]
+        if mode is None:
+            mode = self.mode
+        if op is None:
+            op = self.sub
+        f = theano.function(inputs, outputs, mode=mode,
+                            accept_inplace=accept_inplace)
+        self.assertFunctionContainsClassN(f, op, N)
+        return f
 
     def setUp(self):
         Subtensor.debug = False
@@ -2369,7 +2393,7 @@ class T_subtensor(unittest.TestCase):
         n = self.shared(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
-        f = function([], gn, mode=self.mode)
+        f = self.function([], gn)
         topo = f.maker.env.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         if not self.fast_compile:
@@ -2438,7 +2462,7 @@ class T_subtensor(unittest.TestCase):
         # We test again AdvancedSubtensor1 as we transfer data to the cpu.
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
-        f = function([l], t, mode=self.mode)
+        f = self.function([l], t, op=self.adv_sub1)
         topo = f.maker.env.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
@@ -2453,7 +2477,7 @@ class T_subtensor(unittest.TestCase):
         t = n[idx]
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
-        f = function([idx], t, mode=self.mode)
+        f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.env.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
@@ -2464,11 +2488,7 @@ class T_subtensor(unittest.TestCase):
     def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 
-        mode_opt = config.mode
-        if mode_opt == 'FAST_COMPILE':
-            mode_opt = 'FAST_RUN'
-        mode_opt = compile.mode.get_mode(mode_opt)
-
+        mode_opt = self.mode.including("fast_run")
         data = self.shared(numpy.array(numpy.arange(5),dtype=self.dtype))
         for start in [None]+ [-8,-5,-1,0,1,5,8]:
             outs   = []
@@ -2477,7 +2497,8 @@ class T_subtensor(unittest.TestCase):
                 for step in [None]+[-3,-1,2]:
                     outs += [ data[start:stop:step].shape ]
                     shapes += [data.get_value(borrow=True)[start:stop:step].shape ]
-            f = function([], outs, mode = mode_opt)
+            f = self.function([], outs, mode=mode_opt,
+                              op=self.ops, N=0)
             t_shapes = f()
             for t_shape, shape in zip(t_shapes,shapes):
                 assert numpy.all(t_shape == shape)
@@ -2487,17 +2508,18 @@ class T_subtensor(unittest.TestCase):
     def test_shape_i_scalar(self):
         # Each axis is treated independently by shape_i/shape operators
 
-        mode_opt = config.mode
-        if mode_opt == 'FAST_COMPILE':
-            mode_opt = 'FAST_RUN'
-        mode_opt = compile.mode.get_mode(mode_opt)
+        mode_opt = self.mode.including("fast_run")
+
         v_data = numpy.array(numpy.arange(5), dtype=self.dtype)
         t_data = self.shared(v_data)
         start  = tensor.iscalar('b')
         stop   = tensor.iscalar('e')
         step   = tensor.iscalar('s')
-        f = function([start,stop,step], t_data[start:stop:step].shape, mode = mode_opt)
-        f2 = function([start,stop,step],t_data[start:stop:step])
+        f = self.function([start, stop, step],
+                          t_data[start:stop:step].shape,
+                          mode=mode_opt,
+                          op=self.ops,
+                          N=0)
         assert tensor.Subtensor not in [x.op for x in f.maker.env.toposort()]
         for start in [-8,-5,-4,-1,0,1,4,5,8]:
             for stop in [-8,-5,-4,-1,0,1,4,5,8]:
@@ -2511,11 +2533,11 @@ class T_subtensor(unittest.TestCase):
         step   = tensor.iscalar('s')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(start,stop,step), length)
-        f = function([start,stop,step, length], [
+        f = self.function([start, stop, step, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2533,11 +2555,11 @@ class T_subtensor(unittest.TestCase):
         step   = tensor.iscalar('s')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(None,stop,step), length)
-        f = function([stop,step, length], [
+        f = self.function([stop, step, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2555,11 +2577,11 @@ class T_subtensor(unittest.TestCase):
         step   = tensor.iscalar('s')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(start,None,step), length)
-        f = function([start,step, length], [
+        f = self.function([start, step, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2577,11 +2599,11 @@ class T_subtensor(unittest.TestCase):
         stop   = tensor.iscalar('e')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(start,stop,None), length)
-        f = function([start,stop, length], [
+        f = self.function([start, stop, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2597,11 +2619,11 @@ class T_subtensor(unittest.TestCase):
         step   = tensor.iscalar('s')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(None,None,step), length)
-        f = function([step, length], [
+        f = self.function([step, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2617,11 +2639,11 @@ class T_subtensor(unittest.TestCase):
         start  = tensor.iscalar('b')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(start,None,None), length)
-        f = function([start, length], [
+        f = self.function([start, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2636,11 +2658,11 @@ class T_subtensor(unittest.TestCase):
         stop   = tensor.iscalar('e')
         length = tensor.iscalar('l')
         cnf = tensor.get_canonical_form_slice(slice(None,stop,None), length)
-        f = function([stop, length], [
+        f = self.function([stop, length], [
             tensor.as_tensor_variable(cnf[0].start),
             tensor.as_tensor_variable(cnf[0].stop),
             tensor.as_tensor_variable(cnf[0].step),
-            tensor.as_tensor_variable(cnf[1]) ])
+            tensor.as_tensor_variable(cnf[1])], N=0, op=self.ops)
 
         length = 5
         a = numpy.arange(length)
@@ -2659,7 +2681,7 @@ class T_subtensor(unittest.TestCase):
             idx_ = _shared(numpy.asarray(idx))
             t = n[idx_]
             gn = grad(sum(exp(t)), n)
-            f = function([], [gn, gn.shape], mode=self.mode)
+            f = self.function([], [gn, gn.shape], op=self.adv_incsub1)
             topo = f.maker.env.toposort()
             if not self.fast_compile:
                 assert any([isinstance(node.op, self.adv_incsub1) and node.op.inplace for node in topo])
@@ -2685,12 +2707,14 @@ class T_subtensor(unittest.TestCase):
             utt.verify_grad(fct, [data])
 
             # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
+            if not self.fast_compile:
+                ops = (self.adv_incsub1, self.adv_sub1)
+            else:
+                ops = self.ops
             if idx is idxs[0]:
-                f = function([], [gn.shape, n[idx_].shape], mode=self.mode)
-                topo = f.maker.env.toposort()
-                if not self.fast_compile:
-                    self.assertTrue(not any([isinstance(node.op, self.adv_incsub1) for node in topo]))
-                    self.assertTrue(not any([isinstance(node.op, self.adv_sub1) for node in topo]))
+                f = self.function([], [gn.shape, n[idx_].shape],
+                                  op=ops,
+                                  N=(2, 0))
                 f()
 
     def test_wrong_exception_regression(self):
@@ -2743,7 +2767,7 @@ class T_subtensor(unittest.TestCase):
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data)
             t = n[idx]
-            f = function([], t.shape, mode=None)
+            f = self.function([], t.shape, op=self.ops, N=(1, 0))
             val = f()
             self.assertTrue(numpy.allclose(val, data[idx].shape))
 
@@ -2852,8 +2876,9 @@ class T_subtensor(unittest.TestCase):
                         all_outputs_var.append(output)
                         all_outputs_num.append(data_copy)
                         if False:  # Enable for debugging purpose.
-                            f = theano.function([data_var, idx_var, inc_var],
-                                                output, accept_inplace=inplace)
+                            f = self.function([data_var, idx_var, inc_var],
+                                              output, accept_inplace=inplace,
+                                              op=self.adv_incsub1)
                             if inplace:
                                 # Ensure calling `f` will not alter `data_num`.
                                 data_num = data_num.copy()
@@ -2864,8 +2889,9 @@ class T_subtensor(unittest.TestCase):
                                 assert (data_num == data_num_init).all()
 
         # Actual test (we compile a single Theano function to make it faster).
-        f = theano.function(all_inputs_var, all_outputs_var,
-                            accept_inplace=True)
+        f = self.function(all_inputs_var, all_outputs_var,
+                          accept_inplace=True, op=self.adv_incsub1,
+                          N=len(all_outputs_var))
         f_outs = f(*all_inputs_num)
         assert len(f_outs) == len(all_outputs_num)
         for f_out, output_num in izip(f_outs, all_outputs_num):
