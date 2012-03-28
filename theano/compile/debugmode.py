@@ -1195,10 +1195,13 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                 dr_vals, perform, active_order_set):
             _logger.debug('  name = %s', name)
 
-            # Copy the inputs over, if they were marked as destroyed
+            # Copy the inputs over, if they were marked as destroyed or viewed
+            # (we will destroy the output at some point so it can destroy
+            # the input)
             dmap = getattr(node.op, 'destroy_map', {})
+            vmap = getattr(node.op, 'view_map', {})
             for i, r in enumerate(node.inputs):
-                if any(i in v for v in dmap.values()):
+                if any(i in v for v in (dmap.values() + vmap.values())):
                     storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
             # Get the appropriate output storages
@@ -1743,6 +1746,7 @@ class _Linker(gof.link.LocalLinker):
                         clobber = True
                         if thunk_py:
                             dmap = getattr(node.op, 'destroy_map', {})
+                            vmap = getattr(node.op, 'view_map', {})
                             for i, r in enumerate(node.inputs):
                                 # if thunk_py ran, and we still got this far,
                                 # it means that the destroy_map of the Op (and view_map) are
@@ -1751,7 +1755,10 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-                                if any(i in v for v in dmap.values()):
+                                # Inputs marked as viewd are unsafe too,
+                                # because the corresponding output can
+                                # be destroyed.
+                                if any(i in v for v in (dmap.values() + vmap.values())):
                                     storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                             clobber = False
