@@ -2187,12 +2187,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[0:2]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
-        f = inplace_func([], t, mode=self.mode)
-        topo = f.maker.env.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-        assert len(topo_)==1
-        assert isinstance(topo_[0].op, self.sub)
-        tval = f()
+        tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
         self.assertTrue(tval[1] == 5.0)
 
@@ -2202,12 +2197,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         for idx in [(slice(0,2),3),((slice(0,2),-1)),(slice(0,2),-4)]:
             t = n[idx]#l]#0:2,3]
             self.assertTrue(isinstance(t.owner.op, Subtensor))
-            f = inplace_func([], t, mode=self.mode)
-            topo = f.maker.env.toposort()
-            topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-            assert len(topo_)==1
-            assert isinstance(topo_[0].op, self.sub)
-            tval = f()
+            tval = self.eval_output_and_check(t)
             self.assertTrue(tval.shape == (2,))
             self.assertTrue(numpy.allclose(tval, n.get_value()[idx]))
 
@@ -2235,12 +2225,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(1, dtype=self.dtype)*5)
         t = n[0]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
-        f = inplace_func([], t, mode=self.mode)
-        topo = f.maker.env.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-        assert len(topo_)==1
-        assert isinstance(topo_[0].op, self.sub)
-        tval = f()
+        tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == ())
         self.assertTrue(tval == 5.0)
 
@@ -2249,12 +2234,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(3, dtype=self.dtype)*5)
         t = n[1:]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
-        f = inplace_func([], t, mode=self.mode)
-        topo = f.maker.env.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
-        assert len(topo_)==1
-        assert isinstance(topo_[0].op, self.sub)
-        tval = f()
+        tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
         self.assertTrue(tval[1] == 5.0)
 
