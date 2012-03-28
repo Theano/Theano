@@ -30,7 +30,7 @@ class GpuDot22(GpuOp):
         return Apply(self, [x, y], [otype()])
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (1, 2)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         x, y = inputs
@@ -51,9 +51,14 @@ class GpuDot22(GpuOp):
             || (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
                   CudaNdarray_HOST_DIMS(%(x)s)[0])
             || (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
-                  CudaNdarray_HOST_DIMS(%(y)s)[1]))
+                  CudaNdarray_HOST_DIMS(%(y)s)[1])
+            || (CudaNdarray_HOST_STRIDES(%(z)s)[0] < 0)
+            || (CudaNdarray_HOST_STRIDES(%(z)s)[1] < 0)
+            || ((CudaNdarray_HOST_DIMS(%(z)s)[0] > 1)
+                && (CudaNdarray_HOST_STRIDES(%(z)s)[0] != 1)
+                && (CudaNdarray_HOST_DIMS(%(z)s)[1] > 1)
+                && (CudaNdarray_HOST_STRIDES(%(z)s)[1] != 1)))
         {
-            //if (%(z)s) Py_DECREF(%(z)s);
             Py_XDECREF(%(z)s);
             npy_intp dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
@@ -108,7 +113,7 @@ class GpuDot22Scalar(GpuOp):
         return Apply(self, [x, y, a], [otype()])
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (1, 2)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, y, a = inputs
@@ -135,7 +140,13 @@ class GpuDot22Scalar(GpuOp):
             (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
               CudaNdarray_HOST_DIMS(%(x)s)[0]) ||
             (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
-              CudaNdarray_HOST_DIMS(%(y)s)[1]))
+              CudaNdarray_HOST_DIMS(%(y)s)[1])
+            || (CudaNdarray_HOST_STRIDES(%(z)s)[0] < 0)
+            || (CudaNdarray_HOST_STRIDES(%(z)s)[1] < 0)
+            || ((CudaNdarray_HOST_DIMS(%(z)s)[0] > 1)
+                && (CudaNdarray_HOST_STRIDES(%(z)s)[0] != 1)
+                && (CudaNdarray_HOST_DIMS(%(z)s)[1] > 1)
+                && (CudaNdarray_HOST_STRIDES(%(z)s)[1] != 1)))
         {
             //if (%(z)s) Py_DECREF(%(z)s);
             Py_XDECREF(%(z)s);
