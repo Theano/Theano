@@ -48,7 +48,7 @@ New Features
    contains dimensions with bad value like 0. (Frédéric B. reported by Ian G.)
 
 Sparse
- * Implement theano.sparse.mul(sparse1, sparse2) when both input don't
+ * Implement theano.sparse.mul (sparse1, sparse2) when both inputs don't
    have the same sparsity pattern. (Frederic B.)
 
 Sparse Sandbox graduate

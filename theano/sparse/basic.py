@@ -1180,8 +1180,8 @@ class MulSS(gof.op.Op):
         assert _is_sparse(x) and _is_sparse(y)
         assert len(x.shape) == 2
         assert y.shape == x.shape
-        # This call the element-wise multiple
-        # x * y call dot...
+        # This calls the element-wise multiple
+        # x * y calls dot...
         out[0] = x.multiply(y)
 
     def grad(self, (x, y), (gz,)):
