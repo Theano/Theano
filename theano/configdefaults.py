@@ -315,6 +315,13 @@ AddConfigVar('warn.subtensor_merge_bug',
         BoolParam(warn_default('0.5')),
         in_c_key=False)
 
+AddConfigVar('warn.gpu_set_subtensor1',
+        "Warn if previous versions of Theano (before 0.6) could have given "
+        "incorrect results when moving to the gpu"
+        "set_subtensor(x[int vector], new_value)",
+        BoolParam(warn_default('0.6')),
+        in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "
