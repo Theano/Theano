@@ -519,8 +519,8 @@ import theano and print the config variable, as in:
 
     Bool value, default: False
 
-    Should all SeqOptimizer object print the time taked by each of its
-    optimizer. Each SeqOptimizer print something like this:
+    Should each SeqOptimizer object print the time taken by each of its
+    optimizer. Each SeqOptimizer prints something like this:
 
     SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
     [(0.0004410743713378906, ('InputToGpuOptimizer',
@@ -529,11 +529,11 @@ import theano and print the config variable, as in:
     (0.012573957443237305, ('gpu_local_optimizations',
     'EquilibriumOptimizer'))]
 
-    This print the name of the SeqOptimizer (gpu_opt), the number of
-    Apply node in the graph before (8) and after (9)
-    optimizations. Then a list of tuple with 1 tuple by optimization
+    This prints the name of the SeqOptimizer (gpu_opt), the number of
+    Apply nodes in the graph before (8) and after (9)
+    optimizations. Then a list of tuples with 1 tuple per optimization
     in this SeqOptimizer. The first element of the tuple is the time
-    by this optimization and then it is a tuple with the name of the
+    taken by this optimization and then it is a tuple with the name of the
     optimization and this class. This list is sorted from the sub
-    optimization that take the most time to the optimization that take
-    the less time.
+    optimization that takes the most time to the optimization that takes
+    the least time.

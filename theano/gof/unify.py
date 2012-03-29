@@ -95,7 +95,7 @@ class Unification:
     def __init__(self, inplace = False):
         """
         If inplace is False, the merge method will return a new Unification
-        that is independant from the previous one (which allows backtracking).
+        that is independent from the previous one (which allows backtracking).
         """
         self.unif = {}
         self.inplace = inplace

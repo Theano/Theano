@@ -1064,7 +1064,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
             del f_cont_outputs
 
     # We assume that the different outputs of a same Op will behave
-    # independantly, and there is no need to test over all combinations
+    # independently, and there is no need to test over all combinations
     # of outputs (the time taken is prohibitive).
     max_ndim = 0
     for r in node.outputs:
