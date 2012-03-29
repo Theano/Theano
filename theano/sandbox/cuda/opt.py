@@ -2,6 +2,7 @@ import logging
 _logger = logging.getLogger('theano.sandbox.cuda.opt')
 
 import sys
+import warnings
 
 import numpy
 
@@ -747,8 +748,22 @@ def local_gpu_advanced_incsubtensor1(node):
            host_input.owner.op.__class__ is tensor.AdvancedIncSubtensor1:
             x, y = host_input.owner.inputs[0:2]
             coords = host_input.owner.inputs[2:]
-            return [GpuAdvancedIncSubtensor1()(gpu_from_host(x),
-                                               gpu_from_host(y), *coords)]
+            set_instead_of_inc = host_input.owner.op.set_instead_of_inc
+            if set_instead_of_inc and config.warn.gpu_set_subtensor1:
+                warnings.warn(
+                    'Although your current code is fine, please note that '
+                    'Theano versions prior to 0.6 (more specifically, '
+                    'prior to commit XXXX on DATE) may have '
+                    'yielded an incorrect result. To remove this warning, '
+                    'either set the `warn.gpu_set_subtensor1` config '
+                    'option to False, or `warn.ignore_bug_before` to at '
+                    'least \'0.6\'.')
+            if set_instead_of_inc:
+                return
+
+            gpu_op = GpuAdvancedIncSubtensor1(
+                set_instead_of_inc=set_instead_of_inc)
+            return [gpu_op(gpu_from_host(x), gpu_from_host(y), *coords)]
 
     # Should not execute for GpuAdvancedIncSubtensor1
     if node.op.__class__ is tensor.AdvancedIncSubtensor1 and \
@@ -767,8 +782,21 @@ def local_gpu_advanced_incsubtensor1(node):
         else:
             gpu_y = gpu_from_host(y)
         if go_gpu:
-            return [host_from_gpu(GpuAdvancedIncSubtensor1()(
-                gpu_x, gpu_y, *coords))]
+            set_instead_of_inc = node.op.set_instead_of_inc
+            if set_instead_of_inc and config.warn.gpu_set_subtensor1:
+                warnings.warn(
+                    'Although your current code is fine, please note that '
+                    'Theano versions prior to 0.6 (more specifically, '
+                    'prior to commit XXXX on DATE) may have '
+                    'yielded an incorrect result. To remove this warning, '
+                    'either set the `warn.gpu_set_subtensor1` config '
+                    'option to False, or `warn.ignore_bug_before` to at '
+                    'least \'0.6\'.', stacklevel=1)
+            if set_instead_of_inc:
+                return
+            gpu_op = GpuAdvancedIncSubtensor1(
+                set_instead_of_inc=set_instead_of_inc)
+            return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
     return False
 
 
