@@ -1431,7 +1431,7 @@ class GCC_compiler(object):
             preargs.append('-fPIC')
 
         if sys.platform == 'win32' and local_bitwidth() == 64:
-            # Under 64-bits windows installation, sys.platform is 'win32'.
+            # Under 64-bit Windows installation, sys.platform is 'win32'.
             # We need to define MS_WIN64 for the preprocessor to be able to
             # link with libpython.
             preargs.append('-DMS_WIN64')
