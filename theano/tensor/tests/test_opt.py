@@ -2206,7 +2206,7 @@ class Test_local_useless_alloc(unittest.TestCase):
         # because the shape mismatch cannot be caught.
         assert a.owner and isinstance(a.owner.op, tensor.Alloc)
 
-        f = function([], a)
+        f = function([], a, mode=mode_opt)
         # The optimization should then be applied, and remove Alloc
         assert ([node.op for node in f.maker.env.toposort()]
                 == [compile.deep_copy_op])
