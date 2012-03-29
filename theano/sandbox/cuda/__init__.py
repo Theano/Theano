@@ -117,6 +117,12 @@ try:
             if not os.path.exists(cuda_ndarray_loc):
                 os.makedirs(cuda_ndarray_loc)
 
+            # If $TMPDIR is defined, nvopencc wants it to exist
+            if 'TMPDIR' in os.environ:
+                tmpdir = os.environ['TMPDIR']
+                if not os.path.exists(tmpdir):
+                    os.makedirs(tmpdir)
+
             compiler = nvcc_compiler.NVCC_compiler()
             compiler.compile_str(
                     'cuda_ndarray',
