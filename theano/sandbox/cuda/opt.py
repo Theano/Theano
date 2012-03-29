@@ -82,17 +82,24 @@ class InputToGpuOptimizer(Optimizer):
 
     def apply(self, env):
         for input in env.inputs:
-            if not isinstance(input.type, CudaNdarrayType):
-                try:
-                    new_input = host_from_gpu(gpu_from_host(input))
+            if isinstance(input.type, CudaNdarrayType):
+                return
 
-                    if new_input.type == input.type:
-                        env.replace_validate(input, new_input,
-                                             "InputToGpuOptimizer")
-                except TypeError, e:
-                    #as we currently only support float32, this can fail.
-                    #Using try except make that we won't need
-                    pass
+            # This happen frequently as we do 2 pass of the gpu optimizations
+            if (len(input.clients) == 1 and
+                input.clients[0][0].op == gpu_from_host):
+                return
+
+            try:
+                new_input = host_from_gpu(gpu_from_host(input))
+
+                if new_input.type == input.type:
+                    env.replace_validate(input, new_input,
+                                         "InputToGpuOptimizer")
+            except TypeError, e:
+                #as we currently only support float32, this can fail.
+                #Using try except make that we won't need
+                pass
 
 # we register it before all other gpu optimizer to be sure that the input
 # are on the gpu.
