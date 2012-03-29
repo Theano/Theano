@@ -760,11 +760,11 @@ def local_gpu_advanced_incsubtensor1(node):
                 warnings.warn(
                     'Although your current code is fine, please note that '
                     'Theano versions prior to 0.6 (more specifically, '
-                    'prior to commit XXXX on DATE) may have '
+                    'prior to commitd 2240bddd on March 29, 2012) may have '
                     'yielded an incorrect result. To remove this warning, '
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
-                    'least \'0.6\'.')
+                    'least \'0.6\'.', stacklevel=1)
             if set_instead_of_inc:
                 return
 
@@ -794,7 +794,7 @@ def local_gpu_advanced_incsubtensor1(node):
                 warnings.warn(
                     'Although your current code is fine, please note that '
                     'Theano versions prior to 0.6 (more specifically, '
-                    'prior to commit XXXX on DATE) may have '
+                    'prior to commit d2240bddd on March 29, 2012) may have '
                     'yielded an incorrect result. To remove this warning, '
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
