@@ -243,6 +243,13 @@ class NVCC_compiler(object):
 
         # Fix for MacOS X.
         cmd = remove_python_framework_dir(cmd)
+        # CUDA Toolkit v4.1 Known Issues:
+        # Host linker on Mac OS 10.7 (and 10.6 for me) passes -no_pie option to nvcc
+        # this option is not recognized and generates an error
+        # http://stackoverflow.com/questions/9327265/nvcc-unknown-option-no-pie
+        # Passing -Xlinker -pie stops -no_pie from getting passed
+        if sys.platform == 'darwin' and nvcc_version >= '4.1':
+            cmd.extend(['-Xlinker', '-pie'])
 
         #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
         _logger.debug('Running cmd %s', ' '.join(cmd))
