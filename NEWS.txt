@@ -9,6 +9,11 @@ Bug fixes
    (both in Python and Cython) since April 2011. (Pascal L.)
  * In Sparse sandbox, fix the grad of theano.sparse.sandbox.sp.row_scale.
    It did not return the right number of elements. (Frederic B.)
+ * set_subtensor(x[int vector], new_value) when moved to the GPU
+   where transformed into inc_subtensor on the GPU.
+   Note: set_subtensor(x[slice[,...]], new_value) was working correctly
+   in all case as well as inc_subtensor(*, *). (Frederic B.)
+   Note2: If your code have this behavior, we print a warning by default.
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
@@ -80,6 +85,8 @@ Crash Fix
    a particular execution order of this optimization and the
    element-wise fusion optimization when upcasting some inputs to
    float32 (to compute them on the GPU).
+   (Frederic B., reported by Sander Dieleman)
+ * GpuReshape in some particular case when the input is not contiguous
    (Frederic B., reported by Sander Dieleman)
  * GpuSoftmaxWithBias with shape (0, N) with N > 1.
    (Frédéric B., reported by Razvan P.)
