@@ -147,14 +147,17 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     Converts sparse variables back and forth.
     """
     conv_none = lambda x: x
+
     def conv_csr(ind, indptr, shp):
         def f(spdata):
             return CSR(spdata, ind, indptr, shp)
         return f
+
     def conv_csc(ind, indptr, shp):
         def f(spdata):
             return CSC(spdata, ind, indptr, shp)
         return f
+
     iconv = []
     dpt = []
 
@@ -189,10 +192,12 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
         oconv = DenseFromSparse(structured=structured)
     else:
         oconv = conv_none
+
     def conv_op(*inputs):
-         ipt = [conv(i) for i, conv in zip(inputs, iconv)]
-         out = op(*ipt)
-         return oconv(out)
+        ipt = [conv(i) for i, conv in zip(inputs, iconv)]
+        out = op(*ipt)
+        return oconv(out)
+
     return utt.verify_grad(conv_op, dpt, *args, **kwargs)
 verify_grad_sparse.E_grad = utt.verify_grad.E_grad
 
@@ -746,7 +751,7 @@ class DenseFromSparse(gof.op.Op):
             (self.sparse_grad == other.sparse_grad)
 
     def __hash__(self):
-        return hash(type(self))^hash(self.sparse_grad)
+        return hash(type(self)) ^ hash(self.sparse_grad)
 
     def __str__(self):
         return "%s{structured_grad=%s}" % (
