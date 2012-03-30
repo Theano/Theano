@@ -4107,7 +4107,7 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
     return 0;
 }
 
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, const CudaNdarray * base)
 {
     return CudaNdarray_set_device_data(self, data, (PyObject *) base);
 }
