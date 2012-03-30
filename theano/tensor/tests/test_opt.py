@@ -2244,6 +2244,19 @@ class Test_local_useless_alloc(unittest.TestCase):
         if isinstance(mode_opt, compile.DebugMode):
             self.assertRaises(ValueError, f)
 
+    def test1(self):
+        # Test that alloc never gets instantiated during optimization
+        mode = mode_opt.excluding('local_useless_alloc')
+
+        x = tensor.matrix('x')
+        xx = tensor.fill(x, x)
+
+        # The optimization 'locall_fill_to_alloc' should call tensor.alloc,
+        # which should return x and not alloc(x, ...)
+        f = function([x], [xx], mode=mode)
+        op_classes = [node.op.__class__ for node in f.maker.env.toposort()]
+        assert tensor.Alloc not in op_classes
+
 
 class test_shapeoptimizer(unittest.TestCase):
     def setUp(self):
