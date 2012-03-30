@@ -82,17 +82,24 @@ class InputToGpuOptimizer(Optimizer):
 
     def apply(self, env):
         for input in env.inputs:
-            if not isinstance(input.type, CudaNdarrayType):
-                try:
-                    new_input = host_from_gpu(gpu_from_host(input))
+            if isinstance(input.type, CudaNdarrayType):
+                return
 
-                    if new_input.type == input.type:
-                        env.replace_validate(input, new_input,
-                                             "InputToGpuOptimizer")
-                except TypeError, e:
-                    #as we currently only support float32, this can fail.
-                    #Using try except make that we won't need
-                    pass
+            # This happen frequently as we do 2 pass of the gpu optimizations
+            if (len(input.clients) == 1 and
+                input.clients[0][0].op == gpu_from_host):
+                return
+
+            try:
+                new_input = host_from_gpu(gpu_from_host(input))
+
+                if new_input.type == input.type:
+                    env.replace_validate(input, new_input,
+                                         "InputToGpuOptimizer")
+            except TypeError, e:
+                #as we currently only support float32, this can fail.
+                #Using try except make that we won't need
+                pass
 
 # we register it before all other gpu optimizer to be sure that the input
 # are on the gpu.
@@ -753,11 +760,11 @@ def local_gpu_advanced_incsubtensor1(node):
                 warnings.warn(
                     'Although your current code is fine, please note that '
                     'Theano versions prior to 0.6 (more specifically, '
-                    'prior to commit XXXX on DATE) may have '
+                    'prior to commitd 2240bddd on March 29, 2012) may have '
                     'yielded an incorrect result. To remove this warning, '
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
-                    'least \'0.6\'.')
+                    'least \'0.6\'.', stacklevel=1)
             if set_instead_of_inc:
                 return
 
@@ -787,7 +794,7 @@ def local_gpu_advanced_incsubtensor1(node):
                 warnings.warn(
                     'Although your current code is fine, please note that '
                     'Theano versions prior to 0.6 (more specifically, '
-                    'prior to commit XXXX on DATE) may have '
+                    'prior to commit d2240bddd on March 29, 2012) may have '
                     'yielded an incorrect result. To remove this warning, '
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
