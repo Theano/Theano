@@ -2767,12 +2767,17 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
     //standard elemwise size checks
     if (self->nd == -1)
     {
-        PyErr_SetString(PyExc_TypeError, "can't copy into un-initialized CudaNdarray");
+        PyErr_SetString(PyExc_TypeError,
+                        "can't copy into un-initialized CudaNdarray");
         return -1;
     }
     if (self->nd != other->nd)
     {
-        PyErr_Format(PyExc_NotImplementedError, "CudaNdarray_CopyFromCudaNdarray: need same number of dims. destination nd=%d, source nd=%d. No broadcasting implemented.", self->nd, other->nd);
+        PyErr_Format(PyExc_NotImplementedError,
+                     "CudaNdarray_CopyFromCudaNdarray: need same number of"
+                     " dims. destination nd=%d, source nd=%d."
+                     " No broadcasting implemented.",
+                     self->nd, other->nd);
         return -1;
     }
     //standard elemwise dim checks (also compute total size)
@@ -2783,8 +2788,11 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
         if ((CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i])
             && (1!=CudaNdarray_HOST_DIMS(other)[i] || !unbroadcast) )
         {
-          PyErr_Format(PyExc_ValueError, "need same dimensions for dim %d, destination=%d, source=%d",
-                       i, CudaNdarray_HOST_DIMS(self)[i], CudaNdarray_HOST_DIMS(other)[i]);
+          PyErr_Format(PyExc_ValueError,
+                       "need same dimensions for dim %d,"
+                       " destination=%d, source=%d",
+                       i, CudaNdarray_HOST_DIMS(self)[i],
+                       CudaNdarray_HOST_DIMS(other)[i]);
             return -1;
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
@@ -2794,12 +2802,15 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
     {
         return 0; //nothing to copy, we're done.
     }
-    if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && size == size_source)
+    if (CudaNdarray_is_c_contiguous(self) &&
+        CudaNdarray_is_c_contiguous(other) &&
+        size == size_source)
     {
         if (verbose)
             fprintf(stderr, "Copying contiguous vector with cublasScopy\n");
 
-        cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
+        cublasScopy(size, CudaNdarray_DEV_DATA(other), 1,
+                    CudaNdarray_DEV_DATA(self), 1);
         CNDA_THREAD_SYNC;
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
         {
@@ -2821,23 +2832,33 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
             {
                 if (verbose) fprintf(stderr, "Copying non-contiguous vector\n");
                 if (verbose) fprint_CudaNdarray(stderr, other);
-                unsigned int n_blocks = std::min(size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                unsigned int n_threads = std::min(ceil_intdiv(size, n_blocks), (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                unsigned int n_blocks = std::min(size,
+                                                 (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                unsigned int n_threads = std::min(ceil_intdiv(size, n_blocks),
+                                                  (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 k_copy_1d<<<n_blocks, n_threads>>>(size,
-                        CudaNdarray_DEV_DATA(other), CudaNdarray_HOST_STRIDES(other)[0],
-                        CudaNdarray_DEV_DATA(self), CudaNdarray_HOST_STRIDES(self)[0]);
+                                            CudaNdarray_DEV_DATA(other),
+                                            CudaNdarray_HOST_STRIDES(other)[0],
+                                            CudaNdarray_DEV_DATA(self),
+                                            CudaNdarray_HOST_STRIDES(self)[0]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err)
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s. (n_blocks=%i, n_threads_per_block=%i)\n", "k_copy_1d", cudaGetErrorString(err), n_blocks, n_threads);
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %s: %s. (n_blocks=%i,"
+                                 " n_threads_per_block=%i)\n", "k_copy_1d",
+                                 cudaGetErrorString(err), n_blocks, n_threads);
                     return -1;
                 }
             }; break;
         default:
             {
                 assert (cudaSuccess == cudaGetLastError());
-                if (verbose) fprintf(stderr, "Copying with default version unbroadcast=%d\n", unbroadcast);
+                if (verbose)
+                    fprintf(stderr,
+                            "Copying with default version unbroadcast=%d\n",
+                            unbroadcast);
                 // call worker routine
                 unsigned int threads_per_block = std::min(size,
                                                           (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
@@ -2851,18 +2872,27 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                         size,
                         (unsigned int)other->nd,
                         (const int *)CudaNdarray_DEV_DIMS(cuda_dims),
-                        (const float*)CudaNdarray_DEV_DATA(other), (const int *)CudaNdarray_DEV_STRIDES(other),
-                        CudaNdarray_DEV_DATA(self),  (const int *)CudaNdarray_DEV_STRIDES(self));
+                        (const float*)CudaNdarray_DEV_DATA(other),
+                        (const int *)CudaNdarray_DEV_STRIDES(other),
+                        CudaNdarray_DEV_DATA(self),
+                        (const int *)CudaNdarray_DEV_STRIDES(self));
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if(verbose>1)
-                    fprintf(stderr, "INFO k_elemwise_unary_rowmaj (n_blocks=%i, n_threads_per_block=%i)\n",
+                    fprintf(stderr,
+                            "INFO k_elemwise_unary_rowmaj (n_blocks=%i,"
+                            " n_threads_per_block=%i)\n",
                             n_blocks, threads_per_block);
                 if( cudaSuccess != err)
                 {
                     //fprint_CudaNdarray(stderr, self);
                     //fprint_CudaNdarray(stderr, other);
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s. (n_blocks=%i, n_threads_per_block=%i)\n", "k_elemwise_unary_rowmajor_copy", cudaGetErrorString(err), n_blocks, threads_per_block);
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %s: %s. (n_blocks=%i,"
+                                 " n_threads_per_block=%i)\n",
+                                 "k_elemwise_unary_rowmajor_copy",
+                                 cudaGetErrorString(err), n_blocks,
+                                 threads_per_block);
                     return -1;
                 }
             }
