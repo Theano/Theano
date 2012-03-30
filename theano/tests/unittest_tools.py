@@ -93,7 +93,8 @@ class TestOptimizationMixin(object):
     def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
         toposort = f.maker.env.toposort()
         matches = [node for node in toposort if node.op == op]
-        assert (min <= len(matches) <= max), (toposort, matches, str(op), min, max)
+        assert (min <= len(matches) <= max), (toposort, matches,
+                                              str(op), len(matches), min, max)
 
     def assertFunctionContains0(self, f, op):
         return self.assertFunctionContains(f, op, min=0, max=0)
@@ -103,6 +104,15 @@ class TestOptimizationMixin(object):
 
     def assertFunctionContainsN(self, f, op, N):
         return self.assertFunctionContains(f, op, min=N, max=N)
+
+    def assertFunctionContainsClass(self, f, op, min=1, max=sys.maxint):
+        toposort = f.maker.env.toposort()
+        matches = [node for node in toposort if isinstance(node.op, op)]
+        assert (min <= len(matches) <= max), (toposort, matches,
+                                              str(op), len(matches), min, max)
+
+    def assertFunctionContainsClassN(self, f, op, N):
+        return self.assertFunctionContainsClass(f, op, min=N, max=N)
 
     def SkipTest(self, msg='Skip this test'):
         raise SkipTest(msg)
