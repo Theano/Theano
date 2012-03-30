@@ -663,7 +663,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     return (PyObject*)rval;
 }
 
-PyObject * CudaNdarray_View(CudaNdarray * self)
+PyObject * CudaNdarray_View(const CudaNdarray * self)
 {
     CudaNdarray * rval = (CudaNdarray*)CudaNdarray_New(self->nd);
     if (!rval || CudaNdarray_set_device_data(rval, CudaNdarray_DEV_DATA(self), self))
@@ -985,11 +985,19 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             "CudaNdarray_inplace_elemwise need a CudaNdarray on left");
         return -1;
     }
+    CudaNdarray * new_other = NULL;
     if (!CudaNdarray_Check(py_other)) {
-        PyErr_SetString(
-            PyExc_TypeError,
-            "CudaNdarray_inplace_elemwise need a CudaNdarray on right");
-        return -1;
+        new_other = (CudaNdarray*) CudaNdarray_New();
+        if(!new_other)
+        {
+            return -1;
+        }
+        if(CudaNdarray_CopyFromArray(new_other, (PyArrayObject *) py_other))
+        {
+            Py_XDECREF(new_other);
+            return -1;
+        }
+        py_other = (PyObject *) new_other;
     }
 
     CudaNdarray * self = (CudaNdarray *)py_self;
@@ -1010,6 +1018,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             "CudaNdarray_inplace_elemwise: The destination need more or the"
             " same number of dimensions then the source. Got %d and %d.",
             self->nd, other->nd);
+        Py_XDECREF(new_other);
         return -1;
     }
 
@@ -1040,6 +1049,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             PyErr_SetString(
                 PyExc_ValueError,
                 "CudaNdarray_inplace_elemwise need same dimensions (or broadcastable dimension)");
+            Py_XDECREF(new_other);
             return -1;
         }
         // if we're broadcasting other, then make sure it has stride 0
@@ -1050,13 +1060,18 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
 
     if (size==0)
     {
-        if (CudaNdarray_SIZE((CudaNdarray *)py_other))
+        int other_size = CudaNdarray_SIZE((CudaNdarray *)py_other);
+        if (!(other_size == 0 || other_size == 1))
         {
             PyErr_SetString(
                 PyExc_ValueError,
-                "CudaNdarray_inplace_elemwise cannot work inplace on an un-initialized array");
+                "CudaNdarray_inplace_elemwise cannot work inplace on"
+                " un-initialized array when the new value have more then"
+                " 0 or 1 broadcastable dimensions");
+            Py_XDECREF(new_other);
             return 0;
         }
+        Py_XDECREF(new_other);
         return 0;
     }
 
@@ -1087,6 +1102,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1119,6 +1135,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1156,6 +1173,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1196,6 +1214,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1240,6 +1259,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k4",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1285,6 +1305,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                             "Cuda error: %s: %s.\n",
                             "k4",
                             cudaGetErrorString(err));
+                        Py_XDECREF(new_other);
                         return -1;
                     }
                 }
@@ -1296,11 +1317,13 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 PyExc_NotImplementedError,
                 "inplace_elemwise w nd=%i\n",
                 self->nd);
+            Py_XDECREF(new_other);
             return -1;
         }
     }
     if (verbose)
         fprintf(stderr, "INPLACE ADD/DIV end\n");
+    Py_XDECREF(new_other);
     return 0;
 }
 
@@ -1654,7 +1677,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 // See http://docs.python.org/dev/py3k/c-api/object.html#PyObject_SetItem
 // Doesn't handle broadcasting, e.g. a[:] = 5
 // Can only be assigned from a CudaNdarray on the right side
-// Or a ndarray when the left side part is c contiguous.
+// Or a ndarray
 // Or a python scalar with value 0 when the left side part is c contiguous.
 static int
 CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
@@ -1663,6 +1686,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
     if (verbose) fprintf(stderr, "CudaNdarray_setitem start\n");
     // We try to copy directly into this CudaNdarray from the ndarray
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
+    CudaNdarray* new_value = NULL;
 
     if(!rval){
         // CudaNdarray_Subscript failed and set the error msg.
@@ -1683,7 +1707,10 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
         // This case shouldn't happen, based on what I see in Subscript
         // but just in case it happens sometime in the future
 
-        PyErr_Format(PyExc_RuntimeError, "__getitem__ must return a CudaNdarray that refers to the original CudaNdarray, not a copy. rval.base=%p o.base=%p o=%p",
+        PyErr_Format(PyExc_RuntimeError,
+                     "__getitem__ must return a CudaNdarray that refers to"
+                     " the original CudaNdarray, not a copy. rval.base=%p"
+                     " o.base=%p o=%p",
                      (((CudaNdarray*)rval)->base), ((CudaNdarray*)o)->base, o);
         Py_DECREF(rval);
         return -1;
@@ -1691,55 +1718,32 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     PyObject * intobj = NULL;
     if(CudaNdarray_Check(o)  && PyArray_Check(value)){
-        if (verbose) fprintf(stderr, "CudaNdarray_setitem dest is a CudaNdarray and value is a ndarray\n");
-        int typenum = PyArray_TYPE(value);
-        if (typenum != REAL_TYPENUM){
-            PyErr_SetString(PyExc_TypeError, "CudaNdarray.__setitem__: can only copy from float32 arrays");
+        if (verbose)
+            fprintf(stderr,
+                    "CudaNdarray_setitem dest is a CudaNdarray and"
+                    " value is a ndarray\n");
+        new_value = (CudaNdarray*) CudaNdarray_New();
+        if(!new_value)
+        {
+            return -1;
+        }
+        if(CudaNdarray_CopyFromArray(new_value, (PyArrayObject *) value))
+        {
+            Py_XDECREF(new_value);
             Py_XDECREF(rval);
             return -1;
         }
-        if(! CudaNdarray_is_c_contiguous(rval)){
-            PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray.__setitem__: When the new value is an ndarray the part where we copy it to must be c contiguous.");
-            Py_XDECREF(rval);
-            return -1;
-        }
-        if(rval->nd != ((PyArrayObject*)value)->nd){
-            PyErr_Format(PyExc_NotImplementedError, "CudaNdarray.__setitem__: need same number of dims. destination nd=%d, source nd=%d. broadcasting implemented only for zeroing values from python scalar.",
-                         rval->nd,((PyArrayObject*)value)->nd);
-            Py_XDECREF(rval);
-            return -1;
-        }
-        for(int i=0 ; i<rval->nd ; i++){
-          if(CudaNdarray_HOST_DIMS(rval)[i] != ((PyArrayObject*)value)->dimensions[i]){
-            PyErr_Format(PyExc_ValueError, "CudaNdarray.__setitem__: need same dimensions for dim %d, destination=%d, source=%ld",
-                i,
-                CudaNdarray_HOST_DIMS(rval)[i],
-                (long int)(((PyArrayObject*)value)->dimensions[i]));
-            Py_XDECREF(rval);
-            return -1;
-          }
-        }
-        PyArrayObject * py_v = (PyArrayObject*)PyArray_ContiguousFromAny((PyObject*)value, typenum,
-                                rval->nd, rval->nd);
-        cublasSetVector(PyArray_SIZE(py_v),
-                        sizeof(real),
-                        PyArray_DATA(py_v), 1,
-                        rval->devdata, 1);
-        CNDA_THREAD_SYNC;
-        Py_XDECREF(py_v);
-        Py_XDECREF(rval);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
-          PyErr_SetString(PyExc_RuntimeError, "CudaNdarray.__setitem__: error copying ndarray data to device memory");
-          return -1;
-        }
-        return 0;
+        value = (PyObject *) new_value;
     }
     else if ((intobj=PyNumber_Int(value)))
     {
-        if (verbose) fprintf(stderr, "CudaNdarray_setitem dest and value is a python number\n");
+        if (verbose)
+            fprintf(stderr,
+                    "CudaNdarray_setitem dest and value is a python number\n");
         if(! CudaNdarray_is_c_contiguous(rval)){
             PyErr_SetString(PyExc_NotImplementedError,
-                            "CudaNdarray.__setitem__: When the new value is a scalar of value 0 the part where we copy to must be c contiguous.");
+                 "CudaNdarray.__setitem__: When the new value is a scalar"
+                 " of value 0 the part where we copy to must be c contiguous.");
             Py_XDECREF(rval);
             return -1;
         }
@@ -1748,7 +1752,8 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
         Py_DECREF(intobj); intobj=NULL;
         if (val == 0)
         {
-            cudaError_t err = cudaMemset(rval->devdata, 0, CudaNdarray_SIZE(rval) * sizeof(real));
+            cudaError_t err = cudaMemset(rval->devdata, 0,
+                                         CudaNdarray_SIZE(rval) * sizeof(real));
             Py_XDECREF(rval);
             if (err)
             {
@@ -1760,7 +1765,8 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
         } else {
             Py_XDECREF(rval);
             PyErr_SetString(PyExc_NotImplementedError,
-                                "CudaNdarray.__setitem__: we support setting only python scalar of value 0, numpy nd array and CudaNdarray.");
+                  "CudaNdarray.__setitem__: we support setting only python"
+                  " scalar of value 0, numpy nd array and CudaNdarray.");
                 return -1;
         }
     }
@@ -1769,16 +1775,25 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     if(!CudaNdarray_Check(o) || !CudaNdarray_Check(value))
     {
-        PyErr_SetString(PyExc_TypeError, "CudaNdarray.__setitem__: left must be a CudaNdarrays and right must be a CudaNdarrays, an ndarray or a python scalar of value 0.");
+        PyErr_SetString(PyExc_TypeError,
+          "CudaNdarray.__setitem__: left must be a CudaNdarrays and right"
+          " must be a CudaNdarrays, an ndarray or a python scalar of value 0.");
+        Py_XDECREF(new_value);
         return -1;
     }
 
-    if (verbose) fprintf(stderr, "CudaNdarray_setitem dest and value are CudaNdarray\n");
+    if (verbose)
+        fprintf(stderr, "CudaNdarray_setitem dest and value are CudaNdarray\n");
+
     if (cnda_copy_structure_to_device(rval))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray.__setitem__: syncing structure to device failed");
+        PyErr_SetString(PyExc_RuntimeError,
+                "CudaNdarray.__setitem__: syncing structure to device failed");
         Py_DECREF(rval);
-        if (verbose) fprintf(stderr, "CudaNdarray_setitem error end\n");
+        Py_XDECREF(new_value);
+
+        if (verbose)
+            fprintf(stderr, "CudaNdarray_setitem error end\n");
         return -1;
     }
 
@@ -1787,7 +1802,10 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
     if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
     {
         Py_DECREF((PyObject*)rval);
-        if (verbose) fprintf(stderr, "CudaNdarray_setitem error end\n");
+        Py_XDECREF(new_value);
+
+        if (verbose)
+            fprintf(stderr, "CudaNdarray_setitem error end\n");
         return -1;
     }
 
@@ -1796,6 +1814,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     // Clean up locally-created references
     Py_DECREF(rval);
+    Py_XDECREF(new_value);
 
     return 0;
 }
@@ -2759,7 +2778,9 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
 }
 
 //copy from other into self
-int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast)
+int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
+                                    const CudaNdarray * other,
+                                    bool unbroadcast)
 {
     int verbose = 0;
     if (verbose>1) fprintf(stderr, "CudaNdarray_CopyFromCudaNdarray\n");
@@ -2771,15 +2792,29 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                         "can't copy into un-initialized CudaNdarray");
         return -1;
     }
-    if (self->nd != other->nd)
+    CudaNdarray * new_other = NULL;
+
+    if (self->nd < other->nd)
     {
         PyErr_Format(PyExc_NotImplementedError,
-                     "CudaNdarray_CopyFromCudaNdarray: need same number of"
-                     " dims. destination nd=%d, source nd=%d."
-                     " No broadcasting implemented.",
+            "CudaNdarray_CopyFromCudaNdarray: The destination need more or the"
+            " same number of dimensions then the source. Got %d and %d.",
                      self->nd, other->nd);
         return -1;
     }
+    else if (self->nd != other->nd)
+    {
+        new_other = (CudaNdarray *) CudaNdarray_View(other);
+        int added_dims = self->nd - other->nd;
+        int pattern[self->nd];
+        for(int i = 0; i < added_dims; i++)
+            pattern[i] = -1;
+        for(int i = 0; i < other->nd; i++)
+            pattern[i + added_dims] = i;
+        CudaNdarray_dimshuffle(new_other, self->nd, pattern);
+        other = new_other;
+    }
+    assert(self->nd == other->nd);
     //standard elemwise dim checks (also compute total size)
     unsigned int size = 1;
     unsigned int size_source = 1;
@@ -2793,13 +2828,15 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                        " destination=%d, source=%d",
                        i, CudaNdarray_HOST_DIMS(self)[i],
                        CudaNdarray_HOST_DIMS(other)[i]);
-            return -1;
+          Py_XDECREF(new_other);
+          return -1;
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
         size_source *= (unsigned int) CudaNdarray_HOST_DIMS(other)[i];
     }
     if (0 == size)
     {
+        Py_XDECREF(new_other);
         return 0; //nothing to copy, we're done.
     }
     if (CudaNdarray_is_c_contiguous(self) &&
@@ -2812,6 +2849,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1,
                     CudaNdarray_DEV_DATA(self), 1);
         CNDA_THREAD_SYNC;
+        Py_XDECREF(new_other);
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
         {
             PyErr_SetString(PyExc_RuntimeError, "Error copying memory");
@@ -2849,6 +2887,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                                  "Cuda error: %s: %s. (n_blocks=%i,"
                                  " n_threads_per_block=%i)\n", "k_copy_1d",
                                  cudaGetErrorString(err), n_blocks, n_threads);
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }; break;
@@ -2893,10 +2932,12 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * othe
                                  "k_elemwise_unary_rowmajor_copy",
                                  cudaGetErrorString(err), n_blocks,
                                  threads_per_block);
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
     };
+    Py_XDECREF(new_other);
     return 0;
 }
 
@@ -4088,7 +4129,7 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
     return 0;
 }
 
-int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base)
+int CudaNdarray_set_device_data(CudaNdarray * self, float * data, const CudaNdarray * base)
 {
     return CudaNdarray_set_device_data(self, data, (PyObject *) base);
 }

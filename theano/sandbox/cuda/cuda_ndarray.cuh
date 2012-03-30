@@ -282,7 +282,7 @@ static PyObject *CudaNdarray_NewDims(int nd, const inttype * dims)
  * Set self to be a view of given `data`, owned by existing CudaNdarray `base`.
  */
 DllExport int CudaNdarray_set_device_data(CudaNdarray * self, float * data, PyObject * base);
-DllExport int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * base);
+DllExport int CudaNdarray_set_device_data(CudaNdarray * self, float * data, const CudaNdarray * base);
 
 /**
  * Return an independent copy of self
