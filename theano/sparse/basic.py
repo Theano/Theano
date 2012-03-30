@@ -1847,6 +1847,9 @@ class StructuredDotGradCSC(gof.Op):
                 g_a_data[i_idx] = dot_val
         out[0] = g_a_data
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
 
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
@@ -1870,15 +1873,11 @@ class StructuredDotGradCSC(gof.Op):
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s
+            || (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]))
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, %(_indices)s->dimensions, %(_g)s->descr->type_num);
-        }
-
-        if (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError, "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
         }
 
         {   //makes it compile even though labels jump over variable definitions.
@@ -1971,6 +1970,9 @@ class StructuredDotGradCSR(gof.Op):
                 g_a_data[j_idx] = dot_val
         out[0] = g_a_data
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
 
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
@@ -1994,15 +1996,11 @@ class StructuredDotGradCSR(gof.Op):
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s
+            || (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]))
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, %(_indices)s->dimensions, %(_g)s->descr->type_num);
-        }
-
-        if (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError, "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
         }
 
         {   //makes it compile even though labels jump over variable definitions.
