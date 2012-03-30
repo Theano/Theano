@@ -1940,7 +1940,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
     # CudaNdarray_Subscript() don't support Advanced slicing.
     # But we can't use the parent version that loop on each indices
     # as we also need to loop when set_instead_of_inc is True and the
-    # parent don't look in that case.
+    # parent don't loop in that case.
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
         x, y, idx = inp
