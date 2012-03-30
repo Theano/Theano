@@ -1060,11 +1060,12 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
 
     if (size==0)
     {
-        if (CudaNdarray_SIZE((CudaNdarray *)py_other))
+        int other_size = CudaNdarray_SIZE((CudaNdarray *)py_other);
+        if (!(other_size == 0 || other_size == 1))
         {
             PyErr_SetString(
                 PyExc_ValueError,
-                "CudaNdarray_inplace_elemwise cannot work inplace on an un-initialized array");
+                "CudaNdarray_inplace_elemwise cannot work inplace on un-initialized array when the new value have more then 0 or 1 broadcastable dimensions");
             Py_XDECREF(new_other);
             return 0;
         }
