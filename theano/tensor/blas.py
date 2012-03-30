@@ -319,6 +319,7 @@ def default_blas_ldflags():
     try:
         # If we are in a EPD installation, mkl is available
         blas_info = numpy.distutils.__config__.blas_opt_info
+        extra = []
         if "EPD" in sys.version:
             if sys.platform == 'win32':
                 return ' '.join(
@@ -328,6 +329,14 @@ def default_blas_ldflags():
                     # blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
+            elif sys.platform == 'darwin':
+                # This is needed to link with
+                new_path = os.path.join(sys.prefix, "lib")
+                if False:
+                    assert os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None) is None
+                    os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = new_path
+                else:
+                    extra = ['-Xlinker -rpath,' + new_path]
             return ' '.join(
                 ['-L%s' % os.path.join(sys.prefix, "lib")] +
                 ['-l%s' % l for l in blas_info['libraries']])
@@ -342,7 +351,8 @@ def default_blas_ldflags():
                         # we just pass the whole ldflags as the -l
                         # options part.
                         ['-L%s' % l for l in blas_info['library_dirs']] +
-                        ['-l%s' % l for l in blas_info['libraries']])
+                        ['-l%s' % l for l in blas_info['libraries']] +
+                        extra)
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
         return "-lblas"
