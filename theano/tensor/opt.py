@@ -1803,7 +1803,9 @@ def local_subtensor_merge(node):
 
             merged_slices = []
             pos_2 = 0
-            for pos_1, slice1 in enumerate(slices1):
+            pos_1 = 0
+            while (pos_1 < len(slices1)) and (pos_2 < len(slices2)):
+                slice1 = slices1[pos_1]
                 if type(slice1) is slice:
                     merged_slices.append(
                         merge_two_slices(slice1,
@@ -1813,8 +1815,14 @@ def local_subtensor_merge(node):
                     pos_2 += 1
                 else:
                     merged_slices.append(slice1)
+                pos_1 += 1
 
-            merged_slices += slices2[pos_2:]
+
+            if pos_2 < len(slices2):
+                merged_slices += slices2[pos_2:]
+            else:
+                merged_slices += slices1[pos_1:]
+
             subtens = T.Subtensor(merged_slices)
             sl_ins = T.Subtensor.collapse(
                 merged_slices,
