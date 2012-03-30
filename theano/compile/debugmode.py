@@ -1026,13 +1026,11 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         for r in node.outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Build a C-contiguous buffer
-                new_buf = numpy.zeros(
-                        shape=r_vals[r].shape,
-                        dtype=r_vals[r].dtype,
-                        order='C')
-                new_buf += def_val
-                if isinstance(r.type, CudaNdarrayType):
-                    new_buf = CudaNdarray(new_buf)
+                new_buf = r.type.value_zeros(r_vals[r].shape)
+                # CudaNdarray don't have flags field
+#                assert new_buf.flags["C_CONTIGUOUS"]
+                new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+
                 c_cont_outputs[r] = new_buf
 
         if len(c_cont_outputs):
@@ -1096,21 +1094,12 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                             shapes.append(slice(None, size, None))
 
                         r_buf = init_strided[r]
+
                         if r_buf.ndim > 0:
                             r_buf = r_buf[tuple(strides)][tuple(shapes)]
                         assert r_buf.shape == r_vals[r].shape
 
-                        if isinstance(r.type, CudaNdarrayType):
-                            # It seems stupid, but we need to allocate a
-                            # new ndarray and copy it into the GPU one.
-                            # TODO: When it is possible to simply do
-                            # r_buff[...] = def_val, do so.
-                            new_rbuf = numpy.zeros(r_vals[r].shape,
-                                    dtype=r.dtype)
-                            new_rbuf += def_val
-                            r_buf[...] = CudaNdarray(new_rbuf)
-                        else:
-                            r_buf[...] = def_val
+                        r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
 
                         strided[r] = r_buf
 
@@ -1133,12 +1122,8 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         out_shape = [max((s + sd), 0)
                                 for s, sd in zip(r_vals[r].shape,
                                                  r_shape_diff)]
-                        new_buf = numpy.zeros(
-                                shape=out_shape,
-                                dtype=r.dtype)
-                        new_buf += def_val
-                        if isinstance(r.type, CudaNdarrayType):
-                            new_buf = CudaNdarray(new_buf)
+                        new_buf = r.type.value_zeros(r_vals[r].shape)
+                        new_buf += numpy.asarray(def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
                 yield (name, wrong_size)
