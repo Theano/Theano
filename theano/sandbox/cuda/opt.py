@@ -765,8 +765,6 @@ def local_gpu_advanced_incsubtensor1(node):
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
                     'least \'0.6\'.', stacklevel=1)
-            if set_instead_of_inc:
-                return
 
             gpu_op = GpuAdvancedIncSubtensor1(
                 set_instead_of_inc=set_instead_of_inc)
@@ -799,8 +797,7 @@ def local_gpu_advanced_incsubtensor1(node):
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
                     'least \'0.6\'.', stacklevel=1)
-            if set_instead_of_inc:
-                return
+
             gpu_op = GpuAdvancedIncSubtensor1(
                 set_instead_of_inc=set_instead_of_inc)
             return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
