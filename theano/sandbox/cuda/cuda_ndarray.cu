@@ -1065,7 +1065,9 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
         {
             PyErr_SetString(
                 PyExc_ValueError,
-                "CudaNdarray_inplace_elemwise cannot work inplace on un-initialized array when the new value have more then 0 or 1 broadcastable dimensions");
+                "CudaNdarray_inplace_elemwise cannot work inplace on"
+                " un-initialized array when the new value have more then"
+                " 0 or 1 broadcastable dimensions");
             Py_XDECREF(new_other);
             return 0;
         }
@@ -2802,7 +2804,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
     }
     else if (self->nd != other->nd)
     {
-        CudaNdarray * new_other = (CudaNdarray *) CudaNdarray_View(other);
+        new_other = (CudaNdarray *) CudaNdarray_View(other);
         int added_dims = self->nd - other->nd;
         int pattern[self->nd];
         for(int i = 0; i < added_dims; i++)

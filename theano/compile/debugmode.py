@@ -1028,7 +1028,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
-#                assert new_buf.flags["C_CONTIGUOUS"]
+                # assert new_buf.flags["C_CONTIGUOUS"]
                 new_buf += numpy.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
