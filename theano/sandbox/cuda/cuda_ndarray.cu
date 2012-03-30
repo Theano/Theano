@@ -3883,7 +3883,7 @@ cnda_mark_dev_structure_dirty(CudaNdarray * self)
 int
 CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase)
 {
-    int verbose = 1;
+    int verbose = 0;
 
     if (!ignoreSync && cnda1->dev_structure_fresh != cnda2->dev_structure_fresh)
     {
