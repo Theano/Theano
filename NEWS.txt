@@ -10,10 +10,12 @@ Bug fixes
  * In Sparse sandbox, fix the grad of theano.sparse.sandbox.sp.row_scale.
    It did not return the right number of elements. (Frederic B.)
  * set_subtensor(x[int vector], new_value) when moved to the GPU
-   where transformed into inc_subtensor on the GPU.
+   where transformed into inc_subtensor on the GPU. Now we have a slow
+   GPU implementation.
    Note: set_subtensor(x[slice[,...]], new_value) was working correctly
-   in all case as well as inc_subtensor(*, *). (Frederic B.)
+   in all case as well as inc_subtensor(*, *).
    Note2: If your code have this behavior, we print a warning by default.
+  (Frederic B.)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
@@ -96,6 +98,7 @@ Crash Fix
    dimensions, which could typically result in optimization crashes (Olivier D.)
  * Fixed crash when concatenating some arrays with specific broadcasting
    patterns (Olivier D.)
+ * Work around a known issue with nvcc 4.1 on MacOS X. (Graham Taylon)
 
 =============
 Release Notes
