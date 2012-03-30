@@ -1822,6 +1822,35 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert val == data[7:1:-1][0]
 
+    def test_const5(self):
+        # Bug reported by Graham
+        data = self.rng.uniform(size=(8,8,8)).astype(theano.config.floatX)
+        x = theano.tensor.tensor3('x')
+        # test 1)
+        y = x[3:6,2:6,1:7][1]
+        fun = theano.function([x], y)
+        val = fun(data)
+        assert numpy.all(val == data[3:6,2:6,1:7][1])
+        assert len([n for n in fun.maker.env.toposort()
+                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+
+        # test 2)
+        y = x[2,3][1]
+        fun = theano.function([x], y)
+        val = fun(data)
+        assert numpy.all(val == data[2,3][1])
+        assert len([n for n in fun.maker.env.toposort()
+                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+
+        # test 3)
+        y = x[3:6,2,1:7][1]
+        fun = theano.function([x], y)
+        val = fun(data)
+        assert numpy.all(val == data[3:6,2,1:7][1])
+        assert len([n for n in fun.maker.env.toposort()
+                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+
+
     def test_scalar6(self):
         # General case with one slice and one index
         # var[b:e:s][i]
