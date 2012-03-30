@@ -1677,7 +1677,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 // See http://docs.python.org/dev/py3k/c-api/object.html#PyObject_SetItem
 // Doesn't handle broadcasting, e.g. a[:] = 5
 // Can only be assigned from a CudaNdarray on the right side
-// Or a ndarray when the left side part is c contiguous.
+// Or a ndarray
 // Or a python scalar with value 0 when the left side part is c contiguous.
 static int
 CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
