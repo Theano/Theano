@@ -1923,10 +1923,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         ilist_ = tensor.as_tensor_variable(ilist)
 
         assert x_.type.dtype == y_.type.dtype
-        assert x_.type.ndim == y_.type.ndim
-#        if (x_.type.ndim - 1) > y_.type.ndim:
-#            y_ = tensor.shape_padleft(y_, x_.type.ndim - y_.type.ndim)
-#        assert x_.type.ndim == y_.type.ndim
         assert x_.type.ndim >= y_.type.ndim
 
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
