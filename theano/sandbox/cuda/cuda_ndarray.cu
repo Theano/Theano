@@ -663,7 +663,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     return (PyObject*)rval;
 }
 
-PyObject * CudaNdarray_View(CudaNdarray * self)
+PyObject * CudaNdarray_View(const CudaNdarray * self)
 {
     CudaNdarray * rval = (CudaNdarray*)CudaNdarray_New(self->nd);
     if (!rval || CudaNdarray_set_device_data(rval, CudaNdarray_DEV_DATA(self), self))
@@ -985,11 +985,19 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             "CudaNdarray_inplace_elemwise need a CudaNdarray on left");
         return -1;
     }
+    CudaNdarray * new_other = NULL;
     if (!CudaNdarray_Check(py_other)) {
-        PyErr_SetString(
-            PyExc_TypeError,
-            "CudaNdarray_inplace_elemwise need a CudaNdarray on right");
-        return -1;
+        new_other = (CudaNdarray*) CudaNdarray_New();
+        if(!new_other)
+        {
+            return -1;
+        }
+        if(CudaNdarray_CopyFromArray(new_other, (PyArrayObject *) py_other))
+        {
+            Py_XDECREF(new_other);
+            return -1;
+        }
+        py_other = (PyObject *) new_other;
     }
 
     CudaNdarray * self = (CudaNdarray *)py_self;
@@ -1010,6 +1018,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             "CudaNdarray_inplace_elemwise: The destination need more or the"
             " same number of dimensions then the source. Got %d and %d.",
             self->nd, other->nd);
+        Py_XDECREF(new_other);
         return -1;
     }
 
@@ -1040,6 +1049,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             PyErr_SetString(
                 PyExc_ValueError,
                 "CudaNdarray_inplace_elemwise need same dimensions (or broadcastable dimension)");
+            Py_XDECREF(new_other);
             return -1;
         }
         // if we're broadcasting other, then make sure it has stride 0
@@ -1055,8 +1065,10 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             PyErr_SetString(
                 PyExc_ValueError,
                 "CudaNdarray_inplace_elemwise cannot work inplace on an un-initialized array");
+            Py_XDECREF(new_other);
             return 0;
         }
+        Py_XDECREF(new_other);
         return 0;
     }
 
@@ -1087,6 +1099,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1119,6 +1132,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1156,6 +1170,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1196,6 +1211,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1240,6 +1256,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         "Cuda error: %s: %s.\n",
                         "k4",
                         cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
                     return -1;
                 }
             }
@@ -1285,6 +1302,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                             "Cuda error: %s: %s.\n",
                             "k4",
                             cudaGetErrorString(err));
+                        Py_XDECREF(new_other);
                         return -1;
                     }
                 }
@@ -1296,11 +1314,13 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 PyExc_NotImplementedError,
                 "inplace_elemwise w nd=%i\n",
                 self->nd);
+            Py_XDECREF(new_other);
             return -1;
         }
     }
     if (verbose)
         fprintf(stderr, "INPLACE ADD/DIV end\n");
+    Py_XDECREF(new_other);
     return 0;
 }
 
