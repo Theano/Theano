@@ -53,6 +53,10 @@ New Features
    (Frederic B., Simon McGregor)
  * MRG random now raises an error with a clear message when the passed shape
    contains dimensions with bad value like 0. (Frédéric B. reported by Ian G.)
+ * "CudaNdarra[*] = ndarray" work in more case (Frederic B.)
+ * "CudaNdarra[*] += ndarray" work in more case (Frederic B.)
+ * We add dimensions to CudaNdarray to automatically broadcast more frequently.
+   (Frederic B.)
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both input don't
