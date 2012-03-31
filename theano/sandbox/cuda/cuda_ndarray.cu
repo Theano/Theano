@@ -1066,7 +1066,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             PyErr_SetString(
                 PyExc_ValueError,
                 "CudaNdarray_inplace_elemwise cannot work inplace on"
-                " un-initialized array when the new value have more then"
+                " un-initialized array when the new value have more than"
                 " 0 or 1 broadcastable dimensions");
             Py_XDECREF(new_other);
             return 0;

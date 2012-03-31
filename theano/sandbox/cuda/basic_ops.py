@@ -1939,10 +1939,10 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
-    # CudaNdarray_Subscript() don't support Advanced slicing.
-    # But we can't use the parent version that loop on each indices
+    # CudaNdarray_Subscript() doesn't support Advanced slicing.
+    # But we can't use the parent version that loops on each index
     # as we also need to loop when set_instead_of_inc is True and the
-    # parent don't loop in that case.
+    # parent doesn't loop in that case.
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
         x, y, idx = inp
@@ -1950,7 +1950,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         if not self.inplace:
             x = x.copy()
         if self.set_instead_of_inc:
-            # CudaNdarray __setitem__ don't do broadcast nor support
+            # CudaNdarray __setitem__ doesn't do broadcast nor support
             # list of index.
             assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
             if y.ndim == x.ndim:
