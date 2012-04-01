@@ -10,12 +10,12 @@ Bug fixes
  * In Sparse sandbox, fix the grad of theano.sparse.sandbox.sp.row_scale.
    It did not return the right number of elements. (Frederic B.)
  * set_subtensor(x[int vector], new_value) when moved to the GPU
-   where transformed into inc_subtensor on the GPU. Now we have a slow
-   GPU implementation.
-   Note: set_subtensor(x[slice[,...]], new_value) was working correctly
-   in all case as well as inc_subtensor(*, *).
-   Note2: If your code have this behavior, we print a warning by default.
-   (Frederic B.)
+   was transformed into inc_subtensor on the GPU. Now we have a correct
+   (but slow) GPU implementation.
+   Note 1: set_subtensor(x[slice[,...]], new_value) was working correctly
+   in all cases as well as inc_subtensor(*, *).
+   Note 2: If your code was affected by the incorrect behavior, we now print
+   a warning by default (Frederic B.)
  * Fixed an issue whereby config values were used as default arguments,
    with those defaults then stuck at old values if the config variables were
    changed during program execution. (David W-F)

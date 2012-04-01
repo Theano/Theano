@@ -2799,9 +2799,9 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
     if (self->nd < other->nd)
     {
         PyErr_Format(PyExc_NotImplementedError,
-            "CudaNdarray_CopyFromCudaNdarray: The destination need more or the"
-            " same number of dimensions then the source. Got %d and %d.",
-                     self->nd, other->nd);
+            "CudaNdarray_CopyFromCudaNdarray: The number of dimensions of the "
+            "destination needs to be >= the number of dimensions of the "
+            "source. Got %d and %d.", self->nd, other->nd);
         return -1;
     }
     else if (self->nd != other->nd)
