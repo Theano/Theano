@@ -27,14 +27,17 @@ from theano.gof.cc import hash_from_code
 import compilelock
 
 from theano.configparser import AddConfigVar, BoolParam
+
 AddConfigVar('cmodule.mac_framework_link',
-        ("If set to True, breaks certain mac installations with the infamous "
-         "Bus Error"),
+        "If set to True, breaks certain MacOS installations with the infamous "
+        "Bus Error",
         BoolParam(False))
+
 AddConfigVar('cmodule.warn_no_version',
-             "If True, will print a warning when compiling one or more Op with"
-             "c code that can't be cached as there is no c_code_cache_version"
-             "() function to at least of of those Ops.",
+             "If True, will print a warning when compiling one or more Op "
+             "with C code that can't be cached because there is no "
+             "c_code_cache_version() function associated to at least one of "
+             "those Ops.",
              BoolParam(False))
 
 
@@ -969,7 +972,7 @@ class ModuleCache(object):
                                    if isinstance(k, theano.Op)]
                             _logger.warning("not all the"
                                 " following op(s) implement"
-                                " c_code_cache_version(). This make them"
+                                " c_code_cache_version(). This makes them"
                                 " recompiled for each process." + str(ops))
 
                         # Map the new module to its KeyData object. Note that
