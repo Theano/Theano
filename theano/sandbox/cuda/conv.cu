@@ -654,18 +654,6 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                 else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
             CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-            if (verbose)
-              fprintf(stderr,
-                      "INFO: using 'conv_patch_stack_reduce' version"
-                      " kern_flipped=%i ccontig=%i nb_split=%d,"
-                      " preload_full_kern=%d\n",
-                      kern_flipped, ccontig, nb_split, full_kern);
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i,"
-                      " grid.y=%i, shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, threads.z, grid.x, grid.y,
-                      shared_size, threads.x * threads.y * threads.z);
             f<<< grid, threads, shared_size>>>(img->devdata, kern_data_unflipped, out->devdata,
                                                img_len, img_wid, kern_len, kern_wid,
                                                nkern, nstack,
@@ -676,6 +664,19 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess == sts)
             {
+                if (verbose>1)
+                    fprintf(stderr,
+                            "threads.x=%i, threads.y=%i, threads.z=%i, "
+                            "grid.x=%i, grid.y=%i, shared_size=%i,"
+                            " nb_threads=%i\n",
+                            threads.x, threads.y, threads.z, grid.x, grid.y,
+                            shared_size, threads.x * threads.y * threads.z);
+                if (verbose)
+                    fprintf(stderr,
+                            "INFO: used 'conv_patch_stack_reduce' version"
+                            " kern_flipped=%i ccontig=%i nb_split=%d,"
+                            " preload_full_kern=%d\n",
+                            kern_flipped, ccontig, nb_split, full_kern);
                 work_complete = true;
             }
             else
