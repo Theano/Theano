@@ -18,6 +18,8 @@ import distutils.sysconfig
 
 import numpy.distutils  # TODO: TensorType should handle this
 
+import theano
+from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
 
@@ -26,9 +28,14 @@ import compilelock
 
 from theano.configparser import AddConfigVar, BoolParam
 AddConfigVar('cmodule.mac_framework_link',
-        ("If set to true, breaks certain mac installations with the infamous "
+        ("If set to True, breaks certain mac installations with the infamous "
          "Bus Error"),
         BoolParam(False))
+AddConfigVar('cmodule.warn_no_version',
+             "If True, will print a warning when compiling one or more Op with"
+             "c code that can't be cached as there is no c_code_cache_version"
+             "() function to at least of of those Ops.",
+             BoolParam(False))
 
 
 def local_bitwidth():
@@ -956,6 +963,14 @@ class ModuleCache(object):
                             # Adding the KeyData file to this set means it is a
                             # versioned module.
                             self.loaded_key_pkl.add(key_pkl)
+                        elif config.cmodule.warn_no_version:
+                            key_flat = flatten(key)
+                            ops = [k for k in key_flat
+                                   if isinstance(k, theano.Op)]
+                            _logger.warning("not all the"
+                                " following op(s) implement"
+                                " c_code_cache_version(). This make them"
+                                " recompiled for each process." + str(ops))
 
                         # Map the new module to its KeyData object. Note that
                         # we need to do it regardless of whether the key is

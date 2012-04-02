@@ -537,3 +537,18 @@ import theano and print the config variable, as in:
     optimization and this class. This list is sorted from the sub
     optimization that takes the most time to the optimization that takes
     the least time.
+
+.. attribute:: config.cmodule.warn_no_version
+
+    Bool value, default: False
+
+    If True, will print a warning when compiling one or more Op with c
+    code that can't be cached as there is no c_code_cache_version()
+    function to at least of of those Ops.
+
+.. attribute:: config.cmodule.mac_framework_link
+
+    Bool value, default: False
+
+    If set to True, breaks certain mac installations with the infamous
+    Bus Error.
