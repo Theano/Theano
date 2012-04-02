@@ -332,3 +332,12 @@ def type_guard(type1):
         return new_f
     return wrap
 
+
+def flatten(a):
+    if isinstance(a, (tuple, list, set)):
+        l = []
+        for item in a:
+            l.extend(flatten(item))
+        return l
+    else:
+        return [a]
