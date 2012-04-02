@@ -53,6 +53,14 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                 CudaNdarray_HOST_STRIDES(kern)[2],
                 CudaNdarray_HOST_STRIDES(kern)[3]);
         fprintf(stderr,
+                "INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
+               CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1],
+               CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
+               CudaNdarray_HOST_STRIDES(out)[0],
+               CudaNdarray_HOST_STRIDES(out)[1],
+               CudaNdarray_HOST_STRIDES(out)[2],
+               CudaNdarray_HOST_STRIDES(out)[3]);
+        fprintf(stderr,
                 "INFO:   subsample_rows=%d, subsample_cols=%d\n",
                 subsample_rows, subsample_cols);
     }
@@ -991,6 +999,13 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
                CudaNdarray_HOST_STRIDES(kern)[1],
                CudaNdarray_HOST_STRIDES(kern)[2],
                CudaNdarray_HOST_STRIDES(kern)[3]);
+        printf("INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
+               CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1],
+               CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
+               CudaNdarray_HOST_STRIDES(out)[0],
+               CudaNdarray_HOST_STRIDES(out)[1],
+               CudaNdarray_HOST_STRIDES(out)[2],
+               CudaNdarray_HOST_STRIDES(out)[3]);
     }
 
     if (!subsample &&
