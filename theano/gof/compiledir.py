@@ -11,6 +11,7 @@ import numpy
 
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
+from theano.gof.utils import flatten
 
 compiledir_format_dict = {"platform": platform.platform(),
                           "processor": platform.processor(),
@@ -107,16 +108,6 @@ AddConfigVar('compiledir',
                 default_compiledirname()),
             filter=filter_compiledir,
             allow_override=False))
-
-
-def flatten(a):
-    if isinstance(a, (tuple, list, set)):
-        l = []
-        for item in a:
-            l.extend(flatten(item))
-        return l
-    else:
-        return [a]
 
 
 def cleanup():

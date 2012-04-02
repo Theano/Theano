@@ -57,6 +57,12 @@ New Features
  * "CudaNdarray[*] += ndarray" work in more case (Frederic B.)
  * We add dimensions to CudaNdarray to automatically broadcast more frequently.
    (Frederic B.)
+ * theano.tensor.argsort that wrap numpy.argsort (Hani Almousli).
+ * New theano flag cmodule.warn_no_version. Default False. If True,
+  will print a warning when compiling one or more Op with c code that
+  can't be cached as there is no c_code_cache_version() function to at
+  least of of those Ops.  (Frederic B.)
+ * CPU alloc now always generate c code (Pascal L.)
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't
