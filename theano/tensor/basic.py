@@ -5832,11 +5832,13 @@ class ArgSortOp(theano.Op):
     This class is a wrapper for numpy argsort function
     """
     def __init__(self, kind, order=None):
-      self.kind = kind
-      self.order = order
+        self.kind = kind
+        self.order = order
 
     def __eq__(self, other):
-      return type(self) == type(other) and self.order == other.order and self.kind==other.kind
+        return (type(self) == type(other) and
+                self.order == other.order and
+                self.kind == other.kind)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.order) ^ hash(self.kind)
@@ -5845,11 +5847,11 @@ class ArgSortOp(theano.Op):
         return self.__class__.__name__ + "{%s, %s}" % (self.kind, str(self.order))
 
     def make_node(self, input, axis=-1):
-        if axis is None:
-            raise ValueError("Current Implementation does not sipport axis=None")
-            return
         input = theano.tensor.as_tensor_variable(input)
-        axis = theano.tensor.as_tensor_variable(axis)
+        if axis is None:
+            axis = Constant(gof.generic, None)
+        else:
+            axis = theano.tensor.as_tensor_variable(axis)
         return theano.Apply(self, [input, axis],
             [theano.tensor.TensorType(dtype="int64", broadcastable=input.type.broadcastable)()])
 
@@ -5857,13 +5859,13 @@ class ArgSortOp(theano.Op):
         a = inputs[0]
         axis = inputs[1]
         z = output_storage[0]
-        z[0] = numpy.argsort(a,axis,self.kind,self.order)
+        z[0] = numpy.argsort(a, axis, self.kind, self.order)
 
     def infer_shape(self, node, inputs_shapes):
         return [inputs_shapes[0]]
 
-    #**** No grad defined for intergers.
     def grad(self, inputs, output_grads):
+        #No grad defined for intergers.
         return [None, None]
     """
     def R_op(self, inputs, eval_points):
@@ -5877,10 +5879,11 @@ class ArgSortOp(theano.Op):
     """
 
 
-def argSort(a, axis=-1, kind='quicksort', order=None):
+def argsort(a, axis=-1, kind='quicksort', order=None):
     """
     Returns the indices that would sort an array.
     Perform an indirect sort along the given axis using the algorithm specified by the kind keyword.
     It returns an array of indices of the same shape as a that index data along the given axis in sorted order.
     """
     return ArgSortOp(kind, order)(a, axis)
+    

@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, sort, SortOp, argSort, ArgSortOp,)
+        tile, patternbroadcast, sort, SortOp, argsort, ArgSortOp,)
 from theano.tests import unittest_tools as utt
 
 
@@ -5648,14 +5648,14 @@ def test_argsort():
 
     #Example 1
     a = theano.tensor.dmatrix()
-    w = argSort(a)
+    w = argsort(a)
     f = theano.function([a], w)
     assert numpy.allclose(f(m_val), numpy.argsort(m_val))
 
     #Example 2
     a = theano.tensor.dmatrix()
     axis = theano.tensor.scalar()
-    w = argSort(a, axis)
+    w = argsort(a, axis)
     f = theano.function([a, axis], w)
     for axis_val in 0, 1:
         assert numpy.allclose(
@@ -5664,14 +5664,14 @@ def test_argsort():
 
     #Example 3
     a = theano.tensor.dvector()
-    w2 = argSort(a)
+    w2 = argsort(a)
     f = theano.function([a], w2)
     assert numpy.allclose(f(v_val), numpy.argsort(v_val))
 
     #Example 4
     a = theano.tensor.dmatrix()
     axis = theano.tensor.scalar()
-    l = argSort(a, axis, "mergesort")
+    l = argsort(a, axis, "mergesort")
     f = theano.function([a, axis], l)
     for axis_val in 0, 1:
         assert numpy.allclose(
@@ -5687,6 +5687,12 @@ def test_argsort():
     assert a1 != a2
     assert a1 == ArgSortOp("mergesort", [])
     assert a2 == ArgSortOp("quicksort", [])
+
+    #Example 6: Testing axis=None
+    a = theano.tensor.dmatrix()
+    w2 = argsort(a, None)
+    f = theano.function([a], w2)
+    assert numpy.allclose(f(m_val), numpy.argsort(m_val, None))
 
 
 if __name__ == '__main__':
