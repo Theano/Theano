@@ -16,7 +16,7 @@ from theano import gof
 from theano.gof import Env, graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.gof.python25 import any, product as itertools_product
+from theano.gof.python25 import all, any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
         StrParam)
 from theano.compile.function_module import (FunctionMaker,
@@ -1071,17 +1071,20 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # When all outputs on a certain dimension are broadcastable, the Op
     # can assume that the shape is 1 on that dimension, and stride testing
     # is less relevant.
+    # Dimensions should be align by the innermost index, so we iterate
+    # from the end of shapes.
     max_ndim = 0
-    out_broadcast_pattern = [True] * max_ndim
-    for r in node.outputs:
+    rev_out_broadcastable = []
+    for r in considered_outputs:
         if isinstance(r.type, (TensorType, CudaNdarrayType)):
             if max_ndim < r.ndim:
-                out_broadcast_pattern += [True] * (r.ndim - max_ndim)
+                rev_out_broadcastable += [True] * (r.ndim - max_ndim)
                 max_ndim = r.ndim
-            assert len(out_broadcast_pattern) == max_ndim
+            assert len(rev_out_broadcastable) == max_ndim
 
-            for i, b in enumerate(r.broadcastable):
-                out_broadcast_pattern[i] = out_broadcast_pattern[i] and b
+            for i, b in enumerate(r.broadcastable[::-1]):
+                rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
+    out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
         # Initial allocation
@@ -1089,10 +1092,10 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         for r in node.outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Create a buffer twice as large in every dimension,
-                # except if broadcastable
+                # except if broadcastable, or for dimensions above 4
                 buf_shape = []
                 for s, b in zip(r_vals[r].shape, r.broadcastable):
-                    if b:
+                    if b or ((r.ndim - len(buf_shape)) > 4):
                         buf_shape.append(s)
                     else:
                         buf_shape.append(s * 2)
@@ -1100,25 +1103,42 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
+        # The number of combinations is exponential in the number of
+        # dimensions, and some ops can have tens of outputs. To prevent
+        # tests from lasting days, we use the same strides for all
+        # dimensions but the last 4 ones.
+        # Moreover, to avoid memory problems, we do not test with strides
+        # 2 and -2 on those dimensions.
         step_signs_list = []
-        for b in out_broadcast_pattern:
+        for b in out_broadcastable[-4:]:
             if b:
                 step_signs_list.append((1,))
             else:
                 step_signs_list.append((-1, 1))
+
+        # Use the same step on all dimensions before the last 4.
+        if all(out_broadcastable[:-4]):
+            step_signs_list = [(1,)] + step_signs_list
+        else:
+            step_signs_list = [(-1, 1)] + step_signs_list
+
         for step_signs in itertools_product(*step_signs_list):
             for step_size in (1, 2):
                 strided = {}
-                steps = [s * step_size for s in step_signs]
+
+                # First, the dimensions above 4, then the other ones
+                # Do not test with 2 or -2 for dimensions above 4
+                steps = [step_signs[0]] * len(out_broadcastable[:-4])
+                steps += [s * step_size for s in step_signs[1:]]
+
                 name = 'strided%s' % str(tuple(steps))
-                for r in node.outputs:
+                for r in considered_outputs:
                     if r in init_strided:
-                        # Build lists of slices, for strides and shapes
                         strides = []
                         shapes = []
                         for i, size in enumerate(r_vals[r].shape):
-                            strides.append(slice(None, None, steps[i]))
                             shapes.append(slice(None, size, None))
+                            strides.append(slice(None, None, steps[i]))
 
                         r_buf = init_strided[r]
 
@@ -1134,7 +1154,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
         # For each dimension, try size-1, size, size+1
-        for dim, b in enumerate(out_broadcast_pattern):
+        for dim, b in enumerate(out_broadcastable):
             if b:
                 # The shape has to be 1
                 continue
