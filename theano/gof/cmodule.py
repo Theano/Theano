@@ -967,10 +967,10 @@ class ModuleCache(object):
                             key_flat = flatten(key)
                             ops = [k for k in key_flat
                                    if isinstance(k, theano.Op)]
-                            print >>sys.stderr, ("Cache Warning: not all the"
+                            _logger.warning("not all the"
                                 " following op(s) implement"
                                 " c_code_cache_version(). This make them"
-                                " recompiled for each process."), ops
+                                " recompiled for each process." + str(ops))
 
                         # Map the new module to its KeyData object. Note that
                         # we need to do it regardless of whether the key is
