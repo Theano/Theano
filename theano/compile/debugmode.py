@@ -1004,11 +1004,12 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         from theano.sandbox.cuda import CudaNdarray
         from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
-    # TODO: Sparse, Scalar
+    # TODO: Sparse? Scalar does not really make sense.
 
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
     # is not reused
+    # TODO: skip all this for outputs that actually worked inplace
     if 'previous' in prealloc_modes or 'ALL' in prealloc_modes:
         reuse_outputs = {}
         for r in node.outputs:
@@ -1032,7 +1033,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
                 # assert new_buf.flags["C_CONTIGUOUS"]
-                new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
 
@@ -1050,7 +1051,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         shape=r_vals[r].shape,
                         dtype=r_vals[r].dtype,
                         order='F')
-                new_buf += def_val
+                new_buf[...] = def_val
                 if isinstance(r.type, CudaNdarrayType):
                     # When the CudaNdarray is built, the underlying memory
                     # is c-contiguous, so we transpose it before and after.
@@ -1096,6 +1097,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                     else:
                         buf_shape.append(s * 2)
                 new_buf = r.type.value_zeros(buf_shape)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
         step_signs_list = []
@@ -1125,7 +1127,6 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         assert r_buf.shape == r_vals[r].shape
 
                         r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
-
                         strided[r] = r_buf
 
                 yield (name, strided)
@@ -1151,8 +1152,9 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         out_shape = [max((s + sd), 0)
                                 for s, sd in zip(r_vals[r].shape,
                                                  r_shape_diff)]
-                        new_buf = r.type.value_zeros(r_vals[r].shape)
-                        new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                        new_buf = r.type.value_zeros(out_shape)
+                        new_buf[...] = numpy.asarray(
+                                def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
                 yield (name, wrong_size)
