@@ -33,7 +33,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     batch_size = 4097
     n_out = 1250
 
-    if theano.config.mode != "DEBUG_MODE":
+    if not isinstance(mode_with_gpu, theano.compile.DebugMode):
         n_in = 4098
         n_out = 4099
 

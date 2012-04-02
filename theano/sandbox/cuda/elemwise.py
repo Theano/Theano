@@ -36,8 +36,8 @@ class SupportCodeError(Exception):
 
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
-    cache_version = ()
-    cache_version = (14, verbose)
+    #cache_version = ()
+    cache_version = (15, verbose)
 
     def __init__(self, scalar_op, sync=True, inplace_pattern={}):
         """
@@ -541,7 +541,7 @@ class NaiveAlgo(object):
         if nb_inputs > 0 and nd > 0:
             print >> sio, """
             int local_str[%(nb_inputs)s][%(nd)s];
-            int local_ostr[%(nb_inputs)s][%(nd)s];
+            int local_ostr[%(nb_outputs)s][%(nd)s];
             """ % locals()
         else:
             print >> sio, """
@@ -927,6 +927,11 @@ nd_collapse_[i]=0;
                 Py_DECREF(%(oname)s);
                 %(oname)s = NULL;
             }
+        }
+        if (%(oname)s && !CudaNdarray_is_c_contiguous(%(oname)s))
+        {
+            Py_XDECREF(%(oname)s);
+            %(oname)s = NULL;
         }
         if (NULL == %(oname)s)
         {
