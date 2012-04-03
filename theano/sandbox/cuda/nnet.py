@@ -199,8 +199,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
     def c_code_cache_version(self):
-        return (4,)
         #return ()
+        return (5,)
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
         dx, = out
@@ -257,7 +257,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
                         CudaNdarray_DEV_DATA(%(y_idx)s),
                         CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(dx)s)       //guaranteed c-contiguous
+                        CudaNdarray_DEV_DATA(%(dx)s),
+                        CudaNdarray_HOST_STRIDES(%(dx)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(dx)s)[1]
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
@@ -277,7 +279,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
            const float * dnll, const int dnll_s0,
            const float * sm, const int sm_s0, const int sm_s1,
            const float * y_idx, const int y_idx_s0,
-           float * dx)
+           float * dx, const int dx_s0, const int dx_s1)
         {
             for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
@@ -288,14 +290,14 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
                 {
                     if (y_i == j)
                     {
-                        dx[i * K + j] = dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
+                        dx[i * dx_s0 + j * dx_s1] = dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
                     }
                     else
                     {
-                        dx[i * K + j] = dnll_i * sm[i * sm_s0 + j * sm_s1];
+                        dx[i * dx_s0 + j * dx_s1] = dnll_i * sm[i * sm_s0 + j * sm_s1];
                     }
-                    //dx[i * K + j] = dnll_i * sm[i * sm_s0 + j * sm_s1];
-                    //dx[i*K+j] = 0;
+                    //dx[i * dx_s0 + j * dx_s1] = dnll_i * sm[i * sm_s0 + j * sm_s1];
+                    //dx[i*dx_s0+j*dx_s1] = 0;
                 }
             }
         }
@@ -319,7 +321,7 @@ class GpuSoftmax (GpuOp):
         return shape
     def c_code_cache_version(self):
         #return ()
-        return (4,) + inline_softmax.code_version
+        return (5,) + inline_softmax.code_version
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
         z, = out
@@ -364,7 +366,9 @@ class GpuSoftmax (GpuOp):
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
                         CudaNdarray_HOST_STRIDES(%(x)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(z)s)  //guarantee c contig
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
@@ -381,7 +385,7 @@ class GpuSoftmax (GpuOp):
         return nvcc_kernel("kSoftmax_%s"%nodename,
                 params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm'],
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
@@ -393,7 +397,7 @@ class GpuSoftmax (GpuOp):
                       "__syncthreads()",
                       inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        "sm[blockIDX * N + tx] = buf[tx]",# This set all value correctly
+                        "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",# This set all value correctly
                       "}",
                       "__syncthreads()",
                     "}",
@@ -419,7 +423,7 @@ class GpuSoftmaxWithBias (GpuOp):
         return  [shape[0]]
     def c_code_cache_version(self):
         #return ()
-        return (5,) + inline_softmax.code_version
+        return (6,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -481,7 +485,9 @@ class GpuSoftmaxWithBias (GpuOp):
                         CudaNdarray_DEV_DATA(%(b)s),
                         CudaNdarray_HOST_STRIDES(%(b)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(z)s)  //guarantee c contig
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
                     );
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
@@ -503,7 +509,7 @@ class GpuSoftmaxWithBias (GpuOp):
                 params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'const float * b', 'const int sb0',
-                    'float * sm'],
+                    'float * sm', 'const int ssm0', 'const int ssm1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
@@ -516,7 +522,7 @@ class GpuSoftmaxWithBias (GpuOp):
                        "__syncthreads()",
                        inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * N + tx] = buf[tx]",
+                         "sm[blockIDX * ssm0 + tx * ssm1] = buf[tx]",
                       "}",
                       "__syncthreads()",
                     "}",

@@ -12,7 +12,7 @@ class ConvTransp3D(theano.Op):
         return hash(type(self))
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def make_node(self, W, b, d, H, RShape = None):
         """
@@ -232,22 +232,7 @@ class ConvTransp3D(theano.Op):
                                        }
                                    }
 
-                                   for (int i = 0; i < 3; i++)
-                                       if (%(R)s->strides[i] < %(R)s->strides[4])
-                                       {
-                                           PyErr_Format(PyExc_ValueError, "ConvTransp3D: R must have the smallest stride in its last index, but it doesn't (if this is a problem, the only part of ConvTransp3D that depends on this conditions is the memset, so this is probably easy to fix)");
-                                           %(fail)s
-                                       }
-
                                    { // for fail 6
-
-
-                                       memset(%(R)s->data, 0,  (batchSize-1) * %(R)s->strides[0]+ inputChannels * %(R)s->strides[4] +
-                                          (videoHeight-1) * %(R)s->strides[1] +
-                                          (videoWidth-1)  * %(R)s->strides[2] +
-                                          (videoDur-1)    * %(R)s->strides[3]);
-
-
 
                                        #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*x->strides[0]+(j)*x->strides[1]+(k)*x->strides[2]+(l)*x->strides[3]+(m)*x->strides[4] )
                                        #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
