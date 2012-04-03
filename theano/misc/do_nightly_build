@@ -59,7 +59,7 @@ echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 echo "Executing nosetests with mode=FAST_RUN"
-THEANO_FLAGS=${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
+THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
