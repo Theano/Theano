@@ -319,6 +319,13 @@ class CudaNdarrayType(Type):
             assert(%(name)s);
             Py_INCREF(py_%(name)s);
         }
+        else if (py_%(name)s == Py_None)
+        {
+            PyErr_SetString(PyExc_TypeError,
+                            "expected a CudaNdarray, not None");
+            %(name)s = NULL;
+            %(fail)s;
+        }
         else
         {
             //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
