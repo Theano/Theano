@@ -141,11 +141,12 @@ def test_add_canonizer_problem0():
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
-        e = (a/z + b/x) * x * z
-        g = Env([a,b,c,d,x,y,z], [e])
+        e = (a / z + b / x) * x * z
+        g = Env([a, b, c, d, x, y, z], [e])
         ##print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
-        gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
+        gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor),
+                          order='out_to_in').optimize(g)
         ##print pprint(g.outputs[0])
 
     def test_kording_bug(self):
@@ -155,18 +156,17 @@ class test_greedy_distribute(unittest.TestCase):
 
         #r = theano.tensor.mul(theano.tensor.fill(x, 2.*a), x/a , (y+z) , a)
         #r = theano.tensor.mul((x/a+y) , a, z)
-        r = tensor.mul(
-                s - 1
-                , eps + x/s
-                , eps + y/s
-                , s)
+        r = tensor.mul(s - 1,
+                       eps + x / s,
+                       eps + y / s,
+                       s)
 
-        f = function([s, eps, x,y], r**2)
+        f = function([s, eps, x, y], r ** 2)
 
         s_val = numpy.asarray(4, dtype=config.floatX)
         eps_val = numpy.asarray(1.e-6, dtype=config.floatX)
-        x_val = numpy.asarray([1.5,2], dtype=config.floatX)
-        y_val = numpy.asarray([2.3,3.1], dtype=config.floatX)
+        x_val = numpy.asarray([1.5, 2], dtype=config.floatX)
+        y_val = numpy.asarray([2.3, 3.1], dtype=config.floatX)
 
         r0 = f(s_val, eps_val, x_val, y_val)
         r1 = f(s_val, eps_val, x_val, y_val)
@@ -197,10 +197,13 @@ class test_canonize(unittest.TestCase):
         print pprint(g.outputs[0])
 
     def test_elemwise_multiple_inputs_optimisation(self):
-        """
-        verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
-        This part are that case that is done, but don't include case that are not implemented but are suposed to be.
+        """verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
+
+        This part are that case that is done, but don't include case
+        that are not implemented but are suposed to be.
+
         Test with and without DimShuffle
+
         """
 
         shp=(5,5)
@@ -1584,28 +1587,33 @@ class test_local_subtensor_lift(unittest.TestCase):
 class test_local_subtensor_merge(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
-        self.x_shapes = [(2,2), (5,3), (4,1), (1,2), (0,2), (2,0), (1,0), (0,0)]
+        self.x_shapes = [(2, 2), (5, 3), (4, 1), (1, 2),
+                         (0, 2), (2, 0), (1, 0), (0, 0)]
         self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
     def test_const(self):
         # var[const::][-1] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-7,6):
+        for idx in range(-7, 6):
             f = function([x], x[idx::][-1], mode=mode_opt)
-            g = function([x], x[idx::][-1], mode=mode_opt.excluding('local_subtensor_merge'))
+            g = function([x], x[idx::][-1], mode=mode_opt.excluding(
+                'local_subtensor_merge'))
 
-            topo=f.maker.env.toposort()
-            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
-            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+            topo = f.maker.env.toposort()
+            assert len([t for t in topo
+                        if isinstance(t.op, tensor.Subtensor)]) == 1
+            assert isinstance(topo[-1].op,
+                              theano.compile.function_module.DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
 
                 if idx < x_s[0] and x_s[0] > 0:
                     # The first subtensor is non-empty, so it makes sense
-                    f(x_val) # let debugmode test something
+                    f(x_val)  # let debugmode test something
                 else:
-                    # A non-empty subtensor of an empty one should be an IndexError
+                    # A non-empty subtensor of an empty one should be
+                    # an IndexError
                     self.assertRaises(IndexError, f, x_val)
                     self.assertRaises(IndexError, g, x_val)
 
@@ -1613,15 +1621,18 @@ class test_local_subtensor_merge(unittest.TestCase):
         # var[int::][-1] -> var[-1]
         x = tensor.matrix('x')
         y = tensor.iscalar('y')
-        f = function([x,y], x[y::][-1], mode=mode_opt)
-        g = function([x,y], x[y::][-1], mode=mode_opt.excluding('local_subtensor_merge'))
+        f = function([x, y], x[y::][-1], mode=mode_opt)
+        g = function([x, y], x[y::][-1],
+                     mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
-        topo=f.maker.env.toposort()
+        topo = f.maker.env.toposort()
         #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+        assert len([t for t in topo
+                    if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op,
+                          theano.compile.function_module.DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1629,7 +1640,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             for idx in range(-9, 8):
                 if (idx < x_s[0]) and (x_s[0] > 0):
                     # The first subtensor is non-empty
-                    f(x_val, idx) # let debugmode test something
+                    f(x_val, idx)  # let debugmode test something
                 else:
                     self.assertRaises(IndexError, f, x_val, idx)
                     self.assertRaises(IndexError, g, x_val, idx)
@@ -1637,24 +1648,28 @@ class test_local_subtensor_merge(unittest.TestCase):
     def test_const2(self):
         # var[::-1][const] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-8,7):
+        for idx in range(-8, 7):
             f = function([x], x[::-1][idx], mode=mode_opt)
-            g = function([x], x[::-1][idx], mode=mode_opt.excluding('local_subtensor_merge'))
+            g = function([x], x[::-1][idx],
+                         mode=mode_opt.excluding('local_subtensor_merge'))
 
             #theano.printing.debugprint(f, print_type=True)
-            topo=f.maker.env.toposort()
+            topo = f.maker.env.toposort()
             #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+            assert len([t for t in topo
+                        if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
-            assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op,
+                              theano.compile.function_module.DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
                 if (idx < x_s[0]) and (idx >= -x_s[0]):
                     # The first subtensor is non-empty, so it makes sense
-                    f(x_val) # let debugmode test something
+                    f(x_val)  # let debugmode test something
                 else:
-                    # A non-empty subtensor of an empty one should be an IndexError
+                    # A non-empty subtensor of an empty one should be
+                    # an IndexError
                     self.assertRaises(IndexError, f, x_val)
                     self.assertRaises(IndexError, g, x_val)
 
@@ -1662,105 +1677,115 @@ class test_local_subtensor_merge(unittest.TestCase):
         # var[::-1][int] -> var[-1]
         x = tensor.matrix('x')
         y = tensor.iscalar('y')
-        f = function([x,y], x[::-1][y], mode=mode_opt)
-        g = function([x,y], x[::-1][y], mode=mode_opt.excluding('local_subtensor_merge'))
+        f = function([x, y], x[::-1][y], mode=mode_opt)
+        g = function([x, y], x[::-1][y],
+                     mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
-        topo=f.maker.env.toposort()
+        topo = f.maker.env.toposort()
         #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+        assert len([t for t in topo
+                    if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op,
+                          theano.compile.function_module.DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
 
             for idx in range(-x_s[0], x_s[0]):
-                f(x_val, idx) # let debugmode test something
+                f(x_val, idx)  # let debugmode test something
             for idx in (range(x_s[0],9) + range(-9,-x_s[0])):
                 self.assertRaises(IndexError, f, x_val, idx)
                 self.assertRaises(IndexError, g, x_val, idx)
 
-
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-9,8):
+        for idx in range(-9, 8):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
             #theano.printing.debugprint(f, print_type=True)
             topo=f.maker.env.toposort()
             #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-            assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+            assert len([t for t in topo
+                        if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
             assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-                f(x_val) # let debugmode test something
+                f(x_val)  # let debugmode test something
 
     def test_scalar3(self):
         # var[::-1][:int] -> var[-1]
         x = tensor.matrix('x')
         y = tensor.iscalar('y')
-        f = function([x,y], x[::-1][:y], mode=mode_opt)
+        f = function([x, y], x[::-1][:y], mode=mode_opt)
         #theano.printing.debugprint(f, print_type=True)
 
-        topo=f.maker.env.toposort()
+        topo = f.maker.env.toposort()
         #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+        assert len([t for t in topo
+                    if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op,
+                          theano.compile.function_module.DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            for idx in range(-7,7):
-                f(x_val, idx) # let debugmode test something
+            for idx in range(-7, 7):
+                f(x_val, idx)  # let debugmode test something
 
     def test_const4(self):
         # var[const1::][:const2]
         x = tensor.matrix('x')
-        for idx1 in range(-7,7):
-            for idx2 in range(-7,7):
+        for idx1 in range(-7, 7):
+            for idx2 in range(-7, 7):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
                 #theano.printing.debugprint(f, print_type=True)
-                topo=f.maker.env.toposort()
+                topo = f.maker.env.toposort()
                 #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-                assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+                assert len([t for t in topo
+                            if isinstance(t.op, tensor.Subtensor)]) == 1
                 #print topo[-1].op
-                assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+                assert isinstance(topo[-1].op,
+                                  theano.compile.function_module.DeepCopyOp)
 
                 for x_s in self.x_shapes:
                     x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-                    f(x_val) # let debugmode test something
+                    f(x_val)  # let debugmode test something
 
     def test_scalar4(self):
         # var[int1:][:int2]
         x = tensor.matrix('x')
         y = tensor.iscalar('y')
         z = tensor.iscalar('y')
-        f = function([x,y,z], x[y:][:z], mode=mode_opt)
+        f = function([x, y, z], x[y:][:z], mode=mode_opt)
         #theano.printing.debugprint(f, print_type=True)
 
-        topo=f.maker.env.toposort()
+        topo = f.maker.env.toposort()
         #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
-        assert len([t for t in topo if isinstance(t.op, tensor.Subtensor)]) == 1
+        assert len([t for t in topo
+                    if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op,
+                          theano.compile.function_module.DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            for idx1 in range(-11,11):
-                for idx2 in range(-11,11):
-                    f(x_val, idx1, idx2) # let debugmode test something
+            for idx1 in range(-11, 11):
+                for idx2 in range(-11, 11):
+                    f(x_val, idx1, idx2)  # let debugmode test something
 
     def test_const_general(self):
-        # Some cases of merge: shape, (start, stop, step) of first, (start, stop, step) of second subtensor
+        # Some cases of merge: shape, (start, stop, step) of first,
+        # (start, stop, step) of second subtensor
         cases = [
-                ((2,3), (None, None, None), (None, None, -1)),
+                ((2, 3), (None, None, None), (None, None, -1)),
                 ((12, 1), (None, None, -4), (None, None, 1)),
-                ((5,3), (1, 4, 2), (None, None, -1)),
+                ((5, 3), (1, 4, 2), (None, None, -1)),
                 ]
         x = tensor.matrix('x')
 
@@ -1770,8 +1795,6 @@ class test_local_subtensor_merge(unittest.TestCase):
 
             x_val = self.rng.uniform(size=shape).astype(config.floatX)
             f(x_val)
-
-
 
     def test_scalar5(self):
         # General case with two real slices
@@ -1824,7 +1847,7 @@ class test_local_subtensor_merge(unittest.TestCase):
 
     def test_const5(self):
         # Bug reported by Graham
-        data = self.rng.uniform(size=(8,8,8)).astype(theano.config.floatX)
+        data = self.rng.uniform(size=(8, 8, 8)).astype(theano.config.floatX)
         x = theano.tensor.tensor3('x')
 
         nops = 1
