@@ -276,7 +276,7 @@ def get_nothing(r, name, sub):
 
 
 def get_c_declare(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_declare that declares py_name"""
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
@@ -284,7 +284,7 @@ def get_c_declare(r, name, sub):
 
 
 def get_c_init(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_init that initializes py_name to Py_None"""
     pre = "" """
     py_%(name)s = Py_None;
     {Py_XINCREF(py_%(name)s);}
@@ -293,7 +293,7 @@ def get_c_init(r, name, sub):
 
 
 def get_c_extract(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_extract that initializes py_name from storage."""
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
@@ -301,8 +301,17 @@ def get_c_extract(r, name, sub):
     return pre + r.type.c_extract(name, sub)
 
 
+def get_c_extract_out(r, name, sub):
+    """Wrapper around c_extract_out that initializes py_name from storage."""
+    pre = """
+    py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
+    {Py_XINCREF(py_%(name)s);}
+    """ % locals()
+    return pre + r.type.c_extract_out(name, sub)
+
+
 def get_c_cleanup(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_cleanup that decrefs py_name"""
     post = """
     {Py_XDECREF(py_%(name)s);}
     """ % locals()
@@ -310,7 +319,7 @@ def get_c_cleanup(r, name, sub):
 
 
 def get_c_sync(r, name, sub):
-    """WRITEME"""
+    """Wrapper around c_sync that syncs py_name with storage."""
     return """
     if (!%(failure_var)s) {
       %(sync)s
@@ -514,18 +523,21 @@ class CLinker(link.Linker):
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_nothing]]
             elif variable in self.outputs:
-                # outputs don't need to be extracted from Python, so
-                # we call c_init rather than c_extract
                 if variable.type.c_is_simple() or variable in no_recycling:
+                    # Do not extract output from Python
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init,
-                               (get_c_sync, get_c_cleanup)]]
+                                  (get_c_sync, get_c_cleanup)]]
                 else:
-                    # it is useful for complex outputs to reuse
-                    # storage at each run, so we only clean up in the
-                    # destructor
-                    policy = [[get_c_declare, get_c_init, get_c_cleanup],
-                              [get_nothing, get_nothing, get_c_sync]]
+                    # We try to use the output that is pre-allocated.
+                    # The linker will usually just reuse the storage
+                    # from last run, but in the first execution,
+                    # it will be None.
+                    # We clean-up at each run to enable garbage collection
+                    # in the Linker.
+                    policy = [[get_nothing, get_nothing, get_nothing],
+                              [get_c_declare, get_c_extract_out,
+                                  (get_c_sync, get_c_cleanup)]]
             else:
                 raise Exception("what the fuck")
 
@@ -961,10 +973,12 @@ class CLinker(link.Linker):
         be re-used by the computation (the elements of
         self.no_recycling) can affect the code that is generated.
 
-        The format of each Op's output signature is simply a list of
+        The format of each Op's output signature is a (version, no_recycle)
+        pair, where version is incremented if codegen() changes how it
+        handles the outputs, and no_recycle is simply a list of
         booleans, indicating whether each output is in the
-        no_recycling set.
-
+        no_recycling set. Older versions of compiled modules only have the
+        no_recycle list.
         """
         return self.cmodule_key_(self.env, self.no_recycling,
                           compile_args=self.compile_args(),
@@ -1086,7 +1100,8 @@ class CLinker(link.Linker):
                 node.op,
                 tuple((i.type, in_sig(i, node_pos, ipos))
                     for ipos, i in enumerate(node.inputs)),
-                tuple(o in no_recycling for o in node.outputs)))
+                (1,  # Increment if cmodule change its handling of outputs
+                    tuple(o in no_recycling for o in node.outputs))))
 
             if error_on_play[0]:
                 # if one of the signatures is not hashable
