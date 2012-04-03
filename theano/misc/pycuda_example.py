@@ -175,6 +175,99 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                         numpy.intc(inputs[1].size), block=block, grid=grid)
 
 
+class PycudaElemwiseSourceModuleMakeThunkOp(Op):
+    nin = property(lambda self: self.scalar_op.nin)
+    nout = property(lambda self: self.scalar_op.nout)
+
+    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+        self.name = name
+        self.scalar_op = scalar_op
+        self.inplace_pattern = None
+
+    def __str__(self):
+        if self.name is None:
+            if self.inplace_pattern:
+                items = self.inplace_pattern.items()
+                items.sort()
+                return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
+                                                             str(items))
+            else:
+                return self.__class__.__name__ + "{%s}" % (self.scalar_op)
+        else:
+            return self.name
+
+    def make_node(self, *inputs):
+        assert self.nout == 1
+        assert len(inputs) == 2  # TODO remove
+        _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
+        if self.nin > 0 and len(_inputs) != self.nin:
+            raise TypeError('Wrong argument count', (self.nin, len(_inputs)))
+        for i in _inputs[1:]:
+            if i.type.ndim != inputs[0].type.ndim:
+                raise TypeError('different ranks among inputs')
+
+        if any([any(i.type.broadcastable) for i in inputs]):
+            raise Exception("pycuda don't support broadcasted dimensions")
+
+        otype = CudaNdarrayType(broadcastable=[False] * _inputs[0].type.ndim)
+        out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
+        return out_node
+
+    def make_thunk(self, node, storage_map, _, _2):
+        #TODO support broadcast!
+        #TODO assert all input have the same shape
+        fct_name = "pycuda_elemwise_%s" % str(self.scalar_op)
+        in_name = ["i" + str(id) for id in range(len(node.inputs))]
+        out_name = ["o" + str(id) for id in range(self.nout)]
+
+        c_code = self.scalar_op.c_code(node, "some_name",
+                                       tuple([n + "[i]" for n in in_name]),
+                                       tuple(n + "[i]" for n in out_name), {})
+        c_code_param = ", ".join([var.type.dtype_specs()[1] + " *" + name
+                                  for var, name in
+                                  zip(node.inputs, in_name) +
+                                  zip(node.outputs, out_name)] + ["int size"])
+        mod = SourceModule("""
+#include<Python.h>
+#include <numpy/arrayobject.h>
+  __global__ void %s(%s)
+  {
+    int i = (blockIdx.x+blockIdx.y*gridDim.x)*(blockDim.x*blockDim.y);
+    i += threadIdx.x + threadIdx.y*blockDim.x;
+    if(i<size){
+        %s
+    }
+  }
+  """ % (fct_name, c_code_param, c_code))
+        pycuda_fct = mod.get_function(fct_name)
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        def thunk():
+            z = outputs[0]
+            if z[0] is None or z[0].shape != inputs[0][0].shape:
+                z[0] = theano.sandbox.cuda.CudaNdarray.zeros(
+                    inputs[0][0].shape)
+            if inputs[0][0].shape != inputs[1][0].shape:
+                raise TypeError("PycudaElemwiseSourceModuleMakeThunkOp:"
+                                " inputs don't have the same shape!")
+
+            if inputs[0][0].size > 512:
+                grid = (int(numpy.ceil(inputs[0][0].size / 512.)), 1)
+                block = (512, 1, 1)
+            else:
+                grid = (1, 1)
+                block = (inputs[0][0].shape[0], inputs[0][0].shape[1], 1)
+            out = pycuda_fct(inputs[0][0], inputs[1][0], z[0],
+                             numpy.intc(inputs[1][0].size), block=block,
+                             grid=grid)
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
+
+
 class PycudaElemwiseKernelOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
