@@ -650,30 +650,50 @@ install most dependencies is to install
 It is a single installation
 file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
 MinGW, Nose, etc.
+Note however that there is no 64 bit version currently available.
 You can keep the default install options, except that the installation
 directory should not contain any blank space (in particular, do not install it
 into ``C:\Program Files``).
 
-If instead you already have either Python or MinGW installed, it is safer to
-install components individually to avoid conflicts. Note that it should be
-possible to run Theano with `Cygwin <http://www.cygwin.com/>`__ instead of
-MinGW, but this has not been tested yet. In order to manually install the same
-components as in Python(x,y) that are required by Theano, follow these steps:
+Alternative: manual installation
+################################
 
-- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
+The following instructions provide steps for manual installation of all Theano
+dependencies.
+Note that it should be
+possible to run Theano with `Cygwin <http://www.cygwin.com/>`__ instead of
+MinGW, but this has not been tested yet.
+
+- For 32 bit MinGW: from `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
   download the latest version of the ``Automated MinGW Installer``
   (``mingw-get-inst``) and install it with all optional components (although
   you probably do not need them all: if you feel like figuring out exactly
   which ones are required, let us know!).
 
-- It is recommended to set your MinGW home to be the same as your Windows home
+- For 64 bit MinGW (**note that manual installation for 64 bit is experimental**):
+  download the latest version of MinGW-w64 from the project's
+  `releases page <http://sourceforge.net/projects/mingw-w64/files/>`__, and extract
+  it for instance to ``C:\mingw64``. Also download MSYS from
+  `this page <http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/MSYS%20%2832-bit%29/>`__
+  (although it is a 32-bit version of MSYS, this does not matter since it is only
+  a convenience tool). Extract MSYS into the same folder, so that for instance you
+  end up with ``C:\mingw64\msys``. Run ``C:\mingw64\msys\msys.bat`` and in the MSYS
+  shell, type
+
+   .. code-block:: bash
+
+        sh /postinstall/pi.sh
+
+  and answer the few questions so that MSYS is properly linked to your MinGW install.
+
+- It is recommended to set your MSYS home to be the same as your Windows home
   directory. This will avoid inconsistent behavior between running Theano
-  in a Windows command prompt vs. a MinGW shell. One way to do this without
+  in a Windows command prompt vs. a MSYS shell. One way to do this without
   setting a global Windows ``HOME`` environment variable (which may affect
   other programs) is to edit your ``msys.bat`` file (found e.g. under
-  ``C:\MinGW\msys\1.0``) and add the following line at the beginning (note
-  that you may need to use e.g. Wordpad to edit this file, since Notepad gets
-  confused by Unix-style line breaks):
+  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys) and add the following line at
+  the beginning (note that you may need to use e.g. Wordpad to edit this file,
+  since Notepad gets confused by Unix-style line breaks):
 
     .. code-block:: bash
 
@@ -683,24 +703,39 @@ components as in Python(x,y) that are required by Theano, follow these steps:
   `Python 2.x <http://www.python.org/download/windows>`__ and
   corresponding `NumPy <http://sourceforge.net/projects/numpy/files/>`__
   then `SciPy <http://sourceforge.net/projects/scipy/files/>`__
-  packages (simply use the executable installers). Note that we experienced
-  issues with the 64 bit version of Python, and thus recommend using the 32 bit
-  version instead (if you managed to get Theano to work with 64 bit Python under
-  Windows, please let us know!).
+  packages (simply use the executable installers).
+  Note that there are currently no official 64 bit releases of NumPy and
+  SciPy, but you can find unofficial builds
+  `here <http://www.lfd.uci.edu/~gohlke/pythonlibs/>`__.
 
 - Ensure that the Python installation directory and its ``Scripts``
   sub-directory are in your system path. This may be done by
   modifying the global ``PATH`` Windows environment variables, or by creating
   a ``.profile`` file in your MinGW home, containing a line like
-  ``export PATH=$PATH:/c/Python26:/c/Python26/Scripts`` (note that the latter
-  will work only when you run Theano from a MinGW shell).
+  ``export PATH=$PATH:/c/Python27:/c/Python27/Scripts`` (note that the latter
+  will work only when you run Theano from an MSYS shell).
+
+- If you are installing the 64 bit version, you will need the following hack
+  to be able to compile Theano files with GCC (skip this step if you are using
+  the 32 bit version). In a temporary work directory, copy ``python27.dll``
+  (found in ``C:\\Windows\\System32``) as well as
+  `python27.def <http://wiki.cython.org/InstallingOnWindows?action=AttachFile&do=get&target=python27.def>`__.
+  Edit ``python27.def`` and replace ``Py_InitModule4`` with ``Py_InitModule4_64``.
+  Then open an MSYS shell, go to this temporary directory, and run:
+
+    .. code-block:: bash
+
+        dlltool --dllname python27.dll --def python27.def --output-lib libpython27.a
+
+  Finally, copy the libpython27.a file that was generated into your
+  ``C:\\Python27\\libs`` folder.
 
 - In order to run Theano's test-suite, you will need `nose
   <http://somethingaboutorange.com/mrl/projects/nose>`__.
   After unpacking its source code (you may use `7-zip
   <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
-  command prompot or a MinGW shell):
+  command prompot or an MSYS shell):
 
     .. code-block:: bash
 
@@ -724,13 +759,18 @@ We describe
 here instructions to use the latest code repository version (bleeding-edge).
 Command lines listed below are assumed to be run in a Windows prompt
 (click ``Start`` and type the ``cmd`` command), and may need to be adapted if
-used within a MinGW Shell (not available if you only installed Python(x,y)).
+used within an MSYS Shell (not available if you only installed Python(x,y)).
 
-You will need Git, which you can get
-`here <http://git-scm.com/download>`__ (download the latest version of the
-"Full installer for official Git" from the ``msysgit`` download page).
+- The first option is to navigate to the
+  `Theano github page <http://github.com/Theano/Theano>`__ and click the ``ZIP``
+  button in the top-left corner to download a zip file with the latest
+  development version. Unzip this file where you want Theano to be
+  installed, then rename the unzipped folder to ``Theano``.
 
-- Navigate into the directory you want Theano to be installed in, and download
+- The second option is to use Git, which you can get
+  `here <http://git-scm.com/download>`__ (download the latest version of the
+  "Full installer for official Git" from the ``msysgit`` download page).
+  Navigate into the directory you want Theano to be installed in, and download
   it with
 
     .. code-block:: bash
@@ -740,7 +780,8 @@ You will need Git, which you can get
 - Add (or edit) the ``PYTHONPATH`` environment variable (into Control
   Panel / System / Advanced / Environment Variables), so that it contains
   the full installation directory of Theano. Restart a prompt to verify
-  that it works:
+  that it works (the example below assumes you installed Theano into your
+  home directory):
 
     .. code-block:: none
 
@@ -805,7 +846,7 @@ command``. As a workaround, you can instead run:
 
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
-within a MinGW shell if you installed Nose manually as described above.
+within an MSYS shell if you installed Nose manually as described above.
 
 Editing code in Visual Studio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -832,6 +873,10 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
    continues GotoBLAS: it has a better installation process and implements
    additional functions (not currently used by Theano).
    We did not try OpenBLAS on Windows.
+
+.. note::
+
+   The instructions below have not been tested in a Windows 64 bit environment.
 
 If you want a faster and/or multithreaded BLAS library, you can
 compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
