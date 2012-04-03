@@ -6,16 +6,17 @@ You can use them as a guide to use your pycuda code into a Theano op.
 The PycudaElemwiseSourceModuleOp is a Theano op use pycuda code
 generated with pycuda.compiler.SourceModule
 
-The PycudaElemwiseKernelOp op use pycuda code generated with
-pycuda.elementwise.ElementwiseKernel. It must be wrapper by
-TheanoElementwiseKernel.
-
 Their is a test in test_pycuda.py.
 
 This don't work with broadcast and non-contiguous memory as pycuda
 don't support that, but we make sure we don't introduce problem.
   If the memory is non-contiguous, we create a new copy that is contiguous.
   If their is broadcasted dimensions, we raise an error.
+
+#The following is commented as it work only with old pycuda version
+The PycudaElemwiseKernelOp op use pycuda code generated with
+pycuda.elementwise.ElementwiseKernel. It must be wrapper by
+TheanoElementwiseKernel.
 
 """
 
@@ -50,7 +51,7 @@ def theano_parse_c_arg(c_arg):
     c_arg = c_arg.replace('npy_uint8', 'unsigned char')
     return pycuda.tools.parse_c_arg(c_arg)
 
-
+"""
 class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
     def __init__(self, arguments, operation,
                  name="kernel", keep=False, options=[], **kwargs):
@@ -81,6 +82,90 @@ class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
             _grid, _block = pycuda.gpuarray.splay(repr_vec.mem_size)
             self.func.set_block_shape(*_block)
             self.func.prepared_call(_grid, *invocation_args)
+
+
+class PycudaElemwiseKernelOp(GpuOp):
+    nin = property(lambda self: self.scalar_op.nin)
+    nout = property(lambda self: self.scalar_op.nout)
+
+    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+        self.name = name
+        self.scalar_op = scalar_op
+        self.inplace_pattern = None
+
+    def __str__(self):
+        if self.name is None:
+            if self.inplace_pattern:
+                items = self.inplace_pattern.items()
+                items.sort()
+                return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
+                                                             str(items))
+            else:
+                return self.__class__.__name__ + "{%s}" % (self.scalar_op)
+        else:
+            return self.name
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.scalar_op == other.scalar_op and
+                self.inplace_pattern == other.inplace_pattern)
+
+    def __hash__(self):
+        return (hash(type(self)) ^ hash(self.scalar_op) ^
+                hash(self.inplace_pattern))
+
+    def make_node(self, *inputs):
+        _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
+        if self.nin > 0 and len(_inputs) != self.nin:
+            raise TypeError('Wrong argument count', (self.nin, len(_inputs)))
+        for i in _inputs[1:]:
+            if i.type.ndim != inputs[0].type.ndim:
+                raise TypeError('different ranks among inputs')
+
+        if any([any(i.type.broadcastable) for i in inputs]):
+            raise Exception("pycuda don't support broadcasted dimensions")
+        assert len(inputs) == 2  # TODO remove
+
+        # output is broadcastable only along dimensions where all inputs are
+        # broadcastable
+        broadcastable = []
+        for d in xrange(_inputs[0].type.ndim):
+            bcast_d = True
+            for i in _inputs:
+                if not i.type.broadcastable[d]:
+                    bcast_d = False
+                    break
+            broadcastable.append(bcast_d)
+        assert len(broadcastable) == _inputs[0].type.ndim
+
+        otype = CudaNdarrayType(broadcastable=broadcastable)
+        assert self.nout == 1
+
+        out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
+        in_name = ["i" + str(id) for id in range(len(inputs))]
+        out_name = ["o" + str(id) for id in range(self.nout)]
+        c_code = self.scalar_op.c_code(out_node, "some_name",
+                                       tuple([n + "[i]"for n in in_name]),
+                                       tuple(n + "[i]"for n in out_name), {})
+
+        self.pycuda_fct = TheanoElementwiseKernel(
+            ", ".join([var.type.dtype_specs()[1] + " *" + name
+                       for var, name in (zip(inputs, in_name) +
+                                         zip(out_node.outputs, out_name))]),
+            c_code,
+            "pycuda_elemwise_kernel_%s" % str(self.scalar_op),
+            preamble=("#include<Python.h>\n"
+"#include <numpy/arrayobject.h>"))
+        return out_node
+
+    def perform(self, node, inputs, out):
+        #TODO assert all input have the same shape
+        z, = out
+        if z[0] is None or z[0].shape != inputs[0].shape:
+            z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
+        i = inputs + z
+        self.pycuda_fct(*i)
+"""
 
 
 class PycudaElemwiseSourceModuleOp(GpuOp):
@@ -267,88 +352,6 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
 
         return thunk
 
-
-class PycudaElemwiseKernelOp(GpuOp):
-    nin = property(lambda self: self.scalar_op.nin)
-    nout = property(lambda self: self.scalar_op.nout)
-
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
-        self.name = name
-        self.scalar_op = scalar_op
-        self.inplace_pattern = None
-
-    def __str__(self):
-        if self.name is None:
-            if self.inplace_pattern:
-                items = self.inplace_pattern.items()
-                items.sort()
-                return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
-                                                             str(items))
-            else:
-                return self.__class__.__name__ + "{%s}" % (self.scalar_op)
-        else:
-            return self.name
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.inplace_pattern == other.inplace_pattern)
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.scalar_op) ^
-                hash(self.inplace_pattern))
-
-    def make_node(self, *inputs):
-        _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
-        if self.nin > 0 and len(_inputs) != self.nin:
-            raise TypeError('Wrong argument count', (self.nin, len(_inputs)))
-        for i in _inputs[1:]:
-            if i.type.ndim != inputs[0].type.ndim:
-                raise TypeError('different ranks among inputs')
-
-        if any([any(i.type.broadcastable) for i in inputs]):
-            raise Exception("pycuda don't support broadcasted dimensions")
-        assert len(inputs) == 2  # TODO remove
-
-        # output is broadcastable only along dimensions where all inputs are
-        # broadcastable
-        broadcastable = []
-        for d in xrange(_inputs[0].type.ndim):
-            bcast_d = True
-            for i in _inputs:
-                if not i.type.broadcastable[d]:
-                    bcast_d = False
-                    break
-            broadcastable.append(bcast_d)
-        assert len(broadcastable) == _inputs[0].type.ndim
-
-        otype = CudaNdarrayType(broadcastable=broadcastable)
-        assert self.nout == 1
-
-        out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
-        in_name = ["i" + str(id) for id in range(len(inputs))]
-        out_name = ["o" + str(id) for id in range(self.nout)]
-        c_code = self.scalar_op.c_code(out_node, "some_name",
-                                       tuple([n + "[i]"for n in in_name]),
-                                       tuple(n + "[i]"for n in out_name), {})
-
-        self.pycuda_fct = TheanoElementwiseKernel(
-            ", ".join([var.type.dtype_specs()[1] + " *" + name
-                       for var, name in (zip(inputs, in_name) +
-                                         zip(out_node.outputs, out_name))]),
-            c_code,
-            "pycuda_elemwise_kernel_%s" % str(self.scalar_op),
-            preamble="""#include<Python.h>
-#include <numpy/arrayobject.h>""")
-        return out_node
-
-    def perform(self, node, inputs, out):
-        #TODO assert all input have the same shape
-        z, = out
-        if z[0] is None or z[0].shape != inputs[0].shape:
-            z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
-        i = inputs + z
-        self.pycuda_fct(*i)
 
 pycuda_optimizer = EquilibriumDB()
 gpu_seqopt.register("pycuda_optimizer", pycuda_optimizer, 1.5, "fast_run")
