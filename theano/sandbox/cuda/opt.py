@@ -87,7 +87,8 @@ class InputToGpuOptimizer(Optimizer):
 
             # This happen frequently as we do 2 pass of the gpu optimizations
             if (len(input.clients) == 1 and
-                input.clients[0][0].op == gpu_from_host):
+                (input.clients[0][0] == 'output' or
+                 input.clients[0][0].op == gpu_from_host)):
                 return
 
             try:
