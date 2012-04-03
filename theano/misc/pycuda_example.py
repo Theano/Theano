@@ -104,6 +104,15 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         else:
             return self.name
 
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.scalar_op == other.scalar_op and
+                self.inplace_pattern == other.inplace_pattern)
+
+    def __hash__(self):
+        return (hash(type(self)) ^ hash(self.scalar_op) ^
+                hash(self.inplace_pattern))
+
     def make_node(self, *inputs):
         _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
         if self.nin > 0 and len(_inputs) != self.nin:
@@ -186,6 +195,15 @@ class PycudaElemwiseKernelOp(GpuOp):
                 return self.__class__.__name__ + "{%s}" % (self.scalar_op)
         else:
             return self.name
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.scalar_op == other.scalar_op and
+                self.inplace_pattern == other.inplace_pattern)
+
+    def __hash__(self):
+        return (hash(type(self)) ^ hash(self.scalar_op) ^
+                hash(self.inplace_pattern))
 
     def make_node(self, *inputs):
         _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
