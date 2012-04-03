@@ -670,18 +670,27 @@ def _optcheck_env(input_specs, output_specs, accept_inplace=False):
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                   clobber_dr_vals=True,
                   perform=None, warn_input_not_reused=True):
-    """Raise BadDestroyMap if necessary, update dr_vals"""
+    """
+    Raise BadDestroyMap if necessary, update dr_vals
+
+    Returns a list of output variables that actually worked inplace
+    (their value is aliased to the value of at least one input).
+    """
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
     for o_pos, i_pos_list in destroy_map.iteritems():
         destroyed_idx_list.extend(i_pos_list)
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
-    if warn_input_not_reused and destroyed_res_list:
-        dmap = getattr(node.op, 'destroy_map', {})
-        for oo, ii in dmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
+    actually_inplace_outputs = []
+    dmap = getattr(node.op, 'destroy_map', {})
+    for oo, ii in dmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused and destroyed_res_list:
             if isinstance(node.op, theano.compile.mode.OutputGuard):
                 # The point of OutputGuard is to be declared as destructive
                 # while not destroying anything
@@ -691,11 +700,14 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                         "as destroyed was not changed for node '%s'",
                         ii[0], str(node))
 
-    if warn_input_not_reused:
-        vmap = getattr(node.op, 'view_map', {})
-        for oo, ii in vmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
+    vmap = getattr(node.op, 'view_map', {})
+    for oo, ii in vmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused:
             # We don't try to optimize simple scalar and empty ndarray,
             # as this is not worth our time. This happen at least in
             # Subtensor when the output is a scalar But this depend on
@@ -726,6 +738,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             else:
                 raise BadDestroyMap(node, r_idx, r_vals[r],
                                     storage_map[r][0], perform)
+
+    return actually_inplace_outputs
 
 
 def _check_viewmap(node, storage_map):
@@ -994,7 +1008,8 @@ _find_bad_optimizations = _find_bad_optimizations0
 
 
 def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs):
     '''Preallocate outputs in different memory layouts'''
 
     # To avoid circular imports
@@ -1006,20 +1021,37 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     # TODO: Sparse? Scalar does not really make sense.
 
+    # Do not preallocate memory for outputs that actually work inplace
+    considered_outputs = []
+    for r in node.outputs:
+        if r not in inplace_outs:
+            considered_outputs.append(r)
+
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
     # is not reused
-    # TODO: skip all this for outputs that actually worked inplace
     if 'previous' in prealloc_modes or 'ALL' in prealloc_modes:
         reuse_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             # We want to reuse the exact same memory buffer,
             # so we keep the copy in r_vals
             new_r = _lessbroken_deepcopy(r_vals[r])
             reuse_outputs[r] = r_vals[r]
             r_vals[r] = new_r
+            # Sometimes, outputs can be aliased together.
+            # I'm not sure why it is legitimate, but there are tests about it.
+            # So, we cannot fill r_vals[r] with def_val yet, we have to wait
+            # until all output values are deepcopied.
 
-        yield ('previous', reuse_outputs)
+        for r in considered_outputs:
+            # There is no risk to overwrite inputs, since r does not work
+            # inplace.
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                reuse_outputs[r][...] = numpy.asarray(
+                        def_val).astype(r.type.dtype)
+
+        if reuse_outputs:
+            yield ('previous', reuse_outputs)
         # clear memory that is not needed any more
         del reuse_outputs
 
@@ -1027,7 +1059,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType and CudaNdarray, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
@@ -1045,7 +1077,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType, only)
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 new_buf = numpy.zeros(
                         shape=r_vals[r].shape,
@@ -1089,7 +1121,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
         # Initial allocation
         init_strided = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Create a buffer twice as large in every dimension,
                 # except if broadcastable, or for dimensions above 4
@@ -1149,7 +1181,8 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
                         strided[r] = r_buf
 
-                yield (name, strided)
+                if strided:
+                    yield (name, strided)
                 del strided
 
     if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
@@ -1166,7 +1199,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 wrong_size = {}
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
-                for r in node.outputs:
+                for r in considered_outputs:
                     if isinstance(r.type, (TensorType, CudaNdarrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
@@ -1177,12 +1210,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                                 def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
-                yield (name, wrong_size)
+                if wrong_size:
+                    yield (name, wrong_size)
                 del wrong_size
 
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs):
     '''Try to apply thunk() on different output storages'''
 
     # If node has an inner compiled Theano function with mode DebugMode,
@@ -1211,20 +1246,30 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                     changed_inner_mode = True
                     _logger.info('changing inner mode')
 
+        # Set of inputs that are marked as destroyed or viewed
+        aliased_inputs = set()
+        dmap = getattr(node.op, 'destroy_map', {})
+        vmap = getattr(node.op, 'view_map', {})
+        for i, r in enumerate(node.inputs):
+            if any(i in v for v in (dmap.values() + vmap.values())):
+                aliased_inputs.add(r)
+
         _logger.debug('starting preallocated output checking')
         for (name, out_map) in _get_preallocated_maps(
                 node, thunk, prealloc_modes, def_val, storage_map, r_vals,
-                dr_vals, perform, active_order_set):
+                dr_vals, perform, active_order_set, inplace_outs):
             _logger.debug('  name = %s', name)
+
+            if not out_map:
+                # Map is empty, there is no need to execute thunk() again
+                _logger.warn('%s: out_map is empty', name)
+                continue
 
             # Copy the inputs over, if they were marked as destroyed or viewed
             # (we will destroy the output at some point so it can destroy
             # the input)
-            dmap = getattr(node.op, 'destroy_map', {})
-            vmap = getattr(node.op, 'view_map', {})
-            for i, r in enumerate(node.inputs):
-                if any(i in v for v in (dmap.values() + vmap.values())):
-                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+            for r in aliased_inputs:
+                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
             # Get the appropriate output storages
             # (no copy)
@@ -1724,11 +1769,11 @@ class _Linker(gof.link.LocalLinker):
                                 raise InvalidValueError(r, storage_map[r][0],
                                                         hint='perform output',
                                                         specific_hint=hint2)
-
-                        _check_inputs(node, storage_map, r_vals, dr_vals,
-                                      active_order_set,
-                                      clobber_dr_vals=True, perform='py',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        py_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals, dr_vals,
+                                active_order_set,
+                                clobber_dr_vals=True, perform='py',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1756,7 +1801,8 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='py',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=py_inplace_outs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1805,10 +1851,11 @@ class _Linker(gof.link.LocalLinker):
                                     self.maker.mode.require_matching_strides,
                                     node.op)
 
-                        _check_inputs(node, storage_map, r_vals,
-                                      dr_vals, active_order_set,
-                                      clobber_dr_vals=clobber, perform='c',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        c_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals,
+                                dr_vals, active_order_set,
+                                clobber_dr_vals=clobber, perform='c',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1848,7 +1895,8 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='c code',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=c_inplace_outs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
