@@ -29,7 +29,7 @@ else:
 
 
 def test_pycuda_elemwise_source_module():
-    for shape in [(5, 5), (10, 49), (50, 49), (500, 501), (5000, 5001)]:
+    for shape in [(5, 5), (10, 49), (50, 49), (500, 501)]:
         for op in [theano.scalar.basic.mul, theano.scalar.basic.add]:
             x = T.fmatrix('x')
             y = T.fmatrix('y')
@@ -39,13 +39,15 @@ def test_pycuda_elemwise_source_module():
             f = theano.function([x, y], elemwise_op(x, y), mode=mode_with_gpu)
             f2 = theano.function([x, y],
                                  theano.sandbox.cuda.host_from_gpu(
-                                     pycuda_op(x, y)))
+                                     pycuda_op(x, y)),
+                                 mode=mode_with_gpu)
             mode_pycuda = mode_with_gpu.including("local_pycuda_gpu_elemwise")
             f3 = theano.function([x, y], elemwise_op(x, y),
                                  mode=mode_pycuda)
             f4 = theano.function([x, y],
                                  theano.sandbox.cuda.host_from_gpu(
-                                     pycuda_op_thunk(x, y)))
+                                     pycuda_op_thunk(x, y)),
+                                 mode=mode_with_gpu)
 
             assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
                         for node in f.maker.env.toposort()])
