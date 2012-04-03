@@ -1826,13 +1826,18 @@ class test_local_subtensor_merge(unittest.TestCase):
         # Bug reported by Graham
         data = self.rng.uniform(size=(8,8,8)).astype(theano.config.floatX)
         x = theano.tensor.tensor3('x')
+
+        nops = 1
+        if theano.config.mode == "FAST_COMPILE":
+            nops = 2
+
         # test 1)
         y = x[3:6,2:6,1:7][1]
         fun = theano.function([x], y)
         val = fun(data)
         assert numpy.all(val == data[3:6,2:6,1:7][1])
         assert len([n for n in fun.maker.env.toposort()
-                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
 
         # test 2)
         y = x[2,3][1]
@@ -1840,7 +1845,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert numpy.all(val == data[2,3][1])
         assert len([n for n in fun.maker.env.toposort()
-                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
 
         # test 3)
         y = x[3:6,2,1:7][1]
@@ -1848,7 +1853,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert numpy.all(val == data[3:6,2,1:7][1])
         assert len([n for n in fun.maker.env.toposort()
-                    if isinstance(n.op, theano.tensor.basic.Subtensor)]) == 1
+                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
 
 
     def test_scalar6(self):
