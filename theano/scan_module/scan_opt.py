@@ -21,6 +21,8 @@ import theano
 from theano import tensor
 from theano.tensor import opt, get_constant_value
 from theano import gof
+from theano.gof.opt import Optimizer
+from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
 from theano import config
 from theano.compile.function_module import deep_copy_op
@@ -307,92 +309,62 @@ scan_seqopt.register('scanOp_pushout_nonseqs_ops',
                      'scan')
 
 
-@gof.local_optimizer([None])
-def scan_make_inplace(node):
-    op = node.op
 
-    if (isinstance(op, scan_op.Scan) and
-        (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
-                                   op.info['n_mit_sot'] +
-                                   op.info['n_sit_sot'])) and
-        (not op.info['gpu'])):
-        info = copy.deepcopy(op.info)
-        pos = op.info['inplace'] + 1
-        if not 'destroy_map' in info:
-            info['destroy_map'] = {}
-        info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
-        # inputs corresponding to sequences and n_steps
-        ls_begin = node.inputs[:1 + op.n_seqs]
-        ls = op.outer_mitmot(node.inputs)
-        ls += op.outer_mitsot(node.inputs)
-        ls += op.outer_sitsot(node.inputs)
-        ls_end = op.outer_shared(node.inputs)
-        ls_end += op.outer_nitsot(node.inputs)
-        ls_end += op.outer_non_seqs(node.inputs)
-        n_outs = len(ls)
-        for idx in xrange(n_outs):
-            if ls[idx] in ls[:idx]:
-                ls[idx] = deep_copy_op(ls[idx])
+class ScanInplaceOptimizer(Optimizer):
+    """Graph optimizer for Scan(makes it run inplace)"""
+    def __init__(self):
+        Optimizer.__init__(self)
 
-        inputs = ls_begin + ls + ls_end
-        new_op = scan_op.Scan(op.inputs,
-                              op.outputs,
-                              info)
-        return new_op.make_node(*inputs).outputs
-    return False
+    def add_requirements(self, env):
+        env.extend(toolbox.ReplaceValidate())
+        env.extend(DestroyHandler())
 
+    def apply(self, env):
+        nodes = env.toposort()
+        scan_nodes = [x for x in nodes
+                      if (isinstance(x.op, scan_op.Scan) and
+                         not x.op.info['gpu'])]
+        for scan_idx in xrange(len(scan_nodes)):
+            node = scan_nodes[scan_idx]
+            op = node.op
+            n_outs = (op.info['n_mit_mot'] +
+                      op.info['n_mit_sot'] +
+                      op.info['n_sit_sot'])
+            for pos in xrange(n_outs):
+                info = copy.deepcopy(op.info)
+                if not 'destroy_map' in info:
+                    info['destroy_map'] = {}
+                info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
+                # inputs corresponding to sequences and n_steps
+                ls_begin = node.inputs[:1 + op.n_seqs]
+                ls = op.outer_mitmot(node.inputs)
+                ls += op.outer_mitsot(node.inputs)
+                ls += op.outer_sitsot(node.inputs)
+                ls_end = op.outer_shared(node.inputs)
+                ls_end += op.outer_nitsot(node.inputs)
+                ls_end += op.outer_non_seqs(node.inputs)
+                n_outs = len(ls)
+                for idx in xrange(n_outs):
+                    if ls[idx] in ls[:idx]:
+                        ls[idx] = deep_copy_op(ls[idx])
 
-@gof.local_optimizer([None])
-def scan_make_inplace_inc_output(node):
-    op = node.op
-
-    if (isinstance(op, scan_op.Scan) and
-        (op.info['inplace'] + 1 < (op.info['n_mit_mot'] +
-                                   op.info['n_mit_sot'] +
-                                   op.info['n_sit_sot'])) and
-        (not op.info['gpu'])):
-        info = copy.deepcopy(op.info)
-        pos = op.info['inplace'] + 1
-        info['inplace'] = pos
-        # inputs corresponding to sequences and n_steps
-        ls_begin = node.inputs[:1 + op.n_seqs]
-        ls = op.outer_mitmot(node.inputs)
-        ls += op.outer_mitsot(node.inputs)
-        ls += op.outer_sitsot(node.inputs)
-        ls_end = op.outer_shared(node.inputs)
-        ls_end += op.outer_nitsot(node.inputs)
-        ls_end += op.outer_non_seqs(node.inputs)
-        n_outs = len(ls)
-        for idx in xrange(n_outs):
-            if ls[idx] in ls[:idx]:
-                ls[idx] = deep_copy_op(ls[idx])
-
-        inputs = ls_begin + ls + ls_end
-        new_op = scan_op.Scan(op.inputs,
-                              op.outputs,
-                              info)
-        return new_op.make_node(*inputs).outputs
-    return False
-
-
-scan_inplace_eq = theano.gof.EquilibriumDB()
-
-scan_inplace_eq.register('scanOp_make_inplace',
-               opt.in2out(scan_make_inplace, ignore_newtrees=True),
-               1,
-               'fast_run',
-               'inplace',
-               'scan')
-
-scan_inplace_eq.register('scanOp_make_inplace_inc_output',
-               opt.in2out(scan_make_inplace_inc_output, ignore_newtrees=True),
-               2,
-               'fast_run',
-               'inplace',
-               'scan')
+                inputs = ls_begin + ls + ls_end
+                new_op = scan_op.Scan(op.inputs,
+                                      op.outputs,
+                                      info)
+                new_outs = new_op.make_node(*inputs).outputs
+                try:
+                    env.replace_all_validate(
+                        zip(node.outputs, new_outs),
+                        reason=self.__class__.__name__)
+                    op = new_op
+                    node = new_outs[0].owner
+                except InconsistencyError, e:
+                    # Failed moving output to be comptued inplace
+                    pass
 
 optdb.register('scanOp_make_inplace',
-               scan_inplace_eq,
+               ScanInplaceOptimizer(),
                75,
                'fast_run',
                'inplace',
