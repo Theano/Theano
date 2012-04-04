@@ -449,6 +449,9 @@ class Generic(SingletonType):
         Py_INCREF(py_%(name)s);
         """ % locals()
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def __str__(self):
         return self.__class__.__name__
 
