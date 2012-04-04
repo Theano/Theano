@@ -231,6 +231,26 @@ class T_sigmoid_opts(unittest.TestCase):
         ok(-exp(x) * -sigmoid(-x) * -exp(-x),
            -sigmoid(-x))
 
+    def test_grad_log1msigm(self):
+        # At some point, this returned nan, because (1 - sigm(x)) was
+        # on both the numerator and the denominator of a fraction,
+        # but the two nodes in question had not been merged.
+        x = tensor.matrix('x')
+        lr = tensor.scalar('lr')
+
+        s = sigmoid(x)
+        l = T.log(1 - s)
+        c = l.mean()
+        ux = x - lr * theano.grad(c, x)
+
+        # Before the optimization, inf and NaN will be produced in the graph,
+        # and DebugMode will complain. Everything is fine afterwards.
+        mode = self.get_mode()
+        if not isinstance(mode, theano.compile.DebugMode):
+            f = theano.function([x, lr], ux)
+            ux_v = f([[50]], 0.1)
+            assert not numpy.isnan(ux_v)
+
 
 class T_softplus_opts(unittest.TestCase):
     def setUp(self):
