@@ -109,9 +109,9 @@ class MyOp(Op):
         return ()
 
 
-class Unary(MyOp):
-    def __init__(self):
-        MyOp.__init__(self, 1, self.__class__.__name__)
+#class Unary(MyOp):
+#    def __init__(self):
+#        MyOp.__init__(self, 1, self.__class__.__name__)
 
 
 class Binary(MyOp):
