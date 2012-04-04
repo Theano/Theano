@@ -63,6 +63,15 @@ New Features
   can't be cached as there is no c_code_cache_version() function to at
   least of of those Ops.  (Frederic B.)
  * CPU alloc now always generate c code (Pascal L.)
+ * New Theano flag cmodule.warn_no_version=False. When True, warn when an op
+   with c code is not versionned. This force to recompile it everytimes.
+   (Frédéric B.)
+ * Made a few Ops with c code versionned to reduce compilation time.
+   (Frédéric B, Pascal L.)
+
+ * c code reuse preallocated output(only done by Scan) (Pascal L.)
+ * gc of intermediate result during theano function call for op with c code
+   (Pascal L.)
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't
