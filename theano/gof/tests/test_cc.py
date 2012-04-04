@@ -60,7 +60,13 @@ class TDouble(Type):
         """ % locals()
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
 
 tdouble = TDouble()
 
@@ -86,6 +92,14 @@ class MyOp(Op):
 
     def __str__(self):
         return self.name
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.name == other.name and
+                self.nin == other.nin)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.name) ^ hash(self.nin)
 
     def perform(self, node, inputs, out_):
         out, = out_
