@@ -29,6 +29,11 @@ AddConfigVar('time_seq_optimizer',
         BoolParam(False),
         in_c_key=False)
 
+AddConfigVar('time_eq_optimizer',
+        "Should EquilibriumOptimizer print the time taken by each optimizer",
+        BoolParam(False),
+        in_c_key=False)
+
 import destroyhandler as dh
 import traceback
 
@@ -174,7 +179,10 @@ class SeqOptimizer(Optimizer, list):
                 if a[0]<b[0]: return -1
                 return 1
             lll.sort(cmp)
-            print lll
+
+            for (t, opt) in lll[::-1]:
+                print '  %.6fs - %s' % (t, opt)
+            print
 
     def __eq__(self, other):
         #added to override the list's __eq__ implementation
@@ -1115,7 +1123,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         process_count = {}
         max_nb_nodes = 0
 
+        loop_timing = []
+        global_opt_timing = []
+        nb_nodes = []
+
         while changed and not max_use_abort:
+            t0 = time.time()
             changed = False
 
             #apply global optimizer
@@ -1125,12 +1138,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             if env.change_tracker.changed:
                 changed = True
 
+            global_opt_timing.append(float(time.time() - t0))
+
             #apply local optimizer
             for node in start_from:
                 assert node in env.outputs
 
             q = deque(graph.io_toposort(env.inputs, start_from))
 
+            nb_nodes.append(len(q))
             max_nb_nodes = max(max_nb_nodes, len(q))
             max_use = max_nb_nodes * self.max_use_ratio
             def importer(node):
@@ -1163,11 +1179,36 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             finally:
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
+
+            loop_timing.append(float(time.time() - t0))
         if max_use_abort:
             _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
+
+        if config.time_eq_optimizer:
+            print "EquilibriumOptimizer",
+            print getattr(self, "name", getattr(self, "__name__", ""))
+            print " time %.3fs for %d passes, %d nodes max" % (
+                    sum(loop_timing), len(loop_timing), max_nb_nodes)
+
+            for i in range(len(loop_timing)):
+                print '%d - %.3fs (%.3fs in global opts) - %d nodes' % (
+                        i, loop_timing[i], global_opt_timing[i], nb_nodes[i])
+            print
+
+            count_opt = []
+            for opt, count in process_count.iteritems():
+                if count > 0:
+                    count_opt.append((count, opt))
+
+            if count_opt:
+                print 'times applied - optimizer:'
+                count_opt.sort()
+                for (count, opt) in count_opt[::-1]:
+                    print '  %d - %s' % (count, opt)
+                print
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
