@@ -47,6 +47,9 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         else:
             out[0] = z
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, inp, out, sub):
         a, b = inp
         z, = out
@@ -129,6 +132,9 @@ class WeirdBrokenOp(gof.Op):
             out[0] = a
         else:
             raise ValueError(self.behaviour)
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def c_code(self, node, name, inp, out, sub):
         a, = inp
@@ -578,6 +584,9 @@ class Test_preallocated_output(unittest.TestCase):
             z = a + b
             print 'out[0] was:', out[0]
             out[0] = z
+
+        def c_code_cache_version(self):
+            return (1,)
 
         def c_code(self, node, name, inp, out, sub):
             a, b = inp

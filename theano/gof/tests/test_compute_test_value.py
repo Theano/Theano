@@ -348,6 +348,9 @@ class TestComputeTestValue(unittest.TestCase):
                 output = input.type()
                 return Apply(self, [input], [output])
 
+            def c_code_cache_version(self):
+                return (1,)
+
             def c_code(self, node, name, inputs, outputs, sub):
                 x, = inputs
                 z, = outputs
