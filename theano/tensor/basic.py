@@ -6363,7 +6363,8 @@ class ArgSortOp(theano.Op):
         return hash(type(self)) ^ hash(self.order) ^ hash(self.kind)
 
     def __str__(self):
-        return self.__class__.__name__ + "{%s, %s}" % (self.kind, str(self.order))
+        return (self.__class__.__name__
+                + "{%s, %s}" % (self.kind, str(self.order)))
 
     def make_node(self, input, axis=-1):
         input = theano.tensor.as_tensor_variable(input)
@@ -6410,8 +6411,10 @@ class ArgSortOp(theano.Op):
 def argsort(a, axis=-1, kind='quicksort', order=None):
     """
     Returns the indices that would sort an array.
-    Perform an indirect sort along the given axis using the algorithm specified by the kind keyword.
-    It returns an array of indices of the same shape as a that index data along the given axis in sorted order.
-    """
+
+    Perform an indirect sort along the given axis using the algorithm
+    specified by the kind keyword.  It returns an array of indices of
+    the same shape as a that index data along the given axis in sorted
+    order.
+"""
     return ArgSortOp(kind, order)(a, axis)
-    
