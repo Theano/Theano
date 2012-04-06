@@ -71,19 +71,18 @@ New Features
    (Frederic B.)
  * theano.tensor.argsort that wraps numpy.argsort (Hani Almousli).
  * New theano flag cmodule.warn_no_version. Default False. If True,
-   will print a warning when compiling one or more Op with c code that
+   will print a warning when compiling one or more Op with C code that
    can't be cached because there is no c_code_cache_version() function
    associated to at least one of those Ops.  (Frederic B.)
- * CPU alloc now always generate c code (Pascal L.)
+ * CPU alloc now always generate C code (Pascal L.)
  * New Theano flag cmodule.warn_no_version=False. When True, warn when an op
-   with c code is not versionned. This force to recompile it everytimes.
+   with C code is not versioned (which forces to recompile it everytimes).
    (Frédéric B.)
- * Made a few Ops with c code versionned to reduce compilation time.
+ * Made a few Ops with C code versioned to reduce compilation time.
    (Frédéric B, Pascal L.)
-
- * c code reuse preallocated output(only done by Scan) (Pascal L.)
- * gc of intermediate result during theano function call for op with c code
-   (Pascal L.)
+ * C code reuses preallocated outputs (only done by Scan) (Pascal L.)
+ * Garbage collection of intermediate results during Theano function calls
+   for Ops with C code (Pascal L.)
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't
@@ -278,7 +277,7 @@ New features:
  * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.mem_info() return free and total gpu memory (Frederic)
  * Theano flags compiledir_format. Keep the same default as before: compiledir_%(platform)s-%(processor)s-%(python_version)s. (Josh Bleecher Snyder)
      * We also support the "theano_version" substitution.
- * IntDiv c code (faster and allow this elemwise to be fused with other elemwise) (Pascal)
+ * IntDiv C code (faster and allow this elemwise to be fused with other elemwise) (Pascal)
  * Internal filter_variable mechanism in Type. (Pascal, Ian)
     * Ifelse works on sparse.
     * It makes use of gpu shared variable more transparent with theano.function updates and givens parameter.
@@ -347,7 +346,7 @@ Crashes fixed:
  * Fix runtime crash in gemm, dot22. FB
  * Fix on 32bits computer: make sure all shape are int64.(Olivier)
  * Fix to deque on python 2.4 (Olivier)
- * Fix crash when not using c code (or using DebugMode) (not used by
+ * Fix crash when not using C code (or using DebugMode) (not used by
    default) with numpy 1.6*. Numpy has a bug in the reduction code that
    made it crash. (Pascal)
  * Crashes of blas functions (Gemv on CPU; Ger, Gemv and Gemm on GPU)
