@@ -490,7 +490,6 @@ class ScanSaveMem(gof.Optimizer):
                     if (isinstance(this_slice[0], slice) and
                         this_slice[0].stop is None):
                         global_nsteps = None
-                        break
                     if isinstance(cf_slice[0], slice):
                         stop = tensor.basic.extract_constant(cf_slice[0].stop)
                     else:
