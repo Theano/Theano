@@ -1823,7 +1823,6 @@ def local_subtensor_merge(node):
                     merged_slices.append(slice1)
                 pos_1 += 1
 
-
             if pos_2 < len(slices2):
                 merged_slices += slices2[pos_2:]
             else:
