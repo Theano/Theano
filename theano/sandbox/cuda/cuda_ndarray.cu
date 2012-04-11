@@ -1542,7 +1542,8 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
             return NULL;
         }
         //initialize dimension 0 of rval
-        CudaNdarray_set_stride(rval, 0, step * CudaNdarray_HOST_STRIDES(self)[0]);
+        CudaNdarray_set_stride(rval, 0,
+                (slen == 1) ? 0 : step * CudaNdarray_HOST_STRIDES(self)[0]);
         CudaNdarray_set_dim(rval, 0, slen);
         if (verbose) std::cerr << "rval stride " << CudaNdarray_HOST_STRIDES(rval)[0] << "\n";
         // initialize dimensions > 0 of rval
@@ -1614,7 +1615,8 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
                         return NULL;
                     }
                     rval->devdata += start * CudaNdarray_HOST_STRIDES(self)[d];
-                    CudaNdarray_set_stride(rval, rval_d, step * CudaNdarray_HOST_STRIDES(self)[d]);
+                    CudaNdarray_set_stride(rval, rval_d,
+                            (slen == 1) ? 0 : step * CudaNdarray_HOST_STRIDES(self)[d]);
                     CudaNdarray_set_dim(rval, rval_d, slen);
                     if (0)
                     {
