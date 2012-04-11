@@ -1283,7 +1283,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.global_optimizers.append(opt)
         self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
-        assert (self.max_use_ratio is not None,
+        assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
 
     def add_requirements(self, env):
