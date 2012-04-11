@@ -204,7 +204,7 @@ optdb.register('merge1', gof.MergeOptimizer(),
         0, 'fast_run', 'fast_compile')
 optdb.register('canonicalize', gof.EquilibriumDB(),         # rearranges elemwise expressions
         1, 'fast_run', 'fast_compile')
-optdb.register('merge1.2', gof.MergeOptimizer(skip_const_merge=False),
+optdb.register('merge1.2', gof.MergeOptimizer(),
         1.2, 'fast_run', 'fast_compile')
 optdb.register('Print1.21', PrintCurrentEnv('Post-canonicalize'),
         1.21,)# 'fast_run', 'fast_compile')
