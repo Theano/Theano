@@ -463,6 +463,15 @@ def test_stride_manipulation():
     assert numpy.all(c == [[5, 4, 3], [2, 1, 0]])
 
 
+def test_subtensor_broadcastable():
+    a = numpy.zeros((2, 7), dtype='float32')
+    cuda_a = cuda_ndarray.CudaNdarray(a)
+    # Will have shape (1, 7), so the stride in the first dim should be 0
+    sub_a = cuda_a[1:]
+    assert sub_a.shape == (1, 7)
+    assert sub_a._strides[0] == 0
+
+
 def test_copy_subtensor0():
     sizeof_float=4
     a = theano._asarray(numpy.random.rand(30,20,5,5), dtype='float32')
