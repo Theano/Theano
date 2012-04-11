@@ -1199,6 +1199,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def add_requirements(self, env):
         super(EquilibriumOptimizer, self).add_requirements(env)
         env.extend(ChangeTracker())
+        for opt in self.local_optimizers:
+            opt.add_requirements(env)
+        for opt in self.global_optimizers:
+            opt.add_requirements(env)
 
     def apply(self, env, start_from = None):
         if start_from is None:
