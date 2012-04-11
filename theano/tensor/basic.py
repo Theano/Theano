@@ -6305,7 +6305,7 @@ class SortOp(theano.Op):
         # So there should be the same number of dimensions
         # in the input and output
         assert node.inputs[0].ndim == node.outputs[0].ndim
-        assert inputs_shapes[1] is ()
+        assert inputs_shapes[1] == ()
         return [inputs_shapes[0]]
 
     #**** It need the argsort, so we can't do it now.
@@ -6390,7 +6390,7 @@ class ArgSortOp(theano.Op):
         # axis should not be None, so there should be the same number of
         # dimensions in the input and output
         assert node.inputs[0].ndim == node.outputs[0].ndim
-        assert inputs_shapes[1] is ()
+        assert inputs_shapes[1] == ()
         return [inputs_shapes[0]]
 
     def grad(self, inputs, output_grads):
