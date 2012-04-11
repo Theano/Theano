@@ -511,8 +511,9 @@ def pre_constant_merge(vars):
     """
 
     seen_var = set()
-    const_sig = {}     # variable -> variable.signature()  (for constants)
-    const_sig_inv = {} # signature -> variable (for constants)
+    # signature -> variable (for constants)
+    const_sig_inv = {}
+
     def recursive_merge(var):
         if var in seen_var:
             return var
@@ -1352,7 +1353,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                 break
             finally:
                 self.detach_updater(env, u)
-            self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
+
         if max_use_abort:
             _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name
                           + ". You can safely raise the current threshold of "
