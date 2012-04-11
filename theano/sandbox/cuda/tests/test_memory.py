@@ -38,7 +38,7 @@ def freemem():
     mem_info = cuda.cuda_ndarray.cuda_ndarray.mem_info()
     gpu_used = (mem_info[1] - mem_info[0]) / 1024 ** 2
     mem_info_msg = "(n malloc/gpu mem used in MB)"
-    return ("(n malloc/gpu mem used in MB)", n_mallocs, int(gpu_used))
+    return (mem_info_msg, n_mallocs, int(gpu_used))
 
 
 def test_memory():
@@ -71,25 +71,33 @@ def test_memory():
     obj = theano.function([some_vector], derp, mode=mode_with_gpu)
     mem3 = freemem()
     print "After function compilation 1", mem3
-    assert mem2 == mem3, (mem2, mem3)
+    # There is no reason for mem3 to be equal to mem2.
+    # In fact, since constants are allocated on the GPU,
+    # they are different.
 
     grad_derp = tensor.grad(derp, some_vector)
     grad = theano.function([some_vector], grad_derp, mode=mode_with_gpu)
     mem4 = freemem()
     print "After function compilation 2", mem4
-    assert mem2 == mem4, (mem2, mem4)
+    # There is no reason for mem4 to be equal to mem3.
+    # In fact, since constants are allocated on the GPU,
+    # they are different.
 
     for i in range(3):
         obj(test_params)
         print "After function evaluation 1", freemem()
-        assert mem2 == freemem(), (mem2, freemem())
+        assert mem4 == freemem(), (mem4, freemem())
         grad(test_params)
         print "After function evaluation 2", freemem()
-        assert mem2 == freemem(), (mem2, freemem())
+        assert mem4 == freemem(), (mem4, freemem())
 
     del obj
     print "After deleting function 1", freemem()
-    assert mem2 == freemem(), (mem2, freemem())
+    # (mem4 - mem3) represents the number of allocations made by the
+    # compilation of grad. These allocations are not freed yet,
+    # and neither is the shared variable.
+    mem5 = (mem2[0], mem2[1] + (mem4[1] - mem3[1]))
+    assert mem5 == freemem(), (mem5, freemem())
 
     del grad
     print "After deleting function 2", freemem()
