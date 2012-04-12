@@ -707,10 +707,9 @@ class ConvOp(Op):
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
 
-        #if self.dx!=1 or self.dy!=1:
-            #raise Exception("ERROR: We disable ConvOp.grad now when dx!=1 or "\
-                    #"dy!=1 as we think their is a high probability of bug in it."\
-                    #"We need to raise the error on the gradient to .1!")
+        if self.dx not in (1, 2) or self.dy not in (1, 2):
+            raise Exception("ERROR: We disable ConvOp.grad now when dx or "\
+                    "dy are different from 1 and 2, as there is a bug in it.")
 
         all_shape = self.imshp is not None and self.kshp is not None and \
                     self.nkern is not None and self.bsize is not None
