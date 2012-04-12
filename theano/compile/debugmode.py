@@ -115,24 +115,35 @@ class DebugModeError(Exception):
     pass
 
 
-class BadCLinkerOutput(DebugModeError):
-    """Exception: an Op's c_code and perform implementations don't agree."""
+class BadThunkOutput(DebugModeError):
+    """
+    Exception: Calling the same Op twice gives inconsistent outputs.
+
+    It can be raised, for instance, if an Op's c_code and perform method
+    do not agree, or if one of these methods do not give the same result
+    when called twice with the same inputs (but different memory layouts
+    for the output).
+    """
 
     r = None
     """The `Variable` instance for which conflicting values were computed"""
 
-    val_py = None
-    """The value computed by `r.owner.op.perform`"""
+    thunk1 = ''
+    val1 = None
+    """The value computed by `thunk1`"""
 
-    val_c = None
-    """The value computed by `r.owner.op.c_code`"""
+    thunk2 = ''
+    val2 = None
+    """The value computed by `thunk2`"""
 
-    def __init__(self, r, val_py, val_c):
+    def __init__(self, r, thunk1, val1, thunk2, val2):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
-        self.val_py = val_py
-        self.val_c = val_c
+        self.thunk1 = thunk1
+        self.val1 = val1
+        self.thunk2 = thunk2
+        self.val2 = val2
 
     def offending_op(self):
         """Return the Op class whose c_code and perform
@@ -146,45 +157,47 @@ class BadCLinkerOutput(DebugModeError):
         """Return a pretty multiline string representating the cause
         of the exception"""
         sio = StringIO()
-        print >> sio, "BadCLinkerOutput"
-        print >> sio, "  variable:", self.r
-        print >> sio, "  Outputs Type    :", self.r.type
-        print >> sio, "  Inputs Type:", [i.type for i in self.r.owner.inputs]
+        print >> sio, "BadThunkOutput"
+        print >> sio, "  variable    :", self.r
+        print >> sio, "  Outputs Type:", self.r.type
+        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs]
         print >> sio, "  Apply   :", self.r.owner
-        print >> sio, "  val_py  :", self.val_py
-        print >> sio, "  val_c   :", self.val_c
+        print >> sio, "  thunk1  :", self.thunk1
+        print >> sio, "  thunk2  :", self.thunk2
+        print >> sio, "  val1    :", self.val1
+        print >> sio, "  val2    :", self.val2
         print >> sio, "  op      :", self.offending_op()
         try:
             ssio = StringIO()
-            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_py.shape,
-            print >> ssio, self.val_py.dtype,
-            print >> ssio, self.val_py.strides,
-            print >> ssio, self.val_py.min(),
-            print >> ssio, self.val_py.max(),
-            print >> ssio, numpy.isinf(self.val_py).sum(),
-            print >> ssio, numpy.isnan(self.val_py).sum(),
+            print >> ssio, "  Value 1 : shape, dtype, strides, min, max, n_inf, n_nan:",
+            print >> ssio, self.val1.shape,
+            print >> ssio, self.val1.dtype,
+            print >> ssio, self.val1.strides,
+            print >> ssio, self.val1.min(),
+            print >> ssio, self.val1.max(),
+            print >> ssio, numpy.isinf(self.val1).sum(),
+            print >> ssio, numpy.isnan(self.val1).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except Exception:
             pass
         try:
             ssio = StringIO()
-            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_c.shape,
-            print >> ssio, self.val_c.dtype,
-            print >> ssio, self.val_c.strides,
-            print >> ssio, self.val_c.min(),
-            print >> ssio, self.val_c.max(),
-            print >> ssio, numpy.isinf(self.val_c).sum(),
-            print >> ssio, numpy.isnan(self.val_c).sum(),
+            print >> ssio, "  Value 2 : shape, dtype, strides, min, max, n_inf, n_nan:",
+            print >> ssio, self.val2.shape,
+            print >> ssio, self.val2.dtype,
+            print >> ssio, self.val2.strides,
+            print >> ssio, self.val2.min(),
+            print >> ssio, self.val2.max(),
+            print >> ssio, numpy.isinf(self.val2).sum(),
+            print >> ssio, numpy.isnan(self.val2).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except Exception:
             pass
         try:
-            ov = numpy.asarray(self.val_c)
-            nv = numpy.asarray(self.val_py)
+            ov = numpy.asarray(self.val1)
+            nv = numpy.asarray(self.val2)
             ssio = StringIO()
             absdiff = numpy.absolute(nv - ov)
             print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
@@ -1273,6 +1286,8 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                 init_outputs):
             _logger.debug('  name = %s', name)
 
+            thunk_name = '%s with %s output' % (perform, name)
+
             if not out_map:
                 # Map is empty, there is no need to execute thunk() again
                 _logger.warn('%s: out_map is empty', name)
@@ -1295,13 +1310,13 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.is_valid_value(storage_map[r][0]):
                     raise InvalidValueError(r, storage_map[r][0],
-                            hint='%s with %s output' % (perform, name),
+                            hint=thunk_name,
                             specific_hint=r.type.value_validity_msg(
                             storage_map[r][0]))
 
             _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                           clobber_dr_vals=False,
-                          perform='%s with output %s' % (perform, name),
+                          perform=thunk_name,
                           warn_input_not_reused=False)
 
             _check_viewmap(node, storage_map)
@@ -1309,8 +1324,9 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
-                    raise BadCLinkerOutput(r, val_py=r_vals[r],
-                                           val_c=storage_map[r][0])
+                    raise BadThunkOutput(r,
+                            thunk1='Reference value', val1=r_vals[r],
+                            thunk2=thunk_name, val2=storage_map[r][0])
 
             # Clear storage_map
             for r in node.outputs:
@@ -1885,7 +1901,9 @@ class _Linker(gof.link.LocalLinker):
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     #import pdb; pdb.set_trace()
                                     #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
-                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                                    raise BadThunkOutput(r,
+                                            thunk1='perform', val1=r_vals[r],
+                                            thunk2='c_code', val2=storage_map[r][0])
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 #retrieve each output from the storage_map
@@ -2297,7 +2315,10 @@ class DebugMode(Mode):
 
     This mode catches several kinds of internal error:
 
-    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
+    - inconsistent outputs when calling the same Op twice with the same
+      inputs, for instance if c_code and perform implementations, are
+      inconsistent, or in case of incorrect handling of output memory
+      (see `BadThunkOutput`),
 
     - a variable replacing another when their runtime values don't
       match.  This is a symptom of an incorrect optimization step, or

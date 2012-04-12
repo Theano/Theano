@@ -196,7 +196,7 @@ wb1i = WeirdBrokenOp('times1_inplace')
 wb1 = WeirdBrokenOp('times1')
 
 
-def test_badclinkeroutput():
+def test_badthunkoutput():
 
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
@@ -212,7 +212,7 @@ def test_badclinkeroutput():
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
-    except debugmode.BadCLinkerOutput, e:
+    except debugmode.BadThunkOutput, e:
         #print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
@@ -721,7 +721,7 @@ class Test_preallocated_output(unittest.TestCase):
                 check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        self.assertRaises(debugmode.BadCLinkerOutput, f, a_val, b_val)
+        self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
 
     def test_output_broadcast_tensor(self):
         v = theano.tensor.fvector('v')
