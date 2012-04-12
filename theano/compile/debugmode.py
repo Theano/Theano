@@ -64,7 +64,7 @@ AddConfigVar('DebugMode.warn_input_not_reused',
 def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, basestring):
         return False
-    valid = ["previous", "c_contiguous", "f_contiguous",
+    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
              "strided", "wrong_size", "ALL", ""]
     for p in param.split(":"):
         if p not in valid:
@@ -74,6 +74,7 @@ def is_valid_check_preallocated_output_param(param):
 AddConfigVar('DebugMode.check_preallocated_output',
         ('Test thunks with pre-allocated memory as output storage. '
          'This is a list of strings separated by ":". Valid values are: '
+         '"initial" (initial storage in storage map, happens with Scan),'
          '"previous" (previously-returned memory), '
          '"c_contiguous", "f_contiguous", '
          '"strided" (positive and negative strides), '
@@ -1009,7 +1010,7 @@ _find_bad_optimizations = _find_bad_optimizations0
 
 def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         storage_map, r_vals, dr_vals, perform, active_order_set,
-        inplace_outs):
+        inplace_outs, init_outputs):
     '''Preallocate outputs in different memory layouts'''
 
     # To avoid circular imports
@@ -1026,6 +1027,17 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     for r in node.outputs:
         if r not in inplace_outs:
             considered_outputs.append(r)
+
+    # Output storage that was initially present in the storage_map
+    if 'initial' in prealloc_modes or 'ALL' in prealloc_modes:
+        initial_outputs = {}
+        for r in considered_outputs:
+            if r in init_outputs:
+                initial_outputs[r] = init_outputs[r]
+
+        if initial_outputs:
+            print 'initial:', initial_outputs
+            yield ('initial', initial_outputs)
 
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
@@ -1217,7 +1229,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         storage_map, r_vals, dr_vals, perform, active_order_set,
-        inplace_outs):
+        inplace_outs, init_outputs):
     '''Try to apply thunk() on different output storages'''
 
     # If node has an inner compiled Theano function with mode DebugMode,
@@ -1257,7 +1269,8 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         _logger.debug('starting preallocated output checking')
         for (name, out_map) in _get_preallocated_maps(
                 node, thunk, prealloc_modes, def_val, storage_map, r_vals,
-                dr_vals, perform, active_order_set, inplace_outs):
+                dr_vals, perform, active_order_set, inplace_outs,
+                init_outputs):
             _logger.debug('  name = %s', name)
 
             if not out_map:
@@ -1713,11 +1726,14 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
 
-                # TODO: store them in another map, and test the thunks on
+                # store preallocated outputs in another map, and test the thunks on
                 # them as output storages.
+                init_outputs = {}
                 for r in storage_map:
                     if r in env.outputs:
-                        storage_map[r][0] = None
+                        if storage_map[r][0] is not None:
+                            init_outputs[r] = storage_map[r][0]
+                            storage_map[r][0] = None
 
                 #####
                 #  Precondition: the storage map is empty, transferred
@@ -1802,7 +1818,8 @@ class _Linker(gof.link.LocalLinker):
                                     dr_vals=dr_vals,
                                     perform='py',
                                     active_order_set=active_order_set,
-                                    inplace_outs=py_inplace_outs)
+                                    inplace_outs=py_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1896,7 +1913,8 @@ class _Linker(gof.link.LocalLinker):
                                     dr_vals=dr_vals,
                                     perform='c code',
                                     active_order_set=active_order_set,
-                                    inplace_outs=c_inplace_outs)
+                                    inplace_outs=c_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],

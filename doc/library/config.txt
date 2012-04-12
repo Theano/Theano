@@ -385,6 +385,8 @@ import theano and print the config variable, as in:
     A list of kinds of preallocated memory to use as output buffers for
     each Op's computations, separated by ``:``. Implemented modes are:
 
+    * ``"initial"``: initial storage present in storage map
+      (for instance, it can happen in the inner function of Scan),
     * ``"previous"``: reuse previously-returned memory,
     * ``"c_contiguous"``: newly-allocated C-contiguous memory,
     * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
