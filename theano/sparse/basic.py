@@ -558,14 +558,13 @@ class CSMProperties(gof.Op):
         out[2][0] = theano._asarray(csm.indptr, dtype='int32')
         out[3][0] = theano._asarray(csm.shape, dtype='int32')
 
-    # TODO FIX THIS
     def grad(self, (csm,), g):
         assert [gg is None for gg in g[1:]]
         data, indices, indptr, shape = csm_properties(csm)
         if csm.format == 'csc':
-            return [CSM('csc')(g_data, indices, indptr, shape)]
+            return [CSC(g[0], indices, indptr, shape)]
         else:
-            return [CSR('csm')(g_data, indices, indptr, shape)]
+            return [CSR(g[0], indices, indptr, shape)]
 # don't make this a function or it breaks some optimizations below
 csm_properties = CSMProperties()
 
@@ -1271,7 +1270,7 @@ class MulSD(gof.op.Op):
 
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
-        assert _is_sparse_variable(gz)
+        #assert _is_sparse_variable(gz)
         return y * gz, x * gz
 
     def infer_shape(self, node, shapes):
