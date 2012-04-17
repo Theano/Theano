@@ -494,7 +494,7 @@ class StructuredAddSV(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
-        return gz, gz.sum(0)
+        return gz, sum(gz, 0)
 structured_add_s_v = StructuredAddSV()
 
 
