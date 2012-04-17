@@ -241,7 +241,7 @@ class Method(Component):
     function call.
     """
 
-    outputs=None
+    outputs = None
     """function outputs (see `compile.function`)"""
 
     updates = {}
@@ -260,7 +260,7 @@ class Method(Component):
 
     """
 
-    mode=None
+    mode = None
     """This will override the Module compilation mode for this Method"""
 
     def __init__(self, inputs, outputs, updates=None, mode=None):
@@ -341,7 +341,7 @@ class Method(Component):
         """
         return None
 
-    def build(self, mode, memo, allocate_all = False):
+    def build(self, mode, memo, allocate_all=False):
         """Compile a function for this Method.
 
         :param allocate_all: if True, storage will be
@@ -575,7 +575,7 @@ class Composite(Component):
         """
         raise NotImplementedError
 
-    def flat_components(self, include_self = False):
+    def flat_components(self, include_self=False):
         """
         Generator that yields each component in a flattened hierarchy
         of composites and components. If include_self is True, the

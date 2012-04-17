@@ -43,7 +43,8 @@ class MyOp(Op):
         return self.name
 
     def __eq__(self, other):
-        return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
+        return (self is other or isinstance(other, MyOp) and self.x is not None
+                and self.x == other.x)
 
     def __hash__(self):
         if self.x is not None:
