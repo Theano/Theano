@@ -1417,7 +1417,9 @@ class _Linker(gof.link.LocalLinker):
         self.env = None
         self.maker = maker
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             assert type(self) is _Linker
             return type(self)(self.env, self.maker).accept(env, no_recycling)

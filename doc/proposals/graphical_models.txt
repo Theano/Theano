@@ -37,7 +37,7 @@ In this way, we could express something like Logistic Regression like this:
         def sample(self, n):
             """[Symbolically] draw a sample of size n"""
 
-        def density(self, pt, givens={}):
+        def density(self, pt, givens=None):
             """Conditional Density/Probability of P(self=pt)
 
             Implicitly conditioned on knowing the values of all variables

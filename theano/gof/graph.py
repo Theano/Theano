@@ -675,9 +675,11 @@ def general_toposort(r_out, deps, debug_print = False):
     return rlist
 
 
-def io_toposort(i, o, orderings = {}):
+def io_toposort(i, o, orderings=None):
     """WRITEME
     """
+    if orderings is None:
+        orderings = {}
     #the inputs are used only here in the function that decides what 'predecessors' to explore
     iset = set(i)
     def deps(obj):
@@ -701,7 +703,7 @@ default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.op,
                                                             ", ".join(argstrings))
 
 
-def is_same_graph(var1, var2, givens={}, debug=False):
+def is_same_graph(var1, var2, givens=None, debug=False):
     """
     Return True iff Variables `var1` and `var2` perform the same computation.
 
@@ -740,6 +742,8 @@ def is_same_graph(var1, var2, givens={}, debug=False):
         ======  ======  ======  ======
     """
     # Lazy import.
+    if givens is None:
+        givens = {}
     global equal_computations, is_same_graph_with_merge
     if equal_computations is None:
         from theano.gof.opt import is_same_graph_with_merge

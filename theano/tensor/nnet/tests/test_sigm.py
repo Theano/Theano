@@ -31,7 +31,7 @@ class T_softplus(unittest.TestCase):
 
 class T_sigmoid_opts(unittest.TestCase):
 
-    def get_mode(self, excluding=[]):
+    def get_mode(self, excluding=None):
         """
         Return appropriate mode for the tests.
 
@@ -41,6 +41,8 @@ class T_sigmoid_opts(unittest.TestCase):
         set to 'FAST_COMPILE' (in which case it is replaced by the 'FAST_RUN'
         mode), without the optimizations specified in `excluding`.
         """
+        if excluding is None:
+            excluding = []
         m = theano.config.mode
         if m == 'FAST_COMPILE':
             mode = theano.compile.mode.get_mode('FAST_RUN')

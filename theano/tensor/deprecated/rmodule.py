@@ -88,7 +88,9 @@ rk = RandomKit('rk', 0xBAD5EED)
 class RModule(Module):
     """Module providing random number streams in Theano graphs."""
 
-    def __init__(self, components = {}, **kwcomponents):
+    def __init__(self, components=None, **kwcomponents):
+        if components is None:
+            components = {}
         super(RModule, self).__init__(components, **kwcomponents)
         self.random = RandomKit('rkit')
         self._rkit = KitComponent(self.random)

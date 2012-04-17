@@ -88,10 +88,12 @@ class PycudaElemwiseKernelOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:
@@ -172,10 +174,12 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:
@@ -264,10 +268,12 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:

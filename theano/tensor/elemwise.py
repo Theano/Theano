@@ -430,7 +430,7 @@ class Elemwise(Op):
       Elemwise(log)(rand(3, 4, 5))
     """
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None,
+    def __init__(self, scalar_op, inplace_pattern=None, name=None,
             nfunc_spec=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
@@ -451,6 +451,8 @@ class Elemwise(Op):
             NOTE: as of now, the sign of the nout field is ignored (some work
             needs to be done to resize the destinations when needed).
         """
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern

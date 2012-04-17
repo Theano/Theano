@@ -149,7 +149,7 @@ Corner cases and exotic examples can be found in the tests.
 
 .. code-block:: python
 
-    def pfunc(params, outputs, mode=None, givens={}, updates=[])
+    def pfunc(params, outputs, mode=None, givens=None, updates=None)
         """Function-constructor for graphs with shared variables.
     
         :type params: list of either Variable or Param instances.

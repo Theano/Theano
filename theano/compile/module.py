@@ -263,7 +263,7 @@ class Method(Component):
     mode=None
     """This will override the Module compilation mode for this Method"""
 
-    def __init__(self, inputs, outputs, updates = {}, mode=None):
+    def __init__(self, inputs, outputs, updates=None, mode=None):
         """Initialize attributes
         :param inputs: value for `Method.inputs`
 
@@ -283,6 +283,8 @@ class Method(Component):
         :type mode: None or any mode accepted by `compile.function`
 
         """
+        if updates is None:
+            updates = {}
         super(Method, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
@@ -589,7 +591,7 @@ class Composite(Component):
             else:
                 yield component
 
-    def flat_components_map(self, include_self = False, path = []):
+    def flat_components_map(self, include_self=False, path=None):
         """
         Generator that yields (path, component) pairs in a flattened
         hierarchy of composites and components, where path is a
@@ -600,6 +602,8 @@ class Composite(Component):
         If include_self is True, the list will include the Composite
         instances, else it will only yield the list of leaves.
         """
+        if path is None:
+            path = []
         if include_self:
             yield path, self
         for name, component in self.components_map():
@@ -758,7 +762,9 @@ class ComponentList(Composite):
             member.name = '%s.%i' % (name, i)
 
 
-def default_initialize(self, init = {}, **kwinit):
+def default_initialize(self, init=None, **kwinit):
+    if init is None:
+        init = {}
     for k, initv in dict(init, **kwinit).iteritems():
         self[k] = initv
 
@@ -788,7 +794,9 @@ class ComponentDictInstance(ComponentDictInstanceNoInit):
     ComponentDictInstance is meant to be instantiated by ComponentDict.
     """
 
-    def initialize(self, init={}, **kwinit):
+    def initialize(self, init=None, **kwinit):
+        if init is None:
+            init = {}
         for k, initv in dict(init, **kwinit).iteritems():
             self[k] = initv
 
@@ -797,7 +805,9 @@ class ComponentDictInstance(ComponentDictInstanceNoInit):
 class ComponentDict(Composite):
     InstanceType = ComponentDictInstance # Type used by build() to make the instance
 
-    def __init__(self, components = {}, **kwcomponents):
+    def __init__(self, components=None, **kwcomponents):
+        if components is None:
+            components = {}
         super(ComponentDict, self).__init__()
         components = dict(components, **kwcomponents)
         for val in components.itervalues():
@@ -1077,10 +1087,12 @@ class Module(ComponentDict):
         memo[self] = inst
         return inst
 
-    def _instance_initialize(self, inst, init = {}, **kwinit):
+    def _instance_initialize(self, inst, init=None, **kwinit):
         """
         Default initialization method.
         """
+        if init is None:
+            init = {}
         for name, value in chain(init.iteritems(), kwinit.iteritems()):
             inst[name] = value
 

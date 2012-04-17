@@ -31,9 +31,9 @@ def MyVariable(name):
 
 class MyOp(Op):
 
-    def __init__(self, name, dmap = {}, x = None):
+    def __init__(self, name, dmap=None, x=None):
         self.name = name
-        self.destroy_map = dmap
+        self.destroy_map = dmap if dmap is not None else {}
         self.x = x
 
     def make_node(self, *inputs):

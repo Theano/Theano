@@ -40,9 +40,18 @@ def MyValue(data):
 
 class MyOp(Op):
 
-    def __init__(self, nin, name, vmap = {}, dmap = {}, nout = 1,
-            destroyhandler_tolerate_same = [],
-            destroyhandler_tolerate_aliased = []):
+    def __init__(self, nin, name, vmap=None, dmap=None, nout=1,
+                 destroyhandler_tolerate_same=None,
+                 destroyhandler_tolerate_aliased=None):
+        if vmap is None:
+            vmap = {}
+        if dmap is None:
+            dmap = {}
+        if destroyhandler_tolerate_same is None:
+            destroyhandler_tolerate_same = []
+        if destroyhandler_tolerate_aliased is None:
+            destroyhandler_tolerate_aliased = []
+
         self.nin = nin
         self.nout = nout
         self.name = name

@@ -429,7 +429,7 @@ class VM_Linker(link.LocalLinker):
         self.callback = callback
         self.updated_vars = {}
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
         """
         :param env: a PerformLinker can have accepted one Env instance
             at a time.
@@ -438,6 +438,8 @@ class VM_Linker(link.LocalLinker):
 
         :returns: self (TODO: WHY? Who calls this function?)
         """
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
         self.env = env

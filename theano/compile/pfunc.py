@@ -322,7 +322,7 @@ class Param(object):
         self.implicit = implicit
 
 
-def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
+def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
         profile=None, on_unused_input='raise'):
@@ -405,6 +405,10 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     # Then it clones the outputs and the update expressions.  This rebuilds a computation graph
     # from the inputs and the givens.
     #
+    if updates is None:
+        updates = []
+    if givens is None:
+        givens = []
     if profile is None:
         profile = config.profile
         # profile -> True or False

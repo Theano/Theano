@@ -54,9 +54,14 @@ class Kouh2008(object):
         _logger.debug('output dtype %s' % output.dtype)
 
     @classmethod
-    def new_expbounds(cls, rng, x_list, n_out, dtype=None, params=[], updates=[], exponent_range=(1.0, 3.0)):
+    def new_expbounds(cls, rng, x_list, n_out, dtype=None, params=None,
+                      updates=None, exponent_range=(1.0, 3.0)):
         """
         """
+        if params is None:
+            params = []
+        if updates is None:
+            updates = []
         if dtype is None:
             dtype = x_list[0].dtype
         n_terms = len(x_list)

@@ -21,11 +21,13 @@ class MyType(Type):
 
 class MyOp(Op):
 
-    def __init__(self, name, dmap = {}, x = None):
+    def __init__(self, name, dmap=None, x=None):
+        if dmap is None:
+            dmap = {}
         self.name = name
         self.destroy_map = dmap
         self.x = x
-    
+
     def make_node(self, *inputs):
         inputs = map(as_variable, inputs)
         for input in inputs:

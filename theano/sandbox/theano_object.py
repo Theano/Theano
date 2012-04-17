@@ -91,16 +91,18 @@ class RVal(object):
     """A Return-Value object for a `symbolic_fn` """
     outputs = []
     """The method will compute values for the variables in this list"""
-    
+
     updates = {}
     """The method will update module variables in this dictionary
 
     For items ``(k,v)`` in this dictionary, ``k`` must be a `symbolic_member` of some module.
     On each call to this compiled function, the value of ``k`` will be replaced with the
     computed value of the Variable ``v``.
-    
+
     """
-    def __init__(self, outputs, updates={}):
+    def __init__(self, outputs, updates=None):
+        if updates is None:
+            updates = {}
         self.outputs = outputs
         assert type(updates) is dict
         self.updates = updates

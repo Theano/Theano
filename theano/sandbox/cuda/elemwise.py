@@ -39,11 +39,13 @@ class NaiveAlgo(object):
     #cache_version = ()
     cache_version = (15, verbose)
 
-    def __init__(self, scalar_op, sync=True, inplace_pattern={}):
+    def __init__(self, scalar_op, sync=True, inplace_pattern=None):
         """
         :param scalar_op: the scalar operation to execute on each element.
         :param sync: if True, will wait after the kernel launch and check for error call.
         """
+        if inplace_pattern is None:
+            inplace_pattern = {}
         try:
             code = scalar_op.c_support_code_apply(None, "nodename")
             if code:

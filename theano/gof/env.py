@@ -80,7 +80,7 @@ class Env(utils.object2):
     ### Special ###
     # TODO: document which things that features can do to the env
 
-    def __init__(self, inputs, outputs, features=[]):
+    def __init__(self, inputs, outputs, features=None):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets.
@@ -92,6 +92,10 @@ class Env(utils.object2):
 
         """
 
+        if features is None:
+            features = []
+
+        # XXX: What the hell? Was the features argument never used?
         self._features = []
 
         # All nodes in the subgraph defined by inputs and outputs are cached in nodes
