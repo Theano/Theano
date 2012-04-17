@@ -293,7 +293,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                       " kern_flipped=true, accumulate=false, kern_width=%i,"
                       " img_c_contiguous_2d=%i,"
                       " kern_c_contiguous_2d=%i, nb_split=%i,"
-                      " preload_full_kernel=%i,",
+                      " preload_full_kernel=%i,"
                       " subsample_rows=%i, subsample_cols=%i\n",
                       threads.x, threads.y, grid.x, grid.y,
                       shared_size, threads.x * threads.y,
