@@ -151,7 +151,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       //condition for exec 
       if(!subsample &&
         out_contiguous &&
-        out_size<512 &&//Maximum of 512 theads by block
+        out_size<max_threads_dim0 &&//Maximum of X threads by block
          std::max(int(img_size_byte+2*kern_wid*sizeof(float)), out_size_byte*2)<shared_avail && //their is only 16k of shared memory and if we can't have the output at least twice in shared mem, we won't have any reduce!
         !work_complete)
         version = 7; //conv_patch_stack_reduce, switch to version 8/13 automatically if needed.
@@ -159,7 +159,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (!subsample && c_contiguous &&
         (version==0||version==2||version==-1) &&
-        out_wid<512 &&//Maximum of 512 theads by block
+        out_wid<max_threads_dim0 &&//Maximum of X threads for block.x
         nstack == 1 &&// don't implement the stack in the kernel.
         img_size_byte+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_patch
@@ -167,7 +167,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         int nb_split=1;//The number of split (i.e. the number of output pixel each thread compute.)
         if(version==2 && out_len>1)nb_split++;//to force the use of split=true when testing.
         //we pass by ceil_intdiv in case the out_len is not a multiple of nb_split, we want nb_split the number of iteration.
-        while (ceil_intdiv(out_len,nb_split)*out_wid>512) nb_split++;
+        while (ceil_intdiv(out_len,nb_split)*out_wid>max_threads_dim0)
+            nb_split++;
         dim3 threads(out_wid, ceil_intdiv(out_len,nb_split));
 
         dim3 grid(nbatch, nkern);
@@ -210,10 +211,11 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                       cudaGetErrorString(sts));
         }
     }
+
     if (out_contiguous &&
         (version==1||version==3||version==11||version==12||version==-1) &&
-        (version!=1 || out_size<512) &&//Maximum of 512 theads by block
-        out_wid<512 &&//Maximum of 512 theads by block
+        (version!=1 || out_size<max_threads_dim0) &&//Maximum of X threads by block.x
+        out_wid<max_threads_dim0 &&//Maximum of X threads by block.x
         img_size_byte+kern_wid*sizeof(float)<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_patch_stack
     {
@@ -224,7 +226,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         int nb_split=1;//The number of split (i.e. the number of output pixel each thread compute.)
         if((version==3||version==12) && out_len>1)nb_split++;//to force the use of split=true when testing.
         //we pass by ceil_intdiv in case the out_len is not a multiple of nb_split, we want nb_split the number of iteration.
-        while (ceil_intdiv(out_len,nb_split)*out_wid>512) nb_split++;
+        while (ceil_intdiv(out_len,nb_split)*out_wid>max_threads_dim0) nb_split++;
         dim3 threads(out_wid, ceil_intdiv(out_len,nb_split));
 
         bool preload_full_kernel = (img_size_byte + kern_size_byte) <shared_avail;
@@ -335,7 +337,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (!subsample && out_contiguous &&
         (version==4||version==-1) &&
-        out_wid<512 &&//Maximum of 512 threads by block
+        out_wid<max_threads_dim0 &&//Maximum of X threads by block.x
         nstack == 1 &&// don't implement the stack in the kernel.
         kern_len*img_wid*sizeof(float)+kern_size_byte<shared_avail &&//their is only 16k of shared memory
         !work_complete) //conv_rows
@@ -388,17 +390,16 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     }
     if (!subsample && out_contiguous &&
         (version==5||version==-1) &&
-        out_wid<512 &&//Maximum of 512 theads by block
+        out_wid<max_threads_dim0 &&//Maximum of X threads by block.x
         img_wid*kern_len*sizeof(float)+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_rows_stack
 
     {
         int nb_row=1;
-        int max_threads=512;
         //TODO:if not c_contiguous, lower max_thread as we use 22
         //registers by thread and we won't execute 2 block in one MP.
         for(int i=2;i<=out_len;i++){
-          if((i)*out_wid<max_threads && ((kern_len+i)*img_wid + kern_size)*sizeof(float)<shared_avail)
+          if((i)*out_wid<max_threads_dim0 && ((kern_len+i)*img_wid + kern_size)*sizeof(float)<shared_avail)
             nb_row=i;
         }
 
@@ -470,7 +471,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (!subsample && out_contiguous &&
         (version==9||version==10||version==-1) &&
-        out_wid<512 &&//Maximum of 512 threads by block
+        out_wid<max_threads_dim0 &&//Maximum of X threads by block.x
         (img_wid+kern_wid)*sizeof(float)<shared_avail && //their is only 16k of shared memory
         (version != 9 || (img_wid+kern_len*kern_wid)*sizeof(float)<shared_avail) && //version 9 use more memory
         !work_complete) //conv_rows_stack2
@@ -479,7 +480,6 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       // version 9:we preload the full kernel
       // version 10: load only a few row at a time.
         int nb_row=1;
-        int max_threads=512;
         int version_back = version;
         //TODO:if not c_contiguous, lower max_thread as we use 22 registers by thread and we won't execute 2 block in one MP.
         if(version==-1 && (img_wid+kern_len*kern_wid)*sizeof(float)<shared_avail)
@@ -491,7 +491,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
           k_size=kern_wid;
 
         for(int i=2;i<=out_len;i++){
-          if(i*out_wid<max_threads && (i*img_wid + k_size)*sizeof(float)<shared_avail)
+          if(i*out_wid<max_threads_dim0 && (i*img_wid + k_size)*sizeof(float)<shared_avail)
             nb_row=i;
         }
 
@@ -570,7 +570,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     //version 13 load only 1 kernel row at a time.
     if (!subsample &&
         out_contiguous &&
-        out_size<512 &&//Maximum of 512 theads by block
+        out_size<max_threads_dim0 &&//Maximum of X threads by block
         (version==7||version==8||version==13||version==-1) &&
         (version!=8||kern_len>1) && //version 8 need a minimal kernel length as big as the split.
         //version 13 need a minimal kernel length as big as the split.
@@ -600,7 +600,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         // constraint (b)
         //  (TODO: read the number of threads per block from the device)
-        while(out_size*ceil_intdiv(kern_len,nb_split)>512) nb_split++;
+        while(out_size*ceil_intdiv(kern_len,nb_split)>max_threads_dim0)
+            nb_split++;
 
         // tentative estimates (prior to contraint c)
         int thread_z=ceil_intdiv(kern_len,nb_split);
@@ -1015,7 +1016,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
     if (!subsample &&
         out_contiguous &&
         (version==3||version==4||version==5||version==-1) &&
-        out_wid<512 &&//Maximum of 512 threads by block
+        out_wid<max_threads_dim0 &&//Maximum of X threads by block.x
         (kern_len+2*kern_len-2)*img_wid_padded*sizeof(float) + kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_full_patch_stack_padded
     {
@@ -1043,7 +1044,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         //for the limit to bu lower then 512.
         int max_thread = (version!=5?327:450);
         while (ceil_intdiv(out_len,nb_split)*out_wid>max_thread) nb_split++;
-        if(version==-1 && out_size>512)version=4;
+        if(version==-1 && out_size>max_threads_dim0)version=4;
         if(version==-1)version=3;
 
 
@@ -1135,7 +1136,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (!subsample && c_contiguous &&
         (version==0||version==-1) &&
-        out_size<512 &&//Maximum of 512 theads by block
+        out_size<max_threads_dim0 &&//Maximum of X threads by block
         nstack == 1 &&// don't implement the stack in the kernel.
         img_size_byte+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_full_patch
@@ -1177,7 +1178,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
     }
     if (false && !subsample && //disabled as test fail for this kernel
         (version==1||version==-1) &&
-        out_size<512 &&//Maximum of 512 theads by block
+        out_size<max_threads_dim0 &&//Maximum of X threads by block
         (nbatch > 20 || version==1) &&  // we only launch nbatch blocks, so make sure there is enough to be worth it, but if we specify the version, this check should not be done to allow testing.
         nstack*img_size_byte+nstack*kern_size_byte<shared_avail && //there is only 16k of shared memory
         !work_complete) //conv_full_load_everything
@@ -1237,7 +1238,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         img_batch_stack_contiguous &&
         out_contiguous &&
         (version==2||version==-1) &&
-        out_size<512 &&//Maximum of 512 theads by block
+        out_size<max_threads_dim0 &&//Maximum of X threads by block
         img_size_byte+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_full_patch_stack
     {
