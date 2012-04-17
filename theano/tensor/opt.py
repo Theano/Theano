@@ -31,6 +31,7 @@ from theano import compile  # to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
+from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
 from basic import get_constant_value, ShapeError
 
@@ -299,6 +300,11 @@ def register_specialize_device(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
     return lopt
+
+
+## Register merge_optimizer as a global opt during canonicalize
+compile.optdb['canonicalize'].register(
+        'canon_merge', merge_optimizer, 'fast_run')
 
 
 #####################

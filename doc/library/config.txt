@@ -520,23 +520,44 @@ import theano and print the config variable, as in:
     Bool value, default: False
 
     Should each SeqOptimizer object print the time taken by each of its
-    optimizer. Each SeqOptimizer prints something like this:
+    optimizer. Each SeqOptimizer prints something like this::
 
-    SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
-    [(0.0004410743713378906, ('InputToGpuOptimizer',
-    'InputToGpuOptimizer')), (0.0013730525970458984,
-    ('gpu_cut_transfers', 'EquilibriumOptimizer')),
-    (0.012573957443237305, ('gpu_local_optimizations',
-    'EquilibriumOptimizer'))]
+        SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
+          0.012573s - ('gpu_local_optimizations', 'EquilibriumOptimizer')
+          0.001373s - ('gpu_cut_transfers', 'EquilibriumOptimizer')
+          0.000441s - ('InputToGpuOptimizer', 'InputToGpuOptimizer')
 
     This prints the name of the SeqOptimizer (gpu_opt), the number of
     Apply nodes in the graph before (8) and after (9)
-    optimizations. Then a list of tuples with 1 tuple per optimization
-    in this SeqOptimizer. The first element of the tuple is the time
+    optimizations. Then a list of lines, one per optimization
+    in this SeqOptimizer. The first element is the time
     taken by this optimization and then it is a tuple with the name of the
     optimization and this class. This list is sorted from the sub
     optimization that takes the most time to the optimization that takes
     the least time.
+
+.. attribute:: config.time_eq_optimizer
+
+    Bool value, default: False
+
+    Should each EquilibriumOptimizer print the time taken by each of its
+    iterations, the total number of times each of its optimizers is applied,
+    and informations about the total number of nodes in the graph.
+    Here is an example of output::
+
+        EquilibriumOptimizer specialize
+         time 4.760s for 4 passes, 3801 nodes max
+        0 - 1.961s (0.079s in global opts) - 3797 nodes
+        1 - 1.233s (0.080s in global opts) - 3801 nodes
+        2 - 0.857s (0.071s in global opts) - 3203 nodes
+        3 - 0.710s (0.066s in global opts) - 3095 nodes
+
+        times applied - optimizer:
+          384 - dimshuffle_as_view
+          262 - constant_folding
+          216 - local_subtensor_make_vector
+          216 - local_shape_to_shape_i
+          4 - local_mul_specialize
 
 .. attribute:: config.cmodule.warn_no_version
 
