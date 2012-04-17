@@ -126,6 +126,9 @@ Crash Fix
  * Work around a known issue with nvcc 4.1 on MacOS X. (Graham Taylon)
  * In advanced indexing, if some inputs are constant, no need to call constant(...)
    on their value any more. (Pascal L., reported by John Salvatier)
+ * Fix crash on GPU when the GpuSubtensor didn't put the right stride
+   when the results tensor had a dimensions with size of 1. (Pascal L,
+   reported Graham T.)
 
 =============
 Release Notes
