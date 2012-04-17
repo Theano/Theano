@@ -118,6 +118,8 @@ Crash Fix
  * Fixed crash when concatenating some arrays with specific broadcasting
    patterns (Olivier D.)
  * Work around a known issue with nvcc 4.1 on MacOS X. (Graham Taylon)
+ * In advanced indexing, if some inputs are constant, no need to call constant(...)
+   on their value any more. (Pascal L., reported by John Salvatier)
 
 =============
 Release Notes
