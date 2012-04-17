@@ -23,7 +23,7 @@ class DebugLinker(gof.WrapLinker):
         self.env = None
 
         self.compare_fn = compare_fn
-        
+
         self.copy_originals = copy_originals
         if check_types not in [None, True]:
             self.check_types = check_types

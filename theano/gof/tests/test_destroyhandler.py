@@ -59,7 +59,7 @@ class MyOp(Op):
         self.view_map = vmap
         self.destroyhandler_tolerate_same = destroyhandler_tolerate_same
         self.destroyhandler_tolerate_aliased = destroyhandler_tolerate_aliased
-    
+
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
         inputs = map(as_variable, inputs)

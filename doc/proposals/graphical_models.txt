@@ -48,7 +48,7 @@ In this way, we could express something like Logistic Regression like this:
         def mode(self):
             """Return expression of the most likely value of this distribution"""
 
-We would really like to integrate out certain variables sometimes... 
+We would really like to integrate out certain variables sometimes...
 
 
 An RBM could be expressed like this:
@@ -71,7 +71,7 @@ An RBM could be expressed like this:
     RBM.hidden.energy(h) # an expression for the free energy
     v_given_h = RBM.visible.conditional(h) # a random variable
 
-Rather than program all the training algorithms into an RBM module, 
+Rather than program all the training algorithms into an RBM module,
 the idea would be to express the relationship between RBM variables so that we
 could automatically recognize how to do Gibbs sampling, gradient descent on Free
 Energy, etc.

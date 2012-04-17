@@ -9,7 +9,7 @@ else:
 import numpy
 from copy import copy
 
-from theano.compile import (SymbolicInputKit, SymbolicInput, 
+from theano.compile import (SymbolicInputKit, SymbolicInput,
         Module, module, Method, Member, In, Component)
 from theano.gof import Container
 from theano.gof.python25 import deque
@@ -20,7 +20,7 @@ class KitComponent(Component):
     """
     Represents a SymbolicInputKit (see io.py).
     """
-    
+
     def __init__(self, kit):
         super(KitComponent, self).__init__()
         self.kit = kit
@@ -106,8 +106,8 @@ class RModule(Module):
         if recursive:
             #Here, we recurse through all the components (inst2) contained in (inst)
             #and seeds each subcomponent that is an RModule
-            
-            
+
+
             for path, c in self.flat_components_map(True):
                 if isinstance(c, RModule):
                     inst2 = inst
