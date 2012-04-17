@@ -2703,7 +2703,7 @@ class Eye(gof.Op):
 
 
 def eye(n, m=None, k=0, dtype=config.floatX):
-    if m == None:
+    if m is None:
         m = n
     localop = Eye(dtype)
     return localop(n, m, k)
@@ -3080,7 +3080,7 @@ def var(input, axis=None):
 
     """
     input_ndim = input.type.ndim
-    if axis == None:
+    if axis is None:
         axis = range(input_ndim)
     if isinstance(axis, int):
         axis = [axis]
