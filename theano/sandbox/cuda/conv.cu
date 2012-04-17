@@ -10,7 +10,9 @@ PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * 
 int
 CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                        CudaNdarray * out, int subsample_rows, int subsample_cols,
-                       int version = -1, int verbose=0)
+                       int version = -1, int verbose=0,
+                       int max_threads_dim0 = 512
+                       )
 {
     int work_complete = 0;
     const int shared_avail = SHARED_SIZE-150;//144 is the biggest static shared size used with compiling this file.
@@ -881,7 +883,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 int
 CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
                       CudaNdarray * out, int subsample_rows,
-                      int subsample_cols, int version = -1, int verbose=0)
+                      int subsample_cols, int version = -1, int verbose=0,
+                      int max_threads_dim0=512)
 {
   //144 is the biggest static shared size used with compiling this file.
     const int shared_avail = SHARED_SIZE - 150;
@@ -1391,7 +1394,9 @@ PyObject *
 CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
                  CudaNdarray * out, const int mode,
                  const int subsample_rows, const int subsample_cols,
-                 const int version, const int verbose)
+                 const int version, const int verbose,
+                 const int max_threads_dim0 = 512
+                 )
 {
     // Re-use the out object if possible.  If the out object it not used, then its refcount is not modified.
     //  If the out object is re-used then it is returned, and its refcount is incremented by 1.
@@ -1456,8 +1461,16 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
       //rval might be null
     }
     if ((rval==NULL)
-            || ((mode==ConvMode_VALID) && CudaNdarray_conv_valid(img, kern, rval, subsample_rows, subsample_cols, version, verbose))
-            || ((mode==ConvMode_FULL) && CudaNdarray_conv_full(img, kern, rval, subsample_rows, subsample_cols, version, verbose))
+        || ((mode==ConvMode_VALID) && CudaNdarray_conv_valid(img, kern, rval,
+                                                             subsample_rows,
+                                                             subsample_cols,
+                                                             version, verbose,
+                                                             max_threads_dim0))
+        || ((mode==ConvMode_FULL) && CudaNdarray_conv_full(img, kern, rval,
+                                                           subsample_rows,
+                                                           subsample_cols,
+                                                           version, verbose,
+                                                           max_threads_dim0))
             )
     {
         // if rval is something we just allocated,

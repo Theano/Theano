@@ -1,6 +1,8 @@
+import copy
 import os
 import StringIO
 
+import theano
 from theano import Apply
 from theano import tensor
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -613,9 +615,9 @@ class GpuConv(GpuOp):
             version=-1,
             verbose=0,
             kshp=None,
-            imshp=None):
-        """
-        :param version: each version of c_code implement many kernel for the
+            imshp=None,
+            max_threads_dim0=None):
+        """:param version: each version of c_code implement many kernel for the
                         convolution. By default we try to guess the best one.
                         You can force one version with this parameter. This
                         parameter is used by the tests.
@@ -629,6 +631,9 @@ class GpuConv(GpuOp):
         :param imshp:   The size of the image. Not used for code generation but
                         allow to select an experimental new version in another
                         repo.
+        :param max_threads_dim0: maximum number of thread for each the
+                        block size dimensions 0
+
         """
         self.border_mode = border_mode
         self.subsample = subsample
@@ -651,6 +656,7 @@ class GpuConv(GpuOp):
         self.verbose = verbose
         self.kshp = kshp
         self.imshp = imshp
+        self.max_threads_dim0 = max_threads_dim0
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -662,7 +668,8 @@ class GpuConv(GpuOp):
             and self.version == other.version \
             and self.verbose == other.verbose \
             and self.kshp == other.kshp\
-            and self.imshp == other.imshp
+            and self.imshp == other.imshp\
+            and self.max_threads_dim0 == other.max_threads_dim0
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -681,7 +688,8 @@ class GpuConv(GpuOp):
             ^ self.version \
             ^ hash(self.verbose) \
             ^ hash(self.kshp)\
-            ^ hash(self.imshp)
+            ^ hash(self.imshp)\
+            ^ hash(self.max_threads_dim0)
 
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s, %s, %s}' % (
@@ -703,6 +711,24 @@ class GpuConv(GpuOp):
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        node_ = node
+        if node.op.max_threads_dim0 is None:
+            op = copy.copy(node.op)
+            device_id = theano.sandbox.cuda.use.device_number[3:]
+            if device_id == '':
+                device_id = 0
+            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
+            prop = cuda_ndarray.device_properties(device_id)
+            node.op.max_threads_dim0 = prop['maxThreadsDim0']
+        return super(GpuConv, node_.op).make_thunk(node_, storage_map,
+                                                   compute_map, no_recycling)
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, "max_threads_dim0"):
+            self.max_threads_dim0 = None
 
     def c_compile_args(self):
         nb = 0
@@ -734,6 +760,7 @@ class GpuConv(GpuOp):
         version = self.version
         verbose = self.verbose
         sub = sub.copy()
+        max_threads_dim0 = self.max_threads_dim0
         sub.update(locals())
         return """
     //Mandatory args
@@ -764,7 +791,8 @@ class GpuConv(GpuOp):
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
-                                                         version, verbose);
+                                                         version, verbose,
+                                                         %(max_threads_dim0)s);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
 """ % sub
