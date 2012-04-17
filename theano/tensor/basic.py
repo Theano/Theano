@@ -2662,22 +2662,28 @@ def zeros_like(model, dtype=None):
     return fill(model, constant(0.0, dtype=dtype))
 
 
-def zeros(shape, dtype=config.floatX):
+def zeros(shape, dtype=None):
     """
     Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
     """
+    if dtype is None:
+        dtype = config.floatX
     return alloc(numpy.array(0, dtype=dtype), *shape)
 
 
-def ones(shape, dtype=config.floatX):
+def ones(shape, dtype=None):
     """
     Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
     """
+    if dtype is None:
+        dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
 
 
 class Eye(gof.Op):
-    def __init__(self, dtype=config.floatX):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
         self.dtype = dtype
 
     def make_node(self, n, m, k):
@@ -2702,7 +2708,9 @@ class Eye(gof.Op):
         return hash(self.dtype) ^ hash(type(self))
 
 
-def eye(n, m=None, k=0, dtype=config.floatX):
+def eye(n, m=None, k=0, dtype=None):
+    if dtype is None:
+        dtype = config.floatX
     if m is None:
         m = n
     localop = Eye(dtype)
