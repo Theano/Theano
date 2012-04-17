@@ -19,6 +19,9 @@ Bug fixes
  * Fixed an issue whereby config values were used as default arguments,
    with those defaults then stuck at old values if the config variables were
    changed during program execution. (David W-F)
+ * Fixed many subtle bugs involving mutable default arguments which may have
+   led to unexpected behaviour, such as objects sharing instance variables
+   they were not supposed to share. (David W-F)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
