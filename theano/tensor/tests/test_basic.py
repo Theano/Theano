@@ -2885,6 +2885,19 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             # you enable the debug code above.
             assert numpy.allclose(f_out, output_num)
 
+    def test_adv_constant_arg(self):
+        # Test case provided (and bug detected, gh-607) by John Salvatier
+        m = matrix('m')
+        gv = numpy.array([0, 1, 3])
+        g = constant(gv)
+        i = lvector('i')
+
+        # s1 used to fail
+        s1 = m[gv, i]
+        s2 = m[g, i]
+
+        assert gof.graph.is_same_graph(s1, s2)
+
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor

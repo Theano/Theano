@@ -5753,7 +5753,7 @@ class AdvancedSubtensor(Op):
 
             if ind1.ndim == 1 and ind2.ndim == 1:
                 return gof.Apply(self,
-                        (x,) + inputs,
+                        (x, ind1, ind2),
                         [tensor(dtype=x.type.dtype,
                             broadcastable=[False])])
             raise NotImplementedError(
