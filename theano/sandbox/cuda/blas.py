@@ -617,7 +617,8 @@ class GpuConv(GpuOp):
             kshp=None,
             imshp=None,
             max_threads_dim0=None):
-        """:param version: each version of c_code implement many kernel for the
+        """
+        :param version: each version of c_code implement many kernel for the
                         convolution. By default we try to guess the best one.
                         You can force one version with this parameter. This
                         parameter is used by the tests.
@@ -631,8 +632,9 @@ class GpuConv(GpuOp):
         :param imshp:   The size of the image. Not used for code generation but
                         allow to select an experimental new version in another
                         repo.
-        :param max_threads_dim0: maximum number of thread for each the
-                        block size dimensions 0
+        :param max_threads_dim0: The maximum number of thread for the
+                        block size dimensions 0 (blockDim.x) used by the
+                        GPU function.
 
         """
         self.border_mode = border_mode
@@ -713,15 +715,16 @@ class GpuConv(GpuOp):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = node
-        if node.op.max_threads_dim0 is None:
-            op = copy.copy(node.op)
+        node_ = copy.copy(node)
+        assert node.op is node_.op
+        if node_.op.max_threads_dim0 is None:
+            op = copy.copy(node_.op)
             device_id = theano.sandbox.cuda.use.device_number[3:]
             if device_id == '':
                 device_id = 0
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
-            node.op.max_threads_dim0 = prop['maxThreadsDim0']
+            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
 
