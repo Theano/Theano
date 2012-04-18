@@ -33,7 +33,9 @@ class MyOp(Op):
 
     def __init__(self, name, dmap=None, x=None):
         self.name = name
-        self.destroy_map = dmap if dmap is not None else {}
+        if dmap is None:
+            dmap = {}
+        self.destroy_map = dmap
         self.x = x
 
     def make_node(self, *inputs):
