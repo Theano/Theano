@@ -25,7 +25,7 @@ class symbolic_fn_callable(object):
     class.
 
     .. code-block:: python
-       
+
        class T(TheanoObject):
           @symbolic_fn
           def add(self, x):
@@ -33,7 +33,7 @@ class symbolic_fn_callable(object):
              add_outputs = ...
              add_updates = ...
              return RVal(add_outputs, add_updates)
-       t = T() 
+       t = T()
        t.add.outputs(5)         # returns `add_outputs` from when `x=theano_type(5)`
        t.add.updates(5)         # returns `add_updates` from when `x=theano_type(5)`
        t.add.theano_function(5) # returns the `Function` compiled when `x=theano_type(5)`
@@ -48,7 +48,7 @@ class symbolic_fn_callable(object):
         """Silly method to work with symbolic_fn.__get__"""
         self.o_self = o_self
         return self
-    
+
     def run_symbolic(self, *args, **kwargs):
         return self.o_self._get_method_impl(self.fn, self.o_self, args, kwargs, mode=self.mode)
 
@@ -70,7 +70,7 @@ class symbolic_fn(object):
     def __init__(self, fn, mode=None):
         self.fn = fn
         self.callable = symbolic_fn_callable(fn, mode)
-    
+
     def __get__(self, o_self, o_cls):
         return self.callable.on(o_self)
 
@@ -91,16 +91,18 @@ class RVal(object):
     """A Return-Value object for a `symbolic_fn` """
     outputs = []
     """The method will compute values for the variables in this list"""
-    
+
     updates = {}
     """The method will update module variables in this dictionary
 
     For items ``(k,v)`` in this dictionary, ``k`` must be a `symbolic_member` of some module.
     On each call to this compiled function, the value of ``k`` will be replaced with the
     computed value of the Variable ``v``.
-    
+
     """
-    def __init__(self, outputs, updates={}):
+    def __init__(self, outputs, updates=None):
+        if updates is None:
+            updates = {}
         self.outputs = outputs
         assert type(updates) is dict
         self.updates = updates
@@ -111,19 +113,19 @@ class TheanoObject(object):
     This class provides support for symbolic_fn class attributes.
     These will be compiled on demand so that they can be used just like normal (non-symbolic)
     methods.
-    
+
     The symbolic functions in a TheanoObject can share member variables that have been created
     using the `symbolic_member` method.
 
     :note: Other variables (ones not created using ``self.symbolic_member``) referred to in the
     body of a symbolic function will *not* be shared between symbolic functions, or between
     symbolic functions and this class.  These other variables will be locked away in the
-    closure of a symbolic function when that function is compiled.  
-    
+    closure of a symbolic function when that function is compiled.
+
 
     :warning: It is not recommended for code to interleave
     (a) changes to non-symbolic instance variables with
-    (b) calls to symbolic functions that use those instance variables. 
+    (b) calls to symbolic functions that use those instance variables.
     A symbolic function may be
     compiled multiple times because it must be compiled for each set of argument types.
     Each time the function is compiled, the values of non-symbolic variables will be locked
@@ -179,7 +181,7 @@ class TheanoObject(object):
             # construct In instances for the symbolic_member instances that can automatically be
             # included here.
             module_inputs = [theano.compile.io.In(
-                    variable=v, 
+                    variable=v,
                     value=v._theanoclass_container,
                     mutable=(v in rval.updates),
                     update=rval.updates.get(v, None))
@@ -210,7 +212,7 @@ class TheanoObject(object):
 
         v = tensor.lscalar(name)
         v._theanoclass_container = \
-                theano.gof.Container(v, 
+                theano.gof.Container(v,
                         storage = [theano._asarray(ival, dtype='int64')],
                         readonly=False)
         assert not hasattr(v, 'set')
@@ -222,5 +224,5 @@ class TheanoObject(object):
         return v
 
 
-        
+
 

@@ -454,13 +454,20 @@ def infer_shape(outs, inputs, input_shapes):
 
 
 class Validator(object):
-    def __init__(self, valid=[], invalid=[], valid_equivalent={}):
+    def __init__(self, valid=None, invalid=None, valid_equivalent=None):
         '''
         Check if variables can be expressed without using variables in invalid.
 
         init_valid_equivalent provides a dictionary mapping some invalid
         variables to valid ones that can be used instead.
         '''
+
+        if valid is None:
+            valid = []
+        if invalid is None:
+            invalid = []
+        if valid_equivalent is None:
+            valid_equivalent = {}
 
         # Nodes that are valid to have in the graph computing outputs
         self.valid = set(valid)

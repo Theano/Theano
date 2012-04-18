@@ -504,9 +504,9 @@ def char_from_number(number):
 
 
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
-               file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[], ids='CHAR', stop_on_name=False,
-               prefix_child=None):
+               file=sys.stdout, print_destroy_map=False,
+               print_view_map=False, order=None, ids='CHAR',
+               stop_on_name=False, prefix_child=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -530,6 +530,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     """
     if depth == 0:
         return
+
+    if order is None:
+        order = []
 
     if done is None:
         done = dict()
@@ -1417,7 +1420,9 @@ class _Linker(gof.link.LocalLinker):
         self.env = None
         self.maker = maker
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             assert type(self) is _Linker
             return type(self)(self.env, self.maker).accept(env, no_recycling)

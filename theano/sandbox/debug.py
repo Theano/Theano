@@ -10,12 +10,16 @@ class DebugLinker(gof.WrapLinker):
 
     def __init__(self,
                  linkers,
-                 debug_pre = [],
-                 debug_post = [],
-                 copy_originals = False,
-                 check_types = True,
-                 compare_variables = True,
-                 compare_fn = (lambda x, y: x == y)):
+                 debug_pre=None,
+                 debug_post=None,
+                 copy_originals=False,
+                 check_types=True,
+                 compare_variables=True,
+                 compare_fn=(lambda x, y: x == y)):
+        if debug_pre is None:
+            debug_pre = []
+        if debug_post is None:
+            debug_post = []
         gof.WrapLinker.__init__(self,
                                 linkers = linkers,
                                 wrapper = self.wrapper)
@@ -23,7 +27,7 @@ class DebugLinker(gof.WrapLinker):
         self.env = None
 
         self.compare_fn = compare_fn
-        
+
         self.copy_originals = copy_originals
         if check_types not in [None, True]:
             self.check_types = check_types
@@ -42,10 +46,12 @@ class DebugLinker(gof.WrapLinker):
         if compare_variables is not None:
             self.debug_post.append(self.compare_variables)
 
-    def accept(self, env, no_recycling = []):
+    def accept(self, env, no_recycling=None):
+        if no_recycling is None:
+            no_recycling = []
         return gof.WrapLinker.accept(self,
-                                     env = env,
-                                     no_recycling = no_recycling)
+                                     env=env,
+                                     no_recycling=no_recycling)
 
     def store_value(self, i, node, *thunks):
         th1 = thunks[0]
@@ -165,7 +171,9 @@ def numpy_compare(a, b, tolerance = 1e-6):
         return a == b
 
 
-def numpy_debug_linker(pre, post = []):
+def numpy_debug_linker(pre, post=None):
+    if post is None:
+        post = []
     return DebugLinker([gof.OpWiseCLinker],
                        pre,
                        post,

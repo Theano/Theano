@@ -96,10 +96,12 @@ def compile_fn(f, path_locals, common_inputs):
     updated = []
     return compiled_f, updated
 
-def compile(smod, initial_values={}):
+def compile(smod, initial_values=None):
     """
     :type values: dictionary Variable -> value
     """
+    if initial_values is None:
+        initial_values = {}
     def sym_items(mod):
         for k in mod.__dict__:
             if k in ['__module__', 'build_graph', '__doc__']:

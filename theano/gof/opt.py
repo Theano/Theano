@@ -356,12 +356,14 @@ class MergeOptimizer(Optimizer):
 merge_optimizer = MergeOptimizer()
 
 
-def is_same_graph_with_merge(var1, var2, givens={}):
+def is_same_graph_with_merge(var1, var2, givens=None):
     """
     Merge-based implementation of `theano.gof.graph.is_same_graph`.
 
     See help on `theano.gof.graph.is_same_graph` for additional documentation.
     """
+    if givens is None:
+        givens = {}
     # Copy variables since the MergeOptimizer will modify them.
     copied = copy.deepcopy([var1, var2, givens])
     vars = copied[0:2]
@@ -483,7 +485,9 @@ class LocalOptimizer(object):
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
-    def __init__(self, fn, tracks = []):
+    def __init__(self, fn, tracks=None):
+        if tracks is None:
+            tracks = []
         self.transform = fn
         self._tracks = tracks
     def tracks(self):

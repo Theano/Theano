@@ -2662,22 +2662,28 @@ def zeros_like(model, dtype=None):
     return fill(model, constant(0.0, dtype=dtype))
 
 
-def zeros(shape, dtype=config.floatX):
+def zeros(shape, dtype=None):
     """
     Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
     """
+    if dtype is None:
+        dtype = config.floatX
     return alloc(numpy.array(0, dtype=dtype), *shape)
 
 
-def ones(shape, dtype=config.floatX):
+def ones(shape, dtype=None):
     """
     Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
     """
+    if dtype is None:
+        dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
 
 
 class Eye(gof.Op):
-    def __init__(self, dtype=config.floatX):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
         self.dtype = dtype
 
     def make_node(self, n, m, k):
@@ -2702,8 +2708,10 @@ class Eye(gof.Op):
         return hash(self.dtype) ^ hash(type(self))
 
 
-def eye(n, m=None, k=0, dtype=config.floatX):
-    if m == None:
+def eye(n, m=None, k=0, dtype=None):
+    if dtype is None:
+        dtype = config.floatX
+    if m is None:
         m = n
     localop = Eye(dtype)
     return localop(n, m, k)
@@ -3080,7 +3088,7 @@ def var(input, axis=None):
 
     """
     input_ndim = input.type.ndim
-    if axis == None:
+    if axis is None:
         axis = range(input_ndim)
     if isinstance(axis, int):
         axis = [axis]
@@ -4081,7 +4089,9 @@ class IncSubtensor(Op):
     """
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
-            destroyhandler_tolerate_aliased=[]):
+            destroyhandler_tolerate_aliased=None):
+        if destroyhandler_tolerate_aliased is None:
+            destroyhandler_tolerate_aliased = []
         self.idx_list = map(Subtensor.convert, idx_list)
         self.inplace = inplace
         if inplace:

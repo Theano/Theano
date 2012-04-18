@@ -173,9 +173,19 @@ def safe_make_node(op, *inputs):
         return node.owner
 
 
-def makeTester(name, op, expected, checks={}, good={}, bad_build={},
-               bad_runtime={}, grad={}, mode=None, grad_rtol=None,
+def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
+               bad_runtime=None, grad=None, mode=None, grad_rtol=None,
                eps=1e-10, skip=False):
+    if checks is None:
+        checks = {}
+    if good is None:
+        good = {}
+    if bad_build is None:
+        bad_build = {}
+    if bad_runtime is None:
+        bad_runtime = {}
+    if grad is None:
+        grad = {}
     if grad is True:
         grad = good
 
@@ -400,7 +410,9 @@ def rand_of_dtype(shape, dtype):
         raise TypeError()
 
 
-def makeBroadcastTester(op, expected, checks={}, name=None, **kwargs):
+def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
+    if checks is None:
+        checks = {}
     if name is None:
         name = str(op)
     # Here we ensure the test name matches the name of the variable defined in
@@ -575,10 +587,12 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          inplace = True)
 
 
-def copymod(dct, without=[], **kwargs):
+def copymod(dct, without=None, **kwargs):
     """Return dct but with the keys named by args removed, and with
     kwargs added.
     """
+    if without is None:
+        without = []
     rval = copy(dct)
     for a in without:
         if a in rval:

@@ -21,11 +21,13 @@ class MyType(Type):
 
 class MyOp(Op):
 
-    def __init__(self, name, dmap = {}, x = None):
+    def __init__(self, name, dmap=None, x=None):
+        if dmap is None:
+            dmap = {}
         self.name = name
         self.destroy_map = dmap
         self.x = x
-    
+
     def make_node(self, *inputs):
         inputs = map(as_variable, inputs)
         for input in inputs:
@@ -41,7 +43,8 @@ class MyOp(Op):
         return self.name
 
     def __eq__(self, other):
-        return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
+        return (self is other or isinstance(other, MyOp) and self.x is not None
+                and self.x == other.x)
 
     def __hash__(self):
         if self.x is not None:

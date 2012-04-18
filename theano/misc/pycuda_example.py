@@ -54,7 +54,9 @@ def theano_parse_c_arg(c_arg):
 """
 class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
     def __init__(self, arguments, operation,
-                 name="kernel", keep=False, options=[], **kwargs):
+                 name="kernel", keep=False, options=None, **kwargs):
+        if options is None:
+            options = []
         if isinstance(arguments, basestring):
             arguments = [theano_parse_c_arg(arg)
                          for arg in arguments.split(",")]
@@ -88,10 +90,12 @@ class PycudaElemwiseKernelOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:
@@ -172,10 +176,12 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:
@@ -264,10 +270,12 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, name=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None):
+        if inplace_pattern is None:
+            inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = None
+        self.inplace_pattern = inplace_pattern
 
     def __str__(self):
         if self.name is None:

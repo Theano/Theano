@@ -245,7 +245,11 @@ class Mode(object):
     predefined_modes.
     """
 
-    def __init__(self, linker = config.linker, optimizer = config.optimizer):
+    def __init__(self, linker=None, optimizer=None):
+        if linker is None:
+            linker = config.linker
+        if optimizer is None:
+            optimizer = config.optimizer
         self.__setstate__((linker, optimizer))
         #self.provided_optimizer - typically the `optimizer` arg.  But if the `optimizer` arg is
         #    keyword corresponding to a predefined Query, then this stores the query

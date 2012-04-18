@@ -130,10 +130,12 @@ class GpuElemwise(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern={}, sync=None):
+    def __init__(self, scalar_op, inplace_pattern=None, sync=None):
         #TODO-- this looks like a bug-- either we should use the sync argument
         # or get rid of it, we shouldn't let the client think they can control
         #sync when they can't
+        if inplace_pattern is None:
+            inplace_pattern = {}
         sync = config.gpuelemwise.sync
 
         self.scalar_op = scalar_op

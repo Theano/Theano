@@ -11,7 +11,7 @@ from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
-def function(inputs, outputs=None, mode=None, updates=[], givens=[],
+def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
              on_unused_input='raise'):
@@ -80,7 +80,11 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[],
     """
     #tuple are used in some tests, as we accepted them in the past
     #I prefer to allow it as they act the same as list for what they are used.
-    if not isinstance(inputs,(list,tuple)):
+    if updates is None:
+        updates = []
+    if givens is None:
+        givens = []
+    if not isinstance(inputs, (list, tuple)):
         raise Exception("Inputs variable of a Theano function should be contained in a list, even when there is a single input.")
 
     # compute some features of the arguments:

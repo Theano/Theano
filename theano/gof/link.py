@@ -299,7 +299,8 @@ def map_storage(env, order, input_storage, output_storage):
 
     return input_storage, output_storage, storage_map
 
-def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling = [], profiler = None, nice_errors = True):
+def streamline(env, thunks, order, post_thunk_old_storage=None,
+               no_recycling=None, profiler=None, nice_errors=True):
     """WRITEME
 
     :param env:
@@ -320,6 +321,8 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
     :param nice_errors: run in such a way that the double-traceback is printed.  This costs a
     bit of performance in the inner python loop.
     """
+    if no_recycling is None:
+        no_recycling = []
     if profiler is not None:
         raise NotImplementedError()
 
@@ -419,7 +422,7 @@ class PerformLinker(LocalLinker):
         self.env = None
         self.allow_gc = allow_gc
 
-    def accept(self, env, no_recycling = []):
+    def accept(self, env, no_recycling=None):
         """
         :param env: a PerformLinker can have accepted one Env instance at a time.
 
@@ -427,6 +430,8 @@ class PerformLinker(LocalLinker):
 
         :returns: self (TODO: WHY? Who calls this function?)
         """
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
@@ -548,7 +553,7 @@ class WrapLinker(Linker):
         self.linkers = linkers
         self.wrapper = wrapper
 
-    def accept(self, env, no_recycling = []):
+    def accept(self, env, no_recycling=None):
         """
         @type env: gof.Env
         @param env: the env which we will link
@@ -560,6 +565,8 @@ class WrapLinker(Linker):
         the computation to avoid reusing it.
 
         """
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)(self.linkers, self.wrapper).accept(env, no_recycling)
 
