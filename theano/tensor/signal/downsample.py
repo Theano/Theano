@@ -165,6 +165,19 @@ class DownsampleFactorMax(Op):
         maxout = self(x)
         return [DownsampleFactorMaxGrad(self.ds, ignore_border=self.ignore_border)(x, maxout, gz)]
 
+    # BEGIN CODE CHANGE
+    def R_op(self, inputs, eval_points):
+        # R_op can receive None as eval_points.
+        # That mean there is no diferientiable path through that input
+        # If this imply that you cannot compute some outputs,
+        # return None for those.
+        if eval_points[0] is None:
+            return eval_points
+        return [DownsampleFactorMaxRop(self.ds,
+                                       ignore_border=self.ignore_border)(inputs[0],
+                                                                         eval_points[0])]
+    # END CODE CHANGE
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -378,7 +391,189 @@ class DownsampleFactorMaxGrad(Op):
             }
           }//for k
         }//for b
-        """ %locals()
+        """ % locals()
 
     def c_code_cache_version(self):
-        return (0,1)
+        return (0, 1)
+
+
+class DownsampleFactorMaxRop(Op):
+    """
+    TODO
+    """
+
+    @staticmethod
+    def out_shape(imgshape, ds, ignore_border=False):
+        """Return the shape of the output from this op, for input of given shape and flags.
+
+        :param imgshape: the shape of a tensor of images. The last two elements are interpreted
+        as the number of rows, and the number of cols.
+        :type imgshape: tuple, list, or similar.
+
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+
+        :rtype: list
+        :returns: the shape of the output from this op, for input of given shape.  This will
+        have the same length as imgshape, but with last two elements reduced as per the
+        downsampling & ignore_border flags.
+        """
+        if len(imgshape) < 2:
+            raise TypeError('imgshape must have at least two elements (rows, cols)')
+        r, c = imgshape[-2:]
+        rval = list(imgshape[:-2]) + [ r / ds[0], c / ds[1]]
+        if not ignore_border:
+            if r % ds[0]:
+                rval[-2] += 1
+            if c % ds[1]:
+                rval[-1] += 1
+        return rval
+
+    def __init__(self, ds, ignore_border=False):
+        """
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+
+        TODO: why is poolsize an op parameter here?
+        """
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+
+    def make_node(self, x, ex):
+        if x.type.ndim != 4:
+            raise TypeError()
+        # TODO: consider restrucing the dtype?
+        return gof.Apply(self, [x, ex], [x.type()])
+
+    def perform(self, node, inp, out):
+        x, ex = inp
+        z, = out
+        if len(x.shape) != 4:
+            raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
+        if (z[0] is None) or (z[0].shape != z_shape):
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border))
+            z[0] = theano._asarray(z[0], dtype=x.dtype)
+        zz = z[0]
+        fake_zz = numpy.zeros(self.out_shape(x.shape, self.ds,
+                                             self.ignore_border))
+
+        ## zz needs to be initialized with -inf for the following to work
+        zz -= numpy.inf
+        fake_zz -= numpy.inf
+        ds0, ds1 = self.ds
+        if self.ignore_border:
+            x_usable2 = (x.shape[2] / ds0 * ds0)
+        else: x_usable2 = x.shape[2]
+        if self.ignore_border:
+            x_usable3 = (x.shape[3] / ds1 * ds1)
+        else: x_usable3 = x.shape[3]
+        for n in xrange(x.shape[0]):
+            for k in xrange(x.shape[1]):
+                for i in xrange(x_usable2):
+                    zi = i / ds0
+                    for j in xrange(x_usable3):
+                        zj = j / ds1
+                        if fake_zz[n, k, zi, zj] < x[n, k, i, j]:
+                            fake_zz[n, k, zi, zj] = x[n, k, i, j]
+                            zz[n, k, zi, zj] = ex[n, k, i, j]
+
+    '''
+    def c_code(self, node, name, inp, out, sub):
+        x, ex = inp
+        z, = out
+        fail = sub['fail']
+        ignore_border = int(self.ignore_border)
+        ds0, ds1 = self.ds
+        return """
+        int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        int x_shp0_usable;
+        int x_shp1_usable;
+        int z_shp0, z_shp1;
+        if(%(x)s->nd!=4)
+        {
+            PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
+            %(fail)s;
+        }
+        z_shp0 = %(x)s->dimensions[2] / %(ds0)s;
+        z_shp1 = %(x)s->dimensions[3] / %(ds1)s;
+        if (%(ignore_border)s)
+        {
+            x_shp0_usable = z_shp0 * %(ds0)s;
+            x_shp1_usable = z_shp1 * %(ds1)s;
+        }
+        else
+        {
+            z_shp0 += (%(x)s->dimensions[2] %% %(ds0)s) ? 1 : 0;
+            z_shp1 += (%(x)s->dimensions[3] %% %(ds1)s) ? 1 : 0;
+            x_shp0_usable = %(x)s->dimensions[2];
+            x_shp1_usable = %(x)s->dimensions[3];
+        }
+        if ((!%(z)s)
+          || *PyArray_DIMS(%(z)s)!=4
+          ||(%(z)s->dimensions[0] != %(x)s->dimensions[0])
+          ||(%(z)s->dimensions[1] != %(x)s->dimensions[1])
+          ||(%(z)s->dimensions[2] != z_shp0)
+          ||(%(z)s->dimensions[3] != z_shp1)
+          )
+        {
+          if (%(z)s) Py_XDECREF(%(z)s);
+          npy_intp dims[4] = {0,0,0,0};
+          dims[0]=%(x)s->dimensions[0];
+          dims[1]=%(x)s->dimensions[1];
+          dims[2]=z_shp0;
+          dims[3]=z_shp1;
+          %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
+        }
+
+        fake_z = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum, 0)
+        if (z_shp0 && z_shp1)
+        {
+            for(int b=0;b<%(x)s->dimensions[0];b++){
+              for(int k=0;k<%(x)s->dimensions[1];k++){
+                int mini_i = 0;
+                int zi = 0;
+                for(int i=0;i< x_shp0_usable; i++){
+                  int mini_j = 0;
+                  int zj = 0;
+                  for(int j=0; j<x_shp1_usable; j++){
+                    dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)))[0];
+                    dtype_%(ex)s b = ((dtype_%(ex)s*)(PyArray_GETPTR4(%(ex)s,b,k,i,j)))[0];
+                    dtype_%(z)s * __restrict__ z = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
+                    dtype_%(z)s * __restrict__ fz = ((dtype_fake_z*)(PyArray_GETPTR4(fake_z,b,k,zi,zj)));
+                    if ((mini_j| mini_i) == 0) || fz[0] < a)
+                    {
+                      fz[0] = a
+                      z[0] = b
+                    }
+                    mini_j = ((mini_j + 1) == %(ds1)s) ? 0 : mini_j+1;
+                    zj += (mini_j == 0);
+                  }
+                  mini_i = ((mini_i + 1) == %(ds0)s) ? 0 : mini_i+1;
+                  zi += (mini_i == 0);
+                }
+              }
+            }
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (0, 1)
+    '''
