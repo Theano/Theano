@@ -54,7 +54,9 @@ def theano_parse_c_arg(c_arg):
 """
 class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
     def __init__(self, arguments, operation,
-                 name="kernel", keep=False, options=[], **kwargs):
+                 name="kernel", keep=False, options=None, **kwargs):
+        if options is None:
+            options = []
         if isinstance(arguments, basestring):
             arguments = [theano_parse_c_arg(arg)
                          for arg in arguments.split(",")]

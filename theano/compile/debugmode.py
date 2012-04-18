@@ -504,9 +504,9 @@ def char_from_number(number):
 
 
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
-               file=sys.stdout, print_destroy_map=False, print_view_map=False,
-               order=[], ids='CHAR', stop_on_name=False,
-               prefix_child=None):
+               file=sys.stdout, print_destroy_map=False,
+               print_view_map=False, order=None, ids='CHAR',
+               stop_on_name=False, prefix_child=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -530,6 +530,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     """
     if depth == 0:
         return
+
+    if order is None:
+        order = []
 
     if done is None:
         done = dict()

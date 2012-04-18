@@ -1411,7 +1411,8 @@ class GCC_compiler(object):
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
-                    include_dirs=[], lib_dirs=[], libs=[], preargs=[]):
+                    include_dirs=None, lib_dirs=None, libs=None,
+                    preargs=None):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1435,6 +1436,12 @@ class GCC_compiler(object):
         """
         #TODO: Do not do the dlimport in this function
 
+        if include_dirs is None:
+            preargs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
         if preargs is None:
             preargs = []
         else:

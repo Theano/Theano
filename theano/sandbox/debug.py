@@ -10,12 +10,16 @@ class DebugLinker(gof.WrapLinker):
 
     def __init__(self,
                  linkers,
-                 debug_pre = [],
-                 debug_post = [],
-                 copy_originals = False,
-                 check_types = True,
-                 compare_variables = True,
-                 compare_fn = (lambda x, y: x == y)):
+                 debug_pre=None,
+                 debug_post=None,
+                 copy_originals=False,
+                 check_types=True,
+                 compare_variables=True,
+                 compare_fn=(lambda x, y: x == y)):
+        if debug_pre is None:
+            debug_pre = []
+        if debug_post is None:
+            debug_post = []
         gof.WrapLinker.__init__(self,
                                 linkers = linkers,
                                 wrapper = self.wrapper)

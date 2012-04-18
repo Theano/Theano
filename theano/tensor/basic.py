@@ -4089,7 +4089,9 @@ class IncSubtensor(Op):
     """
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
-            destroyhandler_tolerate_aliased=[]):
+            destroyhandler_tolerate_aliased=None):
+        if destroyhandler_tolerate_aliased is None:
+            destroyhandler_tolerate_aliased = []
         self.idx_list = map(Subtensor.convert, idx_list)
         self.inplace = inplace
         if inplace:
