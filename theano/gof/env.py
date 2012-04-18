@@ -96,6 +96,8 @@ class Env(utils.object2):
         if features is None:
             features = []
 
+        # XXX: Unless I'm missing something (but there's no documentation,
+        # so I probably am) this should be a set.
         self._features = []
 
         # All nodes in the subgraph defined by inputs and outputs are cached in nodes
