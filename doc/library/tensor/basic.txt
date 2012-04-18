@@ -1160,7 +1160,7 @@ Linear Algebra
 Gradient / Differentiation
 ==========================
 
-.. function:: grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False)
+.. function:: grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False)
 
     Return symbolic gradients for one or more variables with respect to some
     cost.

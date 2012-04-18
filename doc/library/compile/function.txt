@@ -81,7 +81,7 @@ Reference
         Initialize object attributes.
 
 
-.. function:: function(inputs, outputs, mode=None, updates=[], givens=[], accept_inplace=False, name=None)
+.. function:: function(inputs, outputs, mode=None, updates=None, givens=None, accept_inplace=False, name=None)
 
     Return a callable object that will calculate `outputs` from `inputs`.
 
