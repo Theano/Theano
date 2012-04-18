@@ -46,7 +46,7 @@ Reference
 
     .. method:: __init__(variable, borrow=False)
 
-        Initialize attributes from arguments. 
+        Initialize attributes from arguments.
 
 .. class:: Param
 
@@ -57,21 +57,21 @@ Reference
         A variable in an expression graph to use as a compiled-function parameter
 
     .. attribute:: default
-    
+
         The default value to use at call-time (can also be a Container where
         the function will find a value at call-time.)
 
-    .. attribute:: name 
-    
+    .. attribute:: name
+
         A string to identify an argument for this parameter in keyword arguments.
 
     .. attribute:: mutable
-    
+
         ``True`` means the compiled-function is allowed to modify this
         argument. ``False`` means it is not allowed.
 
     .. attribute:: strict
-    
+
       If ``False``, a function argument may be copied or cast to match the type
       required by the parameter `variable`.  If ``True``, a function argument
       must exactly match the type required by `variable`.
