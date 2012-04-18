@@ -308,7 +308,8 @@ class MergeFeature(object):
         self.scheduled = []
 
         # List of (node, candidate) pairs, where we tried to replace node by
-        # candidate, but it failed. This is used to avoid infinite loops.
+        # candidate, but it failed. This is used to avoid infinite loops
+        # during the replacement phase.
         self.blacklist = []
 
         for node in env.toposort():
@@ -389,8 +390,6 @@ class MergeFeature(object):
                     continue
 
                 # Schedule transfer of clients from node to candidate
-                #self.nodes_scheduled.setdefault(node, [])
-                #self.nodes_scheduled[node].append(candidate)
                 pairs = zip(node.outputs, candidate.outputs)
 
                 #transfer names
@@ -420,8 +419,6 @@ class MergeOptimizer(Optimizer):
     The first step of merging is constant-merging, so that all clients of an
     int(1) for example, are transferred to a particular instance of int(1).
     """
-    def __init__(self):
-        Optimizer.__init__(self)
 
     def add_requirements(self, env):
         # Added by default
