@@ -15,7 +15,13 @@ Bug fixes
    Note: set_subtensor(x[slice[,...]], new_value) was working correctly
    in all case as well as inc_subtensor(*, *).
    Note2: If your code have this behavior, we print a warning by default.
-  (Frederic B.)
+   (Frederic B.)
+ * Fixed an issue whereby config values were used as default arguments,
+   with those defaults then stuck at old values if the config variables were
+   changed during program execution. (David W-F)
+ * Fixed many subtle bugs involving mutable default arguments which may have
+   led to unexpected behaviour, such as objects sharing instance variables
+   they were not supposed to share. (David W-F)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.

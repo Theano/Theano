@@ -31,8 +31,10 @@ def MyVariable(name):
 
 class MyOp(Op):
 
-    def __init__(self, name, dmap = {}, x = None):
+    def __init__(self, name, dmap=None, x=None):
         self.name = name
+        if dmap is None:
+            dmap = {}
         self.destroy_map = dmap
         self.x = x
 

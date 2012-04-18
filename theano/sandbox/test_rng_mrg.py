@@ -281,8 +281,10 @@ def test_consistency_GPU_parallel():
     samples = numpy.array(samples).flatten()
     assert(numpy.allclose(samples, java_samples))
 
-def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
+def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
               target_avg=0.5, target_std=None, mean_rtol=0.01):
+    if inputs is None:
+        inputs = []
     dt = 0.0
     avg_std = 0.0
 

@@ -1427,7 +1427,9 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         self.ger_destructive = ger_destructive
         self.gemm = gemm_no_inplace
 
-    def function(self, inputs, outputs, updates={}):
+    def function(self, inputs, outputs, updates=None):
+        if updates is None:
+            updates = {}
         return theano.function(inputs, outputs, self.mode, updates=updates)
 
     def b(self, bval):

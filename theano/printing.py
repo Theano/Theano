@@ -170,14 +170,18 @@ class Print(Op):
 
 class PrinterState(gof.utils.scratchpad):
 
-    def __init__(self, props={}, **more_props):
+    def __init__(self, props=None, **more_props):
+        if props is None:
+            props = {}
         if isinstance(props, gof.utils.scratchpad):
             self.__update__(props)
         else:
             self.__dict__.update(props)
         self.__dict__.update(more_props)
 
-    def clone(self, props={}, **more_props):
+    def clone(self, props=None, **more_props):
+        if props is None:
+            props = {}
         return PrinterState(self, **dict(props, **more_props))
 
 
@@ -359,8 +363,10 @@ class PPrinter:
         cp.assign(condition, printer)
         return cp
 
-    def process_graph(self, inputs, outputs, updates={},
+    def process_graph(self, inputs, outputs, updates=None,
                       display_inputs=False):
+        if updates is None:
+            updates = {}
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
         if not isinstance(outputs, (list, tuple)):

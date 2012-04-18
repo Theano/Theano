@@ -402,8 +402,10 @@ class CLinker(link.Linker):
     def __init__(self):
         self.env = None
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
         """WRITEME"""
+        if no_recycling is None:
+            no_recycling =  []
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already"
@@ -987,12 +989,18 @@ class CLinker(link.Linker):
                           )
 
     @staticmethod
-    def cmodule_key_(env, no_recycling, compile_args=[], libraries=[],
-                     header_dirs=[], insert_config_md5=True):
+    def cmodule_key_(env, no_recycling, compile_args=None, libraries=None,
+                     header_dirs=None, insert_config_md5=True):
         """
         Do the actual computation of cmodule_key in a static method
         to allow it to be reused in scalar.Composite.__eq__
         """
+        if compile_args is None:
+            compile_args = []
+        if libraries is None:
+            libraries = []
+        if header_dirs is None:
+            header_dirs = []
         order = list(env.toposort())
         #set of variables that have been computed by nodes we have
         # seen 'so far' in the loop below
@@ -1381,7 +1389,9 @@ class OpWiseCLinker(link.LocalLinker):
         self.nice_errors = nice_errors
         self.allow_gc = allow_gc
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)(self.fallback_on_perform).accept(env,
                                                                no_recycling)
@@ -1519,7 +1529,9 @@ class DualLinker(link.Linker):
         self.env = None
         self.checker = checker
 
-    def accept(self, env, no_recycling=[]):
+    def accept(self, env, no_recycling=None):
+        if no_recycling is None:
+            no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)(self.checker).accept(env, no_recycling)
             # raise Exception("Cannot accept from a Linker that is already "

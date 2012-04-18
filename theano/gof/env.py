@@ -80,18 +80,24 @@ class Env(utils.object2):
     ### Special ###
     # TODO: document which things that features can do to the env
 
-    def __init__(self, inputs, outputs, features=[]):
+    def __init__(self, inputs, outputs, features=None):
         """
-        Create an Env which operates on the subgraph bound by the inputs and outputs
-        sets.
+        Create an Env which operates on the subgraph bound by the inputs and
+        outputs sets.
 
-        This class keeps a pointer to the inputs and outputs, and also modifies them.
+        This class keeps a pointer to the inputs and outputs, and also modifies
+        them.
 
-        #TODO: document what variables are[not] set in the env when a feature is added via the
-        constructor.  How constructed is the env?
+        #TODO: document what variables are[not] set in the env when a feature
+        is added via the constructor.  How constructed is the env?
 
         """
 
+        if features is None:
+            features = []
+
+        # XXX: Unless I'm missing something (but there's no documentation,
+        # so I probably am) this should be a set.
         self._features = []
 
         # All nodes in the subgraph defined by inputs and outputs are cached in nodes
@@ -109,8 +115,10 @@ class Env(utils.object2):
 
         for input in self.inputs:
             if input.owner is not None:
-                raise ValueError("One of the provided inputs is the output of an already existing node. " \
-                                 "If that is okay, either discard that input's owner or use graph.clone.")
+                raise ValueError("One of the provided inputs is the output of"
+                                 "an already existing node. "
+                                 "If that is okay, either discard that "
+                                 "input's owner or use graph.clone.")
             self.__setup_r__(input)
             self.variables.add(input)
 
@@ -432,6 +440,9 @@ class Env(utils.object2):
 
     ### features ###
 
+    # XXX: This is terribly named. The "extend" method of a list
+    # takes a sequence, and since this is a kind of container you
+    # would expect it to do similarly.
     def extend(self, feature):
         """WRITEME
         Adds a feature to this env. The feature may define one
