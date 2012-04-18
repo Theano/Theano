@@ -39,6 +39,12 @@ Interface changes
    the provided value have. In the past, the error was at run time.
    (Frederic B.)
 
+Speed up
+ * Convolution on the GPU now check the generation of the card to make
+   it faster in some cases (especially medium/big ouput image) (Frédéric B.)
+   (We hardcoded 512 as the maximum number of thread per block. Newer card
+    support up to 1024 threads per block.
+
 New Features
  * debugprint new param ids=["CHAR", "id", "int", ""]
    This makes the identifier printed to be the python id, a unique char, a
@@ -120,6 +126,9 @@ Crash Fix
  * Work around a known issue with nvcc 4.1 on MacOS X. (Graham Taylon)
  * In advanced indexing, if some inputs are constant, no need to call constant(...)
    on their value any more. (Pascal L., reported by John Salvatier)
+ * Fix crash on GPU when the GpuSubtensor didn't put the right stride
+   when the results tensor had a dimensions with size of 1. (Pascal L,
+   reported Graham T.)
 
 =============
 Release Notes
