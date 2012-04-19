@@ -1440,7 +1440,7 @@ class GCC_compiler(object):
         #TODO: Do not do the dlimport in this function
 
         if include_dirs is None:
-            preargs = []
+            include_dirs = []
         if lib_dirs is None:
             lib_dirs = []
         if libs is None:
