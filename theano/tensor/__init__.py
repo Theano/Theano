@@ -1,7 +1,6 @@
 """Define the tensor toplevel"""
 __docformat__ = "restructuredtext en"
 
-
 import warnings
 
 from basic import *
@@ -30,6 +29,7 @@ import sharedvar  # adds shared-variable constructors
 # We import as `_shared` instead of `shared` to avoid confusion between
 # `theano.shared` and `tensor._shared`.
 from sharedvar import tensor_constructor as _shared
+
 
 def shared(*args, **kw):
     """

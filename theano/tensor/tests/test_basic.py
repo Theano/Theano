@@ -433,7 +433,7 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     # cases we need to add it manually.
     if not name.endswith('Tester'):
         name += "Tester"
-    if kwargs.has_key('inplace'):
+    if 'inplace' in kwargs:
         if kwargs['inplace']:
             _expected = expected
             if not isinstance(_expected, dict):
@@ -451,37 +451,42 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     return makeTester(name, op, expected, checks, **kwargs)
 
 
-_good_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
-                                     not_same_dimensions=(rand(2, 2), rand(2)),
-                                     scalar=(rand(2, 3), rand(1, 1)),
-                                     row=(rand(2, 3), rand(1, 3)),
-                                     column=(rand(2, 3), rand(2, 1)),
-                                     integers=(randint(2, 3), randint(2, 3)),
-                                     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
-                                     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
-                                     complex1=(randcomplex(2, 3), randcomplex(2, 3)),
-                                     complex2=(randcomplex(2, 3), rand(2, 3)),
-                                     # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     # complex3=(rand(2,3),randcomplex(2,3)),
-                                     empty=(numpy.asarray([]), numpy.asarray([1])),
-                                     )
+_good_broadcast_binary_normal = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    not_same_dimensions=(rand(2, 2), rand(2)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    integers=(randint(2, 3), randint(2, 3)),
+    dtype_mixup_1=(rand(2, 3), randint(2, 3)),
+    dtype_mixup_2=(randint(2, 3), rand(2, 3)),
+    complex1=(randcomplex(2, 3), randcomplex(2, 3)),
+    complex2=(randcomplex(2, 3), rand(2, 3)),
+    # Disabled as we test the case where we reuse the same output as the
+    # first inputs.
+    # complex3=(rand(2,3),randcomplex(2,3)),
+    empty=(numpy.asarray([]), numpy.asarray([1])),
+    )
 
-_bad_build_broadcast_binary_normal = dict()  # not_same_dimensions = (rand(2), rand(2, 2)))
+_bad_build_broadcast_binary_normal = dict()
 
-_bad_runtime_broadcast_binary_normal = dict(bad_shapes=(rand(2, 3), rand(3, 2)),
-                                            bad_row=(rand(2, 3), rand(1, 2)))
+_bad_runtime_broadcast_binary_normal = dict(
+    bad_shapes=(rand(2, 3), rand(3, 2)),
+    bad_row=(rand(2, 3), rand(1, 2)))
 
-_grad_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
-                                     scalar=(rand(2, 3), rand(1, 1)),
-                                     row=(rand(2, 3), rand(1, 3)),
-                                     column=(rand(2, 3), rand(2, 1)),
-                                     #This don't work as verify grad don't support that
-                                     #empty=(numpy.asarray([]), numpy.asarray([1]))
-                                     #complex1=(randcomplex(2,3),randcomplex(2,3)),
-                                     #complex2=(randcomplex(2,3),rand(2,3)),
-                                     # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     #complex3=(rand(2,3),randcomplex(2,3)),
-                                     )
+_grad_broadcast_binary_normal = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    #This don't work as verify grad don't support that
+    #empty=(numpy.asarray([]), numpy.asarray([1]))
+    #complex1=(randcomplex(2,3),randcomplex(2,3)),
+    #complex2=(randcomplex(2,3),rand(2,3)),
+    # Disabled as we test the case where we reuse the same output as the
+    # first inputs.
+    #complex3=(rand(2,3),randcomplex(2,3)),
+    )
 
 
 def check_floatX(inputs, rval):
@@ -507,28 +512,38 @@ def check_floatX(inputs, rval):
         return rval
 
 
-AddTester = makeBroadcastTester(op = add,
-                                  expected = lambda *inputs: check_floatX(inputs, reduce(lambda x, y: x + y, inputs)),
-                                  good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
-                                              four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
-                                              **_good_broadcast_binary_normal),
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal)
+AddTester = makeBroadcastTester(
+    op=add,
+    expected = lambda *inputs: check_floatX(
+        inputs, reduce(lambda x, y: x + y, inputs)),
+    good = dict(
+        three_inputs_same_shapes=(rand(2, 3),
+                                  rand(2, 3),
+                                  rand(2, 3)),
+        four_inputs_broadcast=(rand(2, 3),
+                               rand(1, 3),
+                               rand(2, 1),
+                               rand(1, 1)),
+        **_good_broadcast_binary_normal),
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal)
 
 
-AddInplaceTester = makeBroadcastTester(op = inplace.add_inplace,
-                                         expected = lambda x, y: x + y,
-                                         good = _good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         inplace = True)
+AddInplaceTester = makeBroadcastTester(
+    op = inplace.add_inplace,
+    expected = lambda x, y: x + y,
+    good = _good_broadcast_binary_normal,
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal,
+    inplace = True)
 
-SubTester = makeBroadcastTester(op = sub,
-                                  expected = lambda x, y: check_floatX((x, y), x - y),
-                                  good = _good_broadcast_binary_normal,
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                  grad = _grad_broadcast_binary_normal)
+SubTester = makeBroadcastTester(
+    op = sub,
+    expected = lambda x, y: check_floatX((x, y), x - y),
+    good = _good_broadcast_binary_normal,
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal,
+    grad = _grad_broadcast_binary_normal)
 
 SubInplaceTester = makeBroadcastTester(op = inplace.sub_inplace,
                                          expected = lambda x, y: x - y,
