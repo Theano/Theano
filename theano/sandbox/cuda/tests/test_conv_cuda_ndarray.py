@@ -483,7 +483,7 @@ def test_valid_5():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -496,7 +496,7 @@ def test_valid_5():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
@@ -517,7 +517,7 @@ def test_valid_7_8_13():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -530,7 +530,7 @@ def test_valid_7_8_13():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
@@ -548,7 +548,7 @@ def test_valid_9_10():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -560,7 +560,7 @@ def test_valid_9_10():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
