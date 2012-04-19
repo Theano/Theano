@@ -1066,7 +1066,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
             PyErr_SetString(
                 PyExc_ValueError,
                 "CudaNdarray_inplace_elemwise cannot work inplace on"
-                " un-initialized array when the new value have more then"
+                " un-initialized array when the new value have more than"
                 " 0 or 1 broadcastable dimensions");
             Py_XDECREF(new_other);
             return 0;
@@ -2799,9 +2799,9 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
     if (self->nd < other->nd)
     {
         PyErr_Format(PyExc_NotImplementedError,
-            "CudaNdarray_CopyFromCudaNdarray: The destination need more or the"
-            " same number of dimensions then the source. Got %d and %d.",
-                     self->nd, other->nd);
+            "CudaNdarray_CopyFromCudaNdarray: The number of dimensions of the "
+            "destination needs to be >= the number of dimensions of the "
+            "source. Got %d and %d.", self->nd, other->nd);
         return -1;
     }
     else if (self->nd != other->nd)
