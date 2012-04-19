@@ -52,3 +52,5 @@ import nnet  # used for softmax, sigmoid, etc.
 
 from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian
+
+from corrcoef import corrcoef
