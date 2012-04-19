@@ -24,7 +24,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, izip, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
-        basic, clip, constant, default, dot, inc_subtensor, set_subtensor,
+        clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, sort, SortOp, argsort, ArgSortOp,)
+        tile, patternbroadcast)
 from theano.tests import unittest_tools as utt
 
 
@@ -5661,135 +5661,6 @@ def test_transpose():
     assert t3d.shape == (2, 4, 3)
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
-
-
-class test_sort(unittest.TestCase):
-
-    def setUp(self):
-        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        self.m_val = self.rng.rand(3, 2)
-        self.v_val = self.rng.rand(4)
-
-    def test1(self):
-        a = theano.tensor.dmatrix()
-        w = sort(a)
-        f = theano.function([a], w)
-        assert numpy.allclose(f(self.m_val), numpy.sort(self.m_val))
-
-    def test2(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        w = sort(a, axis)
-        f = theano.function([a, axis], w)
-        for axis_val in 0, 1:
-            assert numpy.allclose(
-                    f(self.m_val, axis_val),
-                    numpy.sort(self.m_val, axis_val))
-
-    def test3(self):
-        a = theano.tensor.dvector()
-        w2 = sort(a)
-        f = theano.function([a], w2)
-        assert numpy.allclose(f(self.v_val), numpy.sort(self.v_val))
-
-    def test4(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        l = sort(a, axis, "mergesort")
-        f = theano.function([a, axis], l)
-        for axis_val in 0, 1:
-            assert numpy.allclose(
-                    f(self.m_val, axis_val),
-                    numpy.sort(self.m_val, axis_val))
-
-    def test5(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        a1 = SortOp("mergesort", [])
-        a2 = SortOp("quicksort", [])
-
-        #All the below should give true
-        assert a1 != a2
-        assert a1 == SortOp("mergesort", [])
-        assert a2 == SortOp("quicksort", [])
-
-    def test_None(self):
-        a = theano.tensor.dmatrix()
-        l = sort(a, None)
-        f = theano.function([a], l)
-        assert numpy.allclose(f(self.m_val),
-                numpy.sort(self.m_val, None))
-
-
-class TensorInferShapeTester(utt.InferShapeTester):
-    def test_sort(self):
-        x = tensor.matrix()
-        self._compile_and_check(
-                [x],
-                [sort(x)],
-                [numpy.random.randn(10, 40).astype(config.floatX)],
-                SortOp)
-        self._compile_and_check(
-                [x],
-                [sort(x, axis=None)],
-                [numpy.random.randn(10, 40).astype(config.floatX)],
-                SortOp)
-
-
-
-def test_argsort():
-    #Set up
-    rng = numpy.random.RandomState(seed=utt.fetch_seed())
-    m_val = rng.rand(3, 2)
-    v_val = rng.rand(4)
-
-    #Example 1
-    a = theano.tensor.dmatrix()
-    w = argsort(a)
-    f = theano.function([a], w)
-    assert numpy.allclose(f(m_val), numpy.argsort(m_val))
-
-    #Example 2
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    w = argsort(a, axis)
-    f = theano.function([a, axis], w)
-    for axis_val in 0, 1:
-        assert numpy.allclose(
-                f(m_val, axis_val),
-                numpy.argsort(m_val, axis_val))
-
-    #Example 3
-    a = theano.tensor.dvector()
-    w2 = argsort(a)
-    f = theano.function([a], w2)
-    assert numpy.allclose(f(v_val), numpy.argsort(v_val))
-
-    #Example 4
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    l = argsort(a, axis, "mergesort")
-    f = theano.function([a, axis], l)
-    for axis_val in 0, 1:
-        assert numpy.allclose(
-                f(m_val, axis_val),
-                numpy.argsort(m_val, axis_val))
-
-    #Example 5
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    a1 = ArgSortOp("mergesort", [])
-    a2 = ArgSortOp("quicksort", [])
-    #All the below should give true
-    assert a1 != a2
-    assert a1 == ArgSortOp("mergesort", [])
-    assert a2 == ArgSortOp("quicksort", [])
-
-    #Example 6: Testing axis=None
-    a = theano.tensor.dmatrix()
-    w2 = argsort(a, None)
-    f = theano.function([a], w2)
-    assert numpy.allclose(f(m_val), numpy.argsort(m_val, None))
 
 
 if __name__ == '__main__':
