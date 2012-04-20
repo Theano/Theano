@@ -312,18 +312,21 @@ scan_seqopt.register('scanOp_pushout_nonseqs_ops',
 
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self):
+    def __init__(self, typeConstructor=None, gpu_flag=False):
         Optimizer.__init__(self)
+        self.typeConstructor = typeConstructor
+        self.gpu_flag = gpu_flag
 
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
         env.extend(DestroyHandler())
 
     def apply(self, env):
+
         nodes = env.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                         not x.op.info['gpu'])]
+                         x.op.info['gpu']== self.gpu_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
@@ -351,7 +354,9 @@ class ScanInplaceOptimizer(Optimizer):
                 inputs = ls_begin + ls + ls_end
                 new_op = scan_op.Scan(op.inputs,
                                       op.outputs,
-                                      info)
+                                      info,
+                                      typeConstructor=self.typeConstructor)
+
                 new_outs = new_op.make_node(*inputs).outputs
                 try:
                     env.replace_all_validate(
@@ -364,7 +369,8 @@ class ScanInplaceOptimizer(Optimizer):
                     pass
 
 optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(),
+               ScanInplaceOptimizer(typeConstructor=None,
+                                   gpu_flag=False),
                75,
                'fast_run',
                'inplace',

@@ -5,7 +5,7 @@ import copy
 import sys
 import theano
 import numpy
-from theano.scan_module import scan_utils, scan_op
+from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano import scalar as scal
 from theano import tensor, compile, gof
 
@@ -1349,65 +1349,9 @@ def gpuScanOptimization(node):
     return False
 
 
-class ScanGPUInplaceOptimizer(Optimizer):
-    """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self):
-        Optimizer.__init__(self)
-
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-        env.extend(DestroyHandler())
-
-    def apply(self, env):
-        nodes = env.toposort()
-        scan_nodes = [x for x in nodes
-                      if (isinstance(x.op, scan_op.Scan) and
-                         x.op.info['gpu'])]
-        for scan_idx in xrange(len(scan_nodes)):
-            node = scan_nodes[scan_idx]
-            op = node.op
-            n_outs = (op.info['n_mit_mot'] +
-                      op.info['n_mit_sot'] +
-                      op.info['n_sit_sot'])
-            for pos in xrange(n_outs):
-                info = copy.deepcopy(op.info)
-                if not 'destroy_map' in info:
-                    info['destroy_map'] = {}
-                info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
-                # inputs corresponding to sequences and n_steps
-                ls_begin = node.inputs[:1 + op.n_seqs]
-                ls = op.outer_mitmot(node.inputs)
-                ls += op.outer_mitsot(node.inputs)
-                ls += op.outer_sitsot(node.inputs)
-                ls_end = op.outer_shared(node.inputs)
-                ls_end += op.outer_nitsot(node.inputs)
-                ls_end += op.outer_non_seqs(node.inputs)
-                n_outs = len(ls)
-                for idx in xrange(n_outs):
-                    if ls[idx] in ls[:idx]:
-                        ls[idx] = deep_copy_op(ls[idx])
-
-                inputs = ls_begin + ls + ls_end
-                typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                broadcastable = broadcastable)
-                new_op = scan_op.Scan(op.inputs,
-                                      op.outputs,
-                                      info,
-                                      typeConstructor=typeConstructor)
-                new_outs = new_op.make_node(*inputs).outputs
-                try:
-                    env.replace_all_validate(
-                        zip(node.outputs, new_outs),
-                        reason=self.__class__.__name__)
-                    op = new_op
-                    node = new_outs[0].owner
-                except InconsistencyError, e:
-                    # Failed moving output to be comptued inplace
-                    pass
-
-
 optdb.register('gpu_scanOp_make_inplace',
-               ScanGPUInplaceOptimizer(),
+               scan_opt.ScanInplaceOptimizer(typeConstructor=CudaNdarrayType,
+                                            gpu_flag=True),
                75,
                'gpu',
                'fast_run',
