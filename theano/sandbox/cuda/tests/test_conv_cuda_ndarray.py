@@ -35,9 +35,9 @@ device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
     cuda_ndarray.shared_constructor(numpy.zeros(2, dtype='float32'))
 device_id = theano.sandbox.cuda.use.device_number
-device_id = device_id[3:]
-if device_id == '':
-    device_id = 0
+if device_id is None:
+    cuda.use("gpu", False, False, False, False, True)
+    device_id = theano.sandbox.cuda.use.device_number
 cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
 device_prop = cuda_ndarray.device_properties(device_id)
 
@@ -55,7 +55,7 @@ def py_conv_valid_numpy(img, kern):
                     #rr, cc is the upper-left corner of img patches
                     imgpatch = img[b, :, rr:rr + kern.shape[2],
                                    cc:cc + kern.shape[3]]
-                    #print img.shape, kern.shape, imgpatch.shape, rr+kern.shape[2]-1, rr-1, -1
+
                     innerprod = (imgpatch[:, ::-1, ::-1] *
                                  kern[k, :, :, :]).sum()
                     out[b, k, rr, cc] = innerprod

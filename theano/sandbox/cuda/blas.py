@@ -718,10 +718,11 @@ class GpuConv(GpuOp):
         node_ = copy.copy(node)
         assert node.op is node_.op
         if node_.op.max_threads_dim0 is None:
-            op = copy.copy(node_.op)
-            device_id = theano.sandbox.cuda.use.device_number[3:]
-            if device_id == '':
-                device_id = 0
+            cuda = theano.sandbox.cuda
+            device_id = cuda.use.device_number
+            if device_id is None:
+                cuda.use("gpu", False, False, False, False, True)
+                device_id = cuda.use.device_number
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
             node_.op.max_threads_dim0 = prop['maxThreadsDim0']
