@@ -1514,11 +1514,10 @@ def gpuScanOptimization(node):
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
                     broadcastable=broadcastable)
             _outputs = scan_op.Scan(
-                    scan_ins,
-                    scan_outs,
-                    info,
-                    typeConstructor=typeConstructor).make_node(
-                        *nw_ins).outputs
+                scan_ins,
+                scan_outs,
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins).outputs
             outputs = []
             for x, y in zip(_outputs, node.outputs):
                 if isinstance(y.type, CudaNdarrayType):
