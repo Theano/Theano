@@ -309,8 +309,15 @@ def use(device,
             device = 0
         try:
             if device != 'gpu':
+                assert isinstance(device, int)
                 gpu_init(device)
-            use.device_number = device
+                use.device_number = device
+            else:
+                # This mean we let the driver select the GPU.
+                # But default it is always number 0.
+                # If the driver is in exclusive mode, it will always show
+                # device 0 event if it use something else.
+                use.device_number = 0
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
                 theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
