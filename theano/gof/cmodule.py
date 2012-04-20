@@ -266,15 +266,20 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname):
+def module_name_from_dir(dirname, err=True):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
     files = os.listdir(dirname)
-    name, = [file for file in files
+    names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
-    return os.path.join(dirname, name)
+    if len(names) == 0 and not err:
+        return None
+    elif len(names) == 1:
+        return os.path.join(dirname, names[0])
+    else:
+        raise Exception("More then 1 compiled module in this directory!")
 
 
 def is_same_entry(entry_1, entry_2):
@@ -1249,8 +1254,17 @@ class ModuleCache(object):
                     except IOError:
                         has_key = False
                     if not has_key:
-                        age = time_now - last_access_time(
-                                os.path.join(self.dirname, filename))
+                        # Use the compiled file by default
+                        path = module_name_from_dir(os.path.join(self.dirname,
+                                                                 filename),
+                                                    False)
+                        # If it don't exist, use the directory to be sure
+                        # to delete old stuff that could have been created
+                        # by errors
+                        if path is None:
+                            path = os.path.join(self.dirname, filename)
+                        age = time_now - last_access_time(path)
+
                         # In normal case, the processus that created this
                         # directory will delete it. However, if this processus
                         # crashes, it will not be cleaned up.
