@@ -1242,7 +1242,7 @@ def gpuScanOptimization(node):
         if (host_input.owner and
             isinstance(host_input.owner.op, scan_op.Scan) and
             not host_input.owner.op.info['gpu'] and
-            len(host_input.owner.outputs) == 1 ):
+            len(host_input.owner.outputs) == 1):
             # Note that we are not doing the right thing here !!
             # This is because the local optimizer expects only one
             # output that corresponds to the input of ``node``
@@ -1258,39 +1258,40 @@ def gpuScanOptimization(node):
             info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = host_input.owner.inputs
-            nw_ins = [ inputs[0]]
-            e = ( 1+ thescan.n_seqs
-                 + thescan.n_mit_mot
-                 + thescan.n_mit_sot
-                 + thescan.n_sit_sot
-                 + thescan.n_shared_outs)
-            nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
+            nw_ins = [inputs[0]]
+            e = (1 +
+                 thescan.n_seqs +
+                 thescan.n_mit_mot +
+                 thescan.n_mit_sot +
+                 thescan.n_sit_sot +
+                 thescan.n_shared_outs)
+            nw_ins += [safe_to_gpu(x) for x in inputs[1:e]]
             b = e
             e = e + thescan.n_nit_sot
             nw_ins += inputs[b:e]
-            nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
-            scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
-            scan_outs = [ safe_to_gpu(x) for x in thescan.outputs ]
+            nw_ins += [safe_to_gpu(x) for x in inputs[e:]]
+            scan_ins = [tensor_to_cuda(x) for x in thescan.inputs]
+            scan_outs = [safe_to_gpu(x) for x in thescan.outputs]
             scan_outs = scan_utils.clone(
-                scan_outs
-                , replace = zip(thescan.inputs,
-                                [safe_to_cpu(x) for x in  scan_ins]))
+                scan_outs,
+                replace=zip(thescan.inputs,
+                            [safe_to_cpu(x) for x in  scan_ins]))
             # We need to construct the hash here, because scan
             # __init__ does not know about cuda ndarray and can not
             # handle graphs with inputs being Cuda Ndarrays
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
             local_env = gof.Env(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            _cmodule_key = gof.CLinker.cmodule_key_(local_env, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                    broadcastable = broadcastable)
-            nw_op = scan_op.Scan( scan_ins
-                                 , scan_outs
-                                 , info
-                                 , typeConstructor = typeConstructor
-                                ).make_node(*nw_ins)
+                    broadcastable=broadcastable)
+            nw_op = scan_op.Scan(
+                scan_ins,
+                scan_outs,
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins)
             _outputs = nw_op.outputs
             return _outputs
 
@@ -1304,24 +1305,25 @@ def gpuScanOptimization(node):
             info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = node.inputs
-            nw_ins = [ inputs[0]]
-            e = ( 1+ thescan.n_seqs
-                 + thescan.n_mit_mot
-                 + thescan.n_mit_sot
-                 + thescan.n_sit_sot
-                 + thescan.n_shared_outs)
-            nw_ins += [safe_to_gpu(x) for x in inputs[1:e] ]
+            nw_ins = [inputs[0]]
+            e = (1 +
+                 thescan.n_seqs +
+                 thescan.n_mit_mot +
+                 thescan.n_mit_sot +
+                 thescan.n_sit_sot +
+                 thescan.n_shared_outs)
+            nw_ins += [safe_to_gpu(x) for x in inputs[1:e]]
             b = e
             e = e + thescan.n_nit_sot
             nw_ins += inputs[b:e]
-            nw_ins += [safe_to_gpu(x) for x in inputs[e:] ]
+            nw_ins += [safe_to_gpu(x) for x in inputs[e:]]
 
-            scan_ins = [ tensor_to_cuda(x) for x in thescan.inputs]
-            scan_outs = [ safe_to_gpu(x) for x in thescan.outputs ]
+            scan_ins = [tensor_to_cuda(x) for x in thescan.inputs]
+            scan_outs = [safe_to_gpu(x) for x in thescan.outputs]
             scan_outs = scan_utils.clone(
-                scan_outs
-                , replace = zip(thescan.inputs
-                                ,[safe_to_cpu(x) for x in  scan_ins]))
+                scan_outs,
+                replace=zip(thescan.inputs,
+                            [safe_to_cpu(x) for x in  scan_ins]))
 
             # We need to construct the hash here, because scan
             # __init__ does not know about cuda ndarray and can not
@@ -1329,18 +1331,17 @@ def gpuScanOptimization(node):
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
             local_env = gof.Env(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_env,[])
+            _cmodule_key = gof.CLinker.cmodule_key_(local_env, [])
             info['gpu_hash'] = hash(_cmodule_key)
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                    broadcastable = broadcastable)
+                    broadcastable=broadcastable)
             _outputs = scan_op.Scan(
-                    scan_ins
-                    , scan_outs
-                    , info
-                    , typeConstructor = typeConstructor
-                    ).make_node(*nw_ins).outputs
+                scan_ins,
+                scan_outs,
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins).outputs
             outputs = []
-            for x,y in zip(_outputs, node.outputs):
+            for x, y in zip(_outputs, node.outputs):
                 if isinstance(y.type, CudaNdarrayType):
                     outputs += [x]
                 else:

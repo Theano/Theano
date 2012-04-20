@@ -309,7 +309,6 @@ scan_seqopt.register('scanOp_pushout_nonseqs_ops',
                      'scan')
 
 
-
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
     def __init__(self, typeConstructor=None, gpu_flag=False):
@@ -326,7 +325,7 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = env.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                         x.op.info['gpu']== self.gpu_flag)]
+                         x.op.info['gpu'] == self.gpu_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
