@@ -406,6 +406,8 @@ class Scan(PureOp):
         else:
             name = 'for'
         aux_txt = '%s'
+        if getattr(self, 'destroy_map', None) is None:
+            self.destroy_map = {}
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
             if (sorted(self.destroy_map.keys()) == \
