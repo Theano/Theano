@@ -79,9 +79,10 @@ Linux
 CentOS 6
 ~~~~~~~~
 
-:ref:`install_centos6` on how to install Theano on CentOS 6
-made by us. It cover how to install Theano on the CPU with the
-distribution packages atlas, a free fast implementation of Blas.
+:ref:`install_centos6` provides instructions on how to install Theano on CentOS
+6, written by the Theano developers. It covers how to install Theano (for
+CPU-based computation only) with the distribution-packaged ATLAS, a free fast
+implementation of BLAS.
 
 .. Cent OS 6
 
@@ -178,8 +179,8 @@ The following command will update Theano and Numpy/Scipy (warning bellow):
 
 If you installed numpy/scipy with yum/apt-get, updating numpy/scipy
 this way is not always a good idea. This can make Theano crash due to
-problem with Blas (We will try to fix them). But, this can also result
-in slower version of Theano and Numpy. To fix the crash, you can
+problem with BLAS (We will try to fix them). But, this can also result
+in slower version of Theano and NumPy. To fix the crash, you can
 delete Theano cache like this:
 
 .. code-block:: bash
