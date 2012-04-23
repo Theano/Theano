@@ -76,6 +76,15 @@ The following libraries and software are optional:
 Linux
 -----
 
+CentOS 6
+~~~~~~~~
+
+:ref:`install_centos6` on how to install Theano on CentOS 6
+made by us. It cover how to install Theano on the CPU with the
+distribution packages atlas, a free fast implementation of Blas.
+
+.. Cent OS 6
+
 Alternative installation on Ubuntu with PPA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

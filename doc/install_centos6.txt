@@ -1,0 +1,102 @@
+
+.. _install_centos6:
+
+
+Easy Installation of Theano optimized on CentOS 6
+=================================================
+
+.. note::
+
+    It is possible to have a faster installation of Theano. But this
+    make the installation more complicated or request that you buy
+    software. So this is a simple installation instruction that give a
+    relatively well optimized version that use only free
+    software. With more work or with money, you can have a faster
+    installation.
+    
+    The differences between those faster version are related to blas
+    libraries.
+
+.. note::
+
+    This procedure make Theano use only 1 thread for all blas
+    function. See note 1 about faster version. The other blas
+    libraries can work in parallel.
+
+.. note::
+
+   If you are under a proxy, you must do some extra configuration step
+   bedofore staring the installation. You must set the environment
+   variable ``http_proxy`` to the proxy like this under bash:
+   ``export http_proxy="http://user:pass@my.site:port/"``
+   You can also give the ``--proxy=[user:pass@]url:port`` parameter
+   to pip. [user:pass@] is optional.
+
+.. note::
+
+   We use pip for 2 reasons. First to allow "import module;
+   module.test()" to work correctly. Second, the installation of numpy
+   1.6 or 1.6.1 with easy_intall raise an import error at the end of
+   the installation. To my knowledge we can ignore this error, but
+   this is not completly safe. easy_install with numpy 1.5.1 don't
+   have this error.
+
+
+
+Installation step
+~~~~~~~~~~~~~~~~~
+
+ 1) sudo yum install python-devel python-nose python-setuptools gcc
+    gcc-gfortran gcc-c++ blas-devel lapack-devel atlas-devel
+ 2) sudo easy_install pip
+ 3) sudo pip install numpy==1.6.1
+ 4) sudo pip install scipy==0.10.1
+ 5) sudo pip install Theano
+
+
+Tests newly installed package
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ 1) Numpy (~30s): python -c "import numpy;numpy.test()"
+ 2) Scipy (~1m): python -c "import scipy;scipy.test()"
+ 3) Theano (~30m): python -c "import theano;theano.test()"
+
+
+Speed test Theano/Blas
+~~~~~~~~~~~~~~~~~~~~~~
+
+It is recommended to test the Theano/Blas integration. There is many
+version of Blas that exist and there can be up to 10x speed
+difference.  Also, having Theano link directly to blas instead of
+using numpy/scipy as an intermediate lower the overhead. This is
+important for blas call to ger, gemv and small gemm (automaticaled
+when needed when you use dot()). To run Theano/Blas speed test:
+
+.. code-block:: bash
+
+    python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
+
+This will print a table with with different version of blas/number of
+thread on multiple CPUs and GPUs. It will also print some Theano/numpy
+configuration. Thenit will print the run time for your
+installation. Try to find a CPU close to yours and check if the
+timming is not too far.
+
+
+Updating Theano
+~~~~~~~~~~~~~~~
+
+If you followed this instruction installation, you can execute this to
+update only Theano:
+
+.. code-block:: bash
+
+    sudo pip install --upgrade --no-deps theano
+
+
+If you want to also update numpy/scipy, you can run this:
+
+.. code-block:: bash
+
+    sudo pip install --upgrade theano
+
