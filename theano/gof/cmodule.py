@@ -1258,11 +1258,16 @@ class ModuleCache(object):
                         path = module_name_from_dir(os.path.join(self.dirname,
                                                                  filename),
                                                     False)
-                        # If it don't exist, use the directory to be sure
-                        # to delete old stuff that could have been created
-                        # by errors
+                        # If it don't exist, use any file in the directory.
                         if path is None:
                             path = os.path.join(self.dirname, filename)
+                            files = os.listdir(path)
+                            if files:
+                                path = os.path.join(path, files[0])
+                            else:
+                                # If the directory is empty skip it.
+                                # They are deleted elsewhere.
+                                continue
                         age = time_now - last_access_time(path)
 
                         # In normal case, the processus that created this
