@@ -332,11 +332,18 @@ def default_blas_ldflags():
             elif sys.platform == 'darwin':
                 # This is needed to link with
                 new_path = os.path.join(sys.prefix, "lib")
-                if False:
-                    assert os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None) is None
-                    os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = new_path
-                else:
-                    extra = ['-Xlinker -rpath,' + new_path]
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is None:
+                    os.putenv("DYLD_FALLBACK_LIBRARY_PATH", new_path)
+                elif new_path not in v.split(":"):
+                    raise Exception(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' is set, but do "
+                        "not contain the '%s' path. This will make "
+                        "Theano use a slow version of BLAS. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value or delete this environment "
+                        "variable.")
             return ' '.join(
                 ['-L%s' % os.path.join(sys.prefix, "lib")] +
                 ['-l%s' % l for l in blas_info['libraries']])
