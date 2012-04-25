@@ -915,7 +915,8 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
    <https://github.com/xianyi/OpenBLAS>`_ is a new project that
    continues GotoBLAS: it has a better installation process and implements
    additional functions (not currently used by Theano).
-   We did not try OpenBLAS on Windows.
+   We did not try OpenBLAS on Windows. When installed, you probably need to
+   use this Theano flags: ``theano.config.blas.ldflags = "-lopenblas"``
 
 .. note::
 
