@@ -92,6 +92,10 @@ class Images2Neibs(Op):
         fail = sub['fail']
         mode = self.mode
         return """
+#ifndef CEIL_INTDIV
+#define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
+#endif
+
         int grid_c = -1; //number of patch in height
         int grid_d = -1; //number of patch in width
         {
@@ -141,10 +145,9 @@ class Images2Neibs(Op):
                              (long int)c, (long int)d, (long int)(%(ten4)s->dimensions[2]), (long int)(%(ten4)s->dimensions[3]));
                 %(fail)s;
             }
-            //grid_c = CEIL_INTDIV(((%(ten4)s->dimensions)[2]),step_x)
-            //grid_d = CEIL_INTDIV(((%(ten4)s->dimensions)[3]),step_y)
-            grid_c = ((%(ten4)s->dimensions)[2])/step_x + ((((%(ten4)s->dimensions)[2])%%step_x)? 1:0);
-            grid_d = ((%(ten4)s->dimensions)[3])/step_y + ((((%(ten4)s->dimensions)[3])%%step_y)? 1:0);
+            grid_c = CEIL_INTDIV(((%(ten4)s->dimensions)[2]),step_x);
+            grid_d = CEIL_INTDIV(((%(ten4)s->dimensions)[3]),step_y);
+
         }else if ( "%(mode)s" == "valid") {
             if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
             {
@@ -454,6 +457,10 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         fail = sub['fail']
         mode = self.mode
         return """
+#ifndef CEIL_INTDIV
+#define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
+#endif
+
         int grid_c = -1;
         int grid_d = -1;
 
@@ -491,10 +498,12 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
                                  c, d, CudaNdarray_HOST_DIMS(%(ten4)s)[2], CudaNdarray_HOST_DIMS(%(ten4)s)[3]);
                     %(fail)s;
                 }
-                //grid_c = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]),step_x)
-                //grid_d = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]),step_y)
-                grid_c = ((CudaNdarray_HOST_DIMS(%(ten4)s))[2])/step_x + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[2])%%step_x)? 1:0);
-                grid_d = ((CudaNdarray_HOST_DIMS(%(ten4)s))[3])/step_y + ((((CudaNdarray_HOST_DIMS(%(ten4)s))[3])%%step_y)? 1:0);
+                grid_c = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]),
+                                     step_x);
+                grid_d = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]),
+                                     step_y);
+
+
             }else if ( "%(mode)s" == "valid") {
                 if ( ((CudaNdarray_HOST_DIMS(%(ten4)s))[2] < c) ||( (((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
                 {
