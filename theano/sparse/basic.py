@@ -515,7 +515,21 @@ csr_fmatrix = SparseType(format='csr', dtype='float32')
 
 # CONSTRUCTION
 class CSMProperties(gof.Op):
-    """Extract all of .data .indices and .indptr"""
+    """Extract all of .data .indices and .indptr
+
+    :note: We won't implement infer_shape for this op now. This will
+           ask that we implement an GetNNZ op, and this op will keep
+           the dependence on the input of this op. So this won't help
+           to remove computations in the graph. To remove computation,
+           we will need to make an infer_sparse_pattern feature to
+           remove computations. Doing this is trickier then the
+           infer_shape feature. For example, how do we handle the case
+           when some op create some 0 values? So there is dependence
+           on the values themselves. We could write an infer_shape for
+           the last output that is the shape, but I dough this will
+           get used.
+
+    """
 
     # we don't return a view of the shape, we create a new ndarray from the
     # shape tuple.

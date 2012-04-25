@@ -17,10 +17,10 @@ purpose of it is to hack it to investigate what your own particular program is d
             predefined_optimizers)
 
     class StepMode(Mode):
-        def __init__(self, linker=None, optimizer=None):
+        def __init__(self, linker=None, optimizer='default'):
             if linker is None:
                 linker = config.linker
-            if optimizer is None:
+            if optimizer is 'default':
                 optimizer = config.optimizer
             def blah(i, node, th):
                 # This function will be run for each node in your compiled program.
