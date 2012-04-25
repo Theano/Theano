@@ -82,10 +82,10 @@ class Profile_Maker(FunctionMaker):
         return ret
 
 class ProfileMode(Mode):
-    def __init__(self, linker=None, optimizer=None):
+    def __init__(self, linker=None, optimizer='default'):
         if linker is None:
             linker = config.linker
-        if optimizer is None:
+        if optimizer is 'default':
             optimizer = config.optimizer
         message = ""
         profile_stats = {}
