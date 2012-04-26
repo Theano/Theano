@@ -700,7 +700,7 @@ class ScanSaveMem(gof.Optimizer):
             # 3.6 Compose the new scan
             # I need to make sure I'm not reapplying the same optimization
             # twice since bad things usually happen if I do that
-            info['_scan_merge_visited'] = True
+            info['_scan_savemem_visited'] = True
             new_outs = scan_op.Scan(inps,
                                     outs,
                                     info).make_node(*node_ins).outputs
@@ -793,7 +793,7 @@ class ScanSaveMem(gof.Optimizer):
         nodelist = [x for x in env.toposort() if isinstance(x.op,
                                                            scan_op.Scan)]
         for node in nodelist:
-            if not hasattr(node.op, '_scan_merge_visited'):
+            if not hasattr(node.op, '_scan_savemem_visited'):
                 self.process_node(env, node)
 
 # Just before specialize to have the other optimization
