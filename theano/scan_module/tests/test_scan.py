@@ -308,9 +308,9 @@ class T_Scan(unittest.TestCase):
                                updates=updates,
                                allow_input_downcast=True)
         nodes = [x for x in my_f.maker.env.toposort()
-                 if isinstance(x.owner.op, theano.scan_module.scan_op.Scan)]
+                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         # This assertation fails if savemem optimization failed on scan
-        assert nodes[0]._scan_savemem_visited
+        assert nodes[0].op._scan_savemem_visited
 
 
 
