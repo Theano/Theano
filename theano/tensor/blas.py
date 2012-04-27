@@ -321,8 +321,8 @@ def default_blas_ldflags():
     try:
         # If we are in a EPD installation, mkl is available
         blas_info = numpy.distutils.__config__.blas_opt_info
-        extra = []
         if "EPD" in sys.version:
+            use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
                     ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
@@ -332,23 +332,30 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
             elif sys.platform == 'darwin':
-                # This is needed to link with
+                # The env variable is needed to link with mkl
                 new_path = os.path.join(sys.prefix, "lib")
                 v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
-                if v is None:
-                    os.putenv("DYLD_FALLBACK_LIBRARY_PATH", new_path)
-                elif new_path not in v.split(":"):
-                    raise Exception(
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we warn the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    _logger.warning(
                         "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' is set, but do "
-                        "not contain the '%s' path. This will make "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' do not contain "
+                        "the '%s' path in its value. This will make "
                         "Theano use a slow version of BLAS. Update "
                         "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value or delete this environment "
-                        "variable.")
-            return ' '.join(
-                ['-L%s' % os.path.join(sys.prefix, "lib")] +
-                ['-l%s' % l for l in blas_info['libraries']])
+                        "said value, this will disable this warning.")
+
+
+                    use_unix_epd = False
+            if use_unix_epd:
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
         if all(not os.path.exists(dir) for dir in blas_info['library_dirs']):
