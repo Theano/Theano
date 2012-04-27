@@ -704,6 +704,14 @@ class CSM(gof.Op):
         g_data = csm_grad(self.kmap)(data, csm_data(g_out), csm_indices(g_out))
         return [g_data, None, None, None]
 
+    def infer_shape(self, node, shapes):
+        if self.kmap is None:
+            # node.inputs[3] is of lenght as we only support sparse matrix.
+            return [(node.inputs[3][0], node.inputs[3][1])]
+        else:
+            return node.env.shape_feature.default_infer_shape(node, shapes)
+
+
 CSC = CSM('csc')
 CSR = CSM('csr')
 
