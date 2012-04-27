@@ -61,9 +61,9 @@ def test_pycuda_elemwise_source_module():
 
             val1 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
             val2 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
-            assert (f(val1, val2) == f2(val1, val2)).all()
-            assert (f(val1, val2) == f3(val1, val2)).all()
-            assert (f(val1, val2) == f4(val1, val2)).all()
+            assert numpy.allclose(f(val1, val2), f2(val1, val2))
+            assert numpy.allclose(f(val1, val2), f3(val1, val2))
+            assert numpy.allclose(f(val1, val2), f4(val1, val2))
             #print f(val1,val2)
             #print f2(val1,val2)
 
