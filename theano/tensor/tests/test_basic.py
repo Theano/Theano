@@ -2441,10 +2441,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0,0])
 
-    def test_err_invalid_2list(self):
-        # TODO the error message is not clear
-        n = self.shared(numpy.ones((3,3), dtype=self.dtype)*5)
-        self.assertRaises(TypeError, n.__getitem__, ([0,0],[1,1]))
+    def test_err_invalid_not_2d(self):
+        n = self.shared(numpy.ones((3, 3, 3), dtype=self.dtype) * 5)
+        self.assertRaises(NotImplementedError, n.__getitem__,
+                          ([0, 0, 0], [1, 1, 1], [2, 2, 2]))
+
+    def test_err_invalid_2list_dtype(self):
+        n = self.shared(numpy.ones((3, 3), dtype=self.dtype) * 5)
+        self.assertRaises(TypeError, n.__getitem__, ([0., 0], [1, 1]))
 
     def test_err_bound_list(self):
         n = self.shared(numpy.ones((2,3),dtype=self.dtype)*5)
