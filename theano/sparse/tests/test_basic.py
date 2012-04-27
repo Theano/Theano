@@ -153,6 +153,22 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                                config.floatX, 3))],
                                 GetItemScalar)
 
+    def test_csm(self):
+        for sparsetype in ('csr', 'csc'):
+            x = tensor.vector()
+            y = tensor.ivector()
+            z = tensor.ivector()
+            s = tensor.ivector()
+            call = getattr(sp, sparsetype + '_matrix')
+            spm = call(random_lil((300, 400), config.floatX, 5))
+            out = CSM(sparsetype)(x, y, z, s)
+            self._compile_and_check([x, y, z, s],
+                                    [out],
+                                    [spm.data, spm.indices, spm.indptr,
+                                     spm.shape],
+                                    CSM
+            )
+
     def test_csm_grad(self):
         for sparsetype in ('csr', 'csc'):
             x = tensor.vector()
@@ -261,10 +277,6 @@ class SparseInferShapeTester(utt.InferShapeTester):
                  sp.csc_matrix(random_lil((5, 3),
                                config.floatX, 3))],
                 StructuredDot)
-
-    def test_csm(self):
-        # We also need the grad of CSM to be implemetned.
-        raise SkipTest('infer_shape not implemented for CSM')
 
     def test_structured_dot_grad(self):
         # We also need the grad of CSM to be implemetned.
