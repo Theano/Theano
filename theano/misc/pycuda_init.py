@@ -24,7 +24,7 @@ def set_gpu_from_theano():
 
 set_gpu_from_theano()
 pycuda_available = False
-if True:  # theano.sandbox.cuda.use.device_number is None:
+if False:
     try:
         import pycuda
         import pycuda.autoinit
@@ -33,6 +33,3 @@ if True:  # theano.sandbox.cuda.use.device_number is None:
         # presumably, the user wanted to use pycuda, else they wouldn't have
         # imported this module, so issue a warning that the import failed.
         warnings.warn("PyCUDA import failed in theano.misc.pycuda_init")
-else:
-    warnings.warn("theano.misc.pycuda_init must be imported before theano"
-                  " init its GPU")
