@@ -11,7 +11,7 @@ from theano.sparse.basic import (
     _is_sparse_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse)
-
+from theano.sparse.sandbox.sp import sp_sum
 
 class Cast(gof.op.Op):
     def __init__(self, out_type):
@@ -396,7 +396,7 @@ def structured_monoid(tensor_op):
         def wrapper(*args):
             x = as_sparse_variable(args[0])
             
-            xs = [tensor.as_tensor_variable(arg) for arg in args[1:]]
+            xs = [scalar.as_scalar(arg) for arg in args[1:]]
 
             data, ind, ptr, shape = csm_properties(x)
 
@@ -485,7 +485,7 @@ class StructuredAddSV(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
-        return gz, sum(gz, 0)
+        return gz, sp_sum(gz, axis=0, sparse_grad=True)
 structured_add_s_v = StructuredAddSV()
 
 
