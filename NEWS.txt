@@ -22,6 +22,8 @@ Bug fixes
  * Fixed many subtle bugs involving mutable default arguments which may have
    led to unexpected behaviour, such as objects sharing instance variables
    they were not supposed to share. (David W-F)
+ * Correctly record the GPU device number used when we let the driver select it.
+   (Frederic B.)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
