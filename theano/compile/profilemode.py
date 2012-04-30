@@ -1,12 +1,16 @@
-import time, atexit, copy
+import atexit
+import copy
+import time
 
 from theano.gof.link import WrapLinker
-from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
+from theano.compile.mode import (Mode, register_mode,
+                                 predefined_modes, predefined_linkers,
+                                 predefined_optimizers)
 from theano.gof.python25 import any
 from theano import gof
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
-run_cthunk = None # Will be imported only when needed.
+run_cthunk = None  # Will be imported only when needed.
 
 from profiling import ProfileStats
 
@@ -33,9 +37,10 @@ AddConfigVar('ProfileMode.profile_memory',
         BoolParam(False),
         in_c_key=False)
 
+
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
-        ret = super(Profile_Maker,self).create(input_storage, trustme)
+        ret = super(Profile_Maker, self).create(input_storage, trustme)
 
         # create a function-specific storage container for profiling info
         profile = ProfileStats(atexit_print=False)
@@ -44,12 +49,12 @@ class Profile_Maker(FunctionMaker):
 
         #initialize the timers
         for i, node in enumerate(ret.maker.env.toposort()):
-            profile.apply_time[node]=0.0
-            profile.outputs_size[node]=[0.0] * len(node.outputs)
+            profile.apply_time[node] = 0.0
+            profile.outputs_size[node] = [0.0] * len(node.outputs)
 
             # a thunk_group is a list of the thunks from each linker
             # corresponding to the i'th position in the toposort.
-            assert len(ret.fn.thunk_groups[i])==1
+            assert len(ret.fn.thunk_groups[i]) == 1
             profile.apply_cimpl[node] = hasattr(
                     ret.fn.thunk_groups[i][0],
                     'cthunk')
@@ -62,6 +67,7 @@ class Profile_Maker(FunctionMaker):
         #capture old fn in closure. This is important since new_fn is about to
         #take its place as ret.fn.
         ret_fn = ret.fn
+
         def new_fn():
             self.mode.apply_time = self.mode.profile_stats[ret].apply_time
             self.mode.outputs_size = self.mode.profile_stats[ret].outputs_size
@@ -81,11 +87,12 @@ class Profile_Maker(FunctionMaker):
 
         return ret
 
+
 class ProfileMode(Mode):
-    def __init__(self, linker=None, optimizer=None):
+    def __init__(self, linker=None, optimizer='default'):
         if linker is None:
             linker = config.linker
-        if optimizer is None:
+        if optimizer is 'default':
             optimizer = config.optimizer
         message = ""
         profile_stats = {}
@@ -94,7 +101,7 @@ class ProfileMode(Mode):
             message,
             profile_stats))
 
-    def function_maker(self, i,o,m, *args, **kwargs):
+    def function_maker(self, i, o, m, *args, **kwargs):
         """Return an instance of `Profiler_Maker` which init the count"""
 
         assert m is self
@@ -128,9 +135,10 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  ProfileMode cannot'
-                        ' tell you what it was though.  Use a standard mode such as'
-                        ' FAST_RUN to correct the problem.'))
+                    raise RuntimeError(
+                        ('A C Op raised an exception.  ProfileMode cannot'
+                         ' tell you what it was though.  Use a standard mode'
+                        ' such as FAST_RUN to correct the problem.'))
             else:
                 t0 = time.time()
                 th()
@@ -139,7 +147,6 @@ class ProfileMode(Mode):
             # Some Op are so fast that the time.time() resolution is
             # insufficient to measure it.  So we add an epsilon.
             self.apply_time[node] += max(dt, 1e-14)
-
 
         def profile_thunk2(i, node, th):
             """ Profile the execution time and the memory size.
@@ -150,25 +157,27 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError(('A C Op raised an exception.  ProfileMode cannot'
-                        ' tell you what it was though.  Use a standard mode such as'
-                        ' FAST_RUN to correct the problem.'))
+                    raise RuntimeError(
+                        ('A C Op raised an exception.  ProfileMode cannot'
+                         ' tell you what it was though.  Use a standard mode'
+                         ' such as FAST_RUN to correct the problem.'))
             else:
                 t0 = time.time()
                 th()
                 dt = time.time() - t0
-            size=[]
+            size = []
             for o in th.outputs:
-                if not hasattr(o[0],'size'):
+                if not hasattr(o[0], 'size'):
                     #if the output type don't have a size attribute, set -1
                     #to signify we can't evaluate it.
                     #This happen at least for mtrand.RandomState type(in numpy)
                     size.append(-1)
                     continue
-                s=o[0].size
-                #can't use o[0].dtype.itemsize as dtype is a str for CudaNdarray
+                s = o[0].size
+                #can't use o[0].dtype.itemsize as dtype is a str for
+                #CudaNdarray
                 dtype = str(o[0].dtype)
-                dtype2=dtype[-2:]
+                dtype2 = dtype[-2:]
                 if dtype2 == '32':
                     s *= 4
                 elif dtype2 == '64':
@@ -180,11 +189,11 @@ class ProfileMode(Mode):
                 elif dtype[-3:] == '128':
                     s *= 16
                 else:
-                    raise Exception("Can't determine the memory size of dtype",o[0].dtype)
+                    raise Exception("Can't determine the memory size of dtype",
+                                    o[0].dtype)
                 size.append(s)
-            self.outputs_size[node]=size
+            self.outputs_size[node] = size
             self.apply_time[node] += max(dt, 1e-14)
-
 
         self.provided_linker = linker
         self.provided_optimizer = optimizer
@@ -207,7 +216,7 @@ class ProfileMode(Mode):
         self.optimizer_time = 0
         self.linker_time = 0
 
-    def print_summary(self,**kwargs):
+    def print_summary(self, **kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there).
@@ -220,7 +229,8 @@ class ProfileMode(Mode):
                        Currently there is n_apply_to_print, n_ops_to_print and min_memory_size
                        that are accepted.
         """
-        compile_time = sum([ps.compile_time for ps in self.profile_stats.values()])
+        compile_time = sum([ps.compile_time for ps
+                            in self.profile_stats.values()])
 
         fct_call = dict([(fn, ps.fct_callcount)
             for (fn, ps) in self.profile_stats.items()])
@@ -232,7 +242,7 @@ class ProfileMode(Mode):
         for fn, ps in self.profile_stats.items():
             for (i, node) in enumerate(fn.maker.env.toposort()):
                 apply_time[(i, node)] = ps.apply_time[node]
-        for (i,n),t in apply_time.items():
+        for (i, n), t in apply_time.items():
             if t == 0:
                 print i, n
 
@@ -248,15 +258,16 @@ class ProfileMode(Mode):
             outputs_size.update(ps.outputs_size)
 
         other_time = dict(
-                linker_time = sum(
+                linker_time=sum(
                     [ps.linker_time for ps in self.profile_stats.values()]),
-                optimizer_time = sum(
+                optimizer_time=sum(
                     [ps.optimizer_time for ps in self.profile_stats.values()]))
 
-        self.print_summary_("print_summary", compile_time, fct_call_time, fct_call,
-                        apply_time, apply_cimpl, message, outputs_size,
-                        self.local_time, other_time,
-                        **kwargs)
+        self.print_summary_("print_summary",
+                            compile_time, fct_call_time, fct_call,
+                            apply_time, apply_cimpl, message, outputs_size,
+                            self.local_time, other_time,
+                            **kwargs)
 
     def print_diff_summary(self, other, **kwargs):
         """ As print_summary, but print the difference on two different profile mode.
@@ -269,30 +280,32 @@ class ProfileMode(Mode):
                        that are accepted.
         """
 
-        def diff_dict(a_time,b_time_):
+        def diff_dict(a_time, b_time_):
             r = {}
             b_time = copy.copy(b_time_)
-            for a,ta in a_time.items():
-                r.setdefault(a,0)
-                tb = b_time.pop(a,0)
-                r[a]+=ta-tb
+            for a, ta in a_time.items():
+                r.setdefault(a, 0)
+                tb = b_time.pop(a, 0)
+                r[a] += ta - tb
 
             #they are missing in a
-            for a,t in b_time.items():
-                r.setdefault(a,0)
-                r[a]+=t
+            for a, t in b_time.items():
+                r.setdefault(a, 0)
+                r[a] += t
             return r
 
-        compile_time = self.compile_time-other.compile_time
-        fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
-        fct_call = diff_dict(self.fct_call,other.fct_call)
+        compile_time = self.compile_time - other.compile_time
+        fct_call_time = diff_dict(self.fct_call_time, other.fct_call_time)
+        fct_call = diff_dict(self.fct_call, other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
         apply_cimpl = self.apply_cimpl and other.apply_cimpl
         message = self.message
-        outputs_size = diff_dict(self.outputs_size,other.outputs_size)
-        other_time = {'linker_time':self.linker_time-other.linker_time,
-                      'optimizer_time':self.optimizer_time-other.optimizer_time}
-        self.print_summary_("print_diff_summary", compile_time, fct_call_time, fct_call,
+        outputs_size = diff_dict(self.outputs_size, other.outputs_size)
+        other_time = {'linker_time': self.linker_time - other.linker_time,
+                      'optimizer_time': self.optimizer_time -
+                                        other.optimizer_time}
+        self.print_summary_("print_diff_summary", compile_time,
+                            fct_call_time, fct_call,
                             apply_time, apply_cimpl, message, outputs_size,
                             print_apply=False, other_time=other_time,
                             **kwargs)
@@ -321,17 +334,18 @@ class ProfileMode(Mode):
         total_fct_call = sum(fct_call.values())
         unknown_time = total_time - total_fct_time - compile_time
         overhead_time = total_fct_time - local_time
-        if total_fct_time>0:
-            time_pr_in_fct = local_time/total_fct_time*100
-            overhead_time_pourcent_fct_time = overhead_time/total_fct_time*100
-            time_per_call = total_fct_time/total_fct_call
+        if total_fct_time > 0:
+            time_pr_in_fct = local_time / total_fct_time * 100
+            overhead_time_pourcent_fct_time = (overhead_time / total_fct_time *
+                                               100)
+            time_per_call = total_fct_time / total_fct_call
         else:
             time_pr_in_fct = 0
             overhead_time_pourcent_fct_time = 0
             time_per_call = 0
 
         print
-        print 'ProfileMode.%s(%s)'%(fct_name,message)
+        print 'ProfileMode.%s(%s)' % (fct_name,message)
         print '---------------------------'
         print
         print 'Time since import %.3fs'%(total_time)
@@ -587,20 +601,40 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         from theano.tensor.raw_random import RandomFunction
         import theano
         import theano.scalar as scal
-        scalar_op_amdlibm_no_speed_up = [scal.LT, scal.GT, scal.LE, scal.GE, scal.EQ, scal.NEQ, scal.InRange, scal.Switch, scal.OR, scal.XOR, scal.AND, scal.Invert, scal.Maximum, scal.Minimum, scal.Add, scal.Mul, scal.Sub, scal.TrueDiv, scal.IntDiv, scal.Clip, scal.Second, scal.Identity, scal.Cast, scal.Sgn, scal.Neg, scal.Inv, scal.Sqr ]
-        scalar_op_amdlibm_speed_up = [scal.Mod, scal.Pow, scal.Ceil, scal.Floor, scal.RoundHalfToEven, scal.RoundHalfAwayFromZero, scal.Log, scal.Log2, scal.Log10, scal.Log1p, scal.Exp, scal.Sqrt, scal.Abs, scal.Cos,  scal.Sin,  scal.Tan,  scal.Tanh,  scal.Cosh,  scal.Sinh, T.nnet.sigm.ScalarSigmoid, T.nnet.sigm.ScalarSoftplus ]#Abs, Mod in float{32,64} only
+        scalar_op_amdlibm_no_speed_up = [scal.LT, scal.GT, scal.LE, scal.GE,
+                                         scal.EQ, scal.NEQ, scal.InRange,
+                                         scal.Switch, scal.OR, scal.XOR,
+                                         scal.AND, scal.Invert, scal.Maximum,
+                                         scal.Minimum, scal.Add, scal.Mul,
+                                         scal.Sub, scal.TrueDiv, scal.IntDiv,
+                                         scal.Clip, scal.Second, scal.Identity,
+                                         scal.Cast, scal.Sgn, scal.Neg,
+                                         scal.Inv, scal.Sqr]
+        scalar_op_amdlibm_speed_up = [scal.Mod, scal.Pow, scal.Ceil,
+                                      scal.Floor, scal.RoundHalfToEven,
+                                      scal.RoundHalfAwayFromZero, scal.Log,
+                                      scal.Log2, scal.Log10, scal.Log1p,
+                                      scal.Exp, scal.Sqrt, scal.Abs, scal.Cos,
+                                      scal.Sin, scal.Tan,  scal.Tanh,
+                                      scal.Cosh, scal.Sinh,
+                                      T.nnet.sigm.ScalarSigmoid,
+                                      T.nnet.sigm.ScalarSoftplus]
+                                      # Abs, Mod in float{32,64} only
 
         def get_scalar_ops(s):
             if isinstance(s, theano.scalar.Composite):
                 l = []
                 for node in s.env.toposort():
-                    l+=get_scalar_ops(node.op)
+                    l += get_scalar_ops(node.op)
                 return l
-            else: return [s]
+            else:
+                return [s]
+
         def list_scalar_op(op):
             if isinstance(op.scalar_op, theano.scalar.Composite):
                 return get_scalar_ops(op.scalar_op)
-            else: return [op.scalar_op]
+            else:
+                return [op.scalar_op]
 
         def amdlibm_speed_up(op):
             if not isinstance(op, T.Elemwise):
@@ -613,6 +647,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
                         print "We don't know if amdlibm will accelerate this scalar op.", s_op
                 return False
+
         def exp_float32_op(op):
             if not isinstance(op, T.Elemwise):
                 return False
@@ -622,17 +657,20 @@ Test them first, as they are not guaranteed to always provide a speedup."""
 
         printed_tip = False
         #tip 1
-        if config.floatX=='float64':
+        if config.floatX == 'float64':
             print "  - Try the Theano flag floatX=float32"
             printed_tip = True
 
         #tip 2
-        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i,a in apply_time]):
+        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i, a
+                                           in apply_time]):
             print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speeds up only some Elemwise operation."
             printed_tip = True
 
         #tip 3
-        if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
+        if not config.lib.amdlibm and any([exp_float32_op(a.op) and
+                                           a.inputs[0].dtype == 'float32'
+                                           for i, a in apply_time]):
             print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
             printed_tip = True
 
@@ -656,10 +694,12 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         if not printed_tip:
             print "  Sorry, no tip for today."
 
-register_mode('PROFILE_MODE',ProfileMode())
+register_mode('PROFILE_MODE', ProfileMode())
+
 
 #needed to print the profile at the end automatically
-prof_mode_instance_to_print=[predefined_modes["PROFILE_MODE"]]
+prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
+
 
 def atexit_print_default_profile_mode():
     """Print the summary of the predefined mode PROFILE_MODE if used.
@@ -668,7 +708,7 @@ def atexit_print_default_profile_mode():
     config.mode=PROFILE_MODE
     """
     for prof_mode in prof_mode_instance_to_print:
-        if prof_mode.local_time>0:
+        if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the
@@ -678,6 +718,8 @@ atexit.register(atexit_print_default_profile_mode)
 
 # Here we define an hook that allow to print extra profiling information
 profiler_printers = []
+
+
 def register_profiler_printer(fct):
     profiler_printers.append(fct)
     return fct

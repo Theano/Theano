@@ -83,6 +83,7 @@ New Features
  * C code reuses preallocated outputs (only done by Scan) (Pascal L.)
  * Garbage collection of intermediate results during Theano function calls
    for Ops with C code (Pascal L.)
+ * Theano flags compiledir_format now support the parameter numpy_version.
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't

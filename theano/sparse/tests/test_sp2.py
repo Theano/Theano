@@ -57,7 +57,7 @@ class test_structured_add_s_v(unittest.TestCase):
         sp_types = {'csc': sp.csc_matrix,
             'csr': sp.csr_matrix}
         
-        for format in ['csr']:
+        for format in ['csr', 'csc']:
             for dtype in ['float32', 'float64']:
                 spmat = sp_types[format](random_lil((4, 3), dtype, 3))
                 mat = numpy.ones(3, dtype=dtype)
@@ -69,7 +69,7 @@ class test_structured_add_s_v(unittest.TestCase):
         sp_types = {'csc': sp.csc_matrix,
             'csr': sp.csr_matrix}
         
-        for format in ['csr']:
+        for format in ['csr', 'csc']:
             for dtype in ['float32', 'float64']:
                 x = S.SparseType(format, dtype=dtype)()
                 y = T.vector(dtype=dtype)

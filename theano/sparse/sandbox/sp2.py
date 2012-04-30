@@ -11,7 +11,7 @@ from theano.sparse.basic import (
     _is_sparse_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse)
-
+from theano.sparse.sandbox.sp import sp_sum
 
 class Cast(gof.op.Op):
     def __init__(self, out_type):
@@ -345,28 +345,6 @@ class EliminateZeros(gof.op.Op):
 eliminate_zeros = EliminateZeros()
 
 
-class Sum(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x, a):
-        x = as_sparse_variable(x)
-        a = tensor.as_tensor_variable(a)
-        return gof.Apply(self, [x, a], [tensor.TensorType(dtype=x.type.dtype,
-                        broadcastable=(False,)).make_variable()])
-
-    def perform(self, node, (x, a), (out, )):
-        assert _is_sparse(x)
-        out[0] = numpy.asarray(x.sum(a), dtype=x.dtype).flatten()
-    
-    def grad(self, (x, a, ), (gz, )):
-        return sp_ones_like(x) * gz, None
-sum = Sum()
-
-
 class Binomial(gof.op.Op):
     def __init__(self, format, dtype):
         self.format = format
@@ -418,7 +396,7 @@ def structured_monoid(tensor_op):
         def wrapper(*args):
             x = as_sparse_variable(args[0])
             
-            xs = [tensor.as_tensor_variable(arg) for arg in args[1:]]
+            xs = [scalar.as_scalar(arg) for arg in args[1:]]
 
             data, ind, ptr, shape = csm_properties(x)
 
@@ -507,7 +485,7 @@ class StructuredAddSV(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
-        return gz, sum(gz, 0)
+        return gz, sp_sum(gz, axis=0, sparse_grad=True)
 structured_add_s_v = StructuredAddSV()
 
 
@@ -623,7 +601,7 @@ def local_structured_add_s_v(node):
             CSx = CSR
             structured_add_s_v_csx = structured_add_s_v_csr
         else:
-            raise NotImplemented()
+            return False
 
         s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
 
