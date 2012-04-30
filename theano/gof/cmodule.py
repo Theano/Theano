@@ -279,7 +279,8 @@ def module_name_from_dir(dirname, err=True):
     elif len(names) == 1:
         return os.path.join(dirname, names[0])
     else:
-        raise Exception("More then 1 compiled module in this directory!")
+        raise ValueError("More than 1 compiled module in this directory:" +
+                         dirname)
 
 
 def is_same_entry(entry_1, entry_2):
