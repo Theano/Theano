@@ -238,7 +238,7 @@ if 0:
                 bval = numpy.arange(0,d0*d1).reshape(1,1,d0,d1)
                 r = f(bval)[0]
     #            print bval, bval.shape, border
-                print r, r.shape
+                #print r, r.shape
                 assert (ret==r).all()
 
 
@@ -284,7 +284,7 @@ def test_downsample():
             if float(shp[3]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
-                print 'test_downsample', shp, ds, ignore_border
+                #print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')

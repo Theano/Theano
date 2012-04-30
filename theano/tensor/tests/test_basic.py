@@ -3049,7 +3049,7 @@ class T_Join_and_Split(unittest.TestCase):
         s = stack(a, b, a, b)
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
-        print val
+        #print val
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
         topo = f.maker.env.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
@@ -3588,8 +3588,8 @@ class T_add(unittest.TestCase):
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
                 f = inplace_func([a,b], fn(a, b))
-                print 'valid output:', fn(a.data, b.data)
-                print 'theano output:', f(a.data, b.data)
+                #print 'valid output:', fn(a.data, b.data)
+                #print 'theano output:', f(a.data, b.data)
                 self.assertTrue(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
@@ -4385,8 +4385,8 @@ class TestARange(unittest.TestCase):
         df = function([dstart, dstop], dout)
 
         assert dout.dtype == dstart.type.dtype
-        print df(0.2, 5.3)
-        print numpy.arange(0.2, 5.3)
+        #print df(0.2, 5.3)
+        #print numpy.arange(0.2, 5.3)
         assert numpy.all(df(0.2, 5.3) == numpy.arange(0.2, 5.3))
         assert numpy.all(df(0.8, 5.3) == numpy.arange(0.8, 5.3))
         assert numpy.all(df(-0.7, 5.3) == numpy.arange(-0.7, 5.3))
@@ -4957,8 +4957,8 @@ def test_var():
     f = function([a], var(a))
 
     a_val = numpy.arange(60).reshape(3,4,5)
-    print numpy.var(a_val)
-    print f(a_val)
+    #print numpy.var(a_val)
+    #print f(a_val)
     assert numpy.allclose(numpy.var(a_val), f(a_val))
 
     f = function([a], var(a, axis=0))
@@ -4994,9 +4994,9 @@ def test_default():
          "It is actually a problem of DEBUG_MODE, see #626."))
 def test_default_state():
     x, y = scalars('xy')
-    print config.floatX
-    print x.type
-    print y.type
+    #print config.floatX
+    #print x.type
+    #print y.type
     z = default(x, 3.8)
     new_x = y + z
     f = function([y, compile.In(x, update = new_x, value = 12.0)], new_x)
