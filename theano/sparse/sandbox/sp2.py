@@ -11,7 +11,7 @@ from theano.sparse.basic import (
     _is_sparse_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse)
-
+from theano.sparse.sandbox.sp import sp_sum
 
 class Cast(gof.op.Op):
     def __init__(self, out_type):
@@ -345,25 +345,6 @@ class EliminateZeros(gof.op.Op):
 eliminate_zeros = EliminateZeros()
 
 
-class Sum(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x, a):
-        x = as_sparse_variable(x)
-        a = tensor.as_tensor_variable(a)
-        return gof.Apply(self, [x, a], [tensor.TensorType(dtype=x.type.dtype,
-                        broadcastable=(False,)).make_variable()])
-
-    def perform(self, node, (x, a), (out, )):
-        assert _is_sparse(x)
-        out[0] = numpy.asarray(x.sum(a), dtype=x.dtype).flatten()
-sum = Sum()
-
-
 class Binomial(gof.op.Op):
     def __init__(self, format, dtype):
         self.format = format
@@ -394,67 +375,83 @@ class Binomial(gof.op.Op):
 
         out[0] = getattr(res, 'to' + self.format)()
         out[0].data = numpy.ones_like(out[0].data)
+    
+    def grad(self, (n, p, shape, ), (gz,)):
+        return None, None, None
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
 csr_dbinomial = Binomial('csr', 'float64')
 csc_dbinomial = Binomial('csc', 'float64')
 
 
+def structured_monoid(tensor_op):
+    """
+    Generic operation to perform many kinds of monoid element-wise
+    operations on the non-zeros of a sparse matrix.
+    
+    The first parameter must always be a sparse matrix. The other parameters
+    must be scalars which will be passed as argument to the tensor_op.
+    """
+    def decorator(f):
+        def wrapper(*args):
+            x = as_sparse_variable(args[0])
+            
+            xs = [scalar.as_scalar(arg) for arg in args[1:]]
+
+            data, ind, ptr, shape = csm_properties(x)
+
+            data = tensor_op(data, *xs)
+
+            return CSM(x.format)(data, ind, ptr, shape)
+        return wrapper
+    return decorator
+
+
+@structured_monoid(tensor.nnet.sigmoid)
 def structured_sigmoid(x):
+    """structured elemwise sigmoid.
     """
-    Element-wise sigmoid function only to the non-zero elements.
-    """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.nnet.sigmoid(x_data)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.exp)
 def structured_exp(x):
+    """structured elemwise exponential.
     """
-    Element-wise exponential function to the non-zero elements.
+    # see decorator for function body
+
+@structured_monoid(tensor.log)
+def structured_log(x):
+    """structured elemwise logarithm.
     """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.exp(x_data)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.pow)
 def structured_pow(x, y):
+    """structured elemwise power of sparse matrix
+    x by scalar y.
     """
-    Element-wise power function only to non-zero elements.
-    """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    y = tensor.as_tensor_variable(y)
-
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.pow(x_data, y)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.minimum)
 def structured_minimum(x, y):
+    """structured elemwise minimum of sparse matrix
+    x by scalar y.
     """
-    Element-wise minimum function only to non-zero elements.
+    # see decorator for function body
+
+@structured_monoid(tensor.maximum)
+def structured_maximum(x, y):
+    """structured elemwise maximum of sparse matrix
+    x by scalar y.
     """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    y = tensor.as_tensor_variable(y)
-
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.minimum(x_data, y)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
+@structured_monoid(tensor.add)
+def structured_add(x):
+    """structured addition of sparse matrix
+    x and scalar y.
+    """
+    # see decorator for function body
 
 class StructuredAddSV(gof.op.Op):
     '''Structured addition of a sparse matrix and a dense vector.
@@ -486,9 +483,9 @@ class StructuredAddSV(gof.op.Op):
         out[0] = x.__class__(x + (x.toarray() != 0) * y)
 
     def grad(self, (x, y), (gz,)):
-        assert _is_sparse_variable(x) and _is_sparse_variable(y)
+        assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
-        return gz, gz
+        return gz, sp_sum(gz, axis=0, sparse_grad=True)
 structured_add_s_v = StructuredAddSV()
 
 
@@ -604,7 +601,7 @@ def local_structured_add_s_v(node):
             CSx = CSR
             structured_add_s_v_csx = structured_add_s_v_csr
         else:
-            raise NotImplemented()
+            return False
 
         s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
 
@@ -670,8 +667,8 @@ class SamplingDot(gof.op.Op):
 
     def grad(self, (x, y, p), (gz,)):
         rval = [
-            dot(gz, y),
-            dot(gz.T, x),
+            dot(p * gz, y),
+            dot(p.T * gz.T, x),
             None
         ]
 
