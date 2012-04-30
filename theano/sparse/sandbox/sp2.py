@@ -623,7 +623,7 @@ def local_structured_add_s_v(node):
             CSx = CSR
             structured_add_s_v_csx = structured_add_s_v_csr
         else:
-            raise NotImplemented()
+            return False
 
         s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
 
