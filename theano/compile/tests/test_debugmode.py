@@ -13,7 +13,7 @@ import unittest
 def test0():
     x = theano.tensor.dvector()
     f = theano.function([x], ((2. * x) + 7) / 2., mode=debugmode.DebugMode())
-    print f([1, 2])
+    f([1, 2])
 
 
 class BROKEN_ON_PURPOSE_Add(gof.Op):
@@ -211,7 +211,7 @@ def test_badclinkeroutput():
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
     except debugmode.BadCLinkerOutput, e:
-        print repr(e)
+        #print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
 
@@ -490,7 +490,7 @@ class Test_ViewMap(unittest.TestCase):
             f([1, 2, 3, 4], [5, 6, 7, 8])
             assert False  # DebugMode should have caught the error
         except debugmode.BadViewMap, e:
-            print e
+            #print e
             pass
 
         # the situation can be rescued by picking one of the inputs and
@@ -554,7 +554,7 @@ class Test_check_isfinite(unittest.TestCase):
 
         #inf should go through
         infs = numpy.asarray([1.0, 1., 1.]) / 0
-        print infs
+        #print infs
         f(infs)
         return
 
@@ -576,11 +576,11 @@ class BrokenCImplementationAdd(gof.Op):
         return r
 
     def perform(self, node, inp, out_):
-        print 'executing python perform'
+        #print 'executing python perform'
         a, b = inp
         out, = out_
         z = a + b
-        print 'out[0] was:', out[0]
+        #print 'out[0] was:', out[0]
         out[0] = z
 
     def c_code_cache_version(self):
@@ -671,8 +671,8 @@ class Test_preallocated_output(unittest.TestCase):
 
             f = theano.function([a, b], out, mode='DEBUG_MODE')
             out_val = f(a_val, b_val)
-            print 'out_val =', out_val
-            print out_val.strides
+            #print 'out_val =', out_val
+            #print out_val.strides
 
             # Should work for now (0.4.0), because the C thunk does not care
             # at all of what is in storage_map initially.
@@ -682,8 +682,8 @@ class Test_preallocated_output(unittest.TestCase):
 
             f = theano.function([a, b], out, mode='DEBUG_MODE')
             out_val = f(a_val, b_val)
-            print 'out_val =', out_val
-            print out_val.strides
+            #print 'out_val =', out_val
+            #print out_val.strides
 
         finally:
             config.DebugMode.check_preallocated_output = init_conf_val

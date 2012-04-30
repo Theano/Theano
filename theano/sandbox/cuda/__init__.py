@@ -313,11 +313,15 @@ def use(device,
                 gpu_init(device)
                 use.device_number = device
             else:
-                # This mean we let the driver select the GPU.
-                # But default it is always number 0.
-                # If the driver is in exclusive mode, it will always show
-                # device 0 event if it use something else.
-                use.device_number = 0
+                # This mean the driver should select the GPU.  As we
+                # need to get the device number now, we force the
+                # selection of the GPU by the driver now and then we
+                # query the active GPU. If we check the active GPU before
+                # the device is initialized we will always receive 0
+                # event if another device is selected later.
+                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                use.device_number = active_device_number()
+
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
                 theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()

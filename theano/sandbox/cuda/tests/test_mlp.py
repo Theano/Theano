@@ -103,7 +103,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
 
     mode = get_mode(use_gpu)
 
-    print 'building pfunc ...'
+    #print 'building pfunc ...'
     train = pfunc([x, y, lr], [loss], mode=mode,
                   updates=[(p, p - g) for p, g in izip(params, gparams)])
 
@@ -138,9 +138,9 @@ def test_run_nnet():
                     theano.gradient.numeric_grad.abs_rel_err(rval_gpu,
                                                              rval_cpu)
             max_abs_diff = abs_diff.max()
-            print "max abs diff=%e max rel diff=%e n_in=%d n_hid=%d" % (
-                max_abs_diff, rel_diff.max(), n_in, n_hid)
-            print "time cpu: %f, time gpu: %f, speed up %f" % (tc, tg, tc / tg)
+            #print "max abs diff=%e max rel diff=%e n_in=%d n_hid=%d" % (
+            #    max_abs_diff, rel_diff.max(), n_in, n_hid)
+            #print "time cpu: %f, time gpu: %f, speed up %f" % (tc, tg, tc / tg)
             rtol = 1e-4
             if n_in * n_hid >= 2048 * 4096:
                 rtol = 7e-4
@@ -192,14 +192,14 @@ def run_conv_nnet1(use_gpu):
     hid_flat = hid.reshape((n_batch, n_hid))
     out = tensor.tanh(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(0.5 * (out-y)**2 * lr)
-    print 'loss type', loss.type
+    #print 'loss type', loss.type
 
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
 
     mode = get_mode(use_gpu)
 
-    print 'building pfunc ...'
+    #print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
 #    for i, n in enumerate(train.maker.env.toposort()):
@@ -211,7 +211,7 @@ def run_conv_nnet1(use_gpu):
 
     for i in xrange(n_train):
         rval = train(xval, yval, lr)
-    print 'training done'
+    #print 'training done'
     print_mode(mode)
     return rval
 
@@ -281,14 +281,14 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.tanh(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(0.5 * (out-y)**2 * lr)
-    print 'loss type', loss.type
+    #print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params)
 
     mode = get_mode(use_gpu)
 
-    print 'building pfunc ...'
+    #print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
 #    for i, n in enumerate(train.maker.env.toposort()):
@@ -310,7 +310,7 @@ def test_conv_nnet2():
     if True:
         utt.seed_rng()
         rval_cpu = run_conv_nnet2(False)
-        print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
+        #print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
 
@@ -350,9 +350,9 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     v = shared_fn(0.01*my_randn(n_hid, n_out), 'v')
     c = shared_fn(my_zeros(n_out), 'c')
 
-    print 'ALLOCATING ARCH: w0 shape', w0.get_value(borrow=True).shape
-    print 'ALLOCATING ARCH: w1 shape', w1.get_value(borrow=True).shape
-    print 'ALLOCATING ARCH: v shape', v.get_value(borrow=True).shape
+    #print 'ALLOCATING ARCH: w0 shape', w0.get_value(borrow=True).shape
+    #print 'ALLOCATING ARCH: w1 shape', w1.get_value(borrow=True).shape
+    #print 'ALLOCATING ARCH: v shape', v.get_value(borrow=True).shape
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
@@ -375,14 +375,14 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.nnet.softmax(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(tensor.nnet.crossentropy_categorical_1hot(out, tensor.argmax(y, axis=1)) * lr)
-    print 'loss type', loss.type
+    #print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params, warn_type=True)
 
     mode = get_mode(use_gpu, check_isfinite)
 
-    print 'building pfunc ...'
+    #print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
     if verbose:
@@ -437,9 +437,9 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
         print pickle.dumps(mode)
         print "END %s profile mode dump" % device
 
-    print "%s time: %.3f" % (device, t1-t0)
-    print "estimated time for one pass through MNIST with %s: %f" % (
-            device, (t1-t0) * (60000.0 / (n_train*bsize)))
+    #print "%s time: %.3f" % (device, t1-t0)
+    #print "estimated time for one pass through MNIST with %s: %f" % (
+    #        device, (t1-t0) * (60000.0 / (n_train*bsize)))
 
 
 def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
@@ -465,7 +465,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     orig_float32_atol = theano.tensor.basic.float32_atol
     try:
         if float_atol:
-            print "float_atol", float_atol
+            #print "float_atol", float_atol
             theano.tensor.basic.float32_atol = float_atol
 
         if gpu_only and cpu_only:
@@ -565,12 +565,12 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             print pickle.dumps(gpu_mode)
             print "END GPU profile mode dump"
 
-    print "CPU time: %.3f, GPU time: %.3f, speed up %f" % (
-            (time_cpu, time_gpu, time_cpu/time_gpu))
-    print "Estimated time for one pass through MNIST with CPU: %f" % (
-            (time_cpu * (60000.0 / (n_train*bsize))))
-    print "Estimated time for one pass through MNIST with GPU: %f" % (
-            (time_gpu * (60000.0 / (n_train*bsize))))
+    #print "CPU time: %.3f, GPU time: %.3f, speed up %f" % (
+    #        (time_cpu, time_gpu, time_cpu/time_gpu))
+    #print "Estimated time for one pass through MNIST with CPU: %f" % (
+    #        (time_cpu * (60000.0 / (n_train*bsize))))
+    #print "Estimated time for one pass through MNIST with GPU: %f" % (
+    #        (time_gpu * (60000.0 / (n_train*bsize))))
 
 
 # Default parameters for all subsequent tests
