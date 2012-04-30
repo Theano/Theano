@@ -500,6 +500,13 @@ class StrucutedAddSVCSR(gof.Op):
         return hash(type(self))
 
     def make_node(self, a_data, a_indices, a_indptr, b):
+        b = tensor.as_tensor_variable(b)
+        a_data = tensor.as_tensor_variable(a_data)
+        a_indices = tensor.as_tensor_variable(a_indices)
+        a_indptr = tensor.as_tensor_variable(a_indptr)
+        assert a_data.type.ndim == 1
+        assert a_indices.type.ndim == 1
+        assert a_indptr.type.ndim == 1
         assert b.type.ndim == 1
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
