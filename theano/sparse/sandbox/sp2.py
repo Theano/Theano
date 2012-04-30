@@ -345,28 +345,6 @@ class EliminateZeros(gof.op.Op):
 eliminate_zeros = EliminateZeros()
 
 
-class Sum(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x, a):
-        x = as_sparse_variable(x)
-        a = tensor.as_tensor_variable(a)
-        return gof.Apply(self, [x, a], [tensor.TensorType(dtype=x.type.dtype,
-                        broadcastable=(False,)).make_variable()])
-
-    def perform(self, node, (x, a), (out, )):
-        assert _is_sparse(x)
-        out[0] = numpy.asarray(x.sum(a), dtype=x.dtype).flatten()
-    
-    def grad(self, (x, a, ), (gz, )):
-        return sp_ones_like(x) * gz, None
-sum = Sum()
-
-
 class Binomial(gof.op.Op):
     def __init__(self, format, dtype):
         self.format = format
