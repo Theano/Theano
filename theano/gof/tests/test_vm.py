@@ -74,10 +74,10 @@ def test_speed():
 
         numpy_version(x, steps_a)
         t0 = time.time()
-        print numpy_version(x, steps_a)
+        #print numpy_version(x, steps_a)
         t1 = time.time()
         t2 = time.time()
-        print numpy_version(x, steps_b)
+        #print numpy_version(x, steps_b)
         t3 = time.time()
         t_a = t1 - t0
         t_b = t3 - t2
@@ -103,15 +103,15 @@ def test_speed():
                 #profile='f_b speed test %s'%name,
                 )
 
-        print f_a([2.0, 3.0])
+        f_a([2.0, 3.0])
         t0 = time.time()
-        print f_a([2.0, 3.0])
+        f_a([2.0, 3.0])
         t1 = time.time()
 
-        print f_b([2.0, 3.0])
+        f_b([2.0, 3.0])
 
         t2 = time.time()
-        print f_b([2.0, 3.0])
+        f_b([2.0, 3.0])
         t3 = time.time()
 
         t_a = t1 - t0
@@ -155,15 +155,15 @@ def test_speed_lazy():
                 #profile='f_b lazy ifelse %s'%name,
                 )
 
-        print f_a([2.0])
+        f_a([2.0])
         t0 = time.time()
-        print f_a([2.0])
+        f_a([2.0])
         t1 = time.time()
 
-        print f_b([2.0])
+        f_b([2.0])
 
         t2 = time.time()
-        print f_b([2.0])
+        f_b([2.0])
         t3 = time.time()
 
         t_a = t1 - t0

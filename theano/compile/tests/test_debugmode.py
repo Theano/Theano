@@ -13,7 +13,7 @@ import unittest
 def test0():
     x = theano.tensor.dvector()
     f = theano.function([x], ((2. * x) + 7) / 2., mode=debugmode.DebugMode())
-    print f([1, 2])
+    f([1, 2])
 
 
 class BROKEN_ON_PURPOSE_Add(gof.Op):
@@ -671,8 +671,8 @@ class Test_preallocated_output(unittest.TestCase):
 
             f = theano.function([a, b], out, mode='DEBUG_MODE')
             out_val = f(a_val, b_val)
-            print 'out_val =', out_val
-            print out_val.strides
+            #print 'out_val =', out_val
+            #print out_val.strides
 
             # Should work for now (0.4.0), because the C thunk does not care
             # at all of what is in storage_map initially.
@@ -682,8 +682,8 @@ class Test_preallocated_output(unittest.TestCase):
 
             f = theano.function([a, b], out, mode='DEBUG_MODE')
             out_val = f(a_val, b_val)
-            print 'out_val =', out_val
-            print out_val.strides
+            #print 'out_val =', out_val
+            #print out_val.strides
 
         finally:
             config.DebugMode.check_preallocated_output = init_conf_val
