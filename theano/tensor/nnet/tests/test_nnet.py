@@ -112,8 +112,8 @@ class T_SoftmaxWithBias(unittest.TestCase):
         assert softmax_with_bias not in ops
         assert softmax in ops
 
-        print f([0,1,0])
-        print f.maker.env.toposort()
+        f([0,1,0])
+        #print f.maker.env.toposort()
 
     def test_infer_shape(self):
         fff=theano.function([],outputs=softmax_with_bias(numpy.random.rand(3,4),numpy.random.rand(4)).shape)
@@ -299,20 +299,20 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 [op(softmax(x+b), one_of_n)])
         assert env.outputs[0].owner.op == op
 
-        print 'BEFORE'
-        for node in env.toposort():
-            print node.op
-        print printing.pprint(node.outputs[0])
-        print '----'
+        #print 'BEFORE'
+        #for node in env.toposort():
+        #    print node.op
+        #print printing.pprint(node.outputs[0])
+        #print '----'
 
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
-        print 'AFTER'
-        for node in env.toposort():
-            print node.op
-        print printing.pprint(node.outputs[0])
-        print '===='
+        #print 'AFTER'
+        #for node in env.toposort():
+        #    print node.op
+        #print printing.pprint(node.outputs[0])
+        #print '===='
         assert len(env.toposort()) == 2
 
         assert str(env.outputs[0].owner.op) == 'OutputGuard'
@@ -330,18 +330,18 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 [op(softmax(T.add(x,b,c)), one_of_n)])
         assert env.outputs[0].owner.op == op
 
-        print 'BEFORE'
-        for node in env.toposort():
-            print node.op
-        print '----'
+        #print 'BEFORE'
+        #for node in env.toposort():
+        #    print node.op
+        #print '----'
 
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
-        print 'AFTER'
-        for node in env.toposort():
-            print node.op
-        print '===='
+        #print 'AFTER'
+        #for node in env.toposort():
+        #    print node.op
+        #print '===='
         assert len(env.toposort()) == 3
 
         assert str(env.outputs[0].owner.op) == 'OutputGuard'
@@ -356,18 +356,18 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 [x, b, one_of_n],
                 [op(softmax(x+b), one_of_n)])
         assert env.outputs[0].owner.op == op
-        print 'BEFORE'
-        for node in env.toposort():
-            print node.op
-        print printing.pprint(node.outputs[0])
-        print '----'
+        #print 'BEFORE'
+        #for node in env.toposort():
+        #    print node.op
+        #print printing.pprint(node.outputs[0])
+        #print '----'
 
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
-        print 'AFTER'
-        for node in env.toposort():
-            print node.op
-        print '===='
+        #print 'AFTER'
+        #for node in env.toposort():
+        #    print node.op
+        #print '===='
         assert len(env.toposort()) == 3
         assert str(env.outputs[0].owner.op) == 'OutputGuard'
         assert env.outputs[0].owner.inputs[0].owner.op == crossentropy_softmax_argmax_1hot_with_bias
@@ -385,16 +385,16 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 [x, one_of_n],
                 [g_x])
 
-        print 'BEFORE'
-        for node in env.toposort():
-            print node.op, node.inputs
-        print '----'
+        #print 'BEFORE'
+        #for node in env.toposort():
+        #    print node.op, node.inputs
+        #print '----'
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
-        print 'AFTER'
-        for node in env.toposort():
-            print node.op, node.inputs
+        #print 'AFTER'
+        #for node in env.toposort():
+        #    print node.op, node.inputs
 
         # the function has 9 ops because the dimshuffle and elemwise{second} aren't getting
         # cleaned up as well as we'd like.
@@ -428,16 +428,16 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
                 [x, one_of_n],
                 [g_x])
 
-        print 'BEFORE'
-        for node in env.toposort():
-            print node.op, node.inputs
-        print '----'
+        #print 'BEFORE'
+        #for node in env.toposort():
+        #    print node.op, node.inputs
+        #print '----'
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
-        print 'AFTER'
-        for node in env.toposort():
-            print node.op, node.inputs
+        #print 'AFTER'
+        #for node in env.toposort():
+        #    print node.op, node.inputs
 
         # the function has 9 ops because the dimshuffle and elemwise{second} aren't getting
         # cleaned up as well as we'd like.
@@ -1021,9 +1021,9 @@ class Test_softmax_opt:
         # test that function contains softmax and no div.
         f = theano.function([c],p_y, mode=self.mode)
         f_ops = [n.op for n in f.maker.env.toposort()]
-        print '--- f ='
-        printing.debugprint(f)
-        print '==='
+        #print '--- f ='
+        #printing.debugprint(f)
+        #print '==='
         assert len(f_ops) == 1
         assert softmax in f_ops
         f(self.rng.rand(3,4).astype(config.floatX))
@@ -1041,9 +1041,9 @@ class Test_softmax_opt:
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
         g_ops = [n.op for n in g.maker.env.toposort()]
-        print '--- g ='
-        printing.debugprint(g)
-        print '==='
+        #print '--- g ='
+        #printing.debugprint(g)
+        #print '==='
 
         raise SkipTest('Optimization not enabled for the moment')
         assert len(g_ops) == 2
@@ -1058,7 +1058,7 @@ class Test_softmax_opt:
 
         # test that function contains softmax and no div.
         f = theano.function([c],p_y)
-        printing.debugprint(f)
+        #printing.debugprint(f)
 
         # test that function contains softmax and no div.
         backup = config.warn.sum_div_dimshuffle_bug
@@ -1067,7 +1067,7 @@ class Test_softmax_opt:
             g = theano.function([c],T.grad(p_y.sum(), c))
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
-        printing.debugprint(g)
+        #printing.debugprint(g)
         raise SkipTest('Optimization not enabled for the moment')
 
     def test_1d_basic(self):
@@ -1077,7 +1077,7 @@ class Test_softmax_opt:
 
         # test that function contains softmax and no div.
         f = theano.function([c], p_y)
-        printing.debugprint(f)
+        #printing.debugprint(f)
 
         # test that function contains softmax and no div.
         backup = config.warn.sum_div_dimshuffle_bug
@@ -1086,7 +1086,7 @@ class Test_softmax_opt:
             g = theano.function([c], T.grad(p_y.sum(), c))
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
-        printing.debugprint(g)
+        #printing.debugprint(g)
         raise SkipTest('Optimization not enabled for the moment')
 
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing etc.

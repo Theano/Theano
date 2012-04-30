@@ -22,9 +22,9 @@ class T_OpFromGraph(unittest.TestCase):
         xv = numpy.ones((2, 2), dtype=config.floatX)
         yv = numpy.ones((2, 2), dtype=config.floatX)*3
         zv = numpy.ones((2, 2), dtype=config.floatX)*5
-        print function, function.__module__
-        print fn.maker.env.toposort()
-        print fn(xv, yv, zv)
+        #print function, function.__module__
+        #print fn.maker.env.toposort()
+        fn(xv, yv, zv)
         assert numpy.all(8.0 == fn(xv, yv, zv))
         assert numpy.all(8.0 == fn(xv, yv, zv))
 

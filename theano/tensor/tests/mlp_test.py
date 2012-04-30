@@ -264,7 +264,7 @@ def test_mlp():
     ######################
     # BUILD ACTUAL MODEL #
     ######################
-    print '... building the model'
+    #print '... building the model'
 
     # allocate symbolic variables for the data
     index = T.lscalar()    # index to a [mini]batch
@@ -302,8 +302,8 @@ def test_mlp():
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
                 y:train_set_y[index*batch_size:(index+1)*batch_size]},
             mode=mode)
-    print 'MODEL 1'
-    theano.printing.debugprint(train_model, print_type=True)
+    #print 'MODEL 1'
+    #theano.printing.debugprint(train_model, print_type=True)
     assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
 
     # Even without FeatureShape
@@ -313,9 +313,9 @@ def test_mlp():
             givens={
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
                 y:train_set_y[index*batch_size:(index+1)*batch_size]})
-    print
-    print 'MODEL 2'
-    theano.printing.debugprint(train_model, print_type=True)
+    #print
+    #print 'MODEL 2'
+    #theano.printing.debugprint(train_model, print_type=True)
     assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
 
 if __name__ == '__main__':

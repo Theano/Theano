@@ -50,8 +50,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
 
                 ## Pure Numpy computation
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
@@ -74,8 +74,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
                 def mp(input):
                     return DownsampleFactorMax(maxpoolshp, ignore_border=ignore_border)(input)
                 utt.verify_grad(mp, [imval], rng=rng)
@@ -89,8 +89,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
                 output = max_pool_2d(images, maxpoolshp, ignore_border)
@@ -110,8 +110,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
                 output = max_pool_2d(images, maxpoolshp, ignore_border)
@@ -144,8 +144,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
                 output = max_pool_2d(images, maxpoolshp, ignore_border)

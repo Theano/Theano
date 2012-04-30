@@ -335,7 +335,7 @@ class TestConv3D(unittest.TestCase):
         col_steps  = self.rng.randint(1,4)
         time_steps = self.rng.randint(1,4)
 
-        print (row_steps,col_steps,time_steps)
+        #print (row_steps,col_steps,time_steps)
 
         videoDur    = (time_steps-1)*dt+filterDur   + self.rng.randint(0,3)
         videoWidth  = (col_steps-1)*dc+filterWidth  + self.rng.randint(0,3)
