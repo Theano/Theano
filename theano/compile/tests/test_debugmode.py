@@ -211,7 +211,7 @@ def test_badclinkeroutput():
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
     except debugmode.BadCLinkerOutput, e:
-        print repr(e)
+        #print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
 
@@ -490,7 +490,7 @@ class Test_ViewMap(unittest.TestCase):
             f([1, 2, 3, 4], [5, 6, 7, 8])
             assert False  # DebugMode should have caught the error
         except debugmode.BadViewMap, e:
-            print e
+            #print e
             pass
 
         # the situation can be rescued by picking one of the inputs and
@@ -554,7 +554,7 @@ class Test_check_isfinite(unittest.TestCase):
 
         #inf should go through
         infs = numpy.asarray([1.0, 1., 1.]) / 0
-        print infs
+        #print infs
         f(infs)
         return
 
@@ -576,11 +576,11 @@ class BrokenCImplementationAdd(gof.Op):
         return r
 
     def perform(self, node, inp, out_):
-        print 'executing python perform'
+        #print 'executing python perform'
         a, b = inp
         out, = out_
         z = a + b
-        print 'out[0] was:', out[0]
+        #print 'out[0] was:', out[0]
         out[0] = z
 
     def c_code_cache_version(self):
