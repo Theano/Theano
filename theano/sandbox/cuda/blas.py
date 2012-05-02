@@ -770,6 +770,11 @@ class GpuConv(GpuOp):
         verbose = self.verbose
         sub = sub.copy()
         max_threads_dim0 = self.max_threads_dim0
+        if max_threads_dim0 is None:
+            raise NotImplementedError("GpuConv.c_code should not be called "
+                                      "directly. It should be called by "
+                                      "make_thunk() that add some information "
+                                      "related to the selected GPU.")
         sub.update(locals())
         return """
     //Mandatory args
