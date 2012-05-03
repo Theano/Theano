@@ -291,26 +291,16 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
     // allocated and initialize thunk_cptr_data and thunk_cptr_fn
     if (n_applies)
       {
-        self->thunk_cptr_data = (void**)malloc(n_applies * sizeof(void*));
-        self->thunk_cptr_fn = (void**)malloc(n_applies * sizeof(void*));
-        self->is_lazy = (int*)malloc(n_applies * sizeof(int));
-        self->node_prereqs = (Py_ssize_t**)malloc(n_applies*sizeof(Py_ssize_t*));
-        self->node_n_prereqs = (Py_ssize_t*)malloc(n_applies*sizeof(Py_ssize_t));
+        self->thunk_cptr_data = (void**)calloc(n_applies, sizeof(void*));
+        self->thunk_cptr_fn = (void**)calloc(n_applies, sizeof(void*));
+        self->is_lazy = (int*)calloc(n_applies, sizeof(int));
+        self->node_prereqs = (Py_ssize_t**)calloc(n_applies, sizeof(Py_ssize_t*));
+        self->node_n_prereqs = (Py_ssize_t*)calloc(n_applies, sizeof(Py_ssize_t));
         assert(self->node_prereqs);
         assert(self->node_n_prereqs);
         assert(self->is_lazy);
         assert(self->thunk_cptr_fn);
         assert(self->thunk_cptr_data);
-
-        // init these basic arrays
-        for (int i = 0; i < n_applies; ++i)
-          {
-            self->thunk_cptr_data[i] = NULL;
-            self->thunk_cptr_fn[i] = NULL;
-            self->is_lazy[i] = 1;
-            self->node_prereqs[i] = NULL;
-            self->node_n_prereqs[i] = 0;
-          }
 
         for (int i = 0; i < n_applies; ++i)
           {
@@ -325,11 +315,6 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
                 self->thunk_cptr_data[i] = PyCObject_GetDesc(cthunk);
                 Py_DECREF(cthunk);
                 // cthunk is kept alive by membership in self->thunks
-              }
-            else
-              {
-                self->thunk_cptr_fn[i] = NULL;
-                self->thunk_cptr_data[i] = NULL;
               }
 
             PyObject * el_i = PyList_GetItem(is_lazy, i);
@@ -537,191 +522,194 @@ static int c_call(CLazyLinker * self, Py_ssize_t node_idx, int verbose)
 static
 int lazy_rec_eval(CLazyLinker * self, Py_ssize_t var_idx, PyObject*one, PyObject*zero)
 {
+  PyObject *rval = NULL;
   int verbose = 0;
-  if (verbose) fprintf(stderr, "lazy_rec computing %i\n", (int)var_idx);
   int err = 0;
+
+  if (verbose) fprintf(stderr, "lazy_rec computing %i\n", (int)var_idx);
+
   if (self->var_computed[var_idx] || !self->var_has_owner[var_idx])
+    return 0;
+
+  Py_ssize_t owner_idx = self->var_owner[var_idx];
+
+  // STEP 1: compute the pre-requirements of the node
+  // Includes input nodes for non-lazy ops.
+  for (int i = 0; i < self->node_n_prereqs[owner_idx]; ++i)
     {
-      return 0;
+      Py_ssize_t prereq_idx = self->node_prereqs[owner_idx][i];
+      if (!self->var_computed[prereq_idx])
+        {
+          err = lazy_rec_eval(self, prereq_idx, one, zero);
+          if (err) return err;
+        }
+      assert (self->var_computed[prereq_idx]);
     }
-  else
+
+  // STEP 2: compute the node itself
+  if (self->is_lazy[owner_idx])
     {
-      Py_ssize_t owner_idx = self->var_owner[var_idx];
-
-      // STEP 1: compute the pre-requirements of the node
-      for (int i = 0; i < self->node_n_prereqs[owner_idx]; ++i)
+      // update the compute_map cells corresponding to the inputs of this thunk
+      for (int i = 0; i < self->node_n_inputs[owner_idx]; ++i)
         {
-          Py_ssize_t prereq_idx = self->node_prereqs[owner_idx][i];
-          if (!self->var_computed[prereq_idx])
+          int in_idx = self->node_inputs[owner_idx][i];
+          if (self->var_computed[in_idx])
             {
-              err = lazy_rec_eval(self, prereq_idx, one, zero);
-              if (err) return err;
-            }
-          assert (self->var_computed[prereq_idx]);
-        }
-
-      // STEP 2: compute the node itself
-      if (self->is_lazy[owner_idx])
-        {
-          // update the compute_map cells corresponding to the inputs of this thunk
-          for (int i = 0; i < self->node_n_inputs[owner_idx] && (!err); ++i)
-            {
-              int in_idx = self->node_inputs[owner_idx][i];
-              if (self->var_computed[in_idx])
-                {
-                  Py_INCREF(one);
-                  err = PyList_SetItem(self->var_computed_cells[in_idx], 0, one);
-                }
-              else
-                {
-                  Py_INCREF(zero);
-                  err = PyList_SetItem(self->var_computed_cells[in_idx], 0, zero);
-                }
-            }
-          if (err)
-            {
-              set_position_of_error(self, owner_idx);
-              return err;
-            }
-
-          PyObject * rval = pycall(self, owner_idx, verbose);
-          // refcounting - rval is new ref
-          //TODO: to prevent infinite loops
-          // - consider check that a thunk does not ask for an input that is already computed
-          if (rval) //call returned normally (no exception)
-            {
-              //update the computed-ness of any output cells
-              for (int i = 0; i < self->node_n_outputs[owner_idx]; ++i)
-                {
-                  int out_idx = self->node_outputs[owner_idx][i];
-                  PyObject * el_i = PyList_GetItem(self->var_computed_cells[out_idx], 0);
-                  Py_ssize_t N = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
-                  if (PyErr_Occurred())
-                    {
-                      Py_DECREF(rval);
-                      set_position_of_error(self, owner_idx);
-                      return -1;
-                    }
-                  assert (N==0 || N==1);
-                  self->var_computed[out_idx] = N;
-                }
-              if (!self->var_computed[var_idx])
-                {
-                  if (PyList_Check(rval))
-                    {
-                      if (PyList_Size(rval))
-                        {
-                          for (int i = 0; i < PyList_Size(rval) && (!err); ++i)
-                            {
-                              PyObject * el_i = PyList_GetItem(rval, i);
-                              Py_ssize_t N = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
-                              if (PyErr_Occurred())
-                                {
-                                  err = 1;
-                                }
-                              else
-                                {
-                                  assert (N <= self->node_n_inputs[owner_idx]);
-                                  Py_ssize_t input_idx = self->node_inputs[owner_idx][N];
-                                  err = lazy_rec_eval(self, input_idx, one, zero);
-                                }
-                            }
-                          if (!err)
-                            err = lazy_rec_eval(self, var_idx, one, zero);
-                        }
-                      else
-                        {
-                          PyErr_SetString(PyExc_ValueError,
-                                    "lazy thunk returned empty list without computing output");
-                          err = 1;
-                          set_position_of_error(self, owner_idx);
-                        }
-                      Py_DECREF(rval);
-                      set_position_of_error(self, owner_idx);
-                      return err;
-                    }
-                  else // don't know what it returned, but it wasn't right.
-                    {
-                      //TODO: More helpful error to help find *which node* made this
-                      // bad thunk
-                      PyErr_SetString(PyExc_TypeError,
-                                      "lazy thunk should list");
-                      Py_DECREF(rval);
-                      set_position_of_error(self, owner_idx);
-                      return 1;
-                    }
-                }
-              Py_DECREF(rval);
-            }
-          else // pycall returned NULL (internal error)
-            {
-              assert (PyErr_Occurred());
-              set_position_of_error(self, owner_idx);
-              return 1;
-            }
-        }
-      else //owner is not a lazy op. Ensure all intputs are evaluated.
-        {
-          // loop over inputs to owner
-          // call lazy_rec_eval on each one that is not computed.
-          // if there's an error, pass it up the stack
-          for (int i = 0; i < self->node_n_inputs[owner_idx]; ++i)
-            {
-              Py_ssize_t input_idx = self->node_inputs[owner_idx][i];
-              if (!self->var_computed[input_idx])
-                {
-                  err = lazy_rec_eval(self, input_idx, one, zero);
-                  if (err) return err;
-                }
-              assert (self->var_computed[input_idx]);
-            }
-
-          // call the thunk for this owner.
-          if (self->thunk_cptr_fn[owner_idx])
-            {
-              err = c_call(self, owner_idx, verbose);
+              Py_INCREF(one);
+              err = PyList_SetItem(self->var_computed_cells[in_idx], 0, one);
             }
           else
             {
-              PyObject * rval = pycall(self, owner_idx, verbose);
-              //rval is new ref
-              if (rval) //pycall returned normally (no exception)
-                {
-                  if (rval == Py_None)
-                    {
-                      Py_DECREF(rval); //ignore a return of None
-                    }
-                  else if (PyList_Check(rval))
-                    {
-                      PyErr_SetString(PyExc_TypeError,
-                                      "non-lazy thunk should return None, not list");
-                      err=1;
-                      set_position_of_error(self, owner_idx);
-
-                      Py_DECREF(rval);
-                    }
-                  else // don't know what it returned, but it wasn't right.
-                    {
-                      PyErr_SetObject(PyExc_TypeError, rval);
-                      err=1;
-                      set_position_of_error(self, owner_idx);
-                    }
-                }
-              else // pycall returned NULL (internal error)
-                {
-                  err=1;
-                  set_position_of_error(self, owner_idx);
-                }
+              Py_INCREF(zero);
+              err = PyList_SetItem(self->var_computed_cells[in_idx], 0, zero);
             }
+          if (err) goto fail;
         }
 
-      // loop over all outputs and mark them as computed
-      for (int i = 0; i < self->node_n_outputs[owner_idx] && (!err); ++i)
+      rval = pycall(self, owner_idx, verbose);
+      // refcounting - rval is new ref
+      //TODO: to prevent infinite loops
+      // - consider check that a thunk does not ask for an input that is already computed
+      if (rval == NULL)
         {
-          self->var_computed[self->node_outputs[owner_idx][i]] = 1;
+          assert (PyErr_Occurred());
+          err = 1;
+          goto fail;
+        }
+
+      //update the computed-ness of any output cells
+      for (int i = 0; i < self->node_n_outputs[owner_idx]; ++i)
+        {
+          int out_idx = self->node_outputs[owner_idx][i];
+          PyObject * el_i = PyList_GetItem(self->var_computed_cells[out_idx], 0);
+          Py_ssize_t N = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
+          if (PyErr_Occurred())
+            {
+              err = -1;
+              goto pyfail;
+            }
+          assert (N==0 || N==1);
+          self->var_computed[out_idx] = N;
+        }
+      if (!self->var_computed[var_idx])
+        {
+          /*
+           * If self is not computed after the call, this means that some
+           * inputs are needed.  Compute the ones on the returned list
+           * and try to compute the current node again (with recursive call).
+           * This allows a node to request more nodes more than once before
+           * finally yielding a result.
+           */
+          if (!PyList_Check(rval))
+            {
+              //TODO: More helpful error to help find *which node* made this
+              // bad thunk
+              PyErr_SetString(PyExc_TypeError,
+                              "lazy thunk should return a list");
+              err = 1;
+              goto pyfail;
+            }
+
+          if (!PyList_Size(rval))
+            {
+              PyErr_SetString(PyExc_ValueError,
+                              "lazy thunk returned empty list without computing output");
+              err = 1;
+              goto pyfail;
+            }
+
+          for (int i = 0; i < PyList_Size(rval); ++i)
+            {
+              PyObject * el_i = PyList_GetItem(rval, i);
+              Py_ssize_t N = PyNumber_AsSsize_t(el_i, PyExc_IndexError);
+              if (PyErr_Occurred())
+                {
+                  err = 1;
+                  goto pyfail;
+                }
+              assert (N <= self->node_n_inputs[owner_idx]);
+              Py_ssize_t input_idx = self->node_inputs[owner_idx][N];
+              err = lazy_rec_eval(self, input_idx, one, zero);
+              if (err) goto pyfail;
+            }
+
+          Py_DECREF(rval);
+          /*
+           * We intentionally skip all the end-of-function processing
+           * (mark outputs, GC) as it will be performed by the call
+           * that actually manages to compute the result.
+           */
+          return lazy_rec_eval(self, var_idx, one, zero);
+        }
+
+      Py_DECREF(rval);
+    }
+  else //owner is not a lazy op. Ensure all intputs are evaluated.
+    {
+      // loop over inputs to owner
+      // call lazy_rec_eval on each one that is not computed.
+      // if there's an error, pass it up the stack
+      for (int i = 0; i < self->node_n_inputs[owner_idx]; ++i)
+        {
+          Py_ssize_t input_idx = self->node_inputs[owner_idx][i];
+          if (!self->var_computed[input_idx])
+            {
+              err = lazy_rec_eval(self, input_idx, one, zero);
+              if (err) return err;
+            }
+          assert (self->var_computed[input_idx]);
+        }
+
+      // call the thunk for this owner.
+      if (self->thunk_cptr_fn[owner_idx])
+        {
+          err = c_call(self, owner_idx, verbose);
+          if (err) goto fail;
+        }
+      else
+        {
+          rval = pycall(self, owner_idx, verbose);
+          //rval is new ref
+          if (rval) //pycall returned normally (no exception)
+            {
+              if (rval == Py_None)
+                {
+                  Py_DECREF(rval); //ignore a return of None
+                }
+              else if (PyList_Check(rval))
+                {
+                  PyErr_SetString(PyExc_TypeError,
+                                  "non-lazy thunk should return None, not list");
+                  err = 1;
+                  goto pyfail;
+                }
+              else // don't know what it returned, but it wasn't right.
+                {
+                  PyErr_SetObject(PyExc_TypeError, rval);
+                  err = 1;
+                  // We don't release rval since we put it in the error above
+                  goto fail;
+                }
+            }
+          else // pycall returned NULL (internal error)
+            {
+              err = 1;
+              goto fail;
+            }
         }
     }
 
+  // loop over all outputs and mark them as computed
+  for (int i = 0; i < self->node_n_outputs[owner_idx]; ++i)
+    {
+      self->var_computed[self->node_outputs[owner_idx][i]] = 1;
+    }
+
+  return 0;
+ pyfail:
+  Py_DECREF(rval);
+ fail:
+  set_position_of_error(self, owner_idx);
   return err;
 }
 PyObject *
