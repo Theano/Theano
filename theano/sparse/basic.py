@@ -867,7 +867,10 @@ class CSMGradC(gof.Op):
             dtype_%(b_val)s b_row[sp_dim];
             
             //clear the output array
-            memset(Dz, 0, nnz*sizeof(dtype_%(z)s));
+            for (npy_int64 i = 0; i < nnz; ++i)
+            {
+                Dz[i*Sz] = 0;
+            }
             memset(b_row, 0, sp_dim*sizeof(dtype_%(b_val)s));
 
             // loop over inner dimension
@@ -893,7 +896,7 @@ class CSMGradC(gof.Op):
         """ % dict(locals(), **sub)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 csm_grad_c = CSMGradC()
 
 @gof.local_optimizer([csm_grad(None)])
