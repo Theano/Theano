@@ -244,7 +244,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 [sp.csr_matrix(random_lil((10, 40),
                                config.floatX, 3)),
                  numpy.random.randn(10, 40).astype(config.floatX)],
-                MulSD)
+                MulSD, excluding=["local_mul_s_d"])
 
     def test_remove0(self):
         x = SparseType('csr', dtype=config.floatX)()

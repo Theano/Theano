@@ -170,10 +170,15 @@ class InferShapeTester(unittest.TestCase):
         # optimizations, if we don't want to enumerate them explicitly.
         self.mode = theano.compile.get_default_mode().including("canonicalize")
 
-    def _compile_and_check(self, inputs, outputs, numeric_inputs, cls):
-        outputs_function = theano.function(inputs, outputs, mode=self.mode)
+    def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
+                           excluding=None):
+        mode = self.mode
+        if excluding:
+            mode = mode.excluding(*excluding)
+
+        outputs_function = theano.function(inputs, outputs, mode=mode)
         shapes_function = theano.function(inputs, [o.shape for o in outputs],
-                mode=self.mode)
+                                          mode=mode)
         #theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
         topo_shape = shapes_function.maker.env.toposort()
