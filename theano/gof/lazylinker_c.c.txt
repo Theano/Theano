@@ -49,7 +49,7 @@ static int unpack_list_of_ssize_t(PyObject * pylist, Py_ssize_t **dst, Py_ssize_
     }
   assert (NULL == *dst);
   *len = buflen = PyList_Size(pylist);
-  *dst = buf = (Py_ssize_t*)malloc(buflen * sizeof(Py_ssize_t));
+  *dst = buf = (Py_ssize_t*)calloc(buflen, sizeof(Py_ssize_t));
   assert(buf);
   for (int ii = 0; ii < buflen; ++ii)
     {
@@ -344,7 +344,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
     if (PyList_Check(base_input_output_list))
       {
         Py_ssize_t n_inputs_outputs_base = PyList_Size(base_input_output_list);
-        self->node_inputs_outputs_base = (Py_ssize_t*)malloc(n_inputs_outputs_base*sizeof(Py_ssize_t));
+        self->node_inputs_outputs_base = (Py_ssize_t*)calloc(n_inputs_outputs_base,sizeof(Py_ssize_t));
         assert(self->node_inputs_outputs_base);
         for (int i = 0; i < n_inputs_outputs_base; ++i)
           {
@@ -353,13 +353,13 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
             if (PyErr_Occurred()) return -1;
             self->node_inputs_outputs_base[i] = idx;
           }
-        self->node_n_inputs = (Py_ssize_t*)malloc(n_applies*sizeof(Py_ssize_t));
+        self->node_n_inputs = (Py_ssize_t*)calloc(n_applies,sizeof(Py_ssize_t));
         assert(self->node_n_inputs);
-        self->node_n_outputs = (Py_ssize_t*)malloc(n_applies*sizeof(Py_ssize_t));
+        self->node_n_outputs = (Py_ssize_t*)calloc(n_applies,sizeof(Py_ssize_t));
         assert(self->node_n_outputs);
-        self->node_inputs = (Py_ssize_t**)malloc(n_applies*sizeof(Py_ssize_t*));
+        self->node_inputs = (Py_ssize_t**)calloc(n_applies,sizeof(Py_ssize_t*));
         assert(self->node_inputs);
-        self->node_outputs = (Py_ssize_t**)malloc(n_applies*sizeof(Py_ssize_t*));
+        self->node_outputs = (Py_ssize_t**)calloc(n_applies,sizeof(Py_ssize_t*));
         assert(self->node_outputs);
         for (int i = 0; i < n_applies; ++i)
           {
@@ -391,11 +391,11 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
     // allocation for var_owner
     if (PyList_Check(var_owner))
       {
-        self->var_owner = (Py_ssize_t*)malloc(self->n_vars*sizeof(Py_ssize_t));
-        self->var_has_owner = (int*)malloc(self->n_vars*sizeof(int));
-        self->var_computed = (int*)malloc(self->n_vars*sizeof(int));
-        self->var_computed_cells = (PyObject**)malloc(self->n_vars*sizeof(PyObject*));
-        self->var_value_cells = (PyObject**)malloc(self->n_vars*sizeof(PyObject*));
+        self->var_owner = (Py_ssize_t*)calloc(self->n_vars,sizeof(Py_ssize_t));
+        self->var_has_owner = (int*)calloc(self->n_vars,sizeof(int));
+        self->var_computed = (int*)calloc(self->n_vars,sizeof(int));
+        self->var_computed_cells = (PyObject**)calloc(self->n_vars,sizeof(PyObject*));
+        self->var_value_cells = (PyObject**)calloc(self->n_vars,sizeof(PyObject*));
         for (int i = 0; i < self->n_vars; ++i)
           {
             PyObject * el_i = PyList_GetItem(var_owner, i);
