@@ -84,6 +84,8 @@ typedef struct {
     int * var_computed; // 1 or 0 for every variable
     PyObject ** var_computed_cells;
     PyObject ** var_value_cells;
+    Py_ssize_t **dependencies; // list of vars dependencies for GC
+    Py_ssize_t *n_dependencies;
 
     Py_ssize_t n_output_vars;
     Py_ssize_t * output_vars; // variables that *must* be evaluated by call
@@ -140,6 +142,16 @@ CLazyLinker_dealloc(PyObject* _self)
   free(self->node_inputs);
   free(self->node_outputs);
 
+  if (self->dependencies)
+    {
+      for (int i = 0; i < self->n_vars; ++i)
+        {
+          free(self->dependencies[i]);
+        }
+      free(self->dependencies);
+      free(self->n_dependencies);
+    }
+
   free(self->var_owner);
   free(self->var_has_owner);
   free(self->var_computed);
@@ -179,6 +191,8 @@ CLazyLinker_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       self->var_computed = NULL;
       self->var_computed_cells = NULL;
       self->var_value_cells = NULL;
+      self->dependencies = NULL;
+      self->n_dependencies = NULL;
 
       self->n_output_vars = 0;
       self->output_vars = NULL;
@@ -234,6 +248,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
       (char*)"node_prereqs",
       (char*)"node_output_size",
       (char*)"update_storage",
+      (char*)"dependencies",
       NULL};
 
     PyObject *compute_map_list=NULL,
@@ -248,10 +263,11 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
              *output_vars=NULL,
              *node_prereqs=NULL,
              *node_output_size=NULL,
-             *update_storage=NULL;
+             *update_storage=NULL,
+             *dependencies=NULL;
 
     assert(!self->nodes);
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOO", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOOO", kwlist,
                                       &self->nodes,
                                       &self->thunks,
                                       &self->pre_call_clear,
@@ -270,7 +286,8 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
                                       &output_vars,
                                       &node_prereqs,
                                       &node_output_size,
-                                      &update_storage
+                                      &update_storage,
+                                      &dependencies
                                       ))
         return -1;
     Py_INCREF(self->nodes);
@@ -421,6 +438,23 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
       {
         PyErr_SetString(PyExc_TypeError, "var_owner must be list");
         return -1;
+      }
+
+    if (dependencies != Py_None)
+      {
+        self->dependencies = (Py_ssize_t**)calloc(self->n_vars, sizeof(Py_ssize_t *));
+        self->n_dependencies = (Py_ssize_t*)calloc(self->n_vars, sizeof(Py_ssize_t));
+        assert(self->dependencies);
+        assert(self->n_dependencies);
+
+        for (int i = 0; i < self->n_vars; ++i)
+          {
+            PyObject *tmp = PyList_GetItem(dependencies, i);
+            // refcounting - tmp is borrowed
+            if (unpack_list_of_ssize_t(tmp, &self->dependencies[i], &self->n_dependencies[i],
+                                       "dependencies"))
+              return -1;
+          }
       }
 
     if (unpack_list_of_ssize_t(output_vars, &self->output_vars, &self->n_output_vars,
@@ -705,6 +739,42 @@ int lazy_rec_eval(CLazyLinker * self, Py_ssize_t var_idx, PyObject*one, PyObject
       self->var_computed[self->node_outputs[owner_idx][i]] = 1;
     }
 
+  // Free vars that are not needed anymore
+  if (self->allow_gc)
+    {
+      for (int i = 0; i < self->node_n_inputs[owner_idx]; ++i)
+        {
+          int cleanup = 1;
+          Py_ssize_t i_idx = self->node_inputs[owner_idx][i];
+          if (!self->var_has_owner[i_idx])
+            continue;
+
+          for (int j = 0; j < self->n_output_vars; ++j)
+            {
+              if (i_idx == self->output_vars[j])
+                {
+                  cleanup = 0;
+                  break;
+                }
+            }
+          if (!cleanup) continue;
+
+          for (int j = 0; j < self->n_dependencies[i_idx]; ++j)
+            {
+              if (!self->var_computed[self->dependencies[i_idx][j]])
+                {
+                  cleanup = 0;
+                  break;
+                }
+            }
+          if (!cleanup) continue;
+
+          Py_INCREF(Py_None);
+          err = PyList_SetItem(self->var_value_cells[i_idx], 0, Py_None);
+          if (err) goto fail;
+        }
+    }
+
   return 0;
  pyfail:
   Py_DECREF(rval);
@@ -791,6 +861,17 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
               Py_INCREF(tmp);
               PyList_SetItem(self->var_value_cells[dst], 0, tmp);
             }
+
+	  // Free all intermediate values (outputs and updates have
+	  // already been copied above).
+	  if (self->allow_gc)
+	    {
+	      for (int i = 0; i < self->n_vars; ++i)
+		{
+		  Py_INCREF(Py_None);
+		  PyList_SetItem(self->var_value_cells[i], 0, Py_None);
+		}
+	    }
         }
     }
   Py_DECREF(one);
@@ -874,7 +955,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.13);
+  PyObject *result = PyFloat_FromDouble(0.14);
   return result;
 }
 
