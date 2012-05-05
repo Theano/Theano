@@ -549,7 +549,6 @@ class Scan(PureOp):
                         cython_mit_mot_out_nslices,
                         self.fn.fn,
                         self.fn,
-                        self.inplace,
                         args,
                         outs,
                         self)
@@ -1451,7 +1450,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         n_mit_sot = 0
         n_sit_sot = 0
 
@@ -1552,7 +1550,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
         new_tap_array = []
         b = 0
