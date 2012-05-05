@@ -781,7 +781,7 @@ class Scan(PureOp):
                          in xrange(self.n_outs + self.n_nit_sot)]
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
-            if self.inplace:
+            if idx in self.destroy_map:
                 # ^ Case 1. Outputs should be computed inplace of their
                 # initial state
                 outs[idx][0] = args[self.seqs_arg_offset + idx]
