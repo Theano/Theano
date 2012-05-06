@@ -528,6 +528,10 @@ class Scan(PureOp):
                                                     dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
+            cython_destroy_map = [x in self.destroy_map
+                                  for x in xrange(len(node.outputs))]
+            cython_destroy_map = numpy.asarray(cython_destroy_map,
+                                               dtype='int32')
             import scan_perform_ext
             p = lambda node, args, outs:\
                     scan_perform_ext.perform(
@@ -549,7 +553,7 @@ class Scan(PureOp):
                         cython_mit_mot_out_nslices,
                         self.fn.fn,
                         self.fn,
-                        self.inplace,
+                        cython_destroy_map,
                         args,
                         outs,
                         self)
@@ -782,7 +786,7 @@ class Scan(PureOp):
                          in xrange(self.n_outs + self.n_nit_sot)]
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
-            if self.inplace:
+            if idx in self.destroy_map:
                 # ^ Case 1. Outputs should be computed inplace of their
                 # initial state
                 outs[idx][0] = args[self.seqs_arg_offset + idx]
@@ -1451,7 +1455,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         n_mit_sot = 0
         n_sit_sot = 0
 
@@ -1552,7 +1555,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
         new_tap_array = []
         b = 0

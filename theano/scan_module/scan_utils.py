@@ -592,7 +592,6 @@ def compress_outs(op, not_required, inputs):
     info['n_nit_sot'] = 0
     info['truncate_gradient'] = op.info['truncate_gradient']
     info['name'] = op.info['name']
-    info['inplace'] = op.info['inplace']
     info['gpu'] = op.info['gpu']
     info['mode'] = op.info['mode']
     info['as_while'] = op.info['as_while']
@@ -857,9 +856,10 @@ class scan_args(object):
         q += n_shared_outs
 
         self.other_info = dict()
-        for k in ('truncate_gradient', 'name', 'mode', 'inplace',
+        for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
                   'gpu', 'as_while', 'profile'):
-            self.other_info[k] = info[k]
+            if k in info:
+                self.other_info[k] = info[k]
 
     inner_inputs = property(lambda self: (self.inner_in_seqs +
                                           sum(self.inner_in_mit_mot, []) +
