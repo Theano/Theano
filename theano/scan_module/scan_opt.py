@@ -867,7 +867,6 @@ class ScanMerge(gof.Optimizer):
         info['truncate_gradient'] = nodes[0].op.truncate_gradient
         info['name'] = '&'.join([nd.op.name for nd in nodes])
         info['mode'] = nodes[0].op.mode
-        info['inplace'] = False
         info['gpu'] = False
         info['as_while'] = as_while
         info['profile'] = nodes[0].op.profile

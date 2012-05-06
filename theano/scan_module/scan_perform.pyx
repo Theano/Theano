@@ -63,7 +63,7 @@ from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.266
+    return 0.276
 
 @cython.boundscheck(False)
 def perform(
@@ -85,7 +85,7 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=1] mit_mot_out_nslices,
             fn,
             fnct,
-            bint inplace,
+            numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
             args,
             outs,
             self):
@@ -145,9 +145,8 @@ def perform(
     fnct: python object
         Only used to attach some timings for the profile mode ( can be
         skiped if we don't care about Theano's profile mode)
-    inplace
-        Boolean that says if things should be computed inplace or if they
-        should not.
+    destroy_map
+        Array of boolean saying if an output is computed inplace
     args: list of ndarrays (and random states)
         The inputs of scan in a given order ( n_steps, sequences, mit_mot,
         mit_sot, sit_sot, nit_sot, shared_outs, other_args)
@@ -230,7 +229,7 @@ def perform(
 
     # 2.1 Create storage space for outputs
     for idx in range(n_outs):
-        if inplace:
+        if destroy_map[idx] != 0:
             # ^ Case 1. Outputs should be computed inplace of their
             # initial state
             outs[idx][0] = args[ <unsigned int>(1+ n_seqs + idx)]
