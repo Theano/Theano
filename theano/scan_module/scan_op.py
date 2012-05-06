@@ -538,8 +538,12 @@ class Scan(PureOp):
                                                     dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
-            cython_destroy_map = [x in self.destroy_map
+
+            if hasattr(self, 'destroy_map'):
+                cython_destroy_map = [x in self.destroy_map
                                   for x in xrange(len(node.outputs))]
+            else:
+                cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             import scan_perform_ext
