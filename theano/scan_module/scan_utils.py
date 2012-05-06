@@ -858,7 +858,8 @@ class scan_args(object):
         self.other_info = dict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
                   'gpu', 'as_while', 'profile'):
-            self.other_info[k] = info[k]
+            if k in info:
+                self.other_info[k] = info[k]
 
     inner_inputs = property(lambda self: (self.inner_in_seqs +
                                           sum(self.inner_in_mit_mot, []) +
