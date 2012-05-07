@@ -51,7 +51,10 @@ Clone your fork locally with
 
 .. code-block:: bash
 
-    git clone git@github.com:your_github_login/Theano.git
+    git clone git@github.com:YOUR_GITHUB_LOGIN/Theano.git
+
+For this URL to work, you must set your public ssh keys inside your
+`github account setting <https://github.com/settings/ssh>`_.
 
 From your local repository, your own fork on GitHub will be called "origin".
 
