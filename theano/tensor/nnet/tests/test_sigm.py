@@ -249,7 +249,7 @@ class T_sigmoid_opts(unittest.TestCase):
         # and DebugMode will complain. Everything is fine afterwards.
         mode = self.get_mode()
         if not isinstance(mode, theano.compile.DebugMode):
-            f = theano.function([x, lr], ux)
+            f = theano.function([x, lr], ux, mode=mode)
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
 
