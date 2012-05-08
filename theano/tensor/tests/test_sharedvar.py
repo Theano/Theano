@@ -432,7 +432,7 @@ def makeSharedTester(shared_constructor_,
             else:
                 shape_grad = tensor.grad(x1_specify_shape.sum(), x1_shared)
                 shape_constant_fct_grad = theano.function([], shape_grad)
-                theano.printing.debugprint(shape_constant_fct_grad)
+                #theano.printing.debugprint(shape_constant_fct_grad)
                 shape_constant_fct_grad()
 
             #Test that we can replace with values of the different shape
