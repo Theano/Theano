@@ -1316,11 +1316,11 @@ def local_gpualloc(node):
         if node.inputs[0].owner and \
            node.inputs[0].owner.op == host_from_gpu:
             replace = True
-        if all([c != 'output' and c.op == gpu_from_host
+        elif all([c != 'output' and c.op == gpu_from_host
                 for c, idx in node.outputs[0].clients]):
             # if all clients are on gpu
             replace = True
-        if all([c != 'output' and
+        elif all([c != 'output' and
                 c.op == tensor.join and
                 all([i.owner and
                      i.owner.op in [host_from_gpu, tensor.alloc]
