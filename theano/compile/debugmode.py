@@ -83,6 +83,15 @@ AddConfigVar('DebugMode.check_preallocated_output',
         StrParam('', is_valid=is_valid_check_preallocated_output_param),
         in_c_key=False)
 
+AddConfigVar('DebugMode.check_preallocated_output_ndim',
+        ('When testing with "strided" preallocated output memory, '
+         'test all combinations of strides over that number of '
+         '(inner-most) dimensions. You may want to reduce that number '
+         'to reduce memory or time usage, but it is advised to keep a '
+         'minimum of 2.'),
+        IntParam(4, lambda i: i > 0),
+        in_c_key=False)
+
 import logging
 _logger = logging.getLogger("theano.compile.debugmode")
 _logger.setLevel(logging.WARNING)
@@ -1049,7 +1058,6 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 initial_outputs[r] = init_outputs[r]
 
         if initial_outputs:
-            print 'initial:', initial_outputs
             yield ('initial', initial_outputs)
 
     # reuse_output: use a copy of the same storage returned the first time
@@ -1144,15 +1152,17 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
+        check_ndim = config.DebugMode.check_preallocated_output_ndim
         # Initial allocation
         init_strided = {}
         for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Create a buffer twice as large in every dimension,
-                # except if broadcastable, or for dimensions above 4
+                # except if broadcastable, or for dimensions above
+                # config.DebugMode.check_preallocated_output_ndim
                 buf_shape = []
                 for s, b in zip(r_vals[r].shape, r.broadcastable):
-                    if b or ((r.ndim - len(buf_shape)) > 4):
+                    if b or ((r.ndim - len(buf_shape)) > check_ndim):
                         buf_shape.append(s)
                     else:
                         buf_shape.append(s * 2)
@@ -1163,18 +1173,18 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # The number of combinations is exponential in the number of
         # dimensions, and some ops can have tens of outputs. To prevent
         # tests from lasting days, we use the same strides for all
-        # dimensions but the last 4 ones.
+        # dimensions but the last check_ndim ones.
         # Moreover, to avoid memory problems, we do not test with strides
         # 2 and -2 on those dimensions.
         step_signs_list = []
-        for b in out_broadcastable[-4:]:
+        for b in out_broadcastable[-check_ndim:]:
             if b:
                 step_signs_list.append((1,))
             else:
                 step_signs_list.append((-1, 1))
 
-        # Use the same step on all dimensions before the last 4.
-        if all(out_broadcastable[:-4]):
+        # Use the same step on all dimensions before the last check_ndim.
+        if all(out_broadcastable[:-check_ndim]):
             step_signs_list = [(1,)] + step_signs_list
         else:
             step_signs_list = [(-1, 1)] + step_signs_list
@@ -1183,9 +1193,9 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
             for step_size in (1, 2):
                 strided = {}
 
-                # First, the dimensions above 4, then the other ones
-                # Do not test with 2 or -2 for dimensions above 4
-                steps = [step_signs[0]] * len(out_broadcastable[:-4])
+                # First, the dimensions above check_ndim, then the other ones
+                # Do not test with 2 or -2 for dimensions above check_ndim
+                steps = [step_signs[0]] * len(out_broadcastable[:-check_ndim])
                 steps += [s * step_size for s in step_signs[1:]]
 
                 name = 'strided%s' % str(tuple(steps))

@@ -396,6 +396,15 @@ import theano and print the config variable, as in:
 
     In order not to test with preallocated memory, use an empty string, ``""``.
 
+.. attribute:: config.DebugMode.check_preallocated_output_ndim
+
+    Positive int value, default: 4.
+
+    When testing with "strided" preallocated output memory, test
+    all combinations of strides over that number of (inner-most)
+    dimensions. You may want to reduce that number to reduce memory or
+    time usage, but it is advised to keep a minimum of 2.
+
 .. attribute:: config.DebugMode.warn_input_not_reused
 
     Bool value, default: True
