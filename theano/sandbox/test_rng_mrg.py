@@ -52,7 +52,7 @@ def test_deterministic():
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
-        print 'use_cuda =', use_cuda
+        #print 'use_cuda =', use_cuda
         R = MRG_RandomStreams(seed=seed, use_cuda=use_cuda)
         u = R.uniform(size=sample_size)
         f = theano.function([], u)
@@ -85,7 +85,7 @@ def test_consistency_randomstreams():
         test_use_cuda.append(True)
 
     for use_cuda in test_use_cuda:
-        print 'use_cuda =', use_cuda
+        #print 'use_cuda =', use_cuda
         samples = []
         rng = MRG_RandomStreams(seed=seed, use_cuda=False)
         for i in range(n_streams):
@@ -335,22 +335,22 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
 
     if hasattr(target_avg, 'shape'):  # looks if target_avg is an array
         diff = numpy.mean(abs(mean - target_avg))
-        print prefix, 'mean diff with mean', diff
+        #print prefix, 'mean diff with mean', diff
         assert diff < mean_rtol, 'bad mean? %f %f' % (mean, target_avg)
     else:  # if target_avg is a scalar, then we can do the mean of
            # `mean` to get something more precise
         mean = numpy.mean(mean)
-        print prefix, 'mean', mean
+        #print prefix, 'mean', mean
         assert abs(mean - target_avg) < mean_rtol, 'bad mean? %f %f' % (
             numpy.mean(mean), target_avg)
-    print prefix, 'std', avg_std
+    #print prefix, 'std', avg_std
     if target_std is not None:
         assert abs(avg_std - target_std) < .01, 'bad std? %f %f' % (avg_std,
                                                                     target_std)
-    print prefix, 'time', dt
-    print prefix, 'elements', steps * sample_size[0] * sample_size[1]
-    print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
-    print prefix, 'min', min_, 'max', max_
+    #print prefix, 'time', dt
+    #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
+    #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
+    #print prefix, 'min', min_, 'max', max_
 
 
 def test_uniform():
@@ -374,8 +374,8 @@ def test_uniform():
 
         #### TEST CPU IMPLEMENTATION ####
         # The python and C implementation are tested with DebugMode
-        print ''
-        print 'ON CPU with size=(%s):' % str(size)
+        #print ''
+        #print 'ON CPU with size=(%s):' % str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234, use_cuda=False)
         # Note: we specify `nstreams` to avoid a warning.
@@ -387,17 +387,17 @@ def test_uniform():
         f = theano.function(var_input, u, mode=mode)
         assert any([isinstance(node.op, theano.sandbox.rng_mrg.mrg_uniform)
                     for node in f.maker.env.toposort()])
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         cpu_out = f(*input)
 
-        print 'CPU: random?[:10], random?[-10:]'
-        print cpu_out[0, 0:10]
-        print cpu_out[-1, -10:]
+        #print 'CPU: random?[:10], random?[-10:]'
+        #print cpu_out[0, 0:10]
+        #print cpu_out[-1, -10:]
         basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
 
         if mode != 'FAST_COMPILE' and cuda_available:
-            print ''
-            print 'ON GPU with size=(%s):' % str(size)
+            #print ''
+            #print 'ON GPU with size=(%s):' % str(size)
             R = MRG_RandomStreams(234, use_cuda=True)
             u = R.uniform(size=size, dtype='float32',
                           nstreams=rng_mrg.guess_n_streams(size, warn=False))
@@ -409,19 +409,19 @@ def test_uniform():
             assert any([isinstance(node.op,
                                    theano.sandbox.rng_mrg.GPU_mrg_uniform)
                         for node in f.maker.env.toposort()])
-            theano.printing.debugprint(f)
+            #theano.printing.debugprint(f)
             gpu_out = numpy.asarray(f(*input))
 
-            print 'GPU: random?[:10], random?[-10:]'
-            print gpu_out[0, 0:10]
-            print gpu_out[-1, -10:]
+            #print 'GPU: random?[:10], random?[-10:]'
+            #print gpu_out[0, 0:10]
+            #print gpu_out[-1, -10:]
             basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
             numpy.testing.assert_array_almost_equal(cpu_out, gpu_out,
                                                     decimal=6)
 
-        print ''
-        print 'ON CPU w Numpy with size=(%s):' % str(size)
+        #print ''
+        #print 'ON CPU w Numpy with size=(%s):' % str(size)
         RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
         uu = RR.uniform(size=size)
@@ -457,24 +457,24 @@ def test_binomial():
                 (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
                 ]:
 
-            print ''
-            print 'ON CPU with size=(%s) and mean(%d):' % (str(size), mean)
+            #print ''
+            #print 'ON CPU with size=(%s) and mean(%d):' % (str(size), mean)
             R = MRG_RandomStreams(234, use_cuda=False)
             # Note: we specify `nstreams` to avoid a warning.
             u = R.binomial(size=size, p=mean,
                            nstreams=rng_mrg.guess_n_streams(size, warn=False))
             f = theano.function(var_input, u, mode=mode)
-            theano.printing.debugprint(f)
+            #theano.printing.debugprint(f)
             out = f(*input)
-            print 'random?[:10]\n', out[0, 0:10]
-            print 'random?[-1,-10:]\n', out[-1, -10:]
+            #print 'random?[:10]\n', out[0, 0:10]
+            #print 'random?[-1,-10:]\n', out[-1, -10:]
             basictest(f, steps, sample_size, prefix='mrg  cpu',
                       inputs=input, allow_01=True,
                       target_avg=mean, mean_rtol=rtol)
 
             if mode != 'FAST_COMPILE' and cuda_available:
-                print ''
-                print 'ON GPU with size=(%s) and mean(%d):' % (str(size), mean)
+                #print ''
+                #print 'ON GPU with size=(%s) and mean(%d):' % (str(size), mean)
                 R = MRG_RandomStreams(234, use_cuda=True)
                 u = R.binomial(size=size, p=mean, dtype='float32',
                                nstreams=rng_mrg.guess_n_streams(size,
@@ -484,19 +484,19 @@ def test_binomial():
                 f = theano.function(var_input, theano.Out(
                         theano.sandbox.cuda.basic_ops.gpu_from_host(u),
                         borrow=True), mode=mode_with_gpu)
-                theano.printing.debugprint(f)
+                #theano.printing.debugprint(f)
                 gpu_out = numpy.asarray(f(*input))
-                print 'random?[:10]\n', gpu_out[0, 0:10]
-                print 'random?[-1,-10:]\n', gpu_out[-1, -10:]
+                #print 'random?[:10]\n', gpu_out[0, 0:10]
+                #print 'random?[-1,-10:]\n', gpu_out[-1, -10:]
                 basictest(f, steps, sample_size, prefix='mrg  gpu',
                           inputs=input, allow_01=True,
                           target_avg=mean, mean_rtol=rtol)
                 numpy.testing.assert_array_almost_equal(out, gpu_out,
                                                         decimal=6)
 
-            print ''
-            print 'ON CPU w NUMPY with size=(%s) and mean(%d):' % (str(size),
-                                                                   mean)
+            #print ''
+            #print 'ON CPU w NUMPY with size=(%s) and mean(%d):' % (str(size),
+            #                                                       mean)
             RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
             uu = RR.binomial(size=size, p=mean)
@@ -534,25 +534,25 @@ def test_normal0():
                       dtype='float32').reshape(sample_size),
          10. * std / numpy.sqrt(steps)),
             ]:
-        print ''
-        print 'ON CPU:'
+        #print ''
+        #print 'ON CPU:'
 
         R = MRG_RandomStreams(234, use_cuda=False)
         # Note: we specify `nstreams` to avoid a warning.
         n = R.normal(size=size, avg=avg, std=std,
                      nstreams=rng_mrg.guess_n_streams(size, warn=False))
         f = theano.function(var_input, n, mode=mode)
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         out = f(*input)
-        print 'random?[:10]\n', out[0, 0:10]
+        #print 'random?[:10]\n', out[0, 0:10]
         basictest(f, steps, const_size, target_avg=avg, target_std=std,
                   prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
 
         sys.stdout.flush()
 
         if mode != 'FAST_COMPILE' and cuda_available:
-            print ''
-            print 'ON GPU:'
+            #print ''
+            #print 'ON GPU:'
             R = MRG_RandomStreams(234, use_cuda=True)
             n = R.normal(size=size, avg=avg, std=std, dtype='float32',
                          nstreams=rng_mrg.guess_n_streams(size, warn=False))
@@ -562,11 +562,11 @@ def test_normal0():
                 theano.sandbox.cuda.basic_ops.gpu_from_host(n),
                 borrow=True), mode=mode_with_gpu)
 
-            theano.printing.debugprint(f)
+            #theano.printing.debugprint(f)
             sys.stdout.flush()
             gpu_out = numpy.asarray(f(*input))
-            print 'random?[:10]\n', gpu_out[0, 0:10]
-            print '----'
+            #print 'random?[:10]\n', gpu_out[0, 0:10]
+            #print '----'
             sys.stdout.flush()
             basictest(f, steps, const_size, target_avg=avg, target_std=std,
                       prefix='gpu mrg ', allow_01=True, inputs=input,
@@ -575,8 +575,8 @@ def test_normal0():
             # computation that are done on the gpu vs cpu
             assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
 
-        print ''
-        print 'ON CPU w NUMPY:'
+        #print ''
+        #print 'ON CPU w NUMPY:'
         RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
         nn = RR.normal(size=size, avg=avg, std=std)
@@ -622,8 +622,8 @@ def test_multinomial():
     else:
         sample_size = (450, 6)
     mode_ = theano.compile.mode.get_mode(mode_)
-    print ''
-    print 'ON CPU:'
+    #print ''
+    #print 'ON CPU:'
 
     pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
     pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
@@ -631,15 +631,15 @@ def test_multinomial():
     # Note: we specify `nstreams` to avoid a warning.
     m = R.multinomial(pvals=pvals, dtype=config.floatX, nstreams=30 * 256)
     f = theano.function([], m, mode=mode_)
-    theano.printing.debugprint(f)
+    #theano.printing.debugprint(f)
     out = f()
     basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
 
     if mode != 'FAST_COMPILE' and cuda_available:
-        print ''
-        print 'ON GPU:'
+        #print ''
+        #print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
         pvals = numpy.asarray(pvals, dtype='float32')
         # We give the number of streams to avoid a warning.
@@ -651,7 +651,7 @@ def test_multinomial():
                 theano.sandbox.cuda.basic_ops.gpu_from_host(n),
                 mode=mode_.including('gpu'))
 
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         gpu_out = f()
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
