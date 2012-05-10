@@ -1,3 +1,6 @@
+from nose.plugins.skip import SkipTest
+import unittest
+
 import numpy
 
 from theano import config
@@ -7,7 +10,6 @@ import theano.tensor
 from theano.compile import debugmode
 import theano.compile
 from theano.tests import unittest_tools as utt
-import unittest
 
 
 def test0():
@@ -194,7 +196,7 @@ wb1i = WeirdBrokenOp('times1_inplace')
 wb1 = WeirdBrokenOp('times1')
 
 
-def test_badclinkeroutput():
+def test_badthunkoutput():
 
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
@@ -210,7 +212,7 @@ def test_badclinkeroutput():
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
-    except debugmode.BadCLinkerOutput, e:
+    except debugmode.BadThunkOutput, e:
         #print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
@@ -651,7 +653,48 @@ class BrokenCImplementationAdd(gof.Op):
         """ % dict(locals(), **sub)
 
 
+class VecAsRowAndCol(gof.Op):
+    """
+    Transforms a vector into a row and a column.
+
+    This Op exists to check everything is correct when an Op has
+    two outputs with different broadcasting patterns.
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, v):
+        if not isinstance(v, gof.Variable):
+            v = theano.tensor.as_tensor_variable(v)
+        assert v.type.ndim == 1
+        type_class = type(v.type)
+        out_r_type = type_class(dtype=v.dtype, broadcastable=(True, False))
+        out_c_type = type_class(dtype=v.dtype, broadcastable=(False, True))
+        return gof.Apply(self, [v], [out_r_type(), out_c_type()])
+
+    def perform(self, node, inp, out):
+        v, = inp
+        r, c = out
+        lv = v.shape[0]
+        if (r[0] is None) or (r[0].shape != (1, lv)):
+            r[0] = node.outputs[0].type.value_zeros((1, lv))
+
+        if (c[0] is None) or (c[0].shape != (lv, 1)):
+            c[0] = node.outputs[1].type.value_zeros((lv, 1))
+
+        # Python loop because CudaNdarrays do not support newaxis
+        for i in range(lv):
+            r[0][0, i] = v[i]
+            c[0][i, 0] = v[i]
+
+
 class Test_preallocated_output(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
     def test_f_contiguous(self):
         a = theano.tensor.fmatrix('a')
@@ -660,30 +703,42 @@ class Test_preallocated_output(unittest.TestCase):
         # Needed so that z is not the output of the graph
         out = theano.tensor.dot(z, numpy.eye(7))
 
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.randn(7, 7).astype('float32')
-        b_val = rng.randn(7, 7).astype('float32')
+        a_val = self.rng.randn(7, 7).astype('float32')
+        b_val = self.rng.randn(7, 7).astype('float32')
 
-        init_conf_val = config.DebugMode.check_preallocated_output
-        try:
-            # Should work
-            config.DebugMode.check_preallocated_output = 'c_contiguous'
+        # Should work
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['c_contiguous'])
 
-            f = theano.function([a, b], out, mode='DEBUG_MODE')
-            out_val = f(a_val, b_val)
-            #print 'out_val =', out_val
-            #print out_val.strides
+        f = theano.function([a, b], out, mode=mode)
+        out_val = f(a_val, b_val)
+        #print 'out_val =', out_val
+        #print out_val.strides
 
-            # Should work for now (0.4.0), because the C thunk does not care
-            # at all of what is in storage_map initially.
-            # When it changes, the call to f should raise an Exception,
-            # since the output buffer is used incorrectly.
-            config.DebugMode.check_preallocated_output = 'f_contiguous'
+        # Should raise an Exception, since the output buffer is
+        # used incorrectly.
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['f_contiguous'])
 
-            f = theano.function([a, b], out, mode='DEBUG_MODE')
-            out_val = f(a_val, b_val)
-            #print 'out_val =', out_val
-            #print out_val.strides
+        f = theano.function([a, b], out, mode=mode)
+        self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
 
-        finally:
-            config.DebugMode.check_preallocated_output = init_conf_val
+    def test_output_broadcast_tensor(self):
+        v = theano.tensor.fvector('v')
+        c, r = VecAsRowAndCol()(v)
+        f = theano.function([v], [c, r])
+
+        v_val = self.rng.randn(5).astype('float32')
+        f(v_val)
+
+    def test_output_broadcast_cuda(self):
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest("Optional package Cuda disabled")
+
+        v = cuda.fvector('v')
+        c, r = VecAsRowAndCol()(v)
+        f = theano.function([v], [c, r])
+
+        v_val = cuda.CudaNdarray(self.rng.randn(5).astype('float32'))
+        f(v_val)
