@@ -2271,7 +2271,7 @@ class T_Scan(unittest.TestCase):
         topo = f.maker.env.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
-        self.assertTrue(len(scans) == 2)
+        self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
