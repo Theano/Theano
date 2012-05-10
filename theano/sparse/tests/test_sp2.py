@@ -13,12 +13,12 @@ import theano
 
 from theano import tensor as T
 from theano import sparse as S
+if not S.enable_sparse:
+    raise SkipTest('Optional package sparse disabled')
+
 from theano.sparse.sandbox import sp2 as S2
 
 from theano.tests import unittest_tools as utt
-
-if S.enable_sparse == False:
-    raise SkipTest('Optional package sparse disabled')
 
 def as_sparse_format(data, format):
     if format == 'csc':

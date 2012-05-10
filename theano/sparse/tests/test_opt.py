@@ -7,13 +7,13 @@ except ImportError:
 
 import theano
 from theano import config, tensor
-from theano.sparse import (enable_sparse, CSM, CSMProperties, csm_properties,
-                           CSC, CSR)
-from theano.sparse.tests.test_basic import random_lil
+from theano.sparse import enable_sparse
 from theano.gof.python25 import any
-
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
+
+from theano.sparse import CSM, CSMProperties, csm_properties, CSC, CSR
+from theano.sparse.tests.test_basic import random_lil
 
 
 def test_local_csm_properties_csm():
