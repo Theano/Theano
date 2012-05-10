@@ -339,6 +339,7 @@ class TestIfElse(theano.tests.test_ifelse.test_ifelse):
     dtype = "float32"
     mode = mode_with_gpu
     cast_output = staticmethod(basic_ops.as_cuda_ndarray_variable)
+    shared = staticmethod(cuda.shared_constructor)
 
     def get_ifelse(self, n):
         return theano.ifelse.IfElse(n, gpu=True, as_view=True)

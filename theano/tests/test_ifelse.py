@@ -22,6 +22,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
     mode = None
     dtype = theano.config.floatX
     cast_output = staticmethod(tensor.as_tensor_variable)
+    shared = staticmethod(theano.shared)
 
     def get_ifelse(self, n):
         if theano.config.mode == "FAST_COMPILE":
@@ -156,6 +157,56 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.all(outs_0[1] == 0.)
         assert numpy.all(outs_0[2] == 1.)
         assert numpy.all(outs_0[3] == 1.)
+
+    def test_dtype_mismatch(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        data = rng.rand(5).astype(self.dtype)
+        x = self.shared(data)
+        y = tensor.cast(x * 10, 'int8')
+        cond = theano.tensor.iscalar('cond')
+
+        self.assertRaises(TypeError, ifelse, cond, x, y)
+        self.assertRaises(TypeError, ifelse, cond, y, x)
+
+    def test_ndim_mismatch(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        data = rng.rand(5).astype(self.dtype)
+        x = self.shared(data)
+        y = tensor.col('y', self.dtype)
+        cond = theano.tensor.iscalar('cond')
+
+        self.assertRaises(TypeError, ifelse, cond, x, y)
+        self.assertRaises(TypeError, ifelse, cond, y, x)
+
+    def test_broadcast_mismatch(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        data = rng.rand(5).astype(self.dtype)
+        x = self.shared(data)
+        #print x.broadcastable
+        y = tensor.row('y', self.dtype)
+        #print y.broadcastable
+        cond = theano.tensor.iscalar('cond')
+
+        self.assertRaises(TypeError, ifelse, cond, x, y)
+        self.assertRaises(TypeError, ifelse, cond, y, x)
+
+    def test_sparse_tensor_error(self):
+        import theano.sparse
+        if not theano.sparse.enable_sparse:
+            raise SkipTest("Optimization temporarily disabled")
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        data = rng.rand(2, 3).astype(self.dtype)
+        x = self.shared(data)
+        y = theano.sparse.matrix('csc', dtype=self.dtype, name='y')
+        z = theano.sparse.matrix('csr', dtype=self.dtype, name='z')
+        cond = theano.tensor.iscalar('cond')
+
+        self.assertRaises(TypeError, ifelse, cond, x, y)
+        self.assertRaises(TypeError, ifelse, cond, y, x)
+        self.assertRaises(TypeError, ifelse, cond, x, z)
+        self.assertRaises(TypeError, ifelse, cond, z, x)
+        self.assertRaises(TypeError, ifelse, cond, y, z)
+        self.assertRaises(TypeError, ifelse, cond, z, y)
 
     def test_merge(self):
         raise SkipTest("Optimization temporarily disabled")
