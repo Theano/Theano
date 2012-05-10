@@ -102,7 +102,7 @@ def test_neibs_manual():
 
     #print images.get_value(borrow=True)
     neibs = f()
-    print neibs
+    #print neibs
     assert numpy.allclose(neibs,[[ 0,  1,  4,  5],
        [ 2,  3,  6,  7],
        [ 8,  9, 12, 13],
@@ -410,7 +410,7 @@ def tes_neibs2images_crash_on_grad():
     to_images = T.sum(neibs2images(neibs, (2, 2), (2, 3, 20, 20)))
     g = T.grad(to_images, neibs)
     fn = theano.function([neibs], to_images, mode=mode_without_gpu)
-    print "Compiled"
+    #print "Compiled"
     fn(neibs_val)
 
 if __name__ == '__main__':
