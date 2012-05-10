@@ -13,7 +13,7 @@ import theano
 
 from theano import tensor as T
 from theano import sparse as S
-if S.enable_sparse == False:
+if not S.enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
 from theano.sparse.sandbox import sp2 as S2
