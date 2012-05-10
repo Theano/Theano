@@ -1,5 +1,9 @@
 import numpy
 
+import theano.sparse
+if theano.sparse.enable_sparse == False:
+    raise SkipTest('Optional package sparse disabled')
+
 from theano.sparse.utils import hash_from_sparse
 from theano.sparse.tests.test_basic import as_sparse_format
 
