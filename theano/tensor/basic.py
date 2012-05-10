@@ -2650,6 +2650,8 @@ def ones_like(model, dtype=None):
     """equivalent of numpy.ones_like"""
     if dtype is None:
         dtype = model.type.dtype
+    if model.ndim == 0 and isinstance(model.type, TensorType):
+        return constant(1.0, dtype=dtype)
     ret = fill(model, constant(1.0, dtype=dtype))
     return ret
 
@@ -2659,6 +2661,8 @@ def zeros_like(model, dtype=None):
     """equivalent of numpy.zeros_like"""
     if dtype is None:
         dtype = model.type.dtype
+    if model.ndim == 0 and isinstance(model.type, TensorType):
+        return constant(0.0, dtype=dtype)
     return fill(model, constant(0.0, dtype=dtype))
 
 
