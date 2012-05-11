@@ -1102,8 +1102,8 @@ class FunctionMaker(object):
                 blockers=[i.variable for i in inputs])
 
         msg = ("theano.function was asked to create a function computing "
-                "outputs given certain inputs, but one of the provided "
-                "input variables is not part of the computational graph "
+                "outputs given certain inputs, but the provided input "
+                "variable at index %i is not part of the computational graph "
                 "needed to compute the outputs: %s.\n%s")
         warn_msg = ("To make this warning into an error, you can pass the "
                 "parameter on_unused_input='raise' to theano.function. "
@@ -1115,9 +1115,9 @@ class FunctionMaker(object):
         for i in inputs:
             if ((i.variable not in used_inputs) and (i.update is None)):
                 if on_unused_input == 'warn':
-                    warnings.warn(msg % (i.variable, warn_msg), stacklevel=6)
+                    warnings.warn(msg % (inputs.index(i), i.variable, warn_msg), stacklevel=6)
                 elif on_unused_input == 'raise':
-                    raise UnusedInputError(msg % (i.variable, err_msg))
+                    raise UnusedInputError(msg % (inputs.index(i), i.variable, err_msg))
                 else:
                     raise ValueError(("Invalid value for keyword "
                         "on_unused_input of theano.function: '%s'. "
