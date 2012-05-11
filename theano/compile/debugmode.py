@@ -2065,7 +2065,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             accept_inplace = False,
             function_builder = Function,
             profile=None,
-            on_unused_input='raise'):
+            on_unused_input=None):
         """
         :type inputs: a list of SymbolicInput instances
 
