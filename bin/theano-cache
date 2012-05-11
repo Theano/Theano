@@ -10,10 +10,9 @@ from theano.gof.cc import get_module_cache
 _logger = logging.getLogger('theano.bin.theano-cache')
 _logger.setLevel(logging.WARN)
 
-
 if len(sys.argv) == 1:
     print config.compiledir
-elif sys.argv[1] in ('clear'):
+elif sys.argv[1] == 'clear':
     # We skip the refresh on module cache creation because the refresh will
     # be done when calling clear afterwards.
     cache = get_module_cache(init_args=dict(do_refresh=False))
@@ -29,9 +28,9 @@ elif sys.argv[1] in ('clear'):
                         config.compiledir)
         _logger.debug('Remaining elements (%s): %s' %
                       (len(items), ', '.join(items)))
-elif sys.argv[1] in ('list'):
+elif sys.argv[1] == 'list':
     theano.gof.compiledir.print_compiledir_content()
-elif sys.argv[1] in ('cleanup'):
+elif sys.argv[1] == 'cleanup':
     theano.gof.compiledir.cleanup()
 elif sys.argv[1] == 'unlock':
     theano.gof.compilelock.force_unlock()
