@@ -119,6 +119,7 @@ def cleanup():
     1) keys that have an ndarray in them.
        Now we use a hash in the keys of the constant data.
     2) key that don't have the numpy ABI version in them
+    3) They do not have a compile version string
 
     If there is no key left for a compiled module, we delete the module.
     """
@@ -134,15 +135,18 @@ def cleanup():
                     keydata = cPickle.load(file)
                     for key in list(keydata.keys):
                         have_npy_abi_version = False
+                        have_c_compiler = False
                         for obj in flatten(key):
                             if isinstance(obj, numpy.ndarray):
                                 keydata.remove_key(key)
                                 break
-                            if (isinstance(obj, basestring) and
-                                obj.startswith('NPY_ABI_VERSION=0x')):
-                                have_npy_abi_version = True
+                            elif isinstance(obj, basestring):
+                                if obj.startswith('NPY_ABI_VERSION=0x'):
+                                    have_npy_abi_version = True
+                                elif obj.startswith('c_compiler_str='):
+                                    have_c_compiler = True
 
-                        if not have_npy_abi_version:
+                        if not have_npy_abi_version or not have_c_compiler:
                             keydata.remove_key(key)
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))

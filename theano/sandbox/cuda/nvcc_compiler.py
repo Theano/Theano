@@ -76,6 +76,10 @@ def add_standard_rpath(rpath):
 
 class NVCC_compiler(object):
     @staticmethod
+    def version_str():
+        return "nvcc " + nvcc_version
+
+    @staticmethod
     def compile_args():
         """
         This args will be received by compile_str() in the preargs paramter.

@@ -348,7 +348,8 @@ def get_module_hash(src_code, key):
                 # This is the md5 hash of the config options. We can stop
                 # here.
                 break
-            elif key_element.startswith('NPY_ABI_VERSION=0x'):
+            elif (key_element.startswith('NPY_ABI_VERSION=0x') or
+                  key_element.startswith('c_compiler_str=')):
                 to_hash.append(key_element)
             else:
                 raise AssertionError(error_msg)
@@ -1430,6 +1431,10 @@ def gcc_version():
 
 
 class GCC_compiler(object):
+    @staticmethod
+    def version_str():
+        return "g++ " + gcc_version_str
+
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
