@@ -11,6 +11,9 @@ import sys
 from itertools import izip
 
 
+import numpy
+
+
 if sys.version_info[:2] >= (2, 5):
     import hashlib
 
@@ -918,7 +921,7 @@ class CLinker(link.Linker):
         The signature has the following form:
         {{{
             'CLinker.cmodule_key', compilation args, libraries,
-            header_dirs, config md5,
+            header_dirs, numpy ABI version, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -1031,6 +1034,11 @@ class CLinker(link.Linker):
             args = sorted(header_dirs)
             args = tuple(args)
             sig.append(args)
+
+        #We must always add the numpy ABI version here as
+        # DynamicModule always add the include <numpy/arrayobject.h>
+        sig.append('NPY_ABI_VERSION=0x%X' %
+                   numpy.core.multiarray._get_ndarray_c_version())
 
         # IMPORTANT: The 'md5' prefix is used to isolate the compilation
         # parameters from the rest of the key. If you want to add more key

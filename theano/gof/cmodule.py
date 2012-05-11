@@ -314,6 +314,7 @@ def get_module_hash(src_code, key):
         2. The version part of the key.
         3. The compiler options defined in `key` (command line parameters and
            libraries to link against).
+        4. The NumPy ABI version.
     """
     # `to_hash` will contain any element such that we know for sure that if
     # it changes, then the module hash should be different.
@@ -347,6 +348,8 @@ def get_module_hash(src_code, key):
                 # This is the md5 hash of the config options. We can stop
                 # here.
                 break
+            elif key_element.startswith('NPY_ABI_VERSION=0x'):
+                to_hash.append(key_element)
             else:
                 raise AssertionError(error_msg)
         else:
