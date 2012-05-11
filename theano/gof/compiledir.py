@@ -3,6 +3,7 @@ import errno
 import os
 import platform
 import re
+import subprocess
 import shutil
 import sys
 import textwrap
@@ -13,11 +14,30 @@ import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 
+# Using the dummy file descriptors below is a workaround for a crash
+# experienced in an unusual Python 2.4.4 Windows environment with the default
+# None values.
+dummy_in = open(os.devnull)
+dummy_err = open(os.devnull, 'w')
+p = None
+try:
+    p = subprocess.Popen(['g++', '-dumpversion'], stdout=subprocess.PIPE,
+                         stdin=dummy_in.fileno(), stderr=dummy_err.fileno())
+    p.wait()
+    gcc_version_str = p.stdout.readline().strip()
+except OSError:
+    # Typically means gcc cannot be found.
+    gcc_version_str = 'GCC_NOT_FOUND'
+del p
+del dummy_in
+del dummy_err
+
 compiledir_format_dict = {"platform": platform.platform(),
                           "processor": platform.processor(),
                           "python_version": platform.python_version(),
                           "theano_version": theano.__version__,
                           "numpy_version": numpy.__version__,
+                          "g++": gcc_version_str.replace(" ", "_"),
                          }
 compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
 default_compiledir_format =\

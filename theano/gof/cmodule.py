@@ -25,6 +25,7 @@ from theano.gof.cc import hash_from_code
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 import compilelock
+from compiledir import gcc_version_str
 
 from theano.configparser import AddConfigVar, BoolParam
 
@@ -1405,25 +1406,6 @@ def std_libs():
 
 def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
-
-
-# Using the dummy file descriptors below is a workaround for a crash
-# experienced in an unusual Python 2.4.4 Windows environment with the default
-# None values.
-dummy_in = open(os.devnull)
-dummy_err = open(os.devnull, 'w')
-p = None
-try:
-    p = subprocess.Popen(['g++', '-dumpversion'], stdout=subprocess.PIPE,
-                         stdin=dummy_in.fileno(), stderr=dummy_err.fileno())
-    p.wait()
-    gcc_version_str = p.stdout.readline().strip()
-except OSError:
-    # Typically means gcc cannot be found.
-    gcc_version_str = 'GCC_NOT_FOUND'
-del p
-del dummy_in
-del dummy_err
 
 
 def gcc_version():
