@@ -325,7 +325,7 @@ class Param(object):
 def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
-        profile=None, on_unused_input='raise'):
+        profile=None, on_unused_input=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -375,8 +375,8 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
 
     :type on_unused_input: str
     :param on_unused_input: What to do if a variable in the 'inputs' list
-        is not used in the graph. Possible values are 'raise', 'warn', and
-        'ignore.
+        is not used in the graph. Possible values are 'raise', 'warn',
+        'ignore' and None.
 
 
     :rtype: theano.compile.Function
